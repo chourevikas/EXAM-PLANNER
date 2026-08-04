@@ -4,7 +4,8 @@ from typing import Any, Union
 import jwt
 # pyrefly: ignore [missing-import]
 import bcrypt
-from app.config import settings
+from app.config.settings import settings
+
 
 def get_password_hash(password: str) -> str:
   # Truncate password to 72 bytes as required by bcrypt specification

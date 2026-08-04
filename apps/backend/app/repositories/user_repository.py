@@ -1,175 +1,211 @@
+import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
-from app.models.user import User, UserRole, UserStatus, StudentProfile, AdminProfile, AdminApprovalLog, RefreshToken
+from sqlmodel import select, func
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.db.models.user import (
+    User, UserRole, UserStatus, StudentProfile, AdminProfile, AdminApprovalLog, RefreshToken
+)
+
 
 class UserRepository:
-  def __init__(self, db: Session):
-    self.db = db
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
-  def get_by_email(self, email: str) -> Optional[User]:
-    return self.db.query(User).filter(User.email == email.lower()).first()
+    async def get_by_email(self, email: str) -> Optional[User]:
+        stmt = select(User).where(User.email == email.lower())
+        res = await self.session.exec(stmt)
+        return res.first()
 
-  def get_by_id(self, user_id: str) -> Optional[User]:
-    return self.db.query(User).filter(User.id == user_id).first()
+    async def get_by_id(self, user_id: uuid.UUID | str) -> Optional[User]:
+        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+        stmt = select(User).where(User.id == uid)
+        res = await self.session.exec(stmt)
+        return res.first()
 
-  def create_user(
-    self,
-    email: str,
-    full_name: str,
-    password_hash: str,
-    role: UserRole = UserRole.STUDENT,
-    organization_name: Optional[str] = None,
-    department: Optional[str] = None
-  ) -> User:
-    status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
+    async def create_user(
+        self,
+        email: str,
+        full_name: str,
+        password_hash: str,
+        role: UserRole = UserRole.STUDENT,
+        organization_name: Optional[str] = None,
+        department: Optional[str] = None
+    ) -> User:
+        status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
-    new_user = User(
-      email=email.lower(),
-      full_name=full_name,
-      password_hash=password_hash,
-      role=role,
-      status=status,
-    )
-    self.db.add(new_user)
-    self.db.commit()
-    self.db.refresh(new_user)
+        new_user = User(
+            email=email.lower(),
+            full_name=full_name,
+            password_hash=password_hash,
+            role=role,
+            status=status,
+        )
+        self.session.add(new_user)
+        await self.session.commit()
+        await self.session.refresh(new_user)
 
-    if role == UserRole.STUDENT:
-      student_prof = StudentProfile(user_id=new_user.id)
-      self.db.add(student_prof)
-    elif role == UserRole.ADMIN:
-      admin_prof = AdminProfile(
-        user_id=new_user.id,
-        organization_name=organization_name,
-        department=department
-      )
-      self.db.add(admin_prof)
+        if role == UserRole.STUDENT:
+            student_prof = StudentProfile(user_id=new_user.id)
+            self.session.add(student_prof)
+        elif role == UserRole.ADMIN:
+            admin_prof = AdminProfile(
+                user_id=new_user.id,
+                organization_name=organization_name,
+                department=department
+            )
+            self.session.add(admin_prof)
 
-    self.db.commit()
-    self.db.refresh(new_user)
-    return new_user
+        await self.session.commit()
+        await self.session.refresh(new_user)
+        return new_user
 
-  def get_pending_admins(self) -> List[User]:
-    return self.db.query(User).filter(
-      User.role == UserRole.ADMIN,
-      User.status == UserStatus.PENDING
-    ).order_by(User.created_at.desc()).all()
+    async def get_pending_admins(self) -> List[User]:
+        stmt = select(User).where(
+            User.role == UserRole.ADMIN,
+            User.status == UserStatus.PENDING
+        ).order_by(User.created_at.desc())
+        res = await self.session.exec(stmt)
+        return list(res.all())
 
-  def get_active_admins(self) -> List[User]:
-    return self.db.query(User).filter(
-      User.role == UserRole.ADMIN,
-      User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED])
-    ).order_by(User.created_at.desc()).all()
+    async def get_active_admins(self) -> List[User]:
+        stmt = select(User).where(
+            User.role == UserRole.ADMIN,
+            User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED])
+        ).order_by(User.created_at.desc())
+        res = await self.session.exec(stmt)
+        return list(res.all())
 
-  def suspend_admin(self, admin_id: str) -> Optional[User]:
-    user = self.get_by_id(admin_id)
-    if not user or user.role != UserRole.ADMIN:
-      return None
-    user.status = UserStatus.SUSPENDED
-    self.db.commit()
-    self.db.refresh(user)
-    return user
+    async def suspend_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
+        user = await self.get_by_id(admin_id)
+        if not user or user.role != UserRole.ADMIN:
+            return None
+        user.status = UserStatus.SUSPENDED
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
-  def reactivate_admin(self, admin_id: str) -> Optional[User]:
-    user = self.get_by_id(admin_id)
-    if not user or user.role != UserRole.ADMIN:
-      return None
-    user.status = UserStatus.ACTIVE
-    self.db.commit()
-    self.db.refresh(user)
-    return user
+    async def reactivate_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
+        user = await self.get_by_id(admin_id)
+        if not user or user.role != UserRole.ADMIN:
+            return None
+        user.status = UserStatus.ACTIVE
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
-  def approve_admin(self, admin_id: str, super_admin_id: str) -> Optional[User]:
-    user = self.get_by_id(admin_id)
-    if not user or user.role != UserRole.ADMIN:
-      return None
+    async def approve_admin(self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str) -> Optional[User]:
+        user = await self.get_by_id(admin_id)
+        if not user or user.role != UserRole.ADMIN:
+            return None
 
-    user.status = UserStatus.ACTIVE
-    if user.admin_profile:
-      user.admin_profile.approved_by_id = super_admin_id
-      user.admin_profile.approved_at = datetime.utcnow()
+        super_admin_uuid = uuid.UUID(str(super_admin_id)) if isinstance(super_admin_id, str) else super_admin_id
 
-    log = AdminApprovalLog(
-      admin_user_id=admin_id,
-      reviewed_by_id=super_admin_id,
-      action="APPROVED"
-    )
-    self.db.add(log)
-    self.db.commit()
-    self.db.refresh(user)
-    return user
+        user.status = UserStatus.ACTIVE
+        if user.admin_profile:
+            user.admin_profile.approved_by_id = super_admin_uuid
+            user.admin_profile.approved_at = datetime.utcnow()
+            self.session.add(user.admin_profile)
 
-  def reject_admin(self, admin_id: str, super_admin_id: str, reason: Optional[str] = None) -> Optional[User]:
-    user = self.get_by_id(admin_id)
-    if not user or user.role != UserRole.ADMIN:
-      return None
+        log = AdminApprovalLog(
+            admin_user_id=user.id,
+            reviewed_by_id=super_admin_uuid,
+            action="APPROVED"
+        )
+        self.session.add(user)
+        self.session.add(log)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
-    user.status = UserStatus.REJECTED
-    if user.admin_profile:
-      user.admin_profile.rejected_by_id = super_admin_id
-      user.admin_profile.rejected_at = datetime.utcnow()
-      user.admin_profile.rejection_reason = reason
+    async def reject_admin(self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str, reason: Optional[str] = None) -> Optional[User]:
+        user = await self.get_by_id(admin_id)
+        if not user or user.role != UserRole.ADMIN:
+            return None
 
-    log = AdminApprovalLog(
-      admin_user_id=admin_id,
-      reviewed_by_id=super_admin_id,
-      action="REJECTED",
-      reason=reason
-    )
-    self.db.add(log)
-    self.db.commit()
-    self.db.refresh(user)
-    return user
+        super_admin_uuid = uuid.UUID(str(super_admin_id)) if isinstance(super_admin_id, str) else super_admin_id
 
-  def get_approval_logs(self) -> List[AdminApprovalLog]:
-    return self.db.query(AdminApprovalLog).order_by(AdminApprovalLog.created_at.desc()).all()
+        user.status = UserStatus.REJECTED
+        if user.admin_profile:
+            user.admin_profile.rejected_by_id = super_admin_uuid
+            user.admin_profile.rejected_at = datetime.utcnow()
+            user.admin_profile.rejection_reason = reason
+            self.session.add(user.admin_profile)
 
-  def get_system_stats(self) -> Dict[str, Any]:
-    pending_admins = self.db.query(User).filter(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING).count()
-    active_admins = self.db.query(User).filter(User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE).count()
-    active_students = self.db.query(User).filter(User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE).count()
-    rejected_admins = self.db.query(User).filter(User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED).count()
+        log = AdminApprovalLog(
+            admin_user_id=user.id,
+            reviewed_by_id=super_admin_uuid,
+            action="REJECTED",
+            reason=reason
+        )
+        self.session.add(user)
+        self.session.add(log)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
-    return {
-      "pending_admins_count": pending_admins,
-      "active_admins_count": active_admins,
-      "active_students_count": active_students,
-      "rejected_admins_count": rejected_admins,
-      "aws_rds_status": "Healthy & Connected",
-      "database_name": "postgres",
-      "db_host": "examplanner.cbwe2uwqetyt.ap-southeast-2.rds.amazonaws.com"
-    }
+    async def get_approval_logs(self) -> List[AdminApprovalLog]:
+        stmt = select(AdminApprovalLog).order_by(AdminApprovalLog.created_at.desc())
+        res = await self.session.exec(stmt)
+        return list(res.all())
 
-  def update_last_login(self, user_id: str) -> None:
-    user = self.get_by_id(user_id)
-    if user:
-      user.last_login = datetime.utcnow()
-      self.db.commit()
+    async def get_system_stats(self) -> Dict[str, Any]:
+        pending = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING))).one()
+        active = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE))).one()
+        students = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE))).one()
+        rejected = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED))).one()
 
-  def save_refresh_token(
-    self,
-    user_id: str,
-    token_hash: str,
-    expires_at: datetime,
-    device_name: Optional[str] = None,
-    ip_address: Optional[str] = None
-  ) -> RefreshToken:
-    token_record = RefreshToken(
-      user_id=user_id,
-      token_hash=token_hash,
-      expires_at=expires_at,
-      device_name=device_name,
-      ip_address=ip_address
-    )
-    self.db.add(token_record)
-    self.db.commit()
-    self.db.refresh(token_record)
-    return token_record
+        return {
+            "pending_admins_count": pending,
+            "active_admins_count": active,
+            "active_students_count": students,
+            "rejected_admins_count": rejected,
+            "aws_rds_status": "Healthy & Connected",
+            "database_name": "sqlite/postgres",
+            "db_host": "localhost"
+        }
 
-  def revoke_user_refresh_tokens(self, user_id: str) -> None:
-    self.db.query(RefreshToken).filter(
-      RefreshToken.user_id == user_id,
-      RefreshToken.revoked_at.is_(None)
-    ).update({"revoked_at": datetime.utcnow()})
-    self.db.commit()
+    async def update_last_login(self, user_id: uuid.UUID | str) -> None:
+        user = await self.get_by_id(user_id)
+        if user:
+            user.last_login = datetime.utcnow()
+            self.session.add(user)
+            await self.session.commit()
+
+    async def save_refresh_token(
+        self,
+        user_id: uuid.UUID | str,
+        token_hash: str,
+        expires_at: datetime,
+        device_name: Optional[str] = None,
+        ip_address: Optional[str] = None
+    ) -> RefreshToken:
+        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+        token_record = RefreshToken(
+            user_id=uid,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            device_name=device_name,
+            ip_address=ip_address
+        )
+        self.session.add(token_record)
+        await self.session.commit()
+        await self.session.refresh(token_record)
+        return token_record
+
+    async def revoke_user_refresh_tokens(self, user_id: uuid.UUID | str) -> None:
+        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+        stmt = select(RefreshToken).where(
+            RefreshToken.user_id == uid,
+            RefreshToken.revoked_at.is_(None)
+        )
+        res = await self.session.exec(stmt)
+        tokens = res.all()
+        now = datetime.utcnow()
+        for tok in tokens:
+            tok.revoked_at = now
+            self.session.add(tok)
+        await self.session.commit()

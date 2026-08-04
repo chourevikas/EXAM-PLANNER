@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import app configuration and models
 from app.config import settings
-import app.models  # Ensures all ORM models are registered with Base.metadata
+import app.db.models  # Ensures all ORM models are registered with Base.metadata
 from app.database import Base
 
 # this is the Alembic Config object, which provides

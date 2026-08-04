@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, ConfigDict
-from app.models.user import UserRole, UserStatus, SubscriptionTier
+from app.db.models.user import UserRole, UserStatus, SubscriptionTier
 
 class UserRegister(BaseModel):
   email: EmailStr
@@ -51,10 +51,11 @@ class UserOut(BaseModel):
 class TokenResponse(BaseModel):
   access_token: Optional[str] = None
   token_type: str = "bearer"
-  user: UserOut
+  user: Optional[UserOut] = None
   redirect_url: str
   is_pending_approval: bool = False
   message: Optional[str] = None
+
 
 class ForgotPasswordRequest(BaseModel):
   email: EmailStr

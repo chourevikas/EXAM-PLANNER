@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel, EmailStr, ConfigDict
-from app.models.user import UserRole, UserStatus, SubscriptionTier
+from app.db.models.user import UserRole, UserStatus, SubscriptionTier
 
 class UserBase(BaseModel):
   email: EmailStr

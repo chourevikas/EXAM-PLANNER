@@ -2,7 +2,11 @@ import os
 import shutil
 from typing import Dict, Any
 from app.config import settings
-from app.core.logging import logger
+from app.config.logger import setup_logger
+
+logger = setup_logger("S3Service")
+
+
 
 try:
     import boto3

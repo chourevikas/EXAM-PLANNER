@@ -1,9 +1,12 @@
-import logging
 import boto3
 from botocore.exceptions import ClientError
-from app.config import settings
+from app.config.settings import settings
 
-logger = logging.getLogger(__name__)
+
+from app.config.logger import setup_logger
+
+logger = setup_logger("EmailService")
+
 
 class EmailService:
   def __init__(self):
