@@ -102,12 +102,14 @@ async def async_process_exam_pdf(
                 "exam_id": str(exam_id),
                 "output_dir": str(output_dir),
                 "total_pages": total_pages,
+                "task_id": t_id,
                 "execution_pass": 1,
                 "retry_count": 0,
                 "target_retry_pages": [],
                 "raw_page_payloads": [],
                 "processed_question_keys": []
             },
+
             config={"max_concurrency": 2}
         )
 

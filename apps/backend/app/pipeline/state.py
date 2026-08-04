@@ -1,7 +1,9 @@
 import operator
+import uuid
 from typing import TypedDict, List, Tuple, Optional, Annotated
 from pydantic import BaseModel, Field, ConfigDict
 import enum
+
 
 
 class LanguageCodeEnum(str, enum.Enum):
@@ -117,6 +119,7 @@ class MCQValidationResult(BaseModel):
 class ParallelWorkerInput(TypedDict):
     page_num: int
     pdf_path: str
+    task_id: str
 
 
 class OverallPipelineState(TypedDict):
@@ -125,8 +128,10 @@ class OverallPipelineState(TypedDict):
     exam_id: str
     output_dir: str
     total_pages: int
+    task_id: str
     execution_pass: int
     retry_count: int
     target_retry_pages: List[int]
     raw_page_payloads: Annotated[List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]], operator.add]
     processed_question_keys: List[str]
+

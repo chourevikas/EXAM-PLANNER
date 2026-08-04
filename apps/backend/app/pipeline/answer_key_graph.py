@@ -11,7 +11,7 @@ from app.db.models import (
 )
 from app.pipeline.vision_extractor import get_pdf_total_pages, load_pdf_page_image_lazily
 from app.pipeline.answer_key_extractor import ainvoke_answer_key_llm, AnswerKeyPagePayload
-from app.config.logger import setup_logger
+from app.config.logger import setup_logger, TaskLoggerAdapter
 
 
 logger = setup_logger("AnswerKeyPipeline")
@@ -22,6 +22,7 @@ class AnswerKeyPipelineState(TypedDict):
     exam_id: str
     target_set_code: str
     total_pages: int
+    task_id: Optional[str]
     raw_page_payloads: List[Dict[str, Any]]
     batch_id: Optional[str]
     total_keys_extracted: int
@@ -32,13 +33,16 @@ class AnswerKeyPipelineState(TypedDict):
 async def node_extract_answer_key_pages(state: AnswerKeyPipelineState) -> Dict[str, Any]:
     """Asynchronously extracts answer keys and detects paper set code across all PDF pages."""
     pdf_path = state["pdf_path"]
-    total_pages = state.get("total_pages") or await get_pdf_total_pages(pdf_path)
+    t_id = state.get("task_id", "N/A")
+    log = TaskLoggerAdapter(logger, task_id=t_id)
 
-    logger.info(f"[ANSWER KEY PIPELINE] Processing {total_pages} pages for PDF '{pdf_path}'...")
+    total_pages = state.get("total_pages") or await get_pdf_total_pages(pdf_path)
+    log.info(f"🔑 [ANSWER KEY EXTRACTION] Processing {total_pages} page(s) for PDF '{pdf_path}'...")
     
     payloads = []
     for page_num in range(1, total_pages + 1):
         try:
+            log.info(f"🤖 [LLM VISION CALL] Extracting Answer Key from Page {page_num}...")
             page_img = await load_pdf_page_image_lazily(pdf_path, page_num)
             payload: AnswerKeyPagePayload = await ainvoke_answer_key_llm(page_img, page_num)
             payloads.append({
@@ -48,8 +52,9 @@ async def node_extract_answer_key_pages(state: AnswerKeyPipelineState) -> Dict[s
                 "extracted_keys": [item.model_dump() for item in payload.extracted_keys]
             })
             del page_img
+            log.info(f"✨ [ANSWER KEY PAGE {page_num}] Extracted {len(payload.extracted_keys)} key(s), detected set: '{payload.detected_paper_set_code}'.")
         except Exception as exc:
-            logger.error(f"Failed extracting answer key for Page {page_num}: {exc}", exc_info=True)
+            log.error(f"❌ [ANSWER KEY WORKER FAILED] Page {page_num}: {exc}", exc_info=True)
 
     return {"total_pages": total_pages, "raw_page_payloads": payloads}
 
@@ -62,6 +67,8 @@ async def node_validate_set_code_and_map_db(state: AnswerKeyPipelineState) -> Di
     exam_id = uuid.UUID(state["exam_id"])
     target_set_code = state.get("target_set_code", "SET_A").upper()
     raw_payloads = state.get("raw_page_payloads", [])
+    t_id = state.get("task_id", "N/A")
+    log = TaskLoggerAdapter(logger, task_id=t_id)
 
     async with async_session_factory() as session:
         exam = await session.get(Exam, exam_id)
@@ -84,7 +91,7 @@ async def node_validate_set_code_and_map_db(state: AnswerKeyPipelineState) -> Di
         else:
             set_status = SetMatchStatus.MISMATCH_SKIPPED
 
-        logger.info(f"[SET CODE CHECK] Target Set: '{target_set_code}' | Detected Set: '{detected_set_code}' | Status: '{set_status.value}'")
+        log.info(f"[SET CODE CHECK] Target Set: '{target_set_code}' | Detected Set: '{detected_set_code}' | Status: '{set_status.value}'")
 
         # Create AnswerKeyBatch record
         batch = AnswerKeyBatch(
@@ -101,7 +108,7 @@ async def node_validate_set_code_and_map_db(state: AnswerKeyPipelineState) -> Di
         await session.refresh(batch)
 
         if not set_match:
-            logger.warning(
+            log.warning(
                 f"⚠️ [SET MISMATCH SKIPPED] Answer key set '{detected_set_code}' does not match target paper set '{target_set_code}'. Skipping automatic DB mapping to prevent answer corruption."
             )
             return {
@@ -181,7 +188,7 @@ async def node_validate_set_code_and_map_db(state: AnswerKeyPipelineState) -> Di
         session.add(batch)
         await session.commit()
 
-        logger.info(f"✅ [ANSWER KEY MAPPING COMPLETE] Extracted: {total_extracted} | Mapped: {total_mapped} for Exam ID {exam_id}")
+        log.info(f"✅ [ANSWER KEY MAPPING COMPLETE] Extracted: {total_extracted} | Mapped: {total_mapped} for Exam ID {exam_id}")
 
         return {
             "batch_id": str(batch.id),

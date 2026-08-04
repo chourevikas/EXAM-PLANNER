@@ -70,6 +70,7 @@ async def async_process_answer_key_pdf(
                 "exam_id": exam_id_str,
                 "target_set_code": target_set_code,
                 "total_pages": 0,
+                "task_id": t_id,
                 "raw_page_payloads": [],
                 "batch_id": None,
                 "total_keys_extracted": 0,
@@ -77,6 +78,7 @@ async def async_process_answer_key_pdf(
                 "set_match_status": "PENDING"
             }
         )
+
 
         log.info("=" * 70)
         log.info(f"✅ [ANSWER KEY PIPELINE COMPLETE] Engine: {execution_engine} | Batch ID: {result.get('batch_id')} | Task ID: '{t_id}'")

@@ -26,17 +26,17 @@ from app.pipeline.dsu_stitcher import (
 )
 
 
-from app.config.logger import setup_logger
+from app.config.logger import setup_logger, TaskLoggerAdapter
 
 logger = setup_logger("ExamPipeline")
-
 
 
 def node_dispatch_parallel_map(state: OverallPipelineState):
     pdf_path = state["pdf_path"]
     total_pages = state["total_pages"]
+    t_id = state.get("task_id", "N/A")
     return [
-        Send("parallel_extract_worker", {"page_num": p_num, "pdf_path": pdf_path})
+        Send("parallel_extract_worker", {"page_num": p_num, "pdf_path": pdf_path, "task_id": t_id})
         for p_num in range(1, total_pages + 1)
     ]
 
@@ -44,18 +44,21 @@ def node_dispatch_parallel_map(state: OverallPipelineState):
 async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
     page_num = state["page_num"]
     pdf_path = state["pdf_path"]
+    t_id = state.get("task_id", "N/A")
+    log = TaskLoggerAdapter(logger, task_id=t_id)
 
     try:
-        logger.info(f"🤖 [LLM VISION CALL] Processing Page {page_num}...")
+        log.info(f"🤖 [LLM VISION CALL] Processing Page {page_num}...")
         page_img = await load_pdf_page_image_lazily(pdf_path, page_num)
         payload = await ainvoke_extraction_llm(page_img, page_num)
         del page_img
-        logger.info(f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s).")
+        log.info(f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s).")
         return {"raw_page_payloads": [(page_num, payload, None)]}
     except Exception as e:
         err_str = f"Worker failed on Page {page_num}: {str(e)}"
-        logger.error(f"❌ [PAGE WORKER FAILED] Page {page_num}: {e}", exc_info=True)
+        log.error(f"❌ [PAGE WORKER FAILED] Page {page_num}: {e}", exc_info=True)
         return {"raw_page_payloads": [(page_num, None, err_str)]}
+
 
 
 async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
