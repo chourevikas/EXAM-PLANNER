@@ -9,20 +9,35 @@ from langgraph.types import Send
 
 from app.db.session import async_session_factory
 from app.db.models import (
-    Exam, Question, QuestionTranslation, QuestionOption, OptionTranslation,
-    QuestionAsset, Passage, PassageTranslation, QuestionStatus, HumanReviewTask
+    Exam,
+    Question,
+    QuestionTranslation,
+    QuestionOption,
+    OptionTranslation,
+    QuestionAsset,
+    Passage,
+    PassageTranslation,
+    QuestionStatus,
+    HumanReviewTask,
 )
 from app.storage.factory import get_storage_provider
-from app.formatters.yaml_exporter import async_export_question_to_yaml_string, get_canonical_question_filename_stem
+from app.formatters.yaml_exporter import (
+    async_export_question_to_yaml_string,
+    get_canonical_question_filename_stem,
+)
 from app.formatters.markdown_exporter import async_export_question_to_markdown
 from app.pipeline.state import (
-    OverallPipelineState, ParallelWorkerInput, PageExtractionPayload
+    OverallPipelineState,
+    ParallelWorkerInput,
+    PageExtractionPayload,
 )
 from app.pipeline.vision_extractor import (
-    load_pdf_page_image_lazily, ainvoke_extraction_llm
+    load_pdf_page_image_lazily,
+    ainvoke_extraction_llm,
 )
 from app.pipeline.dsu_stitcher import (
-    resolve_transitive_passages_dsu, async_crop_and_save_asset
+    resolve_transitive_passages_dsu,
+    async_crop_and_save_asset,
 )
 
 
@@ -36,7 +51,10 @@ def node_dispatch_parallel_map(state: OverallPipelineState):
     total_pages = state["total_pages"]
     t_id = state.get("task_id", "N/A")
     return [
-        Send("parallel_extract_worker", {"page_num": p_num, "pdf_path": pdf_path, "task_id": t_id})
+        Send(
+            "parallel_extract_worker",
+            {"page_num": p_num, "pdf_path": pdf_path, "task_id": t_id},
+        )
         for p_num in range(1, total_pages + 1)
     ]
 
@@ -52,7 +70,9 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
         page_img = await load_pdf_page_image_lazily(pdf_path, page_num)
         payload = await ainvoke_extraction_llm(page_img, page_num)
         del page_img
-        log.info(f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s).")
+        log.info(
+            f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s)."
+        )
         return {"raw_page_payloads": [(page_num, payload, None)]}
     except Exception as e:
         err_str = f"Worker failed on Page {page_num}: {str(e)}"
@@ -60,9 +80,12 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
         return {"raw_page_payloads": [(page_num, None, err_str)]}
 
 
-
 async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
-    exam_id = uuid.UUID(state["exam_id"]) if isinstance(state["exam_id"], str) else state["exam_id"]
+    exam_id = (
+        uuid.UUID(state["exam_id"])
+        if isinstance(state["exam_id"], str)
+        else state["exam_id"]
+    )
     pdf_path = state["pdf_path"]
     storage = get_storage_provider()
 
@@ -71,13 +94,19 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
     failed_payloads = [r for r in results if r[2] is not None]
 
     if failed_payloads:
-        logger.warning(f"⚠️ {len(failed_payloads)} out of {len(results)} page workers encountered errors.")
+        logger.warning(
+            f"⚠️ {len(failed_payloads)} out of {len(results)} page workers encountered errors."
+        )
         for p_num, _, err in failed_payloads:
             logger.error(f"   - Page {p_num} Error: {err}")
 
     if not valid_payloads:
-        sample_err = failed_payloads[0][2] if failed_payloads else "No page payloads produced"
-        raise RuntimeError(f"Vision extraction failed for ALL pages. Sample error: {sample_err}")
+        sample_err = (
+            failed_payloads[0][2] if failed_payloads else "No page payloads produced"
+        )
+        raise RuntimeError(
+            f"Vision extraction failed for ALL pages. Sample error: {sample_err}"
+        )
 
     async with async_session_factory() as session:
         exam = await session.get(Exam, exam_id)
@@ -85,7 +114,6 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
 
     unified_passages = resolve_transitive_passages_dsu(results)
     passage_id_map = {}
-
 
     async with async_session_factory() as session:
         for p_data in unified_passages:
@@ -100,17 +128,21 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                 memory_type=p_data.get("memory_type", "PASSAGE"),
                 is_complete=p_data.get("is_complete", True),
                 page_numbers_json=pages_json,
-                question_ids_json="[]"
+                question_ids_json="[]",
             )
             session.add(passage)
             await session.commit()
 
             for trans in p_data.get("translations", []):
-                lang_str = trans["language"].value if hasattr(trans["language"], "value") else str(trans["language"])
+                lang_str = (
+                    trans["language"].value
+                    if hasattr(trans["language"], "value")
+                    else str(trans["language"])
+                )
                 p_trans = PassageTranslation(
                     passage_id=p_id,
                     language=lang_str,
-                    passage_text=trans["context_text"]
+                    passage_text=trans["context_text"],
                 )
                 session.add(p_trans)
             await session.commit()
@@ -128,7 +160,10 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
             sec_code = q_item.section_code or "DEFAULT"
             q_num = q_item.printed_question_number
 
-            if q_item.is_continuation_fragment and q_item.target_parent_question_number is not None:
+            if (
+                q_item.is_continuation_fragment
+                and q_item.target_parent_question_number is not None
+            ):
                 parent_sec = q_item.target_parent_section_code or sec_code
                 parent_q = q_item.target_parent_question_number
                 target_key = (parent_sec, parent_q)
@@ -138,13 +173,30 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                         question_registry[target_key]["page_numbers"].append(p_num)
 
                     for t in q_item.translations:
-                        lang = t.language.value if hasattr(t.language, "value") else str(t.language)
+                        lang = (
+                            t.language.value
+                            if hasattr(t.language, "value")
+                            else str(t.language)
+                        )
                         if lang in question_registry[target_key]["translations"]:
-                            if t.question_text and t.question_text not in question_registry[target_key]["translations"][lang]["text"]:
-                                question_registry[target_key]["translations"][lang]["text"] += "\n" + t.question_text
-                            existing_opts = question_registry[target_key]["translations"][lang]["options"]
+                            if (
+                                t.question_text
+                                and t.question_text
+                                not in question_registry[target_key]["translations"][
+                                    lang
+                                ]["text"]
+                            ):
+                                question_registry[target_key]["translations"][lang][
+                                    "text"
+                                ] += "\n" + t.question_text
+                            existing_opts = question_registry[target_key][
+                                "translations"
+                            ][lang]["options"]
                             for new_opt in t.options:
-                                if not any(o.display_order == new_opt.display_order for o in existing_opts):
+                                if not any(
+                                    o.display_order == new_opt.display_order
+                                    for o in existing_opts
+                                ):
                                     existing_opts.append(new_opt)
                     continue
 
@@ -161,7 +213,7 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                     "has_image": q_item.has_image_or_complex_layout,
                     "page_numbers": [p_num],
                     "assets": q_item.assets,
-                    "translations": {}
+                    "translations": {},
                 }
             else:
                 if p_num not in question_registry[composite_key]["page_numbers"]:
@@ -169,25 +221,43 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                 question_registry[composite_key]["assets"].extend(q_item.assets)
 
             for t in q_item.translations:
-                lang = t.language.value if hasattr(t.language, "value") else str(t.language)
+                lang = (
+                    t.language.value
+                    if hasattr(t.language, "value")
+                    else str(t.language)
+                )
                 if lang not in question_registry[composite_key]["translations"]:
                     question_registry[composite_key]["translations"][lang] = {
                         "text": t.question_text,
                         "context": t.parent_context_override or "",
-                        "options": t.options
+                        "options": t.options,
                     }
                 else:
-                    if t.question_text not in question_registry[composite_key]["translations"][lang]["text"]:
-                        question_registry[composite_key]["translations"][lang]["text"] += "\n" + t.question_text
-                    existing_opts = question_registry[composite_key]["translations"][lang]["options"]
+                    if (
+                        t.question_text
+                        not in question_registry[composite_key]["translations"][lang][
+                            "text"
+                        ]
+                    ):
+                        question_registry[composite_key]["translations"][lang][
+                            "text"
+                        ] += "\n" + t.question_text
+                    existing_opts = question_registry[composite_key]["translations"][
+                        lang
+                    ]["options"]
                     for new_opt in t.options:
-                        if not any(o.display_order == new_opt.display_order for o in existing_opts):
+                        if not any(
+                            o.display_order == new_opt.display_order
+                            for o in existing_opts
+                        ):
                             existing_opts.append(new_opt)
 
     processed_keys = []
 
     async with async_session_factory() as session:
-        for (sec_code, q_num), q_data in sorted(question_registry.items(), key=lambda x: (x[0][0], x[0][1])):
+        for (sec_code, q_num), q_data in sorted(
+            question_registry.items(), key=lambda x: (x[0][0], x[0][1])
+        ):
             key_str = f"{sec_code}::{q_num}"
             processed_keys.append(key_str)
 
@@ -195,7 +265,7 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                 select(Question).where(
                     Question.exam_id == exam_id,
                     Question.section_code == sec_code,
-                    Question.question_number_in_paper == q_num
+                    Question.question_number_in_paper == q_num,
                 )
             )
             existing_q = existing_q_res.first()
@@ -218,8 +288,10 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                     is_complete=q_data["is_complete"],
                     has_image=q_data["has_image"],
                     page_numbers_json=json.dumps(q_data["page_numbers"]),
-                    passage_page_numbers_json=json.dumps(q_passage_pages) if q_passage_pages else None,
-                    status=QuestionStatus.PENDING_HUMAN_REVIEW
+                    passage_page_numbers_json=json.dumps(q_passage_pages)
+                    if q_passage_pages
+                    else None,
+                    status=QuestionStatus.PENDING_HUMAN_REVIEW,
                 )
                 session.add(q_obj)
                 await session.commit()
@@ -228,7 +300,9 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
             for asset in q_data["assets"]:
                 first_page = q_data["page_numbers"][0]
                 page_img = await load_pdf_page_image_lazily(pdf_path, first_page)
-                asset_rel_path = await async_crop_and_save_asset(page_img, storage, exam_code, sec_code, q_num, asset)
+                asset_rel_path = await async_crop_and_save_asset(
+                    page_img, storage, exam_code, sec_code, q_num, asset
+                )
                 del page_img
 
                 if asset_rel_path:
@@ -236,7 +310,7 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                         question_id=question_id,
                         asset_path=asset_rel_path,
                         asset_type=asset.asset_type.value,
-                        caption=asset.caption
+                        caption=asset.caption,
                     )
                     session.add(q_asset)
             await session.commit()
@@ -247,7 +321,9 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                     question_id=question_id,
                     language=lang,
                     question_text=t_data["text"],
-                    parent_context_override=t_data["context"] if t_data["context"] else None
+                    parent_context_override=t_data["context"]
+                    if t_data["context"]
+                    else None,
                 )
                 session.add(q_trans)
                 await session.commit()
@@ -257,15 +333,13 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                         question_id=question_id,
                         option_label=opt.display_label,
                         display_order=opt.display_order,
-                        is_correct=False
+                        is_correct=False,
                     )
                     session.add(q_opt)
                     await session.commit()
 
                     opt_trans = OptionTranslation(
-                        option_id=q_opt.id,
-                        language=lang,
-                        option_text=opt.option_text
+                        option_id=q_opt.id, language=lang, option_text=opt.option_text
                     )
                     session.add(opt_trans)
             await session.commit()
@@ -274,7 +348,11 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
 
 
 async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
-    exam_id = uuid.UUID(state["exam_id"]) if isinstance(state["exam_id"], str) else state["exam_id"]
+    exam_id = (
+        uuid.UUID(state["exam_id"])
+        if isinstance(state["exam_id"], str)
+        else state["exam_id"]
+    )
     processed_keys = state["processed_question_keys"]
 
     async with async_session_factory() as session:
@@ -286,7 +364,7 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
                 select(Question).where(
                     Question.exam_id == exam_id,
                     Question.section_code == sec_code,
-                    Question.question_number_in_paper == q_num
+                    Question.question_number_in_paper == q_num,
                 )
             )
             q = q_res.first()
@@ -295,7 +373,9 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
 
             failure_reasons = []
             if not q.is_complete:
-                failure_reasons.append("Question statement/options is_complete is False")
+                failure_reasons.append(
+                    "Question statement/options is_complete is False"
+                )
 
             task_res = await session.exec(
                 select(HumanReviewTask).where(HumanReviewTask.question_id == q.id)
@@ -308,7 +388,7 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
                     exam_id=exam_id,
                     review_status="PENDING_REVIEW",
                     is_flagged_by_validator=bool(failure_reasons),
-                    failure_reasons_json=json.dumps(failure_reasons)
+                    failure_reasons_json=json.dumps(failure_reasons),
                 )
                 session.add(review_task)
                 await session.commit()
@@ -317,14 +397,20 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
 
 
 async def node_export_artifacts(state: OverallPipelineState) -> dict:
-    exam_id = uuid.UUID(state["exam_id"]) if isinstance(state["exam_id"], str) else state["exam_id"]
+    exam_id = (
+        uuid.UUID(state["exam_id"])
+        if isinstance(state["exam_id"], str)
+        else state["exam_id"]
+    )
     storage = get_storage_provider()
 
     async with async_session_factory() as session:
         exam = await session.get(Exam, exam_id)
         exam_code = exam.code if exam else "EXAM"
 
-        questions_res = await session.exec(select(Question).where(Question.exam_id == exam_id))
+        questions_res = await session.exec(
+            select(Question).where(Question.exam_id == exam_id)
+        )
         questions = questions_res.all()
 
         for q in questions:
@@ -334,17 +420,19 @@ async def node_export_artifacts(state: OverallPipelineState) -> dict:
             yaml_str = await async_export_question_to_yaml_string(session, q)
             yaml_filename = f"{q_stem}.yaml"
             yaml_rel_path = f"exams/{exam_code}/output_files/{yaml_filename}"
-            
+
             temp_yaml = Path(state["output_dir"]) / yaml_filename
             async with aiofiles.open(temp_yaml, mode="w", encoding="utf-8") as f:
                 await f.write(yaml_str)
             await storage.upload_file(temp_yaml, yaml_rel_path)
 
             # 2. Async Export Markdown (MATCHING FILENAME STEM)
-            md_str = await async_export_question_to_markdown(session, q, storage=storage)
+            md_str = await async_export_question_to_markdown(
+                session, q, storage=storage
+            )
             md_filename = f"{q_stem}.md"
             md_rel_path = f"exams/{exam_code}/output_files/{md_filename}"
-            
+
             temp_md = Path(state["output_dir"]) / md_filename
             async with aiofiles.open(temp_md, mode="w", encoding="utf-8") as f:
                 await f.write(md_str)
@@ -361,7 +449,9 @@ def build_langgraph_pipeline():
     workflow.add_node("mcq_validator_and_hitl", node_mcq_validator_and_hitl)
     workflow.add_node("export_artifacts", node_export_artifacts)
 
-    workflow.add_conditional_edges(START, node_dispatch_parallel_map, ["parallel_extract_worker"])
+    workflow.add_conditional_edges(
+        START, node_dispatch_parallel_map, ["parallel_extract_worker"]
+    )
     workflow.add_edge("parallel_extract_worker", "python_reduce_and_stitch")
     workflow.add_edge("python_reduce_and_stitch", "mcq_validator_and_hitl")
     workflow.add_edge("mcq_validator_and_hitl", "export_artifacts")

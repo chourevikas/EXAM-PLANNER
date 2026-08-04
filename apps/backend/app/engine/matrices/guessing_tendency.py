@@ -8,13 +8,13 @@ class GuessingTendencyStrategy:
 
     @classmethod
     def compute_item_guessing(
-        cls, 
-        time_taken_sec: float, 
-        expected_time_sec: float, 
+        cls,
+        time_taken_sec: float,
+        expected_time_sec: float,
         option_closeness: float,
         is_correct: bool,
         irt_difficulty_b: float = 0.0,
-        irt_pseudo_guessing_c: float = 0.25
+        irt_pseudo_guessing_c: float = 0.25,
     ) -> float:
         if expected_time_sec <= 0:
             expected_time_sec = 60.0
@@ -24,7 +24,10 @@ class GuessingTendencyStrategy:
 
         if is_correct:
             difficulty_weight = 1.0 / (1.0 + math.exp(1.5 * irt_difficulty_b))
-            guessing_factor = irt_pseudo_guessing_c + (1.0 - irt_pseudo_guessing_c) * difficulty_weight
+            guessing_factor = (
+                irt_pseudo_guessing_c
+                + (1.0 - irt_pseudo_guessing_c) * difficulty_weight
+            )
             guessing_prob = impulse_term * guessing_factor
         else:
             closeness_term = 1.0 - max(0.0, option_closeness)
@@ -45,19 +48,19 @@ class GuessingTendencyStrategy:
                 "category": "IMPULSIVE_BLIND_GUESSING",
                 "label": "High Impulsive Risk-Taking",
                 "color": "#ef4444",
-                "recommendation": "Slow down during test execution. You are taking rapid uncalculated guesses on unfamiliar questions."
+                "recommendation": "Slow down during test execution. You are taking rapid uncalculated guesses on unfamiliar questions.",
             }
         elif gti_value >= 0.30:
             return {
                 "category": "TACTICAL_CALCULATED_RISK",
                 "label": "Tactical Elimination Risk",
                 "color": "#f59e0b",
-                "recommendation": "Optimal elimination strategy. Your non-correct attempts stem from high-closeness distractors."
+                "recommendation": "Optimal elimination strategy. Your non-correct attempts stem from high-closeness distractors.",
             }
         else:
             return {
                 "category": "HIGH_CONFIDENCE_METHODICAL",
                 "label": "High Confidence Methodical",
                 "color": "#10b981",
-                "recommendation": "Strong precision and thorough pacing. High conceptual recall with minimal random guessing."
+                "recommendation": "Strong precision and thorough pacing. High conceptual recall with minimal random guessing.",
             }

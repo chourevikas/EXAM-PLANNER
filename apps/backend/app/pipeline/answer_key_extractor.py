@@ -10,20 +10,29 @@ from app.llm.factory import get_vision_llm
 from app.storage.factory import get_storage_provider
 
 
-
 class ExtractedAnswerKeyItem(BaseModel):
-    printed_question_number: int = Field(description="Question number as printed in the answer key grid e.g. 1, 2, 3")
-    correct_option_label: str = Field(description="Correct choice option label e.g. 'A', 'B', 'C', 'D'")
-    confidence_score: float = Field(default=1.0, description="Extraction confidence score 0.0 to 1.0")
+    printed_question_number: int = Field(
+        description="Question number as printed in the answer key grid e.g. 1, 2, 3"
+    )
+    correct_option_label: str = Field(
+        description="Correct choice option label e.g. 'A', 'B', 'C', 'D'"
+    )
+    confidence_score: float = Field(
+        default=1.0, description="Extraction confidence score 0.0 to 1.0"
+    )
 
 
 class AnswerKeyPagePayload(BaseModel):
     detected_paper_set_code: str = Field(
         default="UNKNOWN",
-        description="Detected Question Paper Set / Series Code from page header e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D', 'ALL_SETS'"
+        description="Detected Question Paper Set / Series Code from page header e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D', 'ALL_SETS'",
     )
-    is_answer_key_table: bool = Field(default=True, description="True if page contains an answer key grid or table")
-    extracted_keys: List[ExtractedAnswerKeyItem] = Field(default=[], description="List of extracted question answer keys")
+    is_answer_key_table: bool = Field(
+        default=True, description="True if page contains an answer key grid or table"
+    )
+    extracted_keys: List[ExtractedAnswerKeyItem] = Field(
+        default=[], description="List of extracted question answer keys"
+    )
 
 
 def encode_pil_image(img: Image.Image) -> str:
@@ -32,10 +41,12 @@ def encode_pil_image(img: Image.Image) -> str:
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
-async def ainvoke_answer_key_llm(image: Image.Image, page_num: int) -> AnswerKeyPagePayload:
+async def ainvoke_answer_key_llm(
+    image: Image.Image, page_num: int
+) -> AnswerKeyPagePayload:
     """Asynchronously invokes Vision LLM to extract Answer Key table & detect Paper Set Code (Set A, B, C, D)."""
     base64_img = await asyncio.to_thread(encode_pil_image, image)
-    
+
     system_prompt = f"""
     You are an expert Document AI Engine specializing in Competitive Exam Answer Key Parsing. Processing Page {page_num}.
     
@@ -53,14 +64,17 @@ async def ainvoke_answer_key_llm(image: Image.Image, page_num: int) -> AnswerKey
 
     message = HumanMessage(
         content=[
-            {"type": "text", "text": f"Extract all question answer key mappings and detect the Paper Set Code for Page {page_num}."},
+            {
+                "type": "text",
+                "text": f"Extract all question answer key mappings and detect the Paper Set Code for Page {page_num}.",
+            },
             {
                 "type": "image_url",
                 "image_url": {
                     "url": f"data:image/jpeg;base64,{base64_img}",
-                    "detail": "high"
-                }
-            }
+                    "detail": "high",
+                },
+            },
         ]
     )
 

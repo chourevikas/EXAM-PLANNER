@@ -28,24 +28,26 @@ class UserService:
         existing = await self.user_repo.get_by_email(user_in.email)
         if existing:
             raise UserAlreadyExistsException(user_in.email)
-        
+
         hashed_pw = get_password_hash(user_in.password)
         return await self.user_repo.create_user(
             email=user_in.email,
             full_name=user_in.full_name,
             password_hash=hashed_pw,
-            role=user_in.role or UserRole.STUDENT
+            role=user_in.role or UserRole.STUDENT,
         )
 
     async def update_user(self, user_id: uuid.UUID | str, user_in: UserUpdate) -> User:
         user = await self.get_user_by_id(user_id)
         if not user:
-            raise BaseAppException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        
+            raise BaseAppException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
         update_data = user_in.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(user, field, value)
-        
+
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
@@ -54,7 +56,9 @@ class UserService:
     async def delete_user(self, user_id: uuid.UUID | str) -> None:
         user = await self.get_user_by_id(user_id)
         if not user:
-            raise BaseAppException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        
+            raise BaseAppException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
         await self.session.delete(user)
         await self.session.commit()

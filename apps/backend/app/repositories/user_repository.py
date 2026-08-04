@@ -5,7 +5,13 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import (
-    User, UserRole, UserStatus, StudentProfile, AdminProfile, AdminApprovalLog, RefreshToken
+    User,
+    UserRole,
+    UserStatus,
+    StudentProfile,
+    AdminProfile,
+    AdminApprovalLog,
+    RefreshToken,
 )
 
 
@@ -31,7 +37,7 @@ class UserRepository:
         password_hash: str,
         role: UserRole = UserRole.STUDENT,
         organization_name: Optional[str] = None,
-        department: Optional[str] = None
+        department: Optional[str] = None,
     ) -> User:
         status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
@@ -53,7 +59,7 @@ class UserRepository:
             admin_prof = AdminProfile(
                 user_id=new_user.id,
                 organization_name=organization_name,
-                department=department
+                department=department,
             )
             self.session.add(admin_prof)
 
@@ -62,18 +68,23 @@ class UserRepository:
         return new_user
 
     async def get_pending_admins(self) -> List[User]:
-        stmt = select(User).where(
-            User.role == UserRole.ADMIN,
-            User.status == UserStatus.PENDING
-        ).order_by(User.created_at.desc())
+        stmt = (
+            select(User)
+            .where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING)
+            .order_by(User.created_at.desc())
+        )
         res = await self.session.exec(stmt)
         return list(res.all())
 
     async def get_active_admins(self) -> List[User]:
-        stmt = select(User).where(
-            User.role == UserRole.ADMIN,
-            User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED])
-        ).order_by(User.created_at.desc())
+        stmt = (
+            select(User)
+            .where(
+                User.role == UserRole.ADMIN,
+                User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED]),
+            )
+            .order_by(User.created_at.desc())
+        )
         res = await self.session.exec(stmt)
         return list(res.all())
 
@@ -97,12 +108,18 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def approve_admin(self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str) -> Optional[User]:
+    async def approve_admin(
+        self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str
+    ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user or user.role != UserRole.ADMIN:
             return None
 
-        super_admin_uuid = uuid.UUID(str(super_admin_id)) if isinstance(super_admin_id, str) else super_admin_id
+        super_admin_uuid = (
+            uuid.UUID(str(super_admin_id))
+            if isinstance(super_admin_id, str)
+            else super_admin_id
+        )
 
         user.status = UserStatus.ACTIVE
         if user.admin_profile:
@@ -111,9 +128,7 @@ class UserRepository:
             self.session.add(user.admin_profile)
 
         log = AdminApprovalLog(
-            admin_user_id=user.id,
-            reviewed_by_id=super_admin_uuid,
-            action="APPROVED"
+            admin_user_id=user.id, reviewed_by_id=super_admin_uuid, action="APPROVED"
         )
         self.session.add(user)
         self.session.add(log)
@@ -121,12 +136,21 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def reject_admin(self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str, reason: Optional[str] = None) -> Optional[User]:
+    async def reject_admin(
+        self,
+        admin_id: uuid.UUID | str,
+        super_admin_id: uuid.UUID | str,
+        reason: Optional[str] = None,
+    ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user or user.role != UserRole.ADMIN:
             return None
 
-        super_admin_uuid = uuid.UUID(str(super_admin_id)) if isinstance(super_admin_id, str) else super_admin_id
+        super_admin_uuid = (
+            uuid.UUID(str(super_admin_id))
+            if isinstance(super_admin_id, str)
+            else super_admin_id
+        )
 
         user.status = UserStatus.REJECTED
         if user.admin_profile:
@@ -139,7 +163,7 @@ class UserRepository:
             admin_user_id=user.id,
             reviewed_by_id=super_admin_uuid,
             action="REJECTED",
-            reason=reason
+            reason=reason,
         )
         self.session.add(user)
         self.session.add(log)
@@ -153,10 +177,34 @@ class UserRepository:
         return list(res.all())
 
     async def get_system_stats(self) -> Dict[str, Any]:
-        pending = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING))).one()
-        active = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE))).one()
-        students = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE))).one()
-        rejected = (await self.session.exec(select(func.count(User.id)).where(User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED))).one()
+        pending = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.ADMIN, User.status == UserStatus.PENDING
+                )
+            )
+        ).one()
+        active = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE
+                )
+            )
+        ).one()
+        students = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE
+                )
+            )
+        ).one()
+        rejected = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED
+                )
+            )
+        ).one()
 
         return {
             "pending_admins_count": pending,
@@ -165,7 +213,7 @@ class UserRepository:
             "rejected_admins_count": rejected,
             "aws_rds_status": "Healthy & Connected",
             "database_name": "sqlite/postgres",
-            "db_host": "localhost"
+            "db_host": "localhost",
         }
 
     async def update_last_login(self, user_id: uuid.UUID | str) -> None:
@@ -181,7 +229,7 @@ class UserRepository:
         token_hash: str,
         expires_at: datetime,
         device_name: Optional[str] = None,
-        ip_address: Optional[str] = None
+        ip_address: Optional[str] = None,
     ) -> RefreshToken:
         uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
         token_record = RefreshToken(
@@ -189,7 +237,7 @@ class UserRepository:
             token_hash=token_hash,
             expires_at=expires_at,
             device_name=device_name,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
         self.session.add(token_record)
         await self.session.commit()
@@ -199,8 +247,7 @@ class UserRepository:
     async def revoke_user_refresh_tokens(self, user_id: uuid.UUID | str) -> None:
         uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
         stmt = select(RefreshToken).where(
-            RefreshToken.user_id == uid,
-            RefreshToken.revoked_at.is_(None)
+            RefreshToken.user_id == uid, RefreshToken.revoked_at.is_(None)
         )
         res = await self.session.exec(stmt)
         tokens = res.all()

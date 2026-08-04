@@ -35,7 +35,7 @@ class AdminService:
                     status=u.status,
                     organization_name=org_name,
                     department=dept,
-                    created_at=u.created_at
+                    created_at=u.created_at,
                 )
             )
         return result
@@ -55,22 +55,28 @@ class AdminService:
                     status=u.status,
                     organization_name=org_name,
                     department=dept,
-                    created_at=u.created_at
+                    created_at=u.created_at,
                 )
             )
         return result
 
-    async def approve_admin_request(self, user_id: str, current_super_admin: User) -> UserOut:
-        approved_user = await self.repo.approve_admin(admin_id=user_id, super_admin_id=current_super_admin.id)
+    async def approve_admin_request(
+        self, user_id: str, current_super_admin: User
+    ) -> UserOut:
+        approved_user = await self.repo.approve_admin(
+            admin_id=user_id, super_admin_id=current_super_admin.id
+        )
         if not approved_user:
             raise HTTPException(status_code=404, detail="Pending admin user not found.")
         return approved_user
 
-    async def reject_admin_request(self, user_id: str, payload: AdminActionPayload, current_super_admin: User) -> UserOut:
+    async def reject_admin_request(
+        self, user_id: str, payload: AdminActionPayload, current_super_admin: User
+    ) -> UserOut:
         rejected_user = await self.repo.reject_admin(
             admin_id=user_id,
             super_admin_id=current_super_admin.id,
-            reason=payload.reason
+            reason=payload.reason,
         )
         if not rejected_user:
             raise HTTPException(status_code=404, detail="Pending admin user not found.")
@@ -93,16 +99,24 @@ class AdminService:
         result = []
         for log in logs:
             admin_user = await self.repo.get_by_id(log.admin_user_id)
-            reviewer_user = await self.repo.get_by_id(log.reviewed_by_id) if log.reviewed_by_id else None
+            reviewer_user = (
+                await self.repo.get_by_id(log.reviewed_by_id)
+                if log.reviewed_by_id
+                else None
+            )
             result.append(
                 AdminApprovalLogOut(
                     id=str(log.id),
-                    admin_user_name=admin_user.full_name if admin_user else "Unknown User",
+                    admin_user_name=admin_user.full_name
+                    if admin_user
+                    else "Unknown User",
                     admin_user_email=admin_user.email if admin_user else "N/A",
                     action=log.action,
-                    reviewed_by_name=reviewer_user.full_name if reviewer_user else "System SuperAdmin",
+                    reviewed_by_name=reviewer_user.full_name
+                    if reviewer_user
+                    else "System SuperAdmin",
                     reason=log.reason,
-                    created_at=log.created_at
+                    created_at=log.created_at,
                 )
             )
         return result

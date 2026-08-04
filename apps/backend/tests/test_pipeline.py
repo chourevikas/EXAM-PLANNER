@@ -1,7 +1,11 @@
 import unittest
 from app.pipeline.dsu_stitcher import resolve_transitive_passages_dsu, DisjointSetUnion
-from app.pipeline.state import PageExtractionPayload, SeamBlockTypeEnum, ContextMemoryItem, MemoryTypeEnum
-
+from app.pipeline.state import (
+    PageExtractionPayload,
+    SeamBlockTypeEnum,
+    ContextMemoryItem,
+    MemoryTypeEnum,
+)
 
 
 class TestPipeline(unittest.TestCase):
@@ -17,7 +21,7 @@ class TestPipeline(unittest.TestCase):
             target_question_range="Q1 to Q5",
             target_question_numbers=[1, 2, 3, 4, 5],
             is_complete=False,
-            translations=[{"language": "ENGLISH", "context_text": "Passage Part 1"}]
+            translations=[{"language": "ENGLISH", "context_text": "Passage Part 1"}],
         )
 
         mem2 = ContextMemoryItem(
@@ -27,7 +31,7 @@ class TestPipeline(unittest.TestCase):
             target_question_range="Q1 to Q5",
             target_question_numbers=[1, 2, 3, 4, 5],
             is_complete=True,
-            translations=[{"language": "ENGLISH", "context_text": "Passage Part 2"}]
+            translations=[{"language": "ENGLISH", "context_text": "Passage Part 2"}],
         )
 
         payload1 = PageExtractionPayload(
@@ -36,7 +40,7 @@ class TestPipeline(unittest.TestCase):
             page_start_seam=SeamBlockTypeEnum.NONE,
             page_end_seam=SeamBlockTypeEnum.PASSAGE,
             new_context_memories=[mem1],
-            extracted_questions=[]
+            extracted_questions=[],
         )
 
         payload2 = PageExtractionPayload(
@@ -45,18 +49,18 @@ class TestPipeline(unittest.TestCase):
             page_start_seam=SeamBlockTypeEnum.PASSAGE,
             page_end_seam=SeamBlockTypeEnum.NONE,
             new_context_memories=[mem2],
-            extracted_questions=[]
+            extracted_questions=[],
         )
 
-        raw_results = [
-            (1, payload1, None),
-            (2, payload2, None)
-        ]
+        raw_results = [(1, payload1, None), (2, payload2, None)]
 
         unified = resolve_transitive_passages_dsu(raw_results)
         self.assertEqual(len(unified), 1)
         self.assertEqual(unified[0]["page_numbers"], [1, 2])
-        self.assertIn("Passage Part 1\nPassage Part 2", unified[0]["translations"][0]["context_text"])
+        self.assertIn(
+            "Passage Part 1\nPassage Part 2",
+            unified[0]["translations"][0]["context_text"],
+        )
         self.assertTrue(unified[0]["is_complete"])
 
 

@@ -7,13 +7,13 @@ class TimeTieredScoringStrategy:
 
     @classmethod
     def calculate_score(
-        cls, 
-        is_correct: bool, 
-        time_taken_sec: float, 
+        cls,
+        is_correct: bool,
+        time_taken_sec: float,
         expected_time_sec: float,
-        closeness_score: float, 
-        marks_pos: float = 2.0, 
-        marks_neg: float = 0.66
+        closeness_score: float,
+        marks_pos: float = 2.0,
+        marks_neg: float = 0.66,
     ) -> Dict[str, Any]:
         if expected_time_sec <= 0:
             expected_time_sec = 60.0
@@ -48,9 +48,9 @@ class TimeTieredScoringStrategy:
         closeness_weighted = final_score
         if not is_correct:
             if closeness_score > 0:
-                closeness_weighted += (closeness_score * marks_pos * 0.25)
+                closeness_weighted += closeness_score * marks_pos * 0.25
             elif closeness_score < 0:
-                closeness_weighted += (closeness_score * marks_neg * 0.35)
+                closeness_weighted += closeness_score * marks_neg * 0.35
 
         return {
             "final_score": round(final_score, 2),
@@ -58,5 +58,5 @@ class TimeTieredScoringStrategy:
             "time_window": window,
             "t_min": round(t_min, 1),
             "t_max": round(t_max, 1),
-            "is_correct": is_correct
+            "is_correct": is_correct,
         }

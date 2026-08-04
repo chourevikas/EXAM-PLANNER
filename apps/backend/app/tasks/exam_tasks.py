@@ -22,19 +22,21 @@ def process_exam_pdf_task(
     pdf_path: str,
     exam_title: Optional[str] = None,
     task_id: Optional[str] = None,
-    execution_engine: str = "Celery Worker"
+    execution_engine: str = "Celery Worker",
 ):
     """Celery background task to run the LangGraph PDF question extraction pipeline asynchronously."""
     t_id = task_id or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
-    log.info(f"⚡ [CELERY WORKER DISPATCH] Processing PDF '{Path(pdf_path).name}' (Task ID: {t_id})")
+    log.info(
+        f"⚡ [CELERY WORKER DISPATCH] Processing PDF '{Path(pdf_path).name}' (Task ID: {t_id})"
+    )
     return asyncio.run(
         async_process_exam_pdf(
             exam_id_str,
             pdf_path,
             exam_title,
             task_id=t_id,
-            execution_engine="Celery Worker"
+            execution_engine="Celery Worker",
         )
     )
 
@@ -44,7 +46,7 @@ async def async_process_exam_pdf(
     pdf_path: str,
     exam_title: Optional[str] = None,
     task_id: Optional[str] = None,
-    execution_engine: str = "FastAPI BackgroundTasks"
+    execution_engine: str = "FastAPI BackgroundTasks",
 ):
     """Core async runner for PDF extraction pipeline with full logging and automated temp file cleanup."""
     t_id = task_id or str(uuid.uuid4())
@@ -63,7 +65,9 @@ async def async_process_exam_pdf(
             exam_title = pdf_file.stem
 
     log.info("=" * 70)
-    log.info(f"🚀 [EXTRACTION PIPELINE STARTED] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'")
+    log.info(
+        f"🚀 [EXTRACTION PIPELINE STARTED] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"
+    )
     log.info(f"📄 PDF Filename Stem: '{pdf_file.stem}' | Storage Path: '{pdf_path}'")
     log.info("=" * 70)
 
@@ -88,13 +92,17 @@ async def async_process_exam_pdf(
                     exam.name = exam_title
                 session.add(exam)
                 await session.commit()
-                log.info(f"Updated Exam DB record for '{exam.code}' with total_pages={total_pages}")
+                log.info(
+                    f"Updated Exam DB record for '{exam.code}' with total_pages={total_pages}"
+                )
 
         log.info(f"📄 Paper Title: '{exam_title}' | Target Dir: '{output_dir}'")
         log.info("Building LangGraph extraction pipeline graph...")
         pipeline = build_langgraph_pipeline()
 
-        log.info(f"Invoking LangGraph pipeline across {total_pages} pages with max_concurrency=2...")
+        log.info(
+            f"Invoking LangGraph pipeline across {total_pages} pages with max_concurrency=2..."
+        )
         result = await pipeline.ainvoke(
             {
                 "pdf_path": str(pdf_path),
@@ -107,14 +115,15 @@ async def async_process_exam_pdf(
                 "retry_count": 0,
                 "target_retry_pages": [],
                 "raw_page_payloads": [],
-                "processed_question_keys": []
+                "processed_question_keys": [],
             },
-
-            config={"max_concurrency": 2}
+            config={"max_concurrency": 2},
         )
 
         log.info("=" * 70)
-        log.info(f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'")
+        log.info(
+            f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"
+        )
         log.info("📁 Output Artifacts Saved To Storage Provider")
         log.info("=" * 70)
         return {
@@ -122,13 +131,18 @@ async def async_process_exam_pdf(
             "paper_name": pdf_file.stem,
             "total_pages": total_pages,
             "task_id": t_id,
-            "execution_engine": execution_engine
+            "execution_engine": execution_engine,
         }
 
     except Exception as exc:
-        log.error(f"❌ [EXTRACTION PIPELINE FAILED] Engine: {execution_engine} | Paper '{pdf_file.stem}' (Task ID: '{t_id}'): {exc}", exc_info=True)
+        log.error(
+            f"❌ [EXTRACTION PIPELINE FAILED] Engine: {execution_engine} | Paper '{pdf_file.stem}' (Task ID: '{t_id}'): {exc}",
+            exc_info=True,
+        )
         raise
     finally:
         # Automated cleanup of temporary files and temporary output artifact directory
-        log.info(f"🧹 Cleaning up temporary processing files for '{pdf_file.name}' (Task ID: '{t_id}')...")
+        log.info(
+            f"🧹 Cleaning up temporary processing files for '{pdf_file.name}' (Task ID: '{t_id}')..."
+        )
         cleanup_temp_artifacts(pdf_path, output_dir)

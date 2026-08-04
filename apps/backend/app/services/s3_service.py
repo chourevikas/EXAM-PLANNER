@@ -7,10 +7,10 @@ from app.config.logger import setup_logger
 logger = setup_logger("S3Service")
 
 
-
 try:
     import boto3
     from botocore.exceptions import BotoCoreError, ClientError
+
     BOTO3_AVAILABLE = True
 except ImportError:
     BOTO3_AVAILABLE = False
@@ -18,7 +18,9 @@ except ImportError:
 
 class S3Service:
     def __init__(self):
-        self.bucket_name = getattr(settings, "AWS_S3_BUCKET_NAME", "examplanner-pdf-storage")
+        self.bucket_name = getattr(
+            settings, "AWS_S3_BUCKET_NAME", "examplanner-pdf-storage"
+        )
         self.region = getattr(settings, "AWS_REGION", "ap-southeast-2")
         self.access_key = getattr(settings, "AWS_ACCESS_KEY_ID", "")
         self.secret_key = getattr(settings, "AWS_SECRET_ACCESS_KEY", "")
@@ -35,7 +37,9 @@ class S3Service:
             except Exception as e:
                 logger.warning(f"Failed to initialize boto3 S3 client: {e}")
 
-    def upload_file(self, file_obj, filename: str, content_type: str = "application/pdf") -> Dict[str, Any]:
+    def upload_file(
+        self, file_obj, filename: str, content_type: str = "application/pdf"
+    ) -> Dict[str, Any]:
         """
         Uploads file to AWS S3 if credentials exist; falls back to local uploads directory if S3 is unconfigured.
         """
@@ -52,7 +56,9 @@ class S3Service:
                     ExtraArgs={"ContentType": content_type},
                 )
                 s3_url = f"https://{self.bucket_name}.s3.{self.region}.amazonaws.com/{s3_key}"
-                logger.info(f"Successfully uploaded file {filename} to AWS S3: {s3_url}")
+                logger.info(
+                    f"Successfully uploaded file {filename} to AWS S3: {s3_url}"
+                )
                 return {
                     "storage_type": "s3",
                     "s3_key": s3_key,
@@ -61,7 +67,9 @@ class S3Service:
                     "message": "Exam paper uploaded successfully to Amazon S3 Storage!",
                 }
             except Exception as e:
-                logger.error(f"S3 upload error for {filename}: {e}. Falling back to local storage.")
+                logger.error(
+                    f"S3 upload error for {filename}: {e}. Falling back to local storage."
+                )
 
         # 2. Local Fallback Storage
         upload_dir = os.path.join(os.getcwd(), "uploads", "question_papers")

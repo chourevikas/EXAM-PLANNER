@@ -8,16 +8,16 @@ class SATOIEngine:
             return {
                 "satoi_score": 100.0,
                 "fatigue_curve": [],
-                "cognitive_stamina_status": "STABLE_STAMINA"
+                "cognitive_stamina_status": "STABLE_STAMINA",
             }
 
         n = len(responses)
         chunk_size = max(1, n // 4)
         quartiles = [
             responses[0:chunk_size],
-            responses[chunk_size:2*chunk_size],
-            responses[2*chunk_size:3*chunk_size],
-            responses[3*chunk_size:]
+            responses[chunk_size : 2 * chunk_size],
+            responses[2 * chunk_size : 3 * chunk_size],
+            responses[3 * chunk_size :],
         ]
 
         fatigue_curve = []
@@ -25,15 +25,21 @@ class SATOIEngine:
             if not q_items:
                 continue
             acc = sum([1 for r in q_items if r.get("is_correct", False)]) / len(q_items)
-            avg_time = sum([r.get("time_taken_seconds", 0) for r in q_items]) / len(q_items)
-            fatigue_curve.append({
-                "quartile": f"Q{idx}",
-                "accuracy_pct": round(acc * 100, 1),
-                "avg_time_sec": round(avg_time, 1)
-            })
+            avg_time = sum([r.get("time_taken_seconds", 0) for r in q_items]) / len(
+                q_items
+            )
+            fatigue_curve.append(
+                {
+                    "quartile": f"Q{idx}",
+                    "accuracy_pct": round(acc * 100, 1),
+                    "avg_time_sec": round(avg_time, 1),
+                }
+            )
 
         q1_acc = fatigue_curve[0]["accuracy_pct"] if fatigue_curve else 0.0
-        q4_acc = fatigue_curve[-1]["accuracy_pct"] if len(fatigue_curve) >= 4 else q1_acc
+        q4_acc = (
+            fatigue_curve[-1]["accuracy_pct"] if len(fatigue_curve) >= 4 else q1_acc
+        )
         drop = max(0.0, q1_acc - q4_acc)
 
         status = "STABLE_COGNITIVE_STAMINA"
@@ -48,5 +54,5 @@ class SATOIEngine:
             "satoi_score": satoi_score,
             "accuracy_drop_q1_to_q4_pct": round(drop, 1),
             "cognitive_stamina_status": status,
-            "quartile_fatigue_curve": fatigue_curve
+            "quartile_fatigue_curve": fatigue_curve,
         }

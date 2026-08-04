@@ -17,7 +17,7 @@ class QuestionRepository:
     async def list_questions(
         self,
         exam_id: Optional[uuid.UUID] = None,
-        status: Optional[QuestionStatus] = None
+        status: Optional[QuestionStatus] = None,
     ) -> List[Question]:
         stmt = select(Question)
         if exam_id:

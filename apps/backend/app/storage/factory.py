@@ -17,8 +17,10 @@ def get_storage_provider() -> BaseStorageProvider:
                 region_name=settings.AWS_REGION,
                 aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                endpoint_url=settings.AWS_ENDPOINT_URL
+                endpoint_url=settings.AWS_ENDPOINT_URL,
             )
         else:
-            _storage_instance = LocalStorageProvider(base_dir=settings.LOCAL_STORAGE_PATH)
+            _storage_instance = LocalStorageProvider(
+                base_dir=settings.LOCAL_STORAGE_PATH
+            )
     return _storage_instance

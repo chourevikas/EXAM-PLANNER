@@ -1,6 +1,8 @@
 import unittest
-from app.config.filename_parser import parse_question_paper_filename, parse_answer_key_filename
-
+from app.config.filename_parser import (
+    parse_question_paper_filename,
+    parse_answer_key_filename,
+)
 
 
 class TestFilenameParser(unittest.TestCase):

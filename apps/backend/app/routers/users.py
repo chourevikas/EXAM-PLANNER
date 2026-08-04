@@ -16,7 +16,7 @@ async def list_users(
     skip: int = 0,
     limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     user_service = UserService(session)
     return await user_service.list_users(skip=skip, limit=limit)
@@ -26,7 +26,7 @@ async def list_users(
 async def create_user(
     user_in: UserCreate,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     user_service = UserService(session)
     return await user_service.create_user(user_in)
@@ -36,7 +36,7 @@ async def create_user(
 async def get_user(
     user_id: str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     user_service = UserService(session)
     return await user_service.get_user_by_id(user_id)
@@ -47,7 +47,7 @@ async def update_user(
     user_id: str,
     user_in: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     user_service = UserService(session)
     return await user_service.update_user(user_id, user_in)
@@ -57,7 +57,7 @@ async def update_user(
 async def delete_user(
     user_id: str,
     session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN]))
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     user_service = UserService(session)
     await user_service.delete_user(user_id)

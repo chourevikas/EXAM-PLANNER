@@ -3,7 +3,6 @@ from pydantic_core import ValidationError
 from app.config.settings import Settings, get_settings
 
 
-
 class TestConfig(unittest.TestCase):
     def test_default_settings(self):
         settings = get_settings()

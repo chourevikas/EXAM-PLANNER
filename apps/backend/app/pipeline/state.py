@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, ConfigDict
 import enum
 
 
-
 class LanguageCodeEnum(str, enum.Enum):
     ENGLISH = "ENGLISH"
     HINDI = "HINDI"
@@ -51,7 +50,9 @@ class CropAssetSchema(BaseModel):
     caption: Optional[str] = Field(default=None)
     associated_section_code: str = Field(default="DEFAULT")
     associated_question_number: Optional[int] = Field(default=None)
-    bounding_box: List[int] = Field(description="Normalized coordinates [ymin, xmin, ymax, xmax] scaled 0 to 1000.")
+    bounding_box: List[int] = Field(
+        description="Normalized coordinates [ymin, xmin, ymax, xmax] scaled 0 to 1000."
+    )
 
 
 class OptionTranslationSchema(BaseModel):
@@ -71,8 +72,10 @@ class QuestionTranslationSchema(BaseModel):
 class ExtractedQuestionSchema(BaseModel):
     section_code: str = Field(default="DEFAULT")
     printed_question_number: Optional[int] = Field(default=None)
-    is_complete: bool = Field(description="Set False if statement, choices, or attached passage are cut off at page seams.")
-    
+    is_complete: bool = Field(
+        description="Set False if statement, choices, or attached passage are cut off at page seams."
+    )
+
     is_continuation_fragment: bool = Field(default=False)
     target_parent_section_code: Optional[str] = Field(default=None)
     target_parent_question_number: Optional[int] = Field(default=None)
@@ -93,17 +96,23 @@ class ContextMemoryItem(BaseModel):
     memory_id: str = Field(default_factory=lambda: "mem_" + str(uuid.uuid4())[:8])
     section_code: str = Field(default="DEFAULT")
     memory_type: MemoryTypeEnum = Field(default=MemoryTypeEnum.PASSAGE)
-    target_question_range: str = Field(description="Literal printed range e.g. 'Directions for Q.6 to Q.10'")
+    target_question_range: str = Field(
+        description="Literal printed range e.g. 'Directions for Q.6 to Q.10'"
+    )
     target_question_numbers: List[int] = Field(default_factory=list)
     min_question_number: int = Field(default=1)
     max_question_number: int = Field(default=1)
-    is_complete: bool = Field(description="Set False if passage/case study continues onto the next page.")
+    is_complete: bool = Field(
+        description="Set False if passage/case study continues onto the next page."
+    )
     translations: List[ContextMemoryTranslationSchema]
 
 
 class PageExtractionPayload(BaseModel):
     page_languages: List[LanguageCodeEnum]
-    detected_layout_type: LayoutTypeEnum = Field(description="Dynamic layout mode detected for THIS page.")
+    detected_layout_type: LayoutTypeEnum = Field(
+        description="Dynamic layout mode detected for THIS page."
+    )
     page_start_seam: SeamBlockTypeEnum = Field(default=SeamBlockTypeEnum.NONE)
     page_end_seam: SeamBlockTypeEnum = Field(default=SeamBlockTypeEnum.NONE)
     new_context_memories: List[ContextMemoryItem] = Field(default_factory=list)
@@ -111,7 +120,9 @@ class PageExtractionPayload(BaseModel):
 
 
 class MCQValidationResult(BaseModel):
-    status: str = Field(description="'PUBLISHED', 'NON_MCQ_FALLBACK', or 'INCOMPLETE_RETRY_NEEDED'")
+    status: str = Field(
+        description="'PUBLISHED', 'NON_MCQ_FALLBACK', or 'INCOMPLETE_RETRY_NEEDED'"
+    )
     is_mcq: bool = Field(description="True if question is valid MCQ format.")
     reasoning: str = Field(description="Reason for decision.")
 
@@ -132,6 +143,7 @@ class OverallPipelineState(TypedDict):
     execution_pass: int
     retry_count: int
     target_retry_pages: List[int]
-    raw_page_payloads: Annotated[List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]], operator.add]
+    raw_page_payloads: Annotated[
+        List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]], operator.add
+    ]
     processed_question_keys: List[str]
-

@@ -28,14 +28,18 @@ class ApproveQuestionRequest(BaseModel):
 async def get_pending_tasks(
     exam_id: Optional[uuid.UUID] = Query(default=None),
     only_flagged: bool = Query(default=False),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     service = HumanReviewService(session)
-    return await service.get_pending_review_tasks(exam_id=exam_id, only_flagged=only_flagged)
+    return await service.get_pending_review_tasks(
+        exam_id=exam_id, only_flagged=only_flagged
+    )
 
 
 @router.get("/tasks/{question_id}")
-async def get_question_detail(question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)):
+async def get_question_detail(
+    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+):
     service = HumanReviewService(session)
     try:
         return await service.get_question_review_detail(question_id)
@@ -47,23 +51,27 @@ async def get_question_detail(question_id: uuid.UUID, session: AsyncSession = De
 async def approve_question(
     question_id: uuid.UUID,
     req: ApproveQuestionRequest,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     service = HumanReviewService(session)
     try:
-        options_dicts = [opt.model_dump() for opt in req.updated_options] if req.updated_options else None
+        options_dicts = (
+            [opt.model_dump() for opt in req.updated_options]
+            if req.updated_options
+            else None
+        )
         question = await service.update_and_approve_question(
             question_id=question_id,
             updated_passage_text=req.updated_passage_text,
             updated_question_text=req.updated_question_text,
             updated_options=options_dicts,
             correct_option_label=req.correct_option_label,
-            reviewer_notes=req.reviewer_notes
+            reviewer_notes=req.reviewer_notes,
         )
         return {
             "message": f"Question {question.question_number_in_paper} approved and published.",
             "question_id": str(question.id),
-            "status": question.status.value
+            "status": question.status.value,
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -71,8 +79,7 @@ async def approve_question(
 
 @router.post("/tasks/{question_id}/reextract")
 async def trigger_reextraction(
-    question_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session)
+    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
 ):
     """Triggers sequential LLM re-extraction retry targeting the specific pages of the flawed question/passage."""
     service = HumanReviewService(session)

@@ -8,7 +8,10 @@ from app.db.models import AnswerKeyBatch
 from app.repositories.exam_repository import ExamRepository
 from app.repositories.answer_key_repository import AnswerKeyRepository
 from app.storage.factory import get_storage_provider
-from app.tasks.answer_key_tasks import process_answer_key_pdf_task, async_process_answer_key_pdf
+from app.tasks.answer_key_tasks import (
+    process_answer_key_pdf_task,
+    async_process_answer_key_pdf,
+)
 from app.tasks.celery_app import celery_app, has_active_celery_workers
 from app.config.settings import get_settings
 from app.config.logger import setup_logger
@@ -16,7 +19,6 @@ from app.config.filename_parser import parse_answer_key_filename
 from app.utils.file_utils import save_upload_file_temp
 
 logger = setup_logger("AnswerKeyService")
-
 
 
 class AnswerKeyService:
@@ -31,7 +33,7 @@ class AnswerKeyService:
         self,
         file: UploadFile,
         run_mode: Optional[str] = "auto",
-        background_tasks: Optional[BackgroundTasks] = None
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         settings = get_settings()
 
@@ -47,15 +49,15 @@ class AnswerKeyService:
         matching_exams = await self.exam_repo.find_matching_exams_for_answer_key(
             stage=parsed_tokens["stage"],
             subject_code=parsed_tokens["subject_code"],
-            year=parsed_tokens["year"]
+            year=parsed_tokens["year"],
         )
 
         if not matching_exams:
             raise HTTPException(
                 status_code=404,
                 detail=f"No matching Question Paper exams found for Answer Key '{file.filename}' "
-                       f"(Stage: '{parsed_tokens['stage']}', Subject: '{parsed_tokens['subject_code']}', Year: {parsed_tokens['year']}). "
-                       f"Please upload Question Papers first!"
+                f"(Stage: '{parsed_tokens['stage']}', Subject: '{parsed_tokens['subject_code']}', Year: {parsed_tokens['year']}). "
+                f"Please upload Question Papers first!",
             )
 
         target_exam = matching_exams[0]
@@ -78,25 +80,53 @@ class AnswerKeyService:
         elif mode == "celery":
             use_celery = True
         else:  # "auto"
-            use_celery = settings.CELERY_TASK_ALWAYS_EAGER or has_active_celery_workers()
+            use_celery = (
+                settings.CELERY_TASK_ALWAYS_EAGER or has_active_celery_workers()
+            )
 
         if use_celery:
             try:
                 engine_name = "Celery Worker"
-                task_res = process_answer_key_pdf_task.delay(str(target_exam.id), str(temp_path), target_exam.paper_set_code, task_id)
+                task_res = process_answer_key_pdf_task.delay(
+                    str(target_exam.id),
+                    str(temp_path),
+                    target_exam.paper_set_code,
+                    task_id,
+                )
                 task_id = task_res.id if hasattr(task_res, "id") else task_id
-                execution_msg = f"Answer key task enqueued to {engine_name} (Task ID: {task_id})."
+                execution_msg = (
+                    f"Answer key task enqueued to {engine_name} (Task ID: {task_id})."
+                )
             except Exception as exc:
                 engine_name = "FastAPI BackgroundTasks (Fallback)"
-                logger.warning(f"Celery broker dispatch failed: {exc}. Falling back to BackgroundTasks...", exc_info=True)
+                logger.warning(
+                    f"Celery broker dispatch failed: {exc}. Falling back to BackgroundTasks...",
+                    exc_info=True,
+                )
                 if background_tasks is not None:
-                    background_tasks.add_task(async_process_answer_key_pdf, str(target_exam.id), str(temp_path), target_exam.paper_set_code, task_id, "FastAPI BackgroundTasks (Fallback)")
+                    background_tasks.add_task(
+                        async_process_answer_key_pdf,
+                        str(target_exam.id),
+                        str(temp_path),
+                        target_exam.paper_set_code,
+                        task_id,
+                        "FastAPI BackgroundTasks (Fallback)",
+                    )
                 execution_msg = f"Celery broker unavailable; answer key extraction started via {engine_name} (Task ID: {task_id})."
         else:
             engine_name = "FastAPI BackgroundTasks"
-            logger.info(f"Dispatching Answer Key extraction via {engine_name} (Task ID: {task_id})...")
+            logger.info(
+                f"Dispatching Answer Key extraction via {engine_name} (Task ID: {task_id})..."
+            )
             if background_tasks is not None:
-                background_tasks.add_task(async_process_answer_key_pdf, str(target_exam.id), str(temp_path), target_exam.paper_set_code, task_id, "FastAPI BackgroundTasks")
+                background_tasks.add_task(
+                    async_process_answer_key_pdf,
+                    str(target_exam.id),
+                    str(temp_path),
+                    target_exam.paper_set_code,
+                    task_id,
+                    "FastAPI BackgroundTasks",
+                )
             execution_msg = f"Answer key extraction pipeline started via {engine_name} (Task ID: {task_id})."
 
         return {
@@ -106,7 +136,7 @@ class AnswerKeyService:
             "matched_exams_count": len(matching_exams),
             "target_exam_id": str(target_exam.id),
             "task_id": task_id,
-            "execution_engine": engine_name
+            "execution_engine": engine_name,
         }
 
     async def list_batches(self) -> List[AnswerKeyBatch]:
@@ -136,7 +166,8 @@ class AnswerKeyService:
                     "question_number": m.printed_question_number,
                     "detected_option_label": m.detected_option_label,
                     "mapping_status": m.mapping_status.value,
-                    "notes": m.notes
-                } for m in mappings
-            ]
+                    "notes": m.notes,
+                }
+                for m in mappings
+            ],
         }

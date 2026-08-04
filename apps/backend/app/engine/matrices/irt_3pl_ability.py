@@ -12,7 +12,11 @@ class IRT3PLStrategy:
     @classmethod
     def estimate_latent_ability(cls, items_response_data: List[Dict]) -> Dict[str, Any]:
         if not items_response_data:
-            return {"latent_ability_theta": 0.0, "percentile_rank": 50.0, "ability_level": "NEEDS_FOUNDATION"}
+            return {
+                "latent_ability_theta": 0.0,
+                "percentile_rank": 50.0,
+                "ability_level": "NEEDS_FOUNDATION",
+            }
 
         theta = 0.0
         max_iterations = 30
@@ -23,10 +27,10 @@ class IRT3PLStrategy:
             fisher_info = 1.0
 
             for item in items_response_data:
-                a = max(0.1, item.get('a', 1.5))
-                b = item.get('b', 0.0)
-                c = max(0.0, min(0.9, item.get('c', 0.25)))
-                y = 1.0 if item.get('is_correct') else 0.0
+                a = max(0.1, item.get("a", 1.5))
+                b = item.get("b", 0.0)
+                c = max(0.0, min(0.9, item.get("c", 0.25)))
+                y = 1.0 if item.get("is_correct") else 0.0
 
                 p = cls._prob_3pl(theta, a, b, c)
                 p = max(c + 0.0001, min(0.9999, p))
@@ -35,7 +39,7 @@ class IRT3PLStrategy:
                 dp_dtheta = a * (p - c) * (1.0 - p_star)
 
                 score_func += (y - p) * dp_dtheta / (p * (1.0 - p))
-                fisher_info += (dp_dtheta ** 2) / (p * (1.0 - p))
+                fisher_info += (dp_dtheta**2) / (p * (1.0 - p))
 
             if fisher_info < 1e-6:
                 break
@@ -60,5 +64,5 @@ class IRT3PLStrategy:
         return {
             "latent_ability_theta": round(theta, 2),
             "percentile_rank": round(percentile, 1),
-            "ability_level": level
+            "ability_level": level,
         }

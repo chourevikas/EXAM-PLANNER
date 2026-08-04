@@ -9,7 +9,6 @@ from PIL import Image
 from app.storage.base import BaseStorageProvider
 
 
-
 class LocalStorageProvider(BaseStorageProvider):
     def __init__(self, base_dir: Union[str, Path] = "./storage_data"):
         self.base_dir = Path(base_dir).resolve()
@@ -20,14 +19,18 @@ class LocalStorageProvider(BaseStorageProvider):
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
-    async def upload_file(self, file_path: Union[str, Path], relative_destination: str) -> str:
+    async def upload_file(
+        self, file_path: Union[str, Path], relative_destination: str
+    ) -> str:
         src = Path(file_path).resolve()
         dst = self._resolve_path(relative_destination)
         if src != dst:
             await asyncio.to_thread(shutil.copy2, src, dst)
         return relative_destination
 
-    async def download_file(self, relative_path: str, local_destination: Union[str, Path]) -> Path:
+    async def download_file(
+        self, relative_path: str, local_destination: Union[str, Path]
+    ) -> Path:
         src = self._resolve_path(relative_path)
         dst = Path(local_destination).resolve()
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +41,7 @@ class LocalStorageProvider(BaseStorageProvider):
     async def save_image(self, image: Image.Image, relative_destination: str) -> str:
         target = self._resolve_path(relative_destination)
         fmt = "PNG" if target.suffix.lower() == ".png" else "JPEG"
-        
+
         def _save():
             image.save(target, format=fmt)
 

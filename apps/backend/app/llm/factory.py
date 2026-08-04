@@ -14,7 +14,7 @@ def get_rate_limiter():
         _rate_limiter = InMemoryRateLimiter(
             requests_per_second=settings.VISION_LLM_RATE_LIMIT_RPS,
             check_every_n_seconds=0.1,
-            max_bucket_size=5
+            max_bucket_size=5,
         )
     return _rate_limiter
 
@@ -24,7 +24,9 @@ def get_vision_llm():
     settings = get_settings()
     api_key = settings.OPENAI_API_KEY or os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY is missing from configuration and environment.")
+        raise ValueError(
+            "OPENAI_API_KEY is missing from configuration and environment."
+        )
 
     return ChatOpenAI(
         model=settings.OPENAI_MODEL_NAME,
@@ -32,5 +34,5 @@ def get_vision_llm():
         max_retries=10,
         timeout=120,
         api_key=api_key,
-        rate_limiter=get_rate_limiter()
+        rate_limiter=get_rate_limiter(),
     )

@@ -17,7 +17,6 @@ from app.utils.file_utils import save_upload_file_temp
 logger = setup_logger("ExamService")
 
 
-
 class ExamService:
     """Service handling business logic for Exam question papers and uploads."""
 
@@ -29,7 +28,7 @@ class ExamService:
         self,
         file: UploadFile,
         run_mode: Optional[str] = "auto",
-        background_tasks: Optional[BackgroundTasks] = None
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         settings = get_settings()
 
@@ -63,7 +62,7 @@ class ExamService:
                 subject_code=parsed_tokens["subject_code"],
                 source_year=parsed_tokens["year"],
                 paper_set_code=parsed_tokens["set_code"],
-                pdf_path=persistent_path
+                pdf_path=persistent_path,
             )
         else:
             exam.pdf_path = persistent_path
@@ -80,25 +79,48 @@ class ExamService:
             use_celery = True
         else:  # "auto"
             # Use Celery if Celery eager mode is enabled OR active workers are online
-            use_celery = settings.CELERY_TASK_ALWAYS_EAGER or has_active_celery_workers()
+            use_celery = (
+                settings.CELERY_TASK_ALWAYS_EAGER or has_active_celery_workers()
+            )
 
         if use_celery:
             try:
                 engine_name = "Celery Worker"
-                task_res = process_exam_pdf_task.delay(str(exam.id), str(temp_path), exam.name, task_id)
+                task_res = process_exam_pdf_task.delay(
+                    str(exam.id), str(temp_path), exam.name, task_id
+                )
                 task_id = task_res.id if hasattr(task_res, "id") else task_id
                 execution_msg = f"PDF upload accepted. Task enqueued to {engine_name} (Task ID: {task_id})."
             except Exception as exc:
                 engine_name = "FastAPI BackgroundTasks (Fallback)"
-                logger.warning(f"Celery broker dispatch failed: {exc}. Falling back to BackgroundTasks...", exc_info=True)
+                logger.warning(
+                    f"Celery broker dispatch failed: {exc}. Falling back to BackgroundTasks...",
+                    exc_info=True,
+                )
                 if background_tasks is not None:
-                    background_tasks.add_task(async_process_exam_pdf, str(exam.id), str(temp_path), exam.name, task_id, "FastAPI BackgroundTasks (Fallback)")
+                    background_tasks.add_task(
+                        async_process_exam_pdf,
+                        str(exam.id),
+                        str(temp_path),
+                        exam.name,
+                        task_id,
+                        "FastAPI BackgroundTasks (Fallback)",
+                    )
                 execution_msg = f"PDF upload accepted. Celery unavailable; processing via FastAPI BackgroundTasks (Task ID: {task_id})."
         else:
             engine_name = "FastAPI BackgroundTasks"
-            logger.info(f"Dispatching Vision Extraction Pipeline via {engine_name} (Task ID: {task_id})...")
+            logger.info(
+                f"Dispatching Vision Extraction Pipeline via {engine_name} (Task ID: {task_id})..."
+            )
             if background_tasks is not None:
-                background_tasks.add_task(async_process_exam_pdf, str(exam.id), str(temp_path), exam.name, task_id, "FastAPI BackgroundTasks")
+                background_tasks.add_task(
+                    async_process_exam_pdf,
+                    str(exam.id),
+                    str(temp_path),
+                    exam.name,
+                    task_id,
+                    "FastAPI BackgroundTasks",
+                )
             execution_msg = f"PDF upload accepted. Vision extraction pipeline started via {engine_name} (Task ID: {task_id})."
 
         return {
@@ -108,7 +130,7 @@ class ExamService:
             "code": canonical_code,
             "paper_set_code": parsed_tokens["set_code"],
             "task_id": task_id,
-            "execution_engine": engine_name
+            "execution_engine": engine_name,
         }
 
     async def list_exams(self) -> List[Exam]:
@@ -117,5 +139,7 @@ class ExamService:
     async def get_exam_detail(self, exam_id: uuid.UUID) -> Exam:
         exam = await self.repo.get_by_id(exam_id)
         if not exam:
-            raise HTTPException(status_code=404, detail=f"Exam with ID {exam_id} not found.")
+            raise HTTPException(
+                status_code=404, detail=f"Exam with ID {exam_id} not found."
+            )
         return exam

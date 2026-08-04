@@ -18,13 +18,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=FOUND_ENV_FILES if FOUND_ENV_FILES else None,
         env_file_encoding="utf-8",
-        extra="ignore"
+        extra="ignore",
     )
 
     # Deployment Platform & Secret Manager Configuration
     PLATFORM: Optional[str] = Field(
         default=None,
-        description="Target cloud deployment platform: 'aws', 'gcp', 'vault', 'env' / 'local'"
+        description="Target cloud deployment platform: 'aws', 'gcp', 'vault', 'env' / 'local'",
     )
     CLOUD_PROVIDER: Optional[str] = Field(default=None)
 
@@ -32,11 +32,15 @@ class Settings(BaseSettings):
     APP_NAME: str = Field(default="Exam Mentorship Platform")
     PROJECT_NAME: str = Field(default="Exam Planner AI API")
     API_V1_STR: str = Field(default="/api/v1")
-    ENVIRONMENT: str = Field(default="development")  # development, staging, production, testing
+    ENVIRONMENT: str = Field(
+        default="development"
+    )  # development, staging, production, testing
     LOG_LEVEL: str = Field(default="INFO")
 
     # AWS / Secret Manager Details
-    AWS_SECRET_NAME: Optional[str] = Field(default=None, description="Name or ARN of AWS Secrets Manager secret")
+    AWS_SECRET_NAME: Optional[str] = Field(
+        default=None, description="Name or ARN of AWS Secrets Manager secret"
+    )
 
     # Security & Auth Settings
     SECRET_KEY: str = Field(default="secret-key-change-in-production-1234567890")
@@ -56,7 +60,10 @@ class Settings(BaseSettings):
     AWS_REGION: str = Field(default="us-east-1")
     AWS_ACCESS_KEY_ID: Optional[str] = Field(default=None)
     AWS_SECRET_ACCESS_KEY: Optional[str] = Field(default=None)
-    AWS_ENDPOINT_URL: Optional[str] = Field(default=None, description="Endpoint URL for MinIO (e.g. http://localhost:9000) or LocalStack")
+    AWS_ENDPOINT_URL: Optional[str] = Field(
+        default=None,
+        description="Endpoint URL for MinIO (e.g. http://localhost:9000) or LocalStack",
+    )
     AWS_SES_SENDER: str = Field(default="no-reply@examplanner.com")
 
     # LLM Settings & Provider Credentials
@@ -70,7 +77,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/0")
     CELERY_TASK_ALWAYS_EAGER: bool = Field(
         default=False,
-        description="If True, executes Celery tasks synchronously in-memory (useful when Redis is not running)"
+        description="If True, executes Celery tasks synchronously in-memory (useful when Redis is not running)",
     )
 
     # Output Artifact Path
@@ -80,13 +87,20 @@ class Settings(BaseSettings):
     def validate_and_resolve_paths(self) -> "Settings":
         # Resolve SQLite relative database path to absolute PROJECT_ROOT path
         if self.DATABASE_URL.startswith("sqlite"):
-            if ":///" in self.DATABASE_URL and not self.DATABASE_URL.startswith("sqlite+aiosqlite:////") and not self.DATABASE_URL.startswith("sqlite:////") and ":memory:" not in self.DATABASE_URL:
+            if (
+                ":///" in self.DATABASE_URL
+                and not self.DATABASE_URL.startswith("sqlite+aiosqlite:////")
+                and not self.DATABASE_URL.startswith("sqlite:////")
+                and ":memory:" not in self.DATABASE_URL
+            ):
                 db_filename = self.DATABASE_URL.split(":///")[-1]
                 abs_db_path = (PROJECT_ROOT / db_filename).resolve()
                 self.DATABASE_URL = f"sqlite+aiosqlite:///{abs_db_path}"
 
         if self.STORAGE_TYPE == "s3" and not self.S3_BUCKET_NAME:
-            raise ValueError("S3_BUCKET_NAME must be configured when STORAGE_TYPE is 's3'.")
+            raise ValueError(
+                "S3_BUCKET_NAME must be configured when STORAGE_TYPE is 's3'."
+            )
         return self
 
 
@@ -114,6 +128,7 @@ class SettingsFactory:
     Dynamically delegates secret fetching to modular secret loaders based on platform configuration
     ('aws', 'env', 'local'), merging OS environment variables and defaults.
     """
+
     _cached_settings: Optional[Settings] = None
 
     @classmethod
@@ -121,7 +136,7 @@ class SettingsFactory:
         cls,
         env: Optional[str] = None,
         platform: Optional[str] = None,
-        overrides: Optional[Dict[str, Any]] = None
+        overrides: Optional[Dict[str, Any]] = None,
     ) -> Settings:
         """
         Creates a new Settings instance.
@@ -129,10 +144,14 @@ class SettingsFactory:
         2. Falls back to OS env variables / .env file if no platform is provided.
         3. Merges defaults from specialized environment settings classes (Development, Production, Testing).
         """
-        target_env = (env or os.getenv("ENVIRONMENT") or os.getenv("FASTAPI_ENV") or "development").lower()
+        target_env = (
+            env or os.getenv("ENVIRONMENT") or os.getenv("FASTAPI_ENV") or "development"
+        ).lower()
 
         # 1. Resolve secret loader according to platform ('aws', 'gcp', 'vault', 'env')
-        target_platform = platform or os.getenv("PLATFORM") or os.getenv("CLOUD_PROVIDER")
+        target_platform = (
+            platform or os.getenv("PLATFORM") or os.getenv("CLOUD_PROVIDER")
+        )
         secret_loader = get_secret_loader(platform=target_platform)
         loaded_secrets = secret_loader.load_secrets()
 

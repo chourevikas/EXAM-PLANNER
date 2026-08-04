@@ -2,10 +2,11 @@ from typing import Dict, List, Any
 from app.engine.matrices.fsrs_retention import FSRSEngine
 
 
-
 class TopicFSRSDecayEngine:
     @classmethod
-    def evaluate_topic_decay(cls, topic_memory_records: List[Dict]) -> List[Dict[str, Any]]:
+    def evaluate_topic_decay(
+        cls, topic_memory_records: List[Dict]
+    ) -> List[Dict[str, Any]]:
         summary = []
         for rec in topic_memory_records:
             topic = rec.get("topic_name", "General")
@@ -21,11 +22,13 @@ class TopicFSRSDecayEngine:
             elif r_pct < 80.0:
                 health = "REVISION_DUE_SOON"
 
-            summary.append({
-                "topic_name": topic,
-                "fsrs_stability": round(stability, 2),
-                "current_retrievability_pct": r_pct,
-                "retention_health": health
-            })
+            summary.append(
+                {
+                    "topic_name": topic,
+                    "fsrs_stability": round(stability, 2),
+                    "current_retrievability_pct": r_pct,
+                    "retention_health": health,
+                }
+            )
 
         return summary

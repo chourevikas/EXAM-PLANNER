@@ -24,11 +24,13 @@ class ExamRepository:
         res = await self.session.exec(stmt)
         return res.all()
 
-    async def find_matching_exams_for_answer_key(self, stage: str, subject_code: str, year: int) -> List[Exam]:
+    async def find_matching_exams_for_answer_key(
+        self, stage: str, subject_code: str, year: int
+    ) -> List[Exam]:
         stmt = select(Exam).where(
             Exam.stage == stage,
             Exam.subject_code == subject_code,
-            Exam.source_year == year
+            Exam.source_year == year,
         )
         res = await self.session.exec(stmt)
         return res.all()

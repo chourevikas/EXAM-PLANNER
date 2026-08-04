@@ -8,7 +8,7 @@ class OptionSwitchRegretStrategy:
             return {
                 "total_switches": 0,
                 "regret_index": 0.0,
-                "recommendation": "Trust initial instinct; minimal answer switching observed."
+                "recommendation": "Trust initial instinct; minimal answer switching observed.",
             }
 
         pos_switches = 0
@@ -35,5 +35,5 @@ class OptionSwitchRegretStrategy:
             "positive_switches": pos_switches,
             "negative_regret_switches": neg_switches,
             "regret_index": round(regret_ratio, 2),
-            "recommendation": rec
+            "recommendation": rec,
         }

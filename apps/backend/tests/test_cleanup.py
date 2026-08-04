@@ -2,7 +2,12 @@ import unittest
 import tempfile
 from pathlib import Path
 from app.config.settings import get_settings
-from app.core.cleanup import cleanup_file, cleanup_directory, cleanup_temp_artifacts, is_safe_temporary_path
+from app.core.cleanup import (
+    cleanup_file,
+    cleanup_directory,
+    cleanup_temp_artifacts,
+    is_safe_temporary_path,
+)
 
 
 class TestCleanupUtility(unittest.TestCase):

@@ -42,7 +42,7 @@ def parse_question_paper_filename(filename_or_code: str) -> Dict[str, Any]:
         "year": int(year_str),
         "set_code": set_code,  # e.g. 'SET_A'
         "raw_set_token": set_token.upper(),  # e.g. 'A'
-        "canonical_code": canonical_code
+        "canonical_code": canonical_code,
     }
 
 
@@ -60,12 +60,14 @@ def parse_answer_key_filename(filename_or_code: str) -> Dict[str, Any]:
         )
 
     exam_name, stage, subject_code, year_str = match.groups()
-    canonical_code = f"{exam_name.lower()}-{stage.lower()}-{subject_code.lower()}-{year_str}"
+    canonical_code = (
+        f"{exam_name.lower()}-{stage.lower()}-{subject_code.lower()}-{year_str}"
+    )
 
     return {
         "exam_name": exam_name.lower(),
         "stage": stage.lower(),
         "subject_code": subject_code.lower(),
         "year": int(year_str),
-        "canonical_code": canonical_code
+        "canonical_code": canonical_code,
     }

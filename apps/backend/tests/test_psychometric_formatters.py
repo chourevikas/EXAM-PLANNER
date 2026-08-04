@@ -5,14 +5,15 @@ from app.formatters.report_yaml_formatter import format_report_to_yaml
 from app.formatters.report_markdown_formatter import format_report_to_markdown
 
 
-
 class TestPsychometricFormatters(unittest.TestCase):
-
     def setUp(self):
         self.sample_report = {
             "metadata": {
                 "report_title": "Comprehensive Psychometric Diagnostic Audit Report",
-                "candidate": {"full_name": "Aarav Sharma", "email": "student@examplatform.com"},
+                "candidate": {
+                    "full_name": "Aarav Sharma",
+                    "email": "student@examplatform.com",
+                },
                 "exam_attempt": {
                     "exam_name": "UPSC_CSE Prelims (2023) - Set A",
                     "canonical_code": "upsc_cse-prelims-gs1-2023-A",
@@ -20,8 +21,8 @@ class TestPsychometricFormatters(unittest.TestCase):
                     "max_possible_score": 68.0,
                     "time_spent_seconds": 2100.0,
                     "total_questions_attempted": 34,
-                    "attempt_date": "2026-08-02T23:00:00"
-                }
+                    "attempt_date": "2026-08-02T23:00:00",
+                },
             },
             "user_overall_skill_profile": {
                 "description": "Aggregated long-term cognitive benchmark",
@@ -40,15 +41,18 @@ class TestPsychometricFormatters(unittest.TestCase):
                         "total_attempts": 30,
                         "correct_attempts": 24,
                         "mastery_percentage": 80.0,
-                        "strength_status": "STRONG"
+                        "strength_status": "STRONG",
                     }
-                ]
+                ],
             },
             "exam_macro_analytics": {
                 "1_integrated_cognitive_readiness": {
                     "meaningful_name": "Integrated Cognitive Readiness Index (ICRS)",
                     "description": "Unified 100-point benchmark",
-                    "value": {"icrs_score": 76.5, "readiness_tier": "COMPETITIVE_BENCHMARK_READY"}
+                    "value": {
+                        "icrs_score": 76.5,
+                        "readiness_tier": "COMPETITIVE_BENCHMARK_READY",
+                    },
                 }
             },
             "per_question_diagnostic_report": [
@@ -65,9 +69,9 @@ class TestPsychometricFormatters(unittest.TestCase):
                     "time_pacing_window": "OPTIMAL",
                     "final_points_awarded": 2.0,
                     "item_guessing_probability_gti": 0.05,
-                    "is_option_switched": False
+                    "is_option_switched": False,
                 }
-            ]
+            ],
         }
 
     def test_json_formatter(self):
@@ -82,7 +86,9 @@ class TestPsychometricFormatters(unittest.TestCase):
 
     def test_markdown_formatter(self):
         md_output = format_report_to_markdown(self.sample_report)
-        self.assertIn("# 📊 Comprehensive Psychometric Diagnostic Audit Report", md_output)
+        self.assertIn(
+            "# 📊 Comprehensive Psychometric Diagnostic Audit Report", md_output
+        )
         self.assertIn("Aarav Sharma", md_output)
         self.assertIn("Question #1 - Indian Polity (Preamble)", md_output)
 

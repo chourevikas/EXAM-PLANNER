@@ -4,7 +4,13 @@ from typing import Dict, List
 class BloomsMasteryStrategy:
     @classmethod
     def evaluate_blooms(cls, questions_with_responses: List[Dict]) -> Dict[str, float]:
-        levels = {"REMEMBER": [], "UNDERSTAND": [], "APPLY": [], "ANALYZE": [], "EVALUATE": []}
+        levels = {
+            "REMEMBER": [],
+            "UNDERSTAND": [],
+            "APPLY": [],
+            "ANALYZE": [],
+            "EVALUATE": [],
+        }
         for item in questions_with_responses:
             blooms = item.get("blooms_level", "ANALYZE").upper()
             if blooms not in levels:

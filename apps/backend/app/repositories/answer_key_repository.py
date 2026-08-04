@@ -19,7 +19,13 @@ class AnswerKeyRepository:
     async def get_batch_by_id(self, batch_id: uuid.UUID) -> Optional[AnswerKeyBatch]:
         return await self.session.get(AnswerKeyBatch, batch_id)
 
-    async def get_mappings_for_batch(self, batch_id: uuid.UUID) -> List[AnswerKeyMapping]:
-        stmt = select(AnswerKeyMapping).where(AnswerKeyMapping.batch_id == batch_id).order_by(AnswerKeyMapping.printed_question_number)
+    async def get_mappings_for_batch(
+        self, batch_id: uuid.UUID
+    ) -> List[AnswerKeyMapping]:
+        stmt = (
+            select(AnswerKeyMapping)
+            .where(AnswerKeyMapping.batch_id == batch_id)
+            .order_by(AnswerKeyMapping.printed_question_number)
+        )
         res = await self.session.exec(stmt)
         return res.all()

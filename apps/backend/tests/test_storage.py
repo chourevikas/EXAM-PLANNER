@@ -5,7 +5,6 @@ from PIL import Image
 from app.storage.local import LocalStorageProvider
 
 
-
 class TestStorage(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

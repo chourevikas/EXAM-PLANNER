@@ -33,12 +33,19 @@ def is_safe_temporary_path(path: Path) -> bool:
         persistent_storage_dir = Path(settings.LOCAL_STORAGE_PATH).resolve()
         uploads_dir = (Path.cwd() / "uploads").resolve()
 
-        if persistent_storage_dir in resolved.parents or resolved == persistent_storage_dir:
-            logger.error(f"🛡️ SAFETY GUARD: Refusing to clean up persistent storage file/folder '{resolved}'")
+        if (
+            persistent_storage_dir in resolved.parents
+            or resolved == persistent_storage_dir
+        ):
+            logger.error(
+                f"🛡️ SAFETY GUARD: Refusing to clean up persistent storage file/folder '{resolved}'"
+            )
             return False
 
         if uploads_dir in resolved.parents or resolved == uploads_dir:
-            logger.error(f"🛡️ SAFETY GUARD: Refusing to clean up persistent uploads file/folder '{resolved}'")
+            logger.error(
+                f"🛡️ SAFETY GUARD: Refusing to clean up persistent uploads file/folder '{resolved}'"
+            )
             return False
 
         # 2. Verify that path or one of its parent directories matches an approved temporary pattern
@@ -48,18 +55,25 @@ def is_safe_temporary_path(path: Path) -> bool:
 
         path_parts = [part.lower() for part in resolved.parts]
         for temp_name in KNOWN_TEMP_DIR_PATTERNS:
-            if temp_name in path_parts or any(p.name.lower().startswith("temp") or p.name.lower().startswith("tmp") for p in resolved.parents):
+            if temp_name in path_parts or any(
+                p.name.lower().startswith("temp") or p.name.lower().startswith("tmp")
+                for p in resolved.parents
+            ):
                 return True
 
         # Check if file/folder itself starts with temp or tmp
-        if resolved.name.lower().startswith("temp") or resolved.name.lower().startswith("tmp"):
+        if resolved.name.lower().startswith("temp") or resolved.name.lower().startswith(
+            "tmp"
+        ):
             return True
 
     except Exception as err:
         logger.warning(f"Error checking safety of path '{path}': {err}")
         return False
 
-    logger.warning(f"🛡️ SAFETY GUARD: Path '{path}' is not a recognized temporary path. Skipping deletion.")
+    logger.warning(
+        f"🛡️ SAFETY GUARD: Path '{path}' is not a recognized temporary path. Skipping deletion."
+    )
     return False
 
 

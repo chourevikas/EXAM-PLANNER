@@ -11,7 +11,7 @@ def find_env_files(start_path: Optional[Path] = None) -> List[Path]:
     Returned list is ordered from workspace root to closest sub-directory.
     """
     found: List[Path] = []
-    
+
     # 1. Start from current working directory
     cwd = Path.cwd().resolve()
     curr = cwd
@@ -45,6 +45,7 @@ class EnvSecretLoader(BaseSecretLoader):
         env_files = find_env_files(Path(__file__).resolve())
         try:
             from dotenv import dotenv_values
+
             for env_path in env_files:
                 loaded = dotenv_values(env_path)
                 for k, v in loaded.items():

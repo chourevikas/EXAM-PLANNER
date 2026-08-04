@@ -7,7 +7,6 @@ from app.storage.base import BaseStorageProvider
 from app.pipeline.state import PageExtractionPayload, SeamBlockTypeEnum, CropAssetSchema
 
 
-
 class DisjointSetUnion:
     def __init__(self):
         self.parent = {}
@@ -28,7 +27,9 @@ class DisjointSetUnion:
             self.parent[root_i] = root_j
 
 
-def resolve_transitive_passages_dsu(raw_results: List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]]) -> List[dict]:
+def resolve_transitive_passages_dsu(
+    raw_results: List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]],
+) -> List[dict]:
     dsu = DisjointSetUnion()
     passage_nodes: Dict[str, dict] = {}
 
@@ -48,7 +49,10 @@ def resolve_transitive_passages_dsu(raw_results: List[Tuple[int, Optional[PageEx
         if not payload_curr or not payload_next:
             continue
 
-        if payload_curr.page_end_seam == SeamBlockTypeEnum.PASSAGE and payload_next.page_start_seam == SeamBlockTypeEnum.PASSAGE:
+        if (
+            payload_curr.page_end_seam == SeamBlockTypeEnum.PASSAGE
+            and payload_next.page_start_seam == SeamBlockTypeEnum.PASSAGE
+        ):
             for mem_curr in payload_curr.new_context_memories:
                 if not mem_curr.is_complete:
                     for mem_next in payload_next.new_context_memories:
@@ -76,7 +80,11 @@ def resolve_transitive_passages_dsu(raw_results: List[Tuple[int, Optional[PageEx
             if frag.get("target_question_numbers"):
                 target_q_nums.update(frag["target_question_numbers"])
             for t in frag["translations"]:
-                lang = t["language"].value if hasattr(t["language"], "value") else str(t["language"])
+                lang = (
+                    t["language"].value
+                    if hasattr(t["language"], "value")
+                    else str(t["language"])
+                )
                 if lang not in merged_translations:
                     merged_translations[lang] = t["context_text"]
                 else:
@@ -86,14 +94,22 @@ def resolve_transitive_passages_dsu(raw_results: List[Tuple[int, Optional[PageEx
         base_passage["target_question_numbers"] = sorted(list(target_q_nums))
         base_passage["is_complete"] = frag_list[-1]["is_complete"]
         base_passage["translations"] = [
-            {"language": lang, "context_text": text} for lang, text in merged_translations.items()
+            {"language": lang, "context_text": text}
+            for lang, text in merged_translations.items()
         ]
         unified_passages.append(base_passage)
 
     return unified_passages
 
 
-async def async_crop_and_save_asset(page_img: Image.Image, storage: BaseStorageProvider, exam_code: str, sec_code: str, q_num: int, asset: CropAssetSchema) -> Optional[str]:
+async def async_crop_and_save_asset(
+    page_img: Image.Image,
+    storage: BaseStorageProvider,
+    exam_code: str,
+    sec_code: str,
+    q_num: int,
+    asset: CropAssetSchema,
+) -> Optional[str]:
     try:
         img_w, img_h = page_img.size
         ymin, xmin, ymax, xmax = asset.bounding_box

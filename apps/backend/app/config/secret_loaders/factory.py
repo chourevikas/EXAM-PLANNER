@@ -36,5 +36,7 @@ def get_secret_loader(platform: Optional[str] = None) -> BaseSecretLoader:
     ).lower()
 
     loader_cls = _LOADER_REGISTRY.get(target_platform, EnvSecretLoader)
-    logger.debug(f"Resolved secret loader '{loader_cls.__name__}' for target platform '{target_platform}'.")
+    logger.debug(
+        f"Resolved secret loader '{loader_cls.__name__}' for target platform '{target_platform}'."
+    )
     return loader_cls()

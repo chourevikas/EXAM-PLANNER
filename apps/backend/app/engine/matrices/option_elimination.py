@@ -27,7 +27,9 @@ class OptionEliminationStrategy:
 
         return {
             "oeei_score": round(oeei, 2),
-            "tactical_eliminations_pct": round((tactical_choices / len(responses)) * 100, 1),
+            "tactical_eliminations_pct": round(
+                (tactical_choices / len(responses)) * 100, 1
+            ),
             "blind_mistakes_pct": round((blind_mistakes / len(responses)) * 100, 1),
-            "elimination_rating": rating
+            "elimination_rating": rating,
         }

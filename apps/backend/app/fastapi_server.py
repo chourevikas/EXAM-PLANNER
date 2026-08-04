@@ -15,10 +15,6 @@ from app.config.logger import setup_logger
 logger = setup_logger("FastAPIServer")
 
 
-
-
-
-
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
@@ -30,13 +26,16 @@ from app.routers.review import router as review_router
 
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await async_init_db()
     async with async_session_factory() as session:
         try:
             super_admin_email = "superadmin@examplanner.com"
-            result = await session.exec(select(User).where(User.email == super_admin_email))
+            result = await session.exec(
+                select(User).where(User.email == super_admin_email)
+            )
             existing = result.first()
             if not existing:
                 super_admin = User(
@@ -49,7 +48,9 @@ async def lifespan(app: FastAPI):
                 )
                 session.add(super_admin)
                 await session.commit()
-                logger.info("Successfully seeded default Super Admin user: superadmin@examplanner.com")
+                logger.info(
+                    "Successfully seeded default Super Admin user: superadmin@examplanner.com"
+                )
         except Exception as e:
             logger.error(f"Failed to seed Super Admin: {e}")
     yield
@@ -60,7 +61,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Comprehensive CORS Configuration
@@ -86,17 +87,19 @@ async def custom_app_exception_handler(request: Request, exc: BaseAppException):
     logger.warning(f"Domain exception on {request.url.path}: {exc.detail}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "error_type": exc.__class__.__name__}
+        content={"detail": exc.detail, "error_type": exc.__class__.__name__},
     )
 
 
 # Global Fallback Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled internal server error on {request.url.path}: {exc}", exc_info=True)
+    logger.error(
+        f"Unhandled internal server error on {request.url.path}: {exc}", exc_info=True
+    )
     return JSONResponse(
         status_code=500,
-        content={"detail": "An internal server error occurred.", "error": str(exc)}
+        content={"detail": "An internal server error occurred.", "error": str(exc)},
     )
 
 
@@ -104,8 +107,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 upload_dir = os.path.join(os.getcwd(), "uploads")
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/static/uploads", StaticFiles(directory=upload_dir), name="uploads")
-
-
 
 
 # Register API Routers
@@ -121,8 +122,4 @@ app.include_router(review_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
-    return {
-        "project": settings.PROJECT_NAME,
-        "status": "online",
-        "docs": "/docs"
-    }
+    return {"project": settings.PROJECT_NAME, "status": "online", "docs": "/docs"}

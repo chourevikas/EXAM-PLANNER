@@ -7,8 +7,6 @@ if TYPE_CHECKING:
     from app.db.models.question import Question
 
 
-
-
 class QuestionMetadata(SQLModel, table=True):
     __tablename__ = "question_metadata"
     __table_args__ = (
@@ -17,7 +15,9 @@ class QuestionMetadata(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    question_id: uuid.UUID = Field(foreign_key="questions.id", ondelete="CASCADE", unique=True, index=True)
+    question_id: uuid.UUID = Field(
+        foreign_key="questions.id", ondelete="CASCADE", unique=True, index=True
+    )
     blooms_level: BloomsLevel = Field(default=BloomsLevel.ANALYZE, index=True)
     cognitive_skill: Optional[str] = Field(default=None)
     primary_concept_tag: str = Field(default="GENERAL", index=True)

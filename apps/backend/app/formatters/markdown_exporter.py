@@ -4,17 +4,22 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.storage.base import BaseStorageProvider
 from app.storage.factory import get_storage_provider
 from app.db.models import (
-    Question, QuestionTranslation, QuestionOption, OptionTranslation,
-    QuestionAsset, Passage, PassageTranslation, Exam
+    Question,
+    QuestionTranslation,
+    QuestionOption,
+    OptionTranslation,
+    QuestionAsset,
+    Passage,
+    PassageTranslation,
+    Exam,
 )
 from app.formatters.yaml_exporter import get_canonical_question_filename_stem
-
 
 
 async def async_export_question_to_markdown(
     session: AsyncSession,
     question: Question,
-    storage: Optional[BaseStorageProvider] = None
+    storage: Optional[BaseStorageProvider] = None,
 ) -> str:
     """Asynchronously generates Markdown string matching the exact filename stem as the YAML file."""
     if storage is None:
@@ -25,7 +30,11 @@ async def async_export_question_to_markdown(
 
     sec_code = question.section_code or "DEFAULT"
     q_num = question.question_number_in_paper
-    status_str = question.status.value if hasattr(question.status, "value") else str(question.status)
+    status_str = (
+        question.status.value
+        if hasattr(question.status, "value")
+        else str(question.status)
+    )
 
     lines = []
     lines.append(f"# Question {q_num:03d} - `{q_stem}`")
@@ -40,21 +49,31 @@ async def async_export_question_to_markdown(
 
     # Fetch Translations
     q_trans_res = await session.exec(
-        select(QuestionTranslation).where(QuestionTranslation.question_id == question.id)
+        select(QuestionTranslation).where(
+            QuestionTranslation.question_id == question.id
+        )
     )
     q_translations = q_trans_res.all()
 
     # Fetch Assets
     assets_res = await session.exec(
-        select(QuestionAsset).where(QuestionAsset.question_id == question.id).order_by(QuestionAsset.display_order)
+        select(QuestionAsset)
+        .where(QuestionAsset.question_id == question.id)
+        .order_by(QuestionAsset.display_order)
     )
     assets = assets_res.all()
 
     # Fetch Passage if linked
-    passage = await session.get(Passage, question.passage_id) if question.passage_id else None
+    passage = (
+        await session.get(Passage, question.passage_id) if question.passage_id else None
+    )
 
     for q_trans in q_translations:
-        lang_str = q_trans.language.value if hasattr(q_trans.language, "value") else str(q_trans.language)
+        lang_str = (
+            q_trans.language.value
+            if hasattr(q_trans.language, "value")
+            else str(q_trans.language)
+        )
         lines.append(f"## Language: [{lang_str}]")
         lines.append("")
 
@@ -64,7 +83,7 @@ async def async_export_question_to_markdown(
             p_trans_res = await session.exec(
                 select(PassageTranslation).where(
                     PassageTranslation.passage_id == passage.id,
-                    PassageTranslation.language == q_trans.language
+                    PassageTranslation.language == q_trans.language,
                 )
             )
             p_trans = p_trans_res.first()
@@ -82,7 +101,11 @@ async def async_export_question_to_markdown(
             lines.append("### Visual Diagrams / Figures")
             for asset in assets:
                 asset_url = storage.get_public_url(asset.asset_path)
-                asset_type_str = asset.asset_type.value if hasattr(asset.asset_type, "value") else str(asset.asset_type)
+                asset_type_str = (
+                    asset.asset_type.value
+                    if hasattr(asset.asset_type, "value")
+                    else str(asset.asset_type)
+                )
                 caption_str = f" - *{asset.caption}*" if asset.caption else ""
                 lines.append(f"![{asset_type_str}]({asset_url}){caption_str}")
                 lines.append("")
@@ -95,7 +118,9 @@ async def async_export_question_to_markdown(
         # Options
         lines.append("### Options")
         options_res = await session.exec(
-            select(QuestionOption).where(QuestionOption.question_id == question.id).order_by(QuestionOption.display_order)
+            select(QuestionOption)
+            .where(QuestionOption.question_id == question.id)
+            .order_by(QuestionOption.display_order)
         )
         options = options_res.all()
 
@@ -103,7 +128,7 @@ async def async_export_question_to_markdown(
             opt_trans_res = await session.exec(
                 select(OptionTranslation).where(
                     OptionTranslation.option_id == opt.id,
-                    OptionTranslation.language == q_trans.language
+                    OptionTranslation.language == q_trans.language,
                 )
             )
             opt_trans = opt_trans_res.first()

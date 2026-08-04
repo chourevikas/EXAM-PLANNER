@@ -3,6 +3,7 @@
 Celery Worker Process Entry Point.
 Run with: uv run worker.py (or uv run celery -A app.tasks.celery_app worker --loglevel=info)
 """
+
 import sys
 from app.tasks.celery_app import celery_app
 from app.config.logger import setup_logger

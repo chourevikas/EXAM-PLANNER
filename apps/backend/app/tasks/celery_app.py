@@ -8,11 +8,14 @@ settings = get_settings()
 celery_app = Celery(
     "exam_platform_tasks",
     broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND
+    backend=settings.CELERY_RESULT_BACKEND,
 )
 
 celery_app.conf.update(
-    imports=["app.tasks.exam_tasks", "app.tasks.answer_key_tasks"],  # Explicitly import task modules for Celery autodiscovery
+    imports=[
+        "app.tasks.exam_tasks",
+        "app.tasks.answer_key_tasks",
+    ],  # Explicitly import task modules for Celery autodiscovery
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
@@ -21,11 +24,13 @@ celery_app.conf.update(
     task_track_started=True,
     task_time_limit=3600,
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
-    task_eager_propagates=True
+    task_eager_propagates=True,
 )
 
 if settings.CELERY_TASK_ALWAYS_EAGER:
-    logger.warning("CELERY_TASK_ALWAYS_EAGER is Enabled. Celery tasks will execute synchronously in-memory without Redis broker.")
+    logger.warning(
+        "CELERY_TASK_ALWAYS_EAGER is Enabled. Celery tasks will execute synchronously in-memory without Redis broker."
+    )
 
 
 def has_active_celery_workers(timeout: float = 0.2) -> bool:

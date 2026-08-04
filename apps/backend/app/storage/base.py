@@ -6,12 +6,16 @@ from PIL import Image
 
 class BaseStorageProvider(ABC):
     @abstractmethod
-    async def upload_file(self, file_path: Union[str, Path], relative_destination: str) -> str:
+    async def upload_file(
+        self, file_path: Union[str, Path], relative_destination: str
+    ) -> str:
         """Asynchronously uploads a file to storage and returns reference key."""
         pass
 
     @abstractmethod
-    async def download_file(self, relative_path: str, local_destination: Union[str, Path]) -> Path:
+    async def download_file(
+        self, relative_path: str, local_destination: Union[str, Path]
+    ) -> Path:
         """Asynchronously downloads a file from storage to local path."""
         pass
 

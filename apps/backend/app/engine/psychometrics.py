@@ -9,12 +9,22 @@ from app.engine.matrices.irt_3pl_ability import IRT3PLStrategy
 from app.engine.matrices.option_switch_regret import OptionSwitchRegretStrategy
 from app.engine.matrices.speed_accuracy_tradeoff import SATOIEngine
 from app.engine.matrices.topic_fsrs_decay import TopicFSRSDecayEngine
-from app.engine.matrices.integrated_cognitive_readiness import IntegratedCognitiveReadinessEngine
+from app.engine.matrices.integrated_cognitive_readiness import (
+    IntegratedCognitiveReadinessEngine,
+)
 
 
 __all__ = [
-    "ClosenessEvaluator", "GuessingTendencyStrategy", "TimeTieredScoringStrategy",
-    "FSRSEngine", "ExamMacroTimeStrategy", "OptionEliminationStrategy",
-    "BloomsMasteryStrategy", "IRT3PLStrategy", "OptionSwitchRegretStrategy",
-    "SATOIEngine", "TopicFSRSDecayEngine", "IntegratedCognitiveReadinessEngine"
+    "ClosenessEvaluator",
+    "GuessingTendencyStrategy",
+    "TimeTieredScoringStrategy",
+    "FSRSEngine",
+    "ExamMacroTimeStrategy",
+    "OptionEliminationStrategy",
+    "BloomsMasteryStrategy",
+    "IRT3PLStrategy",
+    "OptionSwitchRegretStrategy",
+    "SATOIEngine",
+    "TopicFSRSDecayEngine",
+    "IntegratedCognitiveReadinessEngine",
 ]

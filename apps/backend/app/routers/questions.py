@@ -15,19 +15,23 @@ router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
 async def list_questions(
     exam_id: Optional[uuid.UUID] = None,
     status: Optional[QuestionStatus] = None,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
     service = QuestionService(session)
     return await service.list_questions(exam_id=exam_id, status=status)
 
 
 @router.get("/{question_id}/formatted/yaml", response_class=PlainTextResponse)
-async def get_question_yaml_file(question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)):
+async def get_question_yaml_file(
+    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+):
     service = QuestionService(session)
     return await service.get_question_yaml_file(question_id)
 
 
 @router.get("/{question_id}/formatted/markdown", response_class=PlainTextResponse)
-async def get_question_markdown_file(question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)):
+async def get_question_markdown_file(
+    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+):
     service = QuestionService(session)
     return await service.get_question_markdown_file(question_id)

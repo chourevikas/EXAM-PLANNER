@@ -18,27 +18,84 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlmodel import select
 from app.db.session import async_session_factory, async_init_db
 from app.db.models import (
-    User, UserRole, UserStatus,
-    Exam, SyllabusVersion, Subject, Topic, Subtopic,
-    Question, QuestionTranslation, QuestionOption, OptionTranslation,
-    QuestionStatus, QuestionSourceType, DifficultyLevel, LanguageCode,
-    ExamAttempt, ExamQuestionResponse, UserMemoryState
+    User,
+    UserRole,
+    UserStatus,
+    Exam,
+    SyllabusVersion,
+    Subject,
+    Topic,
+    Subtopic,
+    Question,
+    QuestionTranslation,
+    QuestionOption,
+    OptionTranslation,
+    QuestionStatus,
+    QuestionSourceType,
+    DifficultyLevel,
+    LanguageCode,
+    ExamAttempt,
+    ExamQuestionResponse,
+    UserMemoryState,
 )
 from app.engine.psychometrics import (
-    ClosenessEvaluator, GuessingTendencyStrategy, TimeTieredScoringStrategy,
-    FSRSEngine, ExamMacroTimeStrategy, OptionEliminationStrategy,
-    BloomsMasteryStrategy, IRT3PLStrategy, OptionSwitchRegretStrategy,
-    SATOIEngine, TopicFSRSDecayEngine, IntegratedCognitiveReadinessEngine
+    ClosenessEvaluator,
+    GuessingTendencyStrategy,
+    TimeTieredScoringStrategy,
+    FSRSEngine,
+    ExamMacroTimeStrategy,
+    OptionEliminationStrategy,
+    BloomsMasteryStrategy,
+    IRT3PLStrategy,
+    OptionSwitchRegretStrategy,
+    SATOIEngine,
+    TopicFSRSDecayEngine,
+    IntegratedCognitiveReadinessEngine,
 )
-
 
 
 TOPICS_DATA = [
-    ("POLITY", "Indian Polity & Constitution", ["Preamble & Fundamental Rights", "Directive Principles", "Parliament & Executive"]),
-    ("ECON", "Indian Economy & Development", ["Fiscal Policy & Budget", "Monetary Policy & RBI", "External Sector & Trade"]),
-    ("HIST", "Modern Indian History", ["Freedom Struggle 1857-1947", "Socio-Religious Movements", "Governor Generals & Reforms"]),
-    ("GEOG", "Physical & Indian Geography", ["Climatology & Monsoons", "River Systems & Drainage", "Geomorphology & Minerals"]),
-    ("ENV", "Environment & Ecology", ["Biodiversity & Conservation", "Climate Change & Conventions", "Pollution & Environmental Acts"])
+    (
+        "POLITY",
+        "Indian Polity & Constitution",
+        [
+            "Preamble & Fundamental Rights",
+            "Directive Principles",
+            "Parliament & Executive",
+        ],
+    ),
+    (
+        "ECON",
+        "Indian Economy & Development",
+        ["Fiscal Policy & Budget", "Monetary Policy & RBI", "External Sector & Trade"],
+    ),
+    (
+        "HIST",
+        "Modern Indian History",
+        [
+            "Freedom Struggle 1857-1947",
+            "Socio-Religious Movements",
+            "Governor Generals & Reforms",
+        ],
+    ),
+    (
+        "GEOG",
+        "Physical & Indian Geography",
+        [
+            "Climatology & Monsoons",
+            "River Systems & Drainage",
+            "Geomorphology & Minerals",
+        ],
+    ),
+    (
+        "ENV",
+        "Environment & Ecology",
+        [
+            "Biodiversity & Conservation",
+            "Climate Change & Conventions",
+            "Pollution & Environmental Acts",
+        ],
+    ),
 ]
 
 BLOOMS_LEVELS = ["REMEMBER", "UNDERSTAND", "APPLY", "ANALYZE", "EVALUATE"]
@@ -53,7 +110,9 @@ async def seed_psychometric_environment():
 
     async with async_session_factory() as session:
         # 1. Create or fetch target user
-        user_res = await session.exec(select(User).where(User.email == "student@examplatform.com"))
+        user_res = await session.exec(
+            select(User).where(User.email == "student@examplatform.com")
+        )
         user = user_res.first()
         if not user:
             user = User(
@@ -63,14 +122,18 @@ async def seed_psychometric_environment():
                 password_hash="pbkdf2_sha256$hashed_secure_pass",
                 role=UserRole.STUDENT,
                 status=UserStatus.ACTIVE,
-                is_verified=True
+                is_verified=True,
             )
             session.add(user)
             await session.commit()
             await session.refresh(user)
-            print(f"👤 Created Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}")
+            print(
+                f"👤 Created Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
+            )
         else:
-            print(f"👤 Found Existing Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}")
+            print(
+                f"👤 Found Existing Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
+            )
 
         # 2. Create Syllabus & Topics Structure
         syll_res = await session.exec(select(SyllabusVersion).limit(1))
@@ -82,7 +145,7 @@ async def seed_psychometric_environment():
                 stage="prelims",
                 subject_code="gs1",
                 source_year=2023,
-                paper_set_code="SET_A"
+                paper_set_code="SET_A",
             )
             session.add(dummy_exam_for_syll)
             await session.commit()
@@ -90,20 +153,22 @@ async def seed_psychometric_environment():
             syll = SyllabusVersion(
                 exam_id=dummy_exam_for_syll.id,
                 version_code="UPSC_2023_V1",
-                title="UPSC CSE Prelims Standard Syllabus"
+                title="UPSC CSE Prelims Standard Syllabus",
             )
             session.add(syll)
             await session.commit()
 
         subtopic_objs = []
         for subj_code, subj_name, topics in TOPICS_DATA:
-            subj_res = await session.exec(select(Subject).where(Subject.code == subj_code))
+            subj_res = await session.exec(
+                select(Subject).where(Subject.code == subj_code)
+            )
             subj = subj_res.first()
             if not subj:
                 kwargs = {
                     "syllabus_version_id": syll.id,
                     "code": subj_code,
-                    "name": subj_name
+                    "name": subj_name,
                 }
                 if hasattr(Subject, "is_optional_subject"):
                     kwargs["is_optional_subject"] = False
@@ -112,24 +177,28 @@ async def seed_psychometric_environment():
                 await session.commit()
 
             for top_idx, top_name in enumerate(topics, 1):
-                top_res = await session.exec(select(Topic).where(Topic.name == top_name))
+                top_res = await session.exec(
+                    select(Topic).where(Topic.name == top_name)
+                )
                 top = top_res.first()
                 if not top:
                     top = Topic(
                         subject_id=subj.id,
                         code=f"{subj_code}_T{top_idx}",
-                        name=top_name
+                        name=top_name,
                     )
                     session.add(top)
                     await session.commit()
 
-                sub_res = await session.exec(select(Subtopic).where(Subtopic.topic_id == top.id))
+                sub_res = await session.exec(
+                    select(Subtopic).where(Subtopic.topic_id == top.id)
+                )
                 sub = sub_res.first()
                 if not sub:
                     sub = Subtopic(
                         topic_id=top.id,
                         code=f"{subj_code}_ST{top_idx}",
-                        name=f"{top_name} Core Concepts"
+                        name=f"{top_name} Core Concepts",
                     )
                     session.add(sub)
                     await session.commit()
@@ -141,7 +210,7 @@ async def seed_psychometric_environment():
         exams_config = [
             ("upsc_cse-prelims-gs1-2023-A", "UPSC_CSE Prelims (2023) - Set A", 2023),
             ("upsc_cse-prelims-gs1-2024-A", "UPSC_CSE Prelims (2024) - Set A", 2024),
-            ("upsc_cse-prelims-gs1-2025-A", "UPSC_CSE Prelims (2025) - Set A", 2025)
+            ("upsc_cse-prelims-gs1-2025-A", "UPSC_CSE Prelims (2025) - Set A", 2025),
         ]
 
         exam_entities = []
@@ -156,7 +225,7 @@ async def seed_psychometric_environment():
                     subject_code="gs1",
                     source_year=year,
                     paper_set_code="SET_A",
-                    total_pages=32
+                    total_pages=32,
                 )
                 session.add(exam)
                 await session.commit()
@@ -167,7 +236,9 @@ async def seed_psychometric_environment():
             exam_entities.append(exam)
 
         # 4. Generate 100 Questions spread across 3 Exams
-        print("\n⚙️ Generating 100 Psychometric Questions with Options & Closeness Scores...")
+        print(
+            "\n⚙️ Generating 100 Psychometric Questions with Options & Closeness Scores..."
+        )
         all_created_questions = []
 
         total_q_target = 100
@@ -176,18 +247,24 @@ async def seed_psychometric_environment():
         question_counter = 1
         for exam_idx, exam in enumerate(exam_entities):
             target_count = qs_per_exam[exam_idx]
-            
-            existing_q = await session.exec(select(Question).where(Question.exam_id == exam.id))
+
+            existing_q = await session.exec(
+                select(Question).where(Question.exam_id == exam.id)
+            )
             q_existing_list = existing_q.all()
             if len(q_existing_list) >= target_count:
                 all_created_questions.extend(q_existing_list)
-                print(f"   ⏩ Skipping generation for Exam '{exam.code}' (Already has {len(q_existing_list)} questions)")
+                print(
+                    f"   ⏩ Skipping generation for Exam '{exam.code}' (Already has {len(q_existing_list)} questions)"
+                )
                 continue
 
             for q_num in range(1, target_count + 1):
                 subtopic = random.choice(subtopic_objs)
                 blooms = random.choice(BLOOMS_LEVELS)
-                diff = random.choice([DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD])
+                diff = random.choice(
+                    [DifficultyLevel.EASY, DifficultyLevel.MEDIUM, DifficultyLevel.HARD]
+                )
 
                 irt_a = round(random.uniform(0.9, 2.2), 2)
                 irt_b = round(random.uniform(-1.2, 1.8), 2)
@@ -207,7 +284,7 @@ async def seed_psychometric_environment():
                     source_type=QuestionSourceType.PYQ,
                     source_year=exam.source_year,
                     status=QuestionStatus.PUBLISHED,
-                    is_complete=True
+                    is_complete=True,
                 )
                 session.add(q)
                 await session.commit()
@@ -217,15 +294,39 @@ async def seed_psychometric_environment():
                 q_trans = QuestionTranslation(
                     question_id=q.id,
                     language=LanguageCode.ENGLISH,
-                    question_text=q_text
+                    question_text=q_text,
                 )
                 session.add(q_trans)
 
                 closeness_tuples = [
-                    ("A", 1, True, 1.00, f"Statement 1 and 2 are correct regarding {subtopic.name}."),
-                    ("B", 2, False, 0.65, f"Statement 1 only is correct (High-closeness distractor)."),
-                    ("C", 3, False, 0.15, f"Neither statement 1 nor 2 is correct (Neutral distractor)."),
-                    ("D", 4, False, -0.40, f"Statement 2 only is correct (Cognitive trap distractor).")
+                    (
+                        "A",
+                        1,
+                        True,
+                        1.00,
+                        f"Statement 1 and 2 are correct regarding {subtopic.name}.",
+                    ),
+                    (
+                        "B",
+                        2,
+                        False,
+                        0.65,
+                        f"Statement 1 only is correct (High-closeness distractor).",
+                    ),
+                    (
+                        "C",
+                        3,
+                        False,
+                        0.15,
+                        f"Neither statement 1 nor 2 is correct (Neutral distractor).",
+                    ),
+                    (
+                        "D",
+                        4,
+                        False,
+                        -0.40,
+                        f"Statement 2 only is correct (Cognitive trap distractor).",
+                    ),
                 ]
 
                 for label, order, is_corr, c_score, opt_txt in closeness_tuples:
@@ -234,7 +335,7 @@ async def seed_psychometric_environment():
                         option_label=label,
                         display_order=order,
                         is_correct=is_corr,
-                        closeness_score=c_score
+                        closeness_score=c_score,
                     )
                     session.add(opt)
                     await session.commit()
@@ -243,63 +344,73 @@ async def seed_psychometric_environment():
                     opt_trans = OptionTranslation(
                         option_id=opt.id,
                         language=LanguageCode.ENGLISH,
-                        option_text=opt_txt
+                        option_text=opt_txt,
                     )
                     session.add(opt_trans)
                 await session.commit()
                 all_created_questions.append(q)
                 question_counter += 1
 
-            print(f"   ✅ Seeded {target_count} questions with options for Exam '{exam.name}'.")
+            print(
+                f"   ✅ Seeded {target_count} questions with options for Exam '{exam.name}'."
+            )
 
         print(f"Total Psychometric Questions Ready: {len(all_created_questions)}")
 
         # 5. Create 3 Exam Attempts with realistic performance profiles
         print("\n📊 Generating 3 Exam Attempts & Item Responses for User...")
-        
+
         attempt_profiles = [
             {
                 "exam": exam_entities[0],
                 "pacing_type": "BALANCED",
                 "accuracy_rate": 0.65,
                 "switches_pct": 0.10,
-                "created_days_ago": 14
+                "created_days_ago": 14,
             },
             {
                 "exam": exam_entities[1],
                 "pacing_type": "IMPULSIVE_LATE_PANIC",
                 "accuracy_rate": 0.72,
                 "switches_pct": 0.20,
-                "created_days_ago": 7
+                "created_days_ago": 7,
             },
             {
                 "exam": exam_entities[2],
                 "pacing_type": "METHODICAL_TOP_PERFORMER",
                 "accuracy_rate": 0.88,
                 "switches_pct": 0.05,
-                "created_days_ago": 1
-            }
+                "created_days_ago": 1,
+            },
         ]
 
         for prof in attempt_profiles:
             exam = prof["exam"]
             existing_att = await session.exec(
-                select(ExamAttempt).where(ExamAttempt.user_id == user.id, ExamAttempt.exam_id == exam.id)
+                select(ExamAttempt).where(
+                    ExamAttempt.user_id == user.id, ExamAttempt.exam_id == exam.id
+                )
             )
             att = existing_att.first()
             if not att:
-                created_dt = datetime.utcnow() - timedelta(days=prof["created_days_ago"])
+                created_dt = datetime.utcnow() - timedelta(
+                    days=prof["created_days_ago"]
+                )
                 att = ExamAttempt(
                     user_id=user.id,
                     exam_id=exam.id,
                     max_possible_score=68.0,
-                    created_at=created_dt
+                    created_at=created_dt,
                 )
                 session.add(att)
                 await session.commit()
                 await session.refresh(att)
 
-                q_list = (await session.exec(select(Question).where(Question.exam_id == exam.id))).all()
+                q_list = (
+                    await session.exec(
+                        select(Question).where(Question.exam_id == exam.id)
+                    )
+                ).all()
 
                 item_responses_data = []
                 total_time = 0.0
@@ -309,12 +420,18 @@ async def seed_psychometric_environment():
                 response_records = []
 
                 for idx, q in enumerate(q_list, 1):
-                    opts = (await session.exec(select(QuestionOption).where(QuestionOption.question_id == q.id))).all()
+                    opts = (
+                        await session.exec(
+                            select(QuestionOption).where(
+                                QuestionOption.question_id == q.id
+                            )
+                        )
+                    ).all()
                     correct_opt = next(o for o in opts if o.is_correct)
                     distractors = [o for o in opts if not o.is_correct]
 
                     is_correct = random.random() < prof["accuracy_rate"]
-                    
+
                     if is_correct:
                         selected_opt = correct_opt
                         initial_opt = correct_opt
@@ -329,7 +446,10 @@ async def seed_psychometric_environment():
                             is_switched = False
 
                     exp_time = q.expected_time_seconds or 60.0
-                    if prof["pacing_type"] == "IMPULSIVE_LATE_PANIC" and idx > len(q_list) * 0.7:
+                    if (
+                        prof["pacing_type"] == "IMPULSIVE_LATE_PANIC"
+                        and idx > len(q_list) * 0.7
+                    ):
                         time_taken = random.uniform(12.0, 22.0)
                     elif prof["pacing_type"] == "METHODICAL_TOP_PERFORMER":
                         time_taken = random.uniform(45.0, 70.0)
@@ -344,7 +464,7 @@ async def seed_psychometric_environment():
                         expected_time_sec=exp_time,
                         closeness_score=selected_opt.closeness_score,
                         marks_pos=q.marks,
-                        marks_neg=q.negative_marks
+                        marks_neg=q.negative_marks,
                     )
                     final_q_score = score_dict["closeness_weighted_score"]
                     total_score += final_q_score
@@ -355,24 +475,28 @@ async def seed_psychometric_environment():
                         option_closeness=selected_opt.closeness_score,
                         is_correct=is_correct,
                         irt_difficulty_b=0.5,
-                        irt_pseudo_guessing_c=0.25
+                        irt_pseudo_guessing_c=0.25,
                     )
                     item_gti_scores.append(gti_item)
 
-                    switches_list.append({
-                        "initial_correct": initial_opt.is_correct,
-                        "final_correct": selected_opt.is_correct
-                    })
+                    switches_list.append(
+                        {
+                            "initial_correct": initial_opt.is_correct,
+                            "final_correct": selected_opt.is_correct,
+                        }
+                    )
 
-                    item_responses_data.append({
-                        "a": 1.5,
-                        "b": 0.2,
-                        "c": 0.25,
-                        "is_correct": is_correct,
-                        "time_taken_seconds": time_taken,
-                        "closeness_score_awarded": selected_opt.closeness_score,
-                        "blooms_level": "ANALYZE"
-                    })
+                    item_responses_data.append(
+                        {
+                            "a": 1.5,
+                            "b": 0.2,
+                            "c": 0.25,
+                            "is_correct": is_correct,
+                            "time_taken_seconds": time_taken,
+                            "closeness_score_awarded": selected_opt.closeness_score,
+                            "blooms_level": "ANALYZE",
+                        }
+                    )
 
                     q_resp = ExamQuestionResponse(
                         attempt_id=att.id,
@@ -385,14 +509,16 @@ async def seed_psychometric_environment():
                         closeness_score_awarded=selected_opt.closeness_score,
                         final_score=final_q_score,
                         is_switched=is_switched,
-                        gti_item_score=gti_item
+                        gti_item_score=gti_item,
                     )
                     session.add(q_resp)
-                    response_records.append({
-                        "is_correct": is_correct,
-                        "time_taken_seconds": time_taken,
-                        "closeness_score_awarded": selected_opt.closeness_score
-                    })
+                    response_records.append(
+                        {
+                            "is_correct": is_correct,
+                            "time_taken_seconds": time_taken,
+                            "closeness_score_awarded": selected_opt.closeness_score,
+                        }
+                    )
 
                 await session.commit()
 
@@ -400,11 +526,15 @@ async def seed_psychometric_environment():
                     total_time_spent_sec=total_time,
                     total_allocated_minutes=40.0,
                     total_questions=len(q_list),
-                    responses=response_records
+                    responses=response_records,
                 )
-                gti_eval = GuessingTendencyStrategy.compute_aggregate_gti(item_gti_scores)
+                gti_eval = GuessingTendencyStrategy.compute_aggregate_gti(
+                    item_gti_scores
+                )
                 irt_eval = IRT3PLStrategy.estimate_latent_ability(item_responses_data)
-                oeei_eval = OptionEliminationStrategy.evaluate_elimination(response_records)
+                oeei_eval = OptionEliminationStrategy.evaluate_elimination(
+                    response_records
+                )
                 satoi_eval = SATOIEngine.evaluate_satoi(response_records)
 
                 icrs_eval = IntegratedCognitiveReadinessEngine.compute_icrs(
@@ -412,7 +542,7 @@ async def seed_psychometric_environment():
                     gti_value=gti_eval,
                     oeei_score=oeei_eval["oeei_score"],
                     pacing_skew=pacing_eval["skew_ratio"],
-                    satoi_score=satoi_eval["satoi_score"]
+                    satoi_score=satoi_eval["satoi_score"],
                 )
 
                 att.total_score = round(total_score, 2)
@@ -425,10 +555,12 @@ async def seed_psychometric_environment():
                 att.oeei_score = oeei_eval["oeei_score"]
                 att.satoi_score = satoi_eval["satoi_score"]
                 att.icrs_score = icrs_eval["icrs_score"]
-                
+
                 session.add(att)
                 await session.commit()
-                print(f"   🏆 Seeded Attempt for '{exam.code}': Score={att.total_score}, Theta={att.irt_theta}, GTI={att.gti_score}, ICRS={att.icrs_score}")
+                print(
+                    f"   🏆 Seeded Attempt for '{exam.code}': Score={att.total_score}, Theta={att.irt_theta}, GTI={att.gti_score}, ICRS={att.icrs_score}"
+                )
 
         # 6. Seed FSRS Topic Memory States
         print("\n🧠 Generating FSRS Topic Memory States for User...")
@@ -436,7 +568,7 @@ async def seed_psychometric_environment():
             mem_res = await session.exec(
                 select(UserMemoryState).where(
                     UserMemoryState.user_id == user.id,
-                    UserMemoryState.subtopic_id == sub.id
+                    UserMemoryState.subtopic_id == sub.id,
                 )
             )
             mem = mem_res.first()
@@ -445,8 +577,10 @@ async def seed_psychometric_environment():
                 stab = round(random.uniform(1.5, 14.0), 2)
                 elapsed_days = random.uniform(1.0, 10.0)
                 r_val = FSRSEngine.calculate_retrievability(elapsed_days, stab)
-                
-                next_review = datetime.utcnow() + timedelta(days=max(1, int(stab * 1.5)))
+
+                next_review = datetime.utcnow() + timedelta(
+                    days=max(1, int(stab * 1.5))
+                )
 
                 mem = UserMemoryState(
                     user_id=user.id,
@@ -455,7 +589,7 @@ async def seed_psychometric_environment():
                     fsrs_stability=stab,
                     retrievability=round(r_val, 4),
                     last_reviewed_at=datetime.utcnow() - timedelta(days=elapsed_days),
-                    next_scheduled_review=next_review
+                    next_scheduled_review=next_review,
                 )
                 session.add(mem)
         await session.commit()

@@ -32,7 +32,6 @@ class Question(SQLModel, table=True):
         {"extend_existing": True},
     )
 
-
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     exam_id: uuid.UUID | None = Field(
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
@@ -72,9 +71,7 @@ class Question(SQLModel, table=True):
         description="True if stem and all options are fully extracted without seam cuts",
     )
     has_image: bool = Field(default=False, index=True)
-    page_numbers_json: list | None = Field(
-        default=[], sa_column=Column(PortableJSON)
-    )
+    page_numbers_json: list | None = Field(default=[], sa_column=Column(PortableJSON))
     passage_page_numbers_json: list | None = Field(
         default=[], sa_column=Column(PortableJSON)
     )
@@ -170,9 +167,7 @@ class QuestionAsset(SQLModel, table=True):
     asset_path: str
     asset_type: AssetType = Field(default=AssetType.DIAGRAM, index=True)
     caption: str | None = Field(default=None)
-    bounding_box_json: list | None = Field(
-        default=None, sa_column=Column(PortableJSON)
-    )
+    bounding_box_json: list | None = Field(default=None, sa_column=Column(PortableJSON))
     display_order: int = Field(default=1)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -187,7 +182,7 @@ class QuestionAsset(SQLModel, table=True):
     closeness_score: float = Field(default=0.00)
 
     question: Optional[Question] = Relationship(back_populates="options")
-    translations: List["OptionTranslation"] = Relationship(
+    translations: list["OptionTranslation"] = Relationship(
         back_populates="option", cascade_delete=True
     )
 

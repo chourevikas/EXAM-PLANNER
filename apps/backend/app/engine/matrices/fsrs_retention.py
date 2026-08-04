@@ -17,11 +17,11 @@ class FSRSEngine:
 
     @classmethod
     def update_memory_state(
-        cls, 
-        current_difficulty: float, 
+        cls,
+        current_difficulty: float,
         current_stability: float,
-        elapsed_days: float, 
-        grade: int
+        elapsed_days: float,
+        grade: int,
     ) -> Dict[str, Any]:
         r_current = cls.calculate_retrievability(elapsed_days, current_stability)
 
@@ -38,10 +38,10 @@ class FSRSEngine:
                 growth = 0.10 * w_g * (current_stability ** (-cls.W9))
             else:
                 growth = (
-                    math.exp(cls.W8) 
-                    * (11.0 - new_difficulty) 
-                    * (current_stability ** (-cls.W9)) 
-                    * (math.exp(cls.W10 * (1.0 - r_current)) - 1.0) 
+                    math.exp(cls.W8)
+                    * (11.0 - new_difficulty)
+                    * (current_stability ** (-cls.W9))
+                    * (math.exp(cls.W10 * (1.0 - r_current)) - 1.0)
                     * w_g
                 )
             new_stability = current_stability * (1.0 + max(0.01, growth))
@@ -63,5 +63,5 @@ class FSRSEngine:
             "reviewed_retrievability": round(r_current, 4),
             "days_until_next_review": days_until_next,
             "last_reviewed_at": now.isoformat(),
-            "next_scheduled_review": next_review_dt.isoformat()
+            "next_scheduled_review": next_review_dt.isoformat(),
         }

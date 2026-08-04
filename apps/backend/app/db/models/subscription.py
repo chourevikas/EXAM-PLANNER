@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from app.db.models.user import User
 
 
-
 class BillingInterval(str, Enum):
     MONTHLY = "MONTHLY"
     YEARLY = "YEARLY"
@@ -25,12 +24,14 @@ class SubscriptionStatus(str, Enum):
 
 class PlatformFeature(SQLModel, table=True):
     __tablename__ = "platform_features"
-    __table_args__ = (
-        Index("ix_platform_features_code", "feature_code", unique=True),
-    )
+    __table_args__ = (Index("ix_platform_features_code", "feature_code", unique=True),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    feature_code: str = Field(index=True, max_length=100, description="Unique code e.g. MOCK_GENERATOR, AI_TUTOR")
+    feature_code: str = Field(
+        index=True,
+        max_length=100,
+        description="Unique code e.g. MOCK_GENERATOR, AI_TUTOR",
+    )
     name: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
     is_active: bool = Field(default=True, index=True)
@@ -48,12 +49,20 @@ class SubscriptionPlan(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    plan_code: str = Field(index=True, max_length=100, description="e.g. FREE_TIER, PRO_MENTORSHIP, PREMIUM_SERIES")
+    plan_code: str = Field(
+        index=True,
+        max_length=100,
+        description="e.g. FREE_TIER, PRO_MENTORSHIP, PREMIUM_SERIES",
+    )
     name: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
-    price_cents: int = Field(default=0, description="Price in cents (e.g. 2999 = $29.99)")
+    price_cents: int = Field(
+        default=0, description="Price in cents (e.g. 2999 = $29.99)"
+    )
     currency: str = Field(default="INR", max_length=10)
-    billing_interval: BillingInterval = Field(default=BillingInterval.MONTHLY, index=True)
+    billing_interval: BillingInterval = Field(
+        default=BillingInterval.MONTHLY, index=True
+    )
     display_order: int = Field(default=0)
     is_active: bool = Field(default=True, index=True)
     metadata_json: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
@@ -73,7 +82,9 @@ class PlanFeatureLink(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
     feature_id: uuid.UUID = Field(foreign_key="platform_features.id", index=True)
-    usage_limit: Optional[int] = Field(default=None, description="Null means unlimited usage")
+    usage_limit: Optional[int] = Field(
+        default=None, description="Null means unlimited usage"
+    )
     config_json: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
 
     # Relationships
