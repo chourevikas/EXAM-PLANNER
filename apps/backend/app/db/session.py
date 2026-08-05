@@ -1,8 +1,9 @@
 from typing import AsyncGenerator
 from sqlmodel import SQLModel
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
+import app.db.models  # noqa: F401
 from app.config.settings import get_settings
 from app.config.logger import setup_logger
 
@@ -10,6 +11,13 @@ logger = setup_logger("DatabaseSession")
 settings = get_settings()
 
 db_url = settings.DATABASE_URL
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+if "asyncpg" in db_url and "sslmode=" in db_url:
+    db_url = db_url.replace("sslmode=", "ssl=")
 
 if db_url.startswith("sqlite"):
     engine_kwargs = {"echo": False}
@@ -38,43 +46,12 @@ async_session_factory = async_sessionmaker(
 
 
 async def async_init_db():
-    """Asynchronously creates all missing tables and columns in the database."""
+    """Asynchronously creates all missing tables in the database."""
     logger.info(
         f"Initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
     )
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
-        if not db_url.startswith("sqlite"):
-            await conn.execute(
-                text(
-                    "ALTER TABLE syllabus_versions ADD COLUMN IF NOT EXISTS title VARCHAR(200);"
-                )
-            )
-            await conn.execute(
-                text(
-                    "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS code VARCHAR(50) DEFAULT 'DEFAULT';"
-                )
-            )
-            await conn.execute(
-                text(
-                    "ALTER TABLE subjects ADD COLUMN IF NOT EXISTS is_optional_subject BOOLEAN DEFAULT FALSE;"
-                )
-            )
-            await conn.execute(
-                text(
-                    "ALTER TABLE subjects ALTER COLUMN is_optional_subject SET DEFAULT FALSE;"
-                )
-            )
-            await conn.execute(
-                text(
-                    "ALTER TABLE topics ADD COLUMN IF NOT EXISTS code VARCHAR(50) DEFAULT 'DEFAULT';"
-                )
-            )
-            await conn.execute(
-                text(
-                    "ALTER TABLE subtopics ADD COLUMN IF NOT EXISTS code VARCHAR(50) DEFAULT 'DEFAULT';"
-                )
-            )
     logger.info("Database initialization complete.")
 
 
