@@ -1,6 +1,6 @@
 import { UserRole, AuthResponse } from '../types/auth';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/auth';
+const API_BASE_URL = '/api/v1/auth';
 
 export async function loginUser(email: string, password: string, role?: UserRole): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/login`, {

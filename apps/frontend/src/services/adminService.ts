@@ -1,6 +1,6 @@
 import { AdminApprovalRequest, AdminApprovalLog, SystemStats, User } from '../types/auth';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/admin';
+const API_BASE_URL = '/api/v1/admin';
 
 function getAuthHeader() {
   const token = localStorage.getItem('access_token');

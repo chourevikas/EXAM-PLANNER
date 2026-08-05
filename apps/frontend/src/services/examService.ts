@@ -1,6 +1,6 @@
 import { UploadExamPayload, UploadExamResponse } from '../types/exam';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = '';
 
 export async function uploadExamPaper({
   examName,
