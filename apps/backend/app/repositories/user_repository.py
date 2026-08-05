@@ -117,8 +117,7 @@ class UserRepository:
         user.status = UserStatus.SUSPENDED
         self.session.add(user)
         await self.session.commit()
-        await self.session.refresh(user)
-        return user
+        return await self.get_by_id(user.id)
 
     async def reactivate_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
@@ -127,8 +126,7 @@ class UserRepository:
         user.status = UserStatus.ACTIVE
         self.session.add(user)
         await self.session.commit()
-        await self.session.refresh(user)
-        return user
+        return await self.get_by_id(user.id)
 
     async def approve_admin(
         self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str
@@ -155,8 +153,7 @@ class UserRepository:
         self.session.add(user)
         self.session.add(log)
         await self.session.commit()
-        await self.session.refresh(user)
-        return user
+        return await self.get_by_id(user.id)
 
     async def reject_admin(
         self,
@@ -190,8 +187,7 @@ class UserRepository:
         self.session.add(user)
         self.session.add(log)
         await self.session.commit()
-        await self.session.refresh(user)
-        return user
+        return await self.get_by_id(user.id)
 
     async def get_approval_logs(self) -> List[AdminApprovalLog]:
         stmt = select(AdminApprovalLog).order_by(AdminApprovalLog.created_at.desc())
