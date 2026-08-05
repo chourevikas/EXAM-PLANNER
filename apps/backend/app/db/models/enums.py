@@ -12,6 +12,7 @@ class UserStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     DELETED = "DELETED"
+    REJECTED = "REJECTED"
 
 
 class QuestionStatus(str, enum.Enum):

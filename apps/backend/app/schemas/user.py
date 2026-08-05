@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -26,7 +27,7 @@ class UserUpdate(BaseModel):
 
 
 class UserRead(UserBase):
-    id: str
+    id: uuid.UUID | str
     status: UserStatus
     subscription_tier: SubscriptionTier
     free_questions_attempted: int

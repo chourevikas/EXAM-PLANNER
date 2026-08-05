@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, ConfigDict
@@ -40,7 +41,7 @@ class AdminProfileOut(BaseModel):
 
 
 class UserOut(BaseModel):
-    id: str
+    id: uuid.UUID | str
     full_name: str
     email: EmailStr
     role: UserRole
@@ -77,7 +78,7 @@ class VerifyEmailRequest(BaseModel):
 
 
 class AdminApprovalRequestOut(BaseModel):
-    id: str
+    id: uuid.UUID | str
     full_name: str
     email: EmailStr
     role: UserRole
@@ -94,7 +95,7 @@ class AdminActionPayload(BaseModel):
 
 
 class AdminApprovalLogOut(BaseModel):
-    id: str
+    id: uuid.UUID | str
     admin_user_name: str
     admin_user_email: str
     action: str

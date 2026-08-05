@@ -49,25 +49,34 @@ class User(SQLModel, table=True):
     )
     subscriptions: List["UserSubscription"] = Relationship(back_populates="user")
 
+    def _get_student_profile_safe(self) -> Optional["StudentProfile"]:
+        from sqlalchemy import inspect
+        state = inspect(self)
+        if state is not None and "student_profile" in state.unloaded:
+            return None
+        return self.student_profile
+
     @property
     def subscription_tier(self) -> SubscriptionTier:
-        if self.student_profile:
-            return self.student_profile.subscription_tier
+        prof = self._get_student_profile_safe()
+        if prof:
+            return prof.subscription_tier
         return SubscriptionTier.PREMIUM
 
     @property
     def free_questions_attempted(self) -> int:
-        return (
-            self.student_profile.free_questions_attempted if self.student_profile else 0
-        )
+        prof = self._get_student_profile_safe()
+        return prof.free_questions_attempted if prof else 0
 
     @property
     def current_streak(self) -> int:
-        return self.student_profile.current_streak if self.student_profile else 0
+        prof = self._get_student_profile_safe()
+        return prof.current_streak if prof else 0
 
     @property
     def total_xp(self) -> int:
-        return self.student_profile.total_xp if self.student_profile else 0
+        prof = self._get_student_profile_safe()
+        return prof.total_xp if prof else 0
 
 
 class StudentProfile(SQLModel, table=True):

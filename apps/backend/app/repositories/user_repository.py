@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models.user import (
     User,
@@ -20,13 +21,27 @@ class UserRepository:
         self.session = session
 
     async def get_by_email(self, email: str) -> Optional[User]:
-        stmt = select(User).where(User.email == email.lower())
+        stmt = (
+            select(User)
+            .where(User.email == email.lower())
+            .options(
+                selectinload(User.student_profile),
+                selectinload(User.admin_profile),
+            )
+        )
         res = await self.session.exec(stmt)
         return res.first()
 
     async def get_by_id(self, user_id: uuid.UUID | str) -> Optional[User]:
         uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
-        stmt = select(User).where(User.id == uid)
+        stmt = (
+            select(User)
+            .where(User.id == uid)
+            .options(
+                selectinload(User.student_profile),
+                selectinload(User.admin_profile),
+            )
+        )
         res = await self.session.exec(stmt)
         return res.first()
 
@@ -64,13 +79,16 @@ class UserRepository:
             self.session.add(admin_prof)
 
         await self.session.commit()
-        await self.session.refresh(new_user)
-        return new_user
+        return await self.get_by_id(new_user.id)
 
     async def get_pending_admins(self) -> List[User]:
         stmt = (
             select(User)
             .where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING)
+            .options(
+                selectinload(User.student_profile),
+                selectinload(User.admin_profile),
+            )
             .order_by(User.created_at.desc())
         )
         res = await self.session.exec(stmt)
@@ -82,6 +100,10 @@ class UserRepository:
             .where(
                 User.role == UserRole.ADMIN,
                 User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED]),
+            )
+            .options(
+                selectinload(User.student_profile),
+                selectinload(User.admin_profile),
             )
             .order_by(User.created_at.desc())
         )
