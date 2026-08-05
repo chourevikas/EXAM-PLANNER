@@ -3,7 +3,7 @@ name = "backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "aioboto3>=15.5.0",
     "aiofiles>=25.1.0",
@@ -38,4 +38,7 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = [".", "app"]
 testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["app"]
 
