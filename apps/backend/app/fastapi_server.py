@@ -1,14 +1,12 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlmodel import select
 
 from app.config.settings import settings
-from app.db.session import async_init_db, async_session_factory
-from app.db.models import User, UserRole, UserStatus
-from app.core.security import get_password_hash
+from app.db.session import async_init_db
 from app.core.exceptions import BaseAppException
 from app.config.logger import setup_logger
 
@@ -24,35 +22,10 @@ from app.routers.answer_keys import router as answer_keys_router
 from app.routers.analytics import router as analytics_router
 from app.routers.review import router as review_router
 
-from contextlib import asynccontextmanager
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await async_init_db()
-    async with async_session_factory() as session:
-        try:
-            super_admin_email = "superadmin@examplanner.com"
-            result = await session.exec(
-                select(User).where(User.email == super_admin_email)
-            )
-            existing = result.first()
-            if not existing:
-                super_admin = User(
-                    email=super_admin_email,
-                    full_name="Super Admin",
-                    password_hash=get_password_hash("SuperAdmin#2026"),
-                    role=UserRole.SUPER_ADMIN,
-                    status=UserStatus.ACTIVE,
-                    is_verified=True,
-                )
-                session.add(super_admin)
-                await session.commit()
-                logger.info(
-                    "Successfully seeded default Super Admin user: superadmin@examplanner.com"
-                )
-        except Exception as e:
-            logger.error(f"Failed to seed Super Admin: {e}")
     yield
 
 

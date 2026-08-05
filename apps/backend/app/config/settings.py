@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
+    SUPERADMIN_EMAIL: str = Field(default="admin@examplanner.com")
+    SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")
+    SUPERADMIN_NAME: str = Field(default="System Super Admin")
 
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
