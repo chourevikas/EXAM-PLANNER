@@ -2,7 +2,7 @@ name: Build and Publish Docker Images
 
 on:
   push:
-    branches: [ "main", "master", "feature/docker-cicd" ]
+    branches: [ "main", "master", "feature/docker-cicd", "release/0.0.1" ]
   pull_request:
     branches: [ "main", "master", "feature/docker-cicd" ]
 
