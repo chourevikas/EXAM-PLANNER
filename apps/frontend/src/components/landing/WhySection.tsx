@@ -35,49 +35,41 @@ export function WhySection() {
   return (
     <section
       id="about"
+      className="landing-section-padding"
       style={{
-        padding: '104px 0',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-color)',
         transition: 'background-color 0.3s ease, border-color 0.3s ease',
       }}
     >
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 52px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+      <div className="landing-container">
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div className="section-label" style={{ justifyContent: 'center' }}>
             Why PrepAI
           </div>
           <h2
+            className="section-heading"
             style={{
-              fontSize: 42,
               fontWeight: 800,
               color: 'var(--text-main)',
-              letterSpacing: '-1px',
               marginBottom: 16,
             }}
           >
             Built Different, by Design
           </h2>
           <p
+            className="section-subheading"
             style={{
-              fontSize: 17,
               color: 'var(--text-muted)',
               maxWidth: 500,
               margin: '0 auto',
-              lineHeight: 1.7,
             }}
           >
             Not a generic coaching platform. A precision instrument built for
             serious UPSC aspirants.
           </p>
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 28,
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {cols.map((col, i) => (
             <div
               key={i}
@@ -85,7 +77,7 @@ export function WhySection() {
                 background: 'var(--bg-body)',
                 border: '1.5px solid var(--border-color)',
                 borderRadius: 18,
-                padding: 36,
+                padding: '28px 24px',
                 transition: 'all 0.3s ease',
               }}
             >
@@ -153,3 +145,4 @@ export function WhySection() {
     </section>
   );
 }
+

@@ -10,8 +10,9 @@ interface CTASectionProps {
 export function CTASection({ onSignup, onLogin }: CTASectionProps) {
   return (
     <section
+      id="pricing"
+      className="landing-section-padding"
       style={{
-        padding: '104px 0',
         background: C.navy,
         position: 'relative',
         overflow: 'hidden',
@@ -23,7 +24,8 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%,-50%)',
-          width: 800,
+          width: '100%',
+          maxWidth: 800,
           height: 500,
           background:
             'radial-gradient(ellipse,rgba(37,99,235,0.18) 0%,transparent 65%)',
@@ -41,10 +43,8 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
       />
 
       <div
+        className="landing-container"
         style={{
-          maxWidth: 1320,
-          margin: '0 auto',
-          padding: '0 52px',
           textAlign: 'center',
           position: 'relative',
           zIndex: 1,
@@ -59,7 +59,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             border: '1px solid rgba(37,99,235,0.3)',
             borderRadius: 99,
             padding: '6px 18px',
-            marginBottom: 32,
+            marginBottom: 24,
           }}
         >
           <div style={{ position: 'relative', width: 8, height: 8 }}>
@@ -87,24 +87,21 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
         </div>
 
         <h2
+          className="hero-heading"
           style={{
-            fontSize: 56,
             fontWeight: 900,
             color: '#fff',
-            letterSpacing: '-1.5px',
             marginBottom: 20,
-            lineHeight: 1.06,
           }}
         >
-          Your AI Mentor<br />is Ready.
+          Your AI Mentor is Ready.
         </h2>
         <p
+          className="section-subheading"
           style={{
-            fontSize: 18,
             color: C.slate400,
-            maxWidth: 500,
-            margin: '0 auto 48px',
-            lineHeight: 1.7,
+            maxWidth: 520,
+            margin: '0 auto 40px',
           }}
         >
           Join thousands of aspirants preparing smarter with AI. Start free — no
@@ -133,3 +130,4 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
     </section>
   );
 }
+

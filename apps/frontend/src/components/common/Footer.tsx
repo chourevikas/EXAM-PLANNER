@@ -23,17 +23,13 @@ export function Footer() {
       style={{
         background: '#080E1A',
         borderTop: `1px solid ${C.slate800}`,
-        padding: '60px 0 32px',
+        padding: '56px 0 32px',
       }}
     >
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 52px' }}>
+      <div className="landing-container">
         <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 48,
-          }}
+          className="flex flex-col lg:flex-row justify-between items-start gap-10 lg:gap-16"
+          style={{ marginBottom: 48 }}
         >
           <div>
             <Logo inverted />
@@ -41,7 +37,7 @@ export function Footer() {
               style={{
                 fontSize: 13,
                 color: C.slate600,
-                maxWidth: 220,
+                maxWidth: 240,
                 lineHeight: 1.65,
                 marginTop: 12,
               }}
@@ -49,7 +45,7 @@ export function Footer() {
               AI-powered UPSC preparation for serious aspirants.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 64 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 lg:gap-16 w-full lg:w-auto">
             {cols.map((col) => (
               <div key={col.h}>
                 <div
@@ -93,18 +89,16 @@ export function Footer() {
           </div>
         </div>
         <div
+          className="flex flex-col sm:flex-row justify-between items-center gap-4"
           style={{
             borderTop: `1px solid ${C.slate800}`,
             paddingTop: 24,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: 13, color: C.slate600 }}>
+          <div style={{ fontSize: 13, color: C.slate600, textAlign: 'center' }}>
             © 2024 PrepAI UPSC. All rights reserved.
           </div>
-          <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
             {['Twitter', 'LinkedIn', 'YouTube', 'Telegram'].map((s) => (
               <a
                 key={s}
@@ -131,3 +125,4 @@ export function Footer() {
     </footer>
   );
 }
+

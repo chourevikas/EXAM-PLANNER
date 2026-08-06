@@ -43,10 +43,10 @@ export function Stat({
     <div ref={ref} style={{ textAlign: 'center' }}>
       <div
         style={{
-          fontSize: 54,
+          fontSize: 'clamp(2.25rem, 4vw, 3.375rem)',
           fontWeight: 900,
           color: 'var(--text-main)',
-          letterSpacing: '-2px',
+          letterSpacing: '-1px',
           lineHeight: 1.05,
         }}
       >
@@ -62,7 +62,7 @@ export function Stat({
           margin: '12px auto 10px',
         }}
       />
-      <div style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 500 }}>
+      <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 500 }}>
         {label}
       </div>
     </div>
@@ -71,31 +71,23 @@ export function Stat({
 
 export function StatsSection() {
   return (
-    <section style={{ padding: '104px 0', background: 'var(--bg-body)', transition: 'background-color 0.3s ease' }}>
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 52px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+    <section className="landing-section-padding" style={{ background: 'var(--bg-body)', transition: 'background-color 0.3s ease' }}>
+      <div className="landing-container">
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div className="section-label" style={{ justifyContent: 'center' }}>
             By The Numbers
           </div>
           <h2
+            className="section-heading"
             style={{
-              fontSize: 42,
               fontWeight: 800,
               color: 'var(--text-main)',
-              letterSpacing: '-1px',
             }}
           >
             Trusted by Serious Aspirants
           </h2>
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4,1fr)',
-            gap: 40,
-            alignItems: 'center',
-          }}
-        >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 items-center">
           <Stat value={100000} suffix="+" label="Questions in Bank" />
           <Stat value={95} suffix="%" label="AI Classification Accuracy" />
           <Stat value={50} suffix="+" label="Subjects Covered" />
@@ -105,3 +97,4 @@ export function StatsSection() {
     </section>
   );
 }
+

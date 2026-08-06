@@ -81,43 +81,35 @@ export function FeaturesSection() {
   ];
 
   return (
-    <section id="features" style={{ padding: '104px 0', background: 'var(--bg-body)', transition: 'background-color 0.3s ease' }}>
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 52px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+    <section id="features" className="landing-section-padding" style={{ background: 'var(--bg-body)', transition: 'background-color 0.3s ease' }}>
+      <div className="landing-container">
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div className="section-label" style={{ justifyContent: 'center' }}>
             Platform Features
           </div>
           <h2
+            className="section-heading"
             style={{
-              fontSize: 42,
               fontWeight: 800,
               color: 'var(--text-main)',
-              letterSpacing: '-1px',
               marginBottom: 16,
             }}
           >
             Everything You Need
           </h2>
           <p
+            className="section-subheading"
             style={{
-              fontSize: 17,
               color: 'var(--text-muted)',
               maxWidth: 500,
               margin: '0 auto',
-              lineHeight: 1.7,
             }}
           >
             A complete AI ecosystem built exclusively for UPSC preparation —
             nothing generic, nothing unnecessary.
           </p>
         </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3,1fr)',
-            gap: 20,
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f, i) => (
             <FeatureCard key={i} {...f} />
           ))}
@@ -126,3 +118,4 @@ export function FeaturesSection() {
     </section>
   );
 }
+

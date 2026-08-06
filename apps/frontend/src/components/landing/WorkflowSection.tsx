@@ -38,46 +38,45 @@ export function WorkflowSection() {
   return (
     <section
       id="how-it-works"
+      className="landing-section-padding"
       style={{
-        padding: '104px 0',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-color)',
         borderBottom: '1px solid var(--border-color)',
         transition: 'background-color 0.3s ease, border-color 0.3s ease',
       }}
     >
-      <div style={{ maxWidth: 1320, margin: '0 auto', padding: '0 52px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 72 }}>
+      <div className="landing-container">
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div className="section-label" style={{ justifyContent: 'center' }}>
             Intelligent Workflow
           </div>
           <h2
+            className="section-heading"
             style={{
-              fontSize: 42,
               fontWeight: 800,
               color: 'var(--text-main)',
-              letterSpacing: '-1px',
               marginBottom: 16,
             }}
           >
             How PrepAI Works
           </h2>
           <p
+            className="section-subheading"
             style={{
-              fontSize: 17,
               color: 'var(--text-muted)',
-              maxWidth: 460,
+              maxWidth: 480,
               margin: '0 auto',
-              lineHeight: 1.7,
             }}
           >
             Five precision steps from your first session to exam-day readiness.
           </p>
         </div>
 
+        {/* Desktop Layout (horizontal 5 steps) */}
         <div
+          className="hidden lg:flex"
           style={{
-            display: 'flex',
             alignItems: 'flex-start',
             position: 'relative',
           }}
@@ -180,7 +179,78 @@ export function WorkflowSection() {
             </div>
           ))}
         </div>
+
+        {/* Mobile & Tablet Vertical Timeline Layout */}
+        <div className="flex flex-col lg:hidden gap-6">
+          {steps.map((s, i) => (
+            <div
+              key={s.n}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 16,
+                padding: 20,
+                borderRadius: 16,
+                background: 'var(--bg-body)',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  background:
+                    i === 2
+                      ? 'linear-gradient(135deg, var(--royal), #1D4ED8)'
+                      : 'var(--bg-card)',
+                  border: `2px solid ${i === 2 ? 'var(--royal)' : 'var(--border-color)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: i === 2 ? '#ffffff' : 'var(--royal)',
+                }}
+              >
+                {s.icon}
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: 'var(--royal)',
+                    letterSpacing: '1px',
+                    marginBottom: 2,
+                  }}
+                >
+                  STEP {s.n}
+                </div>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: 'var(--text-main)',
+                    marginBottom: 4,
+                  }}
+                >
+                  {s.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {s.desc}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
+
