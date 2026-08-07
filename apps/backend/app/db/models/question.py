@@ -15,6 +15,8 @@ from app.db.models.types import PortableJSON
 
 if TYPE_CHECKING:
     from app.db.models.metadata import QuestionMetadata
+    from app.db.models.explanation import QuestionExplanation
+    from app.db.models.hierarchy_link import QuestionHierarchyLink
 
 
 class Question(SQLModel, table=True):
@@ -40,6 +42,10 @@ class Question(SQLModel, table=True):
     )
     passage_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="passages.id", ondelete="SET NULL", index=True
+    )
+
+    canonical_question_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
 
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
@@ -91,6 +97,15 @@ class Question(SQLModel, table=True):
     )
     metadata_record: Optional["QuestionMetadata"] = Relationship(
         back_populates="question", cascade_delete=True
+    )
+    explanation_records: list["QuestionExplanation"] = Relationship(
+        back_populates="question", cascade_delete=True
+    )
+    hierarchy_links: list["QuestionHierarchyLink"] = Relationship(
+        back_populates="question", cascade_delete=True
+    )
+    canonical_question: Optional["Question"] = Relationship(
+        sa_relationship_kwargs={"remote_side": "Question.id"}
     )
 
 

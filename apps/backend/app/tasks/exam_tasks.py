@@ -42,14 +42,15 @@ def process_exam_pdf_task(
 
 
 async def async_process_exam_pdf(
-    exam_id_str: str,
-    pdf_path: str,
+    exam_id_str: Optional[str] = None,
+    pdf_path: str = "",
     exam_title: Optional[str] = None,
     task_id: Optional[str] = None,
     execution_engine: str = "FastAPI BackgroundTasks",
 ):
     """Core async runner for PDF extraction pipeline with full logging and automated temp file cleanup."""
     t_id = task_id or str(uuid.uuid4())
+    exam_id_str = exam_id_str or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
     pdf_file = Path(pdf_path).resolve()

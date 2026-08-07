@@ -2,7 +2,7 @@ import uuid
 import json
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import (
     Exam,
@@ -56,8 +56,8 @@ class HumanReviewService:
         if only_flagged:
             query = query.where(HumanReviewTask.is_flagged_by_validator == True)
 
-        result = await self.session.exec(query.order_by(HumanReviewTask.created_at))
-        return result.all()
+        result = await self.session.exec(query.order_by(col(HumanReviewTask.created_at)))
+        return list(result.all())
 
     async def get_question_review_detail(
         self, question_id: uuid.UUID
@@ -82,7 +82,7 @@ class HumanReviewService:
         options_res = await self.session.exec(
             select(QuestionOption)
             .where(QuestionOption.question_id == question_id)
-            .order_by(QuestionOption.display_order)
+            .order_by(col(QuestionOption.display_order))
         )
         options = options_res.all()
 
@@ -209,12 +209,13 @@ class HumanReviewService:
                 trans.question_text = updated_question_text
                 self.session.add(trans)
 
-        # 3. Update Options if provided (text & correctness)
+        # 3. Update Options if provided (text, correctness & distractor analysis)
         if updated_options:
             for opt_data in updated_options:
                 opt_label = opt_data.get("option_label")
                 opt_text = opt_data.get("option_text")
                 is_corr = opt_data.get("is_correct", False)
+                d_analysis = opt_data.get("distractor_analysis")
 
                 opt_res = await self.session.exec(
                     select(QuestionOption).where(
@@ -227,16 +228,18 @@ class HumanReviewService:
                     opt.is_correct = is_corr
                     self.session.add(opt)
 
-                    if opt_text:
-                        opt_trans_res = await self.session.exec(
-                            select(OptionTranslation).where(
-                                OptionTranslation.option_id == opt.id
-                            )
+                    opt_trans_res = await self.session.exec(
+                        select(OptionTranslation).where(
+                            OptionTranslation.option_id == opt.id
                         )
-                        opt_trans = opt_trans_res.first()
-                        if opt_trans:
+                    )
+                    opt_trans = opt_trans_res.first()
+                    if opt_trans:
+                        if opt_text:
                             opt_trans.option_text = opt_text
-                            self.session.add(opt_trans)
+                        if d_analysis:
+                            opt_trans.distractor_analysis = d_analysis
+                        self.session.add(opt_trans)
 
         # Update Correct Answer explicitly if label specified
         if correct_option_label:
