@@ -48,16 +48,20 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         last_name = data.get("last_name") or ""
         full_name = f"{first_name} {last_name}".strip() or "Clerk User"
         
-        # Check if user already exists
-        existing = await db.execute(select(User).where(User.email == email))
+        clerk_id = data.get("id")
+        image_url = data.get("image_url")
+        
+        # Check if user already exists by clerk_id or email
+        existing = await db.execute(select(User).where((User.clerk_id == clerk_id) | (User.email == email)))
         user = existing.scalar_one_or_none()
         
         if not user:
             # Create new user
             user = User(
                 email=email,
+                clerk_id=clerk_id,
                 full_name=full_name,
-                password_hash="clerk_oauth_user",
+                profile_image=image_url,
                 role=UserRole.STUDENT,
                 status=UserStatus.ACTIVE,
                 is_verified=True
@@ -68,6 +72,13 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             # Create StudentProfile
             student_profile = StudentProfile(user_id=user.id)
             db.add(student_profile)
+            await db.commit()
+        else:
+            # Update existing user with clerk_id if missing
+            if not user.clerk_id:
+                user.clerk_id = clerk_id
+            if image_url:
+                user.profile_image = image_url
             await db.commit()
             
     return {"status": "success"}

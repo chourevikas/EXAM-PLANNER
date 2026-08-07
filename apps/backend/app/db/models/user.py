@@ -21,7 +21,8 @@ class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     full_name: str = Field(max_length=255)
     email: str = Field(unique=True, index=True, max_length=255)
-    password_hash: str
+    clerk_id: Optional[str] = Field(default=None, unique=True, index=True, max_length=255)
+    password_hash: Optional[str] = Field(default=None)
     role: UserRole = Field(default=UserRole.STUDENT)
     status: UserStatus = Field(default=UserStatus.ACTIVE)
     is_verified: bool = Field(default=False)
