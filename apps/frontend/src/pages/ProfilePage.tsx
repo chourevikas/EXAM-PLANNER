@@ -121,7 +121,7 @@ export function ProfilePage() {
 
         <main className="admin-container" style={{ margin: '32px auto', width: '100%', maxWidth: '800px', padding: '0 32px' }}>
           <section className="anim-fade-up">
-            <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, marginBottom: '16px', fontSize: '14px', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color = 'var(--royal)'} onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}>
+            <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, marginBottom: '16px', fontSize: '14px', transition: 'color 0.2s' }} onMouseOver={(e: any) => e.currentTarget.style.color = 'var(--royal)'} onMouseOut={(e: any) => e.currentTarget.style.color = 'var(--text-muted)'}>
               ← Back to Dashboard
             </Link>
             <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-main)', marginBottom: 24 }}>
