@@ -264,7 +264,7 @@ export function SignInPage() {
                 </span>
               </div>
 
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
                 <button
                   type="button"
                   className="btn btn-ghost"
