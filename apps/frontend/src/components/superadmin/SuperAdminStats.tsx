@@ -90,7 +90,7 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
             <div>
               <div
                 style={{
-                  fontSize: card.isStatus ? 18 : 30,
+                  fontSize: 30,
                   fontWeight: 800,
                   color: 'var(--text-main)',
                   letterSpacing: '-0.5px',
