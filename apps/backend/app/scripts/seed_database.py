@@ -1,6 +1,12 @@
+import sys
 import uuid
 import asyncio
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+# Add project root (apps/backend) to sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 from sqlmodel import select
 from app.db.session import async_session_factory, async_init_db
 from app.db.models import (
