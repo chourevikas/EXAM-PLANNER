@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { C } from '../constants/theme';
 import { logoutUser } from '../services/authService';
+import { useAuth } from '@clerk/clerk-react';
 
 export function SignOutPage() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   useEffect(() => {
     logoutUser();
+    signOut(); // Sign out of Clerk as well
 
     const timer = setTimeout(() => {
       navigate('/');

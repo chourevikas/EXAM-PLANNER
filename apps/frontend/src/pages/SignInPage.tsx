@@ -16,6 +16,13 @@ export function SignInPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const navigate = useNavigate();
   const clerk = useClerk();
+  const { isSignedIn } = clerk;
+
+  React.useEffect(() => {
+    if (isSignedIn) {
+      navigate('/dashboard');
+    }
+  }, [isSignedIn, navigate]);
 
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);

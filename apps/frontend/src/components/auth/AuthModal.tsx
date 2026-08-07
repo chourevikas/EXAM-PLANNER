@@ -35,6 +35,14 @@ export function AuthModal({
   
   const navigate = useNavigate();
   const clerk = useClerk();
+  const { isSignedIn } = clerk;
+
+  React.useEffect(() => {
+    if (isSignedIn && isOpen) {
+      onClose();
+      navigate('/dashboard');
+    }
+  }, [isSignedIn, isOpen, navigate, onClose]);
 
   if (!isOpen) return null;
 
