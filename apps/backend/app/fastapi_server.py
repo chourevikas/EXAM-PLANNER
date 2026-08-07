@@ -21,6 +21,8 @@ from app.routers.questions import router as questions_router
 from app.routers.answer_keys import router as answer_keys_router
 from app.routers.analytics import router as analytics_router
 from app.routers.review import router as review_router
+from app.routers.explanations import router as explanations_router
+from app.routers.pipeline import router as pipeline_router
 
 
 @asynccontextmanager
@@ -91,6 +93,8 @@ app.include_router(questions_router, prefix=settings.API_V1_STR)
 app.include_router(answer_keys_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(review_router, prefix=settings.API_V1_STR)
+app.include_router(explanations_router, prefix=settings.API_V1_STR)
+app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

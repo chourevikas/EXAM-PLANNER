@@ -91,6 +91,16 @@ async def async_process_answer_key_pdf(
             f"Paper: '{paper_title}' | Extracted: {result.get('total_keys_extracted')} | Mapped: {result.get('total_keys_mapped')}"
         )
         log.info("=" * 70)
+
+        # Notify PipelineManagementService & Auto-Chain Pipeline 3
+        from app.db.session import async_session_factory
+        from app.services.pipeline_management_service import PipelineManagementService
+        async with async_session_factory() as session:
+            pm_service = PipelineManagementService(session)
+            await pm_service.on_pipeline_2_completed(
+                uuid.UUID(exam_id_str), auto_trigger_pipeline_3=True
+            )
+
         return {**result, "task_id": t_id, "execution_engine": execution_engine}
 
     except Exception as exc:

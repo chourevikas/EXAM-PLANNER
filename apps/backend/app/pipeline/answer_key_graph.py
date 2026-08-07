@@ -192,8 +192,10 @@ async def node_validate_set_code_and_map_db(
                 options = opts_res.all()
 
                 found_opt = False
+                clean_extracted_label = opt_label.strip().strip("()").strip(".")
                 for opt in options:
-                    if opt.option_label.upper() == opt_label:
+                    target_label = opt.option_label.upper().strip().strip("()").strip(".")
+                    if target_label == clean_extracted_label:
                         opt.is_correct = True
                         found_opt = True
                     else:
