@@ -1,9 +1,5 @@
-FROM node:20-alpine as builder
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Pass build arg to environment
-ARG VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
 COPY package*.json ./
 RUN npm install
