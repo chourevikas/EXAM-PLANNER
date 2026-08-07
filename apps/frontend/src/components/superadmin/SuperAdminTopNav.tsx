@@ -12,7 +12,6 @@ const breadcrumbMap: Record<SuperAdminTab, string[]> = {
   pending: ['Super Admin', 'Admin Approvals', 'Pending Requests'],
   active: ['Super Admin', 'User Management', 'Active Admins'],
   audit: ['Super Admin', 'Governance', 'Audit Logs'],
-  diagnostics: ['Super Admin', 'Infrastructure', 'System Diagnostics'],
 };
 
 export function SuperAdminTopNav({ activeTab, onNavigate }: SuperAdminTopNavProps) {
@@ -91,26 +90,6 @@ export function SuperAdminTopNav({ activeTab, onNavigate }: SuperAdminTopNavProp
         >
           ⌘K
         </span>
-      </div>
-
-      {/* RDS Database Status Badge */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '5px 12px',
-          borderRadius: 99,
-          background: 'rgba(16, 185, 129, 0.12)',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#10b981',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
-        <Database size={13} />
-        <span>RDS Live</span>
       </div>
 
       {/* Theme Toggle Button */}

@@ -36,16 +36,6 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
       bg: 'rgba(37, 99, 235, 0.12)',
       icon: GraduationCap,
     },
-    {
-      title: 'AWS RDS Status',
-      value: loading ? 'Checking...' : stats?.aws_rds_status ?? 'Connected',
-      badge: 'PostgreSQL Active',
-      badgeColor: '#8b5cf6',
-      color: '#8b5cf6',
-      bg: 'rgba(139, 92, 246, 0.12)',
-      icon: Database,
-      isStatus: true,
-    },
   ];
 
   return (

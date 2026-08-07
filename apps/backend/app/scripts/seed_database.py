@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from sqlmodel import select
+from app.core.security import get_password_hash
 from app.db.session import async_session_factory, async_init_db
 from app.db.models import (
     User,
@@ -69,7 +70,7 @@ async def seed_database():
         admin_user = User(
             full_name="Dr. Ananya Sharma (Super Admin)",
             email="admin@exammentorship.com",
-            password_hash="pbkdf2:sha256:dummy_admin_hash",
+            password_hash=get_password_hash("SuperAdmin#2026!"),
             role=UserRole.SUPER_ADMIN,
             status=UserStatus.ACTIVE,
             is_verified=True,
@@ -77,7 +78,7 @@ async def seed_database():
         student_user = User(
             full_name="Vikramaditya Singh (Student)",
             email="vikram@student.com",
-            password_hash="pbkdf2:sha256:dummy_student_hash",
+            password_hash=get_password_hash("Student#2026!"),
             role=UserRole.STUDENT,
             status=UserStatus.ACTIVE,
             is_verified=True,

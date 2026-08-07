@@ -4,7 +4,6 @@ import {
   ShieldAlert,
   Users,
   History,
-  Activity,
   LayoutDashboard,
   LogOut,
   ChevronLeft,
@@ -35,7 +34,6 @@ export function SuperAdminSidebar({
     { id: 'pending', label: 'Pending Approvals', icon: ShieldAlert, badge: pendingCount },
     { id: 'active', label: 'Active Admins', icon: Users },
     { id: 'audit', label: 'Approval Audit Logs', icon: History },
-    { id: 'diagnostics', label: 'System Diagnostics', icon: Activity },
   ];
 
   return (
