@@ -82,7 +82,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             />
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#60A5FA' }}>
-            Your AI Mentor Is Ready
+            Smart Platform Ready
           </span>
         </div>
 
@@ -94,7 +94,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             marginBottom: 20,
           }}
         >
-          Your AI Mentor is Ready.
+          Ready to Master Your Exam Strategy with Precision Analytics?
         </h2>
         <p
           className="section-subheading"
@@ -104,8 +104,8 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             margin: '0 auto 40px',
           }}
         >
-          Join thousands of aspirants preparing smarter with AI. Start free — no
-          credit card, no commitment.
+          Join thousands of aspirants using adaptive diagnostics to rank higher.
+          Start free — no credit card, no commitment.
         </p>
         <div
           style={{

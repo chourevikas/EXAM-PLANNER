@@ -312,7 +312,7 @@ export function AuthModal({
                     <input
                       type="text"
                       required
-                      placeholder="e.g. PrepAI IAS Academy"
+                      placeholder="e.g. RankEdge IAS Academy"
                       value={organizationName}
                       onChange={(e) => setOrganizationName(e.target.value)}
                       className="form-input"

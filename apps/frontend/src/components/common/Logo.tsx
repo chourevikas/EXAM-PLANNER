@@ -43,7 +43,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
             color: inverted ? '#fff' : C.navy,
           }}
         >
-          PrepAI
+          RankEdge
         </div>
         <div
           style={{
@@ -55,7 +55,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
             color: inverted ? C.slate400 : C.muted,
           }}
         >
-          UPSC
+          ADAPTIVE
         </div>
       </div>
     </div>

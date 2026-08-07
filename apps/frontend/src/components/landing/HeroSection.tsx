@@ -8,7 +8,7 @@ interface HeroSectionProps {
 }
 
 const trustPills = [
-  { icon: Zap,      label: 'AI-Powered Analysis' },
+  { icon: Zap,      label: 'Psychometric Performance Analysis' },
   { icon: BookOpen, label: 'Real PYQ Bank' },
   { icon: Map,      label: 'Adaptive Study Plans' },
   { icon: Unlock,   label: 'Free to Start' },
@@ -71,7 +71,7 @@ export function HeroSection({ onSignup }: HeroSectionProps) {
             >
               <Zap size={12} strokeWidth={2.5} style={{ color: 'var(--royal)' }} />
               <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--royal)', letterSpacing: '0.3px' }}>
-                AI-Powered Exam Preparation Platform
+                Next-Gen IRT Exam Preparation System
               </span>
             </div>
 
@@ -122,8 +122,8 @@ export function HeroSection({ onSignup }: HeroSectionProps) {
               }}
             >
               Solve real Previous Year Questions, discover your weak areas with
-              intelligent analysis, and follow a personalized plan crafted by
-              your AI Mentor — built for serious exam aspirants.
+              intelligent analysis, and follow an adaptive plan tailored by
+              your Personal Learning Engine — built for serious exam aspirants.
             </p>
 
             {/* Trust Pill Chips */}

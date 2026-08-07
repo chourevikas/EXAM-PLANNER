@@ -11,7 +11,7 @@ export function Testimonials() {
       accentColor: '#3b82f6',
       avatarBg: 'linear-gradient(135deg, #2563eb, #1D4ED8)',
       quote:
-        'PrepAI completely changed how I prepared. The AI identified my weak spots in Polity within days — accuracy jumped from 54% to 83% in just two months.',
+        'RankEdge completely changed how I prepared. The platform identified my weak spots in Polity within days — accuracy jumped from 54% to 83% in just two months.',
     },
     {
       name: 'Priya Nair',

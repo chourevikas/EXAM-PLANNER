@@ -123,7 +123,7 @@ export function DashboardPreview() {
                 }}
               >
                 <span style={{ fontSize: 11, color: C.slate600 }}>
-                  app.prepai.in/dashboard
+                  app.rankedge.in/dashboard
                 </span>
               </div>
             </div>

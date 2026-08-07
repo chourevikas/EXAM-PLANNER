@@ -17,7 +17,7 @@ export function WhySection() {
       <div className="landing-container">
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <div className="section-label" style={{ justifyContent: 'center' }}>Why PrepAI</div>
+          <div className="section-label" style={{ justifyContent: 'center' }}>Why RankEdge</div>
           <h2
             className="section-heading"
             style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}
@@ -85,13 +85,13 @@ export function WhySection() {
             </h3>
 
             <p style={{ fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.72, marginBottom: 28 }}>
-              PrepAI doesn't just throw questions at you — it understands your learning patterns,
+              RankEdge doesn't just throw questions at you — it understands your learning patterns,
               predicts where you'll lose marks, and adapts every session to fix exactly that.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
-                'AI-driven adaptive question selection',
+                'IRT-calibrated adaptive question selection',
                 'Behavioral performance fingerprinting',
                 'Subject-level mastery heat maps',
               ].map((pt) => (
@@ -128,7 +128,7 @@ export function WhySection() {
                 borderTop: `1px solid ${palettes.blue.border}`,
               }}
             >
-              {[{ val: '94%', label: 'AI Accuracy' }, { val: '3×', label: 'Faster Gap Closure' }].map((s) => (
+              {[{ val: '94%', label: 'Diagnostic Precision' }, { val: '3×', label: 'Faster Gap Closure' }].map((s) => (
                 <div key={s.label}>
                   <div style={{ fontSize: 22, fontWeight: 900, color: palettes.blue.color, letterSpacing: '-0.5px' }}>{s.val}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{s.label}</div>
@@ -196,11 +196,11 @@ export function WhySection() {
               </div>
 
               <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: 20 }}>
-                Visual accuracy dashboards, exam-readiness scores, and granular time insights — all computed by AI, all in real-time.
+                Visual accuracy dashboards, exam-readiness scores, and granular time insights — all computed automatically, all in real-time.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {['Visual accuracy trend dashboards', 'AI-computed exam-readiness score', 'Granular time management insights'].map((pt) => (
+                {['Visual accuracy trend dashboards', 'Cognitive Readiness Index (ICRS)', 'Granular time management insights'].map((pt) => (
                   <div key={pt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: palettes.emerald.color, flexShrink: 0 }}><Ico.Check size={13} /></span>
                     <span style={{ fontSize: 13.5, color: 'var(--text-main)' }}>{pt}</span>
