@@ -1,6 +1,5 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { C } from '../../constants/theme';
 
 export function Footer() {
   const cols = [
@@ -21,64 +20,77 @@ export function Footer() {
   return (
     <footer
       style={{
-        background: '#080E1A',
-        borderTop: `1px solid ${C.slate800}`,
-        padding: '56px 0 32px',
+        background: '#07112a',
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        padding: '36px 0 24px',
+        color: '#94a3b8',
       }}
     >
       <div className="landing-container">
+        {/* Main compact flex layout */}
         <div
-          className="flex flex-col lg:flex-row justify-between items-start gap-10 lg:gap-16"
-          style={{ marginBottom: 48 }}
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 32,
+            paddingBottom: 28,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          }}
         >
-          <div>
+          {/* Brand Info */}
+          <div style={{ maxWidth: 280 }}>
             <Logo inverted />
             <p
               style={{
                 fontSize: 13,
-                color: C.slate600,
-                maxWidth: 240,
-                lineHeight: 1.65,
-                marginTop: 12,
+                color: '#64748b',
+                marginTop: 10,
+                lineHeight: 1.6,
               }}
             >
-              AI-powered UPSC preparation for serious aspirants.
+              AI-powered exam preparation platform for serious aspirants.
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 lg:gap-16 w-full lg:w-auto">
+
+          {/* Links Grid */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '48px',
+              flexWrap: 'wrap',
+            }}
+          >
             {cols.map((col) => (
               <div key={col.h}>
                 <div
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: C.slate500,
+                    color: '#f8fafc',
                     letterSpacing: '1px',
                     textTransform: 'uppercase',
-                    marginBottom: 16,
+                    marginBottom: 12,
+                    fontFamily: 'var(--font-mono)',
                   }}
                 >
                   {col.h}
                 </div>
-                <div
-                  style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-                >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {col.links.map((l) => (
                     <a
                       key={l}
                       href="#"
                       style={{
-                        fontSize: 14,
-                        color: C.slate600,
+                        fontSize: 13,
+                        color: '#94a3b8',
                         textDecoration: 'none',
-                        transition: 'color 0.15s',
+                        transition: 'color 0.2s ease',
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = C.slate400)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = C.slate600)
-                      }
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
                     >
                       {l}
                     </a>
@@ -88,33 +100,35 @@ export function Footer() {
             ))}
           </div>
         </div>
+
+        {/* Bottom compact row */}
         <div
-          className="flex flex-col sm:flex-row justify-between items-center gap-4"
           style={{
-            borderTop: `1px solid ${C.slate800}`,
-            paddingTop: 24,
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 16,
+            paddingTop: 20,
           }}
         >
-          <div style={{ fontSize: 13, color: C.slate600, textAlign: 'center' }}>
-            © 2024 PrepAI UPSC. All rights reserved.
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            © {new Date().getFullYear()} PrepAI. All rights reserved.
           </div>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 20 }}>
             {['Twitter', 'LinkedIn', 'YouTube', 'Telegram'].map((s) => (
               <a
                 key={s}
                 href="#"
                 style={{
-                  fontSize: 13,
-                  color: C.slate600,
+                  fontSize: 12,
+                  color: '#94a3b8',
                   textDecoration: 'none',
-                  transition: 'color 0.15s',
+                  transition: 'color 0.2s ease',
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = '#60A5FA')
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = C.slate600)
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
               >
                 {s}
               </a>
@@ -125,4 +139,3 @@ export function Footer() {
     </footer>
   );
 }
-

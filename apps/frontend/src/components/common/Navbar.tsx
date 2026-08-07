@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
-import { useTheme, Theme } from '../../hooks/useTheme';
 import { Ico } from './Icons';
 
 interface NavbarProps {
   onLogin: () => void;
   onSignup: () => void;
-  theme?: Theme;
-  onToggleTheme?: () => void;
 }
 
-export function Navbar({ onLogin, onSignup, theme: propTheme, onToggleTheme: propToggleTheme }: NavbarProps) {
+export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const hookTheme = useTheme();
-
-  const theme = propTheme ?? hookTheme.theme;
-  const toggleTheme = propToggleTheme ?? hookTheme.toggleTheme;
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
@@ -103,14 +96,6 @@ export function Navbar({ onLogin, onSignup, theme: propTheme, onToggleTheme: pro
           {/* Desktop Action Buttons (Get Started CTA on far right) */}
           <div className="hidden md:flex" style={{ alignItems: 'center', gap: 14 }}>
             <button
-              className="theme-toggle-btn"
-              onClick={toggleTheme}
-              title="Toggle theme"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-            <button
               className="btn btn-primary anim-glow"
               style={{ padding: '10px 24px', fontSize: 14 }}
               onClick={onSignup}
@@ -119,16 +104,8 @@ export function Navbar({ onLogin, onSignup, theme: propTheme, onToggleTheme: pro
             </button>
           </div>
 
-          {/* Mobile Right Actions (Theme + Hamburger Toggle) */}
+          {/* Mobile Right Actions (Hamburger Toggle) */}
           <div className="flex md:hidden" style={{ alignItems: 'center', gap: 8 }}>
-            <button
-              className="theme-toggle-btn"
-              onClick={toggleTheme}
-              title="Toggle theme"
-              aria-label="Toggle theme"
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
             <button
               className="theme-toggle-btn"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

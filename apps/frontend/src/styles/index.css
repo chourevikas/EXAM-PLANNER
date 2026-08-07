@@ -371,6 +371,157 @@ body {
   border-color: rgba(59, 130, 246, 0.4);
 }
 
+/* Features Marquee Carousel */
+/* Card width = 300px, gap = 24px → per-card step = 324px × 6 cards = 1944px */
+@keyframes feature-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-1944px); }
+}
+
+.feature-marquee-outer {
+  position: relative;
+}
+
+.feature-marquee-outer:hover .feature-marquee-track {
+  animation-play-state: paused;
+}
+
+.feature-marquee-track {
+  display: flex;
+  gap: 24px;
+  width: max-content;
+  animation: feature-marquee 22s linear infinite;
+  padding: 12px 0 20px;
+}
+
+/* Hover shimmer sweep */
+.feature-marquee-card:hover .feature-shimmer {
+  left: 120%;
+}
+
+.feature-marquee-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Left and right fade edge masks */
+.feature-marquee-fade-left,
+.feature-marquee-fade-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 140px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.feature-marquee-fade-left {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-body) 0%, transparent 100%);
+}
+
+.feature-marquee-fade-right {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-body) 0%, transparent 100%);
+}
+
+/* ── Why Bento Grid ── */
+.why-bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .why-bento-grid {
+    grid-template-columns: 1.15fr 1fr;
+    align-items: stretch;
+  }
+}
+
+.why-bento-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.why-bento-card {
+  border-radius: 22px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), box-shadow 0.28s ease;
+}
+
+.why-bento-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.1);
+}
+
+.why-bento-featured {
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+}
+
+@media (min-width: 1024px) {
+  .why-bento-featured {
+    min-height: unset;
+  }
+}
+
+.why-bento-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 22px 22px 0 0;
+  opacity: 0.75;
+}
+
+.why-bento-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.why-bento-orbit {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 1px dashed;
+  opacity: 0.4;
+  animation: spin-slow 18s linear infinite;
+}
+
+.why-bento-watermark {
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  opacity: 0.04;
+  pointer-events: none;
+  display: flex;
+}
+
+.why-bento-watermark svg {
+  width: 180px;
+  height: 180px;
+}
+
+.why-bento-featured-title {
+  font-size: clamp(1.35rem, 2.5vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 14px;
+  letter-spacing: -0.4px;
+}
+
 /* Testimonial Card */
 .testimonial-card {
   background: var(--bg-card);
