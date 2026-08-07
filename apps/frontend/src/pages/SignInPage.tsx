@@ -4,7 +4,7 @@ import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { UserRole } from '../types/auth';
 import { loginUser } from '../services/authService';
-import { SignInButton } from '@clerk/clerk-react';
+import { useClerk } from '@clerk/clerk-react';
 
 export function SignInPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +15,7 @@ export function SignInPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const navigate = useNavigate();
+  const clerk = useClerk();
 
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
@@ -264,15 +265,14 @@ export function SignInPage() {
                 </span>
               </div>
 
-              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  style={{ width: '100%', padding: '12px', fontSize: 14, gap: 10 }}
-                >
-                  <Ico.Google /> Continue with Clerk
-                </button>
-              </SignInButton>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ width: '100%', padding: '12px', fontSize: 14, gap: 10 }}
+                onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+              >
+                <Ico.Google /> Continue with Clerk
+              </button>
             </>
           )}
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Ico } from '../common/Icons';
 import { UserRole } from '../../types/auth';
 import { loginUser, registerUser } from '../../services/authService';
-import { SignInButton } from '@clerk/clerk-react';
+import { useClerk } from '@clerk/clerk-react';
 
 export type AuthMode = 'login' | 'signup';
 
@@ -34,6 +34,7 @@ export function AuthModal({
   const [showApprovalPending, setShowApprovalPending] = useState(false);
   
   const navigate = useNavigate();
+  const clerk = useClerk();
 
   if (!isOpen) return null;
 
@@ -464,15 +465,14 @@ export function AuthModal({
                   </span>
                 </div>
 
-                <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ width: '100%', padding: '11px', fontSize: 14, gap: 10 }}
-                  >
-                    <Ico.Google /> Continue with Clerk
-                  </button>
-                </SignInButton>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', padding: '11px', fontSize: 14, gap: 10 }}
+                  onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+                >
+                  <Ico.Google /> Continue with Clerk
+                </button>
               </>
             )}
 
