@@ -5,6 +5,7 @@ import { Ico } from '../components/common/Icons';
 import { useTheme } from '../hooks/useTheme';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { fetchCurrentUser } from '../services/authService';
+import { useUser } from '@clerk/clerk-react';
 
 const subjectData = [
   { subject: 'History', accuracy: 85 },
@@ -27,6 +28,7 @@ const studyHoursData = [
 export function DashboardPage() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const { theme, toggleTheme } = useTheme();
+  const { user: clerkUser } = useUser();
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -109,10 +111,10 @@ export function DashboardPage() {
         <div style={{ padding: '20px 16px', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 12 }}>
            <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', padding: '8px', borderRadius: 12, transition: 'background 0.2s', ...({':hover': {background: 'var(--bg-hover)'}} as any) }}>
              <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: '1px solid var(--accent-border)' }}>
-               {user.profile_image || '👨‍🎓'}
+               {clerkUser?.imageUrl ? <img src={clerkUser.imageUrl} alt="Profile" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : (user.profile_image || '👨‍🎓')}
              </div>
              <div style={{ display: 'flex', flexDirection: 'column' }}>
-               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{user.full_name || 'Aspirant'}</span>
+               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{clerkUser?.fullName || user.full_name || 'Aspirant'}</span>
                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                  {user.subscription_tier === 'PREMIUM' ? 'Pro Plan' : 'Free Tier'}
                </span>
@@ -183,7 +185,7 @@ export function DashboardPage() {
           {/* 1. Personalized Welcome & AI Motivation */}
           <section style={{ marginBottom: 40 }}>
             <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              Welcome back, {user.full_name?.split(' ')[0] || 'Aspirant'}! 👋
+              Welcome back, {clerkUser?.firstName || user.full_name?.split(' ')[0] || 'Aspirant'}! 👋
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 15 }}>
               <div style={{ color: 'var(--accent-primary)' }}><Ico.Brain /></div>
