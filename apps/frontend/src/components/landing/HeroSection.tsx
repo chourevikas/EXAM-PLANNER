@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ico } from '../common/Icons';
+import { Zap, BookOpen, Map, Unlock } from 'lucide-react';
 import { HeroIllustration } from './HeroIllustration';
 
 interface HeroSectionProps {
@@ -7,12 +7,18 @@ interface HeroSectionProps {
   onLogin: () => void;
 }
 
-export function HeroSection({ onSignup, onLogin }: HeroSectionProps) {
+const trustPills = [
+  { icon: Zap,      label: 'Psychometric Performance Analysis' },
+  { icon: BookOpen, label: 'Real PYQ Bank' },
+  { icon: Map,      label: 'Adaptive Study Plans' },
+  { icon: Unlock,   label: 'Free to Start' },
+];
+
+export function HeroSection({ onSignup }: HeroSectionProps) {
   return (
     <section
+      className="hero-section-padding"
       style={{
-        paddingTop: 136,
-        paddingBottom: 96,
         position: 'relative',
         overflow: 'hidden',
         background: 'var(--bg-body)',
@@ -22,159 +28,155 @@ export function HeroSection({ onSignup, onLogin }: HeroSectionProps) {
       {/* Dot grid */}
       <div
         className="dot-grid"
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      />
+
+      {/* Subtle radial glow */}
+      <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: '10%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 900,
+          height: 500,
+          background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.07) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Map silhouette */}
-      <svg
-        style={{
-          position: 'absolute',
-          right: '2%',
-          top: '5%',
-          width: 380,
-          height: 440,
-          opacity: 0.03,
-          pointerEvents: 'none',
-        }}
-        viewBox="0 0 380 440"
-      >
-        <path
-          d="M190 20 C240 28 295 55 320 95 C345 135 350 175 335 210 C325 235 340 250 332 278 C322 308 298 338 272 365 C248 390 220 415 190 428 C160 415 132 390 108 365 C82 338 58 308 48 278 C40 250 55 235 45 210 C30 175 35 135 60 95 C85 55 140 28 190 20Z"
-          fill="var(--text-main)"
-        />
-      </svg>
-
-      <div
-        style={{
-          maxWidth: 1320,
-          margin: '0 auto',
-          padding: '0 52px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 72,
-          alignItems: 'center',
-        }}
-      >
-        {/* Left */}
-        <div>
-          {/* Badge */}
-          <div
-            className="anim-fade-up"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: 'var(--blue50)',
-              border: '1px solid var(--blue100)',
-              borderRadius: 99,
-              padding: '6px 14px',
-              marginBottom: 32,
-            }}
-          >
-            <span style={{ fontSize: 13, color: 'var(--royal)' }}>✦</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--royal)' }}>
-              AI-Powered UPSC Preparation Platform
-            </span>
-          </div>
-
-          {/* Heading */}
-          <h1
-            className="anim-fade-up d-100"
-            style={{
-              fontSize: 62,
-              fontWeight: 900,
-              lineHeight: 1.06,
-              letterSpacing: '-2px',
-              color: 'var(--text-main)',
-              marginBottom: 24,
-            }}
-          >
-            Prepare<br />
-            Smarter.<br />
-            <span style={{ color: 'var(--royal)' }}>Crack UPSC</span><br />
-            with AI.
-          </h1>
-
-          {/* Subheading */}
-          <p
-            className="anim-fade-up d-200"
-            style={{
-              fontSize: 18,
-              color: 'var(--text-muted)',
-              lineHeight: 1.72,
-              marginBottom: 40,
-              maxWidth: 460,
-            }}
-          >
-            Solve Previous Year Questions, receive intelligent performance
-            analysis, discover your weak areas, build personalized study plans,
-            and prepare with your own AI Mentor.
-          </p>
-
-          {/* CTAs */}
-          <div
-            className="anim-fade-up d-300"
-            style={{
-              display: 'flex',
-              gap: 12,
-              marginBottom: 36,
-              flexWrap: 'wrap',
-            }}
-          >
-            <button
-              className="btn btn-primary anim-glow"
-              style={{ fontSize: 16, padding: '14px 28px' }}
-              onClick={onSignup}
+      <div className="landing-container">
+        <div
+          className="hero-grid"
+          style={{
+            display: 'grid',
+            alignItems: 'center',
+          }}
+        >
+          {/* Left Content */}
+          <div style={{ maxWidth: 600 }}>
+            {/* Badge */}
+            <div
+              className="anim-fade-up"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'var(--blue50)',
+                border: '1px solid var(--blue100)',
+                borderRadius: 99,
+                padding: '6px 16px',
+                marginBottom: 28,
+              }}
             >
-              Get Started Free <Ico.Arrow />
-            </button>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 16, padding: '14px 28px' }}
-              onClick={onLogin}
-            >
-              Login to Platform
-            </button>
-          </div>
+              <Zap size={12} strokeWidth={2.5} style={{ color: 'var(--royal)' }} />
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--royal)', letterSpacing: '0.3px' }}>
+                Next-Gen IRT Exam Preparation System
+              </span>
+            </div>
 
-          {/* Trust badges */}
-          <div
-            className="anim-fade-up d-400"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 24px' }}
-          >
-            {[
-              'AI Powered',
-              'Previous Year Questions',
-              'Personalized Plans',
-              'No Credit Card',
-            ].map((b) => (
-              <div
-                key={b}
+            {/* Headline */}
+            <h1
+              className="anim-fade-up d-100 hero-heading"
+              style={{
+                fontWeight: 900,
+                color: 'var(--text-main)',
+                marginBottom: 18,
+              }}
+            >
+              Your Rank is a
+              <br />
+              <span
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  fontSize: 13,
-                  color: 'var(--text-muted)',
-                  fontWeight: 500,
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 60%, #7C3AED 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
                 }}
               >
-                <span style={{ color: 'var(--emerald)' }}>
-                  <Ico.Check size={14} />
-                </span>
-                {b}
-              </div>
-            ))}
-          </div>
-        </div>
+                Decision.
+              </span>
+            </h1>
 
-        {/* Right */}
-        <div className="anim-fade-up d-300">
-          <HeroIllustration />
+            {/* Sub-headline */}
+            <p
+              className="anim-fade-up d-150"
+              style={{
+                fontSize: 'clamp(1.05rem, 1.5vw + 0.4rem, 1.2rem)',
+                fontWeight: 600,
+                color: 'var(--royal)',
+                marginBottom: 12,
+                letterSpacing: '-0.1px',
+              }}
+            >
+              Every choice shapes your success story.
+            </p>
+
+            {/* Sub-description */}
+            <p
+              className="anim-fade-up d-200 section-subheading"
+              style={{
+                color: 'var(--text-muted)',
+                marginBottom: 40,
+                maxWidth: 500,
+              }}
+            >
+              Solve real Previous Year Questions, discover your weak areas with
+              intelligent analysis, and follow an adaptive plan tailored by
+              your Personal Learning Engine — built for serious exam aspirants.
+            </p>
+
+            {/* Trust Pill Chips */}
+            <div
+              className="anim-fade-up d-300"
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              {trustPills.map(({ icon: Icon, label }) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 99,
+                    padding: '7px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    boxShadow: '0 1px 4px rgba(15,23,42,0.06)',
+                    transition: 'border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = 'var(--royal)';
+                    el.style.color = 'var(--royal)';
+                    el.style.boxShadow = '0 2px 10px rgba(37,99,235,0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.borderColor = 'var(--border-color)';
+                    el.style.color = 'var(--text-muted)';
+                    el.style.boxShadow = '0 1px 4px rgba(15,23,42,0.06)';
+                  }}
+                >
+                  <Icon size={13} strokeWidth={2.5} style={{ color: 'var(--royal)', flexShrink: 0 }} />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Illustration */}
+          <div className="anim-fade-up d-300 hero-illustration-wrap">
+            <HeroIllustration />
+          </div>
         </div>
       </div>
     </section>

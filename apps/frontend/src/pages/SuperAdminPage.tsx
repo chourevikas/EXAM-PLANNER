@@ -14,11 +14,10 @@ import {
 import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
 import { SuperAdminTopNav } from '../components/superadmin/SuperAdminTopNav';
 import { SuperAdminStats } from '../components/superadmin/SuperAdminStats';
-import { SuperAdminTab } from '../components/superadmin/SuperAdminTabNav';
+import { SuperAdminTab, SuperAdminTabNav } from '../components/superadmin/SuperAdminTabNav';
 import { PendingApprovalsTab } from '../components/superadmin/PendingApprovalsTab';
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
-import { SystemDiagnosticsTab } from '../components/superadmin/SystemDiagnosticsTab';
 import { RejectionModal } from '../components/superadmin/RejectionModal';
 
 export function SuperAdminPage() {
@@ -201,13 +200,6 @@ export function SuperAdminPage() {
             onRefresh={loadLogs}
           />
         );
-      case 'diagnostics':
-        return (
-          <SystemDiagnosticsTab
-            stats={stats}
-            loading={statsLoading}
-          />
-        );
       default:
         return null;
     }
@@ -254,7 +246,7 @@ export function SuperAdminPage() {
                   Super Admin Control Center
                 </h1>
                 <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 6, maxWidth: 650 }}>
-                  Top-level organization management, pending admin approvals, user status controls, and cloud infrastructure diagnostics.
+                  Top-level organization management, pending admin approvals, user status controls, and security audit logs.
                 </p>
               </div>
             </div>
@@ -284,6 +276,9 @@ export function SuperAdminPage() {
 
             {/* KPI Executive Metric Cards */}
             <SuperAdminStats stats={stats} loading={statsLoading} />
+
+            {/* Horizontal Navigation Tabs */}
+            <SuperAdminTabNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pendingRequests.length} />
 
             {/* Active Tab View */}
             {renderActiveTabContent()}

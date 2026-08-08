@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Exam
 from app.repositories.exam_repository import ExamRepository
 from app.storage.factory import get_storage_provider
-from app.tasks.exam_tasks import process_exam_pdf_task, async_process_exam_pdf
 from app.tasks.celery_app import celery_app, has_active_celery_workers
 from app.config.settings import get_settings
 from app.config.logger import setup_logger
@@ -30,6 +29,8 @@ class ExamService:
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
+        from app.tasks.exam_tasks import process_exam_pdf_task, async_process_exam_pdf
+
         settings = get_settings()
 
         # 1. Automatically extract and validate 5-token Question Paper filename format

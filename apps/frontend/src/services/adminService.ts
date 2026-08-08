@@ -94,3 +94,12 @@ export async function fetchSystemStats(): Promise<SystemStats> {
   }
   return await res.json();
 }
+
+export async function fetchAllUsers(): Promise<User[]> {
+  const res = await fetch(`/api/v1/users`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch users' }));
+    throw new Error(errorData.detail || 'Could not fetch user directory.');
+  }
+  return await res.json();
+}

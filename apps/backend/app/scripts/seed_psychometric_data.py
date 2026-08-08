@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # Add project root to sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from sqlmodel import select
 from app.db.session import async_session_factory, async_init_db

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type SuperAdminTab = 'pending' | 'active' | 'audit' | 'diagnostics';
+export type SuperAdminTab = 'pending' | 'active' | 'audit';
 
 interface SuperAdminTabNavProps {
   activeTab: SuperAdminTab;
@@ -13,7 +13,6 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount }: Super
     { id: 'pending', label: 'Pending Approvals', icon: '⏳', count: pendingCount },
     { id: 'active', label: 'Manage Active Admins', icon: '👥' },
     { id: 'audit', label: 'Approval Audit Logs', icon: '📜' },
-    { id: 'diagnostics', label: 'System Diagnostics', icon: '⚡' },
   ];
 
   return (

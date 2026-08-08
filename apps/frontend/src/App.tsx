@@ -54,7 +54,7 @@ function LoadingFallback() {
         fontWeight: 600,
       }}
     >
-      Loading PrepAI...
+      Loading RankEdge...
     </div>
   );
 }

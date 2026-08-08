@@ -54,6 +54,9 @@ from app.db.models.subscription import (
     PlanFeatureLink,
     UserSubscription,
 )
+from app.db.models.explanation import QuestionExplanation
+from app.db.models.pipeline_run import PipelineRun
+from app.db.models.hierarchy_link import QuestionHierarchyLink
 from app.db.models.answer_key import (
     SetMatchStatus,
     MappingStatus,
@@ -93,6 +96,9 @@ __all__ = [
     "OptionTranslation",
     "QuestionAsset",
     "QuestionMetadata",
+    "QuestionExplanation",
+    "PipelineRun",
+    "QuestionHierarchyLink",
     "Test",
     "TestQuestion",
     "UserTestAttempt",

@@ -1,0 +1,70 @@
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+
+class OptionAnalysis(BaseModel):
+    option_key: str = Field(description="Option identifier: 'A', 'B', 'C', or 'D'")
+    is_correct: bool = Field(
+        description="True if this is the correct answer, False otherwise"
+    )
+    explanation: str = Field(
+        description="If correct: clear reasoning why it's right. If incorrect: exact conceptual error or trap that makes it wrong."
+    )
+
+
+class MultiConceptItemSchema(BaseModel):
+    subject: str = Field(description="Subject name e.g. Indian Economy, General Science")
+    topic: str = Field(description="Topic name e.g. Inflation & Monetary Policy, Thermodynamics")
+    subtopic: Optional[str] = Field(
+        default=None, description="Granular subtopic name e.g. Repo Rate vs Reverse Repo"
+    )
+    is_primary: bool = Field(
+        default=False, description="Set True for the primary subject/topic/subtopic category"
+    )
+    relevance_weight: float = Field(
+        default=1.0, description="Relevance score (0.0 to 1.0) of concept in question"
+    )
+    concept_name: Optional[str] = Field(
+        default=None, description="Specific concept label e.g. Monetary Expansion"
+    )
+
+
+class QuestionExplanationSchema(BaseModel):
+    core_concept: str = Field(
+        description="The primary formula, theorem, or rule being tested in 1 sentence."
+    )
+    detailed_solution: str = Field(
+        description="Step-by-step proof, calculation, or logical derivation of the answer."
+    )
+    options_breakdown: List[OptionAnalysis] = Field(
+        description="Exact analysis for all choices e.g. A, B, C, D."
+    )
+    common_traps: Optional[List[str]] = Field(
+        default=[],
+        description="Common misconceptions or calculation pitfalls students fall into for this question.",
+    )
+    key_takeaways: List[str] = Field(
+        description="1-2 high-yield bullet points for quick revision before exams."
+    )
+    subject: str = Field(
+        description="Primary subject category e.g., Physics, Quantitative Aptitude"
+    )
+    topic: str = Field(
+        description="Primary topic e.g., Thermodynamics, Quadratic Equations"
+    )
+    subtopic: Optional[str] = Field(
+        default=None, description="Primary granular subtopic e.g., Carnot Engine"
+    )
+    concepts: List[MultiConceptItemSchema] = Field(
+        default_factory=list,
+        description="Complete list of all subjects, topics, and subtopics involved in this interdisciplinary question",
+    )
+    difficulty: str = Field(
+        description="Difficulty level e.g., 'Easy', 'Medium', or 'Hard'"
+    )
+    historical_accuracy: Optional[float] = Field(
+        default=50.0, description="Estimated percentage of test-takers answering correctly"
+    )
+    pyq_frequency: Optional[int] = Field(
+        default=1, description="Estimated historical recurrence frequency across past year papers"
+    )
