@@ -441,6 +441,7 @@ async def _generate_and_save_single_question_explanation(
                         )
                     )
 
+                processed_links: Dict[uuid.UUID, QuestionHierarchyLink] = {}
                 for concept in concepts_list:
                     c_subj = concept.subject.strip()
                     c_top = concept.topic.strip()
@@ -454,27 +455,38 @@ async def _generate_and_save_single_question_explanation(
                         session, syl.id, c_subj, c_top, c_subtop
                     )
 
-                    link_stmt = select(QuestionHierarchyLink).where(
-                        QuestionHierarchyLink.question_id == q_id,
-                        QuestionHierarchyLink.subtopic_id == c_subtop_rec.id,
-                    )
-                    link = (await session.exec(link_stmt)).first()
-                    if not link:
-                        link = QuestionHierarchyLink(
-                            question_id=q_id,
-                            subtopic_id=c_subtop_rec.id,
-                            topic_id=c_top_rec.id,
-                            subject_id=c_subj_rec.id,
-                            is_primary=concept.is_primary,
-                            relevance_weight=concept.relevance_weight,
-                            concept_name=concept.concept_name or c_top,
+                    if c_subtop_rec.id in processed_links:
+                        link = processed_links[c_subtop_rec.id]
+                        link.is_primary = link.is_primary or concept.is_primary
+                        link.relevance_weight = max(
+                            link.relevance_weight, concept.relevance_weight
                         )
+                        if concept.concept_name:
+                            link.concept_name = concept.concept_name
                         session.add(link)
                     else:
-                        link.is_primary = concept.is_primary
-                        link.relevance_weight = concept.relevance_weight
-                        link.concept_name = concept.concept_name or c_top
-                        session.add(link)
+                        link_stmt = select(QuestionHierarchyLink).where(
+                            QuestionHierarchyLink.question_id == q_id,
+                            QuestionHierarchyLink.subtopic_id == c_subtop_rec.id,
+                        )
+                        link = (await session.exec(link_stmt)).first()
+                        if not link:
+                            link = QuestionHierarchyLink(
+                                question_id=q_id,
+                                subtopic_id=c_subtop_rec.id,
+                                topic_id=c_top_rec.id,
+                                subject_id=c_subj_rec.id,
+                                is_primary=concept.is_primary,
+                                relevance_weight=concept.relevance_weight,
+                                concept_name=concept.concept_name or c_top,
+                            )
+                            session.add(link)
+                        else:
+                            link.is_primary = concept.is_primary
+                            link.relevance_weight = concept.relevance_weight
+                            link.concept_name = concept.concept_name or c_top
+                            session.add(link)
+                        processed_links[c_subtop_rec.id] = link
 
             await session.commit()
 

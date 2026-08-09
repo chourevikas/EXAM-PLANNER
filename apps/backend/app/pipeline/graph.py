@@ -240,18 +240,6 @@ async def node_export_artifacts(state: OverallPipelineState) -> dict:
                 await f.write(yaml_str)
             await storage.upload_file(temp_yaml, yaml_rel_path)
 
-            # 2. Async Export Markdown
-            md_str = await async_export_question_to_markdown(
-                session, q, storage=storage
-            )
-            md_filename = f"{q_stem}.md"
-            md_rel_path = f"exams/{exam_code}/output_files/{md_filename}"
-
-            temp_md = Path(state["output_dir"]) / md_filename
-            async with aiofiles.open(temp_md, mode="w", encoding="utf-8") as f:
-                await f.write(md_str)
-            await storage.upload_file(temp_md, md_rel_path)
-
     return {}
 
 
