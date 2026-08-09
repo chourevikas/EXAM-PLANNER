@@ -10,6 +10,7 @@ from app.utils.file_utils import save_upload_file_temp
 from app.tasks.exam_tasks import async_process_exam_pdf
 from app.tasks.answer_key_tasks import async_process_answer_key_pdf
 from app.tasks.explanation_tasks import async_process_exam_explanations
+from app.config.filename_parser import parse_question_paper_filename, parse_answer_key_filename
 from app.config.logger import setup_logger
 
 logger = setup_logger("PipelineRouter")
@@ -27,6 +28,14 @@ async def upload_question_paper(
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400, detail="Only PDF files are supported for Question Paper processing."
+        )
+
+    try:
+        parse_question_paper_filename(file.filename)
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Filename validation failed: {str(val_err)}"
         )
 
     temp_dir = Path("./temp_uploads").resolve()
@@ -64,6 +73,14 @@ async def upload_answer_key(
     """Uploads an Answer Key file, initiates Pipeline 2, and automatically triggers Pipeline 3 upon completion."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="Answer key file name is required.")
+
+    try:
+        parse_answer_key_filename(file.filename)
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Filename validation failed: {str(val_err)}"
+        )
 
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)

@@ -70,7 +70,13 @@ class Settings(BaseSettings):
     AWS_SES_SENDER: str = Field(default="no-reply@examplanner.com")
 
     # LLM Settings & Provider Credentials
-    LLM_PROVIDER: str = Field(default="openai")  # openai, bedrock
+    LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
+    GCP_PROJECT_ID: Optional[str] = Field(default=None)
+    GCP_LOCATION: str = Field(default="us-central1")
+    GEMINI_MODEL_NAME: str = Field(default="gemini-3.5-flash")
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
+        default="gcp-service-account.json"
+    )
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     OPENAI_MODEL_NAME: str = Field(default="gpt-4.1")
     VISION_LLM_RATE_LIMIT_RPS: float = Field(default=0.5)
@@ -90,9 +96,13 @@ class Settings(BaseSettings):
     def validate_and_resolve_paths(self) -> "Settings":
         # Normalize PostgreSQL URL for asyncpg driver compatibility
         if self.DATABASE_URL.startswith("postgresql://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgresql://", "postgresql+asyncpg://", 1
+            )
         elif self.DATABASE_URL.startswith("postgres://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgres://", "postgresql+asyncpg://", 1
+            )
 
         if "asyncpg" in self.DATABASE_URL and "sslmode=" in self.DATABASE_URL:
             self.DATABASE_URL = self.DATABASE_URL.replace("sslmode=", "ssl=")

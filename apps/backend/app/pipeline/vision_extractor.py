@@ -1,13 +1,15 @@
-import io
-import base64
 import asyncio
+import base64
+import io
 from pathlib import Path
-from PIL import Image
-from pdf2image import convert_from_path
+
 from langchain_core.messages import HumanMessage, SystemMessage
+from pdf2image import convert_from_path
+from PIL import Image
+
 from app.llm.factory import get_vision_llm
-from app.storage.factory import get_storage_provider
 from app.pipeline.state import PageExtractionPayload
+from app.storage.factory import get_storage_provider
 
 
 async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
@@ -15,7 +17,7 @@ async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
     storage = get_storage_provider()
     local_file = Path(pdf_path_or_key).resolve()
 
-    if not local_file.exists():
+    if not (local_file.exists() and local_file.is_file() and local_file.stat().st_size > 0):
         temp_dir = Path("./temp_pdf_cache").resolve()
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_target = temp_dir / Path(pdf_path_or_key).name
@@ -37,24 +39,33 @@ async def load_pdf_page_image_lazily(
     storage = get_storage_provider()
     local_file = Path(pdf_path_or_key).resolve()
 
-    if not local_file.exists():
+    if not (local_file.exists() and local_file.is_file() and local_file.stat().st_size > 0):
         temp_dir = Path("./temp_pdf_cache").resolve()
         temp_dir.mkdir(parents=True, exist_ok=True)
         local_target = temp_dir / Path(pdf_path_or_key).name
         local_file = await storage.download_file(pdf_path_or_key, local_target)
 
     def _convert():
-        images = convert_from_path(
-            str(local_file),
-            dpi=200,
-            first_page=page_number_1_based,
-            last_page=page_number_1_based,
-        )
-        if not images:
-            raise ValueError(
-                f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+        try:
+            import pypdfium2 as pdfium
+
+            pdf = pdfium.PdfDocument(str(local_file))
+            page = pdf[page_number_1_based - 1]
+            image = page.render(scale=200 / 72).to_pil()
+            pdf.close()
+            return image
+        except Exception:  # noqa: BLE001
+            images = convert_from_path(
+                str(local_file),
+                dpi=200,
+                first_page=page_number_1_based,
+                last_page=page_number_1_based,
             )
-        return images[0]
+            if not images:
+                raise ValueError(
+                    f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+                )
+            return images[0]
 
     return await asyncio.to_thread(_convert)
 

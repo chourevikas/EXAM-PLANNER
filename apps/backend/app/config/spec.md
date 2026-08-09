@@ -17,9 +17,14 @@ The `config` module provides centralized environment variable parsing, secret lo
 ## Configurable Logger Provider (`config/logger.py`)
 - **`setup_logger(name: str, log_level: Optional[str])`**: Returns a structured Logger Provider formatted with timestamps, log levels, file names, line numbers, and standard message formatting.
 - **Log Level**: Dynamic log level derived from `LOG_LEVEL` environment configuration (`DEBUG`, `INFO`, `WARNING`, `ERROR`).
-- **`OPENAI_API_KEY`**: OpenAI secret key for vision extraction.
+- **`LLM_PROVIDER`**: LLM provider selector (`vertexai`, `openai`, `bedrock`, Default: `vertexai`).
+- **`GCP_PROJECT_ID`**: Google Cloud Project ID for Vertex AI.
+- **`GCP_LOCATION`**: GCP region for Vertex AI (Default: `us-central1`).
+- **`GEMINI_MODEL_NAME`**: Vertex AI Gemini model name (Default: `gemini-1.5-flash`).
+- **`GOOGLE_APPLICATION_CREDENTIALS`**: Path to GCP Service Account JSON key file (Default: `gcp-service-account.json`).
 - **`VISION_LLM_RATE_LIMIT_RPS`**: Global vision LLM rate limiter cap (Default: `0.5` req/sec = 30 req/min).
 
 ## Validation Laws
 - When `STORAGE_TYPE == "s3"`, `S3_BUCKET_NAME` must be non-empty; otherwise a `ValueError` is raised during startup.
+- When `LLM_PROVIDER == "vertexai"`, `GOOGLE_APPLICATION_CREDENTIALS` (or GCP service account environment variables) must be configured.
 - When `LLM_PROVIDER == "openai"`, `OPENAI_API_KEY` must be populated from configuration or process environment.
