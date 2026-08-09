@@ -14,6 +14,7 @@ from app.services.pipeline_management_service import PipelineManagementService
 from app.services.task_registry import task_registry
 from app.storage.factory import get_storage_provider
 from app.utils.file_utils import save_upload_file_temp
+from app.core.cleanup import cleanup_file
 from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
 from app.tasks.answer_key_tasks import async_process_answer_key_pdf, process_answer_key_pdf_task
 from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
@@ -222,6 +223,9 @@ async def upload_question_paper(
     rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{clean_set}/{canonical_exam_code}_{clean_set}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
+    # Clean up initial temp upload file in temp_uploads/ after storing persistently
+    cleanup_file(temp_path)
+
     if not exam:
         exam = Exam(
             code=canonical_exam_code,
@@ -360,6 +364,9 @@ async def upload_answer_key(
     storage = get_storage_provider()
     rel_storage_path = f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
+
+    # Clean up initial temp upload file in temp_uploads/ after storing persistently
+    cleanup_file(temp_path)
 
     if not exam:
         exam = Exam(

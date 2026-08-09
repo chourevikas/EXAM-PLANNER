@@ -109,7 +109,6 @@ async def async_process_answer_key_pdf(
         )
         raise
     finally:
-        log.info(
-            f"🧹 Cleaning up temporary answer key file '{pdf_file.name}' (Task ID: '{t_id}')..."
-        )
-        cleanup_temp_artifacts(pdf_path)
+        # End-of-pipeline cleanup: remove temporary processing cache and temp files
+        log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
+        cleanup_temp_artifacts(pdf_path, Path("./temp_pdf_cache"))

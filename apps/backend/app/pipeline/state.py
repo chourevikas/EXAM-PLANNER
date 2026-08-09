@@ -130,6 +130,7 @@ class MCQValidationResult(BaseModel):
 class ParallelWorkerInput(TypedDict):
     page_num: int
     pdf_path: str
+    exam_id: str
     task_id: str
 
 

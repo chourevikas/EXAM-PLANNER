@@ -118,3 +118,8 @@ async def async_process_exam_explanations(
         except Exception:
             pass
         raise
+    finally:
+        from app.core.cleanup import cleanup_temp_artifacts
+        from pathlib import Path
+        log.info(f"🧹 Cleaning up temporary explanation scratch files for Task ID '{t_id}'...")
+        cleanup_temp_artifacts(Path("./temp_json"), Path("./output_artifacts/temp_json"))

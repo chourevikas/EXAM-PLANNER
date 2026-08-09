@@ -233,8 +233,6 @@ async def async_process_exam_pdf(
             pass
         raise
     finally:
-        # Automated cleanup of temporary files and temporary output artifact directory
-        log.info(
-            f"🧹 Cleaning up temporary processing files for '{pdf_file.name}' (Task ID: '{t_id}')..."
-        )
-        cleanup_temp_artifacts(pdf_path, output_dir)
+        # End-of-pipeline cleanup: remove temporary processing cache and temp files
+        log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
+        cleanup_temp_artifacts(pdf_path, Path("./temp_pdf_cache"))

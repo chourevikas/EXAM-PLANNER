@@ -49,10 +49,16 @@ def node_dispatch_parallel_map(state: OverallPipelineState):
     pdf_path = state["pdf_path"]
     total_pages = state["total_pages"]
     t_id = state.get("task_id", "N/A")
+    exam_id = state.get("exam_id")
     return [
         Send(
             "parallel_extract_worker",
-            {"page_num": p_num, "pdf_path": pdf_path, "task_id": t_id},
+            {
+                "page_num": p_num,
+                "pdf_path": pdf_path,
+                "exam_id": str(exam_id) if exam_id else "",
+                "task_id": t_id,
+            },
         )
         for p_num in range(1, total_pages + 1)
     ]
@@ -61,6 +67,7 @@ def node_dispatch_parallel_map(state: OverallPipelineState):
 async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
     page_num = state["page_num"]
     pdf_path = state["pdf_path"]
+    exam_id_str = state.get("exam_id", "")
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
@@ -72,6 +79,27 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
         log.info(
             f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s)."
         )
+
+        # Real-time Incremental Persistence to DB & Storage
+        if payload and payload.extracted_questions and exam_id_str:
+            try:
+                target_exam_uuid = uuid.UUID(exam_id_str)
+                single_page_registry = build_question_registry([(page_num, payload, None)])
+                registrar = BatchQuestionRegistrar(batch_size=5)
+                await registrar.commit_questions_in_batches(
+                    exam_id=target_exam_uuid,
+                    pdf_path=pdf_path,
+                    question_registry=single_page_registry,
+                    passage_id_map={},
+                    storage=get_storage_provider(),
+                    load_pdf_page_image_fn=load_pdf_page_image_lazily,
+                )
+                log.info(
+                    f"💾 [INCREMENTAL BATCH SAVE] Successfully committed Page {page_num} questions to DB & Storage."
+                )
+            except Exception as save_err:
+                log.warning(f"⚠️ Incremental save warning for Page {page_num}: {save_err}")
+
         return {"raw_page_payloads": [(page_num, payload, None)]}
     except Exception as e:
         err_str = f"Worker failed on Page {page_num}: {str(e)}"

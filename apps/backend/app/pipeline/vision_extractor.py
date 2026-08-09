@@ -13,16 +13,28 @@ from app.pipeline.state import PageExtractionPayload
 from app.storage.factory import get_storage_provider
 
 
-async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
-    """Asynchronously reads total page count, downloading from StorageProvider (S3/Local) if not present locally."""
-    storage = get_storage_provider()
-    local_file = Path(pdf_path_or_key).resolve()
+async def _ensure_local_pdf(pdf_path_or_key: str, storage) -> Path:
+    """Checks if PDF file is already cached locally in temp_pdf_cache to prevent redundant S3 downloads."""
+    # 1. Direct path check
+    p = Path(pdf_path_or_key).resolve()
+    if p.exists() and p.is_file() and p.stat().st_size > 0:
+        return p
 
-    if not (local_file.exists() and local_file.is_file() and local_file.stat().st_size > 0):
-        temp_dir = Path("./temp_pdf_cache").resolve()
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        local_target = temp_dir / Path(pdf_path_or_key).name
-        local_file = await storage.download_file(pdf_path_or_key, local_target)
+    # 2. Cached in temp_pdf_cache check
+    temp_dir = Path("./temp_pdf_cache").resolve()
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    local_target = temp_dir / Path(pdf_path_or_key).name
+    if local_target.exists() and local_target.is_file() and local_target.stat().st_size > 0:
+        return local_target
+
+    # 3. Download from Storage Provider (S3/Local)
+    return await storage.download_file(pdf_path_or_key, local_target)
+
+
+async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
+    """Asynchronously reads total page count, reusing local temp_pdf_cache if present."""
+    storage = get_storage_provider()
+    local_file = await _ensure_local_pdf(pdf_path_or_key, storage)
 
     def _read():
         from pypdf import PdfReader
@@ -36,15 +48,9 @@ async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
 async def load_pdf_page_image_lazily(
     pdf_path_or_key: str, page_number_1_based: int
 ) -> Image.Image:
-    """Asynchronously loads a single PDF page image lazily, downloading from StorageProvider (S3/Local) if needed."""
+    """Asynchronously loads a single PDF page image lazily, reusing local temp_pdf_cache if present."""
     storage = get_storage_provider()
-    local_file = Path(pdf_path_or_key).resolve()
-
-    if not (local_file.exists() and local_file.is_file() and local_file.stat().st_size > 0):
-        temp_dir = Path("./temp_pdf_cache").resolve()
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        local_target = temp_dir / Path(pdf_path_or_key).name
-        local_file = await storage.download_file(pdf_path_or_key, local_target)
+    local_file = await _ensure_local_pdf(pdf_path_or_key, storage)
 
     def _convert():
         try:
