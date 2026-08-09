@@ -1,10 +1,13 @@
 import os
 from pathlib import Path
-from langchain_core.rate_limiters import InMemoryRateLimiter
-from app.config.settings import get_settings
 
+from app.config.logger import setup_logger
+from app.config.settings import get_settings
+from langchain_core.rate_limiters import InMemoryRateLimiter
 
 _rate_limiter = None
+
+logger = setup_logger()
 
 
 def get_rate_limiter():
@@ -67,11 +70,14 @@ def get_vision_llm():
 
                     kwargs["credentials"] = (
                         service_account.Credentials.from_service_account_file(
-                            str(abs_cred_path)
+                            str(abs_cred_path),
+                            scopes=["https://www.googleapis.com/auth/cloud-platform"],
                         )
                     )
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception:
+                    logger.exception(
+                        "Failed to load Google credentials from path: %s", cred_path
+                    )
 
         return ChatGoogleGenerativeAI(**kwargs)
 

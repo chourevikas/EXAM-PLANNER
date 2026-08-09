@@ -54,18 +54,24 @@ async def load_pdf_page_image_lazily(
             image = page.render(scale=200 / 72).to_pil()
             pdf.close()
             return image
-        except Exception:  # noqa: BLE001
-            images = convert_from_path(
-                str(local_file),
-                dpi=200,
-                first_page=page_number_1_based,
-                last_page=page_number_1_based,
-            )
-            if not images:
-                raise ValueError(
-                    f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+        except Exception as pypdfium_err:  # noqa: BLE001
+            try:
+                images = convert_from_path(
+                    str(local_file),
+                    dpi=200,
+                    first_page=page_number_1_based,
+                    last_page=page_number_1_based,
                 )
-            return images[0]
+                if not images:
+                    raise ValueError(
+                        f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+                    )
+                return images[0]
+            except Exception as poppler_err:  # noqa: BLE001
+                raise RuntimeError(
+                    f"Failed to render page {page_number_1_based} of '{pdf_path_or_key}'. "
+                    f"pypdfium2 error: {pypdfium_err}; poppler error: {poppler_err}"
+                ) from poppler_err
 
     return await asyncio.to_thread(_convert)
 

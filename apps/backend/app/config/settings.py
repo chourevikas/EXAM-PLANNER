@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
     GCP_LOCATION: str = Field(default="us-central1")
-    GEMINI_MODEL_NAME: str = Field(default="gemini-3.5-flash")
+    GEMINI_MODEL_NAME: str = Field(default="gemini-2.5-flash")
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = Field(
         default="gcp-service-account.json"
     )

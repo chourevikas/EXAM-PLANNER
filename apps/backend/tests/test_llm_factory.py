@@ -8,7 +8,7 @@ class TestLLMFactory(unittest.TestCase):
     def test_default_llm_settings(self):
         settings = get_settings()
         self.assertEqual(settings.LLM_PROVIDER, "vertexai")
-        self.assertEqual(settings.GEMINI_MODEL_NAME, "gemini-3.5-flash")
+        self.assertEqual(settings.GEMINI_MODEL_NAME, "gemini-2.5-flash")
         self.assertEqual(settings.GCP_LOCATION, "us-central1")
         self.assertEqual(
             settings.GOOGLE_APPLICATION_CREDENTIALS, "gcp-service-account.json"
