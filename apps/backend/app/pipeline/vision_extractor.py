@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 from pathlib import Path
+from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pdf2image import convert_from_path
@@ -83,12 +84,23 @@ def encode_pil_image(img: Image.Image) -> str:
 
 
 async def ainvoke_extraction_llm(
-    image: Image.Image, page_num: int
+    image: Image.Image,
+    page_num: int,
+    active_context_memory: Optional[str] = None,
 ) -> PageExtractionPayload:
     base64_img = await asyncio.to_thread(encode_pil_image, image)
+    
+    context_str = ""
+    if active_context_memory:
+        context_str = (
+            f"\n    ACTIVE MEMORY CONTEXT FROM PRECEDING PAGE (Page {page_num - 1}):\n"
+            f"    {active_context_memory}\n"
+            f"    Use this active memory context to identify reading passages, case studies, or trailing questions spanning from Page {page_num - 1}.\n"
+        )
+
     system_prompt = f"""
     You are an expert Document AI Vision Engine for competitive exam papers. Processing PDF Page {page_num}.
-    
+    {context_str}
     PER-PAGE LAYOUT INSTRUCTION:
     1. Inspect Page {page_num}'s structural layout (`detected_layout_type`):
        - SINGLE_COLUMN: Read top to bottom across full page width.

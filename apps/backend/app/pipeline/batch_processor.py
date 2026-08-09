@@ -37,8 +37,7 @@ def calculate_question_expected_time(
         words = len(t_info.get("text", "").split())
         for opt in t_info.get("options", []):
             words += len(getattr(opt, "option_text", "").split())
-        if words > max_words:
-            max_words = words
+        max_words = max(max_words, words)
 
     if max_words > 120:
         base_seconds += 30
@@ -170,6 +169,7 @@ def build_question_registry(
 class BatchQuestionRegistrar:
     """
     Handles chunked DB batch insertion for questions, options, assets, and initial metadata.
+    Idempotently updates existing DB records without unique constraint crashes.
     """
 
     def __init__(self, batch_size: int = 10):
@@ -187,6 +187,10 @@ class BatchQuestionRegistrar:
         summary = BatchProcessingSummary()
         registry_items = sorted(
             question_registry.items(), key=lambda x: (x[0][0], x[0][1])
+        )
+
+        logger.info(
+            f"📦 [BATCH REGISTRAR] Total questions to commit: {len(registry_items)} in chunks of {self.batch_size}"
         )
 
         async with async_session_factory() as session:
@@ -277,6 +281,14 @@ class BatchQuestionRegistrar:
                                     irt_pseudo_guessing_c=0.25,
                                 )
                                 session.add(q_meta)
+                        else:
+                            existing_q.is_complete = q_data["is_complete"]
+                            existing_q.has_image = q_data["has_image"]
+                            existing_q.page_numbers_json = json.dumps(q_data["page_numbers"])
+                            if q_passage_id:
+                                existing_q.passage_id = q_passage_id
+                                existing_q.passage_page_numbers_json = json.dumps(q_passage_pages)
+                            session.add(existing_q)
 
                         # Stage Assets
                         for asset in q_data["assets"]:
@@ -296,39 +308,76 @@ class BatchQuestionRegistrar:
                                 )
                                 session.add(q_asset)
 
-                        # Stage Translations & Options
+                        # Stage Translations & Options Idempotently
                         for lang, t_data in q_data["translations"].items():
-                            q_trans = QuestionTranslation(
-                                question_id=question_id,
-                                language=lang,
-                                question_text=t_data["text"],
-                                parent_context_override=t_data["context"]
-                                if t_data["context"]
-                                else None,
+                            trans_res = await session.exec(
+                                select(QuestionTranslation).where(
+                                    QuestionTranslation.question_id == question_id,
+                                    QuestionTranslation.language == lang,
+                                )
                             )
-                            session.add(q_trans)
+                            q_trans = trans_res.first()
+                            if not q_trans:
+                                q_trans = QuestionTranslation(
+                                    question_id=question_id,
+                                    language=lang,
+                                    question_text=t_data["text"],
+                                    parent_context_override=t_data["context"]
+                                    if t_data["context"]
+                                    else None,
+                                )
+                                session.add(q_trans)
+                            else:
+                                q_trans.question_text = t_data["text"]
+                                if t_data["context"]:
+                                    q_trans.parent_context_override = t_data["context"]
+                                session.add(q_trans)
 
                             for opt in t_data["options"]:
-                                q_opt = QuestionOption(
-                                    question_id=question_id,
-                                    option_label=opt.display_label,
-                                    display_order=opt.display_order,
-                                    is_correct=False,
+                                opt_label = str(opt.display_label)
+                                opt_res = await session.exec(
+                                    select(QuestionOption).where(
+                                        QuestionOption.question_id == question_id,
+                                        QuestionOption.option_label == opt_label,
+                                    )
                                 )
-                                session.add(q_opt)
+                                q_opt = opt_res.first()
+                                if not q_opt:
+                                    q_opt = QuestionOption(
+                                        question_id=question_id,
+                                        option_label=opt_label,
+                                        display_order=opt.display_order,
+                                        is_correct=False,
+                                    )
+                                    session.add(q_opt)
+                                    await session.flush()
+                                else:
+                                    q_opt.display_order = opt.display_order
+                                    session.add(q_opt)
 
-                                opt_trans = OptionTranslation(
-                                    option_id=q_opt.id,
-                                    language=lang,
-                                    option_text=opt.option_text,
+                                opt_trans_res = await session.exec(
+                                    select(OptionTranslation).where(
+                                        OptionTranslation.option_id == q_opt.id,
+                                        OptionTranslation.language == lang,
+                                    )
                                 )
-                                session.add(opt_trans)
+                                opt_trans = opt_trans_res.first()
+                                if not opt_trans:
+                                    opt_trans = OptionTranslation(
+                                        option_id=q_opt.id,
+                                        language=lang,
+                                        option_text=opt.option_text,
+                                    )
+                                    session.add(opt_trans)
+                                else:
+                                    opt_trans.option_text = opt.option_text
+                                    session.add(opt_trans)
 
                     await session.commit()
                     summary.successful_batches += 1
                     summary.total_processed_questions += len(batch)
                     logger.info(
-                        f"Successfully committed DB batch of {len(batch)} question(s)."
+                        f"Successfully committed DB batch {summary.successful_batches} of {len(batch)} question(s) (Total committed: {summary.total_processed_questions}/{len(registry_items)})."
                     )
                 except Exception as batch_err:
                     await session.rollback()
@@ -339,4 +388,7 @@ class BatchQuestionRegistrar:
                         exc_info=True,
                     )
 
+        logger.info(
+            f"🎉 [BATCH REGISTRAR COMPLETE] Total committed: {summary.total_processed_questions}/{len(registry_items)} questions."
+        )
         return summary

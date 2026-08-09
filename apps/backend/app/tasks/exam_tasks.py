@@ -83,10 +83,54 @@ async def async_process_exam_pdf(
         # Ensure database tables exist across worker processes
         await async_init_db()
 
-        # Asynchronously update Exam record
+        # Asynchronously create or update Exam record in DB
         async with async_session_factory() as session:
             exam = await session.get(Exam, exam_id)
-            if exam:
+            if not exam:
+                try:
+                    parsed = parse_question_paper_filename(pdf_file.name)
+                    canonical_code = parsed["canonical_code"]
+                    paper_set_code = parsed["set_code"]
+                    stage = parsed["stage"]
+                    subject_code = parsed["subject_code"]
+                    source_year = parsed["year"]
+                except Exception:
+                    canonical_code = pdf_file.stem
+                    paper_set_code = "SET_A"
+                    stage = "PRELIMS"
+                    subject_code = "GS1"
+                    source_year = 2024
+
+                code_stmt = select(Exam).where(Exam.code == canonical_code)
+                existing_by_code = (await session.exec(code_stmt)).first()
+                if existing_by_code:
+                    exam = existing_by_code
+                    exam_id = exam.id
+                    exam.pdf_path = str(pdf_path)
+                    exam.total_pages = total_pages
+                    if not exam.name or exam_id_str in exam.name:
+                        exam.name = exam_title
+                    session.add(exam)
+                    await session.commit()
+                else:
+                    exam = Exam(
+                        id=exam_id,
+                        code=canonical_code,
+                        name=exam_title,
+                        stage=stage,
+                        subject_code=subject_code,
+                        source_year=source_year,
+                        paper_set_code=paper_set_code,
+                        pdf_path=str(pdf_path),
+                        total_pages=total_pages,
+                    )
+                    session.add(exam)
+                    await session.commit()
+                    await session.refresh(exam)
+                log.info(
+                    f"Created Exam DB record for '{exam.code}' (ID: {exam.id}) with total_pages={total_pages}"
+                )
+            else:
                 exam.pdf_path = str(pdf_path)
                 exam.total_pages = total_pages
                 if not exam.name or exam_id_str in exam.name:
