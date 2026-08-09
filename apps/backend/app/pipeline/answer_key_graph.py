@@ -1,10 +1,11 @@
 import uuid
 import json
 import asyncio
-from typing import List, Dict, Any, TypedDict, Optional
-from sqlmodel import select
+from typing import List, Dict, Any, Optional
+from typing_extensions import TypedDict
+from sqlmodel import select, col
 from langgraph.graph import StateGraph, END, START
-from app.db.session import async_session_factory
+from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
     Question,
@@ -107,7 +108,7 @@ async def node_validate_set_code_and_map_db(
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         exam = await session.get(Exam, exam_id)
         if not exam:
             # Search if questions exist in questions table to sync target exam_id
@@ -119,7 +120,7 @@ async def node_validate_set_code_and_map_db(
 
         if not exam:
             # Search for latest exam in DB
-            latest_exam_stmt = select(Exam).order_by(Exam.created_at.desc()).limit(1)
+            latest_exam_stmt = select(Exam).order_by(col(Exam.created_at).desc()).limit(1)
             exam = (await session.exec(latest_exam_stmt)).first()
             if exam:
                 exam_id = exam.id

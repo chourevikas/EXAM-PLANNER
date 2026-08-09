@@ -3,9 +3,12 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Any
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks, status
+from pydantic import BaseModel, Field
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
+from app.db.models import Exam
 from app.services.pipeline_management_service import PipelineManagementService
 from app.services.task_registry import task_registry
 from app.utils.file_utils import save_upload_file_temp
@@ -62,11 +65,77 @@ def parse_required_exam_id(raw_id: Any) -> uuid.UUID:
         )
 
 
+class CheckDuplicateExamRequest(BaseModel):
+    exam_name: Optional[str] = Field(default=None, description="Exam name e.g. UPSC_CSE")
+    year: Optional[int] = Field(default=None, description="Source year e.g. 2024")
+    stage: Optional[str] = Field(default=None, description="Stage e.g. PRELIMS")
+    subject_code: Optional[str] = Field(default=None, description="Subject code e.g. GS1")
+    paper_set_code: Optional[str] = Field(default="SET_A", description="Paper set code e.g. SET_A")
+    filename: Optional[str] = Field(default=None, description="Optional PDF filename to parse keys")
+
+
+@router.post("/check-duplicate")
+async def check_duplicate_exam(
+    req: CheckDuplicateExamRequest,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """Checks if an exam paper matching all 5 keys (case-insensitive) already exists in DB."""
+    parsed_meta = {}
+    if req.filename:
+        try:
+            parsed_meta = parse_question_paper_filename(req.filename)
+        except Exception:
+            try:
+                parsed_meta = parse_answer_key_filename(req.filename)
+            except Exception:
+                pass
+
+    exam_name = req.exam_name or parsed_meta.get("exam_name") or parsed_meta.get("exam_code")
+    year = req.year or parsed_meta.get("year")
+    stage = req.stage or parsed_meta.get("stage")
+    subject_code = req.subject_code or parsed_meta.get("subject_code")
+    paper_set_code = req.paper_set_code or parsed_meta.get("paper_set_code") or "SET_A"
+
+    stmt = select(Exam)
+    if exam_name:
+        stmt = stmt.where(func.lower(Exam.name) == func.lower(str(exam_name).strip()))
+    if year:
+        stmt = stmt.where(Exam.source_year == int(year))
+    if stage:
+        stmt = stmt.where(func.lower(Exam.stage) == func.lower(str(stage).strip()))
+    if subject_code:
+        stmt = stmt.where(func.lower(Exam.subject_code) == func.lower(str(subject_code).strip()))
+    if paper_set_code:
+        stmt = stmt.where(func.lower(Exam.paper_set_code) == func.lower(str(paper_set_code).strip()))
+
+    res = await db.exec(stmt)
+    existing_exam = res.first()
+
+    if existing_exam:
+        pm_service = PipelineManagementService(db)
+        overview = await pm_service.get_exam_pipeline_overview(existing_exam.id)
+        return {
+            "is_duplicate": True,
+            "existing_exam_id": str(existing_exam.id),
+            "exam_name": existing_exam.name,
+            "paper_set_code": existing_exam.paper_set_code,
+            "message": f"Duplicate paper found matching 5 keys for Exam '{existing_exam.name}' (ID: {existing_exam.id}).",
+            "pipeline_overview": overview,
+            "options": ["IGNORE", "OVERWRITE"],
+        }
+
+    return {
+        "is_duplicate": False,
+        "message": "No duplicate exam paper found in DB.",
+    }
+
+
 @router.post("/upload-question-paper", status_code=status.HTTP_202_ACCEPTED)
 async def upload_question_paper(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     exam_id: Optional[str] = Form(default=None),
+    conflict_resolution: str = Form(default="OVERWRITE"),
     db: AsyncSession = Depends(get_async_session),
 ):
     """Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction)."""
@@ -75,13 +144,33 @@ async def upload_question_paper(
             status_code=400, detail="Only PDF files are supported for Question Paper processing."
         )
 
+    meta = {}
     try:
-        parse_question_paper_filename(file.filename)
+        meta = parse_question_paper_filename(file.filename)
     except ValueError as val_err:
         raise HTTPException(
             status_code=400,
             detail=f"Filename validation failed: {str(val_err)}"
         )
+
+    # If conflict_resolution is IGNORE, check if 5-key duplicate exists
+    if conflict_resolution.upper() == "IGNORE" and meta:
+        stmt = select(Exam).where(
+            func.lower(Exam.name) == func.lower(str(meta.get("exam_code", "")).strip()),
+            Exam.source_year == int(meta.get("year", 0)),
+            func.lower(Exam.stage) == func.lower(str(meta.get("stage", "")).strip()),
+            func.lower(Exam.subject_code) == func.lower(str(meta.get("subject_code", "")).strip()),
+            func.lower(Exam.paper_set_code) == func.lower(str(meta.get("paper_set_code", "SET_A")).strip()),
+        )
+        res = await db.exec(stmt)
+        existing = res.first()
+        if existing:
+            return {
+                "status": "SKIPPED_DUPLICATE_EXAM",
+                "exam_id": str(existing.id),
+                "filename": file.filename,
+                "message": f"Exam paper '{file.filename}' already exists in DB. Pipeline execution skipped as requested.",
+            }
 
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)

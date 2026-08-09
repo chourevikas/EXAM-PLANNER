@@ -21,6 +21,7 @@ class QuestionStatus(str, enum.Enum):
     PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+    REJECTED = "REJECTED"
 
 
 class QuestionSourceType(str, enum.Enum):

@@ -15,7 +15,8 @@ from app.db.models import (
     QuestionTranslation,
 )
 from app.db.models.enums import BloomsLevel
-from app.db.session import async_session_factory
+from app.config.settings import get_settings
+from app.db.session import managed_async_session
 from app.pipeline.batch_schema import BatchProcessingSummary
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
 from app.pipeline.state import PageExtractionPayload
@@ -172,8 +173,8 @@ class BatchQuestionRegistrar:
     Idempotently updates existing DB records without unique constraint crashes.
     """
 
-    def __init__(self, batch_size: int = 10):
-        self.batch_size = batch_size
+    def __init__(self, batch_size: Optional[int] = None):
+        self.batch_size = batch_size or get_settings().PIPELINE_BATCH_SIZE
 
     async def commit_questions_in_batches(
         self,
@@ -193,7 +194,7 @@ class BatchQuestionRegistrar:
             f"📦 [BATCH REGISTRAR] Total questions to commit: {len(registry_items)} in chunks of {self.batch_size}"
         )
 
-        async with async_session_factory() as session:
+        async with managed_async_session() as session:
             exam = await session.get(Exam, exam_id)
             exam_code = exam.code if exam else "EXAM"
             source_year = exam.source_year if exam else None
@@ -201,7 +202,7 @@ class BatchQuestionRegistrar:
 
         for i in range(0, len(registry_items), self.batch_size):
             batch = registry_items[i : i + self.batch_size]
-            async with async_session_factory() as session:
+            async with managed_async_session() as session:
                 try:
                     for (sec_code, q_num), q_data in batch:
                         key_str = f"{sec_code}::{q_num}"
@@ -254,10 +255,10 @@ class BatchQuestionRegistrar:
                                 source_year=source_year,
                                 is_complete=q_data["is_complete"],
                                 has_image=q_data["has_image"],
-                                page_numbers_json=json.dumps(q_data["page_numbers"]),
-                                passage_page_numbers_json=json.dumps(q_passage_pages)
+                                page_numbers_json=q_data["page_numbers"],
+                                passage_page_numbers_json=q_passage_pages
                                 if q_passage_pages
-                                else None,
+                                else [],
                                 status=QuestionStatus.PENDING_HUMAN_REVIEW,
                             )
                             session.add(q_obj)
@@ -284,10 +285,10 @@ class BatchQuestionRegistrar:
                         else:
                             existing_q.is_complete = q_data["is_complete"]
                             existing_q.has_image = q_data["has_image"]
-                            existing_q.page_numbers_json = json.dumps(q_data["page_numbers"])
+                            existing_q.page_numbers_json = q_data["page_numbers"]
                             if q_passage_id:
                                 existing_q.passage_id = q_passage_id
-                                existing_q.passage_page_numbers_json = json.dumps(q_passage_pages)
+                                existing_q.passage_page_numbers_json = q_passage_pages
                             session.add(existing_q)
 
                         # Stage Assets

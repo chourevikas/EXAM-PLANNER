@@ -82,9 +82,9 @@ async def async_process_exam_explanations(
             f"⏹️ [EXPLANATION PIPELINE STOPPED] Exam ID '{exam_id_str}' (Task ID: '{t_id}') was stopped/cancelled."
         )
         try:
-            from app.db.session import async_session_factory
+            from app.db.session import managed_async_session
             from app.services.pipeline_management_service import PipelineManagementService
-            async with async_session_factory() as session:
+            async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
                     exam_id=uuid.UUID(exam_id_str),
@@ -104,9 +104,9 @@ async def async_process_exam_explanations(
             exc_info=True,
         )
         try:
-            from app.db.session import async_session_factory
+            from app.db.session import managed_async_session
             from app.services.pipeline_management_service import PipelineManagementService
-            async with async_session_factory() as session:
+            async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
                     exam_id=uuid.UUID(exam_id_str),

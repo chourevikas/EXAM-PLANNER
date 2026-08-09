@@ -53,7 +53,7 @@ class FSRSEngine:
         days_until_next = 9.0 * new_stability * ((1.0 / r_target) - 1.0)
         days_until_next = max(0.5, round(days_until_next, 1))
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         next_review_dt = now + timedelta(days=days_until_next)
 
         return {

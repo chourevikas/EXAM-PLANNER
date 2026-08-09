@@ -1,6 +1,6 @@
 import uuid
 from fastapi import APIRouter, Depends, Response
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.services.analytics_service import AnalyticsService
 

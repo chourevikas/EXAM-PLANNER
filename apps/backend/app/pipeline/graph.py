@@ -7,7 +7,7 @@ from sqlmodel import select
 from langgraph.graph import StateGraph, END, START
 from langgraph.types import Send
 
-from app.db.session import async_session_factory
+from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
     Question,
@@ -111,11 +111,10 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
     unified_passages = resolve_transitive_passages_dsu(results)
     passage_id_map = {}
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         for p_data in unified_passages:
             p_id = uuid.uuid4()
             sec_code = p_data.get("section_code", "DEFAULT")
-            pages_json = json.dumps(p_data["page_numbers"])
 
             passage = Passage(
                 id=p_id,
@@ -123,8 +122,8 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                 section_code=sec_code,
                 memory_type=p_data.get("memory_type", "PASSAGE"),
                 is_complete=p_data.get("is_complete", True),
-                page_numbers_json=pages_json,
-                question_ids_json="[]",
+                page_numbers_json=p_data["page_numbers"],
+                question_ids_json=[],
             )
             session.add(passage)
             await session.commit()
@@ -170,7 +169,7 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
     )
     processed_keys = state["processed_question_keys"]
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         for key_str in processed_keys:
             sec_code, q_num_str = key_str.split("::")
             q_num = int(q_num_str)
@@ -219,7 +218,7 @@ async def node_export_artifacts(state: OverallPipelineState) -> dict:
     )
     storage = get_storage_provider()
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         exam = await session.get(Exam, exam_id)
         exam_code = exam.code if exam else "EXAM"
 

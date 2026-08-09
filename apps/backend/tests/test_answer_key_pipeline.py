@@ -12,7 +12,10 @@ from app.db.models import (
     SetMatchStatus,
     MappingStatus,
 )
-from app.pipeline.answer_key_graph import node_validate_set_code_and_map_db
+from app.pipeline.answer_key_graph import (
+    node_validate_set_code_and_map_db,
+    AnswerKeyPipelineState,
+)
 
 
 class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
@@ -24,6 +27,9 @@ class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
         self.session_factory = async_sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
+        import app.db.session
+
+        app.db.session.async_session_factory = self.session_factory
 
     async def asyncTearDown(self):
         await self.engine.dispose()
@@ -52,11 +58,12 @@ class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         # Simulate extracted raw payload matching SET_A
-        state = {
+        state: AnswerKeyPipelineState = {
             "pdf_path": "answer_keys/set_a.pdf",
             "exam_id": str(exam.id),
             "target_set_code": "SET_A",
             "total_pages": 1,
+            "task_id": None,
             "raw_page_payloads": [
                 {
                     "page_num": 1,
@@ -77,18 +84,15 @@ class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
             "set_match_status": "PENDING",
         }
 
-        # Override DB session factory in test
-        import app.pipeline.answer_key_graph
-
-        app.pipeline.answer_key_graph.async_session_factory = self.session_factory
-
         res = await node_validate_set_code_and_map_db(state)
         self.assertEqual(res["set_match_status"], "MATCHED")
         self.assertEqual(res["total_keys_mapped"], 1)
 
         async with self.session_factory() as session:
             saved_opt_b = await session.get(QuestionOption, opt_b.id)
-            self.assertTrue(saved_opt_b.is_correct)
+            self.assertIsNotNone(saved_opt_b)
+            if saved_opt_b:
+                self.assertTrue(saved_opt_b.is_correct)
 
     async def test_set_code_mismatch_skips_mapping(self):
         async with self.session_factory() as session:
@@ -111,11 +115,12 @@ class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
             await session.commit()
 
         # Simulate extracted raw payload for SET_C when target is SET_A
-        state = {
+        state: AnswerKeyPipelineState = {
             "pdf_path": "answer_keys/set_c.pdf",
             "exam_id": str(exam.id),
             "target_set_code": "SET_A",
             "total_pages": 1,
+            "task_id": None,
             "raw_page_payloads": [
                 {
                     "page_num": 1,
@@ -136,9 +141,6 @@ class TestAnswerKeyPipeline(unittest.IsolatedAsyncioTestCase):
             "set_match_status": "PENDING",
         }
 
-        import app.pipeline.answer_key_graph
-
-        app.pipeline.answer_key_graph.async_session_factory = self.session_factory
 
         res = await node_validate_set_code_and_map_db(state)
         self.assertEqual(res["set_match_status"], "MISMATCH_SKIPPED")

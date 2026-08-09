@@ -1,8 +1,8 @@
 import uuid
 from typing import Dict, List, Any, Optional
-from datetime import datetime
-from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
+from sqlmodel import select, col
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import (
     User,
     Exam,
@@ -51,7 +51,7 @@ async def compile_comprehensive_psychometric_report(
     att_res = await session.exec(
         select(ExamAttempt)
         .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
-        .order_by(ExamAttempt.created_at.desc())
+        .order_by(col(ExamAttempt.created_at).desc())
     )
     attempt = att_res.first()
     if not attempt:
@@ -235,7 +235,12 @@ async def compile_comprehensive_psychometric_report(
     topic_mem_records = []
     for m in user_memories:
         sub = await session.get(Subtopic, m.subtopic_id) if m.subtopic_id else None
-        elapsed = (datetime.utcnow() - m.last_reviewed_at).total_seconds() / 86400.0
+        last_rev = (
+            m.last_reviewed_at.replace(tzinfo=timezone.utc)
+            if m.last_reviewed_at.tzinfo is None
+            else m.last_reviewed_at
+        )
+        elapsed = (datetime.now(timezone.utc) - last_rev).total_seconds() / 86400.0
         topic_mem_records.append(
             {
                 "topic_name": sub.name if sub else "General Concepts",
@@ -309,7 +314,7 @@ async def compile_comprehensive_psychometric_report(
         )
         profile.total_tests_given = n_tests
         profile.total_questions_answered += len(responses)
-        profile.updated_at = datetime.utcnow()
+        profile.updated_at = datetime.now(timezone.utc)
         session.add(profile)
 
     # 4. Upsert User Taxonomy Mastery Records
@@ -359,7 +364,7 @@ async def compile_comprehensive_psychometric_report(
                         else "WEAK_REVISION_REQUIRED"
                     )
                 )
-                m_obj.updated_at = datetime.utcnow()
+                m_obj.updated_at = datetime.now(timezone.utc)
                 session.add(m_obj)
 
             user_taxonomy_mastery_list.append(
@@ -380,7 +385,7 @@ async def compile_comprehensive_psychometric_report(
     return {
         "metadata": {
             "report_title": "Comprehensive Psychometric & Cognitive Diagnostic Audit Report",
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "candidate": {
                 "user_id": str(user.id),
                 "full_name": user.full_name,

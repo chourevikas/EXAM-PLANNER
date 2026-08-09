@@ -93,9 +93,9 @@ async def async_process_answer_key_pdf(
         log.info("=" * 70)
 
         # Notify PipelineManagementService & Auto-Chain Pipeline 3
-        from app.db.session import async_session_factory
+        from app.db.session import managed_async_session
         from app.services.pipeline_management_service import PipelineManagementService
-        async with async_session_factory() as session:
+        async with managed_async_session() as session:
             pm_service = PipelineManagementService(session)
             await pm_service.on_pipeline_2_completed(
                 uuid.UUID(exam_id_str), auto_trigger_pipeline_3=True

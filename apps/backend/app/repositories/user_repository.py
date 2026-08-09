@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from sqlmodel import select, func
+from sqlmodel import select, func, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -89,7 +89,7 @@ class UserRepository:
                 selectinload(User.student_profile),
                 selectinload(User.admin_profile),
             )
-            .order_by(User.created_at.desc())
+            .order_by(col(User.created_at).desc())
         )
         res = await self.session.exec(stmt)
         return list(res.all())
@@ -105,7 +105,7 @@ class UserRepository:
                 selectinload(User.student_profile),
                 selectinload(User.admin_profile),
             )
-            .order_by(User.created_at.desc())
+            .order_by(col(User.created_at).desc())
         )
         res = await self.session.exec(stmt)
         return list(res.all())
@@ -190,7 +190,7 @@ class UserRepository:
         return await self.get_by_id(user.id)
 
     async def get_approval_logs(self) -> List[AdminApprovalLog]:
-        stmt = select(AdminApprovalLog).order_by(AdminApprovalLog.created_at.desc())
+        stmt = select(AdminApprovalLog).order_by(col(AdminApprovalLog.created_at).desc())
         res = await self.session.exec(stmt)
         return list(res.all())
 

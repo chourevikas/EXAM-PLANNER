@@ -4,7 +4,8 @@ from typing import List, Dict, Any, TypedDict, Optional, Tuple
 from sqlmodel import select, col
 from langgraph.graph import StateGraph, END, START
 
-from app.db.session import async_session_factory
+from app.db.session import managed_async_session
+from app.config.settings import get_settings
 from app.db.models import (
     Question,
     QuestionTranslation,
@@ -64,7 +65,7 @@ async def _get_or_create_subtopic(
             name=subj_name,
         )
         session.add(subj)
-        await session.commit()
+        await session.flush()
         await session.refresh(subj)
 
     top_stmt = select(Topic).where(
@@ -78,7 +79,7 @@ async def _get_or_create_subtopic(
             name=topic_name,
         )
         session.add(top)
-        await session.commit()
+        await session.flush()
         await session.refresh(top)
 
     subtop_stmt = select(Subtopic).where(
@@ -92,7 +93,7 @@ async def _get_or_create_subtopic(
             name=subtopic_name,
         )
         session.add(subtop)
-        await session.commit()
+        await session.flush()
         await session.refresh(subtop)
 
     return subtop, top, subj
@@ -112,7 +113,7 @@ async def node_load_exam_questions(
         f"📚 [EXPLANATION PIPELINE STARTED] Exam ID: {exam_id} | Default Target Language: {lang_str}"
     )
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         pm_service = PipelineManagementService(session)
         await pm_service.update_pipeline_status(
             exam_id=exam_id,
@@ -140,7 +141,7 @@ async def _generate_and_save_single_question_explanation(
     log: TaskLoggerAdapter,
 ) -> bool:
     """Helper to generate explanation in English and translate/persist for all question target languages in DB."""
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         q = await session.get(Question, q_id)
         if not q:
             return False
@@ -241,7 +242,7 @@ async def _generate_and_save_single_question_explanation(
             # )
             continue
 
-        async with async_session_factory() as session:
+        async with managed_async_session() as session:
             existing_expl_stmt = select(QuestionExplanation).where(
                 QuestionExplanation.question_id == q_id,
                 QuestionExplanation.language == target_lang,
@@ -301,7 +302,7 @@ async def _generate_and_save_single_question_explanation(
             await session.commit()
 
     # Step 3: Multi-Concept Hierarchy & QuestionMetadata Update
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         db_q = await session.get(Question, q_id)
         if db_q:
             # Base time by Bloom's Taxonomy
@@ -495,7 +496,7 @@ async def node_generate_and_save_explanations(
     except ValueError:
         lang_enum = LanguageCode.ENGLISH
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         stmt = select(Question.id).where(Question.exam_id == exam_id)
         if target_q_ids:
             q_uuids = [uuid.UUID(qid) for qid in target_q_ids]
@@ -520,7 +521,7 @@ async def node_generate_and_save_explanations(
                 failed_ids.append(str(q_id))
 
             # Update PipelineRun progress percentage dynamically
-            async with async_session_factory() as session:
+            async with managed_async_session() as session:
                 pm_service = PipelineManagementService(session)
                 pct = 10.0 + (80.0 * (idx / total_count))
                 await pm_service.update_pipeline_status(
@@ -554,7 +555,7 @@ async def node_explanation_validator_and_hitl(
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         stmt = select(Question).where(Question.exam_id == exam_id)
         questions = (await session.exec(stmt)).all()
 

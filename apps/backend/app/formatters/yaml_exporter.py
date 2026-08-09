@@ -15,12 +15,16 @@ from app.db.models import (
 )
 
 
-def json_first_page(page_numbers_json: str) -> int:
+def json_first_page(page_numbers_json: Any) -> int:
     import json
 
     try:
-        pages = json.loads(page_numbers_json)
-        return pages[0] if pages else 1
+        if isinstance(page_numbers_json, list):
+            return page_numbers_json[0] if page_numbers_json else 1
+        if isinstance(page_numbers_json, str):
+            pages = json.loads(page_numbers_json)
+            return pages[0] if isinstance(pages, list) and pages else 1
+        return 1
     except Exception:
         return 1
 

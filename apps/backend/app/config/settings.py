@@ -89,6 +89,12 @@ class Settings(BaseSettings):
         description="If True, executes Celery tasks synchronously in-memory (useful when Redis is not running)",
     )
 
+    # Pipeline Execution & Batching Settings
+    PIPELINE_BATCH_SIZE: int = Field(
+        default=5,
+        description="Configurable batch size for chunked DB commits across all pipelines",
+    )
+
     # Output Artifact Path
     OUTPUT_ARTIFACTS_DIR: str = Field(default=str(PROJECT_ROOT / "output_artifacts"))
 

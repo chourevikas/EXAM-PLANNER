@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from sqlmodel import select
-from app.db.session import async_session_factory, async_init_db
+from app.db.session import managed_async_session, async_init_db
 from app.db.models.user import User, UserRole, UserStatus
 from app.core.security import get_password_hash
 from app.config.settings import settings
@@ -27,7 +27,7 @@ async def init_superadmin():
     password = getattr(settings, "SUPERADMIN_PASSWORD", "SuperAdmin#2026!")
     full_name = getattr(settings, "SUPERADMIN_NAME", "System Super Admin")
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         # Search for super admin by email or role
         stmt = select(User).where(User.email == email)
         res = await session.exec(stmt)

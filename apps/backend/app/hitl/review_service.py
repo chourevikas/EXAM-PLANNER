@@ -363,3 +363,78 @@ class HumanReviewService:
             "target_pages": sorted(list(target_pages)),
             "updated_records": updated_count,
         }
+
+    async def reject_question(
+        self, question_id: uuid.UUID, rejection_reason: str, reviewer_notes: Optional[str] = None
+    ) -> Question:
+        """Flags question as REJECTED and records reviewer failure reason."""
+        question = await self.session.get(Question, question_id)
+        if not question:
+            raise ValueError(f"Question with ID {question_id} not found.")
+
+        question.status = QuestionStatus.REJECTED
+        self.session.add(question)
+
+        task_stmt = select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
+        task = (await self.session.exec(task_stmt)).first()
+
+        reasons = [rejection_reason]
+        if task:
+            task.review_status = "REJECTED"
+            task.is_flagged_by_validator = True
+            task.reviewer_notes = reviewer_notes
+            task.failure_reasons_json = reasons
+            task.reviewed_at = datetime.now(timezone.utc)
+            self.session.add(task)
+
+        await self.session.commit()
+        await self.session.refresh(question)
+        return question
+
+    async def update_question_explanation(
+        self,
+        question_id: uuid.UUID,
+        core_concept: Optional[str] = None,
+        detailed_solution: Optional[str] = None,
+        common_traps: Optional[List[str]] = None,
+        key_takeaways: Optional[List[str]] = None,
+        language: str = "ENGLISH",
+    ) -> Any:
+        """Allows QA reviewers to manually edit and save question explanations."""
+        from app.db.models.enums import LanguageCode
+        from app.db.models.explanation import QuestionExplanation
+
+        try:
+            lang_enum = LanguageCode(language.upper())
+        except ValueError:
+            lang_enum = LanguageCode.ENGLISH
+
+        expl_stmt = select(QuestionExplanation).where(
+            QuestionExplanation.question_id == question_id,
+            QuestionExplanation.language == lang_enum,
+        )
+        expl = (await self.session.exec(expl_stmt)).first()
+
+        if not expl:
+            expl = QuestionExplanation(
+                question_id=question_id,
+                language=lang_enum,
+                core_concept=core_concept or "Reviewer Provided Concept",
+                detailed_solution=detailed_solution or "Reviewer Provided Solution",
+                common_traps_json=common_traps or [],
+                key_takeaways_json=key_takeaways or [],
+            )
+        else:
+            if core_concept:
+                expl.core_concept = core_concept
+            if detailed_solution:
+                expl.detailed_solution = detailed_solution
+            if common_traps is not None:
+                expl.common_traps_json = common_traps
+            if key_takeaways is not None:
+                expl.key_takeaways_json = key_takeaways
+
+        self.session.add(expl)
+        await self.session.commit()
+        await self.session.refresh(expl)
+        return expl
