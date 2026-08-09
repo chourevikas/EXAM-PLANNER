@@ -297,16 +297,7 @@ export function AuthModal({
                     placeholder="e.g. Arjun Sharma"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-body)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
+                    className="form-input"
                   />
                 </div>
               )}
@@ -321,19 +312,10 @@ export function AuthModal({
                     <input
                       type="text"
                       required
-                      placeholder="e.g. PrepAI IAS Academy"
+                      placeholder="e.g. RankEdge IAS Academy"
                       value={organizationName}
                       onChange={(e) => setOrganizationName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: 10,
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-body)',
-                        color: 'var(--text-main)',
-                        fontSize: 14,
-                        outline: 'none',
-                      }}
+                      className="form-input"
                     />
                   </div>
 
@@ -347,16 +329,7 @@ export function AuthModal({
                       placeholder="e.g. Content Lead"
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        borderRadius: 10,
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-body)',
-                        color: 'var(--text-main)',
-                        fontSize: 14,
-                        outline: 'none',
-                      }}
+                      className="form-input"
                     />
                   </div>
                 </>
@@ -372,16 +345,7 @@ export function AuthModal({
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-body)',
-                    color: 'var(--text-main)',
-                    fontSize: 14,
-                    outline: 'none',
-                  }}
+                  className="form-input"
                 />
               </div>
 
@@ -396,16 +360,8 @@ export function AuthModal({
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 40px 12px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-body)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
+                    className="form-input"
+                    style={{ paddingRight: 40 }}
                   />
                   <button
                     type="button"
@@ -433,11 +389,15 @@ export function AuthModal({
                 className="btn btn-primary"
                 style={{ width: '100%', padding: '12px', fontSize: 15, marginTop: 8 }}
               >
-                {loading
-                  ? 'Processing...'
-                  : mode === 'login'
-                  ? `Sign In as ${selectedRole.replace('_', ' ')}`
-                  : `Create ${selectedRole.replace('_', ' ')} Account`}
+                {loading ? (
+                  <>
+                    <span className="spinner" /> Processing...
+                  </>
+                ) : mode === 'login' ? (
+                  `Sign In as ${selectedRole.replace('_', ' ')}`
+                ) : (
+                  `Create ${selectedRole.replace('_', ' ')} Account`
+                )}
               </button>
             </form>
 

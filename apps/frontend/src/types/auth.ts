@@ -33,6 +33,7 @@ export interface User {
   email: string;
   role: UserRole;
   status: UserStatus;
+  is_verified?: boolean;
   student_profile?: StudentProfile;
   admin_profile?: AdminProfile;
   created_at: string;

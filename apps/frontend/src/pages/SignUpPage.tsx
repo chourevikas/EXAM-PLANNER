@@ -74,7 +74,7 @@ export function SignUpPage() {
         >
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>Create Account</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your AI-powered UPSC preparation</p>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your adaptive exam preparation</p>
           </div>
 
           {/* Role Selector */}
@@ -221,7 +221,7 @@ export function SignUpPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. PrepAI IAS Academy"
+                    placeholder="e.g. RankEdge IAS Academy"
                     value={organizationName}
                     onChange={(e) => setOrganizationName(e.target.value)}
                     style={{

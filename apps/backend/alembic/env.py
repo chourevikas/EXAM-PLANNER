@@ -26,7 +26,7 @@ elif db_url.startswith("postgres://"):
 if "asyncpg" in db_url and "sslmode=" in db_url:
     db_url = db_url.replace("sslmode=", "ssl=")
 
-config.set_main_option("sqlalchemy.url", db_url)
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
