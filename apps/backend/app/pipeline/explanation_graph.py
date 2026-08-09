@@ -338,7 +338,7 @@ async def _generate_and_save_single_question_explanation(
             db_q.status = QuestionStatus.PUBLISHED
             session.add(db_q)
 
-            # Save QuestionMetadata
+            # Save QuestionMetadata & Calculate IRT Parameters
             meta_stmt = select(QuestionMetadata).where(
                 QuestionMetadata.question_id == q_id
             )
@@ -348,6 +348,24 @@ async def _generate_and_save_single_question_explanation(
                 if english_schema.cognitive_skill
                 else "Conceptual Reasoning"
             )
+
+            # Compute Item Response Theory (IRT) metrics
+            if db_q.difficulty == DifficultyLevel.EASY:
+                calc_irt_b = -1.00
+            elif db_q.difficulty == DifficultyLevel.HARD:
+                calc_irt_b = 1.50
+            else:
+                calc_irt_b = 0.00
+
+            if blooms_enum in (BloomsLevel.ANALYZE, BloomsLevel.EVALUATE):
+                calc_irt_a = 1.80
+            elif blooms_enum == BloomsLevel.APPLY:
+                calc_irt_a = 1.50
+            else:
+                calc_irt_a = 1.20
+
+            calc_irt_c = 0.25
+
             if not q_meta:
                 q_meta = QuestionMetadata(
                     question_id=q_id,
@@ -356,6 +374,9 @@ async def _generate_and_save_single_question_explanation(
                     primary_concept_tag=english_schema.topic[:50].upper(),
                     historical_accuracy=english_schema.historical_accuracy or 50.0,
                     pyq_frequency=english_schema.pyq_frequency or 1,
+                    irt_discrimination_a=calc_irt_a,
+                    irt_difficulty_b=calc_irt_b,
+                    irt_pseudo_guessing_c=calc_irt_c,
                 )
             else:
                 q_meta.blooms_level = blooms_enum
@@ -363,6 +384,9 @@ async def _generate_and_save_single_question_explanation(
                 q_meta.primary_concept_tag = english_schema.topic[:50].upper()
                 q_meta.historical_accuracy = english_schema.historical_accuracy or 50.0
                 q_meta.pyq_frequency = english_schema.pyq_frequency or 1
+                q_meta.irt_discrimination_a = calc_irt_a
+                q_meta.irt_difficulty_b = calc_irt_b
+                q_meta.irt_pseudo_guessing_c = calc_irt_c
             session.add(q_meta)
 
             # Resolve Syllabus Version
