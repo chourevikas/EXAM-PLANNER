@@ -18,6 +18,18 @@ const SignOutPage = lazy(() =>
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
 );
+const StudyPlannerPage = lazy(() =>
+  import('./pages/StudyPlannerPage').then((m) => ({ default: m.StudyPlannerPage }))
+);
+const AnalyticsPage = lazy(() =>
+  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+);
+const WeeklyInsightsPage = lazy(() =>
+  import('./pages/WeeklyInsightsPage').then((m) => ({ default: m.WeeklyInsightsPage }))
+);
+const MonthlyReportPage = lazy(() =>
+  import('./pages/MonthlyReportPage').then((m) => ({ default: m.MonthlyReportPage }))
+);
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
 );
@@ -35,6 +47,9 @@ const PYQSelectionPage = lazy(() =>
 );
 const MockSelectionPage = lazy(() =>
   import('./pages/MockSelectionPage').then((m) => ({ default: m.MockSelectionPage }))
+);
+const PricingPage = lazy(() =>
+  import('./pages/PricingPage').then((m) => ({ default: m.PricingPage }))
 );
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
@@ -88,6 +103,38 @@ export default function App() {
             }
           />
           <Route
+            path="/study-planner"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <StudyPlannerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/weekly"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <WeeklyInsightsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports/monthly"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <MonthlyReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/pyq"
             element={
               <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
@@ -108,6 +155,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pricing"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <PricingPage />
               </ProtectedRoute>
             }
           />
