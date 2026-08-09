@@ -51,7 +51,6 @@ async def async_process_exam_explanations(
     log.info("=" * 70)
 
     try:
-        await async_init_db()
         from app.pipeline.explanation_graph import build_explanation_pipeline
         pipeline = build_explanation_pipeline()
 

@@ -65,7 +65,6 @@ async def async_process_answer_key_pdf(
     log.info("=" * 70)
 
     try:
-        await async_init_db()
         pipeline = build_answer_key_pipeline()
 
         result = await pipeline.ainvoke(

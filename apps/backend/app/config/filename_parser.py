@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 
 # Question Paper Filename Pattern: exam_name-stage-subject-year-set
 # Example: "upsc_cse-prelims-gs1-2023-A" or "upsc_cse-prelims-gs1-2023-A.pdf"
@@ -15,11 +15,18 @@ AK_FILENAME_REGEX = re.compile(
 )
 
 
-def parse_question_paper_filename(filename_or_code: str, user_set_code: Optional[str] = None) -> Dict[str, Any]:
+def parse_question_paper_filename(
+    filename_or_code: str,
+    user_set_code: Optional[str] = None,
+    exam_name: Optional[str] = None,
+    stage: Optional[str] = None,
+    subject_code: Optional[str] = None,
+    year: Optional[Union[int, str]] = None,
+) -> Dict[str, Any]:
     """
-    Parses Question Paper filename or code. Accepts standard 5-token pattern
-    or flexible custom filenames (e.g. 'UPSC_CSE_2023_GS1.pdf').
-    Normalizes Windows backslashes for cross-platform compatibility (Linux/WSL worker support).
+    Parses Question Paper filename or code. Accepts explicit 5 metadata fields
+    (exam_name, stage, subject_code, year, set_code) to support arbitrary user filenames,
+    or falls back to 5-token filename pattern / custom stem parsing.
     """
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
@@ -40,28 +47,46 @@ def parse_question_paper_filename(filename_or_code: str, user_set_code: Optional
             final_set_code = f"SET_{u_set}"
             raw_set_token = u_set
 
+    # 1. Direct explicit metadata parameters passed in request
+    if exam_name and stage and subject_code and year:
+        e_name = str(exam_name).strip().upper()
+        stg = str(stage).strip().upper()
+        subj = str(subject_code).strip().upper()
+        yr = int(year)
+        canonical_code = f"{e_name.lower()}-{stg.lower()}-{subj.lower()}-{yr}"
+        return {
+            "exam_name": e_name,
+            "stage": stg,
+            "subject_code": subj,
+            "year": yr,
+            "set_code": final_set_code,
+            "raw_set_token": raw_set_token,
+            "canonical_code": canonical_code,
+        }
+
+    # 2. Regex matching 5-token filename pattern
     match = QP_FILENAME_REGEX.match(clean_filename)
     if match:
-        exam_name, stage, subject_code, year_str, set_token = match.groups()
+        m_exam_name, m_stage, m_subject_code, year_str, set_token = match.groups()
         set_code = set_token.upper()
         if not set_code.startswith("SET_"):
             set_code = f"SET_{set_code}"
 
-        canonical_code = f"{exam_name.upper()}_{stage.upper()}_{subject_code.upper()}_{year_str}_{set_token.upper()}"
+        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{year_str}"
         return {
-            "exam_name": exam_name.upper(),
-            "stage": stage.upper(),
-            "subject_code": subject_code.upper(),
+            "exam_name": m_exam_name.upper(),
+            "stage": m_stage.upper(),
+            "subject_code": m_subject_code.upper(),
             "year": int(year_str),
             "set_code": set_code,
             "raw_set_token": set_token.upper(),
             "canonical_code": canonical_code,
         }
 
-    # Flexible Fallback for custom file names (e.g. UPSC_CSE_2023_GS1)
-    canonical_code = stem.upper().replace("-", "_")
+    # 3. Flexible Fallback for arbitrary custom filenames
+    canonical_code = stem.lower().replace("_", "-")
     return {
-        "exam_name": canonical_code,
+        "exam_name": stem.upper(),
         "stage": "PRELIMS",
         "subject_code": "GENERAL",
         "year": 2024,
@@ -71,37 +96,57 @@ def parse_question_paper_filename(filename_or_code: str, user_set_code: Optional
     }
 
 
-def parse_answer_key_filename(filename_or_code: str) -> Dict[str, Any]:
+def parse_answer_key_filename(
+    filename_or_code: str,
+    exam_name: Optional[str] = None,
+    stage: Optional[str] = None,
+    subject_code: Optional[str] = None,
+    year: Optional[Union[int, str]] = None,
+) -> Dict[str, Any]:
     """
-    Parses Answer Key filename or code. Accepts standard 4-token pattern
-    or flexible custom filenames (e.g. 'UPSC_CSE_2023_GS1_AK.pdf').
-    Normalizes Windows backslashes for cross-platform compatibility (Linux/WSL worker support).
+    Parses Answer Key filename or code. Accepts explicit metadata parameters
+    or falls back to 4-token pattern / custom stem parsing.
     """
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
     stem = Path(normalized_path).stem.strip()
 
+    # 1. Direct explicit metadata parameters
+    if exam_name and stage and subject_code and year:
+        e_name = str(exam_name).strip().upper()
+        stg = str(stage).strip().upper()
+        subj = str(subject_code).strip().upper()
+        yr = int(year)
+        canonical_code = f"{e_name.lower()}-{stg.lower()}-{subj.lower()}-{yr}"
+        return {
+            "exam_name": e_name,
+            "stage": stg,
+            "subject_code": subj,
+            "year": yr,
+            "canonical_code": canonical_code,
+        }
+
+    # 2. Regex matching 4-token filename pattern
     match = AK_FILENAME_REGEX.match(clean_filename)
     if match:
-        exam_name, stage, subject_code, year_str = match.groups()
-        canonical_code = f"{exam_name.upper()}_{stage.upper()}_{subject_code.upper()}_{year_str}"
+        m_exam_name, m_stage, m_subject_code, year_str = match.groups()
+        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{year_str}"
         return {
-            "exam_name": exam_name.upper(),
-            "stage": stage.upper(),
-            "subject_code": subject_code.upper(),
+            "exam_name": m_exam_name.upper(),
+            "stage": m_stage.upper(),
+            "subject_code": m_subject_code.upper(),
             "year": int(year_str),
             "canonical_code": canonical_code,
         }
 
-    # Flexible Fallback for custom answer key filenames
-    canonical_code = stem.upper().replace("-", "_")
-    # Clean suffix like _ANSWER_KEY or _AK if present
-    for suffix in ["_ANSWER_KEY", "_ANSWERKEY", "_AK"]:
+    # 3. Flexible Fallback for custom answer key filenames
+    canonical_code = stem.lower().replace("_", "-")
+    for suffix in ["-answer-key", "-answerkey", "-ak"]:
         if canonical_code.endswith(suffix):
             canonical_code = canonical_code[:-len(suffix)]
 
     return {
-        "exam_name": canonical_code,
+        "exam_name": stem.upper(),
         "stage": "PRELIMS",
         "subject_code": "GENERAL",
         "year": 2024,

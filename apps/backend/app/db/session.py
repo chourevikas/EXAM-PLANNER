@@ -24,6 +24,12 @@ elif db_url.startswith("postgres://"):
 if "asyncpg" in db_url and "sslmode=" in db_url:
     db_url = db_url.replace("sslmode=", "ssl=")
 
+import sys
+import os
+from sqlalchemy.pool import NullPool, QueuePool
+
+IS_CELERY_WORKER = "celery" in sys.argv[0].lower() or os.getenv("CELERY_WORKER", "false").lower() == "true"
+
 if db_url.startswith("sqlite"):
     engine_kwargs = {"echo": False}
     engine = create_async_engine(db_url, **engine_kwargs)
@@ -36,12 +42,20 @@ if db_url.startswith("sqlite"):
         cursor.execute("PRAGMA cache_size=-64000;")  # 64MB Cache
         cursor.execute("PRAGMA busy_timeout=60000;") # 60 second busy timeout
         cursor.close()
-else:
+elif IS_CELERY_WORKER:
+    logger.info("Initializing Database Engine for Celery Worker process (using NullPool for loop safety)...")
     engine_kwargs = {
         "echo": False,
+        "poolclass": NullPool,
+    }
+    engine = create_async_engine(db_url, **engine_kwargs)
+else:
+    logger.info("Initializing Database Engine for FastAPI Server (using AsyncAdaptedQueuePool for high HTTP throughput)...")
+    engine_kwargs = {
+        "echo": False,
+        "pool_size": getattr(settings, "DB_POOL_SIZE", 15),
+        "max_overflow": getattr(settings, "DB_MAX_OVERFLOW", 10),
         "pool_pre_ping": True,
-        "pool_size": 20,
-        "max_overflow": 30,
     }
     engine = create_async_engine(db_url, **engine_kwargs)
 

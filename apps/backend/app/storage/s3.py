@@ -76,6 +76,10 @@ class S3StorageProvider(BaseStorageProvider):
         self, relative_path: str, local_destination: Union[str, Path]
     ) -> Path:
         dst_path = Path(local_destination).resolve()
+        if dst_path.exists() and dst_path.is_file() and dst_path.stat().st_size > 0:
+            logger.info(f"Local file '{dst_path}' is already cached. Skipping redundant S3 download.")
+            return dst_path
+
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(
             f"Downloading S3 s3://{self.bucket_name}/{relative_path} to local '{dst_path}'"

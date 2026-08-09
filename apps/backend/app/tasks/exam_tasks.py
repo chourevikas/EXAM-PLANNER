@@ -80,9 +80,6 @@ async def async_process_exam_pdf(
         total_pages = await get_pdf_total_pages(pdf_path)
         log.info(f"PDF Page Count: {total_pages} pages detected.")
 
-        # Ensure database tables exist across worker processes
-        await async_init_db()
-
         # Asynchronously create or update Exam record in DB
         async with managed_async_session() as session:
             exam = await session.get(Exam, exam_id)
