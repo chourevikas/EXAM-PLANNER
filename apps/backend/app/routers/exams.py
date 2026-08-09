@@ -27,7 +27,10 @@ async def upload_exam_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(
         ...,
-        description="Uploaded Question Paper PDF filename following 5-token format e.g. 'upsc_cse-prelims-gs1-2023-A.pdf'",
+        description="Uploaded Question Paper PDF file. Filename stem is used as canonical exam code e.g. 'UPSC_CSE_2023_GS1.pdf'",
+    ),
+    set_code: Optional[str] = Form(
+        default="SET_A", description="Paper set code e.g. 'SET_A', 'SET_B', 'a', 'b'"
     ),
     run_mode: Optional[str] = Form(
         default="auto", description="'celery', 'background', or 'auto'"
@@ -35,13 +38,13 @@ async def upload_exam_pdf(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Uploads a Question Paper PDF.
-    Extracts and validates tokens directly from filename: 'exam_name-stage-subject-year-set'
-    Example: 'upsc_cse-prelims-gs1-2023-A.pdf'
+    Uploads a Question Paper PDF and initiates Pipeline 1.
+    Canonical exam code is extracted from filename stem.
+    Requires set_code for paper set categorization.
     """
     service = ExamService(session)
     return await service.handle_pdf_upload(
-        file=file, run_mode=run_mode, background_tasks=background_tasks
+        file=file, set_code=set_code, run_mode=run_mode, background_tasks=background_tasks
     )
 
 

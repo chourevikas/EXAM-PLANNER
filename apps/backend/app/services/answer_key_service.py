@@ -37,39 +37,43 @@ class AnswerKeyService:
     ) -> Dict[str, Any]:
         settings = get_settings()
 
-        # 1. Automatically extract and validate 4-token Answer Key filename format
-        try:
-            parsed_tokens = parse_answer_key_filename(file.filename)
-        except ValueError as val_err:
-            raise HTTPException(status_code=400, detail=str(val_err))
-
+        # 1. Automatically extract canonical code from filename
+        parsed_tokens = parse_answer_key_filename(file.filename)
         canonical_code = parsed_tokens["canonical_code"]
 
-        # 2. Look up matching Exams by (stage, subject_code, source_year)
-        matching_exams = await self.exam_repo.find_matching_exams_for_answer_key(
-            stage=parsed_tokens["stage"],
-            subject_code=parsed_tokens["subject_code"],
-            year=parsed_tokens["year"],
-        )
-
-        if not matching_exams:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No matching Question Paper exams found for Answer Key '{file.filename}' "
-                f"(Stage: '{parsed_tokens['stage']}', Subject: '{parsed_tokens['subject_code']}', Year: {parsed_tokens['year']}). "
-                f"Please upload Question Papers first!",
+        # 2. Look up matching Exam by canonical code first, then by token attributes
+        target_exam = await self.exam_repo.get_by_code(canonical_code)
+        if not target_exam:
+            matching_exams = await self.exam_repo.find_matching_exams_for_answer_key(
+                stage=parsed_tokens["stage"],
+                subject_code=parsed_tokens["subject_code"],
+                year=parsed_tokens["year"],
             )
-
-        target_exam = matching_exams[0]
+            if matching_exams:
+                target_exam = matching_exams[0]
 
         # 3. Save uploaded file to temp directory & upload to persistent storage provider
         temp_dir = Path("./temp_answer_keys").resolve()
         temp_path = await save_upload_file_temp(file, temp_dir)
 
         storage = get_storage_provider()
-        rel_path = f"answer_keys/{canonical_code}/{file.filename}"
+        rel_path = f"uploads/answer_keys/{canonical_code}/{canonical_code}.pdf"
         persistent_path = await storage.upload_file(temp_path, rel_path)
         logger.info(f"Saved persistent answer key file to '{persistent_path}'")
+
+        if not target_exam:
+            from app.db.models import Exam
+            target_exam = Exam(
+                code=canonical_code,
+                name=canonical_code,
+                stage=parsed_tokens["stage"],
+                subject_code=parsed_tokens["subject_code"],
+                source_year=parsed_tokens["year"],
+                paper_set_code="SET_A",
+                pdf_path=persistent_path,
+                canonical_question_id_prefix=canonical_code,
+            )
+            target_exam = await self.exam_repo.save(target_exam)
 
         # 4. Determine whether to use Celery Worker or FastAPI BackgroundTasks
         task_id = str(uuid.uuid4())
@@ -89,7 +93,7 @@ class AnswerKeyService:
                 engine_name = "Celery Worker"
                 task_res = process_answer_key_pdf_task.delay(
                     str(target_exam.id),
-                    str(temp_path),
+                    persistent_path,
                     target_exam.paper_set_code,
                     task_id,
                 )
@@ -107,7 +111,7 @@ class AnswerKeyService:
                     background_tasks.add_task(
                         async_process_answer_key_pdf,
                         str(target_exam.id),
-                        str(temp_path),
+                        persistent_path,
                         target_exam.paper_set_code,
                         task_id,
                         "FastAPI BackgroundTasks (Fallback)",

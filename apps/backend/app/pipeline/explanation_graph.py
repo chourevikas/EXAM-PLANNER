@@ -7,6 +7,7 @@ from langgraph.graph import StateGraph, END, START
 from app.db.session import managed_async_session
 from app.config.settings import get_settings
 from app.db.models import (
+    Exam,
     Question,
     QuestionTranslation,
     QuestionOption,
@@ -266,7 +267,8 @@ async def _generate_and_save_single_question_explanation(
                 )
                 session.add(new_expl)
 
-            # Update Per-Option Distractor Analysis in OptionTranslation
+            # Update Per-Option Distractor Analysis in OptionTranslation & closeness_score in QuestionOption
+            distractor_scores = []
             for opt_analysis in lang_schema.options_breakdown:
                 clean_key = str(opt_analysis.option_key).strip().strip("()").strip(".").upper()
                 target_opt = next(
@@ -281,6 +283,8 @@ async def _generate_and_save_single_question_explanation(
 
                 if target_opt:
                     o_id = uuid.UUID(str(target_opt["option_id"]))
+
+                    # Save OptionTranslation
                     ot_stmt = select(OptionTranslation).where(
                         OptionTranslation.option_id == o_id,
                         OptionTranslation.language == target_lang,
@@ -299,6 +303,15 @@ async def _generate_and_save_single_question_explanation(
                         )
                         session.add(new_ot)
 
+                    # Save QuestionOption closeness_score
+                    db_opt = await session.get(QuestionOption, o_id)
+                    if db_opt:
+                        c_score = float(getattr(opt_analysis, "closeness_score", 1.0 if db_opt.is_correct else 0.4))
+                        db_opt.closeness_score = round(max(0.0, min(1.0, c_score)), 2)
+                        session.add(db_opt)
+                        if not db_opt.is_correct:
+                            distractor_scores.append(db_opt.closeness_score)
+
             await session.commit()
 
     # Step 3: Multi-Concept Hierarchy & QuestionMetadata Update
@@ -308,10 +321,10 @@ async def _generate_and_save_single_question_explanation(
             # Base time by Bloom's Taxonomy
             blooms_str = (english_schema.blooms_level or "ANALYZE").upper()
             if "REMEMBER" in blooms_str:
-                blooms_time = 40
+                blooms_time = 35
                 blooms_enum = BloomsLevel.REMEMBER
             elif "UNDERSTAND" in blooms_str:
-                blooms_time = 55
+                blooms_time = 50
                 blooms_enum = BloomsLevel.UNDERSTAND
             elif "APPLY" in blooms_str:
                 blooms_time = 70
@@ -328,12 +341,15 @@ async def _generate_and_save_single_question_explanation(
             if "EASY" in diff_upper:
                 db_q.difficulty = DifficultyLevel.EASY
                 diff_mod = -15
+                base_b = -1.00
             elif "HARD" in diff_upper:
                 db_q.difficulty = DifficultyLevel.HARD
                 diff_mod = 25
+                base_b = 1.50
             else:
                 db_q.difficulty = DifficultyLevel.MEDIUM
                 diff_mod = 0
+                base_b = 0.00
 
             # Asset / Passage Modifier
             extra_mod = 25 if (db_q.has_image or db_q.passage_id) else 0
@@ -344,7 +360,33 @@ async def _generate_and_save_single_question_explanation(
             db_q.status = QuestionStatus.PUBLISHED
             session.add(db_q)
 
-            # Save QuestionMetadata & Calculate IRT Parameters
+            # Calculate Inter-Dependent 3PL IRT Metrics (a, b, c)
+            avg_distractor_closeness = (
+                sum(distractor_scores) / len(distractor_scores)
+                if distractor_scores
+                else 0.40
+            )
+
+            # Pseudo-guessing (c) derived from distractor plausibility & question structure
+            num_opts = len(distractor_scores) + 1 if distractor_scores else 4
+            raw_c = (1.0 / num_opts) * (1.0 - 0.35 * avg_distractor_closeness)
+            calc_irt_c = round(max(0.05, min(0.25, raw_c)), 3)
+
+            # Discrimination (a) derived from Bloom's level + distractor complexity
+            is_high_cognitive = 1.0 if blooms_enum in (BloomsLevel.ANALYZE, BloomsLevel.EVALUATE) else 0.0
+            calc_irt_a = round(
+                max(0.8, min(2.4, getattr(english_schema, "irt_discrimination_a", 1.5) or (1.20 + 0.40 * is_high_cognitive + 0.30 * avg_distractor_closeness))),
+                2,
+            )
+
+            # Item Difficulty (b) z-score (-3.0 to +3.0)
+            blooms_b_mod = 0.50 if is_high_cognitive else (-0.50 if blooms_enum == BloomsLevel.REMEMBER else 0.0)
+            calc_irt_b = round(
+                max(-2.5, min(2.5, getattr(english_schema, "irt_difficulty_b", 0.0) or (base_b + blooms_b_mod + 0.4 * avg_distractor_closeness))),
+                2,
+            )
+
+            # Save QuestionMetadata
             meta_stmt = select(QuestionMetadata).where(
                 QuestionMetadata.question_id == q_id
             )
@@ -355,31 +397,12 @@ async def _generate_and_save_single_question_explanation(
                 else "Conceptual Reasoning"
             )
 
-            # Compute Item Response Theory (IRT) metrics
-            if db_q.difficulty == DifficultyLevel.EASY:
-                calc_irt_b = -1.00
-            elif db_q.difficulty == DifficultyLevel.HARD:
-                calc_irt_b = 1.50
-            else:
-                calc_irt_b = 0.00
-
-            if blooms_enum in (BloomsLevel.ANALYZE, BloomsLevel.EVALUATE):
-                calc_irt_a = 1.80
-            elif blooms_enum == BloomsLevel.APPLY:
-                calc_irt_a = 1.50
-            else:
-                calc_irt_a = 1.20
-
-            calc_irt_c = 0.25
-
             if not q_meta:
                 q_meta = QuestionMetadata(
                     question_id=q_id,
                     blooms_level=blooms_enum,
                     cognitive_skill=cog_skill,
                     primary_concept_tag=english_schema.topic[:50].upper(),
-                    historical_accuracy=english_schema.historical_accuracy or 50.0,
-                    pyq_frequency=english_schema.pyq_frequency or 1,
                     irt_discrimination_a=calc_irt_a,
                     irt_difficulty_b=calc_irt_b,
                     irt_pseudo_guessing_c=calc_irt_c,
@@ -388,8 +411,6 @@ async def _generate_and_save_single_question_explanation(
                 q_meta.blooms_level = blooms_enum
                 q_meta.cognitive_skill = cog_skill
                 q_meta.primary_concept_tag = english_schema.topic[:50].upper()
-                q_meta.historical_accuracy = english_schema.historical_accuracy or 50.0
-                q_meta.pyq_frequency = english_schema.pyq_frequency or 1
                 q_meta.irt_discrimination_a = calc_irt_a
                 q_meta.irt_difficulty_b = calc_irt_b
                 q_meta.irt_pseudo_guessing_c = calc_irt_c
@@ -422,6 +443,9 @@ async def _generate_and_save_single_question_explanation(
                 subtop_record, top_record, subj_record = await _get_or_create_subtopic(
                     session, syl.id, primary_subj, primary_topic, primary_subtop
                 )
+                subtop_record.pyq_frequency += 1
+                session.add(subtop_record)
+
                 db_q.subtopic_id = subtop_record.id
                 session.add(db_q)
 
@@ -631,6 +655,80 @@ async def node_explanation_validator_and_hitl(
                 session.add(task)
 
         await session.commit()
+
+        # Step 4: Total Exam Time Budget Normalization
+        exam_obj = await session.get(Exam, exam_id)
+        if exam_obj:
+            duration_mins = exam_obj.total_duration_minutes or 120
+            total_target_seconds = duration_mins * 60
+
+            questions_res = await session.exec(
+                select(Question)
+                .where(Question.exam_id == exam_id)
+                .order_by(col(Question.question_number_in_paper))
+            )
+            exam_questions = questions_res.all()
+
+            if exam_questions:
+                raw_times = [q.expected_time_seconds for q in exam_questions]
+                sum_raw = sum(raw_times) if sum(raw_times) > 0 else 1
+                scale_factor = total_target_seconds / sum_raw
+
+                scaled_times = [max(15, int(round(t * scale_factor))) for t in raw_times]
+                diff_sec = total_target_seconds - sum(scaled_times)
+                scaled_times[-1] = max(15, scaled_times[-1] + diff_sec)
+
+                for q_idx, q_rec in enumerate(exam_questions):
+                    q_rec.expected_time_seconds = scaled_times[q_idx]
+                    session.add(q_rec)
+                await session.commit()
+
+                # Step 5: Export Formatted JSON Artifacts for Fast Frontend Access
+                from app.storage.factory import get_storage_provider
+                from app.formatters.json_exporter import async_export_question_to_json_string, async_export_question_to_json_dict
+                storage = get_storage_provider()
+                exam_code = exam_obj.code
+                paper_set = exam_questions[0].paper_set_code if exam_questions else "SET_A"
+                clean_set = str(paper_set).strip().lower().replace("_", "-")
+
+                summary_list = []
+                for q_rec in exam_questions:
+                    json_str = await async_export_question_to_json_string(session, q_rec, exam_obj)
+                    q_num = q_rec.question_number_in_paper
+                    json_rel_path = f"artifacts/{exam_code}/{clean_set}/json/questions/Q{q_num:03d}.json"
+                    
+                    # Write to temporary file and upload via storage provider
+                    from pathlib import Path
+                    import aiofiles
+                    temp_dir = Path(get_settings().OUTPUT_ARTIFACTS_DIR) / "temp_json"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    temp_json_path = temp_dir / f"Q{q_num:03d}.json"
+                    async with aiofiles.open(temp_json_path, mode="w", encoding="utf-8") as f:
+                        await f.write(json_str)
+                    await storage.upload_file(temp_json_path, json_rel_path)
+
+                    q_dict = await async_export_question_to_json_dict(session, q_rec, exam_obj)
+                    summary_list.append(q_dict)
+
+                # Export Consolidated Exam Summary JSON
+                summary_json_str = json.dumps(
+                    {
+                        "exam_id": str(exam_id),
+                        "exam_code": exam_code,
+                        "paper_set_code": paper_set,
+                        "total_questions": len(exam_questions),
+                        "total_duration_minutes": duration_mins,
+                        "total_expected_time_seconds": total_target_seconds,
+                        "questions": summary_list,
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                )
+                summary_temp_path = temp_dir / f"{exam_code}_summary.json"
+                async with aiofiles.open(summary_temp_path, mode="w", encoding="utf-8") as f:
+                    await f.write(summary_json_str)
+                summary_rel_path = f"artifacts/{exam_code}/{clean_set}/json/exam_summary.json"
+                await storage.upload_file(summary_temp_path, summary_rel_path)
 
         # Update PipelineRun status to COMPLETED
         pm_service = PipelineManagementService(session)

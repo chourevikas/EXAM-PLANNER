@@ -21,8 +21,6 @@ class QuestionMetadata(SQLModel, table=True):
     blooms_level: BloomsLevel = Field(default=BloomsLevel.ANALYZE, index=True)
     cognitive_skill: Optional[str] = Field(default=None)
     primary_concept_tag: str = Field(default="GENERAL", index=True)
-    historical_accuracy: float = Field(default=50.00)
-    pyq_frequency: int = Field(default=1)
     irt_discrimination_a: float = Field(default=1.50)
     irt_difficulty_b: float = Field(default=0.00)
     irt_pseudo_guessing_c: float = Field(default=0.25)

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any, Type
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.config.secret_loaders import get_secret_loader
 from app.config.secret_loaders.env_loader import find_env_files
@@ -53,6 +53,10 @@ class Settings(BaseSettings):
 
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
+    DB_MIGRATION: bool = Field(
+        default=True,
+        description="If True, automatically executes Alembic database migrations ('alembic upgrade head') on application startup.",
+    )
 
     # Storage Abstraction Settings ('local' or 's3')
     STORAGE_TYPE: str = Field(default="local")
@@ -67,6 +71,7 @@ class Settings(BaseSettings):
         default=None,
         description="Endpoint URL for MinIO (e.g. http://localhost:9000) or LocalStack",
     )
+    S3_ENDPOINT_URL: Optional[str] = Field(default=None)
     AWS_SES_SENDER: str = Field(default="no-reply@examplanner.com")
 
     # LLM Settings & Provider Credentials
@@ -124,6 +129,9 @@ class Settings(BaseSettings):
                 db_filename = self.DATABASE_URL.split(":///")[-1]
                 abs_db_path = (PROJECT_ROOT / db_filename).resolve()
                 self.DATABASE_URL = f"sqlite+aiosqlite:///{abs_db_path}"
+
+        if not self.AWS_ENDPOINT_URL and self.S3_ENDPOINT_URL:
+            self.AWS_ENDPOINT_URL = self.S3_ENDPOINT_URL
 
         if self.STORAGE_TYPE == "s3" and not self.S3_BUCKET_NAME:
             raise ValueError(

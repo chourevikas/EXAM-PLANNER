@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field, Index
 from app.db.models.enums import TestType, AttemptStatus
+from app.db.models.types import DateTimeTZ
 
 
 class Test(SQLModel, table=True):
@@ -14,7 +15,10 @@ class Test(SQLModel, table=True):
     test_type: TestType = Field(index=True)
     total_questions: int = Field(default=0)
     duration_minutes: int = Field(default=60)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class TestQuestion(SQLModel, table=True):
@@ -45,8 +49,11 @@ class UserTestAttempt(SQLModel, table=True):
     score_time_adjusted: Optional[float] = Field(default=None)
     guessing_tendency_index: Optional[float] = Field(default=None)
     total_time_spent_sec: int = Field(default=0)
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    submitted_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    submitted_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
 
 
 class UserQuestionResponse(SQLModel, table=True):

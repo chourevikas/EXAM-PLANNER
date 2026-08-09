@@ -106,6 +106,7 @@ async def async_crop_and_save_asset(
     page_img: Image.Image,
     storage: BaseStorageProvider,
     exam_code: str,
+    set_code: str,
     sec_code: str,
     q_num: int,
     asset: CropAssetSchema,
@@ -130,8 +131,10 @@ async def async_crop_and_save_asset(
         if right <= left or bottom <= top:
             return None
 
+        clean_set = str(set_code).strip().lower().replace("_", "-")
         cropped_img = page_img.crop((left, top, right, bottom))
-        asset_rel_path = f"exams/{exam_code}/assets/{sec_code}_q{q_num:03d}_{asset.asset_type.value.lower()}_{uuid.uuid4().hex[:6]}.png"
+        asset_rel_path = f"cropped_assets/{exam_code}/{clean_set}/{sec_code}/Q{q_num:03d}_{asset.asset_type.value.lower()}_{uuid.uuid4().hex[:6]}.png"
         return await storage.save_image(cropped_img, asset_rel_path)
     except Exception:
         return None
+

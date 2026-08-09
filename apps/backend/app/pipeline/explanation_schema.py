@@ -7,6 +7,10 @@ class OptionAnalysis(BaseModel):
     is_correct: bool = Field(
         description="True if this is the correct answer, False otherwise"
     )
+    closeness_score: float = Field(
+        default=0.0,
+        description="Plausibility score from 0.0 to 1.0 (1.0 for correct answer; 0.6-0.9 for strong distractors, 0.1-0.3 for weak distractors)",
+    )
     explanation: str = Field(
         description="If correct: clear reasoning why it's right. If incorrect: exact conceptual error or trap that makes it wrong."
     )
@@ -64,15 +68,19 @@ class QuestionExplanationSchema(BaseModel):
     )
     blooms_level: Optional[str] = Field(
         default="ANALYZE",
-        description="Bloom's taxonomy cognitive level: REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, or CREATE",
+        description="Bloom's taxonomy cognitive level: REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE",
     )
     cognitive_skill: Optional[str] = Field(
         default="Conceptual Reasoning",
         description="Core cognitive skill required e.g., Data Interpretation, Statement Elimination, Spatial Reasoning",
     )
-    historical_accuracy: Optional[float] = Field(
-        default=50.0, description="Estimated percentage of test-takers answering correctly"
+    irt_discrimination_a: Optional[float] = Field(
+        default=1.5, description="3PL Item Response Theory Discrimination coefficient (0.5 to 2.5)"
     )
-    pyq_frequency: Optional[int] = Field(
-        default=1, description="Estimated historical recurrence frequency across past year papers"
+    irt_difficulty_b: Optional[float] = Field(
+        default=0.0, description="3PL Item Response Theory Difficulty parameter (-3.0 to +3.0)"
     )
+    irt_pseudo_guessing_c: Optional[float] = Field(
+        default=0.18, description="3PL Pseudo-guessing parameter derived from distractor plausibility (0.05 to 0.25)"
+    )
+

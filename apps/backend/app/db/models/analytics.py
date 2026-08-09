@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 
 
 class ExamAttempt(SQLModel, table=True):
@@ -32,7 +32,10 @@ class ExamAttempt(SQLModel, table=True):
     report_metadata_json: Optional[dict] = Field(
         default=None, sa_column=Column(PortableJSON)
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     responses: List["ExamQuestionResponse"] = Relationship(
         back_populates="attempt", cascade_delete=True
@@ -66,6 +69,9 @@ class ExamQuestionResponse(SQLModel, table=True):
     expected_time_seconds: float = Field(default=60.0)
     closeness_score_awarded: float = Field(default=0.0)
     final_score: float = Field(default=0.0)
+    candidate_accuracy_pct: Optional[float] = Field(
+        default=None, description="Actual student/candidate percentage accuracy on this question across test attempts"
+    )
     is_switched: bool = Field(default=False, index=True)
     gti_item_score: float = Field(default=0.0)
     created_at: datetime = Field(default_factory=datetime.utcnow)

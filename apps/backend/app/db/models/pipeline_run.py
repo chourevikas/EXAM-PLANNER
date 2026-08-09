@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
 
+from app.db.models.types import DateTimeTZ
+
 if TYPE_CHECKING:
     from app.db.models.hierarchy import Exam
 
@@ -30,7 +32,10 @@ class PipelineRun(SQLModel, table=True):
     progress_percent: float = Field(default=0.0)
     error_log: Optional[str] = Field(default=None)
 
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
 
     exam: Optional["Exam"] = Relationship()

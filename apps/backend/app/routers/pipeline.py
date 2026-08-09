@@ -11,6 +11,7 @@ from app.db.session import get_async_session
 from app.db.models import Exam
 from app.services.pipeline_management_service import PipelineManagementService
 from app.services.task_registry import task_registry
+from app.storage.factory import get_storage_provider
 from app.utils.file_utils import save_upload_file_temp
 from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
 from app.tasks.answer_key_tasks import async_process_answer_key_pdf, process_answer_key_pdf_task
@@ -134,50 +135,73 @@ async def check_duplicate_exam(
 async def upload_question_paper(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    exam_id: Optional[str] = Form(default=None),
+    set_code: Optional[str] = Form(default="SET_A"),
     conflict_resolution: str = Form(default="OVERWRITE"),
     db: AsyncSession = Depends(get_async_session),
 ):
-    """Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction)."""
+    """
+    Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction).
+    Derived canonical exam code from filename stem is used as unique identifier.
+    Requires set_code (e.g. 'SET_A', 'SET_B', 'a', 'b').
+    """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400, detail="Only PDF files are supported for Question Paper processing."
         )
 
-    meta = {}
-    try:
-        meta = parse_question_paper_filename(file.filename)
-    except ValueError as val_err:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Filename validation failed: {str(val_err)}"
-        )
+    # 1. Extract canonical code and tokens from filename stem and set_code
+    meta = parse_question_paper_filename(file.filename, user_set_code=set_code)
+    canonical_exam_code = meta["canonical_code"]
+    clean_set = meta["set_code"]
 
-    # If conflict_resolution is IGNORE, check if 5-key duplicate exists
-    if conflict_resolution.upper() == "IGNORE" and meta:
-        stmt = select(Exam).where(
-            func.lower(Exam.name) == func.lower(str(meta.get("exam_code", "")).strip()),
-            Exam.source_year == int(meta.get("year", 0)),
-            func.lower(Exam.stage) == func.lower(str(meta.get("stage", "")).strip()),
-            func.lower(Exam.subject_code) == func.lower(str(meta.get("subject_code", "")).strip()),
-            func.lower(Exam.paper_set_code) == func.lower(str(meta.get("paper_set_code", "SET_A")).strip()),
-        )
-        res = await db.exec(stmt)
-        existing = res.first()
-        if existing:
-            return {
-                "status": "SKIPPED_DUPLICATE_EXAM",
-                "exam_id": str(existing.id),
-                "filename": file.filename,
-                "message": f"Exam paper '{file.filename}' already exists in DB. Pipeline execution skipped as requested.",
-            }
+    # 2. Check if Exam exists in DB by code, or create fresh Exam record
+    stmt = select(Exam).where(
+        (func.lower(Exam.code) == canonical_exam_code.lower()) |
+        (func.lower(Exam.name) == canonical_exam_code.lower())
+    )
+    res = await db.exec(stmt)
+    exam = res.first()
 
+    if conflict_resolution.upper() == "IGNORE" and exam:
+        return {
+            "status": "SKIPPED_DUPLICATE_EXAM",
+            "exam_id": str(exam.id),
+            "canonical_exam_code": canonical_exam_code,
+            "filename": file.filename,
+            "message": f"Exam paper '{canonical_exam_code}' already exists in DB. Pipeline execution skipped as requested.",
+        }
+
+    # Save to temp directory first
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)
 
-    target_exam_id = parse_exam_id_or_generate(exam_id)
+    # Standardized Persistent Storage Path: uploads/question_papers/{canonical}/{set}/{canonical}.pdf
+    storage = get_storage_provider()
+    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{clean_set}/{canonical_exam_code}.pdf"
+    persistent_path = await storage.upload_file(temp_path, rel_storage_path)
+
+    if not exam:
+        exam = Exam(
+            code=canonical_exam_code,
+            name=canonical_exam_code,
+            stage=meta.get("stage", "PRELIMS"),
+            subject_code=meta.get("subject_code", "GENERAL"),
+            source_year=meta.get("year", 2024),
+            paper_set_code=clean_set,
+            pdf_path=persistent_path,
+            canonical_question_id_prefix=canonical_exam_code,
+        )
+    else:
+        exam.paper_set_code = clean_set
+        exam.pdf_path = persistent_path
+    
+    db.add(exam)
+    await db.commit()
+    await db.refresh(exam)
+
+    target_exam_id = exam.id
     task_id = f"p1_{uuid.uuid4().hex[:8]}"
-    logger.info(f"Received Question Paper upload '{file.filename}'. Exam ID: '{target_exam_id}', Temp path: '{temp_path}'")
+    logger.info(f"Received Question Paper upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Set: '{clean_set}', Exam ID: '{target_exam_id}'")
 
     # Record Pipeline 1 initialization in Database
     pm_service = PipelineManagementService(db)
@@ -191,13 +215,13 @@ async def upload_question_paper(
 
     key = str(target_exam_id)
     if has_active_celery_workers():
-        celery_res = process_exam_pdf_task.delay(str(target_exam_id), str(temp_path), task_id=task_id)
+        celery_res = process_exam_pdf_task.delay(str(target_exam_id), persistent_path, task_id=task_id)
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
             async_process_exam_pdf(
                 exam_id_str=str(target_exam_id),
-                pdf_path=str(temp_path),
+                pdf_path=persistent_path,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
             )
@@ -207,6 +231,8 @@ async def upload_question_paper(
     return {
         "status": "PIPELINE_1_INITIATED",
         "exam_id": str(target_exam_id),
+        "canonical_exam_code": canonical_exam_code,
+        "set_code": clean_set,
         "task_id": task_id,
         "filename": file.filename,
         "message": "Question paper extraction pipeline has started.",
@@ -216,53 +242,80 @@ async def upload_question_paper(
 @router.post("/upload-answer-key", status_code=status.HTTP_202_ACCEPTED)
 async def upload_answer_key(
     background_tasks: BackgroundTasks,
-    exam_id: str = Form(...),
-    target_set_code: str = Form(default="SET_A"),
     file: UploadFile = File(...),
+    conflict_resolution: str = Form(default="OVERWRITE"),
     db: AsyncSession = Depends(get_async_session),
 ):
-    """Uploads an Answer Key file, initiates Pipeline 2, and automatically triggers Pipeline 3 upon completion."""
-    target_exam_uuid = parse_required_exam_id(exam_id)
+    """
+    Uploads an Answer Key PDF and initiates Pipeline 2.
+    Derived canonical exam code from filename stem is used to locate target exam.
+    Does NOT require set_code parameter. Pipeline 3 triggers automatically upon completion.
+    """
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
 
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Answer key file name is required.")
+    meta = parse_answer_key_filename(file.filename)
+    canonical_exam_code = meta["canonical_code"]
 
-    try:
-        parse_answer_key_filename(file.filename)
-    except ValueError as val_err:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Filename validation failed: {str(val_err)}"
-        )
+    # Search for matching Exam by code or name
+    stmt = select(Exam).where(
+        (func.lower(Exam.code) == canonical_exam_code.lower()) |
+        (func.lower(Exam.name) == canonical_exam_code.lower())
+    )
+    res = await db.exec(stmt)
+    exam = res.first()
 
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)
 
+    # Standardized Persistent Storage Path: uploads/answer_keys/{canonical}/{canonical}.pdf
+    storage = get_storage_provider()
+    rel_storage_path = f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    persistent_path = await storage.upload_file(temp_path, rel_storage_path)
+
+    if not exam:
+        exam = Exam(
+            code=canonical_exam_code,
+            name=canonical_exam_code,
+            stage=meta.get("stage", "PRELIMS"),
+            subject_code=meta.get("subject_code", "GENERAL"),
+            source_year=meta.get("year", 2024),
+            paper_set_code="SET_A",
+            pdf_path=persistent_path,
+            canonical_question_id_prefix=canonical_exam_code,
+        )
+        db.add(exam)
+        await db.commit()
+        await db.refresh(exam)
+
+    target_exam_id = exam.id
+    target_set_code = exam.paper_set_code or "SET_A"
     task_id = f"p2_{uuid.uuid4().hex[:8]}"
+
     logger.info(
-        f"Received Answer Key upload for Exam '{exam_id}'. Set: '{target_set_code}'. Temp path: '{temp_path}'"
+        f"Received Answer Key upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Target Exam ID: '{target_exam_id}', Set: '{target_set_code}'"
     )
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
-        exam_id=target_exam_uuid,
+        exam_id=target_exam_id,
         pipeline_type="ANSWER_KEY",
         status="RUNNING",
         current_step="PROCESSING_ANSWER_KEY_FILE",
         progress_percent=10.0,
     )
 
-    key = str(exam_id)
+    key = str(target_exam_id)
     if has_active_celery_workers():
         celery_res = process_answer_key_pdf_task.delay(
-            str(exam_id), str(temp_path), target_set_code=target_set_code, task_id=task_id
+            str(target_exam_id), persistent_path, target_set_code=target_set_code, task_id=task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
             async_process_answer_key_pdf(
-                exam_id_str=str(exam_id),
-                pdf_path=str(temp_path),
+                exam_id_str=str(target_exam_id),
+                pdf_path=persistent_path,
                 target_set_code=target_set_code,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
@@ -272,22 +325,44 @@ async def upload_answer_key(
 
     return {
         "status": "PIPELINE_2_INITIATED",
-        "exam_id": str(exam_id),
+        "exam_id": str(target_exam_id),
+        "canonical_exam_code": canonical_exam_code,
         "task_id": task_id,
         "target_set_code": target_set_code,
         "message": "Answer key pipeline started. Pipeline 3 will run automatically upon completion.",
     }
 
 
-@router.get("/status/{exam_id}")
+@router.get("/status/{exam_identifier}")
 async def get_exam_pipeline_status(
-    exam_id: str,
+    exam_identifier: str,
     db: AsyncSession = Depends(get_async_session),
 ):
-    """Fetches real-time status of all 3 pipelines for an exam paper for the frontend dashboard."""
-    target_uuid = parse_required_exam_id(exam_id)
+    """Fetches real-time status of all 3 pipelines using either canonical_exam_code or exam_id UUID."""
+    exam_uuid = None
+    try:
+        exam_uuid = uuid.UUID(exam_identifier)
+    except ValueError:
+        pass
+
+    if exam_uuid:
+        target_exam = await db.get(Exam, exam_uuid)
+    else:
+        stmt = select(Exam).where(
+            (func.lower(Exam.code) == exam_identifier.lower()) |
+            (func.lower(Exam.name) == exam_identifier.lower())
+        )
+        res = await db.exec(stmt)
+        target_exam = res.first()
+
+    if not target_exam:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Exam with identifier '{exam_identifier}' not found in database."
+        )
+
     pm_service = PipelineManagementService(db)
-    return await pm_service.get_exam_pipeline_overview(target_uuid)
+    return await pm_service.get_exam_pipeline_overview(target_exam.id)
 
 
 @router.post("/trigger-explanation/{exam_id}", status_code=status.HTTP_202_ACCEPTED)

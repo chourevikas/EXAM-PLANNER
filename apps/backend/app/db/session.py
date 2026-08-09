@@ -133,13 +133,61 @@ def managed_async_session(max_retries: int = 5) -> ManagedAsyncSession:
 
 
 async def async_init_db():
-    """Asynchronously creates all missing tables in the database."""
-    logger.info(
-        f"Initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
-    )
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-    logger.info("Database initialization complete.")
+    """Asynchronously initializes database tables or executes automatic Alembic migrations."""
+    db_migration_enabled = getattr(settings, "DB_MIGRATION", True)
+    if db_migration_enabled:
+        logger.info("DB_MIGRATION is enabled. Executing automatic Alembic database migrations (alembic upgrade head)...")
+        try:
+            from alembic.config import Config
+            from alembic import command
+            from pathlib import Path
+
+            alembic_ini_path = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
+            if alembic_ini_path.exists():
+                from alembic.script import ScriptDirectory
+                from alembic.runtime.environment import EnvironmentContext
+
+                alembic_cfg = Config(str(alembic_ini_path))
+                script = ScriptDirectory.from_config(alembic_cfg)
+
+                def do_upgrade(connection):
+                    def upgrade(rev, context):
+                        return script._upgrade_revs("head", rev)
+
+                    with EnvironmentContext(
+                        alembic_cfg,
+                        script,
+                        fn=upgrade,
+                        as_sql=False,
+                        starting_rev=None,
+                        destination_rev="head",
+                    ) as env_ctx:
+                        env_ctx.configure(
+                            connection=connection,
+                            target_metadata=SQLModel.metadata,
+                            render_as_batch=True,
+                        )
+                        with env_ctx.begin_transaction():
+                            env_ctx.run_migrations()
+
+                async with engine.begin() as conn:
+                    await conn.run_sync(do_upgrade)
+                logger.info("Automatic Alembic database migration completed successfully.")
+            else:
+                logger.warning(f"alembic.ini not found at {alembic_ini_path}. Falling back to create_all.")
+                async with engine.begin() as conn:
+                    await conn.run_sync(SQLModel.metadata.create_all)
+        except Exception as mig_err:
+            logger.error(f"Automatic Alembic migration encountered error: {mig_err}. Falling back to create_all.")
+            async with engine.begin() as conn:
+                await conn.run_sync(SQLModel.metadata.create_all)
+    else:
+        logger.info(
+            f"Initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
+        )
+        async with engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+        logger.info("Database initialization complete.")
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

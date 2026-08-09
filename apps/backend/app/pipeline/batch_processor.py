@@ -275,8 +275,6 @@ class BatchQuestionRegistrar:
                                     blooms_level=BloomsLevel.ANALYZE,
                                     cognitive_skill="Extraction Stage Initialized",
                                     primary_concept_tag="GENERAL",
-                                    historical_accuracy=50.00,
-                                    pyq_frequency=1,
                                     irt_discrimination_a=1.50,
                                     irt_difficulty_b=0.00,
                                     irt_pseudo_guessing_c=0.25,
@@ -296,7 +294,7 @@ class BatchQuestionRegistrar:
                             first_page = q_data["page_numbers"][0]
                             page_img = await load_pdf_page_image_fn(pdf_path, first_page)
                             asset_rel_path = await async_crop_and_save_asset(
-                                page_img, storage, exam_code, sec_code, q_num, asset
+                                page_img, storage, exam_code, paper_set_code, sec_code, q_num, asset
                             )
                             del page_img
 

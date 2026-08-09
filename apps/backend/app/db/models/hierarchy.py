@@ -1,7 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship, Index
+from app.db.models.enums import QuestionSourceType
+from app.db.models.types import DateTimeTZ
 
 
 class Exam(SQLModel, table=True):
@@ -26,6 +28,12 @@ class Exam(SQLModel, table=True):
     )
     name: str = Field(max_length=200)
 
+    exam_type: QuestionSourceType = Field(
+        default=QuestionSourceType.PYQ,
+        index=True,
+        description="Exam category: PYQ or STATIC_MOCK",
+    )
+
     # Standardized Filename Tokens
     stage: str = Field(
         default="prelims",
@@ -44,14 +52,27 @@ class Exam(SQLModel, table=True):
         description="Paper Set e.g. SET_A, SET_B",
     )
 
+    total_duration_minutes: Optional[int] = Field(
+        default=120, description="Total allocated paper duration in minutes e.g. 120"
+    )
+    total_marks: Optional[float] = Field(
+        default=200.0, description="Total paper maximum marks e.g. 200.0"
+    )
+
     description: Optional[str] = Field(default=None)
     pdf_path: Optional[str] = Field(default=None)
     total_pages: Optional[int] = Field(default=None)
     display_order: int = Field(default=1)
     is_active: bool = Field(default=True, index=True)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     syllabus_versions: List["SyllabusVersion"] = Relationship(
@@ -125,5 +146,10 @@ class Subtopic(SQLModel, table=True):
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)
     display_order: int = Field(default=1)
+    pyq_frequency: int = Field(
+        default=0,
+        index=True,
+        description="Recurrence count of this concept/subtopic across past year papers",
+    )
 
     topic: Optional[Topic] = Relationship(back_populates="subtopics")

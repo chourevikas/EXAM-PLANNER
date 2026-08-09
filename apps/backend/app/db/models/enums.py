@@ -27,7 +27,6 @@ class QuestionStatus(str, enum.Enum):
 class QuestionSourceType(str, enum.Enum):
     PYQ = "PYQ"
     STATIC_MOCK = "STATIC_MOCK"
-    AI_GENERATED_VARIANT = "AI_GENERATED_VARIANT"
 
 class DifficultyLevel(str, enum.Enum):
     EASY = "EASY"
