@@ -16,6 +16,7 @@ from app.db.models import (
     Topic,
     Subtopic,
     DifficultyLevel,
+    BloomsLevel,
     LanguageCode,
     HumanReviewTask,
     SyllabusVersion,
@@ -298,13 +299,40 @@ async def _generate_and_save_single_question_explanation(
     async with async_session_factory() as session:
         db_q = await session.get(Question, q_id)
         if db_q:
+            # Base time by Bloom's Taxonomy
+            blooms_str = (english_schema.blooms_level or "ANALYZE").upper()
+            if "REMEMBER" in blooms_str:
+                blooms_time = 40
+                blooms_enum = BloomsLevel.REMEMBER
+            elif "UNDERSTAND" in blooms_str:
+                blooms_time = 55
+                blooms_enum = BloomsLevel.UNDERSTAND
+            elif "APPLY" in blooms_str:
+                blooms_time = 70
+                blooms_enum = BloomsLevel.APPLY
+            elif "EVALUATE" in blooms_str:
+                blooms_time = 110
+                blooms_enum = BloomsLevel.EVALUATE
+            else:
+                blooms_time = 90
+                blooms_enum = BloomsLevel.ANALYZE
+
+            # Difficulty Modifier
             diff_upper = english_schema.difficulty.upper()
             if "EASY" in diff_upper:
                 db_q.difficulty = DifficultyLevel.EASY
+                diff_mod = -15
             elif "HARD" in diff_upper:
                 db_q.difficulty = DifficultyLevel.HARD
+                diff_mod = 25
             else:
                 db_q.difficulty = DifficultyLevel.MEDIUM
+                diff_mod = 0
+
+            # Asset / Passage Modifier
+            extra_mod = 25 if (db_q.has_image or db_q.passage_id) else 0
+            computed_time = min(max(blooms_time + diff_mod + extra_mod, 30), 180)
+            db_q.expected_time_seconds = computed_time
 
             # Transition Question status to PUBLISHED
             db_q.status = QuestionStatus.PUBLISHED
@@ -315,14 +343,23 @@ async def _generate_and_save_single_question_explanation(
                 QuestionMetadata.question_id == q_id
             )
             q_meta = (await session.exec(meta_stmt)).first()
+            cog_skill = (
+                english_schema.cognitive_skill[:100]
+                if english_schema.cognitive_skill
+                else "Conceptual Reasoning"
+            )
             if not q_meta:
                 q_meta = QuestionMetadata(
                     question_id=q_id,
+                    blooms_level=blooms_enum,
+                    cognitive_skill=cog_skill,
                     primary_concept_tag=english_schema.topic[:50].upper(),
                     historical_accuracy=english_schema.historical_accuracy or 50.0,
                     pyq_frequency=english_schema.pyq_frequency or 1,
                 )
             else:
+                q_meta.blooms_level = blooms_enum
+                q_meta.cognitive_skill = cog_skill
                 q_meta.primary_concept_tag = english_schema.topic[:50].upper()
                 q_meta.historical_accuracy = english_schema.historical_accuracy or 50.0
                 q_meta.pyq_frequency = english_schema.pyq_frequency or 1

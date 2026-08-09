@@ -62,6 +62,14 @@ class QuestionExplanationSchema(BaseModel):
     difficulty: str = Field(
         description="Difficulty level e.g., 'Easy', 'Medium', or 'Hard'"
     )
+    blooms_level: Optional[str] = Field(
+        default="ANALYZE",
+        description="Bloom's taxonomy cognitive level: REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE, or CREATE",
+    )
+    cognitive_skill: Optional[str] = Field(
+        default="Conceptual Reasoning",
+        description="Core cognitive skill required e.g., Data Interpretation, Statement Elimination, Spatial Reasoning",
+    )
     historical_accuracy: Optional[float] = Field(
         default=50.0, description="Estimated percentage of test-takers answering correctly"
     )
