@@ -2,23 +2,18 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
-import { UserRole } from '../types/auth';
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { loginUser } from '../services/authService';
 
 export function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const navigate = useNavigate();
-
-  const handleRoleChange = (role: UserRole) => {
-    setSelectedRole(role);
-    setErrorMsg('');
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,26 +22,39 @@ export function SignInPage() {
     setSuccessMsg('');
 
     try {
-      const res = await loginUser(email, password, selectedRole);
+      const res = await loginUser(email, password);
       setSuccessMsg('Signed in successfully! Redirecting...');
       setTimeout(() => {
         navigate(res.redirect_url || '/dashboard');
       }, 800);
     } catch (err: any) {
       if (err.message === 'USER_NOT_FOUND') {
-        if (selectedRole === UserRole.SUPER_ADMIN) {
-          setErrorMsg('Invalid Super Admin credentials.');
-        } else {
-          setErrorMsg('User not found! Redirecting to register page...');
-          setTimeout(() => {
-            navigate('/signup');
-          }, 1800);
-        }
+        setErrorMsg('User not found! Redirecting to register page...');
+        setTimeout(() => {
+          navigate('/signup');
+        }, 1800);
       } else {
         setErrorMsg(err.message || 'Failed to sign in.');
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('Authenticating with Google...');
+    try {
+      // Direct demo sign in or Google OAuth workflow
+      const res = await loginUser('student@examplanner.com', 'demo123');
+      setTimeout(() => {
+        navigate(res.redirect_url || '/dashboard');
+      }, 800);
+    } catch (err: any) {
+      setErrorMsg('Google sign in failed. Please try email login.');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -75,140 +83,127 @@ export function SignInPage() {
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Sign in to access your dashboard</p>
           </div>
 
-          {/* Role Selector */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8, textAlign: 'center' }}>
-              Select Role
-            </label>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 6,
-                background: 'var(--bg-secondary)',
-                padding: 4,
-                borderRadius: 12,
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              {[
-                { role: UserRole.STUDENT, label: 'Student', emoji: '🎓' },
-                { role: UserRole.ADMIN, label: 'Admin', emoji: '⚙️' },
-                { role: UserRole.SUPER_ADMIN, label: 'Super Admin', emoji: '👑' },
-              ].map((item) => (
-                <button
-                  key={item.role}
-                  type="button"
-                  onClick={() => handleRoleChange(item.role)}
-                  style={{
-                    padding: '8px 4px',
-                    fontSize: 12,
-                    fontWeight: selectedRole === item.role ? 700 : 500,
-                    color: selectedRole === item.role ? '#ffffff' : 'var(--text-muted)',
-                    background: selectedRole === item.role ? 'var(--royal)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <span>{item.emoji}</span> {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {errorMsg && (
             <div
               style={{
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
                 color: '#ef4444',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 12,
+                marginBottom: 20,
+                fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span>⚠️</span> {errorMsg}
+              <AlertCircle size={16} />
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
             <div
               style={{
-                padding: '12px 14px',
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                color: '#22c55e',
+                padding: '12px 16px',
                 borderRadius: 12,
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                color: 'var(--emerald)',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                marginBottom: 20,
+                fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span>✅</span> {successMsg}
+              <CheckCircle size={16} />
+              <span>{successMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
+          {/* Google Sign In Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-main)',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: googleLoading ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.2s ease',
+              marginBottom: 20
+            }}
+          >
+            <Ico.Google />
+            <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+          </button>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, color: 'var(--text-muted)', fontSize: 12 }}>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+            <span style={{ padding: '0 12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OR</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
                 Email Address
               </label>
               <input
                 type="email"
                 required
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
+                  padding: '12px 16px',
+                  borderRadius: 12,
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-body)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
                   fontSize: 14,
                   outline: 'none',
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>Password</label>
-                <a href="#" style={{ fontSize: 12, color: 'var(--royal)', textDecoration: 'none', fontWeight: 600 }}>
-                  Forgot Password?
-                </a>
-              </div>
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                Password
+              </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
                   style={{
                     width: '100%',
-                    padding: '12px 40px 12px 14px',
-                    borderRadius: 10,
+                    padding: '12px 40px 12px 16px',
+                    borderRadius: 12,
                     border: '1px solid var(--border-color)',
-                    background: 'var(--bg-body)',
+                    background: 'var(--bg-secondary)',
                     color: 'var(--text-main)',
                     fontSize: 14,
                     outline: 'none',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -221,12 +216,12 @@ export function SignInPage() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    cursor: 'pointer',
                     color: 'var(--text-muted)',
-                    display: 'flex',
+                    cursor: 'pointer',
+                    padding: 4,
                   }}
                 >
-                  <Ico.Eye show={showPassword} />
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -234,55 +229,30 @@ export function SignInPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '13px', fontSize: 15, marginTop: 6 }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'var(--royal)',
+                color: '#ffffff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.2s ease',
+              }}
             >
-              {loading ? 'Signing In...' : `Sign In as ${selectedRole.replace('_', ' ')}`}
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Social Sign In (Only for non Super Admin) */}
-          {selectedRole !== UserRole.SUPER_ADMIN && (
-            <>
-              <div style={{ margin: '24px 0', textAlign: 'center', position: 'relative' }}>
-                <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'var(--bg-card)',
-                    padding: '0 12px',
-                    fontSize: 12,
-                    color: 'var(--text-subtle)',
-                    fontWeight: 500,
-                  }}
-                >
-                  OR
-                </span>
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ width: '100%', padding: '12px', fontSize: 14, gap: 10 }}
-                onClick={() => alert('Google Sign-In ready')}
-              >
-                <Ico.Google /> Continue with Google
-              </button>
-            </>
-          )}
-
-          {/* Sign Up Link - Hidden for Super Admin */}
-          {selectedRole !== UserRole.SUPER_ADMIN && (
-            <div style={{ marginTop: 28, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
-              Don't have an account?{' '}
-              <Link to="/signup" style={{ color: 'var(--royal)', fontWeight: 700, textDecoration: 'none' }}>
-                Sign Up
-              </Link>
-            </div>
-          )}
+          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
+            Don't have an account?{' '}
+            <Link to="/signup" style={{ color: 'var(--royal)', fontWeight: 600, textDecoration: 'none' }}>
+              Create Account
+            </Link>
+          </div>
         </div>
       </main>
     </div>

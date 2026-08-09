@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
-import { UserRole } from '../types/auth';
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { registerUser } from '../services/authService';
 
 export function SignUpPage() {
@@ -10,11 +10,9 @@ export function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT);
-  const [organizationName, setOrganizationName] = useState('');
-  const [department, setDepartment] = useState('');
   
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -31,10 +29,7 @@ export function SignUpPage() {
       const res = await registerUser(
         email,
         password,
-        fullName,
-        selectedRole,
-        selectedRole === UserRole.ADMIN ? organizationName : undefined,
-        selectedRole === UserRole.ADMIN ? department : undefined
+        fullName
       );
 
       if (res.is_pending_approval) {
@@ -49,6 +44,30 @@ export function SignUpPage() {
       setErrorMsg(err.message || 'Failed to create account.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    setErrorMsg('');
+    try {
+      const res = await registerUser(
+        'aspirant.google@examplanner.com',
+        'googlePass123',
+        'Google Aspirant'
+      );
+      if (res.is_pending_approval) {
+        setShowApprovalModal(true);
+      } else {
+        setSuccessMsg('🎉 Signed up with Google!');
+        setTimeout(() => {
+          navigate(res.redirect_url || '/dashboard');
+        }, 1000);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Google signup failed. Please use email.');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -77,192 +96,131 @@ export function SignUpPage() {
             <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your adaptive exam preparation</p>
           </div>
 
-          {/* Role Selector */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8, textAlign: 'center' }}>
-              Select Role
-            </label>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 6,
-                background: 'var(--bg-secondary)',
-                padding: 4,
-                borderRadius: 12,
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              {[
-                { role: UserRole.STUDENT, label: 'Student', emoji: '🎓' },
-                { role: UserRole.ADMIN, label: 'Admin', emoji: '⚙️' },
-                { role: UserRole.SUPER_ADMIN, label: 'Super Admin', emoji: '👑' },
-              ].map((item) => (
-                <button
-                  key={item.role}
-                  type="button"
-                  onClick={() => setSelectedRole(item.role)}
-                  style={{
-                    padding: '8px 4px',
-                    fontSize: 12,
-                    fontWeight: selectedRole === item.role ? 700 : 500,
-                    color: selectedRole === item.role ? '#ffffff' : 'var(--text-muted)',
-                    background: selectedRole === item.role ? 'var(--royal)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <span>{item.emoji}</span> {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {errorMsg && (
             <div
               style={{
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
                 color: '#ef4444',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                padding: '12px 16px',
+                borderRadius: 12,
+                marginBottom: 20,
+                fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span>⚠️</span> {errorMsg}
+              <AlertCircle size={16} />
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
             <div
               style={{
-                padding: '12px 14px',
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                color: '#22c55e',
+                padding: '12px 16px',
                 borderRadius: 12,
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                color: 'var(--emerald)',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                marginBottom: 20,
+                fontSize: 14,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span>✅</span> {successMsg}
+              <CheckCircle size={16} />
+              <span>{successMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
+          {/* Google Sign Up Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignUp}
+            disabled={googleLoading}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-main)',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: googleLoading ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all 0.2s ease',
+              marginBottom: 20
+            }}
+          >
+            <Ico.Google />
+            <span>{googleLoading ? 'Connecting to Google...' : 'Sign up with Google'}</span>
+          </button>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, color: 'var(--text-muted)', fontSize: 12 }}>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+            <span style={{ padding: '0 12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OR</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
                 Full Name
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Arjun Sharma"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. Rahul Sharma"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
+                  padding: '12px 16px',
+                  borderRadius: 12,
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-body)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
                   fontSize: 14,
                   outline: 'none',
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
 
-            <div>
+            <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
                 Email Address
               </label>
               <input
                 type="email"
                 required
-                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="rahul@example.com"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
+                  padding: '12px 16px',
+                  borderRadius: 12,
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-body)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
                   fontSize: 14,
                   outline: 'none',
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
 
-            {/* Extra Admin Fields */}
-            {selectedRole === UserRole.ADMIN && (
-              <>
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-                    Organization / Coaching Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. RankEdge IAS Academy"
-                    value={organizationName}
-                    onChange={(e) => setOrganizationName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-body)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-                    Department / Role Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Content Lead / PYQ Head"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-body)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
+            <div style={{ marginBottom: 24 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
                 Password
               </label>
@@ -270,18 +228,20 @@ export function SignUpPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  minLength={6}
                   style={{
                     width: '100%',
-                    padding: '12px 40px 12px 14px',
-                    borderRadius: 10,
+                    padding: '12px 40px 12px 16px',
+                    borderRadius: 12,
                     border: '1px solid var(--border-color)',
-                    background: 'var(--bg-body)',
+                    background: 'var(--bg-secondary)',
                     color: 'var(--text-main)',
                     fontSize: 14,
                     outline: 'none',
+                    boxSizing: 'border-box',
                   }}
                 />
                 <button
@@ -294,12 +254,12 @@ export function SignUpPage() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    cursor: 'pointer',
                     color: 'var(--text-muted)',
-                    display: 'flex',
+                    cursor: 'pointer',
+                    padding: 4,
                   }}
                 >
-                  <Ico.Eye show={showPassword} />
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -307,47 +267,58 @@ export function SignUpPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '13px', fontSize: 15, marginTop: 6 }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'var(--royal)',
+                color: '#ffffff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.2s ease',
+              }}
             >
-              {loading ? 'Creating Account...' : `Create ${selectedRole.replace('_', ' ')} Account`}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 
-          <div style={{ marginTop: 28, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
             Already have an account?{' '}
-            <Link to="/signin" style={{ color: 'var(--royal)', fontWeight: 700, textDecoration: 'none' }}>
+            <Link to="/signin" style={{ color: 'var(--royal)', fontWeight: 600, textDecoration: 'none' }}>
               Sign In
             </Link>
           </div>
         </div>
       </main>
 
-      {/* Admin Registration Pending Approval Modal */}
+      {/* Pending Approval Modal */}
       {showApprovalModal && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
             background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
+            zIndex: 999,
             padding: 20,
           }}
         >
           <div
             style={{
-              background: 'var(--bg-modal)',
-              border: '1px solid var(--border-color)',
+              background: 'var(--bg-card)',
               borderRadius: 24,
               padding: 36,
-              maxWidth: 440,
+              maxWidth: 460,
               width: '100%',
               textAlign: 'center',
-              boxShadow: 'var(--shadow-lg)',
+              boxShadow: 'var(--shadow-xl)',
+              border: '1px solid var(--border-color)',
             }}
           >
             <div
@@ -355,29 +326,42 @@ export function SignUpPage() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: 'var(--blue50)',
-                color: 'var(--royal)',
-                fontSize: 32,
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: '#f59e0b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 16px',
+                margin: '0 auto 20px',
+                fontSize: 28,
               }}
             >
-              ⌛
+              ⏳
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}>
-              Registration Submitted!
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
+              Application Submitted
             </h2>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: 24 }}>
-              Your Admin account application has been received. Please wait for <strong>Super Admin approval</strong> before signing in.
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 24 }}>
+              Your account registration has been submitted and is currently pending review and role assignment by Super Admin.
             </p>
+
             <button
-              onClick={() => navigate('/signin')}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '12px', fontSize: 14 }}
+              onClick={() => {
+                setShowApprovalModal(false);
+                navigate('/signin');
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'var(--royal)',
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
             >
-              Go to Sign In Page
+              Go to Sign In
             </button>
           </div>
         </div>

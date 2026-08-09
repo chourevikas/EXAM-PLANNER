@@ -2,11 +2,11 @@ import { UserRole, AuthResponse } from '../types/auth';
 
 const API_BASE_URL = '/api/v1/auth';
 
-export async function loginUser(email: string, password: string, role?: UserRole): Promise<AuthResponse> {
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, role }),
+    body: JSON.stringify({ email, password }),
   });
 
   if (!res.ok) {
@@ -33,9 +33,7 @@ export async function registerUser(
   email: string,
   password: string,
   fullName: string,
-  role: UserRole = UserRole.STUDENT,
-  organizationName?: string,
-  department?: string
+  role: UserRole = UserRole.STUDENT
 ): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/register`, {
     method: 'POST',
@@ -44,9 +42,7 @@ export async function registerUser(
       email,
       password,
       full_name: fullName,
-      role,
-      organization_name: organizationName,
-      department: department
+      role
     }),
   });
 
