@@ -151,12 +151,15 @@ async def _generate_and_save_single_question_explanation(
         trans_res = await session.exec(trans_stmt)
         translations = trans_res.all()
 
-        target_languages = set()
-        for t in translations:
-            target_languages.add(t.language)
-        target_languages.add(LanguageCode.ENGLISH)
-        if default_lang_enum:
-            target_languages.add(default_lang_enum)
+        # Single-language mode: Explanations generated in English only.
+        # Multi-language translation code commented out for now:
+        # target_languages = set()
+        # for t in translations:
+        #     target_languages.add(t.language)
+        # target_languages.add(LanguageCode.ENGLISH)
+        # if default_lang_enum:
+        #     target_languages.add(default_lang_enum)
+        target_languages = {LanguageCode.ENGLISH}
 
         eng_trans = next(
             (t for t in translations if t.language == LanguageCode.ENGLISH),
@@ -226,15 +229,17 @@ async def _generate_and_save_single_question_explanation(
         language=LanguageCode.ENGLISH,
     )
 
-    # Step 2: Save explanations & distractor analyses for all target languages
+    # Step 2: Save explanations & distractor analyses for target languages
     for target_lang in target_languages:
         if target_lang == LanguageCode.ENGLISH:
             lang_schema = english_schema
         else:
-            log.info(f"🌐 Translating Explanation to {target_lang.value} for Question ID {q_id}...")
-            lang_schema = await ainvoke_translate_explanation_llm(
-                english_schema, target_lang
-            )
+            # Multi-language translation call commented out for single-language mode:
+            # log.info(f"🌐 Translating Explanation to {target_lang.value} for Question ID {q_id}...")
+            # lang_schema = await ainvoke_translate_explanation_llm(
+            #     english_schema, target_lang
+            # )
+            continue
 
         async with async_session_factory() as session:
             existing_expl_stmt = select(QuestionExplanation).where(

@@ -77,9 +77,45 @@ async def async_process_exam_explanations(
         log.info("=" * 70)
         return {**result, "task_id": t_id, "execution_engine": execution_engine}
 
+    except asyncio.CancelledError:
+        log.warning(
+            f"⏹️ [EXPLANATION PIPELINE STOPPED] Exam ID '{exam_id_str}' (Task ID: '{t_id}') was stopped/cancelled."
+        )
+        try:
+            from app.db.session import async_session_factory
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with async_session_factory() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="EXPLANATION_INDEXING",
+                    status="STOPPED",
+                    current_step="CANCELLED_BY_ADMIN",
+                    progress_percent=0.0,
+                    error_log="Explanation pipeline task stopped by user/admin.",
+                )
+        except Exception as db_err:
+            log.error(f"Failed to update stopped status in DB: {db_err}")
+        raise
+
     except Exception as exc:
         log.error(
             f"❌ [EXPLANATION PIPELINE FAILED] Engine: {execution_engine} | Exam ID '{exam_id_str}' (Task ID: '{t_id}'): {exc}",
             exc_info=True,
         )
+        try:
+            from app.db.session import async_session_factory
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with async_session_factory() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="EXPLANATION_INDEXING",
+                    status="FAILED",
+                    current_step="FAILED_WITH_ERROR",
+                    progress_percent=0.0,
+                    error_log=str(exc),
+                )
+        except Exception:
+            pass
         raise

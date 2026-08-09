@@ -15,6 +15,7 @@ celery_app.conf.update(
     imports=[
         "app.tasks.exam_tasks",
         "app.tasks.answer_key_tasks",
+        "app.tasks.explanation_tasks",
     ],  # Explicitly import task modules for Celery autodiscovery
     task_serializer="json",
     accept_content=["json"],

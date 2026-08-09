@@ -145,6 +145,17 @@ async def async_process_exam_pdf(
         log.info("Building LangGraph extraction pipeline graph...")
         pipeline = build_langgraph_pipeline()
 
+        async with async_session_factory() as session:
+            from app.services.pipeline_management_service import PipelineManagementService
+            pm = PipelineManagementService(session)
+            await pm.update_pipeline_status(
+                exam_id=exam_id,
+                pipeline_type="QUESTION_EXTRACTION",
+                status="RUNNING",
+                current_step="EXTRACTING_QUESTIONS_WITH_VISION_LLM",
+                progress_percent=30.0,
+            )
+
         log.info(
             f"Invoking LangGraph pipeline across {total_pages} pages with max_concurrency=2..."
         )
@@ -165,6 +176,11 @@ async def async_process_exam_pdf(
             config={"max_concurrency": 2},
         )
 
+        async with async_session_factory() as session:
+            from app.services.pipeline_management_service import PipelineManagementService
+            pm = PipelineManagementService(session)
+            await pm.on_pipeline_1_completed(exam_id)
+
         log.info("=" * 70)
         log.info(
             f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"
@@ -179,11 +195,45 @@ async def async_process_exam_pdf(
             "execution_engine": execution_engine,
         }
 
+    except asyncio.CancelledError:
+        log.warning(
+            f"⏹️ [EXTRACTION PIPELINE STOPPED] Exam ID '{exam_id_str}' (Task ID: '{t_id}') was stopped/cancelled."
+        )
+        try:
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with async_session_factory() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="QUESTION_EXTRACTION",
+                    status="STOPPED",
+                    current_step="CANCELLED_BY_ADMIN",
+                    progress_percent=0.0,
+                    error_log="Question extraction task stopped by user/admin.",
+                )
+        except Exception as db_err:
+            log.error(f"Failed to update stopped status in DB: {db_err}")
+        raise
+
     except Exception as exc:
         log.error(
             f"❌ [EXTRACTION PIPELINE FAILED] Engine: {execution_engine} | Paper '{pdf_file.stem}' (Task ID: '{t_id}'): {exc}",
             exc_info=True,
         )
+        try:
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with async_session_factory() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="QUESTION_EXTRACTION",
+                    status="FAILED",
+                    current_step="FAILED_WITH_ERROR",
+                    progress_percent=0.0,
+                    error_log=str(exc),
+                )
+        except Exception:
+            pass
         raise
     finally:
         # Automated cleanup of temporary files and temporary output artifact directory

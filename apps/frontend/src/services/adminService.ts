@@ -103,3 +103,48 @@ export async function fetchAllUsers(): Promise<User[]> {
   }
   return await res.json();
 }
+
+export async function fetchPipelineStatus(examId: string): Promise<any> {
+  const res = await fetch(`/api/v1/pipeline/status/${examId}`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch pipeline status' }));
+    throw new Error(errorData.detail || 'Could not fetch pipeline status.');
+  }
+  return await res.json();
+}
+
+export async function stopPipelineTask(examId: string): Promise<any> {
+  const res = await fetch(`/api/v1/pipeline/stop/${examId}`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to stop pipeline task' }));
+    throw new Error(errorData.detail || 'Could not stop task.');
+  }
+  return await res.json();
+}
+
+export async function restartPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+  const res = await fetch(`/api/v1/pipeline/restart/${examId}?language=${language}`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to restart pipeline task' }));
+    throw new Error(errorData.detail || 'Could not restart task.');
+  }
+  return await res.json();
+}
+
+export async function retryPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+  const res = await fetch(`/api/v1/pipeline/retry/${examId}?language=${language}`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to retry pipeline task' }));
+    throw new Error(errorData.detail || 'Could not retry task.');
+  }
+  return await res.json();
+}

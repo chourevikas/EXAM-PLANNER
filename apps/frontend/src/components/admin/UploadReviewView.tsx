@@ -25,9 +25,19 @@ import {
   Maximize2,
   Filter,
   Cloud,
+  Square,
+  RotateCcw,
+  Play,
+  RefreshCw,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
 import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/exam';
+import {
+  stopPipelineTask,
+  restartPipelineTask,
+  retryPipelineTask,
+  fetchPipelineStatus,
+} from '../../services/adminService';
 
 /* ── Stepper Component ── */
 const steps = [
@@ -138,17 +148,122 @@ const statusIcon = (s: string) => {
 };
 
 function AIProcessingPanel() {
+  const [taskStatus, setTaskStatus] = useState<string>('RUNNING');
+  const [statusText, setStatusText] = useState<string>('');
+  const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false);
+  const examId = '6884bea7-6a8d-44b2-a1ad-c2749970083b'; // Default active exam session ID
+
+  const handleStopTask = async () => {
+    setIsProcessingAction(true);
+    try {
+      await stopPipelineTask(examId);
+      setTaskStatus('STOPPED');
+      setStatusText('Pipeline task stopped by admin.');
+    } catch (err: any) {
+      setStatusText(err.message || 'Failed to stop task.');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRestartTask = async () => {
+    setIsProcessingAction(true);
+    try {
+      await restartPipelineTask(examId, 'ENGLISH');
+      setTaskStatus('RUNNING');
+      setStatusText('Pipeline task restarted from the beginning.');
+    } catch (err: any) {
+      setStatusText(err.message || 'Failed to restart task.');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleRetryTask = async () => {
+    setIsProcessingAction(true);
+    try {
+      await retryPipelineTask(examId, 'ENGLISH');
+      setTaskStatus('RUNNING');
+      setStatusText('Pipeline task retried.');
+    } catch (err: any) {
+      setStatusText(err.message || 'Failed to retry task.');
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: 24, boxShadow: 'var(--shadow-sm)', marginBottom: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-main)', margin: 0 }}>
-          ⚡ AI Extraction & Processing Status
-        </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#f59e0b', fontFamily: 'var(--font-mono)' }}>
-          <Loader2 size={13} style={{ animation: 'spin-slow 1s linear infinite' }} />
-          5 / 12 stages complete
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-main)', margin: 0 }}>
+            ⚡ AI Extraction & Pipeline Controls
+          </h3>
+          {statusText && (
+            <p style={{ fontSize: 12.5, color: taskStatus === 'STOPPED' ? '#ef4444' : '#2563eb', margin: '4px 0 0 0', fontWeight: 600 }}>
+              {statusText}
+            </p>
+          )}
+        </div>
+
+        {/* Task Control Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={handleStopTask}
+            disabled={isProcessingAction || taskStatus === 'STOPPED'}
+            className="btn btn-ghost"
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#ef4444',
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.08)',
+              borderRadius: 8,
+              cursor: isProcessingAction || taskStatus === 'STOPPED' ? 'not-allowed' : 'pointer',
+            }}
+            title="Stop running task if stuck"
+          >
+            <Square size={14} /> Stop Task
+          </button>
+
+          <button
+            onClick={handleRetryTask}
+            disabled={isProcessingAction}
+            className="btn btn-ghost"
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#2563eb',
+              borderColor: 'rgba(37, 99, 235, 0.3)',
+              background: 'rgba(37, 99, 235, 0.08)',
+              borderRadius: 8,
+              cursor: isProcessingAction ? 'not-allowed' : 'pointer',
+            }}
+            title="Retry task execution"
+          >
+            <RotateCcw size={14} /> Retry Task
+          </button>
+
+          <button
+            onClick={handleRestartTask}
+            disabled={isProcessingAction}
+            className="btn btn-primary"
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 700,
+              borderRadius: 8,
+              cursor: isProcessingAction ? 'not-allowed' : 'pointer',
+            }}
+            title="Restart task from beginning"
+          >
+            <RefreshCw size={14} /> Restart Task
+          </button>
         </div>
       </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {aiStages.map((stage, i) => (
           <div

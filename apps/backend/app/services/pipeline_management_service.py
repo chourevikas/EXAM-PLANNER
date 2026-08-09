@@ -135,8 +135,17 @@ class PipelineManagementService:
             )
 
             # Trigger background task for Pipeline 3 execution
-            from app.tasks.explanation_tasks import async_process_exam_explanations
-            asyncio.create_task(async_process_exam_explanations(str(exam_id)))
+            from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
+            from app.tasks.celery_app import has_active_celery_workers
+            from app.services.task_registry import task_registry
+
+            key = str(exam_id)
+            if has_active_celery_workers():
+                celery_res = process_exam_explanations_task.delay(str(exam_id))
+                task_registry.register_celery_task(key, celery_res.id)
+            else:
+                task = asyncio.create_task(async_process_exam_explanations(str(exam_id)))
+                task_registry.register_async_task(key, task)
 
         return run
 
