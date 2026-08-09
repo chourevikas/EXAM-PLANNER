@@ -101,3 +101,14 @@ async def send_admin_notification_subscription(user_email: str, user_name: str):
     except Exception as e:
         logger.error(f"Failed to send admin notification email: {e}")
         return False
+
+# Legacy mock for auth_service.py compatibility
+class MockEmailService:
+    def send_verification_email(self, email: str, token: str):
+        logger.info(f"Mock: Sending verification email to {email}")
+        
+    def send_password_reset_email(self, email: str, token: str):
+        logger.info(f"Mock: Sending password reset email to {email}")
+
+EmailService = MockEmailService
+email_service = MockEmailService()

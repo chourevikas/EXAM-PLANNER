@@ -3,7 +3,7 @@ version: '3.8'
 services:
   api:
     build:
-      context: ./apps/api
+      context: ./apps/backend
       dockerfile: Dockerfile
     ports:
       - "8001:8000"
