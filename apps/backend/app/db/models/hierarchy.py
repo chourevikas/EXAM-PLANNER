@@ -61,9 +61,16 @@ class Exam(SQLModel, table=True):
 
     description: Optional[str] = Field(default=None)
     pdf_path: Optional[str] = Field(default=None)
+    questions_json_path: Optional[str] = Field(
+        default=None, description="S3 or local relative path to exam_questions.json"
+    )
+    solutions_json_path: Optional[str] = Field(
+        default=None, description="S3 or local relative path to exam_solutions.json"
+    )
     total_pages: Optional[int] = Field(default=None)
     display_order: int = Field(default=1)
     is_active: bool = Field(default=True, index=True)
+
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

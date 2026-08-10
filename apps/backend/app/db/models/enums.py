@@ -76,3 +76,18 @@ class AssetType(str, enum.Enum):
     FIGURE = "FIGURE"
     MAP = "MAP"
     TABLE_IMAGE = "TABLE_IMAGE"
+
+
+class AttemptMode(str, enum.Enum):
+    EXAM = "EXAM"
+    PRACTICE = "PRACTICE"
+    REVISION = "REVISION"
+
+
+class QuestionResponseStatus(str, enum.Enum):
+    UNVISITED = "UNVISITED"
+    VISITED = "VISITED"
+    ANSWERED = "ANSWERED"
+    MARKED_FOR_REVIEW = "MARKED_FOR_REVIEW"
+    ANSWERED_AND_MARKED = "ANSWERED_AND_MARKED"
+

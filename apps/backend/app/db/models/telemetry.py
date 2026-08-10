@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field, Index
-from app.db.models.enums import TestType, AttemptStatus
+from app.db.models.enums import TestType, AttemptStatus, AttemptMode
 from app.db.models.types import DateTimeTZ
 
 
@@ -44,7 +44,11 @@ class UserTestAttempt(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     test_id: uuid.UUID = Field(foreign_key="tests.id", index=True)
+    exam_attempt_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
+    )
     status: AttemptStatus = Field(default=AttemptStatus.IN_PROGRESS, index=True)
+    mode: AttemptMode = Field(default=AttemptMode.EXAM, index=True)
     score_raw: Optional[float] = Field(default=None)
     score_time_adjusted: Optional[float] = Field(default=None)
     guessing_tendency_index: Optional[float] = Field(default=None)
@@ -67,6 +71,9 @@ class UserQuestionResponse(SQLModel, table=True):
     attempt_id: uuid.UUID = Field(
         foreign_key="user_test_attempts.id", ondelete="CASCADE", index=True
     )
+    exam_response_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
+    )
     question_id: uuid.UUID = Field(foreign_key="questions.id", index=True)
     selected_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id", index=True
@@ -86,8 +93,11 @@ class QuestionSwitchLog(SQLModel, table=True):
     __table_args__ = (Index("ix_switch_logs_response", "response_id"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    response_id: uuid.UUID = Field(
-        foreign_key="user_question_responses.id", ondelete="CASCADE", index=True
+    response_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="user_question_responses.id", ondelete="CASCADE", index=True
+    )
+    exam_response_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
     )
     from_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id"
@@ -97,6 +107,7 @@ class QuestionSwitchLog(SQLModel, table=True):
     )
     timestamp_offset_sec: int = Field(default=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 
 
 class UserConceptRetention(SQLModel, table=True):

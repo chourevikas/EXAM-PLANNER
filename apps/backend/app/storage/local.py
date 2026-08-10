@@ -56,3 +56,21 @@ class LocalStorageProvider(BaseStorageProvider):
     async def exists(self, relative_path: str) -> bool:
         target = self.base_dir / relative_path
         return await aiofiles.os.path.exists(target)
+
+    async def upload_json(self, data: dict, relative_destination: str) -> str:
+        import json
+        target = self._resolve_path(relative_destination)
+        content = json.dumps(data, indent=2, ensure_ascii=False)
+        async with aiofiles.open(target, mode="w", encoding="utf-8") as f:
+            await f.write(content)
+        return relative_destination
+
+    async def download_json(self, relative_path: str) -> dict:
+        import json
+        target = self.base_dir / relative_path
+        if not await aiofiles.os.path.exists(target):
+            raise FileNotFoundError(f"JSON file not found at '{target}'")
+        async with aiofiles.open(target, mode="r", encoding="utf-8") as f:
+            content = await f.read()
+        return json.loads(content)
+
