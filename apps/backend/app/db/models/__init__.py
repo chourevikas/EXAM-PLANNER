@@ -63,6 +63,8 @@ from app.db.models.answer_key import (
     AnswerKeyBatch,
     AnswerKeyMapping,
 )
+from app.db.models.gamification import Badge, UserBadge, XPLog
+from app.db.models.study_plan import StudyTask
 
 __all__ = [
     "UserRole",
@@ -121,4 +123,8 @@ __all__ = [
     "MappingStatus",
     "AnswerKeyBatch",
     "AnswerKeyMapping",
+    "Badge",
+    "UserBadge",
+    "XPLog",
+    "StudyTask",
 ]

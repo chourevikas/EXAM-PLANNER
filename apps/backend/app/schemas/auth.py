@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     free_questions_attempted: Optional[int] = 0
     current_streak: Optional[int] = 0
     total_xp: Optional[int] = 0
+    level: Optional[int] = 1
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

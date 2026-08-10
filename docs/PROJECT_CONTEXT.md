@@ -120,28 +120,31 @@ Should calculate: Daily Study Hours, Completion Rate, Subject Accuracy, Topic Ac
 - Study streak increments only when the daily study goal is achieved.
 
 ## 11. Current Progress
-- No production implementation completed.
-- Requirements analysis and scope confirmation complete.
-- High-level feature breakdown and initial database/ERD planning done.
-- Defined initial user onboarding flow.
+- Core infrastructure and CI/CD pipelines are fully operational.
+- Deployed on AWS EC2 with automated Docker builds via GitHub Actions.
+- Clerk Authentication integrated across frontend and backend, replacing legacy custom JWT logic.
+- FastAPI-Mail integration complete for email services.
+- Database schema and core models (User, Profile, etc.) are implemented using SQLModel/SQLAlchemy.
+- Base UI layouts (StudentLayout) and multiple frontend pages (Dashboard, Study Planner, Mock Selection, etc.) are built.
+- Celery & Redis pipeline integration established.
 
-## 12. What Was About to Be Worked On Next
-1. Complete the Software Requirements Specification (SRS).
-2. Finalize the database schema and ERD.
-3. Produce High-Level Design (HLD).
-4. Produce Low-Level Design (LLD).
-5. Design REST APIs.
-6. Choose and document the technology stack.
-7. Begin implementation module by module.
+## 12. What Can Be Done Next
+1. **Module 3 (AI Study Planner):** Implement the actual AI logic using LangChain/Google GenAI to generate personalized study plans based on user profiles.
+2. **Module 4 (PYQ Integration):** Build the data ingestion pipeline to parse and store the 20-year Previous Year Questions database, and connect it to the frontend UI.
+3. **Module 5 (Mock Tests):** Implement the backend logic for custom mock test generation and the live exam-taking engine UI.
+4. **Analytics Pipeline:** Connect the frontend charts (like the Dashboard Recharts) to live backend analytic endpoints instead of using mock data.
+5. **Background Tasks:** Utilize the newly integrated Celery workers to handle heavy background processing (like PDF parsing or scheduled email reminders).
 
 ## 13. Tech Stack & Architecture Status
-Not yet selected or finalized. Treat as a greenfield build.
+**Frontend:** React 18, Vite, TypeScript, Recharts, Clerk Auth.
+**Backend:** Python 3.12, FastAPI, SQLModel/SQLAlchemy, Celery, Redis, LangChain, Google GenAI, FastAPI-Mail.
+**Infrastructure:** Docker, Docker Compose, AWS EC2, GitHub Actions (CI/CD), PostgreSQL.
 
 ## 14. Database Schema Status
-Conceptual design exists; needs formalization with relationships, constraints, indexes, and normalization.
+Core user and authentication schemas are active and migrating successfully via Alembic. Sub-modules (PYQ, Mocks, Study Plans) need their schemas formalized and migrated as those modules are built out.
 
 ## 15. Codebase Status
-No confirmed code artifacts. No configuration, APIs, or infrastructure.
+Active development phase. Backend and frontend are modularized in a monorepo-style structure under `apps/backend` and `apps/frontend`. 
 
 ## 16. Important Project Constraints & Decisions
 - No scope creep beyond documented requirements.

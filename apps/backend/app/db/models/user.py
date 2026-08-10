@@ -86,6 +86,11 @@ class User(SQLModel, table=True):
         prof = self._get_student_profile_safe()
         return prof.total_xp if prof else 0
 
+    @property
+    def level(self) -> int:
+        prof = self._get_student_profile_safe()
+        return prof.level if prof else 1
+
 
 class StudentProfile(SQLModel, table=True):
     __tablename__ = "student_profiles"
@@ -100,6 +105,7 @@ class StudentProfile(SQLModel, table=True):
     highest_streak: int = Field(default=0)
     total_xp: int = Field(default=0)
     level: int = Field(default=1)
+    last_study_date: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     user: Optional[User] = Relationship(back_populates="student_profile")

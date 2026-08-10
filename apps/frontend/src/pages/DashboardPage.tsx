@@ -31,6 +31,8 @@ export function DashboardPage() {
   const { user: clerkUser } = useUser();
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showBadgesModal, setShowBadgesModal] = useState(false);
+
 
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
@@ -80,23 +82,28 @@ export function DashboardPage() {
                 <div style={{ color: 'var(--warning-primary)' }}><Ico.Trend /></div>
               </div>
               <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-                14 <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
+                {user.current_streak ?? 0} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
               </div>
               <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 500 }}>
-                ↑ 3 days longer than last week
+                Keep it up!
               </div>
             </div>
 
-            <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+            <div 
+              onClick={() => setShowBadgesModal(true)}
+              style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)', cursor: 'pointer', transition: 'transform 0.2s' }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Total XP / Level</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Total XP / Badges</span>
                 <div style={{ color: 'var(--emerald, #10B981)' }}><Ico.Star filled /></div>
               </div>
               <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-                2,450 <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
+                {(user.total_xp ?? 0).toLocaleString()} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Level 4 Achiever
+              <div style={{ fontSize: 13, color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                View Achievements <Ico.ArrowRight size={14} />
               </div>
             </div>
 
@@ -319,6 +326,64 @@ export function DashboardPage() {
               </button>
             </div>
           </section>
+
+          {/* Badges Modal */}
+          {showBadgesModal && (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 1000, 
+              backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }} onClick={() => setShowBadgesModal(false)}>
+              <div style={{
+                backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: 480,
+                borderRadius: 24, padding: 32, boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
+                border: '1px solid var(--border-default)'
+              }} onClick={e => e.stopPropagation()}>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                  <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Your Achievements</h2>
+                  <button onClick={() => setShowBadgesModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                  {/* Earned Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', borderRadius: 16, border: '1px solid var(--success-primary)' }}>
+                    <div style={{ fontSize: 32 }}>🌱</div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>First Step</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Started your preparation journey.</div>
+                    </div>
+                  </div>
+
+                  {/* Locked Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
+                    <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>🔥</div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Consistency Starter <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>Requires 3-Day Streak</span></div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Maintain a 3-day study streak.</div>
+                    </div>
+                  </div>
+                  
+                  {/* Locked Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
+                    <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>🎓</div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Level 5 Scholar <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>Requires Level 5</span></div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Reach Level 5 in total XP.</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: 24, textAlign: 'center' }}>
+                  <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>Keep hitting your daily goals to unlock more!</div>
+                  <div style={{ width: '100%', height: 8, backgroundColor: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(((user.total_xp ?? 0) / 2500) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 4 }} />
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+          )}
     </StudentLayout>
   );
 }
