@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { fetchCurrentUser } from '../services/authService';
 import { useUser } from '@clerk/clerk-react';
-
+import { StudentLayout } from '../components/student/StudentLayout';
 const subjectData = [
   { subject: 'History', accuracy: 85 },
   { subject: 'Polity', accuracy: 72 },
@@ -45,142 +45,8 @@ export function DashboardPage() {
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
 
-  const currentPath = window.location.pathname;
-
-  const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active?: boolean }) => {
-    const [hovered, setHovered] = useState(false);
-    const isActive = active || currentPath === to;
-    
-    return (
-      <Link 
-        to={to} 
-        onClick={() => setIsSidebarOpen(false)} 
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{ 
-          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', 
-          borderRadius: '12px', textDecoration: 'none', fontWeight: isActive ? 600 : 500,
-          backgroundColor: isActive ? 'var(--accent-bg)' : hovered ? 'var(--bg-hover)' : 'transparent',
-          color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-          transition: 'all 0.2s ease'
-        }}
-      >
-        <Icon /> {label}
-      </Link>
-    );
-  };
-
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-page)', fontFamily: 'var(--font-sans)', color: 'var(--text-primary)' }}>
-      
-      {/* Overlay for mobile sidebar */}
-      {isSidebarOpen && (
-        <div 
-          onClick={() => setIsSidebarOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', zIndex: 90 }}
-        />
-      )}
-
-      {/* Left Sidebar */}
-      <aside style={{ 
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: '260px', 
-        backgroundColor: 'var(--bg-card)', borderRight: '1px solid var(--border-default)', 
-        display: 'flex', flexDirection: 'column', zIndex: 100,
-        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(0)', // Adjust for mobile later if needed, assuming desktop focus
-        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}>
-        <div style={{ padding: '24px', marginBottom: '16px' }}>
-          <Logo />
-        </div>
-        
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 16px', flex: 1 }}>
-          <NavItem to="/dashboard" icon={Ico.Target} label="Dashboard" active />
-          <NavItem to="/study-planner" icon={Ico.Cal} label="Study Planner" />
-          <NavItem to="/pyq" icon={Ico.Book} label="Previous Year Qs" />
-          <NavItem to="/mocks" icon={Ico.Brain} label="Mock Tests" />
-          <NavItem to="/analytics" icon={Ico.Chart} label="Analytics" />
-
-          <div style={{ margin: '24px 16px 8px 16px', fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-disabled)', letterSpacing: '0.05em' }}>
-            Reports
-          </div>
-          <NavItem to="/reports/weekly" icon={Ico.Chart} label="Weekly Report" />
-          <NavItem to="/reports/monthly" icon={Ico.Target} label="Monthly Report" />
-        </nav>
-        
-        {/* User Profile Mini */}
-        <div style={{ padding: '20px 16px', borderTop: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-           <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', padding: '8px', borderRadius: 12, transition: 'background 0.2s', ...({':hover': {background: 'var(--bg-hover)'}} as any) }}>
-             <div style={{ width: 36, height: 36, borderRadius: '50%', backgroundColor: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: '1px solid var(--accent-border)' }}>
-               {clerkUser?.imageUrl ? <img src={clerkUser.imageUrl} alt="Profile" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : (user.profile_image || '👨‍🎓')}
-             </div>
-             <div style={{ display: 'flex', flexDirection: 'column' }}>
-               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{clerkUser?.fullName || user.full_name || 'Aspirant'}</span>
-               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                 {user.subscription_tier === 'PREMIUM' ? 'Pro Plan' : 'Free Tier'}
-               </span>
-             </div>
-           </Link>
-           <Link to="/signout" style={{ 
-             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, 
-             padding: '10px', borderRadius: '10px', textDecoration: 'none', 
-             color: 'var(--error-primary, #EF4444)', backgroundColor: 'var(--error-bg, rgba(239,68,68,0.1))',
-             fontSize: 14, fontWeight: 600, transition: 'all 0.2s'
-           }}>
-             <Ico.X /> Sign Out
-           </Link>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div style={{ flex: 1, marginLeft: '260px', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Top Header */}
-        <header style={{ 
-          height: '72px', padding: '0 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          position: 'sticky', top: 0, zIndex: 40,
-          backgroundColor: 'rgba(var(--bg-page-rgb, 248, 250, 252), 0.8)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border-default)'
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>
-            Overview / <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Dashboard</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {user.subscription_tier === 'PREMIUM' ? (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-                backgroundColor: 'var(--accent-bg)', borderRadius: 20,
-                border: '1px solid var(--accent-border)'
-              }}>
-                <Ico.Star filled={true} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-primary)' }}>Premium Member</span>
-              </div>
-            ) : (
-              <Link to="/pricing" style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px',
-                backgroundColor: 'var(--bg-subtle)', borderRadius: 20,
-                border: '1px solid var(--border-default)', textDecoration: 'none',
-                transition: 'all 0.2s ease', ...({':hover': {backgroundColor: 'var(--bg-hover)'}} as any)
-              }}>
-                <Ico.Star />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Upgrade to Pro</span>
-              </Link>
-            )}
-
-            <Link to="/profile" style={{ 
-              width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--border-default)',
-              backgroundColor: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'var(--text-secondary)', textDecoration: 'none'
-            }}>
-              <Ico.Settings />
-            </Link>
-            
-            {/* Dark mode toggle should be handled globally or here. Assuming GlobalThemeToggle exists, but we can put a button here too if desired. */}
-          </div>
-        </header>
-
-        <main style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+    <StudentLayout pageTitle="Dashboard">
           
           {/* 1. Personalized Welcome & AI Motivation */}
           <section style={{ marginBottom: 40 }}>
@@ -453,8 +319,6 @@ export function DashboardPage() {
               </button>
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+    </StudentLayout>
   );
 }
