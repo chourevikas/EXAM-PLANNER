@@ -1,13 +1,11 @@
 import io
 import base64
 import asyncio
-from pathlib import Path
 from typing import List, Optional
 from PIL import Image
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, SystemMessage
 from app.llm.factory import get_vision_llm
-from app.storage.factory import get_storage_provider
 
 
 class ExtractedAnswerKeyItem(BaseModel):
@@ -42,31 +40,31 @@ def encode_pil_image(img: Image.Image) -> str:
 
 
 async def ainvoke_answer_key_llm(
-    image: Image.Image, page_num: int
+    image: Image.Image, page_num: int, target_set_code: str = "SET_A"
 ) -> AnswerKeyPagePayload:
     """Asynchronously invokes Vision LLM to extract Answer Key table & detect Paper Set Code (Set A, B, C, D)."""
     base64_img = await asyncio.to_thread(encode_pil_image, image)
 
     system_prompt = f"""
     You are an expert Document AI Engine specializing in Competitive Exam Answer Key Parsing. Processing Page {page_num}.
-    
-    PAPER SET IDENTIFICATION INSTRUCTIONS:
+    TARGET PAPER SET CODE: '{target_set_code}'
+
+    PAPER SET IDENTIFICATION & EXTRACTION LAWS:
     1. Inspect the top header, title, or table column headers to identify the Question Paper Set Code:
        - Examples: "SET A", "BOOKLET SERIES A", "CODE 01", "SET B", "SERIES C", "SET D".
        - Normalize detected set codes into uppercase tokens e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D'.
-       - If the table contains a cross-set mapping matrix (Set A vs Set B vs Set C), identify the primary column or set 'ALL_SETS'.
-    
-    KEY EXTRACTION LAWS:
-    1. Extract all question numbers and their corresponding correct option letters (A, B, C, D).
-    2. Normalize option letters to uppercase ('A', 'B', 'C', 'D').
-    3. Ignore notes, cut-off thresholds, or non-answer-key text.
+    2. TARGET SET FILTERING:
+       - If the page clearly specifies a paper set code that is DIFFERENT from target '{target_set_code}' (and not 'ALL_SETS'), set `detected_paper_set_code` to the detected set (e.g. 'SET_B') and return empty `extracted_keys` list [].
+    3. KEY EXTRACTION:
+       - Extract question numbers and their corresponding correct option letters (A, B, C, D).
+       - Normalize option letters to uppercase ('A', 'B', 'C', 'D').
     """
 
     message = HumanMessage(
         content=[
             {
                 "type": "text",
-                "text": f"Extract all question answer key mappings and detect the Paper Set Code for Page {page_num}.",
+                "text": f"Inspect Page {page_num} for target paper set '{target_set_code}' and extract answer keys.",
             },
             {
                 "type": "image_url",

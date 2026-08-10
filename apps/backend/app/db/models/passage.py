@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.enums import MemoryType, LanguageCode
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 
 
 class Passage(SQLModel, table=True):
@@ -33,7 +33,10 @@ class Passage(SQLModel, table=True):
         sa_column=Column(PortableJSON),
         description="JSON array of linked question UUID strings",
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     translations: List["PassageTranslation"] = Relationship(
         back_populates="passage", cascade_delete=True

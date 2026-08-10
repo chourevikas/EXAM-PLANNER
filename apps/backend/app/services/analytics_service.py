@@ -1,7 +1,7 @@
 import uuid
 from fastapi import HTTPException
 from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.engine.report_compiler import compile_comprehensive_psychometric_report
 from app.formatters.report_json_formatter import format_report_to_json

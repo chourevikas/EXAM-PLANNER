@@ -1,9 +1,10 @@
 import uuid
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from app.db.models.enums import UserRole, UserStatus
+from app.db.models.types import DateTimeTZ
 
 if TYPE_CHECKING:
     from app.db.models.subscription import UserSubscription
@@ -27,9 +28,15 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     profile_image: Optional[str] = Field(default=None)
     timezone: str = Field(default="Asia/Kolkata", max_length=100)
-    last_login: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     student_profile: Optional["StudentProfile"] = Relationship(

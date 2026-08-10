@@ -26,6 +26,7 @@ class ExamService:
     async def handle_pdf_upload(
         self,
         file: UploadFile,
+        set_code: Optional[str] = "SET_A",
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
@@ -33,14 +34,11 @@ class ExamService:
 
         settings = get_settings()
 
-        # 1. Automatically extract and validate 5-token Question Paper filename format
-        try:
-            parsed_tokens = parse_question_paper_filename(file.filename)
-        except ValueError as val_err:
-            raise HTTPException(status_code=400, detail=str(val_err))
-
+        # 1. Automatically extract canonical code from filename stem and set_code
+        parsed_tokens = parse_question_paper_filename(file.filename, user_set_code=set_code)
         canonical_code = parsed_tokens["canonical_code"]
-        exam_name_title = f"{parsed_tokens['exam_name'].upper()} {parsed_tokens['stage'].title()} ({parsed_tokens['year']}) - Set {parsed_tokens['raw_set_token']}"
+        clean_set = parsed_tokens["set_code"]
+        exam_name_title = canonical_code
 
         # 2. Check if exam with canonical code already exists
         exam = await self.repo.get_by_code(canonical_code)
@@ -50,7 +48,7 @@ class ExamService:
         temp_path = await save_upload_file_temp(file, temp_dir)
 
         storage = get_storage_provider()
-        rel_path = f"exams/{canonical_code}/{file.filename}"
+        rel_path = f"uploads/question_papers/{canonical_code}/{clean_set}/{canonical_code}.pdf"
         persistent_path = await storage.upload_file(temp_path, rel_path)
         logger.info(f"Saved persistent PDF to '{persistent_path}'")
 
@@ -62,10 +60,12 @@ class ExamService:
                 stage=parsed_tokens["stage"],
                 subject_code=parsed_tokens["subject_code"],
                 source_year=parsed_tokens["year"],
-                paper_set_code=parsed_tokens["set_code"],
+                paper_set_code=clean_set,
                 pdf_path=persistent_path,
+                canonical_question_id_prefix=canonical_code,
             )
         else:
+            exam.paper_set_code = clean_set
             exam.pdf_path = persistent_path
 
         exam = await self.repo.save(exam)
@@ -88,7 +88,7 @@ class ExamService:
             try:
                 engine_name = "Celery Worker"
                 task_res = process_exam_pdf_task.delay(
-                    str(exam.id), str(temp_path), exam.name, task_id
+                    str(exam.id), persistent_path, exam.name, task_id
                 )
                 task_id = task_res.id if hasattr(task_res, "id") else task_id
                 execution_msg = f"PDF upload accepted. Task enqueued to {engine_name} (Task ID: {task_id})."
@@ -102,7 +102,7 @@ class ExamService:
                     background_tasks.add_task(
                         async_process_exam_pdf,
                         str(exam.id),
-                        str(temp_path),
+                        persistent_path,
                         exam.name,
                         task_id,
                         "FastAPI BackgroundTasks (Fallback)",

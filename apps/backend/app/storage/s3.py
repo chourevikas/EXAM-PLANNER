@@ -42,6 +42,24 @@ class S3StorageProvider(BaseStorageProvider):
             kwargs["endpoint_url"] = self.endpoint_url
         return kwargs
 
+    async def _ensure_bucket_exists(self, s3_client):
+        """Ensures target S3/MinIO bucket exists, creating it automatically if missing."""
+        try:
+            await s3_client.head_bucket(Bucket=self.bucket_name)
+        except Exception:
+            logger.info(f"S3/MinIO bucket '{self.bucket_name}' does not exist. Creating automatically...")
+            try:
+                if self.region_name and self.region_name != "us-east-1":
+                    await s3_client.create_bucket(
+                        Bucket=self.bucket_name,
+                        CreateBucketConfiguration={"LocationConstraint": self.region_name},
+                    )
+                else:
+                    await s3_client.create_bucket(Bucket=self.bucket_name)
+                logger.info(f"Successfully created bucket '{self.bucket_name}'.")
+            except Exception as create_err:
+                logger.warning(f"Could not auto-create bucket '{self.bucket_name}': {create_err}")
+
     async def upload_file(
         self, file_path: Union[str, Path], relative_destination: str
     ) -> str:
@@ -50,6 +68,7 @@ class S3StorageProvider(BaseStorageProvider):
             f"Uploading file '{src_path}' to S3 s3://{self.bucket_name}/{relative_destination}"
         )
         async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            await self._ensure_bucket_exists(s3)
             await s3.upload_file(str(src_path), self.bucket_name, relative_destination)
         return relative_destination
 
@@ -57,11 +76,16 @@ class S3StorageProvider(BaseStorageProvider):
         self, relative_path: str, local_destination: Union[str, Path]
     ) -> Path:
         dst_path = Path(local_destination).resolve()
+        if dst_path.exists() and dst_path.is_file() and dst_path.stat().st_size > 0:
+            logger.info(f"Local file '{dst_path}' is already cached. Skipping redundant S3 download.")
+            return dst_path
+
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(
             f"Downloading S3 s3://{self.bucket_name}/{relative_path} to local '{dst_path}'"
         )
         async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            await self._ensure_bucket_exists(s3)
             await s3.download_file(self.bucket_name, relative_path, str(dst_path))
         return dst_path
 
@@ -75,6 +99,7 @@ class S3StorageProvider(BaseStorageProvider):
             f"Uploading PIL Image to S3 s3://{self.bucket_name}/{relative_destination}"
         )
         async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            await self._ensure_bucket_exists(s3)
             await s3.upload_fileobj(buffer, self.bucket_name, relative_destination)
 
         return relative_destination

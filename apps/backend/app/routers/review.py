@@ -2,7 +2,7 @@ import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
 
@@ -77,6 +77,19 @@ async def approve_question(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class RejectQuestionRequest(BaseModel):
+    rejection_reason: str
+    reviewer_notes: Optional[str] = None
+
+
+class UpdateExplanationRequest(BaseModel):
+    core_concept: Optional[str] = None
+    detailed_solution: Optional[str] = None
+    common_traps: Optional[List[str]] = None
+    key_takeaways: Optional[List[str]] = None
+    language: str = "ENGLISH"
+
+
 @router.post("/tasks/{question_id}/reextract")
 async def trigger_reextraction(
     question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
@@ -85,5 +98,55 @@ async def trigger_reextraction(
     service = HumanReviewService(session)
     try:
         return await service.trigger_llm_reextraction_for_question(question_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/tasks/{question_id}/reject")
+async def reject_question(
+    question_id: uuid.UUID,
+    req: RejectQuestionRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Rejects/flags a question during QA review with a specific rejection reason."""
+    service = HumanReviewService(session)
+    try:
+        q = await service.reject_question(
+            question_id=question_id,
+            rejection_reason=req.rejection_reason,
+            reviewer_notes=req.reviewer_notes,
+        )
+        return {
+            "message": f"Question #{q.question_number_in_paper} rejected.",
+            "question_id": str(q.id),
+            "status": q.status.value,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/tasks/{question_id}/update-explanation")
+async def update_explanation(
+    question_id: uuid.UUID,
+    req: UpdateExplanationRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Allows QA reviewers to manually edit and save question explanations."""
+    service = HumanReviewService(session)
+    try:
+        expl = await service.update_question_explanation(
+            question_id=question_id,
+            core_concept=req.core_concept,
+            detailed_solution=req.detailed_solution,
+            common_traps=req.common_traps,
+            key_takeaways=req.key_takeaways,
+            language=req.language,
+        )
+        return {
+            "message": "Question explanation updated successfully by QA reviewer.",
+            "question_id": str(question_id),
+            "explanation_id": str(expl.id),
+            "language": expl.language.value if hasattr(expl.language, "value") else str(expl.language),
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

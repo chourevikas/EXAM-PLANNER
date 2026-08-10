@@ -1,9 +1,9 @@
 import uuid
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -35,7 +35,10 @@ class PlatformFeature(SQLModel, table=True):
     name: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
     is_active: bool = Field(default=True, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     plan_links: List["PlanFeatureLink"] = Relationship(back_populates="feature")
@@ -66,7 +69,10 @@ class SubscriptionPlan(SQLModel, table=True):
     display_order: int = Field(default=0)
     is_active: bool = Field(default=True, index=True)
     metadata_json: Optional[dict] = Field(default=None, sa_column=Column(PortableJSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     feature_links: List["PlanFeatureLink"] = Relationship(back_populates="plan")
@@ -103,13 +109,22 @@ class UserSubscription(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
     plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
     status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE, index=True)
-    current_period_start: datetime = Field(default_factory=datetime.utcnow)
-    current_period_end: datetime = Field(index=True)
+    current_period_start: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    current_period_end: datetime = Field(index=True, sa_type=DateTimeTZ)
     cancel_at_period_end: bool = Field(default=False)
     payment_gateway: Optional[str] = Field(default="RAZORPAY", max_length=50)
     gateway_subscription_id: Optional[str] = Field(default=None, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     user: Optional["User"] = Relationship(back_populates="subscriptions")

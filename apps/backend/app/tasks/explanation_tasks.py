@@ -51,7 +51,6 @@ async def async_process_exam_explanations(
     log.info("=" * 70)
 
     try:
-        await async_init_db()
         from app.pipeline.explanation_graph import build_explanation_pipeline
         pipeline = build_explanation_pipeline()
 
@@ -77,9 +76,50 @@ async def async_process_exam_explanations(
         log.info("=" * 70)
         return {**result, "task_id": t_id, "execution_engine": execution_engine}
 
+    except asyncio.CancelledError:
+        log.warning(
+            f"⏹️ [EXPLANATION PIPELINE STOPPED] Exam ID '{exam_id_str}' (Task ID: '{t_id}') was stopped/cancelled."
+        )
+        try:
+            from app.db.session import managed_async_session
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with managed_async_session() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="EXPLANATION_INDEXING",
+                    status="STOPPED",
+                    current_step="CANCELLED_BY_ADMIN",
+                    progress_percent=0.0,
+                    error_log="Explanation pipeline task stopped by user/admin.",
+                )
+        except Exception as db_err:
+            log.error(f"Failed to update stopped status in DB: {db_err}")
+        raise
+
     except Exception as exc:
         log.error(
             f"❌ [EXPLANATION PIPELINE FAILED] Engine: {execution_engine} | Exam ID '{exam_id_str}' (Task ID: '{t_id}'): {exc}",
             exc_info=True,
         )
+        try:
+            from app.db.session import managed_async_session
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with managed_async_session() as session:
+                pm = PipelineManagementService(session)
+                await pm.update_pipeline_status(
+                    exam_id=uuid.UUID(exam_id_str),
+                    pipeline_type="EXPLANATION_INDEXING",
+                    status="FAILED",
+                    current_step="FAILED_WITH_ERROR",
+                    progress_percent=0.0,
+                    error_log=str(exc),
+                )
+        except Exception:
+            pass
         raise
+    finally:
+        from app.core.cleanup import cleanup_temp_artifacts
+        from pathlib import Path
+        log.info(f"🧹 Cleaning up temporary explanation scratch files for Task ID '{t_id}'...")
+        cleanup_temp_artifacts(Path("./temp_json"), Path("./output_artifacts/temp_json"))

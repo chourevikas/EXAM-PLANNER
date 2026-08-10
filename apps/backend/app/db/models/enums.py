@@ -21,14 +21,12 @@ class QuestionStatus(str, enum.Enum):
     PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+    REJECTED = "REJECTED"
 
 
 class QuestionSourceType(str, enum.Enum):
     PYQ = "PYQ"
     STATIC_MOCK = "STATIC_MOCK"
-    AI_GENERATED_VARIANT = "AI_GENERATED_VARIANT"
-    AI_NOVEL = "AI_NOVEL"
-
 
 class DifficultyLevel(str, enum.Enum):
     EASY = "EASY"

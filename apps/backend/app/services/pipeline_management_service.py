@@ -101,18 +101,20 @@ class PipelineManagementService:
                 progress_percent=100.0,
             )
 
-        return await self.update_pipeline_status(
+        run = await self.update_pipeline_status(
             exam_id=exam_id,
             pipeline_type="QUESTION_EXTRACTION",
-            status="WAITING_FOR_ANSWER_KEY",
-            current_step="EXTRACTION_COMPLETE_AWAITING_ANSWER_KEY_UPLOAD",
+            status="WAITING_FOR_ANSWER_KEY" if not flagged_questions else "WAITING_FOR_HITL",
+            current_step="EXTRACTION_COMPLETE_AWAITING_ANSWER_KEY_UPLOAD" if not flagged_questions else "FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW",
             progress_percent=100.0,
         )
+        await self.check_and_trigger_pipeline_3_if_ready(exam_id)
+        return run
 
     async def on_pipeline_2_completed(
         self, exam_id: uuid.UUID, auto_trigger_pipeline_3: bool = True
     ) -> PipelineRun:
-        """Called when Pipeline 2 (Answer Key Matching) finishes. Automatically dispatches Pipeline 3."""
+        """Called when Pipeline 2 (Answer Key Matching) finishes."""
         run = await self.update_pipeline_status(
             exam_id=exam_id,
             pipeline_type="ANSWER_KEY",
@@ -122,23 +124,62 @@ class PipelineManagementService:
         )
 
         if auto_trigger_pipeline_3:
-            logger.info(
-                f"[AUTO-CHAINING] Automatically dispatching Pipeline 3 (Explanation & Multi-Concept Indexing) for Exam {exam_id}"
-            )
-            # Create/Initialize Pipeline 3 status
-            await self.update_pipeline_status(
-                exam_id=exam_id,
-                pipeline_type="EXPLANATION_INDEXING",
-                status="RUNNING",
-                current_step="STARTING_EXPLANATION_AND_MULTI_CONCEPT_INDEXING",
-                progress_percent=0.0,
-            )
-
-            # Trigger background task for Pipeline 3 execution
-            from app.tasks.explanation_tasks import async_process_exam_explanations
-            asyncio.create_task(async_process_exam_explanations(str(exam_id)))
+            await self.check_and_trigger_pipeline_3_if_ready(exam_id)
 
         return run
+
+    async def check_and_trigger_pipeline_3_if_ready(self, exam_id: uuid.UUID) -> bool:
+        """
+        Checks if both Pipeline 1 (Question Extraction) AND Pipeline 2 (Answer Key Matching)
+        have completed for the exam. If both are complete and Pipeline 3 has not run yet,
+        automatically dispatches Pipeline 3!
+        """
+        p1_query = select(PipelineRun).where(
+            PipelineRun.exam_id == exam_id,
+            PipelineRun.pipeline_type == "QUESTION_EXTRACTION",
+        )
+        p1_run = (await self.session.exec(p1_query)).first()
+
+        p2_query = select(PipelineRun).where(
+            PipelineRun.exam_id == exam_id,
+            PipelineRun.pipeline_type == "ANSWER_KEY",
+        )
+        p2_run = (await self.session.exec(p2_query)).first()
+
+        p1_ready = p1_run is not None and p1_run.status in ("COMPLETED", "WAITING_FOR_ANSWER_KEY", "WAITING_FOR_HITL")
+        p2_ready = p2_run is not None and p2_run.status in ("COMPLETED", "MATCHED")
+
+        if p1_ready and p2_ready:
+            p3_query = select(PipelineRun).where(
+                PipelineRun.exam_id == exam_id,
+                PipelineRun.pipeline_type == "EXPLANATION_INDEXING",
+            )
+            p3_run = (await self.session.exec(p3_query)).first()
+
+            if not p3_run or p3_run.status in ("PENDING", "FAILED"):
+                logger.info(
+                    f"🚀 [AUTO-ORCHESTRATION] Both Questions (P1) and Answer Keys (P2) are COMPLETE for Exam {exam_id}. Automatically triggering Pipeline 3!"
+                )
+                await self.update_pipeline_status(
+                    exam_id=exam_id,
+                    pipeline_type="EXPLANATION_INDEXING",
+                    status="RUNNING",
+                    current_step="AUTO_DISPATCHED_EXPLANATION_AND_INDEXING",
+                    progress_percent=0.0,
+                )
+                from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
+                from app.tasks.celery_app import has_active_celery_workers
+                from app.services.task_registry import task_registry
+
+                key = str(exam_id)
+                if has_active_celery_workers():
+                    celery_res = process_exam_explanations_task.delay(str(exam_id))
+                    task_registry.register_celery_task(key, celery_res.id)
+                else:
+                    task = asyncio.create_task(async_process_exam_explanations(str(exam_id)))
+                    task_registry.register_async_task(key, task)
+                return True
+        return False
 
     async def get_exam_pipeline_overview(self, exam_id: uuid.UUID) -> Dict[str, Any]:
         """Provides full pipeline status overview for frontend dashboard."""

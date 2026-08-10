@@ -1,7 +1,8 @@
+from google.genai._gaos.models import listenvironments
 import uuid
 from typing import Optional, List
-from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select, col
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import AnswerKeyBatch, AnswerKeyMapping
 
 
@@ -12,9 +13,9 @@ class AnswerKeyRepository:
         self.session = session
 
     async def list_batches(self) -> List[AnswerKeyBatch]:
-        stmt = select(AnswerKeyBatch).order_by(AnswerKeyBatch.created_at.desc())
+        stmt = select(AnswerKeyBatch).order_by(col(AnswerKeyBatch.created_at).desc())
         res = await self.session.exec(stmt)
-        return res.all()
+        return list(res.all())
 
     async def get_batch_by_id(self, batch_id: uuid.UUID) -> Optional[AnswerKeyBatch]:
         return await self.session.get(AnswerKeyBatch, batch_id)
@@ -25,7 +26,7 @@ class AnswerKeyRepository:
         stmt = (
             select(AnswerKeyMapping)
             .where(AnswerKeyMapping.batch_id == batch_id)
-            .order_by(AnswerKeyMapping.printed_question_number)
+            .order_by(col(AnswerKeyMapping.printed_question_number))
         )
         res = await self.session.exec(stmt)
-        return res.all()
+        return list(res.all())

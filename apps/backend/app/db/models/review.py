@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column, Index
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 
 
 class HumanReviewTask(SQLModel, table=True):
@@ -34,5 +34,8 @@ class HumanReviewTask(SQLModel, table=True):
     )
     reviewer_notes: Optional[str] = Field(default=None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    reviewed_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    reviewed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)

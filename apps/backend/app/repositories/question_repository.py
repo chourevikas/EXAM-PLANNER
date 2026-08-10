@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, List
 from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import Question, QuestionStatus
 
 

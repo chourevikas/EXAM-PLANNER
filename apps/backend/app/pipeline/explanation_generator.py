@@ -13,7 +13,7 @@ async def ainvoke_explanation_llm(
     passage_text: Optional[str] = None,
     language: LanguageCode = LanguageCode.ENGLISH,
 ) -> QuestionExplanationSchema:
-    """Invokes LLM agent to generate static Question Knowledge Base & Option Distractor Analysis."""
+    """Invokes LLM agent to generate static Question Knowledge Base & Option Distractor Analysis strictly in English."""
 
     formatted_options = "\n".join(
         [
@@ -33,24 +33,32 @@ async def ainvoke_explanation_llm(
         f"\nCONTEXT / PASSAGE:\n{passage_text}\n" if passage_text else ""
     )
 
-    system_prompt = f"""
-    You are an elite Academic Subject Matter Expert and Pedagogical AI Engine for Competitive Examinations.
-    Generate a high-yield, comprehensive Question Knowledge Base and Option-by-Option Distractor Analysis in {language.value}.
+    system_prompt = """
+    You are an elite Academic Subject Matter Expert and Psychometric Analysis AI Engine for Competitive Examinations.
+    Analyze the provided question statement and option choices (which may be in English or a non-English language like Hindi/Marathi/Tamil).
+    
+    CRITICAL MANDATE: ALL YOUR OUTPUT FIELDS MUST BE STRICTLY IN ENGLISH.
+    Do not output explanations in non-English languages. Read and comprehend the question in whatever language it is written in, but output all analyses, derivations, breakdown text, and taxonomy tags strictly in ENGLISH.
 
     EXPLANATION LAWS:
-    1. CORE CONCEPT: Identify the single primary law, theorem, formula, or principle tested in 1 clear sentence.
-    2. DETAILED SOLUTION: Provide step-by-step mathematical derivation, logical deduction, or textual proof showing exactly how the problem is solved. Use LaTeX math ($...$ or $$...$$) where applicable.
-    3. OPTIONS BREAKDOWN: Analyze EVERY option choice:
-       - For the correct option: Explain the precise mathematical or conceptual reason why it is right.
-       - For incorrect options (distractors): Pinpoint the exact cognitive trap, formula misapplication, sign error, or misconception that leads a student to select it.
-    4. COMMON TRAPS: List common mistakes or calculation errors students make on this question.
-    5. KEY TAKEAWAYS: Provide 1-2 bullet points for last-minute exam revision.
-    6. TAXONOMY TAGS: Infer Subject (e.g. Physics, History, Quantitative Aptitude), Topic, Subtopic, and Difficulty (Easy, Medium, Hard).
+    1. CORE CONCEPT: Identify the single primary law, theorem, formula, or principle tested in 1 clear English sentence.
+    2. DETAILED SOLUTION: Provide step-by-step mathematical derivation, logical deduction, or textual proof in English showing exactly how the problem is solved. Use LaTeX math ($...$ or $$...$$) where applicable.
+    3. OPTIONS BREAKDOWN & CLOSENESS SCORES: Analyze EVERY option choice (A, B, C, D):
+       - For the correct option: Set is_correct=True, closeness_score=1.00, and explain the precise reason why it is right.
+       - For incorrect options (distractors): Set closeness_score between 0.00 and 0.90 based on distractor plausibility (0.65-0.90 for strong/deceptive distractors, 0.35-0.60 for moderate distractors, 0.10-0.30 for weak distractors). Pinpoint the exact conceptual error or trap leading a student to select it.
+    4. COMMON TRAPS: List common calculation mistakes or conceptual pitfalls students fall into.
+    5. KEY TAKEAWAYS: Provide 1-2 bullet points in English for last-minute exam revision.
+    6. TAXONOMY & PSYCHOMETRIC IRT METRICS:
+       - Infer Subject, Topic, Subtopic, and Difficulty (Easy, Medium, Hard).
+       - Infer Bloom's Taxonomy Level: REMEMBER, UNDERSTAND, APPLY, ANALYZE, or EVALUATE.
+       - Estimate 3PL IRT Discrimination parameter 'irt_discrimination_a' (0.5 to 2.5).
+       - Estimate 3PL IRT Difficulty parameter 'irt_difficulty_b' (-3.0 to +3.0).
+       - Estimate 3PL IRT Pseudo-guessing parameter 'irt_pseudo_guessing_c' (0.05 to 0.25) derived from distractor plausibility.
     """
 
     user_content = f"""
     {passage_str}
-    QUESTION STATEMENT:
+    QUESTION STATEMENT (read in original language, produce output strictly in English):
     {question_text}
 
     OPTIONS:

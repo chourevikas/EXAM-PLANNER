@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from sqlmodel import select
-from app.db.session import async_session_factory, async_init_db
+from app.db.session import managed_async_session, async_init_db
 from app.db.models import (
     User,
     UserRole,
@@ -108,7 +108,7 @@ async def seed_psychometric_environment():
 
     await async_init_db()
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         # 1. Create or fetch target user
         user_res = await session.exec(
             select(User).where(User.email == "student@examplatform.com")

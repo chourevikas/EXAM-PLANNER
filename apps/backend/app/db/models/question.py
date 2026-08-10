@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Column, Field, Index, Relationship, SQLModel
@@ -11,7 +11,7 @@ from app.db.models.enums import (
     QuestionSourceType,
     QuestionStatus,
 )
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 
 if TYPE_CHECKING:
     from app.db.models.metadata import QuestionMetadata
@@ -83,8 +83,14 @@ class Question(SQLModel, table=True):
         default=[], sa_column=Column(PortableJSON)
     )
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     translations: list["QuestionTranslation"] = Relationship(
         back_populates="question", cascade_delete=True
@@ -187,6 +193,9 @@ class QuestionAsset(SQLModel, table=True):
         default=None, sa_column=Column(PortableJSON)
     )
     display_order: int = Field(default=1)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     question: Optional[Question] = Relationship(back_populates="assets")

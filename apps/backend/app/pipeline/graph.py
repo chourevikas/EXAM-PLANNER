@@ -7,17 +7,12 @@ from sqlmodel import select
 from langgraph.graph import StateGraph, END, START
 from langgraph.types import Send
 
-from app.db.session import async_session_factory
+from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
     Question,
-    QuestionTranslation,
-    QuestionOption,
-    OptionTranslation,
-    QuestionAsset,
     Passage,
     PassageTranslation,
-    QuestionStatus,
     HumanReviewTask,
 )
 from app.storage.factory import get_storage_provider
@@ -29,7 +24,6 @@ from app.formatters.markdown_exporter import async_export_question_to_markdown
 from app.pipeline.state import (
     OverallPipelineState,
     ParallelWorkerInput,
-    PageExtractionPayload,
 )
 from app.pipeline.vision_extractor import (
     load_pdf_page_image_lazily,
@@ -37,23 +31,34 @@ from app.pipeline.vision_extractor import (
 )
 from app.pipeline.dsu_stitcher import (
     resolve_transitive_passages_dsu,
-    async_crop_and_save_asset,
 )
-
-
+from app.pipeline.batch_processor import (
+    build_question_registry,
+    BatchQuestionRegistrar,
+)
 from app.config.logger import setup_logger, TaskLoggerAdapter
 
 logger = setup_logger("ExamPipeline")
+
+
+def node_dispatch_map_entry(state: OverallPipelineState):
+    return state
 
 
 def node_dispatch_parallel_map(state: OverallPipelineState):
     pdf_path = state["pdf_path"]
     total_pages = state["total_pages"]
     t_id = state.get("task_id", "N/A")
+    exam_id = state.get("exam_id")
     return [
         Send(
             "parallel_extract_worker",
-            {"page_num": p_num, "pdf_path": pdf_path, "task_id": t_id},
+            {
+                "page_num": p_num,
+                "pdf_path": pdf_path,
+                "exam_id": str(exam_id) if exam_id else "",
+                "task_id": t_id,
+            },
         )
         for p_num in range(1, total_pages + 1)
     ]
@@ -62,6 +67,7 @@ def node_dispatch_parallel_map(state: OverallPipelineState):
 async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
     page_num = state["page_num"]
     pdf_path = state["pdf_path"]
+    exam_id_str = state.get("exam_id", "")
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
@@ -73,6 +79,27 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
         log.info(
             f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s)."
         )
+
+        # Real-time Incremental Persistence to DB & Storage
+        if payload and payload.extracted_questions and exam_id_str:
+            try:
+                target_exam_uuid = uuid.UUID(exam_id_str)
+                single_page_registry = build_question_registry([(page_num, payload, None)])
+                registrar = BatchQuestionRegistrar(batch_size=5)
+                await registrar.commit_questions_in_batches(
+                    exam_id=target_exam_uuid,
+                    pdf_path=pdf_path,
+                    question_registry=single_page_registry,
+                    passage_id_map={},
+                    storage=get_storage_provider(),
+                    load_pdf_page_image_fn=load_pdf_page_image_lazily,
+                )
+                log.info(
+                    f"💾 [INCREMENTAL BATCH SAVE] Successfully committed Page {page_num} questions to DB & Storage."
+                )
+            except Exception as save_err:
+                log.warning(f"⚠️ Incremental save warning for Page {page_num}: {save_err}")
+
         return {"raw_page_payloads": [(page_num, payload, None)]}
     except Exception as e:
         err_str = f"Worker failed on Page {page_num}: {str(e)}"
@@ -108,18 +135,14 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
             f"Vision extraction failed for ALL pages. Sample error: {sample_err}"
         )
 
-    async with async_session_factory() as session:
-        exam = await session.get(Exam, exam_id)
-        exam_code = exam.code if exam else "EXAM"
-
+    # 1. Resolve Transitive Passages using DSU
     unified_passages = resolve_transitive_passages_dsu(results)
     passage_id_map = {}
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         for p_data in unified_passages:
             p_id = uuid.uuid4()
             sec_code = p_data.get("section_code", "DEFAULT")
-            pages_json = json.dumps(p_data["page_numbers"])
 
             passage = Passage(
                 id=p_id,
@@ -127,8 +150,8 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
                 section_code=sec_code,
                 memory_type=p_data.get("memory_type", "PASSAGE"),
                 is_complete=p_data.get("is_complete", True),
-                page_numbers_json=pages_json,
-                question_ids_json="[]",
+                page_numbers_json=p_data["page_numbers"],
+                question_ids_json=[],
             )
             session.add(passage)
             await session.commit()
@@ -149,202 +172,21 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
 
             passage_id_map[sec_code] = (p_id, p_data["page_numbers"])
 
-    # Register Questions
-    question_registry: Dict[Tuple[str, int], dict] = {}
+    # 2. Build Question Registry via BatchProcessor
+    question_registry = build_question_registry(results)
 
-    for p_num, payload, err in results:
-        if not payload:
-            continue
+    # 3. Commit questions and initial metadata in batches via BatchQuestionRegistrar
+    registrar = BatchQuestionRegistrar(batch_size=10)
+    summary = await registrar.commit_questions_in_batches(
+        exam_id=exam_id,
+        pdf_path=pdf_path,
+        question_registry=question_registry,
+        passage_id_map=passage_id_map,
+        storage=storage,
+        load_pdf_page_image_fn=load_pdf_page_image_lazily,
+    )
 
-        for q_item in payload.extracted_questions:
-            sec_code = q_item.section_code or "DEFAULT"
-            q_num = q_item.printed_question_number
-
-            if (
-                q_item.is_continuation_fragment
-                and q_item.target_parent_question_number is not None
-            ):
-                parent_sec = q_item.target_parent_section_code or sec_code
-                parent_q = q_item.target_parent_question_number
-                target_key = (parent_sec, parent_q)
-
-                if target_key in question_registry:
-                    if p_num not in question_registry[target_key]["page_numbers"]:
-                        question_registry[target_key]["page_numbers"].append(p_num)
-
-                    for t in q_item.translations:
-                        lang = (
-                            t.language.value
-                            if hasattr(t.language, "value")
-                            else str(t.language)
-                        )
-                        if lang in question_registry[target_key]["translations"]:
-                            if (
-                                t.question_text
-                                and t.question_text
-                                not in question_registry[target_key]["translations"][
-                                    lang
-                                ]["text"]
-                            ):
-                                question_registry[target_key]["translations"][lang][
-                                    "text"
-                                ] += "\n" + t.question_text
-                            existing_opts = question_registry[target_key][
-                                "translations"
-                            ][lang]["options"]
-                            for new_opt in t.options:
-                                if not any(
-                                    o.display_order == new_opt.display_order
-                                    for o in existing_opts
-                                ):
-                                    existing_opts.append(new_opt)
-                    continue
-
-            if q_num is None:
-                continue
-
-            composite_key = (sec_code, q_num)
-            if composite_key not in question_registry:
-                question_registry[composite_key] = {
-                    "section_code": sec_code,
-                    "printed_question_number": q_num,
-                    "question_type": q_item.question_type.value,
-                    "is_complete": q_item.is_complete,
-                    "has_image": q_item.has_image_or_complex_layout,
-                    "page_numbers": [p_num],
-                    "assets": q_item.assets,
-                    "translations": {},
-                }
-            else:
-                if p_num not in question_registry[composite_key]["page_numbers"]:
-                    question_registry[composite_key]["page_numbers"].append(p_num)
-                question_registry[composite_key]["assets"].extend(q_item.assets)
-
-            for t in q_item.translations:
-                lang = (
-                    t.language.value
-                    if hasattr(t.language, "value")
-                    else str(t.language)
-                )
-                if lang not in question_registry[composite_key]["translations"]:
-                    question_registry[composite_key]["translations"][lang] = {
-                        "text": t.question_text,
-                        "context": t.parent_context_override or "",
-                        "options": t.options,
-                    }
-                else:
-                    if (
-                        t.question_text
-                        not in question_registry[composite_key]["translations"][lang][
-                            "text"
-                        ]
-                    ):
-                        question_registry[composite_key]["translations"][lang][
-                            "text"
-                        ] += "\n" + t.question_text
-                    existing_opts = question_registry[composite_key]["translations"][
-                        lang
-                    ]["options"]
-                    for new_opt in t.options:
-                        if not any(
-                            o.display_order == new_opt.display_order
-                            for o in existing_opts
-                        ):
-                            existing_opts.append(new_opt)
-
-    processed_keys = []
-
-    async with async_session_factory() as session:
-        for (sec_code, q_num), q_data in sorted(
-            question_registry.items(), key=lambda x: (x[0][0], x[0][1])
-        ):
-            key_str = f"{sec_code}::{q_num}"
-            processed_keys.append(key_str)
-
-            existing_q_res = await session.exec(
-                select(Question).where(
-                    Question.exam_id == exam_id,
-                    Question.section_code == sec_code,
-                    Question.question_number_in_paper == q_num,
-                )
-            )
-            existing_q = existing_q_res.first()
-
-            question_id = existing_q.id if existing_q else uuid.uuid4()
-            q_passage_id = None
-            q_passage_pages = []
-
-            if sec_code in passage_id_map:
-                q_passage_id, q_passage_pages = passage_id_map[sec_code]
-
-            if not existing_q:
-                q_obj = Question(
-                    id=question_id,
-                    exam_id=exam_id,
-                    section_code=sec_code,
-                    passage_id=q_passage_id,
-                    question_number_in_paper=q_num,
-                    question_type=q_data["question_type"],
-                    is_complete=q_data["is_complete"],
-                    has_image=q_data["has_image"],
-                    page_numbers_json=json.dumps(q_data["page_numbers"]),
-                    passage_page_numbers_json=json.dumps(q_passage_pages)
-                    if q_passage_pages
-                    else None,
-                    status=QuestionStatus.PENDING_HUMAN_REVIEW,
-                )
-                session.add(q_obj)
-                await session.commit()
-
-            # Process Assets asynchronously
-            for asset in q_data["assets"]:
-                first_page = q_data["page_numbers"][0]
-                page_img = await load_pdf_page_image_lazily(pdf_path, first_page)
-                asset_rel_path = await async_crop_and_save_asset(
-                    page_img, storage, exam_code, sec_code, q_num, asset
-                )
-                del page_img
-
-                if asset_rel_path:
-                    q_asset = QuestionAsset(
-                        question_id=question_id,
-                        asset_path=asset_rel_path,
-                        asset_type=asset.asset_type.value,
-                        caption=asset.caption,
-                    )
-                    session.add(q_asset)
-            await session.commit()
-
-            # Process Translations & Options asynchronously
-            for lang, t_data in q_data["translations"].items():
-                q_trans = QuestionTranslation(
-                    question_id=question_id,
-                    language=lang,
-                    question_text=t_data["text"],
-                    parent_context_override=t_data["context"]
-                    if t_data["context"]
-                    else None,
-                )
-                session.add(q_trans)
-                await session.commit()
-
-                for opt in t_data["options"]:
-                    q_opt = QuestionOption(
-                        question_id=question_id,
-                        option_label=opt.display_label,
-                        display_order=opt.display_order,
-                        is_correct=False,
-                    )
-                    session.add(q_opt)
-                    await session.commit()
-
-                    opt_trans = OptionTranslation(
-                        option_id=q_opt.id, language=lang, option_text=opt.option_text
-                    )
-                    session.add(opt_trans)
-            await session.commit()
-
-    return {"processed_question_keys": processed_keys}
+    return {"processed_question_keys": summary.processed_question_keys}
 
 
 async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
@@ -355,7 +197,7 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
     )
     processed_keys = state["processed_question_keys"]
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         for key_str in processed_keys:
             sec_code, q_num_str = key_str.split("::")
             q_num = int(q_num_str)
@@ -404,7 +246,7 @@ async def node_export_artifacts(state: OverallPipelineState) -> dict:
     )
     storage = get_storage_provider()
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         exam = await session.get(Exam, exam_id)
         exam_code = exam.code if exam else "EXAM"
 
@@ -426,31 +268,21 @@ async def node_export_artifacts(state: OverallPipelineState) -> dict:
                 await f.write(yaml_str)
             await storage.upload_file(temp_yaml, yaml_rel_path)
 
-            # 2. Async Export Markdown (MATCHING FILENAME STEM)
-            md_str = await async_export_question_to_markdown(
-                session, q, storage=storage
-            )
-            md_filename = f"{q_stem}.md"
-            md_rel_path = f"exams/{exam_code}/output_files/{md_filename}"
-
-            temp_md = Path(state["output_dir"]) / md_filename
-            async with aiofiles.open(temp_md, mode="w", encoding="utf-8") as f:
-                await f.write(md_str)
-            await storage.upload_file(temp_md, md_rel_path)
-
     return {}
 
 
 def build_langgraph_pipeline():
     workflow = StateGraph(OverallPipelineState)
 
+    workflow.add_node("dispatch_map_entry", node_dispatch_map_entry)
     workflow.add_node("parallel_extract_worker", node_parallel_extract_worker)
     workflow.add_node("python_reduce_and_stitch", node_python_reduce_and_stitch)
     workflow.add_node("mcq_validator_and_hitl", node_mcq_validator_and_hitl)
     workflow.add_node("export_artifacts", node_export_artifacts)
 
+    workflow.add_edge(START, "dispatch_map_entry")
     workflow.add_conditional_edges(
-        START, node_dispatch_parallel_map, ["parallel_extract_worker"]
+        "dispatch_map_entry", node_dispatch_parallel_map, ["parallel_extract_worker"]
     )
     workflow.add_edge("parallel_extract_worker", "python_reduce_and_stitch")
     workflow.add_edge("python_reduce_and_stitch", "mcq_validator_and_hitl")

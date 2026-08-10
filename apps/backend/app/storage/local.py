@@ -33,6 +33,8 @@ class LocalStorageProvider(BaseStorageProvider):
     ) -> Path:
         src = self._resolve_path(relative_path)
         dst = Path(local_destination).resolve()
+        if dst.exists() and dst.is_file() and dst.stat().st_size > 0:
+            return dst
         dst.parent.mkdir(parents=True, exist_ok=True)
         if src != dst:
             await asyncio.to_thread(shutil.copy2, src, dst)

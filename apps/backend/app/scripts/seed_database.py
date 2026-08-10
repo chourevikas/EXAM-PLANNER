@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from sqlmodel import select
 from app.core.security import get_password_hash
-from app.db.session import async_session_factory, async_init_db
+from app.db.session import managed_async_session, async_init_db
 from app.db.models import (
     User,
     UserRole,
@@ -53,7 +53,7 @@ async def seed_database():
     logger.info("Initializing database schemas before seeding...")
     await async_init_db()
 
-    async with async_session_factory() as session:
+    async with managed_async_session() as session:
         # Check if already seeded
         existing_user = await session.exec(select(User).limit(1))
         if existing_user.first():

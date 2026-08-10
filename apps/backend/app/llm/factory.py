@@ -1,10 +1,11 @@
-import os
-from langchain_core.rate_limiters import InMemoryRateLimiter
-from langchain_openai import ChatOpenAI
+from app.config.logger import setup_logger
 from app.config.settings import get_settings
-
+from app.llm.providers import GeminiProvider, OpenAIProvider
+from langchain_core.rate_limiters import InMemoryRateLimiter
 
 _rate_limiter = None
+
+logger = setup_logger()
 
 
 def get_rate_limiter():
@@ -20,19 +21,17 @@ def get_rate_limiter():
 
 
 def get_vision_llm():
-    """Returns rate-limited ChatOpenAI instance configured with retries and long timeout."""
+    """Returns rate-limited vision LLM instance configured with retries and timeout via provider delegator."""
     settings = get_settings()
-    api_key = settings.OPENAI_API_KEY or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError(
-            "OPENAI_API_KEY is missing from configuration and environment."
-        )
+    provider_name = (settings.LLM_PROVIDER or "vertexai").lower()
+    rate_limiter = get_rate_limiter()
 
-    return ChatOpenAI(
-        model=settings.OPENAI_MODEL_NAME,
-        temperature=0,
-        max_retries=10,
-        timeout=120,
-        api_key=api_key,
-        rate_limiter=get_rate_limiter(),
-    )
+    if provider_name in ("vertexai", "gemini", "google"):
+        provider = GeminiProvider(settings, rate_limiter=rate_limiter)
+    elif provider_name == "openai":
+        provider = OpenAIProvider(settings, rate_limiter=rate_limiter)
+    else:
+        raise ValueError(f"Unsupported LLM provider: {provider_name}")
+
+    return provider.get_chat_model()
+

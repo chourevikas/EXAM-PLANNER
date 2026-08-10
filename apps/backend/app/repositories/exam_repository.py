@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, List, Dict, Any
-from sqlmodel import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select, col
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import Exam
 
 
@@ -20,7 +20,7 @@ class ExamRepository:
         return res.first()
 
     async def list_all(self) -> List[Exam]:
-        stmt = select(Exam).order_by(Exam.created_at.desc())
+        stmt = select(Exam).order_by(col(Exam.created_at).desc())
         res = await self.session.exec(stmt)
         return res.all()
 

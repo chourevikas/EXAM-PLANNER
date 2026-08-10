@@ -11,7 +11,7 @@ from app.db.models.enums import (
     MemoryType,
     AssetType,
 )
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
 from app.db.models.user import (
     User,
     SubscriptionTier,
