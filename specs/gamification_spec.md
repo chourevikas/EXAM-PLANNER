@@ -55,7 +55,25 @@ Once the Daily Goal is verified:
 1. Generate an `XPLog` entry for `source="DAILY_GOAL"` with amount `+50 XP`.
 2. Update `StudentProfile.total_xp += 50`.
 3. Evaluate if `total_xp` crosses a leveling threshold. If so, increment `StudentProfile.level`.
-4. Return a gamification payload to the frontend (e.g., `{"streak_updated": true, "new_xp": 50, "level_up": false}`).
+
+### Step 4: Badge Evaluation
+Following XP updates, the engine evaluates if any new milestones were reached:
+1. Fetch all badges from the database.
+2. Filter out badges the user has already unlocked (via `UserBadge`).
+3. Evaluate conditions for locked badges based on the updated `StudentProfile`:
+   - e.g., `First Step`: `total_xp >= 50`
+   - e.g., `Consistency Starter`: `current_streak >= 3`
+   - e.g., `Level 5 Scholar`: `level >= 5`
+4. If a condition is met, insert a new `UserBadge` record.
+5. Return the full gamification payload to the frontend, including any newly unlocked badges:
+   ```json
+   {
+     "streak_updated": true, 
+     "new_xp": 50, 
+     "level_up": false, 
+     "new_badges": ["Consistency Starter"]
+   }
+   ```
 
 ## 5. Implementation Phases
 
@@ -64,7 +82,9 @@ Once the Daily Goal is verified:
 - Update `StudentProfile` schema.
 - Create dummy `StudyTask` schema to support the logic.
 - Implement the completion API and backend streak logic.
-- *Testing:* Manually inject dummy tasks and verify that completing them triggers the streak correctly.
+- Seed default badges into the database (`First Step`, `Consistency Starter`, etc.).
+- Auto-award badges based on XP, Level, and Streak thresholds.
+- *Testing:* Manually inject dummy tasks and verify that completing them triggers the streak and awards badges correctly.
 
 **Phase 2 (Future Focus): AI Generation**
 - Integrate LangChain/Google GenAI to automatically populate the `StudyTask` table with personalized study schedules.
