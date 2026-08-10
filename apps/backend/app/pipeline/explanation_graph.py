@@ -1,6 +1,8 @@
 import uuid
 import json
+from pathlib import Path
 from typing import List, Dict, Any, TypedDict, Optional, Tuple
+import aiofiles
 from sqlmodel import select, col
 from langgraph.graph import StateGraph, END, START
 
@@ -697,15 +699,18 @@ async def node_explanation_validator_and_hitl(
                     q_num = q_rec.question_number_in_paper
                     json_rel_path = f"artifacts/{exam_code}/{clean_set}/json/questions/Q{q_num:03d}.json"
                     
-                    # Write to temporary file and upload via storage provider
-                    from pathlib import Path
-                    import aiofiles
+                    from app.core.cleanup import cleanup_file, cleanup_directory
+                    is_local_storage = get_settings().STORAGE_TYPE.upper() == "LOCAL"
+
                     temp_dir = Path(get_settings().OUTPUT_ARTIFACTS_DIR) / "temp_json"
                     temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_json_path = temp_dir / f"Q{q_num:03d}.json"
                     async with aiofiles.open(temp_json_path, mode="w", encoding="utf-8") as f:
                         await f.write(json_str)
                     await storage.upload_file(temp_json_path, json_rel_path)
+
+                    if not is_local_storage:
+                        cleanup_file(temp_json_path)
 
                     q_dict = await async_export_question_to_json_dict(session, q_rec, exam_obj)
                     summary_list.append(q_dict)
@@ -729,6 +734,10 @@ async def node_explanation_validator_and_hitl(
                     await f.write(summary_json_str)
                 summary_rel_path = f"artifacts/{exam_code}/{clean_set}/json/exam_summary.json"
                 await storage.upload_file(summary_temp_path, summary_rel_path)
+
+                if not is_local_storage:
+                    cleanup_file(summary_temp_path)
+                    cleanup_directory(temp_dir)
 
         # Update PipelineRun status to COMPLETED
         pm_service = PipelineManagementService(session)

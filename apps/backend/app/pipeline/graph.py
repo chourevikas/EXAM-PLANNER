@@ -239,35 +239,9 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
 
 
 async def node_export_artifacts(state: OverallPipelineState) -> dict:
-    exam_id = (
-        uuid.UUID(state["exam_id"])
-        if isinstance(state["exam_id"], str)
-        else state["exam_id"]
-    )
-    storage = get_storage_provider()
-
-    async with managed_async_session() as session:
-        exam = await session.get(Exam, exam_id)
-        exam_code = exam.code if exam else "EXAM"
-
-        questions_res = await session.exec(
-            select(Question).where(Question.exam_id == exam_id)
-        )
-        questions = questions_res.all()
-
-        for q in questions:
-            q_stem = get_canonical_question_filename_stem(session, q, exam)
-
-            # 1. Async Export YAML
-            yaml_str = await async_export_question_to_yaml_string(session, q)
-            yaml_filename = f"{q_stem}.yaml"
-            yaml_rel_path = f"exams/{exam_code}/output_files/{yaml_filename}"
-
-            temp_yaml = Path(state["output_dir"]) / yaml_filename
-            async with aiofiles.open(temp_yaml, mode="w", encoding="utf-8") as f:
-                await f.write(yaml_str)
-            await storage.upload_file(temp_yaml, yaml_rel_path)
-
+    t_id = state.get("task_id", "N/A")
+    log = TaskLoggerAdapter(logger, task_id=t_id)
+    log.info("🎉 [PIPELINE 1 COMPLETE] All extracted questions and assets successfully registered.")
     return {}
 
 
