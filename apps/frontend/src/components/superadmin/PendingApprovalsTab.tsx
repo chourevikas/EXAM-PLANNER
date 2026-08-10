@@ -5,7 +5,7 @@ interface PendingApprovalsTabProps {
   requests: AdminApprovalRequest[];
   loading: boolean;
   processingId: string | null;
-  onApprove: (id: string, name: string) => void;
+  onApprove: (id: string, name: string, role?: string) => void;
   onReject: (id: string, name: string) => void;
   onRefresh: () => void;
 }
@@ -31,10 +31,10 @@ export function PendingApprovalsTab({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-            Pending Admin Approvals
+            Candidate Registration Queue
           </h2>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-            Review newly registered admin accounts requiring Super Admin clearance.
+            Review registered candidates and assign them as Student or Administrator.
           </p>
         </div>
         <button onClick={onRefresh} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 13 }}>
@@ -44,7 +44,7 @@ export function PendingApprovalsTab({
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-          Loading pending admin applications...
+          Loading candidate applications...
         </div>
       ) : requests.length === 0 ? (
         <div
@@ -58,10 +58,10 @@ export function PendingApprovalsTab({
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>
-            All Pending Requests Cleared!
+            All Candidate Registrations Processed!
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            There are currently no admin registrations waiting for review.
+            There are currently no candidates waiting for review.
           </div>
         </div>
       ) : (
@@ -103,22 +103,18 @@ export function PendingApprovalsTab({
                   </span>
                 </div>
 
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                  Organization: <strong style={{ color: 'var(--text-main)' }}>{req.organization_name || 'Unspecified'}</strong> • Dept: <strong style={{ color: 'var(--text-main)' }}>{req.department || 'Unspecified'}</strong>
-                </div>
-
-                <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 6 }}>
-                  Submitted on {new Date(req.created_at).toLocaleString()}
+                <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4 }}>
+                  Registered on {new Date(req.created_at).toLocaleString()}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button
                   onClick={() => onReject(req.id, req.full_name)}
                   disabled={processingId === req.id}
                   className="btn btn-ghost"
                   style={{
-                    padding: '9px 18px',
+                    padding: '8px 14px',
                     fontSize: 13,
                     color: '#EF4444',
                     borderColor: 'rgba(239, 68, 68, 0.4)',
@@ -126,19 +122,34 @@ export function PendingApprovalsTab({
                 >
                   Reject
                 </button>
+
                 <button
-                  onClick={() => onApprove(req.id, req.full_name)}
+                  onClick={() => onApprove(req.id, req.full_name, 'STUDENT')}
                   disabled={processingId === req.id}
                   className="btn btn-primary"
                   style={{
-                    padding: '9px 22px',
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    borderColor: '#2563eb',
+                  }}
+                >
+                  {processingId === req.id ? 'Processing...' : '🎓 Make Student'}
+                </button>
+
+                <button
+                  onClick={() => onApprove(req.id, req.full_name, 'ADMIN')}
+                  disabled={processingId === req.id}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 16px',
                     fontSize: 13,
                     background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
                     borderColor: 'var(--emerald)',
                     boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
                   }}
                 >
-                  {processingId === req.id ? 'Processing...' : 'Approve Admin'}
+                  {processingId === req.id ? 'Processing...' : '⚙️ Make Admin'}
                 </button>
               </div>
             </div>

@@ -1,229 +1,824 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Logo } from '../components/common/Logo';
-import { Ico } from '../components/common/Icons';
-import { useTheme } from '../hooks/useTheme';
+import { StudentLayout } from '../components/student/StudentLayout';
+import {
+  User,
+  Target,
+  CreditCard,
+  Lock,
+  Save,
+  Check,
+  Star,
+  Zap,
+  Shield,
+  Clock,
+  Award,
+  BookOpen,
+  Download,
+  Calendar,
+  Sparkles
+} from 'lucide-react';
 
 const PREDEFINED_AVATARS = ['👨‍🎓', '👩‍🎓', '🚀', '🌟', '🧠', '🦉', '🎯', '📚'];
 
 export function ProfilePage() {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
-  const { theme, toggleTheme } = useTheme();
+  const [user, setUser] = useState(() => {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  });
+
+  const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>('personal');
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Form Fields
+  const [fullName, setFullName] = useState(user.full_name || 'Aspirant');
+  const [profileImage, setProfileImage] = useState(user.profile_image || '👨‍🎓');
+  const [phone, setPhone] = useState(user.phone || '+91 98765 43210');
+  const [bio, setBio] = useState(user.bio || 'Determined UPSC CSE 2026 aspirant focused on Prelims General Studies & Answer Writing.');
   
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  
-  const [editName, setEditName] = useState(user.full_name || '');
-  const [editAvatar, setEditAvatar] = useState(user.profile_image || '👨‍🎓');
+  // Exam Target Fields
+  const [targetExam, setTargetExam] = useState(user.target_exam || 'UPSC CSE');
+  const [targetYear, setTargetYear] = useState(user.target_year || '2026');
+  const [optionalSubject, setOptionalSubject] = useState(user.optional_subject || 'Political Science & IR');
+  const [weeklyGoalHours, setWeeklyGoalHours] = useState(user.weekly_hours || '35');
+
+  // Security Fields
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [twoFactor, setTwoFactor] = useState(true);
 
   useEffect(() => {
-    document.title = 'Profile - Exam Planner';
+    document.title = 'Profile Settings - RankEdge';
   }, []);
 
-  const handleSaveProfile = () => {
-    const updatedUser = { ...user, full_name: editName, profile_image: editAvatar };
+  const handleSaveChanges = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedUser = {
+      ...user,
+      full_name: fullName,
+      profile_image: profileImage,
+      phone,
+      bio,
+      target_exam: targetExam,
+      target_year: targetYear,
+      optional_subject: optionalSubject,
+      weekly_hours: weeklyGoalHours,
+    };
+
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setUser(updatedUser);
-    setIsEditing(false);
+    
+    // Trigger window event so header picks up changes
+    window.dispatchEvent(new Event('storage'));
+
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
+  const isPro = user.subscription_tier === 'PREMIUM';
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-body)', overflowX: 'hidden' }}>
-      
-      {/* Overlay for sidebar */}
-      {isSidebarOpen && (
-        <div 
-          onClick={() => setIsSidebarOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', zIndex: 90 }}
-        />
-      )}
-
-      {/* Slide-in Sidebar */}
-      <aside style={{ 
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', 
-        background: 'var(--bg-card)', borderRight: '1px solid var(--border-color)', 
-        display: 'flex', flexDirection: 'column', padding: '24px 0', zIndex: 100,
-        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-        boxShadow: isSidebarOpen ? 'var(--shadow-lg)' : 'none'
-      }}>
-        <div style={{ padding: '0 24px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Logo />
-          <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Ico.X />
-          </button>
-        </div>
-        
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 16px' }}>
-          <Link to="/dashboard" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Target /> Dashboard
-          </Link>
-          <Link to="/study-planner" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Cal /> Study Planner
-          </Link>
-          <Link to="/pyq" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Book /> Previous Year Qs
-          </Link>
-          <Link to="/mock-tests" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Brain /> Mock Tests
-          </Link>
-          <Link to="/analytics" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Chart /> Analytics
-          </Link>
-
-          <div style={{ margin: '16px 16px 8px 16px', fontSize: '11px', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-subtle)', letterSpacing: '0.05em' }}>
-            Reports
+    <StudentLayout pageTitle="Account Settings">
+      {/* ─── Profile Hero Banner Card ─────────────────────────────────────────── */}
+      <div
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          borderRadius: 24,
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-color-base)',
+          padding: 32,
+          marginBottom: 28,
+          backgroundImage: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(91,92,235,0.04) 100%)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 24
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          {/* Avatar Display */}
+          <div
+            style={{
+              width: 84,
+              height: 84,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+              border: '2px solid var(--accent-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 42,
+              boxShadow: '0 4px 16px var(--shadow-color-accent)',
+              flexShrink: 0
+            }}
+          >
+            {profileImage}
           </div>
-          <Link to="/reports/weekly" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Chart /> Weekly Report
-          </Link>
-          <Link to="/reports/monthly" onClick={() => setIsSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '12px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600 }}>
-            <Ico.Target /> Monthly Report
-          </Link>
-        </nav>
-        
-        <div style={{ marginTop: 'auto', padding: '24px 16px', borderTop: '1px solid var(--border-color)' }}>
-           <Link to="/signout" className="btn btn-ghost" style={{ width: '100%', padding: '10px' }}>Sign Out</Link>
-        </div>
-      </aside>
 
-      {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Glassmorphism Header */}
-        <header className="glass-nav" style={{ padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 40 }}>
-          {/* Left Side: Menu Toggle */}
+          {/* User Details */}
           <div>
-            <button onClick={() => setIsSidebarOpen(true)} className="theme-toggle-btn" aria-label="Open Menu">
-              <Ico.Menu />
-            </button>
-          </div>
-
-          {/* Right Side: Profile & Theme Toggle */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            
-            <Link 
-              to="/profile"
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '20px', textDecoration: 'none' }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', marginRight: '8px' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-main)' }}>{user.full_name || 'Aspirant'}</span>
-                <span className="admin-badge" style={{ fontSize: '10px', padding: '2px 8px', letterSpacing: '0.05em' }}>
-                  {user.role === 'STUDENT' ? 'ASPIRANT' : (user.role || 'ASPIRANT')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                {fullName}
+              </h1>
+              {isPro ? (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    color: '#60a5fa',
+                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <Star size={12} fill="#60a5fa" /> Pro Member
                 </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-muted)',
+                    border: '1px solid var(--border-default)'
+                  }}
+                >
+                  Free Account
+                </span>
+              )}
+            </div>
+
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>
+              {user.email || 'aspirant@examplanner.com'} • Target: <strong style={{ color: 'var(--text-primary)' }}>{targetExam} {targetYear}</strong>
+            </div>
+
+            {/* Quick Badges */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                <Zap size={13} color="#f59e0b" fill="#f59e0b" />
+                <span>14-Day Streak</span>
               </div>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                {user.profile_image || '👨‍🎓'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                <BookOpen size={13} color="#3b82f6" />
+                <span>1,250 Questions Solved</span>
               </div>
-            </Link>
-          </div>
-        </header>
-
-        <main className="admin-container" style={{ margin: '32px auto', width: '100%', maxWidth: '800px', padding: '0 32px' }}>
-          <section className="anim-fade-up">
-            <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 600, marginBottom: '16px', fontSize: '14px', transition: 'color 0.2s' }} onMouseOver={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = 'var(--royal)'} onMouseOut={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = 'var(--text-muted)'}>
-              ← Back to Dashboard
-            </Link>
-            <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-main)', marginBottom: 24 }}>
-              My Profile
-            </h1>
-
-            <div className="feature-card" style={{ padding: '32px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', borderBottom: '1px solid var(--border-color)', paddingBottom: '24px' }}>
-                
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--blue50)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
-                    {user.profile_image || '👨‍🎓'}
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>{user.full_name || 'Aspirant'}</h2>
-                    <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: '4px', marginBottom: 0 }}>{user.email || 'aspirant@example.com'}</p>
-                    <span className="admin-badge" style={{ marginTop: '12px', display: 'inline-block', fontSize: '11px', padding: '4px 12px', letterSpacing: '0.05em' }}>
-                      {user.role === 'STUDENT' ? 'ASPIRANT' : (user.role || 'ASPIRANT')}
-                    </span>
-                  </div>
-                </div>
-
-                <button onClick={() => setIsEditing(true)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Ico.Pen /> Edit Profile
-                </button>
-              </div>
-
-              {/* Read-only Data */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                <div>
-                  <div className="admin-metric-label">Target Exam</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>UPSC Civil Services</div>
-                </div>
-                <div>
-                  <div className="admin-metric-label">Attempt Year</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>2027</div>
-                </div>
-                <div>
-                  <div className="admin-metric-label">Optional Subject</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>Public Administration</div>
-                </div>
-                <div>
-                  <div className="admin-metric-label">Daily Study Goal</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>8 Hours</div>
-                </div>
-                <div>
-                  <div className="admin-metric-label">Timezone</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>Asia/Kolkata (IST)</div>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                <Award size={13} color="#10b981" />
+                <span>Level 4 Scholar</span>
               </div>
             </div>
-          </section>
-        </main>
+          </div>
+        </div>
+
+        {/* Upgrade / Billing CTA if Free */}
+        {!isPro && (
+          <Link
+            to="/pricing"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '12px 20px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              borderRadius: 12,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 700,
+              boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+              transition: 'transform 0.2s'
+            }}
+          >
+            <Sparkles size={16} />
+            <span>Upgrade to Pro Plan</span>
+          </Link>
+        )}
       </div>
 
-      {/* Edit Profile Modal (Only for basic details) */}
-      {isEditing && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="feature-card anim-fade-up" style={{ width: '400px', background: 'var(--bg-modal)', padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-main)' }}>Edit Basic Details</h2>
-              <button onClick={() => setIsEditing(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Ico.X /></button>
-            </div>
+      {/* ─── Navigation Tabs Bar ─────────────────────────────────────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 24,
+          borderBottom: '1px solid var(--border-default)',
+          paddingBottom: 4
+        }}
+      >
+        {[
+          { id: 'personal', label: 'Personal Info', icon: User },
+          { id: 'exam', label: 'Exam Targets', icon: Target },
+          { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
+          { id: 'security', label: 'Security & Password', icon: Lock },
+        ].map((tab) => {
+          const TabIcon = tab.icon;
+          const isActive = activeTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                borderRadius: 10,
+                border: 'none',
+                backgroundColor: isActive ? 'var(--accent-bg)' : 'transparent',
+                color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                fontSize: 14,
+                fontWeight: isActive ? 700 : 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                borderBottom: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent'
+              }}
+            >
+              <TabIcon size={16} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── Settings Form & Content Body ───────────────────────────────────── */}
+      <form onSubmit={handleSaveChanges} style={{ maxWidth: 840 }}>
+        
+        {/* Tab 1: Personal Info */}
+        {activeTab === 'personal' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label className="form-label">Full Name</label>
-              <input 
-                type="text" 
-                className="form-select" 
-                value={editName} 
-                onChange={e => setEditName(e.target.value)} 
-                placeholder="Enter your name" 
-                style={{ cursor: 'text' }}
-              />
-            </div>
-            
-            <div className="form-group" style={{ marginBottom: '32px' }}>
-              <label className="form-label">Choose Avatar</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                {PREDEFINED_AVATARS.map(avatar => (
-                  <button 
-                    key={avatar}
-                    onClick={() => setEditAvatar(avatar)}
-                    style={{ 
-                      width: 44, height: 44, borderRadius: '50%', fontSize: 22, 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: editAvatar === avatar ? 'var(--blue50)' : 'var(--bg-secondary)',
-                      border: `2px solid ${editAvatar === avatar ? 'var(--royal)' : 'transparent'}`,
-                      cursor: 'pointer', transition: 'all 0.2s'
+            {/* Avatar Selector */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 18,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)'
+              }}
+            >
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 12 }}>
+                Choose Profile Avatar
+              </label>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {PREDEFINED_AVATARS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setProfileImage(emoji)}
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: '50%',
+                      fontSize: 26,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      border: profileImage === emoji ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                      backgroundColor: profileImage === emoji ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                      transition: 'transform 0.15s ease'
                     }}
                   >
-                    {avatar}
+                    {emoji}
                   </button>
                 ))}
               </div>
             </div>
 
-            <button onClick={handleSaveProfile} className="btn btn-primary" style={{ width: '100%', padding: '14px' }}>Save Changes</button>
-          </div>
-        </div>
-      )}
+            {/* Inputs Grid */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 18,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 20
+              }}
+            >
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
 
-    </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={user.email || 'aspirant@examplanner.com'}
+                  disabled
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
+                    color: 'var(--text-muted)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    cursor: 'not-allowed'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  User Role
+                </label>
+                <input
+                  type="text"
+                  value="ASPIRANT / STUDENT"
+                  disabled
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
+                    color: 'var(--text-muted)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    cursor: 'not-allowed'
+                  }}
+                />
+              </div>
+
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                  Personal Goal / Aspirant Motto
+                </label>
+                <textarea
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 2: Exam Targets */}
+        {activeTab === 'exam' && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              padding: 24,
+              borderRadius: 18,
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-color-base)',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 20
+            }}
+          >
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Primary Target Exam
+              </label>
+              <select
+                value={targetExam}
+                onChange={(e) => setTargetExam(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="UPSC CSE">UPSC Civil Services Examination (CSE)</option>
+                <option value="State PCS">State Public Service Commission (UPPSC / BPSC)</option>
+                <option value="SSC CGL">SSC Combined Graduate Level (CGL)</option>
+                <option value="RBI Grade B">RBI Grade B Officer</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Target Attempt Year
+              </label>
+              <select
+                value={targetYear}
+                onChange={(e) => setTargetYear(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="2025">2025 Attempt</option>
+                <option value="2026">2026 Attempt</option>
+                <option value="2027">2027 Attempt</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Optional Subject (Mains)
+              </label>
+              <select
+                value={optionalSubject}
+                onChange={(e) => setOptionalSubject(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="Political Science & IR">Political Science & International Relations (PSIR)</option>
+                <option value="History">History</option>
+                <option value="Geography">Geography</option>
+                <option value="Public Administration">Public Administration</option>
+                <option value="Sociology">Sociology</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Weekly Target Hours Goal
+              </label>
+              <select
+                value={weeklyGoalHours}
+                onChange={(e) => setWeeklyGoalHours(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <option value="25">25 Hours / Week (Part-Time / Working)</option>
+                <option value="35">35 Hours / Week (Standard Dedicated)</option>
+                <option value="45">45 Hours / Week (Intense Full-Time)</option>
+              </select>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 3: Billing & Subscriptions */}
+        {activeTab === 'billing' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            
+            {/* Current Plan Status Box */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 18,
+                border: isPro ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
+                  Current Subscription Plan
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>{isPro ? 'RankEdge Pro Annual Plan' : 'Free Starter Plan'}</span>
+                  {isPro && <Star size={16} fill="#60a5fa" color="#60a5fa" />}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {isPro ? 'Renews automatically on Aug 9, 2027' : 'Basic free access with 10 PYQs / day limit'}
+                </div>
+              </div>
+
+              {!isPro ? (
+                <Link
+                  to="/pricing"
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: 10,
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
+                  }}
+                >
+                  Upgrade to Pro
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => alert('Your Pro Subscription is active and fully unlocked!')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Manage Membership
+                </button>
+              )}
+            </div>
+
+            {/* Invoices History Table */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 18,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)'
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>
+                Billing History & Download Receipts
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { id: 'INV-2026-001', date: 'Aug 09, 2026', amount: '₹5,988', status: 'Paid', plan: 'Pro Annual Membership' }
+                ].map((inv) => (
+                  <div
+                    key={inv.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 12,
+                      borderRadius: 10,
+                      backgroundColor: 'var(--bg-subtle)',
+                      border: '1px solid var(--border-default)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <Calendar size={18} color="var(--accent-primary)" />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.plan}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{inv.id} • {inv.date}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{inv.amount}</span>
+                      <button
+                        type="button"
+                        onClick={() => alert(`Downloading Invoice ${inv.id}...`)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 600
+                        }}
+                      >
+                        <Download size={14} /> Receipt
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Tab 4: Security & Password */}
+        {activeTab === 'security' && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              padding: 24,
+              borderRadius: 18,
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-color-base)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 20
+            }}
+          >
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Current Password
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 16, borderTop: '1px solid var(--border-default)' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Two-Factor Authentication (2FA)</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Add an extra layer of security to your account with SMS or Authenticator app code</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTwoFactor(!twoFactor)}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 20,
+                  border: 'none',
+                  backgroundColor: twoFactor ? '#10b981' : 'var(--bg-subtle)',
+                  color: twoFactor ? '#ffffff' : 'var(--text-muted)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {twoFactor ? 'Enabled ✓' : 'Disabled'}
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* ─── Save Changes Sticky Action Bar ───────────────────────────────────── */}
+        <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button
+            type="submit"
+            style={{
+              padding: '12px 24px',
+              borderRadius: 12,
+              border: 'none',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+              transition: 'transform 0.2s'
+            }}
+          >
+            <Save size={18} />
+            <span>Save Profile Settings</span>
+          </button>
+
+          {savedSuccess && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 13, fontWeight: 700 }}>
+              <Check size={18} />
+              <span>Settings updated successfully!</span>
+            </div>
+          )}
+        </div>
+
+      </form>
+    </StudentLayout>
   );
 }
