@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     S3_ENDPOINT_URL: Optional[str] = Field(default=None)
     AWS_SES_SENDER: str = Field(default="no-reply@examplanner.com")
 
+    # SMTP Mail Settings (Hostinger / General SMTP)
+    MAIL_USERNAME: Optional[str] = Field(default=None)
+    MAIL_PASSWORD: Optional[str] = Field(default=None)
+    MAIL_FROM: str = Field(default="support@examplanner.in")
+    MAIL_PORT: int = Field(default=465)
+    MAIL_SERVER: str = Field(default="smtp.hostinger.com")
+    MAIL_STARTTLS: bool = Field(default=False)
+    MAIL_SSL_TLS: bool = Field(default=True)
+
     # LLM Settings & Provider Credentials
     LLM_PROVIDER: str = Field(default="vertexai")  # vertexai, openai, bedrock
     GCP_PROJECT_ID: Optional[str] = Field(default=None)
