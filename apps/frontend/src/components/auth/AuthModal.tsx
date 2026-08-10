@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, X } from 'lucide-react';
 import { Ico } from '../common/Icons';
+import { UserRole } from '../../types/auth';
 import { loginUser, registerUser } from '../../services/authService';
+import { useClerk } from '@clerk/clerk-react';
 
 export type AuthMode = 'login' | 'signup';
 
@@ -23,16 +24,35 @@ export function AuthModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [organizationName, setOrganizationName] = useState('');
+  const [department, setDepartment] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT);
   
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalPending, setShowApprovalPending] = useState(false);
   
   const navigate = useNavigate();
+  const clerk = useClerk();
+  const { isSignedIn } = clerk;
+
+  React.useEffect(() => {
+    if (isSignedIn && isOpen) {
+      onClose();
+      navigate('/dashboard');
+    }
+  }, [isSignedIn, isOpen, navigate, onClose]);
 
   if (!isOpen) return null;
+
+  const handleRoleChange = (role: UserRole) => {
+    setSelectedRole(role);
+    setErrorMsg('');
+    if (role === UserRole.SUPER_ADMIN && mode === 'signup') {
+      onSwitchMode('login');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +63,7 @@ export function AuthModal({
 
     try {
       if (mode === 'login') {
-        const res = await loginUser(email, password);
+        const res = await loginUser(email, password, selectedRole);
         setSuccessMsg('Signed in successfully! Redirecting...');
         setTimeout(() => {
           onClose();
@@ -53,7 +73,10 @@ export function AuthModal({
         const res = await registerUser(
           email,
           password,
-          fullName
+          fullName,
+          selectedRole,
+          selectedRole === UserRole.ADMIN ? organizationName : undefined,
+          selectedRole === UserRole.ADMIN ? department : undefined
         );
 
         if (res.is_pending_approval) {
@@ -68,46 +91,20 @@ export function AuthModal({
       }
     } catch (err: any) {
       if (err.message === 'USER_NOT_FOUND') {
-        setErrorMsg('User not found! Please register first.');
-        setTimeout(() => {
-          setErrorMsg('');
-          onSwitchMode('signup');
-        }, 1800);
+        if (selectedRole === UserRole.SUPER_ADMIN) {
+          setErrorMsg('Invalid Super Admin credentials.');
+        } else {
+          setErrorMsg('User not found! Please register first.');
+          setTimeout(() => {
+            setErrorMsg('');
+            onSwitchMode('signup');
+          }, 1800);
+        }
       } else {
         setErrorMsg(err.message || 'Authentication failed. Please try again.');
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
-    setGoogleLoading(true);
-    setErrorMsg('');
-    try {
-      if (mode === 'login') {
-        const res = await loginUser('student@examplanner.com', 'demo123');
-        setSuccessMsg('Signed in with Google!');
-        setTimeout(() => {
-          onClose();
-          navigate(res.redirect_url || '/dashboard');
-        }, 800);
-      } else {
-        const res = await registerUser('aspirant.google@examplanner.com', 'googlePass123', 'Google Aspirant');
-        if (res.is_pending_approval) {
-          setShowApprovalPending(true);
-        } else {
-          setSuccessMsg('🎉 Registered with Google!');
-          setTimeout(() => {
-            onClose();
-            navigate(res.redirect_url || '/dashboard');
-          }, 1000);
-        }
-      }
-    } catch (err: any) {
-      setErrorMsg('Google authentication failed.');
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -158,7 +155,7 @@ export function AuthModal({
             color: 'var(--text-muted)',
           }}
         >
-          <X size={18} />
+          <Ico.X />
         </button>
 
         {showApprovalPending ? (
@@ -168,8 +165,8 @@ export function AuthModal({
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
-                background: 'rgba(245, 158, 11, 0.15)',
-                color: '#f59e0b',
+                background: 'var(--blue50)',
+                color: 'var(--royal)',
                 fontSize: 30,
                 display: 'flex',
                 alignItems: 'center',
@@ -177,13 +174,13 @@ export function AuthModal({
                 margin: '0 auto 16px',
               }}
             >
-              ⏳
+              ⌛
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}>
               Registration Submitted!
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: 24 }}>
-              Your account registration has been received. Please wait for <strong>Super Admin approval & role assignment</strong> before signing in.
+              Your Admin account application has been received. Please wait for <strong>Super Admin approval</strong> before signing in.
             </p>
             <button
               onClick={() => {
@@ -198,15 +195,62 @@ export function AuthModal({
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: 20, textAlign: 'center' }}>
-              <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
+            <div style={{ marginBottom: 24 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
                 {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
               </h2>
               <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                 {mode === 'login'
-                  ? 'Sign in to access your dashboard'
-                  : 'Start your adaptive exam preparation'}
+                  ? 'Select your role and enter credentials to sign in.'
+                  : 'Select your account role and complete registration.'}
               </p>
+            </div>
+
+            {/* Role Enum Selector Tabs */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
+                Account Role
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 6,
+                  background: 'var(--bg-secondary)',
+                  padding: 4,
+                  borderRadius: 12,
+                  border: '1px solid var(--border-color)',
+                }}
+              >
+                {[
+                  { role: UserRole.STUDENT, label: 'Student', emoji: '🎓' },
+                  { role: UserRole.ADMIN, label: 'Admin', emoji: '⚙️' },
+                  { role: UserRole.SUPER_ADMIN, label: 'Super Admin', emoji: '👑' },
+                ].map((item) => (
+                  <button
+                    key={item.role}
+                    type="button"
+                    onClick={() => handleRoleChange(item.role)}
+                    style={{
+                      padding: '8px 4px',
+                      fontSize: 12,
+                      fontWeight: selectedRole === item.role ? 700 : 500,
+                      color: selectedRole === item.role ? '#ffffff' : 'var(--text-muted)',
+                      background: selectedRole === item.role ? 'var(--royal)' : 'transparent',
+                      border: 'none',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span>{item.emoji}</span> {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Error Banner */}
@@ -251,42 +295,7 @@ export function AuthModal({
               </div>
             )}
 
-            {/* Google OAuth / Clerk Button */}
-            <button
-              type="button"
-              onClick={handleGoogleAuth}
-              disabled={googleLoading}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 12,
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-main)',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: googleLoading ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.2s ease',
-                marginBottom: 16
-              }}
-            >
-              <Ico.Google />
-              <span>{googleLoading ? 'Connecting to Google...' : (mode === 'login' ? 'Continue with Google' : 'Sign up with Google')}</span>
-            </button>
-
-            {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, color: 'var(--text-muted)', fontSize: 12 }}>
-              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
-              <span style={{ padding: '0 12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OR</span>
-              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {mode === 'signup' && (
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
@@ -295,23 +304,45 @@ export function AuthModal({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="e.g. Arjun Sharma"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="form-input"
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
                   />
                 </div>
+              )}
+
+              {/* Extra Admin Fields in SignUp Mode */}
+              {mode === 'signup' && selectedRole === UserRole.ADMIN && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                      Organization Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. RankEdge IAS Academy"
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
+                      Department / Role Title
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Content Lead"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                </>
               )}
 
               <div>
@@ -325,17 +356,6 @@ export function AuthModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="form-input"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: 12,
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-main)',
-                    fontSize: 14,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
                 />
               </div>
 
@@ -347,22 +367,11 @@ export function AuthModal({
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder={mode === 'signup' ? 'At least 6 characters' : 'Enter your password'}
-                    minLength={mode === 'signup' ? 6 : undefined}
+                    placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="form-input"
-                    style={{
-                      width: '100%',
-                      padding: '12px 40px 12px 16px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border-color)',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-main)',
-                      fontSize: 14,
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    style={{ paddingRight: 40 }}
                   />
                   <button
                     type="button"
@@ -374,12 +383,12 @@ export function AuthModal({
                       transform: 'translateY(-50%)',
                       background: 'none',
                       border: 'none',
-                      color: 'var(--text-muted)',
                       cursor: 'pointer',
-                      padding: 4,
+                      color: 'var(--text-muted)',
+                      display: 'flex',
                     }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    <Ico.Eye show={showPassword} />
                   </button>
                 </div>
               </div>
@@ -388,68 +397,79 @@ export function AuthModal({
                 type="submit"
                 disabled={loading}
                 className="btn btn-primary"
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  borderRadius: 12,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  marginTop: 6,
-                }}
+                style={{ width: '100%', padding: '12px', fontSize: 15, marginTop: 8 }}
               >
-                {loading
-                  ? (mode === 'login' ? 'Signing In...' : 'Creating Account...')
-                  : (mode === 'login' ? 'Sign In' : 'Create Account')}
+                {loading ? (
+                  <>
+                    <span className="spinner" /> Processing...
+                  </>
+                ) : mode === 'login' ? (
+                  `Sign In as ${selectedRole.replace('_', ' ')}`
+                ) : (
+                  `Create ${selectedRole.replace('_', ' ')} Account`
+                )}
               </button>
             </form>
 
-            <div style={{ marginTop: 20, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
-              {mode === 'login' ? (
-                <>
-                  Don't have an account?{' '}
-                  <button
-                    onClick={() => {
-                      setErrorMsg('');
-                      setSuccessMsg('');
-                      onSwitchMode('signup');
-                    }}
+            {/* Social Sign-In (Hidden for Super Admin) */}
+            {selectedRole !== UserRole.SUPER_ADMIN && (
+              <>
+                <div style={{ margin: '20px 0', textAlign: 'center', position: 'relative' }}>
+                  <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
+                  <span
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--royal)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      padding: 0,
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      background: 'var(--bg-modal)',
+                      padding: '0 12px',
+                      fontSize: 12,
+                      color: 'var(--text-subtle)',
+                      fontWeight: 500,
                     }}
                   >
-                    Create Account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => {
-                      setErrorMsg('');
-                      setSuccessMsg('');
-                      onSwitchMode('login');
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--royal)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      padding: 0,
-                    }}
-                  >
-                    Sign In
-                  </button>
-                </>
-              )}
-            </div>
+                    OR
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', padding: '11px', fontSize: 14, gap: 10 }}
+                  onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+                >
+                  <Ico.Google /> Continue with Clerk
+                </button>
+              </>
+            )}
+
+            {/* Switch Mode Link (Hidden for Super Admin) */}
+            {selectedRole !== UserRole.SUPER_ADMIN && (
+              <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
+                {mode === 'login' ? (
+                  <>
+                    Don't have an account?{' '}
+                    <button
+                      onClick={() => onSwitchMode('signup')}
+                      style={{ background: 'none', border: 'none', color: 'var(--royal)', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{' '}
+                    <button
+                      onClick={() => onSwitchMode('login')}
+                      style={{ background: 'none', border: 'none', color: 'var(--royal)', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Log In
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

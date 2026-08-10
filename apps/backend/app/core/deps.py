@@ -51,33 +51,71 @@ async def get_current_user(
         )
 
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        user_id_str: str = payload.get("sub")
-        if user_id_str is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
+        # Check if this is a Clerk token by looking at unverified claims
+        unverified_claims = jwt.decode(token, options={"verify_signature": False})
+        issuer = unverified_claims.get("iss", "")
+        
+        if issuer and "clerk" in issuer:
+            # Verify Clerk JWT using JWKS
+            jwks_url = f"{issuer}/.well-known/jwks.json"
+            jwks_client = jwt.PyJWKClient(jwks_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token, 
+                signing_key.key, 
+                algorithms=["RS256"], 
+                issuer=issuer,
+                # Clerk's default leeway is sometimes needed
+                leeway=60 
             )
-        user_uuid = (
-            uuid.UUID(user_id_str) if isinstance(user_id_str, str) else user_id_str
-        )
-    except (jwt.PyJWTError, ValueError):
+            clerk_id: str = payload.get("sub")
+            if not clerk_id:
+                raise HTTPException(status_code=401, detail="Clerk token missing subject")
+                
+            user_repo = UserRepository(session)
+            # Find user by clerk_id
+            query = select(User).where(User.clerk_id == clerk_id)
+            result = await session.execute(query)
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found for this Clerk account")
+            if user.status != UserStatus.ACTIVE:
+                raise HTTPException(status_code=400, detail="Inactive user account")
+            return user
+
+        else:
+            # Fallback to Custom JWT Verification
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
+            user_id_str: str = payload.get("sub")
+            if user_id_str is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            user_uuid = (
+                uuid.UUID(user_id_str) if isinstance(user_id_str, str) else user_id_str
+            )
+            
+            user_repo = UserRepository(session)
+            user = await user_repo.get_by_id(user_uuid)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+            if user.status != UserStatus.ACTIVE:
+                raise HTTPException(status_code=400, detail="Inactive user account")
+            return user
+            
+    except (jwt.PyJWTError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=f"Could not validate credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_repo = UserRepository(session)
-    user = await user_repo.get_by_id(user_uuid)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.status != UserStatus.ACTIVE:
-        raise HTTPException(status_code=400, detail="Inactive user account")
-    return user
+
 
 
 def require_roles(allowed_roles: list[UserRole]):
