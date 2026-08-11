@@ -8,6 +8,7 @@ from app.db.session import get_async_session
 from app.db.models import QuestionStatus, QuestionSourceType, LanguageCode
 from app.schemas.question import (
     QuestionUpdatePayload,
+    QuestionCreatePayload,
     QuestionDetailResponse,
     QuestionPaginatedResponse,
 )
@@ -70,6 +71,19 @@ async def list_questions(
     )
 
 
+@router.post("", response_model=QuestionDetailResponse, status_code=status.HTTP_201_CREATED, summary="Create New or Missing Question & Publish")
+async def create_question(
+    payload: QuestionCreatePayload,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Creates a new question (or fills in a missing question) for an exam paper.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.create_question(payload=payload)
+
+
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
 async def get_question(
     question_id: uuid.UUID,
@@ -92,6 +106,20 @@ async def update_question(
 ):
     """
     Requirement 8: Updates question text, options, translations, passage, explanation, metadata in DB
+    and automatically sets Question status to PUBLISHED upon saving.
+    """
+    service = QuestionService(session)
+    return await service.update_question_detail(question_id=question_id, payload=payload)
+
+
+@router.patch("/{question_id}", response_model=QuestionDetailResponse, summary="Partial Update Question & Publish")
+async def patch_question(
+    question_id: uuid.UUID,
+    payload: QuestionUpdatePayload,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Partially updates question text, options, translations, explanation, or metadata in DB
     and automatically sets Question status to PUBLISHED upon saving.
     """
     service = QuestionService(session)

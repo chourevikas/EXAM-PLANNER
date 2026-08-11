@@ -34,7 +34,7 @@ def _validate_year(year: Union[int, str]) -> int:
 
 def parse_question_paper_filename(
     filename_or_code: str,
-    year: Union[int, str],
+    year: Optional[Union[int, str]] = None,
     user_set_code: Optional[str] = None,
     exam_name: Optional[str] = None,
     stage: Optional[str] = None,
@@ -45,6 +45,10 @@ def parse_question_paper_filename(
     Normalizes 'uspc' typo to 'UPSC' and defaults stage to 'prelims'.
     Does not attempt regex year extraction from filename; uses mandatory year argument.
     """
+
+    if year is None:
+        raise ValueError("Year parameter is mandatory for Question Paper filenames.")
+    
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
     stem = Path(normalized_path).stem.strip()
@@ -103,7 +107,7 @@ def parse_question_paper_filename(
 
 def parse_answer_key_filename(
     filename_or_code: str,
-    year: Union[int, str],
+    year: Optional[Union[int, str]] = None,
     exam_name: Optional[str] = None,
     stage: Optional[str] = None,
     subject_code: Optional[str] = None,
@@ -112,6 +116,8 @@ def parse_answer_key_filename(
     Parses Answer Key filename or code. Requires mandatory year metadata parameter.
     Does not attempt regex year extraction from filename; uses mandatory year argument.
     """
+    if year is None:
+        raise ValueError("Year parameter is mandatory for Answer Key filenames.")
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
     stem = Path(normalized_path).stem.strip()

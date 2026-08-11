@@ -20,6 +20,15 @@ class QuestionOptionPayload(BaseModel):
     closeness_score: float = 0.0
 
 
+class QuestionHierarchyLinkPayload(BaseModel):
+    subtopic_id: uuid.UUID
+    topic_id: Optional[uuid.UUID] = None
+    subject_id: Optional[uuid.UUID] = None
+    is_primary: bool = False
+    relevance_weight: float = 1.0
+    concept_name: Optional[str] = None
+
+
 class QuestionUpdatePayload(BaseModel):
     language: LanguageCode = Field(default=LanguageCode.ENGLISH)
     question_text: Optional[str] = None
@@ -36,9 +45,37 @@ class QuestionUpdatePayload(BaseModel):
     common_traps: Optional[List[str]] = None
     key_takeaways: Optional[List[str]] = None
     subtopic_id: Optional[uuid.UUID] = None
+    subtopic_ids: Optional[List[uuid.UUID]] = None
+    hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
     primary_concept_tag: Optional[str] = None
+
+
+class QuestionCreatePayload(BaseModel):
+    exam_id: uuid.UUID
+    question_number_in_paper: int
+    question_text: str
+    paper_set_code: Optional[str] = "SET_A"
+    section_code: Optional[str] = "DEFAULT"
+    question_type: Optional[str] = "SINGLE_CHOICE"
+    difficulty: Optional[DifficultyLevel] = DifficultyLevel.MEDIUM
+    marks: Optional[float] = 2.0
+    negative_marks: Optional[float] = 0.66
+    expected_time_seconds: Optional[int] = 60
+    options: Optional[List[QuestionOptionPayload]] = None
+    passage_text: Optional[str] = None
+    core_concept: Optional[str] = None
+    detailed_solution: Optional[str] = None
+    common_traps: Optional[List[str]] = None
+    key_takeaways: Optional[List[str]] = None
+    subtopic_id: Optional[uuid.UUID] = None
+    subtopic_ids: Optional[List[uuid.UUID]] = None
+    hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
+    blooms_level: Optional[BloomsLevel] = None
+    cognitive_skill: Optional[str] = None
+    primary_concept_tag: Optional[str] = None
+    language: LanguageCode = Field(default=LanguageCode.ENGLISH)
 
 
 class QuestionOptionDetail(BaseModel):

@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,13 @@ from app.schemas.auth import (
     AdminApprovalLogOut,
     SystemStatsOut,
 )
+from app.schemas.question import (
+    QuestionDetailResponse,
+    QuestionUpdatePayload,
+    QuestionCreatePayload,
+)
 from app.services.admin_service import AdminService
+from app.services.question_service import QuestionService
 from app.core.deps import require_roles
 
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
@@ -159,3 +166,47 @@ async def approve_and_publish_exam(
         "solutions_json_folder_path": exam.solutions_json_folder_path,
         "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
     }
+
+
+@router.post("/questions", response_model=QuestionDetailResponse, status_code=201, summary="Admin Create or Fill Missing Question")
+async def admin_create_question(
+    payload: QuestionCreatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to create a new question or fill in a missing question for an exam.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.create_question(payload=payload)
+
+
+@router.put("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Update Question")
+async def admin_update_question(
+    question_id: uuid.UUID,
+    payload: QuestionUpdatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to update question details.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.update_question_detail(question_id=question_id, payload=payload)
+
+
+@router.patch("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Partial Update Question")
+async def admin_patch_question(
+    question_id: uuid.UUID,
+    payload: QuestionUpdatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to partially update question details.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.update_question_detail(question_id=question_id, payload=payload)

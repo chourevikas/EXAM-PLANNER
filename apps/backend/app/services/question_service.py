@@ -26,6 +26,8 @@ from app.db.models import (
 )
 from app.schemas.question import (
     QuestionUpdatePayload,
+    QuestionCreatePayload,
+    QuestionHierarchyLinkPayload,
     QuestionDetailResponse,
     QuestionPaginatedResponse,
     QuestionOptionDetail,
@@ -267,9 +269,305 @@ class QuestionService:
                 )
                 self.session.add(new_qm)
 
+        # Update Hierarchy Links (Multiple Subjects, Topics & Subtopics)
+        if payload.subtopic_id or payload.subtopic_ids or payload.hierarchy_links:
+            await self._save_hierarchy_links(
+                question_id=q.id,
+                subtopic_id=payload.subtopic_id,
+                subtopic_ids=payload.subtopic_ids,
+                hierarchy_links=payload.hierarchy_links,
+            )
+
         await self.session.commit()
         await self.session.refresh(q)
+        await self._recalculate_exam_metrics(q.exam_id)
         return await self._build_question_detail_response(q, target_lang=target_lang)
+
+    async def _recalculate_exam_metrics(self, exam_id: Optional[uuid.UUID]):
+        if not exam_id:
+            return
+        exam_obj = await self.session.get(Exam, exam_id)
+        if exam_obj:
+            all_qs_res = await self.session.exec(
+                select(Question.question_number_in_paper).where(Question.exam_id == exam_id)
+            )
+            extracted_numbers = set(all_qs_res.all())
+            tot_exp = exam_obj.total_questions or 100
+            missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
+            exam_obj.extracted_questions_count = len(extracted_numbers)
+            exam_obj.missing_questions_count = len(missing_nums)
+            exam_obj.missing_question_numbers_json = missing_nums
+            self.session.add(exam_obj)
+            await self.session.commit()
+
+    async def create_question(
+        self, payload: QuestionCreatePayload
+    ) -> QuestionDetailResponse:
+        exam_obj = await self.session.get(Exam, payload.exam_id)
+        if not exam_obj:
+            raise HTTPException(status_code=404, detail=f"Exam with ID '{payload.exam_id}' not found.")
+
+        # Check if question already exists in this exam
+        stmt = select(Question).where(
+            Question.exam_id == payload.exam_id,
+            Question.question_number_in_paper == payload.question_number_in_paper,
+        )
+        q = (await self.session.exec(stmt)).first()
+        target_lang = payload.language or LanguageCode.ENGLISH
+
+        if not q:
+            q = Question(
+                exam_id=payload.exam_id,
+                paper_set_code=payload.paper_set_code or exam_obj.paper_set_code,
+                section_code=payload.section_code or "DEFAULT",
+                question_number_in_paper=payload.question_number_in_paper,
+                question_type=payload.question_type or "SINGLE_CHOICE",
+                difficulty=payload.difficulty or "MEDIUM",
+                marks=payload.marks if payload.marks is not None else 2.0,
+                negative_marks=payload.negative_marks if payload.negative_marks is not None else 0.66,
+                expected_time_seconds=payload.expected_time_seconds if payload.expected_time_seconds is not None else 60,
+                source_year=exam_obj.source_year or 2024,
+                is_complete=True,
+                status=QuestionStatus.PUBLISHED,
+                subtopic_id=payload.subtopic_id,
+            )
+            self.session.add(q)
+            await self.session.commit()
+            await self.session.refresh(q)
+        else:
+            q.status = QuestionStatus.PUBLISHED
+            if payload.difficulty:
+                q.difficulty = payload.difficulty
+            if payload.marks is not None:
+                q.marks = payload.marks
+            if payload.negative_marks is not None:
+                q.negative_marks = payload.negative_marks
+            if payload.expected_time_seconds is not None:
+                q.expected_time_seconds = payload.expected_time_seconds
+            if payload.subtopic_id:
+                q.subtopic_id = payload.subtopic_id
+            self.session.add(q)
+
+        # Question Translation
+        if payload.question_text:
+            qt_stmt = select(QuestionTranslation).where(
+                QuestionTranslation.question_id == q.id,
+                QuestionTranslation.language == target_lang,
+            )
+            qt = (await self.session.exec(qt_stmt)).first()
+            if qt:
+                qt.question_text = payload.question_text
+                self.session.add(qt)
+            else:
+                new_qt = QuestionTranslation(
+                    question_id=q.id,
+                    language=target_lang,
+                    question_text=payload.question_text,
+                )
+                self.session.add(new_qt)
+
+        # Options
+        if payload.options:
+            for opt_payload in payload.options:
+                opt_stmt = select(QuestionOption).where(
+                    QuestionOption.question_id == q.id,
+                    QuestionOption.option_label == opt_payload.option_label,
+                )
+                opt_obj = (await self.session.exec(opt_stmt)).first()
+                if not opt_obj:
+                    opt_obj = QuestionOption(
+                        question_id=q.id,
+                        option_label=opt_payload.option_label,
+                        display_order=opt_payload.display_order,
+                        is_correct=opt_payload.is_correct,
+                        closeness_score=opt_payload.closeness_score,
+                    )
+                    self.session.add(opt_obj)
+                    await self.session.commit()
+                    await self.session.refresh(opt_obj)
+                else:
+                    opt_obj.is_correct = opt_payload.is_correct
+                    opt_obj.display_order = opt_payload.display_order
+                    opt_obj.closeness_score = opt_payload.closeness_score
+                    self.session.add(opt_obj)
+
+                ot_stmt = select(OptionTranslation).where(
+                    OptionTranslation.option_id == opt_obj.id,
+                    OptionTranslation.language == target_lang,
+                )
+                ot = (await self.session.exec(ot_stmt)).first()
+                if ot:
+                    ot.option_text = opt_payload.option_text
+                    if opt_payload.distractor_analysis:
+                        ot.distractor_analysis = opt_payload.distractor_analysis
+                    self.session.add(ot)
+                else:
+                    new_ot = OptionTranslation(
+                        option_id=opt_obj.id,
+                        language=target_lang,
+                        option_text=opt_payload.option_text,
+                        distractor_analysis=opt_payload.distractor_analysis,
+                    )
+                    self.session.add(new_ot)
+
+        # Explanation
+        if any([payload.core_concept, payload.detailed_solution, payload.common_traps, payload.key_takeaways]):
+            expl_stmt = select(QuestionExplanation).where(
+                QuestionExplanation.question_id == q.id,
+                QuestionExplanation.language == target_lang,
+            )
+            expl = (await self.session.exec(expl_stmt)).first()
+            if expl:
+                if payload.core_concept is not None:
+                    expl.core_concept = payload.core_concept
+                if payload.detailed_solution is not None:
+                    expl.detailed_solution = payload.detailed_solution
+                if payload.common_traps is not None:
+                    expl.common_traps_json = payload.common_traps
+                if payload.key_takeaways is not None:
+                    expl.key_takeaways_json = payload.key_takeaways
+                self.session.add(expl)
+            else:
+                new_expl = QuestionExplanation(
+                    question_id=q.id,
+                    language=target_lang,
+                    core_concept=payload.core_concept or "",
+                    detailed_solution=payload.detailed_solution or "",
+                    common_traps_json=payload.common_traps or [],
+                    key_takeaways_json=payload.key_takeaways or [],
+                )
+                self.session.add(new_expl)
+
+        # Metadata
+        if any([payload.blooms_level, payload.cognitive_skill, payload.primary_concept_tag]):
+            meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
+            qm = (await self.session.exec(meta_stmt)).first()
+            if qm:
+                if payload.blooms_level:
+                    qm.blooms_level = payload.blooms_level
+                if payload.cognitive_skill:
+                    qm.cognitive_skill = payload.cognitive_skill
+                if payload.primary_concept_tag:
+                    qm.primary_concept_tag = payload.primary_concept_tag
+                self.session.add(qm)
+            else:
+                new_qm = QuestionMetadata(
+                    question_id=q.id,
+                    blooms_level=payload.blooms_level or "ANALYZE",
+                    cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
+                    primary_concept_tag=payload.primary_concept_tag or "GENERAL",
+                )
+                self.session.add(new_qm)
+
+        # Update Hierarchy Links (Multiple Subjects, Topics & Subtopics)
+        if payload.subtopic_id or payload.subtopic_ids or payload.hierarchy_links:
+            await self._save_hierarchy_links(
+                question_id=q.id,
+                subtopic_id=payload.subtopic_id,
+                subtopic_ids=payload.subtopic_ids,
+                hierarchy_links=payload.hierarchy_links,
+            )
+
+        await self.session.commit()
+        await self.session.refresh(q)
+        await self._recalculate_exam_metrics(payload.exam_id)
+        return await self._build_question_detail_response(q, target_lang=target_lang)
+
+    async def _save_hierarchy_links(
+        self,
+        question_id: uuid.UUID,
+        subtopic_id: Optional[uuid.UUID] = None,
+        subtopic_ids: Optional[List[uuid.UUID]] = None,
+        hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None,
+    ):
+        if not (subtopic_id or subtopic_ids or hierarchy_links):
+            return
+
+        links_to_create = []
+
+        # 1. Process explicit hierarchy_links if provided
+        if hierarchy_links:
+            for idx, link_p in enumerate(hierarchy_links):
+                s_id = link_p.subtopic_id
+                t_id = link_p.topic_id
+                subj_id = link_p.subject_id
+
+                if s_id and (not t_id or not subj_id):
+                    subtop = await self.session.get(Subtopic, s_id)
+                    if subtop:
+                        if not t_id:
+                            t_id = subtop.topic_id
+                        if not subj_id and t_id:
+                            top = await self.session.get(Topic, t_id)
+                            if top:
+                                subj_id = top.subject_id
+
+                is_prim = link_p.is_primary or (idx == 0)
+                links_to_create.append(
+                    (s_id, t_id, subj_id, is_prim, link_p.relevance_weight, link_p.concept_name)
+                )
+
+        # 2. Process subtopic_ids list if provided
+        if subtopic_ids:
+            for idx, s_id in enumerate(subtopic_ids):
+                if any(item[0] == s_id for item in links_to_create):
+                    continue
+                t_id = None
+                subj_id = None
+                subtop = await self.session.get(Subtopic, s_id)
+                if subtop:
+                    t_id = subtop.topic_id
+                    if t_id:
+                        top = await self.session.get(Topic, t_id)
+                        if top:
+                            subj_id = top.subject_id
+                is_prim = (len(links_to_create) == 0 and idx == 0)
+                links_to_create.append((s_id, t_id, subj_id, is_prim, 1.0, None))
+
+        # 3. Process single subtopic_id if provided
+        if subtopic_id and not any(item[0] == subtopic_id for item in links_to_create):
+            t_id = None
+            subj_id = None
+            subtop = await self.session.get(Subtopic, subtopic_id)
+            if subtop:
+                t_id = subtop.topic_id
+                if t_id:
+                    top = await self.session.get(Topic, t_id)
+                    if top:
+                        subj_id = top.subject_id
+            is_prim = (len(links_to_create) == 0)
+            links_to_create.append((subtopic_id, t_id, subj_id, is_prim, 1.0, None))
+
+        if not links_to_create:
+            return
+
+        # Clear existing hierarchy links for this question to prevent conflicts/duplicates
+        existing_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
+        existing_links = (await self.session.exec(existing_stmt)).all()
+        for el in existing_links:
+            await self.session.delete(el)
+
+        primary_subtopic_id = None
+        for s_id, t_id, subj_id, is_prim, weight, c_name in links_to_create:
+            if is_prim and not primary_subtopic_id:
+                primary_subtopic_id = s_id
+            link = QuestionHierarchyLink(
+                question_id=question_id,
+                subtopic_id=s_id,
+                topic_id=t_id,
+                subject_id=subj_id,
+                is_primary=is_prim,
+                relevance_weight=weight,
+                concept_name=c_name,
+            )
+            self.session.add(link)
+
+        # Sync primary subtopic on Question
+        if primary_subtopic_id or (links_to_create and links_to_create[0][0]):
+            q_obj = await self.session.get(Question, question_id)
+            if q_obj:
+                q_obj.subtopic_id = primary_subtopic_id or links_to_create[0][0]
+                self.session.add(q_obj)
 
     async def delete_question(self, question_id: uuid.UUID) -> bool:
         q = await self.repo.get_by_id(question_id)

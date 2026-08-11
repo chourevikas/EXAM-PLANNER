@@ -1,4 +1,5 @@
 import uuid
+import re
 import asyncio
 from pathlib import Path
 from typing import Optional
@@ -60,7 +61,11 @@ async def async_process_exam_pdf(
     # Extract clean human-readable title from PDF filename if not explicitly provided
     if not exam_title or exam_id_str in exam_title:
         try:
-            parsed = parse_question_paper_filename(pdf_file.name)
+            ym = re.search(r"\b(19\d\d|20\d\d)\b", pdf_file.name)
+            if not ym.group(1):
+                raise ValueError("Exam year not found in filename.")
+            yr = int(ym.group(1))
+            parsed = parse_question_paper_filename(pdf_file.name, year=yr)
             exam_title = f"{parsed['exam_name'].upper()} {parsed['stage'].title()} ({parsed['year']}) - Set {parsed['raw_set_token']}"
         except Exception:
             exam_title = pdf_file.stem
@@ -85,7 +90,9 @@ async def async_process_exam_pdf(
             exam = await session.get(Exam, exam_id)
             if not exam:
                 try:
-                    parsed = parse_question_paper_filename(pdf_file.name)
+                    ym = re.search(r"\b(19\d\d|20\d\d)\b", pdf_file.name)
+                    yr = int(ym.group(1)) if ym else 2024
+                    parsed = parse_question_paper_filename(pdf_file.name, year=yr)
                     canonical_code = parsed["canonical_code"]
                     paper_set_code = parsed["set_code"]
                     stage = parsed["stage"]
