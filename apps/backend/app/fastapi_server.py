@@ -25,6 +25,7 @@ from app.routers.webhooks import router as webhooks_router
 from app.routers.explanations import router as explanations_router
 from app.routers.pipeline import router as pipeline_router
 from app.routers.study_plan import router as study_plan_router
+from app.routers.search import router as search_router
 
 
 @asynccontextmanager
@@ -99,6 +100,7 @@ app.include_router(webhooks_router, prefix=settings.API_V1_STR)
 app.include_router(explanations_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 app.include_router(study_plan_router, prefix=settings.API_V1_STR)
+app.include_router(search_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

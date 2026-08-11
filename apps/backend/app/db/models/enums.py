@@ -76,3 +76,16 @@ class AssetType(str, enum.Enum):
     FIGURE = "FIGURE"
     MAP = "MAP"
     TABLE_IMAGE = "TABLE_IMAGE"
+
+class StudyActivityType(str, enum.Enum):
+    REVISION = "REVISION"
+    NEW_TOPIC = "NEW_TOPIC"
+    ANSWER_WRITING = "ANSWER_WRITING"
+    PYQ = "PYQ"
+    MOCK_TEST = "MOCK_TEST"
+    CURRENT_AFFAIRS = "CURRENT_AFFAIRS"
+    OTHER = "OTHER"
+
+class ActivitySource(str, enum.Enum):
+    PLANNED = "PLANNED"
+    UNPLANNED = "UNPLANNED"

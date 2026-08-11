@@ -160,5 +160,14 @@
   --pink-bg: #831843;
 
   --shadow-color-base: rgba(0,0,0,0.5);
-  --shadow-color-accent: rgba(91,92,235,0.15);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }

@@ -33,6 +33,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(3);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [searchResults, setSearchResults] = useState<{mocks: any[], pyqs: any[], topics: any[]} | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +54,32 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       window.removeEventListener('resize', handleResize);
     };
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim().length === 0) {
+      setSearchResults(null);
+      return;
+    }
+    
+    const delayDebounceFn = setTimeout(() => {
+      setIsSearching(true);
+      const token = localStorage.getItem('access_token');
+      fetch(`http://localhost:8000/api/v1/search?q=${encodeURIComponent(searchQuery)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      .then(res => res.json())
+      .then(data => {
+        setSearchResults(data);
+        setIsSearching(false);
+      })
+      .catch(err => {
+        console.error("Search failed:", err);
+        setIsSearching(false);
+      });
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const isMobile = windowWidth <= 768;
   const isSmallMobile = windowWidth <= 540;
@@ -229,6 +257,78 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             >
               ⌘K
             </span>
+          )}
+          
+          {/* Search Dropdown / Command Palette */}
+          {searchQuery.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: 50,
+              left: isMobile ? 12 : '50%',
+              transform: isMobile ? 'none' : 'translateX(-50%)',
+              width: isMobile ? 'calc(100% - 24px)' : 500,
+              backgroundColor: '#0f1e3c',
+              borderRadius: 12,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
+              zIndex: 150,
+              maxHeight: 400,
+              overflowY: 'auto',
+              padding: 12
+            }}>
+              {isSearching ? (
+                <div style={{ padding: 20, textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Searching...</div>
+              ) : searchResults ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  
+                  {/* Mocks Section */}
+                  {searchResults.mocks && searchResults.mocks.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Mock Tests</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {searchResults.mocks.map(mock => (
+                          <Link key={mock.id} to={mock.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}><CheckCheck size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{mock.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PYQs Section */}
+                  {searchResults.pyqs && searchResults.pyqs.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {searchResults.pyqs.map(pyq => (
+                          <Link key={pyq.id} to={pyq.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Target size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{pyq.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Topics Section */}
+                  {searchResults.topics && searchResults.topics.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Study Topics</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {searchResults.topics.map(topic => (
+                          <Link key={topic.id} to={topic.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}><Sparkles size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{topic.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              ) : null}
+            </div>
           )}
         </div>
       )}

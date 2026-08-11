@@ -7,6 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models.user import User
 from app.db.models.study_plan import StudyTask
+from app.db.models.gamification import Badge, UserBadge
 from app.core.deps import get_current_user
 from app.services.gamification_service import GamificationService
 
@@ -65,3 +66,39 @@ async def create_dummy_task(
     await session.commit()
     await session.refresh(new_task)
     return {"message": "Dummy task created", "task_id": str(new_task.id)}
+
+@router.get("/badges")
+async def get_user_badges(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    # Fetch all badges
+    stmt_all = select(Badge)
+    badges = (await session.execute(stmt_all)).scalars().all()
+    
+    # Fetch user's unlocked badges
+    stmt_user = select(UserBadge).where(UserBadge.user_id == current_user.id)
+    user_badges = (await session.execute(stmt_user)).scalars().all()
+    unlocked_badge_ids = {ub.badge_id for ub in user_badges}
+    
+    unlocked = []
+    locked = []
+    
+    for badge in badges:
+        badge_data = {
+            "id": str(badge.id),
+            "name": badge.name,
+            "description": badge.description,
+            "icon_url": badge.icon_url,
+            "required_xp": badge.required_xp
+        }
+        if badge.id in unlocked_badge_ids:
+            unlocked.append(badge_data)
+        else:
+            locked.append(badge_data)
+            
+    return {
+        "unlocked": unlocked,
+        "locked": locked
+    }
+
