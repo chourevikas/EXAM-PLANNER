@@ -79,11 +79,21 @@ async def get_current_user(
             user = result.scalar_one_or_none()
             
             if not user:
-                raise HTTPException(status_code=404, detail="User not found for this Clerk account")
+                # Auto-create user if webhook hasn't fired yet
+                user = User(
+                    clerk_id=clerk_id,
+                    email=f"{clerk_id}@clerk.local",
+                    full_name="Clerk Sync User",
+                    status=UserStatus.ACTIVE,
+                    role=UserRole.STUDENT,
+                )
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
+
             if user.status != UserStatus.ACTIVE:
                 raise HTTPException(status_code=400, detail="Inactive user account")
             return user
-
         else:
             # Fallback to Custom JWT Verification
             payload = jwt.decode(

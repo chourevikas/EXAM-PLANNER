@@ -24,9 +24,6 @@ export function AuthModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [organizationName, setOrganizationName] = useState('');
-  const [department, setDepartment] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT);
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -46,14 +43,6 @@ export function AuthModal({
 
   if (!isOpen) return null;
 
-  const handleRoleChange = (role: UserRole) => {
-    setSelectedRole(role);
-    setErrorMsg('');
-    if (role === UserRole.SUPER_ADMIN && mode === 'signup') {
-      onSwitchMode('login');
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -63,7 +52,7 @@ export function AuthModal({
 
     try {
       if (mode === 'login') {
-        const res = await loginUser(email, password, selectedRole);
+        const res = await loginUser(email, password);
         setSuccessMsg('Signed in successfully! Redirecting...');
         setTimeout(() => {
           onClose();
@@ -74,9 +63,7 @@ export function AuthModal({
           email,
           password,
           fullName,
-          selectedRole,
-          selectedRole === UserRole.ADMIN ? organizationName : undefined,
-          selectedRole === UserRole.ADMIN ? department : undefined
+          UserRole.STUDENT
         );
 
         if (res.is_pending_approval) {
@@ -91,15 +78,11 @@ export function AuthModal({
       }
     } catch (err: any) {
       if (err.message === 'USER_NOT_FOUND') {
-        if (selectedRole === UserRole.SUPER_ADMIN) {
-          setErrorMsg('Invalid Super Admin credentials.');
-        } else {
-          setErrorMsg('User not found! Please register first.');
-          setTimeout(() => {
-            setErrorMsg('');
-            onSwitchMode('signup');
-          }, 1800);
-        }
+        setErrorMsg('User not found! Please register first.');
+        setTimeout(() => {
+          setErrorMsg('');
+          onSwitchMode('signup');
+        }, 1800);
       } else {
         setErrorMsg(err.message || 'Authentication failed. Please try again.');
       }
@@ -206,54 +189,7 @@ export function AuthModal({
               </p>
             </div>
 
-            {/* Role Enum Selector Tabs */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
-                Account Role
-              </label>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 6,
-                  background: 'var(--bg-secondary)',
-                  padding: 4,
-                  borderRadius: 12,
-                  border: '1px solid var(--border-color)',
-                }}
-              >
-                {[
-                  { role: UserRole.STUDENT, label: 'Student', emoji: '🎓' },
-                  { role: UserRole.ADMIN, label: 'Admin', emoji: '⚙️' },
-                  { role: UserRole.SUPER_ADMIN, label: 'Super Admin', emoji: '👑' },
-                ].map((item) => (
-                  <button
-                    key={item.role}
-                    type="button"
-                    onClick={() => handleRoleChange(item.role)}
-                    style={{
-                      padding: '8px 4px',
-                      fontSize: 12,
-                      fontWeight: selectedRole === item.role ? 700 : 500,
-                      color: selectedRole === item.role ? '#ffffff' : 'var(--text-muted)',
-                      background: selectedRole === item.role ? 'var(--royal)' : 'transparent',
-                      border: 'none',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <span>{item.emoji}</span> {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Error Banner */}
+{/* Error Banner */}
             {errorMsg && (
               <div
                 style={{
@@ -310,39 +246,6 @@ export function AuthModal({
                     className="form-input"
                   />
                 </div>
-              )}
-
-              {/* Extra Admin Fields in SignUp Mode */}
-              {mode === 'signup' && selectedRole === UserRole.ADMIN && (
-                <>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-                      Organization Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. RankEdge IAS Academy"
-                      value={organizationName}
-                      onChange={(e) => setOrganizationName(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-                      Department / Role Title
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Content Lead"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-                </>
               )}
 
               <div>
@@ -404,16 +307,15 @@ export function AuthModal({
                     <span className="spinner" /> Processing...
                   </>
                 ) : mode === 'login' ? (
-                  `Sign In as ${selectedRole.replace('_', ' ')}`
+                  'Sign In'
                 ) : (
-                  `Create ${selectedRole.replace('_', ' ')} Account`
+                  'Create Account'
                 )}
               </button>
             </form>
 
-            {/* Social Sign-In (Hidden for Super Admin) */}
-            {selectedRole !== UserRole.SUPER_ADMIN && (
-              <>
+{/* Social Sign-In */}
+            
                 <div style={{ margin: '20px 0', textAlign: 'center', position: 'relative' }}>
                   <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
                   <span
@@ -441,11 +343,10 @@ export function AuthModal({
                 >
                   <Ico.Google /> Continue with Clerk
                 </button>
-              </>
-            )}
+              
 
-            {/* Switch Mode Link (Hidden for Super Admin) */}
-            {selectedRole !== UserRole.SUPER_ADMIN && (
+{/* Switch Mode Link */}
+            
               <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
                 {mode === 'login' ? (
                   <>
@@ -469,7 +370,6 @@ export function AuthModal({
                   </>
                 )}
               </div>
-            )}
           </>
         )}
       </div>
