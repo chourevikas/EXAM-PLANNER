@@ -4,30 +4,68 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { PerformanceAnalyticsCharts } from '../components/student/PerformanceAnalyticsCharts';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
 import { Ico } from '../components/common/Icons';
-import { getPsychometricReportJson, getPsychometricReportMarkdown } from '../services/examService';
+import { getPsychometricReportJson, getPsychometricReportMarkdown, listCandidateAttempts, AttemptHistoryItem } from '../services/examService';
 import { PsychometricReport } from '../types/exam';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileCheck, ChevronDown } from 'lucide-react';
 
 export function AnalyticsPage() {
-  const [searchParams] = useSearchParams();
-  const attemptId = searchParams.get('attemptId');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const attemptIdParam = searchParams.get('attemptId');
 
+  const [attemptsHistory, setAttemptsHistory] = useState<AttemptHistoryItem[]>([]);
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(attemptIdParam);
   const [report, setReport] = useState<PsychometricReport | null>(null);
   const [markdown, setMarkdown] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 1. Fetch user's attempt history on mount
   useEffect(() => {
-    if (!attemptId) return;
-    const targetAttemptId = attemptId;
+    async function loadAttemptHistory() {
+      setIsHistoryLoading(true);
+      try {
+        const history = await listCandidateAttempts();
+        const completed = history.filter(
+          (a) => a.status === 'COMPLETED' || a.status === 'EVALUATED' || a.status === 'SUBMITTED' || a.status === 'AUTO_SUBMITTED'
+        );
+        setAttemptsHistory(completed);
+
+        // If no attemptId in URL, auto-select the latest completed attempt
+        if (!attemptIdParam && completed.length > 0) {
+          const latest = completed[0].attempt_id;
+          setSelectedAttemptId(latest);
+          setSearchParams({ attemptId: latest });
+        }
+      } catch (err) {
+        console.warn('Failed to load candidate attempt history for analytics page:', err);
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    }
+
+    loadAttemptHistory();
+  }, []);
+
+  // Sync selectedAttemptId when searchParams change
+  useEffect(() => {
+    if (attemptIdParam) {
+      setSelectedAttemptId(attemptIdParam);
+    }
+  }, [attemptIdParam]);
+
+  // 2. Fetch specific report whenever selectedAttemptId changes
+  useEffect(() => {
+    if (!selectedAttemptId) return;
+    const targetId = selectedAttemptId;
 
     async function fetchReport() {
       setIsLoading(true);
       setError(null);
       try {
         const [jsonRes, mdRes] = await Promise.allSettled([
-          getPsychometricReportJson(targetAttemptId),
-          getPsychometricReportMarkdown(targetAttemptId),
+          getPsychometricReportJson(targetId),
+          getPsychometricReportMarkdown(targetId),
         ]);
 
         if (jsonRes.status === 'fulfilled') {
@@ -40,59 +78,109 @@ export function AnalyticsPage() {
           setMarkdown(mdRes.value);
         }
       } catch (err: any) {
-        setError(err.message || 'Failed to load report.');
+        setError(err.message || 'Failed to load psychometric report.');
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchReport();
-  }, [attemptId]);
+  }, [selectedAttemptId]);
+
+  const handleSelectAttempt = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newId = e.target.value;
+    if (newId) {
+      setSelectedAttemptId(newId);
+      setSearchParams({ attemptId: newId });
+    }
+  };
 
   return (
     <StudentLayout pageTitle="Deep Analytics">
       {/* Header Banner */}
       <section
         style={{
-          marginBottom: 32,
+          marginBottom: 24,
           padding: 32,
           borderRadius: 24,
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-color-base)',
           backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(37,99,235,0.06) 100%)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 20,
         }}
       >
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 12px',
-            backgroundColor: 'var(--accent-bg)',
-            borderRadius: 20,
-            marginBottom: 10,
-            border: '1px solid var(--accent-border)',
-          }}
-        >
-          <Ico.Chart size={14} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-            Psychometric Intelligence
-          </span>
+        <div>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 12px',
+              backgroundColor: 'var(--accent-bg)',
+              borderRadius: 20,
+              marginBottom: 10,
+              border: '1px solid var(--accent-border)',
+            }}
+          >
+            <Ico.Chart size={14} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
+              Psychometric Intelligence Archive
+            </span>
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+            Detailed Psychometric & Cognitive Analytics
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+            Comprehensive breakdown of your speed, topic accuracy, IRT latent ability, and guessing risk.
+          </p>
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
-          Detailed Psychometric & Cognitive Analytics
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-          Comprehensive breakdown of your speed, topic accuracy, IRT latent ability, and guessing risk.
-        </p>
+
+        {/* Completed Exam Attempt Selector */}
+        {attemptsHistory.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <FileCheck size={14} color="#10b981" /> Select Saved Completed Exam:
+            </label>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={selectedAttemptId || ''}
+                onChange={handleSelectAttempt}
+                style={{
+                  width: '100%',
+                  padding: '10px 16px',
+                  borderRadius: 14,
+                  backgroundColor: 'var(--bg-subtle)',
+                  border: '1px solid var(--accent-primary)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  appearance: 'none',
+                }}
+              >
+                {attemptsHistory.map((att) => (
+                  <option key={att.attempt_id} value={att.attempt_id}>
+                    {att.exam_name} ({new Date(att.started_at).toLocaleDateString()}) - Score: {att.total_score}/{att.max_possible_score}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Loading Spinner */}
       {isLoading && (
         <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <Loader2 size={28} className="animate-spin" color="#2563eb" />
-          <span style={{ fontSize: 16, fontWeight: 700 }}>Compiling Psychometric Diagnostic Audit...</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Compiling Psychometric Diagnostic Audit...
+          </span>
         </div>
       )}
 
@@ -103,59 +191,60 @@ export function AnalyticsPage() {
         </div>
       )}
 
-      {/* Live Psychometric Report View */}
+      {/* Live Saved Psychometric Report View */}
       {report ? (
         <PsychometricReportView report={report} markdownContent={markdown} />
       ) : (
-        <>
-          {/* Main Charts Overview */}
-          <PerformanceAnalyticsCharts />
+        !isLoading && (
+          <>
+            {/* Main Charts Overview */}
+            <PerformanceAnalyticsCharts />
 
-          {/* Additional Analytics Breakdown */}
-          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32 }}>
-            {/* Speed vs Accuracy */}
-            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
-                Speed vs. Accuracy Matrix
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Fast & Accurate</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--success-primary)' }}>54% of Questions</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Slow & Accurate</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-primary)' }}>28% of Questions</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Rushed & Incorrect</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>18% of Questions</span>
+            {/* Additional Analytics Breakdown */}
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32 }}>
+              {/* Speed vs Accuracy */}
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
+                  Speed vs. Accuracy Matrix
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Fast & Accurate</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--success-primary)' }}>54% of Questions</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Slow & Accurate</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-primary)' }}>28% of Questions</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Rushed & Incorrect</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>18% of Questions</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Mistake Pattern */}
-            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>Mistake Analysis</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Silly / Misread Errors</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--warning-primary)' }}>12 Errors</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Conceptual Gaps</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>24 Errors</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Time Crunch Pressure</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--info-primary)' }}>6 Errors</span>
+              {/* Mistake Pattern */}
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>Mistake Analysis</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Silly / Misread Errors</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--warning-primary)' }}>12 Errors</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Conceptual Gaps</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>24 Errors</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Time Crunch Pressure</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--info-primary)' }}>6 Errors</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        </>
+            </section>
+          </>
+        )
       )}
     </StudentLayout>
   );
 }
-

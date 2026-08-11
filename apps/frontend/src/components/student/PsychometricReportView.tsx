@@ -332,38 +332,46 @@ export function PsychometricReportView({ report, markdownContent }: Psychometric
                 </tr>
               </thead>
               <tbody>
-                {user_overall_skill_profile.taxonomy_mastery_breakdown.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}` }}>
-                    <td style={{ padding: 12, fontWeight: 600 }}>{item.name}</td>
-                    <td style={{ padding: 12, color: '#2563eb', fontWeight: 700 }}>{item.taxonomy_type}</td>
-                    <td style={{ padding: 12 }}>{item.correct_attempts} / {item.total_attempts}</td>
-                    <td style={{ padding: 12, fontWeight: 800 }}>{item.mastery_percentage}%</td>
-                    <td style={{ padding: 12 }}>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          padding: '3px 10px',
-                          borderRadius: 12,
-                          backgroundColor:
-                            item.strength_status === 'STRONG'
-                              ? 'rgba(16, 185, 129, 0.15)'
-                              : item.strength_status === 'MODERATE'
-                              ? 'rgba(245, 158, 11, 0.15)'
-                              : 'rgba(239, 68, 68, 0.15)',
-                          color:
-                            item.strength_status === 'STRONG'
-                              ? '#10b981'
-                              : item.strength_status === 'MODERATE'
-                              ? '#d97706'
-                              : '#ef4444',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {item.strength_status}
-                      </span>
+                {(user_overall_skill_profile?.taxonomy_mastery_breakdown || []).length > 0 ? (
+                  (user_overall_skill_profile?.taxonomy_mastery_breakdown || []).map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}` }}>
+                      <td style={{ padding: 12, fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: 12, color: '#2563eb', fontWeight: 700 }}>{item.taxonomy_type}</td>
+                      <td style={{ padding: 12 }}>{item.correct_attempts} / {item.total_attempts}</td>
+                      <td style={{ padding: 12, fontWeight: 800 }}>{item.mastery_percentage}%</td>
+                      <td style={{ padding: 12 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            backgroundColor:
+                              item.strength_status === 'STRONG'
+                                ? 'rgba(16, 185, 129, 0.15)'
+                                : item.strength_status === 'MODERATE'
+                                ? 'rgba(245, 158, 11, 0.15)'
+                                : 'rgba(239, 68, 68, 0.15)',
+                            color:
+                              item.strength_status === 'STRONG'
+                                ? '#10b981'
+                                : item.strength_status === 'MODERATE'
+                                ? '#d97706'
+                                : '#ef4444',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {item.strength_status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No specific taxonomy breakdown compiled yet for this paper.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -388,32 +396,41 @@ export function PsychometricReportView({ report, markdownContent }: Psychometric
                 </tr>
               </thead>
               <tbody>
-                {per_question_diagnostic_report.map((q) => (
-                  <tr key={q.question_number} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}` }}>
-                    <td style={{ padding: 10, fontWeight: 800 }}>Q{q.question_number}</td>
-                    <td style={{ padding: 10 }}>{q.topic_name}</td>
-                    <td style={{ padding: 10, fontWeight: 700 }}>{q.user_selected_option}</td>
-                    <td style={{ padding: 10 }}>
-                      {q.is_answer_correct ? (
-                        <span style={{ color: '#10b981', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <CheckCircle2 size={16} /> Correct
-                        </span>
-                      ) : (
-                        <span style={{ color: '#ef4444', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <XCircle size={16} /> Incorrect
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: 10, fontSize: 12, color: isDark ? 'rgba(255,255,255,0.7)' : '#475569' }}>
-                      {q.closeness_classification}
-                    </td>
-                    <td style={{ padding: 10 }}>{q.time_taken_seconds}s / {q.expected_time_seconds}s</td>
-                    <td style={{ padding: 10, fontWeight: 800, color: q.final_points_awarded > 0 ? '#10b981' : '#ef4444' }}>
-                      {q.final_points_awarded}
+                {(per_question_diagnostic_report || []).length > 0 ? (
+                  (per_question_diagnostic_report || []).map((q) => (
+                    <tr key={q.question_number} style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}` }}>
+                      <td style={{ padding: 10, fontWeight: 800 }}>Q{q.question_number}</td>
+                      <td style={{ padding: 10 }}>{q.topic_name}</td>
+                      <td style={{ padding: 10, fontWeight: 700 }}>{q.user_selected_option}</td>
+                      <td style={{ padding: 10 }}>
+                        {q.is_answer_correct ? (
+                          <span style={{ color: '#10b981', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <CheckCircle2 size={16} /> Correct
+                          </span>
+                        ) : (
+                          <span style={{ color: '#ef4444', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <XCircle size={16} /> Incorrect
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: 10, fontSize: 12, color: isDark ? 'rgba(255,255,255,0.7)' : '#475569' }}>
+                        {q.closeness_classification}
+                      </td>
+                      <td style={{ padding: 10 }}>{q.time_taken_seconds}s / {q.expected_time_seconds}s</td>
+                      <td style={{ padding: 10, fontWeight: 800, color: q.final_points_awarded > 0 ? '#10b981' : '#ef4444' }}>
+                        {q.final_points_awarded}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No per-question diagnostics available for this session.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
+
             </table>
           </div>
         </div>

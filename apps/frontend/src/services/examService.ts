@@ -257,4 +257,36 @@ export async function listExams(): Promise<ExamItem[]> {
   }
 }
 
+export interface AttemptHistoryItem {
+  attempt_id: string;
+  exam_id: string;
+  exam_name: string;
+  mode: string;
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'EVALUATED' | string;
+  total_score: number;
+  max_possible_score: number;
+  total_questions: number;
+  started_at: string;
+  submitted_at?: string;
+}
+
+/** 12. Fetch Candidate Attempts History */
+export async function listCandidateAttempts(): Promise<AttemptHistoryItem[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempts`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return data.items || [];
+  } catch (err) {
+    console.warn('Failed to fetch candidate attempt history:', err);
+    return [];
+  }
+}
+
+
 
