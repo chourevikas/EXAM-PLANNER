@@ -3,6 +3,7 @@ from app.db.models.enums import (
     UserStatus,
     QuestionStatus,
     QuestionSourceType,
+    ExamStatus,
     DifficultyLevel,
     LanguageCode,
     TestType,
@@ -131,4 +132,5 @@ __all__ = [
     "UserBadge",
     "XPLog",
     "StudyTask",
+    "ExamStatus",
 ]

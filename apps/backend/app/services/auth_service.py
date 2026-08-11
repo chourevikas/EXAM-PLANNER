@@ -5,7 +5,7 @@ from typing import Tuple, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import User, UserRole, UserStatus
-from app.schemas.auth import UserRegister, UserLogin, TokenResponse
+from app.schemas.auth import UserRegister, UserLogin, TokenResponse, UserOut
 from app.repositories.user_repository import UserRepository
 from app.core.security import (
     get_password_hash,
@@ -71,24 +71,41 @@ class AuthService:
             )
             return token_response, None
 
-        access_token = create_access_token(subject=user.id, role=user.role.value)
-        refresh_token = create_refresh_token(subject=user.id, role=user.role.value)
+        u_id = user.id
+        u_role = user.role
+
+        user_out = UserOut(
+            id=str(user.id),
+            full_name=user.full_name,
+            email=user.email,
+            role=user.role,
+            status=user.status,
+            subscription_tier=user.subscription_tier,
+            free_questions_attempted=user.free_questions_attempted,
+            current_streak=user.current_streak,
+            total_xp=user.total_xp,
+            level=user.level,
+            created_at=user.created_at,
+        )
+
+        access_token = create_access_token(subject=u_id, role=u_role.value)
+        refresh_token = create_refresh_token(subject=u_id, role=u_role.value)
 
         expires_at = datetime.utcnow() + timedelta(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
         await self.user_repo.save_refresh_token(
-            user_id=user.id,
+            user_id=u_id,
             token_hash=get_password_hash(refresh_token),
             expires_at=expires_at,
         )
 
-        redirect_url = self.get_role_redirect(user.role)
+        redirect_url = self.get_role_redirect(u_role)
 
         token_response = TokenResponse(
             access_token=access_token,
             token_type="bearer",
-            user=user,
+            user=user_out,
             redirect_url=redirect_url,
             is_pending_approval=False,
             message="Registration successful!",
@@ -96,7 +113,7 @@ class AuthService:
 
         verification_token = jwt.encode(
             {
-                "sub": str(user.id),
+                "sub": str(u_id),
                 "action": "verify_email",
                 "exp": datetime.utcnow() + timedelta(days=1),
             },
@@ -104,7 +121,7 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            email_service.send_verification_email(user.email, verification_token)
+            email_service.send_verification_email(user_out.email, verification_token)
         except Exception as e:
             logger.error(f"Failed to send verification email: {e}")
 

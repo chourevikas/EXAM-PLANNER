@@ -27,11 +27,11 @@ logger = setup_logger("ExamJsonBuilder")
 
 class ExamJsonBuilder:
     """
-    Builds and caches 2 standardized JSON artifacts in S3 / local storage for an Exam:
-    1. `exams/{exam_code}/exam_questions.json` — For live exam-taking (NO answer keys or explanations).
-       Contains full multilingual translations for question statements, passages, and options.
-    2. `exams/{exam_code}/exam_solutions.json` — For answer reveal & post-submission psychometrics.
-       Contains ALL parameters from the explanation pipeline & taxonomy hierarchy across all languages.
+    Builds and uploads standardized JSON artifacts in S3 / local storage for an Exam:
+    1. Consolidated `exam_questions.json` and `exam_solutions.json`.
+    2. Individual per-question JSON files in dedicated folder paths:
+       - `questions_json_folder_path`: `artifacts/{exam_code}/{set}/json/questions/Q001.json`, etc.
+       - `solutions_json_folder_path`: `artifacts/{exam_code}/{set}/json/solutions/Q001.json`, etc.
     """
 
     def __init__(self, session: AsyncSession):
@@ -47,20 +47,27 @@ class ExamJsonBuilder:
         stmt = (
             select(Question)
             .where(Question.exam_id == exam_id)
-            .order_by(col(Question.question_number_in_paper).asc())
+            .order_by(col(Question.question_number_in_paper))
         )
         res = await self.session.exec(stmt)
         questions = res.all()
 
         if not questions:
-            logger.warning(f"Exam '{exam.code}' has no questions yet. Skipping JSON caching.")
+            logger.warning(f"Exam '{exam.code}' has no questions yet. Skipping JSON generation.")
             return {}
+
+        exam_code = exam.code
+        paper_set = exam.paper_set_code or "SET_A"
+        clean_set = str(paper_set).strip().lower().replace("_", "-")
+
+        questions_folder_rel = f"artifacts/{exam_code}/{clean_set}/json/questions"
+        solutions_folder_rel = f"artifacts/{exam_code}/{clean_set}/json/solutions"
 
         questions_payload = []
         solutions_payload = []
 
         for q in questions:
-            # 1. Fetch Question Translations (all available languages)
+            # 1. Question Translations
             trans_res = await self.session.exec(
                 select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
             )
@@ -79,7 +86,7 @@ class ExamJsonBuilder:
             ) or (trans_list[0] if trans_list else None)
             q_text = eng_trans.question_text if eng_trans else f"Question #{q.question_number_in_paper}"
 
-            # 2. Fetch Passage Translations if attached
+            # 2. Passage Translations
             passage_text = None
             passage_translations = {}
             if q.passage_id:
@@ -97,7 +104,7 @@ class ExamJsonBuilder:
                 if eng_pt:
                     passage_text = eng_pt.passage_text
 
-            # 3. Fetch Taxonomy (Subtopic → Topic → Subject)
+            # 3. Taxonomy
             subtopic = await self.session.get(Subtopic, q.subtopic_id) if q.subtopic_id else None
             topic = await self.session.get(Topic, subtopic.topic_id) if subtopic and subtopic.topic_id else None
             subject = await self.session.get(Subject, topic.subject_id) if topic and topic.subject_id else None
@@ -106,7 +113,7 @@ class ExamJsonBuilder:
             top_name = topic.name if topic else "General Studies"
             sub_name = subtopic.name if subtopic else "Core Concepts"
 
-            # 4. Fetch Multi-Concept Links (Hierarchy)
+            # 4. Multi-Concept Hierarchy
             h_stmt = select(QuestionHierarchyLink).where(
                 QuestionHierarchyLink.question_id == q.id
             )
@@ -141,7 +148,7 @@ class ExamJsonBuilder:
                     "subtopic_pyq_frequency": subtop_freq,
                 })
 
-            # 5. Fetch Options & Option Translations
+            # 5. Options
             opt_res = await self.session.exec(
                 select(QuestionOption)
                 .where(QuestionOption.question_id == q.id)
@@ -195,7 +202,7 @@ class ExamJsonBuilder:
                     "distractor_analysis_translations": opt_distractor_analyses,
                 }
 
-            # 6. Question Metadata & IRT Parameters
+            # 6. Metadata
             meta_res = await self.session.exec(
                 select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
             )
@@ -207,7 +214,7 @@ class ExamJsonBuilder:
             irt_b = q_meta.irt_difficulty_b if (q_meta and q_meta.irt_difficulty_b is not None) else 0.00
             irt_c = q_meta.irt_pseudo_guessing_c if (q_meta and q_meta.irt_pseudo_guessing_c is not None) else 0.25
 
-            # 7. Question Explanations (all available languages)
+            # 7. Explanations
             expl_res = await self.session.exec(
                 select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
             )
@@ -234,8 +241,7 @@ class ExamJsonBuilder:
                 "key_takeaways": eng_expl.key_takeaways_json if (eng_expl and eng_expl.key_takeaways_json) else [],
             }
 
-            # Build Public Question Card (SAFE for exam-taking, no answer key)
-            questions_payload.append({
+            q_card = {
                 "question_id": str(q.id),
                 "question_number": q.question_number_in_paper,
                 "section_code": q.section_code,
@@ -254,10 +260,10 @@ class ExamJsonBuilder:
                 "topic": top_name,
                 "subtopic": sub_name,
                 "options": public_options,
-            })
+            }
+            questions_payload.append(q_card)
 
-            # Build Solutions Card (PROTECTED for reveal & evaluation with full parameters)
-            solutions_payload.append({
+            sol_card = {
                 "question_id": str(q.id),
                 "question_number": q.question_number_in_paper,
                 "correct_option_id": correct_option_id,
@@ -278,7 +284,16 @@ class ExamJsonBuilder:
                 "explanation": default_expl_dict,
                 "explanation_translations": explanation_translations,
                 "distractor_scores": distractor_scores,
-            })
+            }
+            solutions_payload.append(sol_card)
+
+            # Upload individual Question JSON & Solution JSON to dedicated folder
+            q_filename = f"Q{q.question_number_in_paper:03d}.json"
+            q_indiv_rel = f"{questions_folder_rel}/{q_filename}"
+            s_indiv_rel = f"{solutions_folder_rel}/{q_filename}"
+
+            await self.storage.upload_json(q_card, q_indiv_rel)
+            await self.storage.upload_json(sol_card, s_indiv_rel)
 
         # Master JSON structures
         questions_doc = {
@@ -303,21 +318,26 @@ class ExamJsonBuilder:
             "questions": solutions_payload,
         }
 
-        # Save to S3 / Local storage at exams/{exam_code}/
         q_rel_path = f"exams/{exam.code}/exam_questions.json"
         s_rel_path = f"exams/{exam.code}/exam_solutions.json"
 
         saved_q_path = await self.storage.upload_json(questions_doc, q_rel_path)
         saved_s_path = await self.storage.upload_json(solutions_doc, s_rel_path)
 
-        # Update Exam DB record with JSON paths
         exam.questions_json_path = saved_q_path
         exam.solutions_json_path = saved_s_path
+        exam.questions_json_folder_path = questions_folder_rel
+        exam.solutions_json_folder_path = solutions_folder_rel
         self.session.add(exam)
         await self.session.commit()
 
-        logger.info(f"Successfully cached JSONs for exam '{exam.code}': '{saved_q_path}' & '{saved_s_path}'")
+        logger.info(
+            f"Successfully generated and stored JSON folders for exam '{exam.code}': "
+            f"Questions Folder: '{questions_folder_rel}', Solutions Folder: '{solutions_folder_rel}'"
+        )
         return {
             "questions_json_path": saved_q_path,
             "solutions_json_path": saved_s_path,
+            "questions_json_folder_path": questions_folder_rel,
+            "solutions_json_folder_path": solutions_folder_rel,
         }

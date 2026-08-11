@@ -36,8 +36,8 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
 
-        import app.pipeline.explanation_graph
-        app.pipeline.explanation_graph.async_session_factory = self.session_factory
+        import app.db.session
+        app.db.session.async_session_factory = self.session_factory
 
     async def asyncTearDown(self):
         await self.engine.dispose()

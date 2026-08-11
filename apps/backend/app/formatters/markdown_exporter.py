@@ -76,12 +76,16 @@ async def async_export_question_to_markdown(
     if q_meta:
         b_level = q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)
         lines.append("## 📊 Psychometric & Question Metadata")
+        hist_acc = getattr(q_meta, "historical_accuracy", None)
+        pyq_freq = getattr(q_meta, "pyq_frequency", None)
+        acc_str = f"`{hist_acc:.1f}%`" if hist_acc is not None else "`N/A`"
+        freq_str = f"`{pyq_freq}x`" if pyq_freq is not None else "`N/A`"
         lines.append(
             f"- **Bloom's Taxonomy Level:** `{b_level}`\n"
             f"- **Cognitive Skill:** `{q_meta.cognitive_skill or 'N/A'}`\n"
             f"- **Primary Concept Tag:** `{q_meta.primary_concept_tag}`\n"
             f"- **IRT 3PL Parameters:** Discrimination ($a$) = `{q_meta.irt_discrimination_a:.2f}`, Difficulty ($b$) = `{q_meta.irt_difficulty_b:.2f}`, Pseudo-guessing ($c$) = `{q_meta.irt_pseudo_guessing_c:.2f}`\n"
-            f"- **Historical Accuracy:** `{q_meta.historical_accuracy:.1f}%` | **PYQ Frequency:** `{q_meta.pyq_frequency}x`"
+            f"- **Historical Accuracy:** {acc_str} | **PYQ Frequency:** {freq_str}"
         )
         lines.append("")
 

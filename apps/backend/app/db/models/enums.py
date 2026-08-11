@@ -28,6 +28,13 @@ class QuestionSourceType(str, enum.Enum):
     PYQ = "PYQ"
     STATIC_MOCK = "STATIC_MOCK"
 
+
+class ExamStatus(str, enum.Enum):
+    PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
+    PUBLISHED = "PUBLISHED"
+    REJECTED = "REJECTED"
+
+
 class DifficultyLevel(str, enum.Enum):
     EASY = "EASY"
     MEDIUM = "MEDIUM"
