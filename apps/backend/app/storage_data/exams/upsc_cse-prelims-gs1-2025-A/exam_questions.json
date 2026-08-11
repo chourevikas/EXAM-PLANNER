@@ -1,0 +1,2061 @@
+{
+  "exam_id": "ba748d53-1446-45bf-b308-261d647a20a7",
+  "exam_code": "upsc_cse-prelims-gs1-2025-A",
+  "exam_name": "UPSC_CSE Prelims (2025) - Set A",
+  "stage": "prelims",
+  "subject_code": "gs1",
+  "source_year": 2025,
+  "paper_set_code": "SET_A",
+  "total_questions": 33,
+  "total_duration_minutes": 120,
+  "total_marks": 200.0,
+  "generated_at": "2026-08-11T05:26:01.148744+00:00",
+  "questions": [
+    {
+      "question_id": "a64f4dfc-bae3-454a-8df6-b53341b10e64",
+      "question_number": 1,
+      "section_code": "DEFAULT",
+      "text": "Q1 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q1 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "options": [
+        {
+          "option_id": "eded3ff6-fa99-4a03-aa97-e90b1ac48bbf",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "ac4844c7-e3ec-404f-b707-7449b3d576d2",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "3ea4d57b-1e02-4b01-aea8-5915078cf750",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "0b408255-ce67-4a4e-ad06-0fe35d5090f4",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "dedad718-9506-4e00-9e04-4a7ecfe7e694",
+      "question_number": 2,
+      "section_code": "DEFAULT",
+      "text": "Q2 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q2 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "options": [
+        {
+          "option_id": "9425c76d-fb8f-4204-affe-0a412c3f819b",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "511f2fb5-000c-4bec-8480-c39825178d40",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "afad9c2e-1f0e-46df-972b-e8714bf18600",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "f5fd5cc1-f8e9-407c-a111-5137c3dcf50f",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "c88bddc4-b94c-403b-9293-94dcd9ff4fd1",
+      "question_number": 3,
+      "section_code": "DEFAULT",
+      "text": "Q3 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q3 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "options": [
+        {
+          "option_id": "c65913b7-f4f5-4477-b0eb-19e5076a1f89",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "59611675-2ccc-40b4-93a7-3a040fce82c4",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "643ab76b-190f-4417-86d2-2b07d3d1aca4",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "63a19255-9a95-4d72-800c-eb85f85f32fe",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "dc315d5b-f6de-4b61-b8d2-9b019ae03a12",
+      "question_number": 4,
+      "section_code": "DEFAULT",
+      "text": "Q4 [2025]: Evaluate statement validity regarding Directive Principles Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q4 [2025]: Evaluate statement validity regarding Directive Principles Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Directive Principles",
+      "subtopic": "Directive Principles Core Concepts",
+      "options": [
+        {
+          "option_id": "a7ba2c74-1073-402f-abad-910da9b0864f",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Directive Principles Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Directive Principles Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "af95c079-e1ba-4bc4-ba00-de66ab7fa1fd",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "2efed326-92ab-425e-b37b-ef8be6a7ecfe",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "1e22b749-2eee-40dc-8b78-9c8a998b0909",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "ca936eec-f491-4e3d-8c11-49cd68e8846a",
+      "question_number": 5,
+      "section_code": "DEFAULT",
+      "text": "Q5 [2025]: Evaluate statement validity regarding Directive Principles Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q5 [2025]: Evaluate statement validity regarding Directive Principles Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Directive Principles",
+      "subtopic": "Directive Principles Core Concepts",
+      "options": [
+        {
+          "option_id": "f0cd14c2-9db7-476d-8f3d-9da66e3e8ba9",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Directive Principles Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Directive Principles Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "2ecf20af-1a0e-4cbb-b04c-76342eec07b0",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "370e3912-6016-4f3c-bf24-38da86ffd5a4",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "145ace4d-885b-4ae7-a003-41a8df1ca611",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "700f74eb-f4af-47b6-9699-d8117237668b",
+      "question_number": 6,
+      "section_code": "DEFAULT",
+      "text": "Q6 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q6 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "options": [
+        {
+          "option_id": "62c7a7db-73e2-422b-9b32-904ce0f298fd",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "908e3329-2e67-4196-bdd3-8353542ed15a",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "e4ab4891-0417-4475-a70e-fbdeecaeea49",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "744c011d-c0f7-48df-8275-7cc9cf3f5603",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "a805519b-292c-450c-bab7-468a8bb1598d",
+      "question_number": 7,
+      "section_code": "DEFAULT",
+      "text": "Q7 [2025]: Evaluate statement validity regarding Geomorphology & Minerals Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q7 [2025]: Evaluate statement validity regarding Geomorphology & Minerals Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "options": [
+        {
+          "option_id": "61dcca2b-b4f7-48f4-9cf9-36c10d5b0d14",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Geomorphology & Minerals Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Geomorphology & Minerals Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "722946ab-a867-424d-89f9-5d5a69f88db2",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "6251d9ba-392d-42d1-b065-510f51488444",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "7ba94bf1-dd92-4ddb-ac97-15a47ad09ac4",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "4c3770ba-e7bc-4df4-8dcd-3bdbc698ee27",
+      "question_number": 8,
+      "section_code": "DEFAULT",
+      "text": "Q8 [2025]: Evaluate statement validity regarding Preamble & Fundamental Rights Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q8 [2025]: Evaluate statement validity regarding Preamble & Fundamental Rights Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "options": [
+        {
+          "option_id": "b0a09d1a-6dd6-4954-b2e8-f78e65859de4",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Preamble & Fundamental Rights Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Preamble & Fundamental Rights Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "bb63dccf-3f60-429c-a540-ebda44371489",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "7c14016f-0de5-4aa2-b2af-a8c692c426ba",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "f3bf7566-0c52-4c0f-b19e-f5186be97af0",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "e36b83f4-960c-40ac-98d5-de0e3cfb3009",
+      "question_number": 9,
+      "section_code": "DEFAULT",
+      "text": "Q9 [2025]: Evaluate statement validity regarding Pollution & Environmental Acts Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q9 [2025]: Evaluate statement validity regarding Pollution & Environmental Acts Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Pollution & Environmental Acts",
+      "subtopic": "Pollution & Environmental Acts Core Concepts",
+      "options": [
+        {
+          "option_id": "4066f490-02f1-4617-b237-e50107b43c79",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Pollution & Environmental Acts Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Pollution & Environmental Acts Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "b67d11ef-3206-4f1a-9fd3-89cbe6af5184",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "70001d03-9052-469c-ba1e-9530fa472bdf",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "0114ca66-cc2b-4d99-bd42-01be44266bcb",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "c3561000-7b7d-481b-9fe5-4737f2019435",
+      "question_number": 10,
+      "section_code": "DEFAULT",
+      "text": "Q10 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q10 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "options": [
+        {
+          "option_id": "65a477b3-0211-4c07-a305-870f41f7118a",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "5b4d31b3-4826-4d9a-977b-6d0ead38f6e3",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "d559ab2f-d394-439f-9012-f7a13c1fcbb4",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "26e3acf8-c7ea-49c2-b456-7da155bc0741",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "bd9d5868-5a66-4e80-9382-06795c050ed2",
+      "question_number": 11,
+      "section_code": "DEFAULT",
+      "text": "Q11 [2025]: Evaluate statement validity regarding Parliament & Executive Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q11 [2025]: Evaluate statement validity regarding Parliament & Executive Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "options": [
+        {
+          "option_id": "8cbcf517-6a74-4183-b961-a3eda40b83ec",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Parliament & Executive Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Parliament & Executive Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "138d8d7e-5847-4d3a-9f19-6862c3148677",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "78c0d040-621b-48c3-a6f2-d5ddb2b440b6",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "ec47981e-96b9-40e3-87fa-80d6144d1bfc",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "dcc6f2b4-4fd3-41f1-99ca-783ce8c6a080",
+      "question_number": 12,
+      "section_code": "DEFAULT",
+      "text": "Q12 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q12 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "options": [
+        {
+          "option_id": "9bdde759-a256-4674-99ef-86885ab1f2c3",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "a29062f0-974d-4b74-8b7b-8b7d88bf9d4e",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "5825fc2a-33d9-4cac-a0ff-a856f4a19db7",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "8081cf24-58da-4bd9-8cf5-d7b446ce75d1",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "af26496a-7010-4856-b58d-70364ce838cf",
+      "question_number": 13,
+      "section_code": "DEFAULT",
+      "text": "Q13 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q13 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "options": [
+        {
+          "option_id": "99dfe050-db44-42a5-bcd7-7ab986317aac",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "05fc2b51-0e41-44a1-8dbc-0487120f5084",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "764cfcb2-6db7-4fea-a495-e0888a65112e",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "d27bb6eb-5246-4826-b27d-6be96b4a122f",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "06e1f31b-e258-4788-b912-0ea2589c6532",
+      "question_number": 14,
+      "section_code": "DEFAULT",
+      "text": "Q14 [2025]: Evaluate statement validity regarding Biodiversity & Conservation Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q14 [2025]: Evaluate statement validity regarding Biodiversity & Conservation Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "options": [
+        {
+          "option_id": "1473ade2-fd8a-4aee-b09f-3bc266a88876",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Biodiversity & Conservation Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Biodiversity & Conservation Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "827be532-80bc-49cb-9cb8-fb80aedf2bf1",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "a78d563d-a220-4eb2-b35b-d838004a877b",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "49dca067-cece-44bf-b19f-b9b5232060c2",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "c23ac262-b31c-44a0-81d2-8e3da0363ada",
+      "question_number": 15,
+      "section_code": "DEFAULT",
+      "text": "Q15 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q15 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "options": [
+        {
+          "option_id": "69a08981-79d2-42dc-9696-1f024cc4d9b7",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "e12ee732-3faa-4abc-bbb3-7302e3c65aab",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "0f2abe37-e54b-4ea2-9cac-0769e5bc728a",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "9139816c-0b93-4a07-8a8a-3a662c58083f",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "9508b23c-f800-4209-a29d-f870354f5f8a",
+      "question_number": 16,
+      "section_code": "DEFAULT",
+      "text": "Q16 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q16 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "options": [
+        {
+          "option_id": "e6312549-755b-442f-8f58-fa468a63b0de",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "074770dd-5056-4930-a8a0-953ee2f4a907",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "0f75d86e-3036-4b03-9c2f-0dc5b47dfcd7",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "f73995b5-d368-4dcc-af89-2de7e61549ef",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "7aeb2a94-b891-42ab-bc26-abc86785514a",
+      "question_number": 17,
+      "section_code": "DEFAULT",
+      "text": "Q17 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q17 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "options": [
+        {
+          "option_id": "32124315-8c12-4af3-b38e-287f9bac4cba",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "f347b429-7a46-4773-8b17-71e694271c7a",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "f5c5121e-9e2f-4218-9b8d-7988206ff8be",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "0576d719-f72f-461b-a743-ad03f1083fe4",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "3f3a0b2d-199d-4621-b07d-4ba37e1e810c",
+      "question_number": 18,
+      "section_code": "DEFAULT",
+      "text": "Q18 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q18 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "options": [
+        {
+          "option_id": "56b53d3d-153c-42e9-8e40-932d764d5dd7",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "0a200c73-b6bf-4e9f-bef0-b2d7ba5de9c5",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "72bf91cc-e790-4554-a83f-66339b489143",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "3aa99d83-702d-4042-b819-8217aff2881c",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "33de2ee1-46e4-4445-b3f7-40264be6c10d",
+      "question_number": 19,
+      "section_code": "DEFAULT",
+      "text": "Q19 [2025]: Evaluate statement validity regarding Biodiversity & Conservation Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q19 [2025]: Evaluate statement validity regarding Biodiversity & Conservation Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "options": [
+        {
+          "option_id": "4556dcaf-7567-4426-be63-48fe806c42fc",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Biodiversity & Conservation Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Biodiversity & Conservation Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "78f045f2-cf76-4d03-bc0d-d20909babae6",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "ae760a68-f73c-499c-8109-79f96f259f74",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "b4764821-0249-4c16-8301-dd471a408ecb",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "695e0a3a-9529-4965-a364-b7e92754d9f2",
+      "question_number": 20,
+      "section_code": "DEFAULT",
+      "text": "Q20 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q20 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "options": [
+        {
+          "option_id": "13b20466-80ec-4910-ab24-5dc5ae77af3b",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "5d088133-8a74-4c0b-8643-3974e6645731",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "6f9a37a4-1db3-4fda-a483-17714c833cd8",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "484ec13b-c180-4c61-83e7-bef048ab66d6",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "b0d63e03-15cb-45b1-80b8-5966f666784e",
+      "question_number": 21,
+      "section_code": "DEFAULT",
+      "text": "Q21 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q21 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "options": [
+        {
+          "option_id": "0acf1e81-4eab-478a-9155-c2aace67d459",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "48c47284-45d1-484b-8865-fc2af881a122",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "996d1ad5-be65-4627-b2b8-72a14186ecdc",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "caa6cfd0-667b-44da-a3d6-7d349df80e2c",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "221cfbd6-261f-4f47-af8c-a98a6897b7d4",
+      "question_number": 22,
+      "section_code": "DEFAULT",
+      "text": "Q22 [2025]: Evaluate statement validity regarding Climatology & Monsoons Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q22 [2025]: Evaluate statement validity regarding Climatology & Monsoons Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "options": [
+        {
+          "option_id": "685dd3ee-78e6-4ebb-9a39-8d9449a44de7",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climatology & Monsoons Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climatology & Monsoons Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "636b0c99-418d-4acc-9de4-302aae6da953",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "4b9b97ec-ba09-4635-b433-0744335e290d",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "17067018-ab98-4283-ae27-99426e6cc009",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "03227b6b-e244-45fe-9cbf-3df59ae1cd0b",
+      "question_number": 23,
+      "section_code": "DEFAULT",
+      "text": "Q23 [2025]: Evaluate statement validity regarding Parliament & Executive Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q23 [2025]: Evaluate statement validity regarding Parliament & Executive Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "options": [
+        {
+          "option_id": "ac5cfa06-c79a-462e-9a70-06542dbabf50",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Parliament & Executive Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Parliament & Executive Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "2dc38b91-c2f0-47d0-b94e-349c5e3f55e6",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "42329ebf-db03-43c9-9f9a-9748685705de",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "414127d2-b8d1-40cf-980a-98a3c354e440",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "992515b6-0d2b-483f-bc17-f9a08a38a333",
+      "question_number": 24,
+      "section_code": "DEFAULT",
+      "text": "Q24 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q24 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "options": [
+        {
+          "option_id": "cefdbf2c-7647-4853-a378-5650dfcac1ef",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "c324e2c8-d27d-4848-9f3d-71fdcc4323fe",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "20f5007b-2e6b-4132-b87b-81227dec5138",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "7017c7ad-b58f-4578-908b-d86d4a8cfd63",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "8627d371-5fbc-4082-960a-17b21aef3311",
+      "question_number": 25,
+      "section_code": "DEFAULT",
+      "text": "Q25 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q25 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "options": [
+        {
+          "option_id": "b5f59b93-8c42-4575-a48b-a029ac51c077",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "7f9cf18c-a216-4b72-acdc-baf293cfb56d",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "d844fe78-804e-4c53-b6cf-4b9b92b5ef77",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "3efc413a-9fbc-4e68-9b36-e43ec15b2861",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "f372969b-43c3-4b10-9276-99e85c761bfa",
+      "question_number": 26,
+      "section_code": "DEFAULT",
+      "text": "Q26 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q26 [2025]: Evaluate statement validity regarding Climate Change & Conventions Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "options": [
+        {
+          "option_id": "f92daf3e-4c38-4516-a763-aff603a8cf2e",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climate Change & Conventions Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "01ea2f77-af24-42e1-a0d8-37c1ef3fc872",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "3f944471-e502-424e-b6d7-16b947d931cf",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "5884ad71-2b49-444f-80bc-6e9c5951dd3c",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "f75e719a-edc5-4535-a60f-8d057df11f9f",
+      "question_number": 27,
+      "section_code": "DEFAULT",
+      "text": "Q27 [2025]: Evaluate statement validity regarding Climatology & Monsoons Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q27 [2025]: Evaluate statement validity regarding Climatology & Monsoons Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "options": [
+        {
+          "option_id": "20e6bcef-12aa-4c26-bd9e-1574d5f33dba",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Climatology & Monsoons Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Climatology & Monsoons Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "496151ae-307c-4aed-ad05-f24b2c409468",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "2d126e31-e222-4c1b-a1bc-8968ae30b398",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "5d7c0200-e4a3-4fdd-9879-d8f32f7f15e0",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "656a0cf5-3be3-4c9e-a258-145cf0d8d75a",
+      "question_number": 28,
+      "section_code": "DEFAULT",
+      "text": "Q28 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q28 [2025]: Evaluate statement validity regarding Monetary Policy & RBI Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "options": [
+        {
+          "option_id": "845675f7-b2a1-4380-861e-89f05bbd8c15",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Monetary Policy & RBI Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "fd44ad97-3a3d-4675-97ee-6dfcc794ccee",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "2c41baad-4def-4640-8c18-8fce65a8718a",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "c80668d5-1909-4229-a64e-ddcbce35257d",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "899d607c-bbca-4319-98bd-af8388492b20",
+      "question_number": 29,
+      "section_code": "DEFAULT",
+      "text": "Q29 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q29 [2025]: Evaluate statement validity regarding River Systems & Drainage Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "options": [
+        {
+          "option_id": "644851f7-7753-44bd-b7b1-e7a5a1268d98",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding River Systems & Drainage Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "ef7a72d7-3613-4793-b0ac-552d3c6d013b",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "e700973c-a06b-4282-81c3-5109dc92c6e5",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "4f72ccb1-d44e-4b62-9928-dc32e380b35e",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "a2d162de-9678-4691-b462-73476ab47da5",
+      "question_number": 30,
+      "section_code": "DEFAULT",
+      "text": "Q30 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q30 [2025]: Evaluate statement validity regarding Fiscal Policy & Budget Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "HARD",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "options": [
+        {
+          "option_id": "88bc694c-722e-429e-929e-0720947262b5",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Fiscal Policy & Budget Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "9253cfa0-72e1-4472-a893-cf92744aa2de",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "996e67a5-4bfa-4d56-a78e-4a24df0d6c22",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "187d0289-324c-430a-9bc2-9e7f9fff14a2",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "267b596d-9b35-401a-a67d-49389a683bf0",
+      "question_number": 31,
+      "section_code": "DEFAULT",
+      "text": "Q31 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q31 [2025]: Evaluate statement validity regarding External Sector & Trade Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "options": [
+        {
+          "option_id": "aff7c9ea-bfd0-4741-afdf-5514dce6c3d6",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding External Sector & Trade Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "f57459c0-0913-4946-9eac-db6ab3c3c736",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "2f2c74a6-9b77-4411-a863-a556cb93fe21",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "c6a625c2-8799-4532-b093-88e7aabf774a",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "b0fb0708-5aec-46c4-a23c-db0e187bd97a",
+      "question_number": 32,
+      "section_code": "DEFAULT",
+      "text": "Q32 [2025]: Evaluate statement validity regarding Preamble & Fundamental Rights Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q32 [2025]: Evaluate statement validity regarding Preamble & Fundamental Rights Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "MEDIUM",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "options": [
+        {
+          "option_id": "dc634995-f3af-4925-9aef-7ce6664f2b7d",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Preamble & Fundamental Rights Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Preamble & Fundamental Rights Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "5b061261-6624-4797-9b9b-099aaf22dd7e",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "734d22bc-980e-45c7-bfa0-091e5fd8a464",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "387b42cb-7c04-42e2-bd39-ec913a06bb0a",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    },
+    {
+      "question_id": "b5d48565-cff5-423c-b23c-7cabb300dc32",
+      "question_number": 33,
+      "section_code": "DEFAULT",
+      "text": "Q33 [2025]: Evaluate statement validity regarding Socio-Religious Movements Core Concepts under Constitutional provisions.",
+      "translations": {
+        "ENGLISH": {
+          "question_text": "Q33 [2025]: Evaluate statement validity regarding Socio-Religious Movements Core Concepts under Constitutional provisions.",
+          "parent_context_override": null
+        }
+      },
+      "difficulty": "EASY",
+      "marks": 2.0,
+      "negative_marks": 0.66,
+      "expected_time_seconds": 60,
+      "question_type": "SINGLE_CHOICE",
+      "has_image": false,
+      "assets": [],
+      "passage_text": null,
+      "passage_translations": {},
+      "subject": "Modern Indian History",
+      "topic": "Socio-Religious Movements",
+      "subtopic": "Socio-Religious Movements Core Concepts",
+      "options": [
+        {
+          "option_id": "48804f31-548a-49d6-a2f8-a1d7039694e6",
+          "option_label": "A",
+          "text": "Statement 1 and 2 are correct regarding Socio-Religious Movements Core Concepts.",
+          "translations": {
+            "ENGLISH": "Statement 1 and 2 are correct regarding Socio-Religious Movements Core Concepts."
+          },
+          "display_order": 1
+        },
+        {
+          "option_id": "a5ddf9e4-3ecc-401c-8aa1-3857cdaef94f",
+          "option_label": "B",
+          "text": "Statement 1 only is correct (High-closeness distractor).",
+          "translations": {
+            "ENGLISH": "Statement 1 only is correct (High-closeness distractor)."
+          },
+          "display_order": 2
+        },
+        {
+          "option_id": "5f2b6610-edfc-40a6-920c-b24bbf2bd54b",
+          "option_label": "C",
+          "text": "Neither statement 1 nor 2 is correct (Neutral distractor).",
+          "translations": {
+            "ENGLISH": "Neither statement 1 nor 2 is correct (Neutral distractor)."
+          },
+          "display_order": 3
+        },
+        {
+          "option_id": "99bfed41-8e8a-4421-a253-cf315a671aed",
+          "option_label": "D",
+          "text": "Statement 2 only is correct (Cognitive trap distractor).",
+          "translations": {
+            "ENGLISH": "Statement 2 only is correct (Cognitive trap distractor)."
+          },
+          "display_order": 4
+        }
+      ]
+    }
+  ]
+}

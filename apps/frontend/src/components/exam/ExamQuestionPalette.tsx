@@ -1,22 +1,24 @@
 import React from 'react';
 import { useTheme } from '../../hooks/useTheme';
-import { Question } from './ExamSectionSidebar';
+import { QuestionPaletteItem } from '../../types/exam';
 
 interface ExamQuestionPaletteProps {
-  questions: Question[];
+  questions?: any[];
+  palette?: QuestionPaletteItem[];
   currentQIndex: number;
-  selectedOptions: Record<number, string>;
-  markedForReview: Record<number, boolean>;
+  selectedOptions?: Record<number, string>;
+  markedForReview?: Record<number, boolean>;
   paletteFilter: 'all' | 'answered' | 'marked' | 'unanswered';
   onSelectQuestion: (idx: number) => void;
   onFilterChange: (filter: 'all' | 'answered' | 'marked' | 'unanswered') => void;
 }
 
 export function ExamQuestionPalette({
-  questions,
+  questions = [],
+  palette,
   currentQIndex,
-  selectedOptions,
-  markedForReview,
+  selectedOptions = {},
+  markedForReview = {},
   paletteFilter,
   onSelectQuestion,
   onFilterChange,
@@ -24,14 +26,19 @@ export function ExamQuestionPalette({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const getQStatus = (index: number) => {
+  const totalCount = palette ? palette.length : questions.length;
+
+  const getQStatus = (index: number): string => {
+    if (palette && palette[index]) {
+      return palette[index].question_status;
+    }
     const isAnswered = selectedOptions[index] !== undefined;
     const isMarked = !!markedForReview[index];
 
-    if (isAnswered && isMarked) return 'answered-marked';
-    if (isAnswered) return 'answered';
-    if (isMarked) return 'marked';
-    return 'not-visited';
+    if (isAnswered && isMarked) return 'ANSWERED_AND_MARKED';
+    if (isAnswered) return 'ANSWERED';
+    if (isMarked) return 'MARKED_FOR_REVIEW';
+    return 'UNVISITED';
   };
 
   return (
@@ -45,7 +52,7 @@ export function ExamQuestionPalette({
         padding: 16,
         boxSizing: 'border-box',
         flexShrink: 0,
-        transition: 'background-color 0.2s, border-color 0.2s'
+        transition: 'background-color 0.2s, border-color 0.2s',
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#ffffff' : '#0f172a', marginBottom: 12 }}>
@@ -80,7 +87,7 @@ export function ExamQuestionPalette({
           marginBottom: 16,
           backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
           borderRadius: 8,
-          padding: 3
+          padding: 3,
         }}
       >
         {(['all', 'answered', 'marked', 'unanswered'] as const).map((tab) => (
@@ -93,11 +100,11 @@ export function ExamQuestionPalette({
               borderRadius: 6,
               border: 'none',
               backgroundColor: paletteFilter === tab ? '#2563eb' : 'transparent',
-              color: paletteFilter === tab ? '#ffffff' : (isDark ? 'rgba(255,255,255,0.7)' : '#64748b'),
+              color: paletteFilter === tab ? '#ffffff' : isDark ? 'rgba(255,255,255,0.7)' : '#64748b',
               fontSize: 10,
               fontWeight: 700,
               cursor: 'pointer',
-              textTransform: 'capitalize'
+              textTransform: 'capitalize',
             }}
           >
             {tab}
@@ -113,40 +120,45 @@ export function ExamQuestionPalette({
           gap: 8,
           flex: 1,
           overflowY: 'auto',
-          alignContent: 'start'
+          alignContent: 'start',
         }}
       >
-        {questions.map((q, idx) => {
+        {Array.from({ length: totalCount }).map((_, idx) => {
           const status = getQStatus(idx);
           const isCurrent = currentQIndex === idx;
 
-          if (paletteFilter === 'answered' && status !== 'answered' && status !== 'answered-marked') return null;
-          if (paletteFilter === 'marked' && status !== 'marked' && status !== 'answered-marked') return null;
-          if (paletteFilter === 'unanswered' && selectedOptions[idx] !== undefined) return null;
+          if (paletteFilter === 'answered' && status !== 'ANSWERED' && status !== 'ANSWERED_AND_MARKED') return null;
+          if (paletteFilter === 'marked' && status !== 'MARKED_FOR_REVIEW' && status !== 'ANSWERED_AND_MARKED') return null;
+          if (paletteFilter === 'unanswered' && (status === 'ANSWERED' || status === 'ANSWERED_AND_MARKED')) return null;
 
           let bgColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0';
           let textColor = isDark ? '#ffffff' : '#0f172a';
 
-          if (status === 'answered') {
+          if (status === 'ANSWERED') {
             bgColor = '#10b981';
             textColor = '#ffffff';
-          } else if (status === 'marked') {
+          } else if (status === 'MARKED_FOR_REVIEW') {
             bgColor = '#f59e0b';
             textColor = '#ffffff';
-          } else if (status === 'answered-marked') {
+          } else if (status === 'ANSWERED_AND_MARKED') {
             bgColor = '#2563eb';
             textColor = '#ffffff';
+          } else if (status === 'VISITED') {
+            bgColor = isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7';
+            textColor = isDark ? '#fde68a' : '#d97706';
           }
 
           return (
             <button
-              key={q.id}
+              key={idx}
               onClick={() => onSelectQuestion(idx)}
               style={{
                 height: 38,
                 borderRadius: 8,
                 border: isCurrent
-                  ? (isDark ? '2px solid #ffffff' : '2px solid #0f172a')
+                  ? isDark
+                    ? '2px solid #ffffff'
+                    : '2px solid #0f172a'
                   : '1px solid transparent',
                 backgroundColor: bgColor,
                 color: textColor,
@@ -157,7 +169,7 @@ export function ExamQuestionPalette({
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: isCurrent ? '0 0 10px rgba(37,99,235,0.4)' : 'none',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
               }}
             >
               {idx + 1}
@@ -168,3 +180,4 @@ export function ExamQuestionPalette({
     </aside>
   );
 }
+

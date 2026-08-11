@@ -1,0 +1,1855 @@
+{
+  "exam_id": "e19110a1-2278-42c1-9620-cde9b101351c",
+  "exam_code": "upsc_cse-prelims-gs1-2024-A",
+  "generated_at": "2026-08-11T14:54:36.551596+00:00",
+  "questions": [
+    {
+      "question_id": "e3b37659-d7cd-4dac-993e-56eec82c7a42",
+      "question_number": 1,
+      "correct_option_id": "8faceb58-d49a-42bb-b5f7-d9dbb233c4fb",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Pollution & Environmental Acts",
+      "subtopic": "Pollution & Environmental Acts Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "8faceb58-d49a-42bb-b5f7-d9dbb233c4fb": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9c9130cf-e336-4f50-9315-5635b2b4fe1a": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "19e618ab-b450-4174-a9de-beb53bb58f51": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c12b3079-b40c-479d-aec0-6875afb9093f": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a0dcb5a9-1482-49ed-9fe0-be946108bba7",
+      "question_number": 2,
+      "correct_option_id": "88f47019-ba2e-417e-b8e8-3d2e8df45367",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "88f47019-ba2e-417e-b8e8-3d2e8df45367": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "95ff1145-f1bb-4220-8646-60a71b6f6726": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a2464334-5ae1-4cfe-b69f-77c6d86ade0d": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d88f9e3f-69de-4367-ac6b-5b9569147002": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "362541fb-e4ca-4373-9e4c-46e7d6a70b26",
+      "question_number": 3,
+      "correct_option_id": "ba89218b-e1bf-4d22-b91d-acaf190933ed",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "ba89218b-e1bf-4d22-b91d-acaf190933ed": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "baca8d94-9d32-4277-b7e6-da0e59a9a173": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "672f9b24-c394-49aa-a003-05ce3dca36d2": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "de6d0a2e-ef96-44eb-ae3c-4ed25c9a84bd": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "d2714531-f807-4591-8b1d-2ddaeb5b29c7",
+      "question_number": 4,
+      "correct_option_id": "cade22ae-2e8d-465e-b53e-e6ebb3c0c2ad",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Directive Principles",
+      "subtopic": "Directive Principles Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "cade22ae-2e8d-465e-b53e-e6ebb3c0c2ad": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "85f31964-4811-4617-addb-3bec6cc99250": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "92724293-c92c-4c7d-8d9d-e158b7d10dca": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "bb4a8e7a-bdb2-45ba-bc09-989a4810265f": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a8eed484-76a4-46eb-882e-0b8ab222117a",
+      "question_number": 5,
+      "correct_option_id": "ab458af3-06e3-4401-8631-d2f40c77915a",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "ab458af3-06e3-4401-8631-d2f40c77915a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "970213be-82bf-4730-a235-d39b23ad6079": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "65b60692-6b76-4ade-9650-dee020f449bb": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "6dc2d622-96c8-47c5-a491-e3db04abf264": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "0114aff0-ffc7-4654-b445-b49afe90b833",
+      "question_number": 6,
+      "correct_option_id": "0f70a426-afe1-4062-86d8-5823ea490cab",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "0f70a426-afe1-4062-86d8-5823ea490cab": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "08d6fad3-e348-43b2-9534-6fabd77ce910": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8eb0af99-e9c0-4156-874a-bd659c94e248": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "cacc3acb-e46c-4c0c-b694-06ba553d52b2": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "6ef8fbc2-9f67-4c4c-8c66-7f5b00fae8ea",
+      "question_number": 7,
+      "correct_option_id": "b6eb9a02-025d-404b-8591-f6f1aecb4e94",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "b6eb9a02-025d-404b-8591-f6f1aecb4e94": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8d97ae77-b328-4673-941d-1510c7f6cd10": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c812e962-694e-4ddb-853e-09c7d2ecf3ad": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "954338ec-c2e9-46d7-88ac-4034960aa473": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "6e6c47b0-3c5c-4164-a017-ae9df463624d",
+      "question_number": 8,
+      "correct_option_id": "34c3435b-1adf-44a2-b6cd-f7a8a34e8cb8",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "34c3435b-1adf-44a2-b6cd-f7a8a34e8cb8": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "dac64cb5-29e8-4478-b5a3-20299337f824": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "22e021b0-d7da-4233-a45a-27c1e49d2b55": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "139cdbf2-6d5b-4d34-9b87-af8032ee70fa": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "4a1f6db4-ff86-4511-95f0-b5757adf2a39",
+      "question_number": 9,
+      "correct_option_id": "f12ef6ff-a476-48c6-923b-ea25ea1ce919",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "f12ef6ff-a476-48c6-923b-ea25ea1ce919": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "05dd8b4d-adae-471f-9173-544c5f74a40d": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e07c40b1-aa82-4cfd-a636-4242409d1d3e": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "6ff92bbe-95cf-4193-b1c6-bbbcddc15062": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8756cd16-999f-4ae9-a301-5613742df277",
+      "question_number": 10,
+      "correct_option_id": "4330fb37-929a-45fa-89a5-9218f2ff781f",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "4330fb37-929a-45fa-89a5-9218f2ff781f": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "2a0c0401-cbf7-4b3a-822f-e568d60bf239": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "0b1c6f9d-e6cf-4c0e-93d8-24fc36883d7c": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "76f9cf17-2d22-4a81-abe9-244c400c1344": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a71c1b13-cb66-4125-8b47-a70130db40b1",
+      "question_number": 11,
+      "correct_option_id": "bbaa003f-c624-4029-8a49-57de38442a62",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "bbaa003f-c624-4029-8a49-57de38442a62": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "421140b5-a70d-49fd-bb0a-c6a90845e122": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b11abad4-b958-4fe2-8c28-46c831306da9": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "aa8ab83f-452d-4276-8616-eac3037c5508": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "ea309561-eac4-471e-8265-8b823c743523",
+      "question_number": 12,
+      "correct_option_id": "5ce91d8c-ffa9-4c6e-a561-ad0e4026a43f",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "5ce91d8c-ffa9-4c6e-a561-ad0e4026a43f": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b5e39ea7-b45a-489e-8d95-dda72ccb2b81": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4c0a3811-81a7-4846-81c7-86dc8d647e00": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "02c84835-abc1-4be0-bec6-1de69b279c8c": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "9e78b313-3f48-4534-aefe-8beb3ba09810",
+      "question_number": 13,
+      "correct_option_id": "4fc13671-fc9e-48d3-8427-fcfcb92f5cb8",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "4fc13671-fc9e-48d3-8427-fcfcb92f5cb8": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "fc7be1ce-888b-4943-bef4-16e846195160": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ea4acfaa-3cd4-4408-879d-cefbb7fd79fc": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "309cf156-9378-46c2-8297-2e46816847fd": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "308111fe-0ee5-4a8b-b53f-e5143b850640",
+      "question_number": 14,
+      "correct_option_id": "b0ac8777-bc0b-4ef6-a11d-5e55c6757940",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "b0ac8777-bc0b-4ef6-a11d-5e55c6757940": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "fa949886-96cb-488b-8d6e-7d29416d0516": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8189bf30-a2a1-4b64-ade4-a9d6b2f94ee4": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "888cc043-654e-4aa9-bc31-19d0f264c9d5": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "51c288e0-41b9-44ea-ad96-001997d45a73",
+      "question_number": 15,
+      "correct_option_id": "3fda2bca-42b4-467f-b7ac-49fbbc9d9765",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "3fda2bca-42b4-467f-b7ac-49fbbc9d9765": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e2465e9b-61cd-4813-8229-c487669e699e": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "3ad1051e-490c-427c-a141-b384d4490917": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a69ca039-1d80-4189-98a0-a7d3a5c6974d": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "81c09f02-9214-45b1-997a-8c9181cbfa22",
+      "question_number": 16,
+      "correct_option_id": "a8f10ded-bc21-46d1-8aa4-f9778f2040a2",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "a8f10ded-bc21-46d1-8aa4-f9778f2040a2": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "125c3e0f-19f4-4f3a-a20c-eae0983c94ba": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ad418d65-3586-4e61-a568-24dcb8cb57e7": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1ef8ff41-208b-4e48-bc72-0a498f570136": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "9f4c05ac-e5c2-40a0-b600-beaaa97c90c7",
+      "question_number": 17,
+      "correct_option_id": "7827e244-7950-43d0-b58f-e7b882afcf1b",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "7827e244-7950-43d0-b58f-e7b882afcf1b": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e8720274-dafb-4855-b73a-c14af3250838": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "22fab550-d046-495e-a8db-d4f6d260671f": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a2a263a1-dc2b-4dfa-8975-482be7904c66": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "d52f12ba-61e7-4965-853d-af51dd82b4cc",
+      "question_number": 18,
+      "correct_option_id": "00f2e3fb-6136-490d-a66d-fe0b5c889b14",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Pollution & Environmental Acts",
+      "subtopic": "Pollution & Environmental Acts Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "00f2e3fb-6136-490d-a66d-fe0b5c889b14": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1518a6f0-1ad3-4b61-a6a4-1776bd0f4812": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "cc6e963a-ff19-42ce-bfbd-67827be1f74d": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "42e8b79e-15e6-4e94-a166-280b775c903e": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "30a68788-313a-40ba-83dd-a9e9e98cb7eb",
+      "question_number": 19,
+      "correct_option_id": "d9acf0d4-75c7-47c6-a3ac-a998dd21328b",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "d9acf0d4-75c7-47c6-a3ac-a998dd21328b": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "67cf7f35-c88b-4276-8b2b-b581a1e671dc": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c50c2621-25d6-4b51-bcaf-77e11bb694f6": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "3f66c96d-88f0-4f2e-9d16-70b2b15f8520": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "227b81e5-7dad-4c7b-a9a5-65dceba269c2",
+      "question_number": 20,
+      "correct_option_id": "3228d793-897c-4c91-881c-3e543a9a8003",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "3228d793-897c-4c91-881c-3e543a9a8003": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a2199a3e-2009-467f-91ac-8efc7c13ad3c": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9522fe3d-54cc-4f75-9d1b-5e134ee6c50e": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a50852de-73b2-449a-b03f-c6a96efc19aa": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "4cd3f852-3c16-4490-bb49-dc73e9538824",
+      "question_number": 21,
+      "correct_option_id": "774f4f95-7471-4756-9e4f-8fc591dd588e",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Pollution & Environmental Acts",
+      "subtopic": "Pollution & Environmental Acts Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "774f4f95-7471-4756-9e4f-8fc591dd588e": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "20553259-c8a8-40aa-962d-0a953f3eac17": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4cb2cd99-9970-49ce-ac21-adfcdf4c3c1a": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d1cccf97-124a-48b9-8cce-9e30897d9ccc": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "3a63ab43-3c68-479b-b369-99ea9b2a6a93",
+      "question_number": 22,
+      "correct_option_id": "1381fa4b-7d8c-47ec-a3de-2c87d384b2fb",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "1381fa4b-7d8c-47ec-a3de-2c87d384b2fb": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "364b3ed7-962d-428a-bb0c-7631f5c5963b": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "7c09f15c-88a6-470b-b96f-00e076f64b88": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d9f2a2d9-3d65-45df-97ad-627ec94431af": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "6a3386b9-5538-48b1-95e0-9707b49477fe",
+      "question_number": 23,
+      "correct_option_id": "e697752a-f412-4f87-890a-c0c5b7906c2a",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "e697752a-f412-4f87-890a-c0c5b7906c2a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "de40474e-5d73-4779-a551-c6afd77c66e8": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ebbde7bc-c554-44d5-89fc-3418aabb1790": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "dd727b5c-9575-4f62-bede-02506e6c1b02": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "0a3e6c84-cf94-40df-8e58-23863e0e81eb",
+      "question_number": 24,
+      "correct_option_id": "b7a7c442-c5a4-4727-90f8-5223e8a781e9",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "b7a7c442-c5a4-4727-90f8-5223e8a781e9": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4fde4547-0442-46fa-9068-f56f865f9aab": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1ef92053-9c36-46e3-bdf0-90bd7a253603": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a5bc519f-d3d7-4b9a-b965-6d4932c1c0f3": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "f9ae4bf5-cbc3-4f25-becd-bfd4931fc392",
+      "question_number": 25,
+      "correct_option_id": "4e0896ae-b5c7-4323-9a76-fce89e679526",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "4e0896ae-b5c7-4323-9a76-fce89e679526": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ff364aaf-8ede-4596-a73d-99fea48616bd": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ccda158f-5d7c-4f37-a39d-917cdc661e03": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8a144784-c655-4e20-a06d-0311ea41dd82": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "d5b0ea77-4023-4561-b3b0-549d248cbab4",
+      "question_number": 26,
+      "correct_option_id": "1e3d208b-7842-451f-8a32-878cf40e4708",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Freedom Struggle 1857-1947",
+      "subtopic": "Freedom Struggle 1857-1947 Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "1e3d208b-7842-451f-8a32-878cf40e4708": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "524b00f3-fb42-41a5-bae5-1bab7d62d707": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "17ec7a67-aeb1-497b-b3f5-8b3082d5179b": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "492ea67d-cdb3-4355-aaf8-c05bea9273f1": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a9de8bf9-d1f6-4c2a-a8af-b636d81a4aeb",
+      "question_number": 27,
+      "correct_option_id": "bded4d57-32f2-4387-872e-7d0711fa7aeb",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "bded4d57-32f2-4387-872e-7d0711fa7aeb": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "21fcb1fd-0e68-4d04-9b30-b3045d3f5305": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "fa30a572-faeb-4152-92cd-2201df27cb9b": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c5da3de8-bbea-4c9a-9551-6185a7f3db0d": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "757df7b1-3259-414c-92ba-e9201ca26f9a",
+      "question_number": 28,
+      "correct_option_id": "629d771c-650d-4021-9ebc-4540528d1495",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "629d771c-650d-4021-9ebc-4540528d1495": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ecada558-eadf-4e71-9a94-537a9232a268": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "3480889d-6b1a-44b6-a9ca-f0a7a25a8aaa": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f38bb474-5f09-4de4-9144-4d7750e32c7f": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a7cf5037-35d5-422d-b093-c92c5037150b",
+      "question_number": 29,
+      "correct_option_id": "e153a82c-081f-43a7-a5e1-e6fe52793120",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Preamble & Fundamental Rights",
+      "subtopic": "Preamble & Fundamental Rights Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "e153a82c-081f-43a7-a5e1-e6fe52793120": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e5fb92b5-1f93-4c56-ac0a-cd47d05c7245": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "7010a32f-f0da-4051-9ba3-2d08e06ae1a4": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a9d6790b-9da7-4eca-865a-e264925179fb": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "0f2e60b8-b18c-4f18-8a8d-ab5dcad27bf2",
+      "question_number": 30,
+      "correct_option_id": "464d39f5-c580-47c8-9af6-d194fd185081",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "464d39f5-c580-47c8-9af6-d194fd185081": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "dd1d2999-b754-4ab4-9953-4907aa7efdb6": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "0e978db5-0c91-4945-814b-b05746a52607": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "397f8d6b-6d24-43c7-b131-8a9eb555cb26": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "1fbc8319-b9af-4ed3-b9ee-4e7118659754",
+      "question_number": 31,
+      "correct_option_id": "dfcd3941-deed-4f7c-a628-f5ad01a4e948",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "dfcd3941-deed-4f7c-a628-f5ad01a4e948": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "0ab03886-b61b-4850-86b6-66b66c7b3ea6": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ce4810eb-1524-4b75-b5b3-e92f9f7e689b": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f492321d-c761-4657-b309-139181b555d7": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "eb17aea1-88b4-497f-ba29-b7791948ceef",
+      "question_number": 32,
+      "correct_option_id": "96ecee0b-d21a-4b4b-aa3b-b8ea7efea3de",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "96ecee0b-d21a-4b4b-aa3b-b8ea7efea3de": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8c8a4282-3990-41c8-80de-cc3f714f95e3": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "15920186-783f-4794-9ce7-1728ce6b3313": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a82a3ea4-fd69-4bed-bc29-b5944bf9d9e7": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "3c4e7b0f-6092-4335-bad7-d79bd81b41a1",
+      "question_number": 33,
+      "correct_option_id": "306d0133-3fe6-44ee-98c5-155796cf14d6",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "306d0133-3fe6-44ee-98c5-155796cf14d6": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1b393a04-c107-4e20-9ad0-f4002b2beba9": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8c0aa114-0d96-4f83-a8fd-2d645bf4d6c4": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "62c79ccb-251d-429c-a999-a59c30b512aa": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    }
+  ]
+}

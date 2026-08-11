@@ -8,13 +8,13 @@ from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStat
 # --- Request Schemas ---
 
 class StartExamRequest(BaseModel):
-    exam_id: uuid.UUID
+    exam_id: uuid.UUID | str
     mode: AttemptMode = AttemptMode.EXAM
 
 
 class SaveResponseRequest(BaseModel):
-    question_id: uuid.UUID
-    selected_option_id: Optional[uuid.UUID] = None
+    question_id: uuid.UUID | str
+    selected_option_id: Optional[uuid.UUID | str] = None
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
     option_switch_count: int = 0
@@ -26,7 +26,8 @@ class SubmitExamRequest(BaseModel):
 
 class HeartbeatRequest(BaseModel):
     remaining_time_seconds: int
-    active_question_id: Optional[uuid.UUID] = None
+    active_question_id: Optional[uuid.UUID | str] = None
+
 
 
 # --- Response Schemas ---

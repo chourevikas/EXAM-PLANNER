@@ -1,0 +1,1911 @@
+{
+  "exam_id": "2e2313d4-b8ec-4cc2-a48e-efd0d4af745b",
+  "exam_code": "upsc_cse-prelims-gs1-2023-A",
+  "generated_at": "2026-08-11T15:02:22.799440+00:00",
+  "questions": [
+    {
+      "question_id": "736c244d-fed2-4d21-ab5c-95af2b6f5240",
+      "question_number": 1,
+      "correct_option_id": "abac9dfa-f6ff-431b-a183-bad92061ee2b",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "abac9dfa-f6ff-431b-a183-bad92061ee2b": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "aa7e843e-7d5e-4647-b083-79ea8acf3823": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "136b0cb9-fe51-45e7-b17f-5e60b46d1e8a": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8a9315db-f30e-4b65-878b-5a015f1a2d3c": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "63be740f-8286-42ec-85f6-fbffa849e921",
+      "question_number": 2,
+      "correct_option_id": "498e84f1-91b7-4083-a72b-83bf238ee6e7",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "498e84f1-91b7-4083-a72b-83bf238ee6e7": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a610fdde-64fa-45b9-a413-a073d8022f84": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "18e3e4b2-a66c-4956-a437-1912dcdc440e": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "482bcc84-e0f5-4ec1-b2a8-d29985bc1c6f": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "6be2ebef-7d2c-43c5-b67b-8a99bd4a04c1",
+      "question_number": 3,
+      "correct_option_id": "f8743e12-4208-4f00-a4fc-7f50434863bd",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "f8743e12-4208-4f00-a4fc-7f50434863bd": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "cf1241fb-a2ca-408e-ae38-a0a6b8cec83c": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e53ffbdc-2bd9-422a-868d-591ce9d77882": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e24c5f5f-77c7-40c9-a661-2fa8a90e689b": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "9d314c40-6132-40bb-b9e4-ac09874a8c03",
+      "question_number": 4,
+      "correct_option_id": "faa200ad-e5f9-4f5c-b22c-418838a635cb",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Directive Principles",
+      "subtopic": "Directive Principles Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "faa200ad-e5f9-4f5c-b22c-418838a635cb": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "64929dd6-c9e2-4c5f-98cb-46e114ffb03f": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "78f4200f-562e-4dfd-aac0-8830a700e4a1": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "54bc844f-2dff-4059-b32e-efa1f3d0aadd": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "b0a4c929-d973-4c96-9c12-42a7305e4fb0",
+      "question_number": 5,
+      "correct_option_id": "152dda79-6683-44f1-ad9a-e243a2190e1f",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "152dda79-6683-44f1-ad9a-e243a2190e1f": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "46f02d16-23b5-4383-9690-6c8dbbed8048": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "677d6133-4fad-4d56-9751-a2cb47e6693d": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a7c13392-b7c7-42c9-ac98-1c0cc6809675": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "ace04eca-e374-469d-9c9f-e89f6f05af22",
+      "question_number": 6,
+      "correct_option_id": "dc4b7656-03fe-465a-9d37-c868103bf186",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "dc4b7656-03fe-465a-9d37-c868103bf186": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "92fc59a2-0b9d-4c49-bbe6-ee580ce93fb2": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a6b47ebd-985c-4187-a4c5-3ac4533d95c6": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "2f768a44-e248-413d-857e-f070ef889563": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "5183f522-19c5-4161-986d-4fd90a819b59",
+      "question_number": 7,
+      "correct_option_id": "aa7b4794-249f-42fc-be32-485e8ef93cd3",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "aa7b4794-249f-42fc-be32-485e8ef93cd3": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "450a9ff7-5376-4766-a9d8-432f5599444a": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "129dde75-6ffa-4ece-af8d-675730563147": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "bda3e1bb-0448-40f9-996f-e583414f4a75": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8bbc5f6d-fb56-4209-b887-6af290954572",
+      "question_number": 8,
+      "correct_option_id": "5d32ad3c-7998-4f8e-9ff2-06caae26eb99",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Climatology & Monsoons",
+      "subtopic": "Climatology & Monsoons Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "5d32ad3c-7998-4f8e-9ff2-06caae26eb99": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "41ad2d74-dfe7-4d9f-9814-7f03b0fdba5b": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b258a13b-18b3-4cf0-bb48-16e7f56bf54e": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "3d46151a-ce81-44d9-8d59-1f567b334d46": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8801cbfd-efd1-4b22-823a-f6f2e8a2901d",
+      "question_number": 9,
+      "correct_option_id": "39c2c23e-bd67-48b0-823a-72b5e88b4b2a",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "39c2c23e-bd67-48b0-823a-72b5e88b4b2a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1991ff08-4db6-4cc1-a2d9-3594d06cbac3": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b75e3e74-5252-438a-829e-507c7e65ae75": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "aa2c75c4-57de-4b00-a05b-8ede796097ca": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a1a301e9-98ed-42e4-81a9-b43be25aeca7",
+      "question_number": 10,
+      "correct_option_id": "1887644f-7303-4ed9-985f-093eb0681731",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Freedom Struggle 1857-1947",
+      "subtopic": "Freedom Struggle 1857-1947 Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "1887644f-7303-4ed9-985f-093eb0681731": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d936ebc4-962b-4fbc-be3b-003282814793": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "46f017d1-6679-4a58-b59b-23137a2af81d": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "14de9b2f-5595-4b69-ab2f-eba96aace626": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "5a952faa-a723-469e-9a7f-1c3d7c372ce3",
+      "question_number": 11,
+      "correct_option_id": "173904dd-d929-4c6f-9c21-ba06b51b18da",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "173904dd-d929-4c6f-9c21-ba06b51b18da": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "2dadce44-c19c-48fc-a0ca-deb67956f315": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "abc31af9-186c-45aa-8e28-640b06bdd2a9": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b5ae3991-7080-4064-9c44-51aa087935ef": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "35ba2f70-ceb3-4f1b-9bc7-6f0b0b638cfa",
+      "question_number": 12,
+      "correct_option_id": "e396c5a4-5520-44ac-ab08-5d7ac8422cc7",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "e396c5a4-5520-44ac-ab08-5d7ac8422cc7": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8d7558ce-7a8f-43ec-b6dd-2aa9864d539f": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "76c2007a-4cc7-4089-ace8-0b1300adf5fa": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "7423b42f-a357-4531-ba76-d31f17db0169": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "c4eed1bf-d146-46b6-9342-01d884df6ae4",
+      "question_number": 13,
+      "correct_option_id": "36834a99-6a60-4935-92c8-b83fd82581da",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "36834a99-6a60-4935-92c8-b83fd82581da": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "443e0db1-88b5-4c6f-877d-85e1affe569a": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "42badda7-4c64-433b-8eae-674596256e5f": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "640b57c5-620a-42e8-bca5-37f4446147bb": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "c4a661e1-06bd-475e-82a0-3e74ec535e75",
+      "question_number": 14,
+      "correct_option_id": "c6b6ffa4-ae5c-40fd-be36-cd7e87df024a",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "c6b6ffa4-ae5c-40fd-be36-cd7e87df024a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c0fe03a6-664e-41f9-bf34-3bb48648f9cb": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "56366349-6ae1-4df8-88fc-3d511762eaa3": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "07f65a66-fb33-47fc-b060-3708674a613c": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "e2eff004-8129-4896-b108-7298d6302a85",
+      "question_number": 15,
+      "correct_option_id": "f2697a9e-0c38-4f60-a61f-e1784b93f45f",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "f2697a9e-0c38-4f60-a61f-e1784b93f45f": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4b0d8690-145c-4108-9ace-4815e97d7bf8": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9d6430fd-75a9-48d9-84fb-45233539d673": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c25732e2-fdcf-416c-bd72-a11c58d1bfff": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "f3a062f7-d425-4e57-8ab8-01d67c21a87b",
+      "question_number": 16,
+      "correct_option_id": "fc29da44-322b-4aec-9d61-a9ae273fed93",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Pollution & Environmental Acts",
+      "subtopic": "Pollution & Environmental Acts Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "fc29da44-322b-4aec-9d61-a9ae273fed93": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "af92dac8-81f9-479a-a2c5-73b36410acb2": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "2178f6b2-01cb-4ec4-9f2e-220a06405d39": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a8c5edc0-a142-4853-b9f1-de6545c6c04b": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "f17a0da0-f282-4c64-8c7c-57b680489180",
+      "question_number": 17,
+      "correct_option_id": "12cc789b-fe8b-42e9-bced-46795b78e557",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "12cc789b-fe8b-42e9-bced-46795b78e557": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9c23bd34-de8e-43b3-abb8-a396a974303f": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e4ff263c-ad77-4cac-9ae1-e0a1a8a9f983": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4035c5f0-a7f8-42c0-a9d3-64e73cf3f90d": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "134221df-6fc2-44fa-b534-8a76c8c5e3a1",
+      "question_number": 18,
+      "correct_option_id": "e079c13f-9af8-4005-85ac-ebb6f59c0018",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "e079c13f-9af8-4005-85ac-ebb6f59c0018": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "807ff24b-9af0-4605-9da2-cadd633b1d1b": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "fcfe009e-9faa-425c-b225-fcab05c6c5f6": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "394c9821-6526-49f3-b1d7-14bdcb125ae2": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8d6c5713-d7ee-4723-b631-38c19c27fd86",
+      "question_number": 19,
+      "correct_option_id": "d558bc5d-9433-4795-87bb-101fc4beff25",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "d558bc5d-9433-4795-87bb-101fc4beff25": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "74dbbc5b-a29c-46e0-a677-09965b70bf6a": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "29909d4e-a049-42e7-b31c-1c302a8d9427": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ff15d962-aa59-4f46-933b-7e050dbf2202": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8da8f995-42b6-4d93-878c-a36d891feb61",
+      "question_number": 20,
+      "correct_option_id": "7ce80bc6-1031-40c8-bc44-8bc9e89c5971",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "7ce80bc6-1031-40c8-bc44-8bc9e89c5971": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "10fda16f-84cc-411b-b621-9746c141e5d4": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ff8c8279-a206-431c-8baf-fccd955bd9ac": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f178ce5d-ae26-4fc9-b376-d683f4f50cac": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "6454b9e2-e368-42be-9188-c55b3f6af4d9",
+      "question_number": 21,
+      "correct_option_id": "ebab267c-74e4-4190-9f85-d7ececc9aaa6",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "ebab267c-74e4-4190-9f85-d7ececc9aaa6": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "47806f09-4384-49b1-8362-7be64f6be9ee": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d1fa586b-5852-4ba6-990c-7f6dfada34ff": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a38b6c48-c2fc-4c54-a9c5-e468b6a1aa09": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "e15ad475-5ac9-42cb-a0b9-2d77dcce6204",
+      "question_number": 22,
+      "correct_option_id": "303a60f5-9271-4fc1-ad5f-ceabff9d9cd4",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "Geomorphology & Minerals",
+      "subtopic": "Geomorphology & Minerals Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "303a60f5-9271-4fc1-ad5f-ceabff9d9cd4": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1738ecb8-6c48-4159-9930-a9505bc02830": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1fa36751-f564-4679-840d-68e6a7e7b45c": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "0582b32b-be29-4d9c-87ae-f1612551d4f1": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "1463ff69-3e33-475d-9fb0-8767ec0224a6",
+      "question_number": 23,
+      "correct_option_id": "ead3b927-e85a-4afd-ac31-7e3516b5d359",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "ead3b927-e85a-4afd-ac31-7e3516b5d359": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4b7496bb-fd5b-40f6-90fa-797e21d55e66": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "06a42d09-a269-474a-be9b-89829d79dc84": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9eb981b6-31c5-4db6-b4e1-6de6eb4ee9d5": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "c92eab52-09e7-48fd-841f-bc49431ee460",
+      "question_number": 24,
+      "correct_option_id": "e6e9752f-3e73-451d-88b0-2110f3e81905",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Governor Generals & Reforms",
+      "subtopic": "Governor Generals & Reforms Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "e6e9752f-3e73-451d-88b0-2110f3e81905": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "dfac1a70-075b-4ba4-b7f1-5f1973ec5c81": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "21985bf9-778d-4613-a26a-dad016db0c31": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "0553ff3a-be76-43c5-9549-b59dc13dd4a6": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a7213308-52dc-4ee0-beb1-5663856d5d73",
+      "question_number": 25,
+      "correct_option_id": "674827e8-290d-4796-86c6-12d10360cbfc",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Directive Principles",
+      "subtopic": "Directive Principles Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "674827e8-290d-4796-86c6-12d10360cbfc": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f1088ca1-a8f6-4103-8c0d-3e996dbdb587": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "ffb3fc26-6058-4e6e-a324-be749df61720": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e125f0a6-7e05-44a8-9f07-0a512fe8acd4": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "7cfa7aa0-ce57-4c3a-8686-59c24253b043",
+      "question_number": 26,
+      "correct_option_id": "669023d0-9a2b-4638-9814-d733dce5ff24",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Monetary Policy & RBI",
+      "subtopic": "Monetary Policy & RBI Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "669023d0-9a2b-4638-9814-d733dce5ff24": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "1a3642ea-d126-481e-b95b-d662b21582b4": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "d2da3164-fe41-45fc-8525-562a5f87e743": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "a758678a-f17d-4883-b77b-8a9738c02315": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a85ba6e9-96f0-467b-94fb-2f3e8a58afb8",
+      "question_number": 27,
+      "correct_option_id": "fe8d10b5-80e1-4488-9654-2bc912683b4a",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Biodiversity & Conservation",
+      "subtopic": "Biodiversity & Conservation Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "fe8d10b5-80e1-4488-9654-2bc912683b4a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "bd57ed07-755a-41b2-a07c-c6ec41dea59b": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "cfd33a46-1f75-4215-b2e0-b5df420f12e3": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "6d3b077f-685a-4615-845a-0990f81e5dbf": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "e310a19e-8128-47d4-9554-d4fc59516780",
+      "question_number": 28,
+      "correct_option_id": "51cab35e-7f5f-4260-9cad-eb3c1171fd6a",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "51cab35e-7f5f-4260-9cad-eb3c1171fd6a": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "da5857f1-6c04-4658-b70c-3b9c1567b40d": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "790972e8-62ce-4ed3-b388-3739d83e1aff": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "263ddd28-1388-4362-b28b-cda29aeaf231": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "d89eb5d5-3848-4e9b-ba17-55a841ae8a2a",
+      "question_number": 29,
+      "correct_option_id": "80fa885e-8b03-4faa-af04-821e8064a22c",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Polity & Constitution",
+      "topic": "Parliament & Executive",
+      "subtopic": "Parliament & Executive Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "80fa885e-8b03-4faa-af04-821e8064a22c": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "fea5cfac-e2b0-4d11-add7-e1f92a5c9da9": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "6417d8f6-02fa-44bf-9a77-758c786ead0b": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f0545fbc-f4b1-46cb-99d0-1dcafb4bd423": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "8a9a9488-695b-46c0-b225-46208ba33777",
+      "question_number": 30,
+      "correct_option_id": "56049273-f959-4627-b48e-7a36e2eea494",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Physical & Indian Geography",
+      "topic": "River Systems & Drainage",
+      "subtopic": "River Systems & Drainage Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "56049273-f959-4627-b48e-7a36e2eea494": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "cc3c3e37-f4ab-4796-ba71-362e62a1c360": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "529c209a-69cc-4cbe-b776-aff187e953a6": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "6bab4b27-8904-48a6-9226-178673aafe8b": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "206142c2-907e-4bdc-a086-47e89a01936c",
+      "question_number": 31,
+      "correct_option_id": "85df64c7-644e-4ccd-b998-b6cdabbcb95d",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "External Sector & Trade",
+      "subtopic": "External Sector & Trade Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "85df64c7-644e-4ccd-b998-b6cdabbcb95d": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "e6a50a2f-933f-48c8-bbd1-9afc29334ee2": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "8ff417f0-edd5-476c-8d25-0b4bf6c7db0b": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "9c02f367-90fa-475d-8ad6-c5d364658c8a": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "e8d9c543-71ac-4a7a-a48e-6a76f97a03ef",
+      "question_number": 32,
+      "correct_option_id": "5b078252-c254-4b15-b885-01271c5a6d3c",
+      "correct_option_label": "A",
+      "difficulty": "EASY",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Environment & Ecology",
+      "topic": "Climate Change & Conventions",
+      "subtopic": "Climate Change & Conventions Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "5b078252-c254-4b15-b885-01271c5a6d3c": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "f9e7c849-41e1-41f4-b91a-0d1f939b6b74": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "c7732353-6d6f-4224-8cf0-e6c0d39f9585": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "b0316482-39cf-46b0-a3b9-a99fe93df3ec": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "a437b5f8-db62-4abc-b018-e06d64c85582",
+      "question_number": 33,
+      "correct_option_id": "c08e953f-05fa-485c-aa16-80a7347c5468",
+      "correct_option_label": "A",
+      "difficulty": "HARD",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Indian Economy & Development",
+      "topic": "Fiscal Policy & Budget",
+      "subtopic": "Fiscal Policy & Budget Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "c08e953f-05fa-485c-aa16-80a7347c5468": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "35a0bf84-df05-4498-8fb2-59285a72aa47": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "13c7cd11-18f8-4787-9397-80785622549c": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "3859a2a3-b286-4d87-a724-2a17242c5160": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    },
+    {
+      "question_id": "b5427e49-e714-4ed4-8cfc-46b4242e753d",
+      "question_number": 34,
+      "correct_option_id": "baf9d5d2-ad31-4b96-aabc-a96a86df836d",
+      "correct_option_label": "A",
+      "difficulty": "MEDIUM",
+      "blooms_level": "ANALYZE",
+      "cognitive_skill": "Conceptual Reasoning",
+      "primary_concept_tag": null,
+      "irt_params": {
+        "a": 1.5,
+        "b": 0.0,
+        "c": 0.25
+      },
+      "subject": "Modern Indian History",
+      "topic": "Socio-Religious Movements",
+      "subtopic": "Socio-Religious Movements Core Concepts",
+      "concepts": [],
+      "explanation": {
+        "core_concept": "Core concept analysis",
+        "detailed_solution": "Detailed solution breakdown",
+        "common_traps": [],
+        "key_takeaways": []
+      },
+      "explanation_translations": {},
+      "distractor_scores": {
+        "baf9d5d2-ad31-4b96-aabc-a96a86df836d": {
+          "label": "A",
+          "closeness_score": 1.0,
+          "is_correct": true,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "190c0ff0-b874-43d9-98b1-f0e7604be707": {
+          "label": "B",
+          "closeness_score": 0.65,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "93fdb06b-8a81-4978-afc9-e6959ea4ae29": {
+          "label": "C",
+          "closeness_score": 0.15,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        },
+        "4a878b9a-5b2f-4f60-8675-44667e9e59b9": {
+          "label": "D",
+          "closeness_score": -0.4,
+          "is_correct": false,
+          "distractor_analysis": null,
+          "distractor_analysis_translations": {}
+        }
+      }
+    }
+  ]
+}

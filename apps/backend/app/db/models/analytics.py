@@ -129,8 +129,14 @@ class UserMemoryState(SQLModel, table=True):
     fsrs_difficulty: float = Field(default=5.0)
     fsrs_stability: float = Field(default=2.0)
     retrievability: float = Field(default=1.0)
-    last_reviewed_at: datetime = Field(default_factory=datetime.utcnow)
-    next_scheduled_review: datetime = Field(default_factory=datetime.utcnow)
+    last_reviewed_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    next_scheduled_review: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class UserSkillProfile(SQLModel, table=True):
@@ -146,7 +152,10 @@ class UserSkillProfile(SQLModel, table=True):
     cumulative_satoi: float = Field(default=85.0)
     total_tests_given: int = Field(default=0)
     total_questions_answered: int = Field(default=0)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class UserTaxonomyMastery(SQLModel, table=True):
@@ -180,4 +189,8 @@ class UserTaxonomyMastery(SQLModel, table=True):
         max_length=50,
         description="'STRONG', 'MODERATE', 'WEAK_REVISION_REQUIRED'",
     )
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+
