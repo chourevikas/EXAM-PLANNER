@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
     DB_MIGRATION: bool = Field(
-        default=True,
+        default=False,
         description="If True, automatically executes Alembic database migrations ('alembic upgrade head') on application startup.",
     )
 
