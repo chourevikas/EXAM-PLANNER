@@ -358,8 +358,8 @@ async def _generate_and_save_single_question_explanation(
             computed_time = min(max(blooms_time + diff_mod + extra_mod, 30), 180)
             db_q.expected_time_seconds = computed_time
 
-            # Transition Question status to PUBLISHED
-            db_q.status = QuestionStatus.PUBLISHED
+            # Set Question status to PENDING_HUMAN_REVIEW
+            db_q.status = QuestionStatus.PENDING_HUMAN_REVIEW
             session.add(db_q)
 
             # Calculate Inter-Dependent 3PL IRT Metrics (a, b, c)
@@ -588,7 +588,7 @@ async def node_generate_and_save_explanations(
 async def node_explanation_validator_and_hitl(
     state: ExplanationPipelineState,
 ) -> Dict[str, Any]:
-    """Validates explanation completeness and updates final PipelineRun status to COMPLETED."""
+    """Validates question status, normalizes time budget exactly, and updates PipelineRun status to COMPLETED."""
     exam_id = uuid.UUID(state["exam_id"])
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
@@ -598,67 +598,12 @@ async def node_explanation_validator_and_hitl(
         questions = (await session.exec(stmt)).all()
 
         for q in questions:
-            failure_reasons = []
-
-            expl_stmt = select(QuestionExplanation).where(
-                QuestionExplanation.question_id == q.id
-            )
-            expl = (await session.exec(expl_stmt)).first()
-
-            if not expl:
-                failure_reasons.append("Missing QuestionExplanation record")
-            else:
-                if not expl.core_concept or len(expl.core_concept.strip()) < 5:
-                    failure_reasons.append("Core concept empty or truncated")
-                if not expl.detailed_solution or len(expl.detailed_solution.strip()) < 10:
-                    failure_reasons.append("Detailed solution incomplete")
-
-            opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
-            options = (await session.exec(opt_stmt)).all()
-
-            for opt in options:
-                ot_stmt = select(OptionTranslation).where(
-                    OptionTranslation.option_id == opt.id
-                )
-                o_trans = (await session.exec(ot_stmt)).all()
-                if not any(ot.distractor_analysis for ot in o_trans):
-                    failure_reasons.append(
-                        f"Missing distractor analysis for Option '{opt.option_label}'"
-                    )
-
-            if failure_reasons:
-                log.warning(
-                    f"⚠️ [HITL FLAG] Question ID {q.id} flagged with {len(failure_reasons)} warning(s)."
-                )
-
-            rt_stmt = select(HumanReviewTask).where(
-                HumanReviewTask.question_id == q.id
-            )
-            existing_task = (await session.exec(rt_stmt)).first()
-
-            if existing_task:
-                existing_reasons = (
-                    existing_task.failure_reasons_json
-                    if isinstance(existing_task.failure_reasons_json, list)
-                    else json.loads(existing_task.failure_reasons_json or "[]")
-                )
-                combined = list(set(existing_reasons + failure_reasons))
-                existing_task.is_flagged_by_validator = bool(combined)
-                existing_task.failure_reasons_json = combined
-                session.add(existing_task)
-            else:
-                task = HumanReviewTask(
-                    question_id=q.id,
-                    exam_id=exam_id,
-                    review_status="PENDING_REVIEW",
-                    is_flagged_by_validator=bool(failure_reasons),
-                    failure_reasons_json=failure_reasons,
-                )
-                session.add(task)
+            q.status = QuestionStatus.PENDING_HUMAN_REVIEW
+            session.add(q)
 
         await session.commit()
 
-        # Step 4: Total Exam Time Budget Normalization
+        # Step 4: Total Exam Time Budget Normalization (Exact Proportional Allocation)
         exam_obj = await session.get(Exam, exam_id)
         if exam_obj:
             duration_mins = exam_obj.total_duration_minutes or 120
@@ -672,72 +617,38 @@ async def node_explanation_validator_and_hitl(
             exam_questions = questions_res.all()
 
             if exam_questions:
-                raw_times = [q.expected_time_seconds for q in exam_questions]
-                sum_raw = sum(raw_times) if sum(raw_times) > 0 else 1
-                scale_factor = total_target_seconds / sum_raw
+                import math
+                raw_times = [max(1.0, float(q.expected_time_seconds)) for q in exam_questions]
+                sum_raw = sum(raw_times)
+                weights = [t / sum_raw for t in raw_times]
 
-                scaled_times = [max(15, int(round(t * scale_factor))) for t in raw_times]
-                diff_sec = total_target_seconds - sum(scaled_times)
-                scaled_times[-1] = max(15, scaled_times[-1] + diff_sec)
+                allocations = [max(15, math.floor(total_target_seconds * w)) for w in weights]
+                allocated_sum = sum(allocations)
+
+                if allocated_sum > total_target_seconds:
+                    excess = allocated_sum - total_target_seconds
+                    indices = sorted(range(len(allocations)), key=lambda idx: allocations[idx], reverse=True)
+                    for idx in indices:
+                        if excess <= 0:
+                            break
+                        can_reduce = allocations[idx] - 15
+                        to_reduce = min(can_reduce, excess)
+                        allocations[idx] -= to_reduce
+                        excess -= to_reduce
+                elif allocated_sum < total_target_seconds:
+                    deficit = total_target_seconds - allocated_sum
+                    fractional = [
+                        (total_target_seconds * weights[i]) - allocations[i]
+                        for i in range(len(allocations))
+                    ]
+                    indices = sorted(range(len(allocations)), key=lambda idx: fractional[idx], reverse=True)
+                    for i in range(deficit):
+                        allocations[indices[i % len(indices)]] += 1
 
                 for q_idx, q_rec in enumerate(exam_questions):
-                    q_rec.expected_time_seconds = scaled_times[q_idx]
+                    q_rec.expected_time_seconds = allocations[q_idx]
                     session.add(q_rec)
                 await session.commit()
-
-                # Step 5: Export Formatted JSON Artifacts for Fast Frontend Access
-                from app.storage.factory import get_storage_provider
-                from app.formatters.json_exporter import async_export_question_to_json_string, async_export_question_to_json_dict
-                storage = get_storage_provider()
-                exam_code = exam_obj.code
-                paper_set = exam_questions[0].paper_set_code if exam_questions else "SET_A"
-                clean_set = str(paper_set).strip().lower().replace("_", "-")
-
-                summary_list = []
-                for q_rec in exam_questions:
-                    json_str = await async_export_question_to_json_string(session, q_rec, exam_obj)
-                    q_num = q_rec.question_number_in_paper
-                    json_rel_path = f"artifacts/{exam_code}/{clean_set}/json/questions/Q{q_num:03d}.json"
-                    
-                    from app.core.cleanup import cleanup_file, cleanup_directory
-                    is_local_storage = get_settings().STORAGE_TYPE.upper() == "LOCAL"
-
-                    temp_dir = Path(get_settings().OUTPUT_ARTIFACTS_DIR) / "temp_json"
-                    temp_dir.mkdir(parents=True, exist_ok=True)
-                    temp_json_path = temp_dir / f"Q{q_num:03d}.json"
-                    async with aiofiles.open(temp_json_path, mode="w", encoding="utf-8") as f:
-                        await f.write(json_str)
-                    await storage.upload_file(temp_json_path, json_rel_path)
-
-                    if not is_local_storage:
-                        cleanup_file(temp_json_path)
-
-                    q_dict = await async_export_question_to_json_dict(session, q_rec, exam_obj)
-                    summary_list.append(q_dict)
-
-                # Export Consolidated Exam Summary JSON
-                summary_json_str = json.dumps(
-                    {
-                        "exam_id": str(exam_id),
-                        "exam_code": exam_code,
-                        "paper_set_code": paper_set,
-                        "total_questions": len(exam_questions),
-                        "total_duration_minutes": duration_mins,
-                        "total_expected_time_seconds": total_target_seconds,
-                        "questions": summary_list,
-                    },
-                    indent=2,
-                    ensure_ascii=False,
-                )
-                summary_temp_path = temp_dir / f"{exam_code}_summary.json"
-                async with aiofiles.open(summary_temp_path, mode="w", encoding="utf-8") as f:
-                    await f.write(summary_json_str)
-                summary_rel_path = f"artifacts/{exam_code}/{clean_set}/json/exam_summary.json"
-                await storage.upload_file(summary_temp_path, summary_rel_path)
-
-                if not is_local_storage:
-                    cleanup_file(summary_temp_path)
-                    cleanup_directory(temp_dir)
 
         # Update PipelineRun status to COMPLETED
         pm_service = PipelineManagementService(session)

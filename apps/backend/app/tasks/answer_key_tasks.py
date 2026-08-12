@@ -1,4 +1,5 @@
 import uuid
+import re
 import asyncio
 from pathlib import Path
 from typing import Optional
@@ -52,7 +53,11 @@ async def async_process_answer_key_pdf(
     pdf_file = Path(pdf_path).resolve()
 
     try:
-        parsed = parse_answer_key_filename(pdf_file.name)
+        ym = re.search(r"\b(19\d\d|20\d\d)\b", pdf_file.name)
+        if not ym.group(1):
+            raise ValueError("Exam year not found in filename.")
+        yr = int(ym.group(1))
+        parsed = parse_answer_key_filename(pdf_file.name, year=yr)
         paper_title = f"{parsed['exam_name'].upper()} {parsed['stage'].title()} ({parsed['year']}) Answer Key"
     except Exception:
         paper_title = pdf_file.stem

@@ -36,8 +36,8 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
 
-        import app.pipeline.explanation_graph
-        app.pipeline.explanation_graph.async_session_factory = self.session_factory
+        import app.db.session
+        app.db.session.async_session_factory = self.session_factory
 
     async def asyncTearDown(self):
         await self.engine.dispose()
@@ -263,20 +263,14 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
             res = await node_generate_and_save_explanations(state)
             self.assertEqual(res["total_explanations_generated"], 1)
 
-        # Verify DB contains QuestionExplanation for BOTH English and Hindi
+        # Verify DB contains QuestionExplanation for English (single-language mode)
         async with self.session_factory() as session:
             repo = ExplanationRepository(session)
             eng_kb = await repo.get_full_question_knowledge_base(q1.id, LanguageCode.ENGLISH)
-            hin_kb = await repo.get_full_question_knowledge_base(q1.id, LanguageCode.HINDI)
 
             self.assertIsNotNone(eng_kb)
-            self.assertIsNotNone(hin_kb)
-
             self.assertEqual(eng_kb["core_concept"], "Photosynthesis converts light into chemical energy.")
-            self.assertEqual(hin_kb["core_concept"], "प्रकाश संश्लेषण प्रकाश को रासायनिक ऊर्जा में परिवर्तित करता है।")
-
             self.assertEqual(eng_kb["options_breakdown"][0]["explanation"], "Correct. Light energy is converted into glucose.")
-            self.assertEqual(hin_kb["options_breakdown"][0]["explanation"], "सही। प्रकाश ऊर्जा का ग्लूकोज में परिवर्तन।")
 
 
 if __name__ == "__main__":

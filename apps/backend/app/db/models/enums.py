@@ -28,6 +28,13 @@ class QuestionSourceType(str, enum.Enum):
     PYQ = "PYQ"
     STATIC_MOCK = "STATIC_MOCK"
 
+
+class ExamStatus(str, enum.Enum):
+    PENDING_HUMAN_REVIEW = "PENDING_HUMAN_REVIEW"
+    PUBLISHED = "PUBLISHED"
+    REJECTED = "REJECTED"
+
+
 class DifficultyLevel(str, enum.Enum):
     EASY = "EASY"
     MEDIUM = "MEDIUM"
@@ -43,10 +50,9 @@ class LanguageCode(str, enum.Enum):
 
 
 class TestType(str, enum.Enum):
-    FULL_LENGTH = "FULL_LENGTH"
-    SUBJECT_MOCK = "SUBJECT_MOCK"
-    AI_ADAPTIVE = "AI_ADAPTIVE"
-    REVISION_FLASHTEST = "REVISION_FLASHTEST"
+    PYQ = "PYQ"
+    MOCK = "MOCK"
+    PRACTICE = "PRACTICE"
 
 
 class AttemptStatus(str, enum.Enum):
@@ -76,6 +82,20 @@ class AssetType(str, enum.Enum):
     FIGURE = "FIGURE"
     MAP = "MAP"
     TABLE_IMAGE = "TABLE_IMAGE"
+
+
+class AttemptMode(str, enum.Enum):
+    EXAM = "EXAM"
+    PRACTICE = "PRACTICE"
+    REVISION = "REVISION"
+
+
+class QuestionResponseStatus(str, enum.Enum):
+    UNVISITED = "UNVISITED"
+    VISITED = "VISITED"
+    ANSWERED = "ANSWERED"
+    MARKED_FOR_REVIEW = "MARKED_FOR_REVIEW"
+    ANSWERED_AND_MARKED = "ANSWERED_AND_MARKED"
 
 class StudyActivityType(str, enum.Enum):
     REVISION = "REVISION"

@@ -116,3 +116,32 @@ class S3StorageProvider(BaseStorageProvider):
                 return True
             except Exception:
                 return False
+
+    async def upload_json(self, data: dict, relative_destination: str) -> str:
+        import json
+        content = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        buffer = io.BytesIO(content)
+        logger.info(
+            f"Uploading JSON dict to S3 s3://{self.bucket_name}/{relative_destination}"
+        )
+        async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            await self._ensure_bucket_exists(s3)
+            await s3.upload_fileobj(
+                buffer,
+                self.bucket_name,
+                relative_destination,
+                ExtraArgs={"ContentType": "application/json"},
+            )
+        return relative_destination
+
+    async def download_json(self, relative_path: str) -> dict:
+        import json
+        logger.info(
+            f"Downloading JSON dict from S3 s3://{self.bucket_name}/{relative_path}"
+        )
+        async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            await self._ensure_bucket_exists(s3)
+            res = await s3.get_object(Bucket=self.bucket_name, Key=relative_path)
+            content = await res["Body"].read()
+            return json.loads(content.decode("utf-8"))
+

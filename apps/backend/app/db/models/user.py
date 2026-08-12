@@ -69,7 +69,7 @@ class User(SQLModel, table=True):
         prof = self._get_student_profile_safe()
         if prof:
             return prof.subscription_tier
-        return SubscriptionTier.PREMIUM
+        return SubscriptionTier.FREE
 
     @property
     def free_questions_attempted(self) -> int:

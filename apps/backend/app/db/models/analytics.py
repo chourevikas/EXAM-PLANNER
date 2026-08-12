@@ -5,21 +5,42 @@ from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.types import PortableJSON, DateTimeTZ
 
 
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
+
+
 class ExamAttempt(SQLModel, table=True):
     __tablename__ = "exam_attempts"
     __table_args__ = (
         Index("ix_exam_attempts_user_exam", "user_id", "exam_id"),
         Index("ix_exam_attempts_user_created", "user_id", "created_at"),
+        Index("ix_exam_attempts_user_status", "user_id", "status"),
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
 
+    status: AttemptStatus = Field(default=AttemptStatus.IN_PROGRESS, index=True)
+    mode: AttemptMode = Field(default=AttemptMode.EXAM, index=True)
+
     total_score: float = Field(default=0.0)
     max_possible_score: float = Field(default=200.0)
     time_spent_seconds: float = Field(default=0.0)
     total_questions_attempted: int = Field(default=0)
+
+    total_questions: int = Field(default=0)
+    total_correct: int = Field(default=0)
+    total_incorrect: int = Field(default=0)
+    total_unattempted: int = Field(default=0)
+    current_question_index: int = Field(default=1)
+
+    max_duration_seconds: int = Field(default=7200)
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    submitted_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    submission_reason: Optional[str] = Field(default=None, max_length=100)
 
     pacing_status: str = Field(default="BALANCED_PACING", max_length=100)
     gti_score: float = Field(default=0.0)
@@ -45,7 +66,7 @@ class ExamAttempt(SQLModel, table=True):
 class ExamQuestionResponse(SQLModel, table=True):
     __tablename__ = "exam_question_responses"
     __table_args__ = (
-        Index("ix_eq_responses_attempt_q", "attempt_id", "question_id"),
+        Index("ix_eq_responses_attempt_q", "attempt_id", "question_id", unique=True),
         Index("ix_eq_responses_question", "question_id"),
     )
 
@@ -64,6 +85,14 @@ class ExamQuestionResponse(SQLModel, table=True):
         default=None, foreign_key="question_options.id", ondelete="SET NULL"
     )
 
+    question_status: QuestionResponseStatus = Field(
+        default=QuestionResponseStatus.UNVISITED, index=True
+    )
+    is_marked_for_review: bool = Field(default=False, index=True)
+    option_switch_count: int = Field(default=0)
+    visited_count: int = Field(default=0)
+    answer_revealed: bool = Field(default=False)
+
     is_correct: bool = Field(default=False, index=True)
     time_taken_seconds: float = Field(default=60.0)
     expected_time_seconds: float = Field(default=60.0)
@@ -77,6 +106,7 @@ class ExamQuestionResponse(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     attempt: Optional[ExamAttempt] = Relationship(back_populates="responses")
+
 
 
 class UserMemoryState(SQLModel, table=True):
@@ -99,8 +129,14 @@ class UserMemoryState(SQLModel, table=True):
     fsrs_difficulty: float = Field(default=5.0)
     fsrs_stability: float = Field(default=2.0)
     retrievability: float = Field(default=1.0)
-    last_reviewed_at: datetime = Field(default_factory=datetime.utcnow)
-    next_scheduled_review: datetime = Field(default_factory=datetime.utcnow)
+    last_reviewed_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+    next_scheduled_review: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class UserSkillProfile(SQLModel, table=True):
@@ -116,7 +152,10 @@ class UserSkillProfile(SQLModel, table=True):
     cumulative_satoi: float = Field(default=85.0)
     total_tests_given: int = Field(default=0)
     total_questions_answered: int = Field(default=0)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class UserTaxonomyMastery(SQLModel, table=True):
@@ -150,4 +189,8 @@ class UserTaxonomyMastery(SQLModel, table=True):
         max_length=50,
         description="'STRONG', 'MODERATE', 'WEAK_REVISION_REQUIRED'",
     )
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+

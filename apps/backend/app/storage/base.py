@@ -34,6 +34,17 @@ class BaseStorageProvider(ABC):
         """Asynchronously checks if a file exists in storage."""
         pass
 
+    @abstractmethod
+    async def upload_json(self, data: dict, relative_destination: str) -> str:
+        """Asynchronously uploads a JSON dictionary directly into storage."""
+        pass
+
+    @abstractmethod
+    async def download_json(self, relative_path: str) -> dict:
+        """Asynchronously downloads and parses a JSON file from storage."""
+        pass
+
+
 
 # Alias for backward compatibility
 StorageProvider = BaseStorageProvider

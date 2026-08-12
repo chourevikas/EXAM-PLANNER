@@ -1,15 +1,16 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship, Index
-from app.db.models.enums import QuestionSourceType
-from app.db.models.types import DateTimeTZ
+from sqlmodel import SQLModel, Field, Relationship, Index, Column
+from app.db.models.enums import QuestionSourceType, ExamStatus
+from app.db.models.types import DateTimeTZ, PortableJSON
 
 
 class Exam(SQLModel, table=True):
     __tablename__ = "exams"
     __table_args__ = (
         Index("ix_exams_active_order", "is_active", "display_order"),
+        Index("ix_exams_status", "status"),
         Index(
             "ix_exams_canonical_match",
             "stage",
@@ -32,6 +33,10 @@ class Exam(SQLModel, table=True):
         default=QuestionSourceType.PYQ,
         index=True,
         description="Exam category: PYQ or STATIC_MOCK",
+    )
+    status: ExamStatus = Field(
+        default=ExamStatus.PENDING_HUMAN_REVIEW,
+        description="Exam review & publishing status",
     )
 
     # Standardized Filename Tokens
@@ -61,9 +66,38 @@ class Exam(SQLModel, table=True):
 
     description: Optional[str] = Field(default=None)
     pdf_path: Optional[str] = Field(default=None)
+
+    total_questions: Optional[int] = Field(
+        default=100, description="Total expected question count"
+    )
+    extracted_questions_count: int = Field(
+        default=0, description="Count of questions extracted by pipeline"
+    )
+    missing_questions_count: int = Field(
+        default=0, description="Count of missing questions"
+    )
+    missing_question_numbers_json: Optional[list] = Field(
+        default=[], sa_column=Column(PortableJSON)
+    )
+
+    questions_json_path: Optional[str] = Field(
+        default=None, description="S3 or local relative path to exam_questions.json"
+    )
+    solutions_json_path: Optional[str] = Field(
+        default=None, description="S3 or local relative path to exam_solutions.json"
+    )
+    questions_json_folder_path: Optional[str] = Field(
+        default=None, description="S3 or local folder path to questions json folder"
+    )
+    solutions_json_folder_path: Optional[str] = Field(
+        default=None, description="S3 or local folder path to solutions json folder"
+    )
+
     total_pages: Optional[int] = Field(default=None)
     display_order: int = Field(default=1)
-    is_active: bool = Field(default=True, index=True)
+    is_active: bool = Field(default=False, index=True)
+
+
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -90,7 +124,10 @@ class SyllabusVersion(SQLModel, table=True):
     exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     version_code: str = Field(max_length=50)
     title: Optional[str] = Field(default=None)
-    effective_from: datetime = Field(default_factory=datetime.utcnow)
+    effective_from: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
     is_active: bool = Field(default=True, index=True)
 
     exam: Optional[Exam] = Relationship(back_populates="syllabus_versions")

@@ -11,9 +11,9 @@ from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
     Question,
+    QuestionStatus,
     Passage,
     PassageTranslation,
-    HumanReviewTask,
 )
 from app.storage.factory import get_storage_provider
 from app.formatters.yaml_exporter import (
@@ -210,30 +210,10 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
                 )
             )
             q = q_res.first()
-            if not q:
-                continue
-
-            failure_reasons = []
-            if not q.is_complete:
-                failure_reasons.append(
-                    "Question statement/options is_complete is False"
-                )
-
-            task_res = await session.exec(
-                select(HumanReviewTask).where(HumanReviewTask.question_id == q.id)
-            )
-            existing_task = task_res.first()
-
-            if not existing_task:
-                review_task = HumanReviewTask(
-                    question_id=q.id,
-                    exam_id=exam_id,
-                    review_status="PENDING_REVIEW",
-                    is_flagged_by_validator=bool(failure_reasons),
-                    failure_reasons_json=json.dumps(failure_reasons),
-                )
-                session.add(review_task)
-                await session.commit()
+            if q:
+                q.status = QuestionStatus.PENDING_HUMAN_REVIEW
+                session.add(q)
+        await session.commit()
 
     return {}
 

@@ -387,6 +387,21 @@ class BatchQuestionRegistrar:
                         exc_info=True,
                     )
 
+        async with managed_async_session() as session:
+            exam_obj = await session.get(Exam, exam_id)
+            if exam_obj:
+                all_qs_res = await session.exec(
+                    select(Question.question_number_in_paper).where(Question.exam_id == exam_id)
+                )
+                extracted_numbers = set(all_qs_res.all())
+                tot_exp = exam_obj.total_questions or 100
+                missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
+                exam_obj.extracted_questions_count = len(extracted_numbers)
+                exam_obj.missing_questions_count = len(missing_nums)
+                exam_obj.missing_question_numbers_json = missing_nums
+                session.add(exam_obj)
+                await session.commit()
+
         logger.info(
             f"🎉 [BATCH REGISTRAR COMPLETE] Total committed: {summary.total_processed_questions}/{len(registry_items)} questions."
         )

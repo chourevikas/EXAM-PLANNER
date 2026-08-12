@@ -52,8 +52,8 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         image_url = data.get("image_url")
         
         # Check if user already exists by clerk_id or email
-        existing = await db.execute(select(User).where((User.clerk_id == clerk_id) | (User.email == email)))
-        user = existing.scalar_one_or_none()
+        existing = await db.exec(select(User).where((User.clerk_id == clerk_id) | (User.email == email)))
+        user = existing.first()
         
         if not user:
             # Create new user

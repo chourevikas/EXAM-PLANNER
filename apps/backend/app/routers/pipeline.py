@@ -9,7 +9,7 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
-from app.db.models import Exam
+from app.db.models import Exam, QuestionSourceType
 from app.services.pipeline_management_service import PipelineManagementService
 from app.services.task_registry import task_registry
 from app.storage.factory import get_storage_provider
@@ -137,37 +137,42 @@ async def check_duplicate_exam(
 async def upload_question_paper(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    exam_name: Optional[str] = Form(default=None),
-    stage: Optional[str] = Form(default=None),
-    subject_code: Optional[str] = Form(default=None),
-    year: Optional[int] = Form(default=None),
+    exam_name: Optional[str] = Form(default="UPSC"),
+    stage: Optional[str] = Form(default="prelims"),
+    exam_type: Optional[str] = Form(default="PYQ"),
+    total_questions: Optional[int] = Form(default=100),
+    year: int = Form(...),
     set_code: Optional[str] = Form(default="SET_A"),
     conflict_resolution: str = Form(default="CHECK"),
     db: AsyncSession = Depends(get_async_session),
 ):
     """
     Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction).
-    Accepts explicit metadata parameters (exam_name, stage, subject_code, year, set_code)
-    to support arbitrary filenames. Handles active task conflict confirmation and task cancellation/restart.
+    Accepts mandatory year and explicit metadata parameters (exam_name, stage, exam_type, total_questions, year, set_code).
+    Normalizes 'uspc' to 'UPSC' and defaults stage to 'prelims' and total_questions to 100 for PYQ.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400, detail="Only PDF files are supported for Question Paper processing."
         )
 
-    # 1. Extract canonical code and tokens from explicit metadata fields or filename
-    meta = parse_question_paper_filename(
-        file.filename,
-        user_set_code=set_code,
-        exam_name=exam_name,
-        stage=stage,
-        subject_code=subject_code,
-        year=year,
-    )
+    try:
+        meta = parse_question_paper_filename(
+            filename_or_code=file.filename,
+            year=year,
+            user_set_code=set_code,
+            exam_name=exam_name,
+            stage=stage,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
     canonical_exam_code = meta["canonical_code"]
     clean_set = meta["set_code"]
 
-    # 2. Check if Exam exists in DB by canonical code or name
     stmt = select(Exam).where(
         (func.lower(Exam.code) == canonical_exam_code.lower()) |
         (func.lower(Exam.name) == canonical_exam_code.lower())
@@ -175,7 +180,6 @@ async def upload_question_paper(
     res = await db.exec(stmt)
     exam = res.first()
 
-    # 3. Running Task Conflict Check & Resolution for Question Paper Pipeline (qp_{exam.id})
     if exam:
         key = f"qp_{exam.id}"
         if task_registry.is_running(key):
@@ -214,36 +218,42 @@ async def upload_question_paper(
             "message": f"Exam paper '{canonical_exam_code}' already exists in DB. Pipeline execution skipped as requested.",
         }
 
-    # Save to temp directory first
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)
 
-    # Standardized Persistent Storage Path: uploads/question_papers/{canonical}/{set}/{canonical}_{set}.pdf
     storage = get_storage_provider()
     rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{clean_set}/{canonical_exam_code}_{clean_set}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
-    # Clean up initial temp upload file in temp_uploads/ after storing persistently
     cleanup_file(temp_path)
+
+    tot_q = total_questions if total_questions is not None else 100
+    e_type_enum = QuestionSourceType.PYQ
+    if exam_type:
+        try:
+            e_type_enum = QuestionSourceType(exam_type.upper())
+        except ValueError:
+            pass
 
     if not exam:
         exam = Exam(
             code=canonical_exam_code,
-            name=canonical_exam_code,
-            stage=meta.get("stage", "PRELIMS"),
-            subject_code=meta.get("subject_code", "GENERAL"),
+            name=meta.get("exam_name", "UPSC"),
+            stage=meta.get("stage", "prelims"),
+            exam_type=e_type_enum,
+            total_questions=tot_q,
             source_year=meta.get("year", 2024),
             paper_set_code=clean_set,
             pdf_path=persistent_path,
-            canonical_question_id_prefix=canonical_exam_code,
+            is_active=False,
         )
     else:
         exam.paper_set_code = clean_set
         exam.pdf_path = persistent_path
+        exam.total_questions = tot_q
+        exam.exam_type = e_type_enum
         if meta.get("stage"):
             exam.stage = meta["stage"]
-        if meta.get("subject_code"):
-            exam.subject_code = meta["subject_code"]
         if meta.get("year"):
             exam.source_year = meta["year"]
     
@@ -255,7 +265,6 @@ async def upload_question_paper(
     task_id = f"p1_{uuid.uuid4().hex[:8]}"
     logger.info(f"Received Question Paper upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Set: '{clean_set}', Exam ID: '{target_exam_id}'")
 
-    # Record Pipeline 1 initialization in Database
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
         exam_id=target_exam_id,
@@ -285,6 +294,7 @@ async def upload_question_paper(
         "exam_id": str(target_exam_id),
         "canonical_exam_code": canonical_exam_code,
         "set_code": clean_set,
+        "total_questions": tot_q,
         "task_id": task_id,
         "filename": file.filename,
         "message": "Question paper extraction pipeline has started.",
@@ -295,31 +305,36 @@ async def upload_question_paper(
 async def upload_answer_key(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    exam_name: Optional[str] = Form(default=None),
-    stage: Optional[str] = Form(default=None),
-    subject_code: Optional[str] = Form(default=None),
-    year: Optional[int] = Form(default=None),
+    exam_name: Optional[str] = Form(default="UPSC"),
+    stage: Optional[str] = Form(default="prelims"),
+    exam_type: Optional[str] = Form(default="PYQ"),
+    total_questions: Optional[int] = Form(default=100),
+    year: int = Form(...),
     conflict_resolution: str = Form(default="CHECK"),
     db: AsyncSession = Depends(get_async_session),
 ):
     """
     Uploads an Answer Key PDF and initiates Pipeline 2.
-    Accepts explicit metadata fields or falls back to filename stem.
-    Handles active task conflict confirmation and task cancellation/restart.
+    Accepts mandatory year and explicit metadata fields or falls back to filename stem.
+    Normalizes 'uspc' to 'UPSC' and defaults stage to 'prelims'.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
 
-    meta = parse_answer_key_filename(
-        file.filename,
-        exam_name=exam_name,
-        stage=stage,
-        subject_code=subject_code,
-        year=year,
-    )
+    try:
+        meta = parse_answer_key_filename(
+            filename_or_code=file.filename,
+            year=year,
+            exam_name=exam_name,
+            stage=stage,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     canonical_exam_code = meta["canonical_code"]
 
-    # Search for matching Exam by code or name
     stmt = select(Exam).where(
         (func.lower(Exam.code) == canonical_exam_code.lower()) |
         (func.lower(Exam.name) == canonical_exam_code.lower())
@@ -327,7 +342,6 @@ async def upload_answer_key(
     res = await db.exec(stmt)
     exam = res.first()
 
-    # Task conflict check & resolution for Answer Key Pipeline (ak_{exam.id})
     if exam:
         key = f"ak_{exam.id}"
         if task_registry.is_running(key):
@@ -360,28 +374,38 @@ async def upload_answer_key(
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)
 
-    # Standardized Persistent Storage Path: uploads/answer_keys/{canonical}/{canonical}.pdf
     storage = get_storage_provider()
     rel_storage_path = f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
-    # Clean up initial temp upload file in temp_uploads/ after storing persistently
     cleanup_file(temp_path)
+
+    tot_q = total_questions if total_questions is not None else 100
+    e_type_enum = QuestionSourceType.PYQ
+    if exam_type:
+        try:
+            e_type_enum = QuestionSourceType(exam_type.upper())
+        except ValueError:
+            pass
 
     if not exam:
         exam = Exam(
             code=canonical_exam_code,
-            name=canonical_exam_code,
-            stage=meta.get("stage", "PRELIMS"),
-            subject_code=meta.get("subject_code", "GENERAL"),
+            name=meta.get("exam_name", "UPSC"),
+            stage=meta.get("stage", "prelims"),
+            exam_type=e_type_enum,
+            total_questions=tot_q,
             source_year=meta.get("year", 2024),
             paper_set_code="SET_A",
             pdf_path=persistent_path,
-            canonical_question_id_prefix=canonical_exam_code,
+            is_active=False,
         )
         db.add(exam)
         await db.commit()
         await db.refresh(exam)
+    else:
+        if total_questions is not None:
+            exam.total_questions = tot_q
 
     target_exam_id = exam.id
     target_set_code = exam.paper_set_code or "SET_A"
@@ -426,6 +450,102 @@ async def upload_answer_key(
         "target_set_code": target_set_code,
         "message": "Answer key pipeline started. Pipeline 3 will run automatically upon completion.",
     }
+
+
+@router.get("/questions-status/{exam_identifier}")
+async def get_exam_questions_extraction_status(
+    exam_identifier: str,
+    db: AsyncSession = Depends(get_async_session),
+):
+    """
+    Fetches real-time status of extracted questions, missing questions, and review statuses
+    for frontend display. Accepts canonical_exam_code or exam_id UUID.
+    """
+    exam_uuid = None
+    try:
+        exam_uuid = uuid.UUID(exam_identifier)
+    except ValueError:
+        pass
+
+    if exam_uuid:
+        target_exam = await db.get(Exam, exam_uuid)
+    else:
+        stmt = select(Exam).where(
+            (func.lower(Exam.code) == exam_identifier.lower()) |
+            (func.lower(Exam.name) == exam_identifier.lower())
+        )
+        res = await db.exec(stmt)
+        target_exam = res.first()
+
+    if not target_exam:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Exam with identifier '{exam_identifier}' not found in database."
+        )
+
+    from app.db.models import Question, QuestionExplanation, QuestionOption, QuestionStatus
+    q_stmt = (
+        select(Question)
+        .where(Question.exam_id == target_exam.id)
+        .order_by(Question.question_number_in_paper)
+    )
+    q_res = await db.exec(q_stmt)
+    questions = q_res.all()
+
+    extracted_numbers = set()
+    pending_count = 0
+    published_count = 0
+    questions_checklist = []
+
+    for q in questions:
+        extracted_numbers.add(q.question_number_in_paper)
+        if q.status == QuestionStatus.PENDING_HUMAN_REVIEW:
+            pending_count += 1
+        elif q.status == QuestionStatus.PUBLISHED:
+            published_count += 1
+
+        exp_stmt = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+        exp_res = await db.exec(exp_stmt)
+        has_exp = exp_res.first() is not None
+
+        opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
+        opt_res = await db.exec(opt_stmt)
+        has_opts = len(opt_res.all()) > 0
+
+        questions_checklist.append({
+            "question_id": str(q.id),
+            "question_number": q.question_number_in_paper,
+            "status": q.status.value if hasattr(q.status, "value") else str(q.status),
+            "is_complete": q.is_complete,
+            "has_options": has_opts,
+            "has_explanation": has_exp,
+        })
+
+    tot_expected = target_exam.total_questions or 100
+    missing_numbers = [num for num in range(1, tot_expected + 1) if num not in extracted_numbers]
+
+    target_exam.extracted_questions_count = len(questions)
+    target_exam.missing_questions_count = len(missing_numbers)
+    target_exam.missing_question_numbers_json = missing_numbers
+    db.add(target_exam)
+    await db.commit()
+
+    return {
+        "exam_id": str(target_exam.id),
+        "exam_code": target_exam.code,
+        "exam_name": target_exam.name,
+        "status": target_exam.status.value if hasattr(target_exam.status, "value") else str(target_exam.status),
+        "is_active": target_exam.is_active,
+        "total_questions": tot_expected,
+        "extracted_questions_count": len(questions),
+        "missing_questions_count": len(missing_numbers),
+        "missing_question_numbers": missing_numbers,
+        "pending_human_review_count": pending_count,
+        "published_questions_count": published_count,
+        "is_ready_for_approval": len(missing_numbers) == 0 and len(questions) > 0,
+        "questions": questions_checklist,
+    }
+
 
 
 @router.get("/status/{exam_identifier}")

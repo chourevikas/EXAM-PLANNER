@@ -34,12 +34,39 @@ from app.engine.matrices.integrated_cognitive_readiness import (
 
 
 async def compile_comprehensive_psychometric_report(
-    session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID
+    session: AsyncSession,
+    user_id: Optional[uuid.UUID] = None,
+    exam_id: Optional[uuid.UUID] = None,
+    attempt_id: Optional[uuid.UUID] = None,
 ) -> Dict[str, Any]:
     """
-    Compiles a comprehensive, question-wise diagnostic report containing meaningful names,
-    field descriptions, item-level analytics, candidate cumulative skill profile, and taxonomy mappings.
+    Compiles or retrieves a comprehensive 3-part psychometric diagnostic report.
+    Supports querying directly by `attempt_id` or by (`user_id`, `exam_id`).
     """
+    attempt: Optional[ExamAttempt] = None
+
+    if attempt_id:
+        attempt = await session.get(ExamAttempt, attempt_id)
+        if not attempt:
+            raise ValueError(f"Exam attempt with ID '{attempt_id}' not found.")
+        user_id = attempt.user_id
+        exam_id = attempt.exam_id
+    elif user_id and exam_id:
+        att_res = await session.exec(
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
+            .order_by(col(ExamAttempt.created_at).desc())
+        )
+        attempt = att_res.first()
+        if not attempt:
+            raise ValueError(f"No attempt found for User '{user_id}' on Exam '{exam_id}'.")
+    else:
+        raise ValueError("Must provide either attempt_id or both user_id and exam_id.")
+
+    # Return cached report from attempt.report_metadata_json if available
+    if attempt.report_metadata_json:
+        return attempt.report_metadata_json
+
     user = await session.get(User, user_id)
     if not user:
         raise ValueError(f"User with ID '{user_id}' not found.")
@@ -48,16 +75,6 @@ async def compile_comprehensive_psychometric_report(
     if not exam:
         raise ValueError(f"Exam with ID '{exam_id}' not found.")
 
-    att_res = await session.exec(
-        select(ExamAttempt)
-        .where(ExamAttempt.user_id == user_id, ExamAttempt.exam_id == exam_id)
-        .order_by(col(ExamAttempt.created_at).desc())
-    )
-    attempt = att_res.first()
-    if not attempt:
-        raise ValueError(
-            f"No attempt found for User '{user.full_name}' on Exam '{exam.name}'."
-        )
 
     resp_res = await session.exec(
         select(ExamQuestionResponse).where(

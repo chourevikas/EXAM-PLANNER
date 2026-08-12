@@ -63,23 +63,26 @@ class UserRepository:
             role=role,
             status=status,
         )
+        user_id = new_user.id
         self.session.add(new_user)
         await self.session.commit()
-        await self.session.refresh(new_user)
 
         if role == UserRole.STUDENT:
-            student_prof = StudentProfile(user_id=new_user.id)
+            student_prof = StudentProfile(user_id=user_id)
             self.session.add(student_prof)
         elif role == UserRole.ADMIN:
             admin_prof = AdminProfile(
-                user_id=new_user.id,
+                user_id=user_id,
                 organization_name=organization_name,
                 department=department,
             )
             self.session.add(admin_prof)
 
         await self.session.commit()
-        return await self.get_by_id(new_user.id)
+        user_obj = await self.get_by_id(user_id)
+        if user_obj:
+            await self.session.refresh(user_obj)
+        return user_obj
 
     async def get_pending_admins(self) -> List[User]:
         stmt = (

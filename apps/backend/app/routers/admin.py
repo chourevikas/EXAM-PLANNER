@@ -1,3 +1,4 @@
+import uuid
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,13 @@ from app.schemas.auth import (
     AdminApprovalLogOut,
     SystemStatsOut,
 )
+from app.schemas.question import (
+    QuestionDetailResponse,
+    QuestionUpdatePayload,
+    QuestionCreatePayload,
+)
 from app.services.admin_service import AdminService
+from app.services.question_service import QuestionService
 from app.core.deps import require_roles
 
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
@@ -96,3 +103,110 @@ async def get_system_diagnostics(
 ):
     service = AdminService(session)
     return await service.get_system_diagnostics()
+
+
+@router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
+async def approve_and_publish_exam(
+    exam_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Requirement 9, 10 & 11: Admin approves the exam paper after human review.
+    1. Triggers automatic generation of questions JSON and solutions JSON.
+    2. Uploads individual question and solution JSONs to S3 folder paths.
+    3. Saves questions_json_folder_path and solutions_json_folder_path on Exam DB record.
+    4. Sets Exam.status = PUBLISHED and Exam.is_active = True.
+    """
+    import uuid
+    from fastapi import HTTPException
+    from app.db.models import Exam, ExamStatus, Question
+    from app.services.exam_json_builder import ExamJsonBuilder
+    from sqlmodel import select
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    q_res = await session.exec(select(Question).where(Question.exam_id == exam_uuid))
+    questions = q_res.all()
+
+    if not questions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"EXAM_CANNOT_BE_APPROVED: Exam '{exam.code}' has no extracted questions."
+        )
+
+    # 1 & 2. Generate JSON files and upload to S3 folder paths
+    builder = ExamJsonBuilder(session)
+    json_paths = await builder.generate_and_upload(exam_uuid)
+
+    # 3 & 4. Mark exam status as PUBLISHED and is_active as True
+    exam.status = ExamStatus.PUBLISHED
+    exam.is_active = True
+    session.add(exam)
+    await session.commit()
+    await session.refresh(exam)
+
+    return {
+        "status": "APPROVED_AND_PUBLISHED",
+        "exam_id": str(exam.id),
+        "exam_code": exam.code,
+        "exam_status": exam.status.value if hasattr(exam.status, "value") else str(exam.status),
+        "is_active": exam.is_active,
+        "questions_count": len(questions),
+        "questions_json_path": exam.questions_json_path,
+        "solutions_json_path": exam.solutions_json_path,
+        "questions_json_folder_path": exam.questions_json_folder_path,
+        "solutions_json_folder_path": exam.solutions_json_folder_path,
+        "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
+    }
+
+
+@router.post("/questions", response_model=QuestionDetailResponse, status_code=201, summary="Admin Create or Fill Missing Question")
+async def admin_create_question(
+    payload: QuestionCreatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to create a new question or fill in a missing question for an exam.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.create_question(payload=payload)
+
+
+@router.put("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Update Question")
+async def admin_update_question(
+    question_id: uuid.UUID,
+    payload: QuestionUpdatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to update question details.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.update_question_detail(question_id=question_id, payload=payload)
+
+
+@router.patch("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Partial Update Question")
+async def admin_patch_question(
+    question_id: uuid.UUID,
+    payload: QuestionUpdatePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Admin endpoint to partially update question details.
+    Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
+    """
+    service = QuestionService(session)
+    return await service.update_question_detail(question_id=question_id, payload=payload)

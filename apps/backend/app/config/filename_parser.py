@@ -2,37 +2,62 @@ import re
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
 
-# Question Paper Filename Pattern: exam_name-stage-subject-year-set
-# Example: "upsc_cse-prelims-gs1-2023-A" or "upsc_cse-prelims-gs1-2023-A.pdf"
 QP_FILENAME_REGEX = re.compile(
     r"^([a-zA-Z0-9_]+)-([a-zA-Z0-9_]+)-([a-zA-Z0-9_]+)-(\d{4})-([a-zA-Z0-9_]+)(?:\.[a-zA-Z0-9]+)?$"
 )
 
-# Answer Key Filename Pattern: exam_name-stage-subject-year
-# Example: "upsc_cse-prelims-gs1-2023" or "upsc_cse-prelims-gs1-2023.pdf"
 AK_FILENAME_REGEX = re.compile(
     r"^([a-zA-Z0-9_]+)-([a-zA-Z0-9_]+)-([a-zA-Z0-9_]+)-(\d{4})(?:\.[a-zA-Z0-9]+)?$"
 )
 
 
+def _normalize_exam_name(exam_name: Optional[str], default: str = "UPSC") -> str:
+    if not exam_name:
+        return default
+    cleaned = str(exam_name).strip()
+    if cleaned.upper() in ("USPC", "UPSC"):
+        return "UPSC"
+    return cleaned.upper()
+
+
+def _validate_year(year: Union[int, str]) -> int:
+    if year is None or str(year).strip() == "":
+        raise ValueError("Year parameter is mandatory.")
+    try:
+        val = int(year)
+        if 1900 <= val <= 2100:
+            return val
+        raise ValueError(f"Year out of valid range (1900-2100): {val}")
+    except (ValueError, TypeError):
+        raise ValueError(f"Invalid year value provided: '{year}'. Year must be a 4-digit integer.")
+
+
 def parse_question_paper_filename(
     filename_or_code: str,
+    year: Optional[Union[int, str]] = None,
     user_set_code: Optional[str] = None,
     exam_name: Optional[str] = None,
     stage: Optional[str] = None,
     subject_code: Optional[str] = None,
-    year: Optional[Union[int, str]] = None,
 ) -> Dict[str, Any]:
     """
-    Parses Question Paper filename or code. Accepts explicit 5 metadata fields
-    (exam_name, stage, subject_code, year, set_code) to support arbitrary user filenames,
-    or falls back to 5-token filename pattern / custom stem parsing.
+    Parses Question Paper filename or code. Accepts mandatory year metadata parameter.
+    Normalizes 'uspc' typo to 'UPSC' and defaults stage to 'prelims'.
+    Does not attempt regex year extraction from filename; uses mandatory year argument.
     """
+
+    if year is None:
+        raise ValueError("Year parameter is mandatory for Question Paper filenames.")
+    
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
     stem = Path(normalized_path).stem.strip()
 
-    # Normalize user-provided set_code if passed
+    norm_year = _validate_year(year)
+    norm_exam_name = _normalize_exam_name(exam_name, default="UPSC")
+    norm_stage = str(stage).strip() if stage else "PRELIMS"
+    norm_subj = str(subject_code).strip().upper() if subject_code else "GS1"
+
     final_set_code = "SET_A"
     raw_set_token = "A"
     if user_set_code:
@@ -47,49 +72,33 @@ def parse_question_paper_filename(
             final_set_code = f"SET_{u_set}"
             raw_set_token = u_set
 
-    # 1. Direct explicit metadata parameters passed in request
-    if exam_name and stage and subject_code and year:
-        e_name = str(exam_name).strip().upper()
-        stg = str(stage).strip().upper()
-        subj = str(subject_code).strip().upper()
-        yr = int(year)
-        canonical_code = f"{e_name.lower()}-{stg.lower()}-{subj.lower()}-{yr}"
-        return {
-            "exam_name": e_name,
-            "stage": stg,
-            "subject_code": subj,
-            "year": yr,
-            "set_code": final_set_code,
-            "raw_set_token": raw_set_token,
-            "canonical_code": canonical_code,
-        }
-
-    # 2. Regex matching 5-token filename pattern
+    # 1. Regex matching 5-token filename pattern for exam_name, stage, subject, set
     match = QP_FILENAME_REGEX.match(clean_filename)
     if match:
-        m_exam_name, m_stage, m_subject_code, year_str, set_token = match.groups()
+        m_exam_name, m_stage, m_subject_code, fn_year_str, set_token = match.groups()
         set_code = set_token.upper()
         if not set_code.startswith("SET_"):
             set_code = f"SET_{set_code}"
 
-        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{year_str}"
+        parsed_exam = _normalize_exam_name(m_exam_name)
+        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}"
         return {
-            "exam_name": m_exam_name.upper(),
-            "stage": m_stage.upper(),
-            "subject_code": m_subject_code.upper(),
-            "year": int(year_str),
-            "set_code": set_code,
-            "raw_set_token": set_token.upper(),
+            "exam_name": parsed_exam if not exam_name else norm_exam_name,
+            "stage": m_stage.upper() if not stage else norm_stage.upper(),
+            "subject_code": m_subject_code.upper() if not subject_code else norm_subj,
+            "year": norm_year,
+            "set_code": set_code if not user_set_code else final_set_code,
+            "raw_set_token": set_token.upper() if not user_set_code else raw_set_token,
             "canonical_code": canonical_code,
         }
 
-    # 3. Flexible Fallback for arbitrary custom filenames
-    canonical_code = stem.lower().replace("_", "-")
+    # 2. Canonical code from explicit or normalized metadata
+    canonical_code = f"{norm_exam_name.lower()}-{norm_stage.lower()}-{norm_subj.lower()}-{norm_year}"
     return {
-        "exam_name": stem.upper(),
-        "stage": "PRELIMS",
-        "subject_code": "GENERAL",
-        "year": 2024,
+        "exam_name": norm_exam_name,
+        "stage": norm_stage.upper(),
+        "subject_code": norm_subj,
+        "year": norm_year,
         "set_code": final_set_code,
         "raw_set_token": raw_set_token,
         "canonical_code": canonical_code,
@@ -98,57 +107,44 @@ def parse_question_paper_filename(
 
 def parse_answer_key_filename(
     filename_or_code: str,
+    year: Optional[Union[int, str]] = None,
     exam_name: Optional[str] = None,
     stage: Optional[str] = None,
     subject_code: Optional[str] = None,
-    year: Optional[Union[int, str]] = None,
 ) -> Dict[str, Any]:
     """
-    Parses Answer Key filename or code. Accepts explicit metadata parameters
-    or falls back to 4-token pattern / custom stem parsing.
+    Parses Answer Key filename or code. Requires mandatory year metadata parameter.
+    Does not attempt regex year extraction from filename; uses mandatory year argument.
     """
+    if year is None:
+        raise ValueError("Year parameter is mandatory for Answer Key filenames.")
     normalized_path = str(filename_or_code).replace("\\", "/")
     clean_filename = Path(normalized_path).name
     stem = Path(normalized_path).stem.strip()
 
-    # 1. Direct explicit metadata parameters
-    if exam_name and stage and subject_code and year:
-        e_name = str(exam_name).strip().upper()
-        stg = str(stage).strip().upper()
-        subj = str(subject_code).strip().upper()
-        yr = int(year)
-        canonical_code = f"{e_name.lower()}-{stg.lower()}-{subj.lower()}-{yr}"
-        return {
-            "exam_name": e_name,
-            "stage": stg,
-            "subject_code": subj,
-            "year": yr,
-            "canonical_code": canonical_code,
-        }
+    norm_year = _validate_year(year)
+    norm_exam_name = _normalize_exam_name(exam_name, default="UPSC")
+    norm_stage = str(stage).strip() if stage else "PRELIMS"
+    norm_subj = str(subject_code).strip().upper() if subject_code else "GS1"
 
-    # 2. Regex matching 4-token filename pattern
     match = AK_FILENAME_REGEX.match(clean_filename)
     if match:
-        m_exam_name, m_stage, m_subject_code, year_str = match.groups()
-        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{year_str}"
+        m_exam_name, m_stage, m_subject_code, fn_year_str = match.groups()
+        parsed_exam = _normalize_exam_name(m_exam_name)
+        canonical_code = f"{m_exam_name.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}"
         return {
-            "exam_name": m_exam_name.upper(),
-            "stage": m_stage.upper(),
-            "subject_code": m_subject_code.upper(),
-            "year": int(year_str),
+            "exam_name": parsed_exam if not exam_name else norm_exam_name,
+            "stage": m_stage.upper() if not stage else norm_stage.upper(),
+            "subject_code": m_subject_code.upper() if not subject_code else norm_subj,
+            "year": norm_year,
             "canonical_code": canonical_code,
         }
 
-    # 3. Flexible Fallback for custom answer key filenames
-    canonical_code = stem.lower().replace("_", "-")
-    for suffix in ["-answer-key", "-answerkey", "-ak"]:
-        if canonical_code.endswith(suffix):
-            canonical_code = canonical_code[:-len(suffix)]
-
+    canonical_code = f"{norm_exam_name.lower()}-{norm_stage.lower()}-{norm_subj.lower()}-{norm_year}"
     return {
-        "exam_name": stem.upper(),
-        "stage": "PRELIMS",
-        "subject_code": "GENERAL",
-        "year": 2024,
+        "exam_name": norm_exam_name,
+        "stage": norm_stage.upper(),
+        "subject_code": norm_subj,
+        "year": norm_year,
         "canonical_code": canonical_code,
     }
