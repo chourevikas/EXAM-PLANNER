@@ -1,19 +1,22 @@
 import json
 import uuid
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
     User,
     Exam,
+    Question,
     Subtopic,
     ExamAttempt,
     ExamQuestionResponse,
     UserMemoryState,
+    UserConceptRetention,
     UserSkillProfile,
     UserTaxonomyMastery,
+    StudyTask,
 )
 from app.db.models.enums import AttemptStatus
 from app.engine.matrix_orchestrator import MatrixOrchestrator
@@ -202,7 +205,113 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
                 m_obj.mastery_percentage = round((m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100.0, 1)
                 m_obj.strength_status = "STRONG" if m_obj.mastery_percentage >= 75.0 else ("MODERATE" if m_obj.mastery_percentage >= 50.0 else "WEAK_REVISION_REQUIRED")
                 m_obj.updated_at = datetime.now(timezone.utc)
-            session.add(m_obj)
+        await session.commit()
+
+        # 7b. Upsert FSRS UserMemoryState & UserConceptRetention
+        now_t = datetime.now(timezone.utc)
+        for resp in responses_db:
+            q_obj = await session.get(Question, resp.question_id)
+            if not q_obj:
+                continue
+
+            is_corr = resp.is_correct or False
+            mem_stmt = select(UserMemoryState).where(
+                UserMemoryState.user_id == user.id,
+                UserMemoryState.question_id == resp.question_id,
+            )
+            mem_res = await session.exec(mem_stmt)
+            mem_obj = mem_res.first()
+
+            if not mem_obj:
+                diff = 5.0 if not is_corr else 3.5
+                stab = 1.0 if not is_corr else 3.0
+                ret = 0.4 if not is_corr else 1.0
+                mem_obj = UserMemoryState(
+                    user_id=user.id,
+                    question_id=resp.question_id,
+                    subtopic_id=q_obj.subtopic_id,
+                    fsrs_difficulty=diff,
+                    fsrs_stability=stab,
+                    retrievability=ret,
+                    last_reviewed_at=now_t,
+                    next_scheduled_review=now_t + timedelta(days=max(1, int(stab))),
+                )
+                session.add(mem_obj)
+            else:
+                if is_corr:
+                    mem_obj.fsrs_stability = round(mem_obj.fsrs_stability * 1.5, 2)
+                    mem_obj.fsrs_difficulty = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
+                    mem_obj.retrievability = 1.0
+                else:
+                    mem_obj.fsrs_stability = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
+                    mem_obj.fsrs_difficulty = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
+                    mem_obj.retrievability = 0.4
+                mem_obj.last_reviewed_at = now_t
+                mem_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
+                session.add(mem_obj)
+
+            if q_obj.subtopic_id:
+                ret_stmt = select(UserConceptRetention).where(
+                    UserConceptRetention.user_id == user.id,
+                    UserConceptRetention.subtopic_id == q_obj.subtopic_id,
+                )
+                ret_res = await session.exec(ret_stmt)
+                ret_obj = ret_res.first()
+                if not ret_obj:
+                    ret_obj = UserConceptRetention(
+                        user_id=user.id,
+                        subtopic_id=q_obj.subtopic_id,
+                        fsrs_difficulty=mem_obj.fsrs_difficulty,
+                        fsrs_stability=mem_obj.fsrs_stability,
+                        fsrs_retrievability=mem_obj.retrievability,
+                        total_reviews=1,
+                        lapses=0 if is_corr else 1,
+                        last_reviewed_at=now_t,
+                        next_scheduled_review=now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability))),
+                    )
+                else:
+                    ret_obj.total_reviews += 1
+                    if not is_corr:
+                        ret_obj.lapses += 1
+                    ret_obj.fsrs_difficulty = mem_obj.fsrs_difficulty
+                    ret_obj.fsrs_stability = mem_obj.fsrs_stability
+                    ret_obj.fsrs_retrievability = mem_obj.retrievability
+                    ret_obj.last_reviewed_at = now_t
+                    ret_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
+                session.add(ret_obj)
+
+        # 7c. Award Gamification Badges & XP
+        try:
+            from app.services.gamification_service import GamificationService
+            g_service = GamificationService(session)
+            await g_service.award_badge_if_eligible(user.id, "first_test_completed")
+            if attempt.total_score and attempt.max_possible_score and attempt.total_score >= (attempt.max_possible_score * 0.75):
+                await g_service.award_badge_if_eligible(user.id, "high_score_achiever")
+            await g_service.award_xp_for_activity(user.id, "test_completion", xp_amount=150)
+        except Exception as badge_err:
+            logger.warning(f"Gamification badge processing error: {badge_err}")
+
+        # 7d. Create Revision Tasks for Weak Topics
+        for tax_type, item in all_tax_items:
+            if item.get("strength_status") == "WEAK_REVISION_REQUIRED":
+                t_name = item.get("taxonomy_name")
+                st_stmt = select(StudyTask).where(
+                    StudyTask.user_id == user.id,
+                    StudyTask.title == f"Revision: {t_name}",
+                    StudyTask.is_completed == False,
+                )
+                st_res = await session.exec(st_stmt)
+                if not st_res.first():
+                    task = StudyTask(
+                        user_id=user.id,
+                        title=f"Revision: {t_name}",
+                        description=f"Automated revision task generated from weak area performance ({item.get('accuracy_percentage')}% accuracy) on {exam.name}.",
+                        task_type="WEAK_AREA_REVISION",
+                        priority="HIGH",
+                        estimated_minutes=45,
+                        due_date=now_t + timedelta(days=3),
+                    )
+                    session.add(task)
 
         await session.commit()
 
