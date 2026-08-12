@@ -454,6 +454,7 @@ class BatchQuestionRegistrar:
                             exc_info=True,
                         )
 
+            total_translations_count = 0
             async with managed_async_session() as session:
                 exam_obj = await session.get(Exam, exam_id)
                 if exam_obj:
@@ -467,9 +468,16 @@ class BatchQuestionRegistrar:
                     exam_obj.missing_questions_count = len(missing_nums)
                     exam_obj.missing_question_numbers_json = missing_nums
                     session.add(exam_obj)
+
+                    from sqlmodel import col
+                    q_ids_stmt = select(Question.id).where(Question.exam_id == exam_id)
+                    q_trans_res = await session.exec(
+                        select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids_stmt))
+                    )
+                    total_translations_count = len(q_trans_res.all())
                     await session.commit()
 
             logger.info(
-                f"🎉 [BATCH REGISTRAR COMPLETE] Total committed: {summary.total_processed_questions}/{len(registry_items)} questions."
+                f"🎉 [BATCH REGISTRAR COMPLETE] Total committed: {summary.total_processed_questions} canonical question(s) ({total_translations_count} question translations across languages in DB)."
             )
             return summary
