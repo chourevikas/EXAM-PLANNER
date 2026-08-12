@@ -54,115 +54,168 @@ def calculate_question_expected_time(
     return min(max(base_seconds, 30), 180)
 
 
+def _merge_question_item_into_registry(
+    question_registry: dict, target_key: Tuple[str, int], p_num: int, q_item: Any
+):
+    """Helper to merge an unnumbered fragment or continuation item into an existing question record."""
+    if p_num not in question_registry[target_key]["page_numbers"]:
+        question_registry[target_key]["page_numbers"].append(p_num)
+    question_registry[target_key]["assets"].extend(q_item.assets)
+
+    for t in q_item.translations:
+        lang = t.language.value if hasattr(t.language, "value") else str(t.language)
+        if lang in question_registry[target_key]["translations"]:
+            if (
+                t.question_text
+                and t.question_text not in question_registry[target_key]["translations"][lang]["text"]
+            ):
+                question_registry[target_key]["translations"][lang]["text"] += "\n" + t.question_text
+            existing_opts = question_registry[target_key]["translations"][lang]["options"]
+            for new_opt in t.options:
+                if not any(o.display_order == new_opt.display_order for o in existing_opts):
+                    existing_opts.append(new_opt)
+        else:
+            question_registry[target_key]["translations"][lang] = {
+                "text": t.question_text,
+                "context": t.parent_context_override or "",
+                "options": t.options,
+            }
+
+
 def build_question_registry(
     results: List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]],
 ) -> Dict[Tuple[str, int], dict]:
     """
     Aggregates per-page extracted questions into a unified Question Registry,
-    handling cross-page continuation fragments and translation merging.
+    handling cross-page continuation fragments, translation merging, and sequence lookahead.
     """
     question_registry: Dict[Tuple[str, int], dict] = {}
 
-    for p_num, payload, err in results:
-        if not payload:
+    all_extracted_items: List[Tuple[int, Any]] = []
+    for p_num, payload, err in sorted(results, key=lambda x: x[0]):
+        if not payload or not payload.extracted_questions:
             continue
-
         for q_item in payload.extracted_questions:
-            sec_code = q_item.section_code or "DEFAULT"
-            q_num = q_item.printed_question_number
+            all_extracted_items.append((p_num, q_item))
 
-            # Continuation Fragment Stitching
-            if (
-                q_item.is_continuation_fragment
-                and q_item.target_parent_question_number is not None
-            ):
-                parent_sec = q_item.target_parent_section_code or sec_code
-                parent_q = q_item.target_parent_question_number
-                target_key = (parent_sec, parent_q)
+    num_items = len(all_extracted_items)
 
-                if target_key in question_registry:
-                    if p_num not in question_registry[target_key]["page_numbers"]:
-                        question_registry[target_key]["page_numbers"].append(p_num)
+    for idx, (p_num, q_item) in enumerate(all_extracted_items):
+        sec_code = q_item.section_code or "DEFAULT"
+        q_num = q_item.printed_question_number
 
-                    for t in q_item.translations:
-                        lang = (
-                            t.language.value
-                            if hasattr(t.language, "value")
-                            else str(t.language)
-                        )
-                        if lang in question_registry[target_key]["translations"]:
-                            if (
-                                t.question_text
-                                and t.question_text
-                                not in question_registry[target_key]["translations"][
-                                    lang
-                                ]["text"]
-                            ):
-                                question_registry[target_key]["translations"][lang][
-                                    "text"
-                                ] += "\n" + t.question_text
-                            existing_opts = question_registry[target_key][
-                                "translations"
-                            ][lang]["options"]
-                            for new_opt in t.options:
-                                if not any(
-                                    o.display_order == new_opt.display_order
-                                    for o in existing_opts
-                                ):
-                                    existing_opts.append(new_opt)
-                    continue
+        # 1. Continuation Fragment Stitching: merge if q_num matches target_parent_question_number
+        if (
+            q_item.is_continuation_fragment
+            and q_item.target_parent_question_number is not None
+            and (q_num is None or q_num == q_item.target_parent_question_number)
+        ):
+            parent_sec = q_item.target_parent_section_code or sec_code
+            parent_q = q_item.target_parent_question_number
+            target_key = (parent_sec, parent_q)
 
-            if q_num is None:
+            if target_key in question_registry:
+                _merge_question_item_into_registry(question_registry, target_key, p_num, q_item)
                 continue
 
-            composite_key = (sec_code, q_num)
-            if composite_key not in question_registry:
-                question_registry[composite_key] = {
-                    "section_code": sec_code,
-                    "printed_question_number": q_num,
-                    "question_type": q_item.question_type.value,
-                    "is_complete": q_item.is_complete,
-                    "has_image": q_item.has_image_or_complex_layout,
-                    "page_numbers": [p_num],
-                    "assets": list(q_item.assets),
-                    "translations": {},
+        # 2. Sequence Lookahead for Unnumbered Fragment (q_num is None)
+        if q_num is None:
+            last_known_q_num = None
+            for prev_idx in range(idx - 1, -1, -1):
+                if all_extracted_items[prev_idx][1].printed_question_number is not None:
+                    last_known_q_num = all_extracted_items[prev_idx][1].printed_question_number
+                    break
+
+            next_known_q_num = None
+            for next_idx in range(idx + 1, num_items):
+                if all_extracted_items[next_idx][1].printed_question_number is not None:
+                    next_known_q_num = all_extracted_items[next_idx][1].printed_question_number
+                    break
+
+            if last_known_q_num is not None and next_known_q_num is not None:
+                # If next question is last_known + 1 (e.g. Q50 -> unnumbered fragment -> Q51),
+                # this unnumbered fragment belongs to Q50!
+                if next_known_q_num == last_known_q_num + 1:
+                    target_key = (sec_code, last_known_q_num)
+                    if target_key in question_registry:
+                        logger.info(
+                            f"🔄 [SEQUENCE LOOKAHEAD MERGE] Page {p_num} unnumbered fragment merged into Q#{last_known_q_num} "
+                            f"(since next question is Q#{next_known_q_num})."
+                        )
+                        _merge_question_item_into_registry(question_registry, target_key, p_num, q_item)
+                        continue
+                    else:
+                        q_num = last_known_q_num
+                else:
+                    # Next question is e.g. Q52 (where last was Q50), so this item is missing Q51!
+                    q_num = last_known_q_num + 1
+                    logger.warning(
+                        f"⚠️ Page {p_num} unnumbered item between Q#{last_known_q_num} and Q#{next_known_q_num}. "
+                        f"Auto-assigned Q#{q_num}."
+                    )
+            elif last_known_q_num is not None:
+                target_key = (sec_code, last_known_q_num)
+                if not q_item.is_complete and target_key in question_registry:
+                    logger.info(
+                        f"🔄 [END-OF-DOC MERGE] Page {p_num} uncomplete unnumbered fragment merged into Q#{last_known_q_num}."
+                    )
+                    _merge_question_item_into_registry(question_registry, target_key, p_num, q_item)
+                    continue
+                else:
+                    q_num = last_known_q_num + 1
+            else:
+                existing_nums = [k[1] for k in question_registry.keys() if isinstance(k[1], int)]
+                q_num = (max(existing_nums) + 1) if existing_nums else 1
+
+        composite_key = (sec_code, q_num)
+        if composite_key not in question_registry:
+            question_registry[composite_key] = {
+                "section_code": sec_code,
+                "printed_question_number": q_num,
+                "question_type": q_item.question_type.value,
+                "is_complete": q_item.is_complete,
+                "has_image": q_item.has_image_or_complex_layout,
+                "page_numbers": [p_num],
+                "assets": list(q_item.assets),
+                "translations": {},
+            }
+        else:
+            if p_num not in question_registry[composite_key]["page_numbers"]:
+                question_registry[composite_key]["page_numbers"].append(p_num)
+            question_registry[composite_key]["assets"].extend(q_item.assets)
+
+        for t in q_item.translations:
+            lang = (
+                t.language.value
+                if hasattr(t.language, "value")
+                else str(t.language)
+            )
+            if lang not in question_registry[composite_key]["translations"]:
+                question_registry[composite_key]["translations"][lang] = {
+                    "text": t.question_text,
+                    "context": t.parent_context_override or "",
+                    "options": t.options,
                 }
             else:
-                if p_num not in question_registry[composite_key]["page_numbers"]:
-                    question_registry[composite_key]["page_numbers"].append(p_num)
-                question_registry[composite_key]["assets"].extend(q_item.assets)
-
-            for t in q_item.translations:
-                lang = (
-                    t.language.value
-                    if hasattr(t.language, "value")
-                    else str(t.language)
-                )
-                if lang not in question_registry[composite_key]["translations"]:
-                    question_registry[composite_key]["translations"][lang] = {
-                        "text": t.question_text,
-                        "context": t.parent_context_override or "",
-                        "options": t.options,
-                    }
-                else:
-                    if (
-                        t.question_text
-                        not in question_registry[composite_key]["translations"][lang][
-                            "text"
-                        ]
+                if (
+                    t.question_text
+                    and t.question_text
+                    not in question_registry[composite_key]["translations"][lang][
+                        "text"
+                    ]
+                ):
+                    question_registry[composite_key]["translations"][lang][
+                        "text"
+                    ] += "\n" + t.question_text
+                existing_opts = question_registry[composite_key]["translations"][
+                    lang
+                ]["options"]
+                for new_opt in t.options:
+                    if not any(
+                        o.display_order == new_opt.display_order
+                        for o in existing_opts
                     ):
-                        question_registry[composite_key]["translations"][lang][
-                            "text"
-                        ] += "\n" + t.question_text
-                    existing_opts = question_registry[composite_key]["translations"][
-                        lang
-                    ]["options"]
-                    for new_opt in t.options:
-                        if not any(
-                            o.display_order == new_opt.display_order
-                            for o in existing_opts
-                        ):
-                            existing_opts.append(new_opt)
+                        existing_opts.append(new_opt)
 
     return question_registry
 
