@@ -247,6 +247,23 @@ async def upload_question_paper(
             pdf_path=persistent_path,
             is_active=False,
         )
+        db.add(exam)
+        try:
+            await db.commit()
+            await db.refresh(exam)
+        except Exception:
+            await db.rollback()
+            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            exam = (await db.exec(retry_stmt)).first()
+            if not exam:
+                raise
+            exam.paper_set_code = clean_set
+            exam.pdf_path = persistent_path
+            exam.total_questions = tot_q
+            exam.exam_type = e_type_enum
+            db.add(exam)
+            await db.commit()
+            await db.refresh(exam)
     else:
         exam.paper_set_code = clean_set
         exam.pdf_path = persistent_path
@@ -256,10 +273,9 @@ async def upload_question_paper(
             exam.stage = meta["stage"]
         if meta.get("year"):
             exam.source_year = meta["year"]
-    
-    db.add(exam)
-    await db.commit()
-    await db.refresh(exam)
+        db.add(exam)
+        await db.commit()
+        await db.refresh(exam)
 
     target_exam_id = exam.id
     task_id = f"p1_{uuid.uuid4().hex[:8]}"
@@ -418,8 +434,22 @@ async def upload_answer_key(
             is_active=False,
         )
         db.add(exam)
-        await db.commit()
-        await db.refresh(exam)
+        try:
+            await db.commit()
+            await db.refresh(exam)
+        except Exception:
+            await db.rollback()
+            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            exam = (await db.exec(retry_stmt)).first()
+            if not exam:
+                raise
+            exam.paper_set_code = clean_set
+            exam.answer_key_pdf_path = persistent_path
+            if total_questions is not None:
+                exam.total_questions = tot_q
+            db.add(exam)
+            await db.commit()
+            await db.refresh(exam)
     else:
         exam.paper_set_code = clean_set
         exam.answer_key_pdf_path = persistent_path
@@ -427,6 +457,7 @@ async def upload_answer_key(
             exam.total_questions = tot_q
         db.add(exam)
         await db.commit()
+        await db.refresh(exam)
 
     target_exam_id = exam.id
     target_set_code = clean_set

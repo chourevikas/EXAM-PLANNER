@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -101,6 +100,7 @@ def cleanup_file(file_path: Optional[Union[str, Path]]) -> bool:
 def cleanup_directory(dir_path: Optional[Union[str, Path]]) -> bool:
     """
     Safely removes a temporary directory tree ONLY if it passes temporary path safety validation.
+    Protects shared root temp directories (e.g. temp_pdf_cache) from global wipes.
     Returns True if removed, False otherwise.
     """
     if not dir_path:
@@ -108,6 +108,19 @@ def cleanup_directory(dir_path: Optional[Union[str, Path]]) -> bool:
     try:
         path = Path(dir_path).resolve()
         if not is_safe_temporary_path(path):
+            return False
+
+        # Protect shared root temp cache directories from global deletion
+        shared_roots = {
+            Path("./temp_pdf_cache").resolve(),
+            Path("./temp_uploads").resolve(),
+            Path("./temp_answer_keys").resolve(),
+        }
+        if path in shared_roots:
+            logger.warning(
+                f"🛡️ SAFETY GUARD: Refusing to delete shared root temporary folder '{path}'. "
+                f"Perform file-level or task-scoped cleanup instead."
+            )
             return False
 
         if path.is_dir():

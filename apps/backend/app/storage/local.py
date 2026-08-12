@@ -33,8 +33,16 @@ class LocalStorageProvider(BaseStorageProvider):
     ) -> Path:
         src = self._resolve_path(relative_path)
         dst = Path(local_destination).resolve()
-        if dst.exists() and dst.is_file() and dst.stat().st_size > 0:
-            return dst
+
+        if not src.exists() or not src.is_file():
+            direct_p = Path(relative_path).resolve()
+            if direct_p.exists() and direct_p.is_file():
+                src = direct_p
+            else:
+                raise FileNotFoundError(
+                    f"Storage file not found at '{src}' or direct path '{relative_path}'."
+                )
+
         dst.parent.mkdir(parents=True, exist_ok=True)
         if src != dst:
             await asyncio.to_thread(shutil.copy2, src, dst)

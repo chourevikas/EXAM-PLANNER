@@ -2,7 +2,7 @@ import uuid
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from fastapi import UploadFile, HTTPException, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import AnswerKeyBatch
 from app.repositories.exam_repository import ExamRepository
@@ -178,3 +178,68 @@ class AnswerKeyService:
                 for m in mappings
             ],
         }
+
+    async def map_stored_answers_from_db(self, exam_id: uuid.UUID) -> int:
+        """
+        Maps stored AnswerKeyMapping entries directly from the database to newly extracted questions.
+        Performs 0 LLM vision calls and 0 PDF processing operations.
+        """
+        from sqlmodel import select
+        from app.db.models import AnswerKeyMapping, Question, QuestionOption, MappingStatus
+        from app.pipeline.answer_key_graph import normalize_option_label
+
+        batch_stmt = select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id)
+        batches = (await self.session.exec(batch_stmt)).all()
+        if not batches:
+            return 0
+
+        total_newly_mapped = 0
+
+        for batch in batches:
+            mappings_stmt = select(AnswerKeyMapping).where(AnswerKeyMapping.batch_id == batch.id)
+            mappings = (await self.session.exec(mappings_stmt)).all()
+
+            for mapping in mappings:
+                q_stmt = select(Question).where(
+                    Question.exam_id == exam_id,
+                    Question.question_number_in_paper == mapping.printed_question_number,
+                )
+                question = (await self.session.exec(q_stmt)).first()
+                if not question:
+                    continue
+
+                mapping.question_id = question.id
+                norm_target_label = normalize_option_label(mapping.detected_option_label)
+
+                opts_stmt = select(QuestionOption).where(QuestionOption.question_id == question.id)
+                options = (await self.session.exec(opts_stmt)).all()
+
+                found_opt = False
+                for opt in options:
+                    if normalize_option_label(opt.option_label) == norm_target_label:
+                        opt.is_correct = True
+                        found_opt = True
+                    else:
+                        opt.is_correct = False
+                    self.session.add(opt)
+
+                if found_opt:
+                    mapping.mapping_status = MappingStatus.APPLIED
+                    mapping.notes = f"Correct answer set to '{norm_target_label}'"
+                    total_newly_mapped += 1
+                else:
+                    mapping.mapping_status = MappingStatus.CONFLICT_FLAGGED
+                    mapping.notes = f"Option choice '{norm_target_label}' not found among options for Question #{mapping.printed_question_number}"
+
+                self.session.add(mapping)
+
+            # Recalculate total mapped keys for batch
+            applied_count = sum(1 for m in mappings if m.mapping_status == MappingStatus.APPLIED)
+            batch.total_keys_mapped = applied_count
+            self.session.add(batch)
+
+        await self.session.commit()
+        logger.info(
+            f"✅ [ANSWER KEY DB REMAP COMPLETE] Successfully mapped {total_newly_mapped} answer keys from DB for Exam ID {exam_id}"
+        )
+        return total_newly_mapped
