@@ -65,7 +65,8 @@ class Exam(SQLModel, table=True):
     )
 
     description: Optional[str] = Field(default=None)
-    pdf_path: Optional[str] = Field(default=None)
+    pdf_path: Optional[str] = Field(default=None, description="S3 or local relative path to Question Paper PDF")
+    answer_key_pdf_path: Optional[str] = Field(default=None, description="S3 or local relative path to Answer Key PDF")
 
     total_questions: Optional[int] = Field(
         default=100, description="Total expected question count"

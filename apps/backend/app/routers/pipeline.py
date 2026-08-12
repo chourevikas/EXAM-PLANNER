@@ -396,16 +396,20 @@ async def upload_answer_key(
             exam_type=e_type_enum,
             total_questions=tot_q,
             source_year=meta.get("year", 2024),
-            paper_set_code="SET_A",
-            pdf_path=persistent_path,
+            paper_set_code=meta.get("set_code", "SET_A"),
+            pdf_path=None,
+            answer_key_pdf_path=persistent_path,
             is_active=False,
         )
         db.add(exam)
         await db.commit()
         await db.refresh(exam)
     else:
+        exam.answer_key_pdf_path = persistent_path
         if total_questions is not None:
             exam.total_questions = tot_q
+        db.add(exam)
+        await db.commit()
 
     target_exam_id = exam.id
     target_set_code = exam.paper_set_code or "SET_A"

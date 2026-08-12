@@ -116,18 +116,18 @@ def parse_question_paper_filename(
             set_code = f"SET_{set_code}"
 
         parsed_exam = _normalize_exam_name(m_exam_name)
-        canonical_code = f"{parsed_exam.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}-{set_code.lower()}"
+        effective_set = set_code if not user_set_code else final_set_code
+        canonical_code = f"{parsed_exam.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}-{effective_set.lower()}"
         return {
             "exam_name": parsed_exam if not exam_name else norm_exam_name,
             "stage": m_stage.upper() if not stage else norm_stage.upper(),
             "subject_code": m_subject_code.upper() if not subject_code else norm_subj,
             "year": norm_year,
-            "set_code": set_code if not user_set_code else final_set_code,
+            "set_code": effective_set,
             "raw_set_token": set_token.upper() if not user_set_code else raw_set_token,
             "canonical_code": canonical_code,
         }
 
-    clean_code = stem.lower().replace(" ", "_")
     canonical_code = f"{norm_exam_name.lower()}-{norm_stage.lower()}-{norm_subj.lower()}-{norm_year}-{final_set_code.lower()}"
 
     return {
@@ -144,6 +144,7 @@ def parse_question_paper_filename(
 def parse_answer_key_filename(
     filename_or_code: str,
     year: Optional[Union[int, str]] = None,
+    user_set_code: Optional[str] = None,
     exam_name: Optional[str] = None,
     stage: Optional[str] = None,
     subject_code: Optional[str] = None,
@@ -160,24 +161,36 @@ def parse_answer_key_filename(
     norm_stage = str(stage).strip() if stage else "PRELIMS"
     norm_subj = str(subject_code).strip().upper() if subject_code else "GS1"
 
+    set_token = "SET_A"
+    if user_set_code:
+        u_set = str(user_set_code).strip().upper()
+        set_token = u_set if u_set.startswith("SET_") else f"SET_{u_set}"
+    else:
+        set_match = re.search(r"(?:SET[-_]?([A-D])|[-_]([A-D]))$", stem, re.IGNORECASE)
+        if set_match:
+            st = set_match.group(1) or set_match.group(2)
+            set_token = f"SET_{st.upper()}"
+
     match = AK_FILENAME_REGEX.match(clean_filename)
     if match:
         m_exam_name, m_stage, m_subject_code, fn_year_str = match.groups()
         parsed_exam = _normalize_exam_name(m_exam_name)
-        canonical_code = f"{parsed_exam.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}"
+        canonical_code = f"{parsed_exam.lower()}-{m_stage.lower()}-{m_subject_code.lower()}-{norm_year}-{set_token.lower()}"
         return {
             "exam_name": parsed_exam if not exam_name else norm_exam_name,
             "stage": m_stage.upper() if not stage else norm_stage.upper(),
             "subject_code": m_subject_code.upper() if not subject_code else norm_subj,
             "year": norm_year,
+            "set_code": set_token,
             "canonical_code": canonical_code,
         }
 
-    canonical_code = f"{norm_exam_name.lower()}-{norm_stage.lower()}-{norm_subj.lower()}-{norm_year}"
+    canonical_code = f"{norm_exam_name.lower()}-{norm_stage.lower()}-{norm_subj.lower()}-{norm_year}-{set_token.lower()}"
     return {
         "exam_name": norm_exam_name,
         "stage": norm_stage.upper(),
         "subject_code": norm_subj,
         "year": norm_year,
+        "set_code": set_token,
         "canonical_code": canonical_code,
     }

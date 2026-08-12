@@ -41,11 +41,11 @@ class TestFilenameParser(unittest.TestCase):
         self.assertEqual(res["stage"], "PRELIMS")
         self.assertEqual(res["subject_code"], "GS1")
         self.assertEqual(res["year"], 2023)
-        self.assertEqual(res["canonical_code"], "upsc_cse-prelims-gs1-2023")
+        self.assertEqual(res["canonical_code"], "upsc_cse-prelims-gs1-2023-set_a")
 
     def test_custom_answer_key_filename(self):
         res = parse_answer_key_filename("custom_answer_key.pdf", year=2024)
-        self.assertEqual(res["canonical_code"], "upsc-prelims-gs1-2024")
+        self.assertEqual(res["canonical_code"], "upsc-prelims-gs1-2024-set_a")
         self.assertEqual(res["year"], 2024)
 
 

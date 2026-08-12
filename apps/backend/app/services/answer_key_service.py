@@ -69,10 +69,13 @@ class AnswerKeyService:
                 stage=parsed_tokens["stage"],
                 subject_code=parsed_tokens["subject_code"],
                 source_year=parsed_tokens["year"],
-                paper_set_code="SET_A",
-                pdf_path=persistent_path,
-                canonical_question_id_prefix=canonical_code,
+                paper_set_code=parsed_tokens.get("set_code", "SET_A"),
+                pdf_path=None,
+                answer_key_pdf_path=persistent_path,
             )
+            target_exam = await self.exam_repo.save(target_exam)
+        else:
+            target_exam.answer_key_pdf_path = persistent_path
             target_exam = await self.exam_repo.save(target_exam)
 
         # 4. Determine whether to use Celery Worker or FastAPI BackgroundTasks

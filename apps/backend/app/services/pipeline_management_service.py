@@ -108,7 +108,34 @@ class PipelineManagementService:
             current_step="EXTRACTION_COMPLETE_AWAITING_ANSWER_KEY_UPLOAD" if not flagged_questions else "FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW",
             progress_percent=100.0,
         )
-        await self.check_and_trigger_pipeline_3_if_ready(exam_id)
+
+        # Check if Answer Key was uploaded previously and needs re-mapping against newly extracted questions
+        from app.db.models import AnswerKeyBatch, Exam
+        ak_batch_res = await self.session.exec(
+            select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id)
+        )
+        ak_batches = ak_batch_res.all()
+        if ak_batches:
+            logger.info(
+                f"🔄 [AUTO-REMAP] Found existing AnswerKeyBatch for Exam {exam_id}. Re-triggering Answer Key mapping for newly extracted questions!"
+            )
+            exam_obj = await self.session.get(Exam, exam_id)
+            target_set = exam_obj.paper_set_code if exam_obj else "SET_A"
+            ak_pdf_path = (
+                exam_obj.answer_key_pdf_path if (exam_obj and exam_obj.answer_key_pdf_path) else ak_batches[0].pdf_path
+            )
+            from app.tasks.answer_key_tasks import async_process_answer_key_pdf
+            asyncio.create_task(
+                async_process_answer_key_pdf(
+                    exam_id_str=str(exam_id),
+                    pdf_path=ak_pdf_path,
+                    target_set_code=target_set,
+                    task_id=f"p2_auto_{uuid.uuid4().hex[:8]}",
+                    execution_engine="FastAPI BackgroundTasks",
+                )
+            )
+        else:
+            await self.check_and_trigger_pipeline_3_if_ready(exam_id)
         return run
 
     async def on_pipeline_2_completed(
