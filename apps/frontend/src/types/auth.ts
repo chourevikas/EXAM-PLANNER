@@ -34,10 +34,17 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   is_verified?: boolean;
+  subscription_tier?: string;
+  free_questions_attempted?: number;
+  current_streak?: number;
+  total_xp?: number;
+  level?: number;
   student_profile?: StudentProfile;
   admin_profile?: AdminProfile;
   created_at: string;
+  updated_at?: string;
 }
+
 
 export interface AuthResponse {
   access_token?: string;

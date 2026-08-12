@@ -19,8 +19,17 @@ class UserService:
     async def get_user_by_id(self, user_id: uuid.UUID | str) -> Optional[User]:
         return await self.user_repo.get_by_id(user_id)
 
-    async def list_users(self, skip: int = 0, limit: int = 100) -> List[User]:
-        stmt = select(User).offset(skip).limit(limit)
+    async def list_users(self, current_user: Optional[User] = None, skip: int = 0, limit: int = 100) -> List[User]:
+        stmt = select(User)
+
+        # Super Admin accounts are hidden at all cost from backend user listing
+        stmt = stmt.where(User.role != UserRole.SUPER_ADMIN)
+
+        # One admin should not see other admins; an admin ONLY sees student accounts
+        if current_user and current_user.role == UserRole.ADMIN:
+            stmt = stmt.where(User.role == UserRole.STUDENT)
+
+        stmt = stmt.offset(skip).limit(limit)
         res = await self.session.exec(stmt)
         return list(res.all())
 
@@ -37,11 +46,23 @@ class UserService:
             role=user_in.role or UserRole.STUDENT,
         )
 
-    async def update_user(self, user_id: uuid.UUID | str, user_in: UserUpdate) -> User:
+    async def update_user(self, user_id: uuid.UUID | str, user_in: UserUpdate, current_user: Optional[User] = None) -> User:
         user = await self.get_user_by_id(user_id)
         if not user:
             raise BaseAppException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
+        # Super Admin accounts cannot be altered via standard user API
+        if user.role == UserRole.SUPER_ADMIN:
+            raise BaseAppException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Super Admin account cannot be modified"
+            )
+
+        # Admin users can ONLY update STUDENT accounts
+        if current_user and current_user.role == UserRole.ADMIN and user.role != UserRole.STUDENT:
+            raise BaseAppException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Admins can only manage student accounts"
             )
 
         update_data = user_in.model_dump(exclude_unset=True)
@@ -52,6 +73,7 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
 
     async def delete_user(self, user_id: uuid.UUID | str) -> None:
         user = await self.get_user_by_id(user_id)

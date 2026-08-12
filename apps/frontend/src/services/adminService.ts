@@ -104,6 +104,20 @@ export async function fetchAllUsers(): Promise<User[]> {
   return await res.json();
 }
 
+export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
+  const res = await fetch(`/api/v1/users/${userId}`, {
+    method: 'PUT',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to update user status' }));
+    throw new Error(errorData.detail || 'Could not update user status.');
+  }
+  return await res.json();
+}
+
+
 export async function fetchPipelineStatus(examId: string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/status/${examId}`, { headers: getAuthHeader() });
   if (!res.ok) {

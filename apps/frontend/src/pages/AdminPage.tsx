@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminSidebar } from '../components/admin/AdminSidebar';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
+import { fetchCurrentUser } from '../services/authService';
 
 /* View Components */
 import { AdminOverviewView } from '../components/admin/AdminOverviewView';
@@ -18,11 +19,51 @@ import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineSt
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    document.title = "Admin Dashboard - RankEdge Exam Planner";
+    fetchCurrentUser().then(data => {
+      setUser(data);
+    }).catch(err => {
+      console.error("Failed to fetch user data:", err);
+    });
+
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleToggleSidebar = () => {
+    if (isMobile) {
+      setMobileOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => !prev);
+    }
+  };
+
+  const handleNavigate = (view: string) => {
+    setActiveView(view);
+    if (isMobile) setMobileOpen(false);
+  };
 
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <AdminOverviewView onNavigate={setActiveView} />;
+        return <AdminOverviewView onNavigate={handleNavigate} />;
       case 'pipeline-status':
         return <ExamPipelineStatusView />;
       case 'questions':
@@ -44,27 +85,59 @@ export function AdminPage() {
       case 'subscriptions':
         return <SubscriptionsView />;
       default:
-        return <AdminOverviewView onNavigate={setActiveView} />;
+        return <AdminOverviewView onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-body)' }}>
-      {/* Figma Collapsible Sidebar */}
-      <AdminSidebar
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-body, #0f172a)', fontFamily: 'var(--font-sans)', color: 'var(--text-primary)', overflowX: 'hidden' }}>
+      
+      {/* Full-width Top Header (fixed at top: 0) */}
+      <AdminTopNav 
+        user={user}
         activeView={activeView}
-        onNavigate={setActiveView}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((p) => !p)}
+        onNavigate={handleNavigate}
+        onToggleSidebar={handleToggleSidebar}
       />
 
-      {/* Main Container with Sticky Header & Views */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <AdminTopNav activeView={activeView} onNavigate={setActiveView} />
-        <main style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-body)' }}>
-          {renderView()}
-        </main>
+      {/* Main Container below Top Header */}
+      <div style={{ display: 'flex', flex: 1, marginTop: '60px' }}>
+        
+        {/* Sidebar Navigation (fixed top: 60px) */}
+        <AdminSidebar
+          activeView={activeView}
+          onNavigate={handleNavigate}
+          collapsed={sidebarCollapsed}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
+
+        {/* Main Content Area */}
+        <div 
+          style={{ 
+            flex: 1, 
+            marginLeft: isMobile ? 0 : (sidebarCollapsed ? '68px' : '240px'), 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minWidth: 0,
+            transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            width: '100%'
+          }}
+        >
+          {/* Page Content Viewport */}
+          <main style={{ 
+            flex: 1, 
+            overflowY: 'auto', 
+            background: 'var(--bg-body, #0f172a)', 
+            padding: isMobile ? '16px' : '28px', 
+            boxSizing: 'border-box' 
+          }}>
+            {renderView()}
+          </main>
+        </div>
+
       </div>
     </div>
   );
 }
+
