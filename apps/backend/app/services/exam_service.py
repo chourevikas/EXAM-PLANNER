@@ -1,6 +1,6 @@
 import uuid
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from fastapi import UploadFile, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
