@@ -6,10 +6,8 @@ import {
   Cpu,
   ClipboardCheck,
   GraduationCap,
-  BookMarked,
   Users,
   BarChart2,
-  CreditCard,
   Activity,
   X
 } from 'lucide-react';
@@ -50,10 +48,8 @@ export function AdminSidebar({
   ];
 
   const managementNavItems = [
-    { icon: BookMarked, label: 'Learning Resources', id: 'resources' },
     { icon: Users, label: 'Users', id: 'users' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
-    { icon: CreditCard, label: 'Subscriptions', id: 'subscriptions' },
   ];
 
   const renderNavItem = (item: { icon: any, label: string, id: string }) => {

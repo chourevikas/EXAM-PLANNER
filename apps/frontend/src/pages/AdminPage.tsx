@@ -10,10 +10,8 @@ import { UploadReviewView } from '../components/admin/UploadReviewView';
 import { AIQueueView } from '../components/admin/views/AIQueueView';
 import { QuestionReviewView } from '../components/admin/views/QuestionReviewView';
 import { MockTestsView } from '../components/admin/views/MockTestsView';
-import { ResourcesView } from '../components/admin/views/ResourcesView';
 import { UsersView } from '../components/admin/views/UsersView';
 import { AnalyticsView } from '../components/admin/views/AnalyticsView';
-import { SubscriptionsView } from '../components/admin/views/SubscriptionsView';
 import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineStatusView';
 
 export function AdminPage() {
@@ -76,14 +74,10 @@ export function AdminPage() {
         return <QuestionReviewView />;
       case 'mock-tests':
         return <MockTestsView />;
-      case 'resources':
-        return <ResourcesView />;
       case 'users':
         return <UsersView />;
       case 'analytics':
         return <AnalyticsView />;
-      case 'subscriptions':
-        return <SubscriptionsView />;
       default:
         return <AdminOverviewView onNavigate={handleNavigate} />;
     }
