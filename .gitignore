@@ -304,8 +304,3 @@ whitesource/
 
 #ai folders
 .bob/
-
-# GCP Service Account Credentials
-gcp-service-account.json
-*service-account*.json
-gcp-credentials.json

@@ -43,10 +43,9 @@ class LanguageCode(str, enum.Enum):
 
 
 class TestType(str, enum.Enum):
-    FULL_LENGTH = "FULL_LENGTH"
-    SUBJECT_MOCK = "SUBJECT_MOCK"
-    AI_ADAPTIVE = "AI_ADAPTIVE"
-    REVISION_FLASHTEST = "REVISION_FLASHTEST"
+    PYQ = "PYQ"
+    MOCK = "MOCK"
+    PRACTICE = "PRACTICE"
 
 
 class AttemptStatus(str, enum.Enum):

@@ -6,12 +6,17 @@ from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
+    User,
     Exam,
     Question,
     ExamAttempt,
     ExamQuestionResponse,
+    Test,
+    UserTestAttempt,
+    UserQuestionResponse,
+    QuestionSwitchLog,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, UserStatus
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -47,13 +52,19 @@ class ExamSessionService:
         self.session = session
         self.storage = get_storage_provider()
 
-    async def start_exam(self, user_id: uuid.UUID, req: StartExamRequest) -> StartExamResponse:
+    async def start_exam(self, user_id: Any, req: Any = None) -> StartExamResponse:
+        # Handle flexible positional argument order (user_id vs req)
+        if isinstance(user_id, StartExamRequest) or hasattr(user_id, "exam_id"):
+            req, user_id = user_id, req
+
+        raw_exam_id = req.exam_id if hasattr(req, "exam_id") else req
+
         # Resolve Exam by UUID or string code/slug
         exam = None
-        req_exam_str = str(req.exam_id)
+        req_exam_str = str(raw_exam_id)
 
-        if isinstance(req.exam_id, uuid.UUID):
-            exam = await self.session.get(Exam, req.exam_id)
+        if isinstance(raw_exam_id, uuid.UUID):
+            exam = await self.session.get(Exam, raw_exam_id)
         else:
             try:
                 parsed_uuid = uuid.UUID(req_exam_str)
@@ -74,6 +85,19 @@ class ExamSessionService:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Exam does not exist.")
         if not exam.is_active:
             raise HTTPException(status_code=403, detail="EXAM_INACTIVE: This exam is currently inactive.")
+
+        # Ensure User record exists in DB
+        u_obj = await self.session.get(User, user_id)
+        if not u_obj:
+            u_obj = User(
+                id=user_id,
+                email=f"candidate_{str(user_id)[:8]}@examplanner.ai",
+                full_name="Candidate User",
+                role=UserRole.STUDENT,
+                status=UserStatus.ACTIVE,
+            )
+            self.session.add(u_obj)
+            await self.session.flush()
 
         # Check for existing IN_PROGRESS attempt
         existing = await self.session.exec(
@@ -131,10 +155,37 @@ class ExamSessionService:
             current_question_index=1,
         )
         self.session.add(attempt)
+
+        # Create or fetch linked Test
+        test_res = await self.session.exec(select(Test).where(Test.id == exam.id))
+        test_obj = test_res.first()
+        if not test_obj:
+            t_type = TestType.PYQ if "PYQ" in str(exam.exam_type).upper() or "PYQ" in exam.code.upper() else TestType.MOCK
+            test_obj = Test(
+                id=exam.id,
+                title=exam.name,
+                test_type=t_type,
+                total_questions=len(questions_list),
+                duration_minutes=exam.total_duration_minutes or 120,
+            )
+            self.session.add(test_obj)
+
+        # Create UserTestAttempt
+        user_test_attempt = UserTestAttempt(
+            user_id=user_id,
+            test_id=test_obj.id,
+            exam_attempt_id=attempt.id,
+            status=attempt.status,
+            mode=attempt.mode,
+            started_at=now_dt,
+        )
+        self.session.add(user_test_attempt)
+
         await self.session.commit()
         await self.session.refresh(attempt)
+        await self.session.refresh(user_test_attempt)
 
-        # Pre-create ExamQuestionResponse rows
+        # Pre-create ExamQuestionResponse AND UserQuestionResponse rows
         palette_items = []
         for index, q_item in enumerate(questions_list, 1):
             q_id = uuid.UUID(q_item["question_id"])
@@ -145,6 +196,16 @@ class ExamSessionService:
                 expected_time_seconds=float(q_item.get("expected_time_seconds", 60)),
             )
             self.session.add(resp)
+            await self.session.flush()
+
+            u_resp = UserQuestionResponse(
+                attempt_id=user_test_attempt.id,
+                exam_response_id=resp.id,
+                question_id=q_id,
+                time_taken_seconds=0,
+            )
+            self.session.add(u_resp)
+
             palette_items.append(
                 QuestionPaletteItem(
                     question_number=index,
@@ -299,6 +360,8 @@ class ExamSessionService:
                 status_code=422, detail="INVALID_QUESTION_ID: Question does not belong to this exam attempt."
             )
 
+        prev_opt_id = resp.selected_option_id
+
         # Update options and tracking
         if req.selected_option_id is not None:
             if resp.selected_option_id is None:
@@ -331,6 +394,30 @@ class ExamSessionService:
             )
 
         self.session.add(resp)
+
+        # Sync UserQuestionResponse & Log QuestionSwitchLog
+        u_resp_res = await self.session.exec(
+            select(UserQuestionResponse).where(UserQuestionResponse.exam_response_id == resp.id)
+        )
+        u_resp = u_resp_res.first()
+        if u_resp:
+            u_resp.selected_option_id = resp.selected_option_id
+            u_resp.initial_selected_option_id = resp.initial_option_id
+            u_resp.option_switch_count = resp.option_switch_count
+            u_resp.time_taken_seconds = int(resp.time_taken_seconds)
+            u_resp.is_flagged_for_review = resp.is_marked_for_review
+            self.session.add(u_resp)
+
+        if prev_opt_id != resp.selected_option_id:
+            switch_log = QuestionSwitchLog(
+                response_id=u_resp.id if u_resp else None,
+                exam_response_id=resp.id,
+                from_option_id=prev_opt_id,
+                to_option_id=resp.selected_option_id,
+                timestamp_offset_sec=int(resp.time_taken_seconds),
+                created_at=datetime.now(timezone.utc),
+            )
+            self.session.add(switch_log)
         await self.session.commit()
 
         summary = await self._compute_response_summary(attempt.id)
@@ -624,6 +711,19 @@ class ExamSessionService:
         attempt.time_spent_seconds = round(total_time_spent, 1)
 
         self.session.add(attempt)
+
+        # Sync UserTestAttempt
+        u_att_res = await self.session.exec(
+            select(UserTestAttempt).where(UserTestAttempt.exam_attempt_id == attempt.id)
+        )
+        u_att = u_att_res.first()
+        if u_att:
+            u_att.status = attempt.status
+            u_att.score_raw = attempt.total_score
+            u_att.total_time_spent_sec = int(attempt.time_spent_seconds)
+            u_att.submitted_at = now_dt
+            self.session.add(u_att)
+
         await self.session.commit()
 
         # Enqueue async post-submission pipeline

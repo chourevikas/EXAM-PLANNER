@@ -106,7 +106,10 @@ class QuestionSwitchLog(SQLModel, table=True):
         default=None, foreign_key="question_options.id"
     )
     timestamp_offset_sec: int = Field(default=0)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 
@@ -128,8 +131,11 @@ class UserConceptRetention(SQLModel, table=True):
     total_reviews: int = Field(default=1)
     lapses: int = Field(default=0)
     last_reviewed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
     )
     next_scheduled_review: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), index=True
+        default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+        sa_type=DateTimeTZ,
     )

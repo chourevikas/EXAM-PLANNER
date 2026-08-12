@@ -260,7 +260,33 @@ export function ExamEnginePage() {
     });
   };
 
+  const saveCurrentResponse = async () => {
+    if (attemptId && activeQuestion) {
+      const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
+      try {
+        const res = await saveQuestionResponse(attemptId, {
+          question_id: activeQuestion.question_id,
+          selected_option_id: selectedOptionId,
+          is_marked_for_review: isMarkedForReview,
+          time_spent_seconds: timeSpent,
+        });
+        setResponseSummary(res.response_summary);
+        const newStatus = selectedOptionId
+          ? isMarkedForReview
+            ? 'ANSWERED_AND_MARKED'
+            : 'ANSWERED'
+          : isMarkedForReview
+          ? 'MARKED_FOR_REVIEW'
+          : 'VISITED';
+        updatePaletteItemStatus(currentQIndex, newStatus as any);
+      } catch (err) {
+        console.error('Failed to save response on navigation:', err);
+      }
+    }
+  };
+
   const handleNext = async () => {
+    await saveCurrentResponse();
     if (currentQIndex < totalQuestions - 1) {
       const nextIdx = currentQIndex + 1;
       setCurrentQIndex(nextIdx);
@@ -272,6 +298,7 @@ export function ExamEnginePage() {
   };
 
   const handlePrev = async () => {
+    await saveCurrentResponse();
     if (currentQIndex > 0) {
       const prevIdx = currentQIndex - 1;
       setCurrentQIndex(prevIdx);
@@ -283,6 +310,7 @@ export function ExamEnginePage() {
   };
 
   const handleSelectQuestionFromPalette = async (idx: number) => {
+    await saveCurrentResponse();
     setCurrentQIndex(idx);
     if (attemptId) {
       await loadQuestion(attemptId, idx + 1);
