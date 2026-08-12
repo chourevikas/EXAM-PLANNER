@@ -14,11 +14,13 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Activity,
   Zap,
 } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
+  { icon: Activity, label: 'Exam Pipeline Status', id: 'pipeline-status' },
   { icon: BookOpen, label: 'Question Bank', id: 'questions' },
   { icon: Upload, label: 'Upload Question Paper', id: 'upload' },
   { icon: Cpu, label: 'AI Processing Queue', id: 'ai-queue' },

@@ -148,3 +148,43 @@ export async function retryPipelineTask(examId: string, language: string = 'ENGL
   }
   return await res.json();
 }
+
+export interface ExamPipelineStatusItem {
+  id: string;
+  code: string;
+  name: string;
+  source_year: number;
+  stage: string;
+  subject_code: string;
+  paper_set_code: string;
+  status: string;
+  is_active: boolean;
+  total_questions: number;
+  extracted_questions_count: number;
+  missing_questions_count: number;
+  questions_json_path?: string;
+  solutions_json_path?: string;
+  questions_json_folder_path?: string;
+  solutions_json_folder_path?: string;
+}
+
+export async function fetchExamPipelineStatuses(): Promise<ExamPipelineStatusItem[]> {
+  const res = await fetch(`${API_BASE_URL}/exams/pipeline-status`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam pipeline statuses' }));
+    throw new Error(errorData.detail || 'Could not fetch exam pipeline statuses.');
+  }
+  return await res.json();
+}
+
+export async function approveAndPublishExam(examId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to approve and publish exam' }));
+    throw new Error(errorData.detail || 'Exam approval failed.');
+  }
+  return await res.json();
+}

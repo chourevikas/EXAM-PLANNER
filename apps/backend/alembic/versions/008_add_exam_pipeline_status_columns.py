@@ -1,7 +1,7 @@
-"""007_add_exam_pipeline_status_columns
+"""008_add_exam_pipeline_status_columns
 
-Revision ID: 007_exam_pipeline_status
-Revises: 006_exam_lifecycle
+Revision ID: 008_exam_pipeline_status
+Revises: 1ce80f939214
 Create Date: 2026-08-11
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '007_exam_pipeline_status'
-down_revision = '006_exam_lifecycle'
+revision = '008_exam_pipeline_status'
+down_revision = '1ce80f939214'
 branch_labels = None
 depends_on = None
 

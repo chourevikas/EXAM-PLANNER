@@ -8,6 +8,7 @@ interface TopNavProps {
 
 const breadcrumbMap: Record<string, string[]> = {
   dashboard: ['Platform', 'Dashboard'],
+  'pipeline-status': ['Platform', 'Exam Pipeline Status'],
   upload: ['Platform', 'Question Bank', 'Upload Paper'],
   questions: ['Platform', 'Question Bank'],
   'ai-queue': ['Platform', 'AI Processing Queue'],

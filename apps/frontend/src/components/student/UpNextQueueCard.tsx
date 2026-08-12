@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Ico } from '../common/Icons';
+import { listExams } from '../../services/examService';
 
 export function UpNextQueueCard() {
+  const [activeExam, setActiveExam] = useState<any>(null);
+
+  useEffect(() => {
+    listExams().then(exams => {
+      if (Array.isArray(exams) && exams.length > 0) {
+        const published = exams.find(e => e.is_active || (e.status && String(e.status).includes('PUBLISHED')));
+        setActiveExam(published || exams[0]);
+      }
+    }).catch(err => console.error("Failed to fetch live exams in UpNextQueueCard:", err));
+  }, []);
+
+  const examTarget = activeExam ? `/exam/${activeExam.code}` : '/pyq';
+
   return (
     <div style={{ 
       backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 24, 
@@ -20,15 +34,15 @@ export function UpNextQueueCard() {
           Up Next In Queue
         </div>
         <h3 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px 0', lineHeight: 1.3 }}>
-          Resume UPSC CSE PYQ 2022
+          {activeExam ? `Practice ${activeExam.name}` : 'Resume UPSC CSE Practice'}
         </h3>
         <p style={{ fontSize: 14, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>
-          You paused at Question 42. Taking a quick 15-question Polity quiz will clear weak areas.
+          Test your memory and question accuracy on official UPSC Prelims papers.
         </p>
       </div>
 
       <Link 
-        to="/exam/pyq_2022"
+        to={examTarget}
         style={{ 
           width: '100%', padding: '14px', borderRadius: 12, border: 'none',
           backgroundColor: '#FFFFFF', color: 'var(--accent-darker)',
@@ -37,7 +51,7 @@ export function UpNextQueueCard() {
           marginTop: 24, transition: 'transform 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}
       >
-        <span>Resume Test</span>
+        <span>Start Practice Test</span>
         <Ico.ArrowRight size={16} />
       </Link>
     </div>
