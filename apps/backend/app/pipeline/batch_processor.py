@@ -320,6 +320,13 @@ class BatchQuestionRegistrar:
                                     session.add(q_asset)
 
                             # Stage Translations & Options Idempotently
+                            existing_opts_res = await session.exec(
+                                select(QuestionOption).where(QuestionOption.question_id == question_id)
+                            )
+                            opts_by_label: Dict[str, QuestionOption] = {
+                                opt.option_label: opt for opt in existing_opts_res.all()
+                            }
+
                             for lang, t_data in q_data["translations"].items():
                                 trans_res = await session.exec(
                                     select(QuestionTranslation).where(
@@ -346,24 +353,18 @@ class BatchQuestionRegistrar:
 
                                 for opt in t_data["options"]:
                                     opt_label = str(opt.display_label)
-                                    opt_res = await session.exec(
-                                        select(QuestionOption).where(
-                                            QuestionOption.question_id == question_id,
-                                            QuestionOption.option_label == opt_label,
-                                        )
-                                    )
-                                    q_opt = opt_res.first()
-                                    if not q_opt:
-                                        opt_id = uuid.uuid4()
+                                    if opt_label not in opts_by_label:
                                         q_opt = QuestionOption(
-                                            id=opt_id,
+                                            id=uuid.uuid4(),
                                             question_id=question_id,
                                             option_label=opt_label,
                                             display_order=opt.display_order,
                                             is_correct=False,
                                         )
                                         session.add(q_opt)
+                                        opts_by_label[opt_label] = q_opt
                                     else:
+                                        q_opt = opts_by_label[opt_label]
                                         q_opt.display_order = opt.display_order
                                         session.add(q_opt)
 
