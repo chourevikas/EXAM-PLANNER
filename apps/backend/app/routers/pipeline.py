@@ -222,7 +222,7 @@ async def upload_question_paper(
     temp_path = await save_upload_file_temp(file, temp_dir)
 
     storage = get_storage_provider()
-    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{clean_set}/{canonical_exam_code}_{clean_set}.pdf"
+    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     cleanup_file(temp_path)
@@ -318,15 +318,20 @@ async def upload_answer_key(
     Uploads an Answer Key PDF and initiates Pipeline 2.
     Accepts mandatory set_code (e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D') and year.
     """
-    if not set_code or not str(set_code).strip():
+    ALLOWED_SET_TOKENS = {
+        "SET_A", "SET_B", "SET_C", "SET_D",
+        "SET_1", "SET_2", "SET_3", "SET_4",
+        "A", "B", "C", "D",
+        "1", "2", "3", "4",
+    }
+    raw_set = str(set_code).strip().upper() if set_code else ""
+    if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Target paper set code (set_code) is required for Answer Key upload (e.g. SET_A, SET_B, SET_C, SET_D).",
+            detail="Invalid paper set code. Allowed values: SET_A, SET_B, SET_C, SET_D, SET_1, SET_2, SET_3, SET_4, A, B, C, D, 1, 2, 3, 4.",
         )
 
-    clean_set = str(set_code).strip().upper()
-    if not clean_set.startswith("SET_"):
-        clean_set = f"SET_{clean_set}"
+    clean_set = raw_set if raw_set.startswith("SET_") else f"SET_{raw_set}"
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")

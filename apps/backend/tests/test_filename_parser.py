@@ -48,6 +48,15 @@ class TestFilenameParser(unittest.TestCase):
         self.assertEqual(res["canonical_code"], "upsc-prelims-gs1-2024-set_a")
         self.assertEqual(res["year"], 2024)
 
+    def test_numeric_set_codes(self):
+        res_qp = parse_question_paper_filename("upsc-prelims-gs1-2022-2.pdf", year=2022, user_set_code="2")
+        self.assertEqual(res_qp["set_code"], "SET_2")
+        self.assertEqual(res_qp["canonical_code"], "upsc-prelims-gs1-2022-set_2")
+
+        res_ak = parse_answer_key_filename("upsc-prelims-gs1-2022.pdf", year=2022, user_set_code="SET_4")
+        self.assertEqual(res_ak["set_code"], "SET_4")
+        self.assertEqual(res_ak["canonical_code"], "upsc-prelims-gs1-2022-set_4")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -240,6 +240,7 @@ async def async_process_exam_pdf(
             pass
         raise
     finally:
-        # End-of-pipeline cleanup: remove temporary processing cache and temp files
+        # End-of-pipeline cleanup: remove task-specific temporary processing cache and temp files
         log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
-        cleanup_temp_artifacts(pdf_path, Path("./temp_pdf_cache"))
+        local_cache_file = Path("./temp_pdf_cache").resolve() / pdf_file.name
+        cleanup_temp_artifacts(pdf_path, local_cache_file)
