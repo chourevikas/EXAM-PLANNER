@@ -5,7 +5,6 @@ from app.config.settings import get_settings
 from app.core.cleanup import (
     cleanup_file,
     cleanup_directory,
-    cleanup_temp_artifacts,
     is_safe_temporary_path,
 )
 
@@ -32,19 +31,6 @@ class TestCleanupUtility(unittest.TestCase):
         result = cleanup_directory(tmp_dir)
         self.assertTrue(result)
         self.assertFalse(tmp_dir.exists())
-
-    def test_cleanup_temp_artifacts_batch(self):
-        tmp_dir = Path(tempfile.mkdtemp(prefix="temp_test_batch_"))
-        tmp_file = tmp_dir / "item.txt"
-        tmp_file.write_text("data")
-
-        self.assertTrue(tmp_dir.exists())
-        self.assertTrue(tmp_file.exists())
-
-        cleanup_temp_artifacts(tmp_dir, tmp_file, None)
-
-        self.assertFalse(tmp_dir.exists())
-        self.assertFalse(tmp_file.exists())
 
     def test_safety_guard_protects_storage_files(self):
         settings = get_settings()

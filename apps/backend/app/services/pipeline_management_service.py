@@ -172,7 +172,7 @@ class PipelineManagementService:
             )
             p3_run = (await self.session.exec(p3_query)).first()
 
-            if not p3_run or p3_run.status in ("PENDING", "FAILED"):
+            if not p3_run or p3_run.status != "COMPLETED":
                 logger.info(
                     f"🚀 [AUTO-ORCHESTRATION] Both Questions (P1) and Answer Keys (P2) are COMPLETE for Exam {exam_id}. Automatically triggering Pipeline 3!"
                 )

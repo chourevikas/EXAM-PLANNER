@@ -130,21 +130,3 @@ def cleanup_directory(dir_path: Optional[Union[str, Path]]) -> bool:
     except Exception as exc:
         logger.warning(f"Failed to remove temporary directory '{dir_path}': {exc}")
     return False
-
-
-def cleanup_temp_artifacts(*items: Optional[Union[str, Path]]) -> None:
-    """
-    Batch cleanup helper for safely removing temporary files and directories.
-    Strictly enforces safety guards so persistent storage files are never touched.
-    """
-    for item in items:
-        if not item:
-            continue
-        try:
-            path = Path(item).resolve()
-            if path.is_file() or path.is_symlink():
-                cleanup_file(path)
-            elif path.is_dir():
-                cleanup_directory(path)
-        except Exception as exc:
-            logger.warning(f"Error during cleanup of '{item}': {exc}")
