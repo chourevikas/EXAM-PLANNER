@@ -177,7 +177,7 @@ async def async_process_exam_pdf(
                 "raw_page_payloads": [],
                 "processed_question_keys": [],
             },
-            config={"max_concurrency": 2},
+            config={"max_concurrency": get_settings().MAX_VISION_CONCURRENCY},
         )
 
         async with managed_async_session() as session:

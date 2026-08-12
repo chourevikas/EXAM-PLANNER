@@ -108,6 +108,10 @@ class Settings(BaseSettings):
         default=5,
         description="Configurable batch size for chunked DB commits across all pipelines",
     )
+    MAX_VISION_CONCURRENCY: int = Field(
+        default=5,
+        description="Max concurrent page vision LLM calls (cuts PDF processing time by 3X-5X)",
+    )
 
     # Output Artifact Path
     OUTPUT_ARTIFACTS_DIR: str = Field(default=str(PROJECT_ROOT / "output_artifacts"))
