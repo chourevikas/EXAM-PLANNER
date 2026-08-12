@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { StatusMessage } from '../types/exam';
-import { uploadExamPaper } from '../services/examService';
+import { uploadExamPaper, uploadAnswerKey } from '../services/examService';
 
 export function useExamUpload() {
+  const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER' | 'ANSWER_KEY'>('QUESTION_PAPER');
   const [examName, setExamName] = useState('upsc');
   const [year, setYear] = useState('2024');
+  const [setCode, setSetCode] = useState('SET_A');
   const [paperType, setPaperType] = useState('previous_year_question');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -52,28 +54,46 @@ export function useExamUpload() {
       return;
     }
 
+    if (!setCode || !setCode.trim()) {
+      setStatusMessage({ text: 'Target Paper Set Code (e.g. SET_A, SET_B, SET_C, SET_D) is required.', isError: true });
+      return;
+    }
+
     setIsUploading(true);
     setStatusMessage(null);
 
     try {
-      const result = await uploadExamPaper({
-        examName,
-        year,
-        paperType,
-        file: selectedFile,
-      });
-
-      setStatusMessage({
-        text: `Success! Exam paper uploaded to S3: ${result.s3_path || result.message || 'File stored successfully.'}`,
-        isError: false,
-      });
+      if (uploadMode === 'ANSWER_KEY') {
+        const result = await uploadAnswerKey({
+          examName,
+          year,
+          set_code: setCode,
+          file: selectedFile,
+        });
+        setStatusMessage({
+          text: `Success! Answer key pipeline initiated for ${result.canonical_exam_code || examName} (Target Set: ${result.target_set_code || setCode}).`,
+          isError: false,
+        });
+      } else {
+        const result = await uploadExamPaper({
+          examName,
+          year,
+          paperType,
+          set_code: setCode,
+          file: selectedFile,
+        });
+        setStatusMessage({
+          text: `Success! Question paper uploaded to S3: ${result.s3_path || result.message || 'File stored successfully.'}`,
+          isError: false,
+        });
+      }
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     } catch (err: any) {
       setStatusMessage({
-        text: err.message || 'Unable to connect to backend server at http://localhost:8000.',
+        text: err.message || 'Unable to connect to backend server.',
         isError: true,
       });
     } finally {
@@ -82,10 +102,14 @@ export function useExamUpload() {
   };
 
   return {
+    uploadMode,
+    setUploadMode,
     examName,
     setExamName,
     year,
     setYear,
+    setCode,
+    setSetCode,
     paperType,
     setPaperType,
     selectedFile,

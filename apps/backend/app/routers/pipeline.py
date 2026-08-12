@@ -305,6 +305,7 @@ async def upload_question_paper(
 async def upload_answer_key(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    set_code: str = Form(...),
     exam_name: Optional[str] = Form(default="UPSC"),
     stage: Optional[str] = Form(default="prelims"),
     exam_type: Optional[str] = Form(default="PYQ"),
@@ -315,9 +316,18 @@ async def upload_answer_key(
 ):
     """
     Uploads an Answer Key PDF and initiates Pipeline 2.
-    Accepts mandatory year and explicit metadata fields or falls back to filename stem.
-    Normalizes 'uspc' to 'UPSC' and defaults stage to 'prelims'.
+    Accepts mandatory set_code (e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D') and year.
     """
+    if not set_code or not str(set_code).strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target paper set code (set_code) is required for Answer Key upload (e.g. SET_A, SET_B, SET_C, SET_D).",
+        )
+
+    clean_set = str(set_code).strip().upper()
+    if not clean_set.startswith("SET_"):
+        clean_set = f"SET_{clean_set}"
+
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
 
@@ -325,6 +335,7 @@ async def upload_answer_key(
         meta = parse_answer_key_filename(
             filename_or_code=file.filename,
             year=year,
+            user_set_code=clean_set,
             exam_name=exam_name,
             stage=stage,
         )
@@ -396,7 +407,7 @@ async def upload_answer_key(
             exam_type=e_type_enum,
             total_questions=tot_q,
             source_year=meta.get("year", 2024),
-            paper_set_code=meta.get("set_code", "SET_A"),
+            paper_set_code=clean_set,
             pdf_path=None,
             answer_key_pdf_path=persistent_path,
             is_active=False,
@@ -405,6 +416,7 @@ async def upload_answer_key(
         await db.commit()
         await db.refresh(exam)
     else:
+        exam.paper_set_code = clean_set
         exam.answer_key_pdf_path = persistent_path
         if total_questions is not None:
             exam.total_questions = tot_q
@@ -412,7 +424,7 @@ async def upload_answer_key(
         await db.commit()
 
     target_exam_id = exam.id
-    target_set_code = exam.paper_set_code or "SET_A"
+    target_set_code = clean_set
     task_id = f"p2_{uuid.uuid4().hex[:8]}"
 
     logger.info(
