@@ -26,7 +26,11 @@ class ExamService:
     async def handle_pdf_upload(
         self,
         file: UploadFile,
-        set_code: Optional[str] = "SET_A",
+        year: Optional[Union[int, str]] = None,
+        set_code: Optional[str] = None,
+        exam_name: Optional[str] = None,
+        stage: Optional[str] = None,
+        subject_code: Optional[str] = None,
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
@@ -34,11 +38,18 @@ class ExamService:
 
         settings = get_settings()
 
-        # 1. Automatically extract canonical code from filename stem and set_code
-        parsed_tokens = parse_question_paper_filename(file.filename, user_set_code=set_code)
+        # 1. Automatically extract canonical code from uploaded filename stem and form inputs
+        parsed_tokens = parse_question_paper_filename(
+            filename_or_code=file.filename,
+            year=year,
+            user_set_code=set_code,
+            exam_name=exam_name,
+            stage=stage,
+            subject_code=subject_code,
+        )
         canonical_code = parsed_tokens["canonical_code"]
         clean_set = parsed_tokens["set_code"]
-        exam_name_title = canonical_code
+        exam_name_title = f"{parsed_tokens['exam_name']} ({parsed_tokens['year']}) - Set {parsed_tokens['raw_set_token']}"
 
         # 2. Check if exam with canonical code already exists
         exam = await self.repo.get_by_code(canonical_code)

@@ -27,24 +27,30 @@ async def upload_exam_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(
         ...,
-        description="Uploaded Question Paper PDF file. Filename stem is used as canonical exam code e.g. 'UPSC_CSE_2023_GS1.pdf'",
+        description="Uploaded Question Paper PDF file.",
     ),
-    set_code: Optional[str] = Form(
-        default="SET_A", description="Paper set code e.g. 'SET_A', 'SET_B', 'a', 'b'"
-    ),
-    run_mode: Optional[str] = Form(
-        default="auto", description="'celery', 'background', or 'auto'"
-    ),
+    year: Optional[str] = Form(default=None, description="Exam year e.g. '2024'"),
+    set_code: Optional[str] = Form(default=None, description="Paper set code e.g. 'SET_A'"),
+    exam_name: Optional[str] = Form(default=None, description="Exam name e.g. 'UPSC'"),
+    stage: Optional[str] = Form(default=None, description="Stage e.g. 'PRELIMS'"),
+    subject_code: Optional[str] = Form(default=None, description="Subject e.g. 'GS1'"),
+    run_mode: Optional[str] = Form(default="auto", description="'celery', 'background', or 'auto'"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
     Uploads a Question Paper PDF and initiates Pipeline 1.
-    Canonical exam code is extracted from filename stem.
-    Requires set_code for paper set categorization.
+    Extracts canonical exam code, year, stage, subject, and set dynamically from uploaded file and form parameters.
     """
     service = ExamService(session)
     return await service.handle_pdf_upload(
-        file=file, set_code=set_code, run_mode=run_mode, background_tasks=background_tasks
+        file=file,
+        year=year,
+        set_code=set_code,
+        exam_name=exam_name,
+        stage=stage,
+        subject_code=subject_code,
+        run_mode=run_mode,
+        background_tasks=background_tasks,
     )
 
 

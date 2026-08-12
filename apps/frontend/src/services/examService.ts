@@ -32,8 +32,9 @@ export async function uploadExamPaper({
   examName,
   year,
   paperType,
+  set_code = 'SET_A',
   file,
-}: UploadExamPayload): Promise<UploadExamResponse> {
+}: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
   const headers: Record<string, string> = {};
   if (token) {
@@ -44,9 +45,10 @@ export async function uploadExamPaper({
   formData.append('exam_name', examName);
   formData.append('year', year);
   formData.append('paper_type', paperType);
+  formData.append('set_code', set_code || 'SET_A');
   formData.append('file', file);
 
-  const response = await fetch(`/upload`, {
+  const response = await fetch(`${API_BASE_URL}/exams/upload`, {
     method: 'POST',
     headers,
     body: formData,
@@ -238,6 +240,7 @@ export interface ExamItem {
   total_marks?: number;
   description?: string;
   is_active: boolean;
+  status?: string;
 }
 
 /** 11. Fetch All Available Registered Exams */

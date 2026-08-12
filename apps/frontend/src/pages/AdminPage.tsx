@@ -13,6 +13,7 @@ import { ResourcesView } from '../components/admin/views/ResourcesView';
 import { UsersView } from '../components/admin/views/UsersView';
 import { AnalyticsView } from '../components/admin/views/AnalyticsView';
 import { SubscriptionsView } from '../components/admin/views/SubscriptionsView';
+import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineStatusView';
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -22,6 +23,8 @@ export function AdminPage() {
     switch (activeView) {
       case 'dashboard':
         return <AdminOverviewView onNavigate={setActiveView} />;
+      case 'pipeline-status':
+        return <ExamPipelineStatusView />;
       case 'questions':
         return <QuestionBankManager />;
       case 'upload':

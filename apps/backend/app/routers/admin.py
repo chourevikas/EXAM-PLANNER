@@ -105,6 +105,52 @@ async def get_system_diagnostics(
     return await service.get_system_diagnostics()
 
 
+
+@router.get("/exams/pipeline-status", summary="List All Exams with Pipeline Status & Question Metrics")
+async def list_exam_pipeline_statuses(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns list of all exams with detailed pipeline status, extracted question metrics,
+    and S3 JSON folder artifact paths.
+    """
+    from sqlmodel import select, func
+    from app.db.models import Exam, Question
+
+    res = await session.exec(select(Exam))
+    exams = res.all()
+
+    pipeline_list = []
+    for exam in exams:
+        # Get live count of extracted questions in DB
+        q_cnt_res = await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam.id))
+        q_count = q_cnt_res.one()
+
+        status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+
+        pipeline_list.append({
+            "id": str(exam.id),
+            "code": exam.code,
+            "name": exam.name,
+            "source_year": exam.source_year,
+            "stage": exam.stage,
+            "subject_code": exam.subject_code,
+            "paper_set_code": exam.paper_set_code,
+            "status": status_str,
+            "is_active": exam.is_active,
+            "total_questions": exam.total_questions or 100,
+            "extracted_questions_count": q_count,
+            "missing_questions_count": exam.missing_questions_count or max(0, (exam.total_questions or 100) - q_count),
+            "questions_json_path": exam.questions_json_path,
+            "solutions_json_path": exam.solutions_json_path,
+            "questions_json_folder_path": exam.questions_json_folder_path,
+            "solutions_json_folder_path": exam.solutions_json_folder_path,
+        })
+
+    return pipeline_list
+
+
 @router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
 async def approve_and_publish_exam(
     exam_id: str,

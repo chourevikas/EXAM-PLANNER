@@ -1,7 +1,7 @@
-"""Add Gamification and StudyTask models
+"""007_add_gamification_and_studytask_models
 
 Revision ID: 1ce80f939214
-Revises: 005_convert_timestamptz
+Revises: 006_exam_lifecycle
 Create Date: 2026-08-10 19:33:19.123474
 
 """
@@ -45,4 +45,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     pass
-
