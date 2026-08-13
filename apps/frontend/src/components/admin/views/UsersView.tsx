@@ -354,7 +354,9 @@ export function UsersView() {
                                   {u.full_name}
                                 </span>
                                 {u.is_verified && (
-                                  <CheckCircle size={14} color="#059669" title="Verified Candidate" />
+                                  <span title="Verified Candidate" style={{ display: 'flex' }}>
+                                    <CheckCircle size={14} color="#059669" />
+                                  </span>
                                 )}
                               </div>
                               <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
