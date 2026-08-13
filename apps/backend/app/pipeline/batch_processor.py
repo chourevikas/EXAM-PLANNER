@@ -133,9 +133,33 @@ def build_question_registry(
                     break
 
             if last_known_q_num is not None and next_known_q_num is not None:
-                # If next question is last_known + 1 (e.g. Q50 -> unnumbered fragment -> Q51),
-                # this unnumbered fragment belongs to Q50!
-                if next_known_q_num == last_known_q_num + 1:
+                # Check if item is a passage or direction header for the upcoming question (e.g. Q6)
+                is_upcoming_passage = any(
+                    bool(t.direction_header)
+                    or (
+                        t.question_text
+                        and any(
+                            kw in t.question_text.lower()[:80]
+                            for kw in ("direction", "passage", "read the following", "comprehension", "context")
+                        )
+                    )
+                    or (not t.options and bool(t.parent_context_override))
+                    for t in q_item.translations
+                )
+
+                if is_upcoming_passage:
+                    target_key = (sec_code, next_known_q_num)
+                    logger.info(
+                        f"📖 [PASSAGE ATTACHMENT] Page {p_num} unnumbered passage/direction header attached to upcoming Q#{next_known_q_num}."
+                    )
+                    if target_key in question_registry:
+                        _merge_question_item_into_registry(question_registry, target_key, p_num, q_item)
+                        continue
+                    else:
+                        q_num = next_known_q_num
+                elif next_known_q_num == last_known_q_num + 1:
+                    # If next question is last_known + 1 (e.g. Q50 -> trailing fragment -> Q51),
+                    # this unnumbered fragment belongs to Q50!
                     target_key = (sec_code, last_known_q_num)
                     if target_key in question_registry:
                         logger.info(

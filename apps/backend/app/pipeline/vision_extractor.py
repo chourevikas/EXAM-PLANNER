@@ -168,12 +168,15 @@ async def ainvoke_extraction_llm(
        - MIXED_INSTRUCTION_TOP_DUAL_BOTTOM: Read full-width top header FIRST, then split into vertical columns.
     
     EXTRACTION & COMPLETENESS LAWS:
-    1. TABLES: Convert tables directly into standard Markdown tables (| Col 1 | Col 2 |). Do NOT crop tables.
-    2. MATHEMATICAL EQUATIONS: Convert formulas into valid LaTeX syntax ($...$ or $$...$$). Do NOT crop math formulas.
-    3. DIAGRAMS & FIGURES: ONLY return bounding boxes `[ymin, xmin, ymax, xmax]` for actual visual figures/maps/charts.
-    4. COMPLETENESS FLAG (`is_complete`): Set `is_complete: false` on ANY question where the stem or options cut off at page seams.
-    5. PASSAGE COMPLETENESS (`is_complete`): Set `is_complete: false` on any reading passage/case study that continues onto the next page.
-    6. CONTINUATION FRAGMENTS: If Page {page_num} top starts with trailing options (C, D) or statements belonging to Q#{page_num - 1}, set `is_continuation_fragment: true`, `target_parent_question_number`, and `target_parent_section_code`.
+    1. PRINTED QUESTION NUMBERS: You MUST extract the exact integer printed on the page for every question (e.g. "Q. 15", "15.", "(15)" -> `printed_question_number: 15`). NEVER set `printed_question_number: null` if a question number is visible!
+    2. PASSAGES & DIRECTIONS: Extract reading passages, case studies, or direction headers ("Directions for Q. 6 to 10") into `new_context_memories` with `target_question_range`. Do NOT model standalone passages as questions!
+    3. BILINGUAL EXTRACTION: For bilingual exam papers (e.g. English & Hindi), create one entry under `translations` for ENGLISH and one entry under `translations` for HINDI for every question!
+    4. TABLES: Convert tables directly into standard Markdown tables (| Col 1 | Col 2 |). Do NOT crop tables.
+    5. MATHEMATICAL EQUATIONS: Convert formulas into valid LaTeX syntax ($...$ or $$...$$). Do NOT crop math formulas.
+    6. DIAGRAMS & FIGURES: ONLY return bounding boxes `[ymin, xmin, ymax, xmax]` for actual visual figures/maps/charts.
+    7. COMPLETENESS FLAG (`is_complete`): Set `is_complete: false` on ANY question where the stem or options cut off at page seams.
+    8. PASSAGE COMPLETENESS (`is_complete`): Set `is_complete: false` on any reading passage/case study that continues onto the next page.
+    9. CONTINUATION FRAGMENTS: If Page {page_num} top starts with trailing options (C, D) or statements belonging to a question from Page {page_num - 1}, set `is_continuation_fragment: true`, `target_parent_question_number`, and `target_parent_section_code`.
     """
 
     message = HumanMessage(
