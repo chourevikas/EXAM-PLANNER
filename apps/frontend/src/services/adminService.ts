@@ -242,3 +242,25 @@ export async function updateAdminQuestionStatus(questionId: string, status: stri
   return await res.json();
 }
 
+export async function fetchCatalogQuestions(
+  page: number = 1,
+  limit: number = 20,
+  subjectName?: string,
+  status?: string
+): Promise<any> {
+  let url = `/api/v1/questions?page=${page}&limit=${limit}`;
+  if (subjectName && subjectName !== 'All') {
+    url += `&subject_name=${encodeURIComponent(subjectName)}`;
+  }
+  if (status && status !== 'ALL') {
+    url += `&status=${status}`;
+  }
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch catalog questions' }));
+    throw new Error(errorData.detail || 'Could not fetch catalog questions.');
+  }
+  return await res.json();
+}
+
+
