@@ -50,6 +50,7 @@ class QuestionUpdatePayload(BaseModel):
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
     primary_concept_tag: Optional[str] = None
+    status: Optional[QuestionStatus] = None
 
 
 class QuestionCreatePayload(BaseModel):

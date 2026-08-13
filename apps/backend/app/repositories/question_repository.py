@@ -67,7 +67,7 @@ class QuestionRepository:
 
         # Filters
         if exam_id:
-            stmt = stmt.where(Question.exam_id == exam_id)
+            stmt = stmt.where(or_(Question.exam_id == exam_id, Exam.id == exam_id))
         if status:
             stmt = stmt.where(Question.status == status)
         if paper_set_code:

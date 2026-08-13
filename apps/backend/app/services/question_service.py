@@ -95,10 +95,7 @@ class QuestionService:
             limit=limit,
         )
 
-        items = []
-        for q in questions:
-            detail = await self._build_question_detail_response(q, target_lang=language)
-            items.append(detail)
+        items = await self._build_batch_question_detail_responses(questions, target_lang=language)
 
         pages = math.ceil(total / limit) if limit > 0 else 1
 
@@ -143,8 +140,11 @@ class QuestionService:
         if payload.subtopic_id:
             q.subtopic_id = payload.subtopic_id
 
-        # Update question status to PUBLISHED upon saving
-        q.status = QuestionStatus.PUBLISHED
+        # Update question status if provided, else set to PUBLISHED
+        if payload.status:
+            q.status = payload.status
+        else:
+            q.status = QuestionStatus.PUBLISHED
         self.session.add(q)
 
         # Update Question Translation
@@ -784,3 +784,227 @@ class QuestionService:
             created_at=q.created_at.isoformat() if q.created_at else None,
             updated_at=q.updated_at.isoformat() if q.updated_at else None,
         )
+
+    async def _build_batch_question_detail_responses(
+        self, questions: List[Question], target_lang: LanguageCode = LanguageCode.ENGLISH
+    ) -> List[QuestionDetailResponse]:
+        if not questions:
+            return []
+
+        q_ids = [q.id for q in questions]
+
+        # 1. Batch Exams
+        exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
+        exams_map = {}
+        if exam_ids:
+            e_res = await self.session.exec(select(Exam).where(Exam.id.in_(exam_ids)))
+            exams_map = {e.id: e for e in e_res.all()}
+
+        # 2. Batch Question Translations
+        qt_res = await self.session.exec(
+            select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
+        )
+        qt_map = {}
+        for qt in qt_res.all():
+            if qt.question_id not in qt_map:
+                qt_map[qt.question_id] = {}
+            qt_map[qt.question_id][qt.language] = qt.question_text
+
+        # 3. Batch Passages & Passage Translations
+        passage_ids = list(set(q.passage_id for q in questions if q.passage_id))
+        pt_map = {}
+        if passage_ids:
+            pt_res = await self.session.exec(
+                select(PassageTranslation).where(PassageTranslation.passage_id.in_(passage_ids))
+            )
+            for pt in pt_res.all():
+                if pt.passage_id not in pt_map:
+                    pt_map[pt.passage_id] = {}
+                pt_map[pt.passage_id][pt.language] = pt.passage_text
+
+        # 4. Batch Question Options & Option Translations
+        opt_res = await self.session.exec(
+            select(QuestionOption)
+            .where(QuestionOption.question_id.in_(q_ids))
+            .order_by(QuestionOption.question_id, QuestionOption.display_order)
+        )
+        options = opt_res.all()
+        opt_map = {}
+        opt_ids = []
+        for opt in options:
+            if opt.question_id not in opt_map:
+                opt_map[opt.question_id] = []
+            opt_map[opt.question_id].append(opt)
+            opt_ids.append(opt.id)
+
+        ot_map = {}
+        if opt_ids:
+            ot_res = await self.session.exec(
+                select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+            )
+            for ot in ot_res.all():
+                if ot.option_id not in ot_map:
+                    ot_map[ot.option_id] = {}
+                ot_map[ot.option_id][ot.language] = (ot.option_text, ot.distractor_analysis)
+
+        # 5. Batch Question Explanations
+        expl_res = await self.session.exec(
+            select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids))
+        )
+        expl_map = {}
+        for expl in expl_res.all():
+            if expl.question_id not in expl_map:
+                expl_map[expl.question_id] = {}
+            expl_map[expl.question_id][expl.language] = expl
+
+        # 6. Batch Metadata & Hierarchy
+        meta_res = await self.session.exec(
+            select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids))
+        )
+        meta_map = {m.question_id: m for m in meta_res.all()}
+
+        link_res = await self.session.exec(
+            select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id.in_(q_ids))
+        )
+        links = link_res.all()
+        subtopic_ids = list(set(l.subtopic_id for l in links if l.subtopic_id))
+        subtopics_map = {}
+        topics_map = {}
+        subjects_map = {}
+
+        if subtopic_ids:
+            subt_res = await self.session.exec(select(Subtopic).where(Subtopic.id.in_(subtopic_ids)))
+            subtopics_map = {st.id: st for st in subt_res.all()}
+            top_ids = list(set(st.topic_id for st in subtopics_map.values() if st.topic_id))
+            if top_ids:
+                t_res = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
+                topics_map = {t.id: t for t in t_res.all()}
+                subj_ids = list(set(t.subject_id for t in topics_map.values() if t.subject_id))
+                if subj_ids:
+                    s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+                    subjects_map = {s.id: s for s in s_res.all()}
+
+        link_map = {}
+        for l in links:
+            if l.question_id not in link_map:
+                link_map[l.question_id] = []
+            link_map[l.question_id].append(l)
+
+        # Assemble QuestionDetailResponse for all questions in memory
+        results = []
+        for q in questions:
+            exam = exams_map.get(q.exam_id)
+            
+            # Question Text
+            q_text_dict = qt_map.get(q.id, {})
+            q_text = q_text_dict.get(target_lang) or (next(iter(q_text_dict.values())) if q_text_dict else "")
+
+            # Passage Text
+            p_text = None
+            if q.passage_id:
+                p_text_dict = pt_map.get(q.passage_id, {})
+                p_text = p_text_dict.get(target_lang) or (next(iter(p_text_dict.values())) if p_text_dict else None)
+
+            # Options
+            q_opts = opt_map.get(q.id, [])
+            opts_detail = []
+            for opt in q_opts:
+                ot_dict = ot_map.get(opt.id, {})
+                ot_tuple = ot_dict.get(target_lang) or (next(iter(ot_dict.values())) if ot_dict else ("", None))
+                opts_detail.append(
+                    QuestionOptionDetail(
+                        option_id=str(opt.id),
+                        option_label=opt.option_label,
+                        display_order=opt.display_order,
+                        is_correct=opt.is_correct,
+                        option_text=ot_tuple[0] if ot_tuple else "",
+                        distractor_analysis=ot_tuple[1] if ot_tuple else None,
+                        closeness_score=opt.closeness_score,
+                    )
+                )
+
+            # Explanation
+            expl_dict = expl_map.get(q.id, {})
+            expl_obj = expl_dict.get(target_lang) or (next(iter(expl_dict.values())) if expl_dict else None)
+            explanation_detail = None
+            if expl_obj:
+                explanation_detail = QuestionExplanationDetail(
+                    explanation_id=str(expl_obj.id),
+                    language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
+                    core_concept=expl_obj.core_concept,
+                    detailed_solution=expl_obj.detailed_solution,
+                    common_traps=expl_obj.common_traps_json or [],
+                    key_takeaways=expl_obj.key_takeaways_json or [],
+                )
+
+            # Metadata
+            qm = meta_map.get(q.id)
+            metadata_detail = None
+            if qm:
+                metadata_detail = QuestionMetadataDetail(
+                    blooms_level=qm.blooms_level.value if hasattr(qm.blooms_level, "value") else str(qm.blooms_level),
+                    cognitive_skill=qm.cognitive_skill,
+                    primary_concept_tag=qm.primary_concept_tag,
+                )
+
+            # Hierarchy
+            h_list = link_map.get(q.id, [])
+            hierarchy_detail = []
+            for l in h_list:
+                st = subtopics_map.get(l.subtopic_id)
+                top = topics_map.get(st.topic_id) if st else None
+                subj = subjects_map.get(top.subject_id) if top else None
+                hierarchy_detail.append(
+                    HierarchyLinkDetail(
+                        subject_id=str(subj.id) if subj else None,
+                        subject_name=subj.name if subj else None,
+                        subject_code=subj.code if subj else None,
+                        topic_id=str(top.id) if top else None,
+                        topic_name=top.name if top else None,
+                        topic_code=top.code if top else None,
+                        subtopic_id=str(st.id) if st else None,
+                        subtopic_name=st.name if st else None,
+                        subtopic_code=st.code if st else None,
+                        is_primary=l.is_primary,
+                        relevance_weight=l.relevance_weight,
+                    )
+                )
+
+            results.append(
+                QuestionDetailResponse(
+                    question_id=str(q.id),
+                    exam_id=str(q.exam_id) if q.exam_id else None,
+                    exam_name=exam.name if exam else None,
+                    exam_code=exam.code if exam else None,
+                    exam_type=exam.exam_type.value if exam and hasattr(exam.exam_type, "value") else (str(exam.exam_type) if exam else "PYQ"),
+                    stage=exam.stage if exam else "prelims",
+                    source_year=q.source_year or (exam.source_year if exam else None),
+                    paper_set_code=q.paper_set_code,
+                    section_code=q.section_code,
+                    question_number_in_paper=q.question_number_in_paper,
+                    question_type=q.question_type,
+                    difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
+                    marks=q.marks,
+                    negative_marks=q.negative_marks,
+                    expected_time_seconds=q.expected_time_seconds,
+                    status=q.status.value if hasattr(q.status, "value") else str(q.status),
+                    is_mcq=q.is_mcq,
+                    is_complete=q.is_complete,
+                    has_image=q.has_image,
+                    page_numbers=q.page_numbers_json or [],
+                    passage_id=str(q.passage_id) if q.passage_id else None,
+                    passage_text=p_text,
+                    question_text=q_text,
+                    translations=q_text_dict,
+                    options=opts_detail,
+                    explanation=explanation_detail,
+                    metadata=metadata_detail,
+                    hierarchy=hierarchy_detail,
+                    assets=[],
+                    created_at=q.created_at.isoformat() if q.created_at else None,
+                    updated_at=q.updated_at.isoformat() if q.updated_at else None,
+                )
+            )
+
+        return results
+

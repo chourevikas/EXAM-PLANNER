@@ -202,3 +202,43 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
   }
   return await res.json();
 }
+
+export async function fetchQuestionsByExam(examId: string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
+  let url = `/api/v1/questions?exam_id=${examId}&page=${page}&limit=${limit}`;
+  if (status && status !== 'ALL') {
+    url += `&status=${status}`;
+  }
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch questions for exam' }));
+    throw new Error(errorData.detail || 'Could not fetch exam questions.');
+  }
+  return await res.json();
+}
+
+export async function updateAdminQuestionDetail(questionId: string, payload: any): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+    method: 'PUT',
+    headers: getAuthHeader(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to update question' }));
+    throw new Error(errorData.detail || 'Question update failed.');
+  }
+  return await res.json();
+}
+
+export async function updateAdminQuestionStatus(questionId: string, status: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
+    method: 'PATCH',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to update question status' }));
+    throw new Error(errorData.detail || 'Status update failed.');
+  }
+  return await res.json();
+}
+
