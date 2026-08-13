@@ -27,16 +27,17 @@ export function PYQSelectionPage() {
       setIsLoading(true);
       try {
         const [liveExams, userAttempts] = await Promise.all([
-          listExams(),
+          listExams('PUBLISHED'),
           listCandidateAttempts(),
         ]);
 
-        const pyqs = liveExams.filter(
-          (e) => !e.exam_type || e.exam_type === 'PYQ' || e.exam_type === 'QuestionSourceType.PYQ'
+        // Only display exams that have been Approved & Published by Admin (where S3 test bank JSONs exist)
+        const publishedPyqs = liveExams.filter(
+          (e) => (e.status === 'PUBLISHED' || e.status === 'ExamStatus.PUBLISHED')
         );
 
-        if (pyqs.length > 0) {
-          const mapped: DisplayExam[] = pyqs.map((e) => {
+        if (publishedPyqs.length > 0) {
+          const mapped: DisplayExam[] = publishedPyqs.map((e) => {
             // Find latest attempt for this exam
             const matchingAttempt = userAttempts.find(
               (att) => att.exam_id === e.id || att.exam_id === e.code
@@ -64,7 +65,7 @@ export function PYQSelectionPage() {
             return {
               id: e.id,
               code: e.code,
-              year: e.source_year || 2023,
+              year: e.source_year || 2025,
               title: e.name || e.code,
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
@@ -75,11 +76,7 @@ export function PYQSelectionPage() {
           });
           setExamsList(mapped);
         } else {
-          // Default fallback if no exams stored yet
-          setExamsList([
-            { id: 'upsc_cse-prelims-gs1-2023-A', code: 'upsc_cse-prelims-gs1-2023-A', year: 2023, title: 'UPSC CSE Prelims 2023', totalQuestions: 100, duration: '120 mins', status: 'NOT_STARTED' },
-            { id: 'pyq_2022', code: 'pyq_2022', year: 2022, title: 'UPSC CSE Prelims 2022', totalQuestions: 100, duration: '120 mins', status: 'NOT_STARTED' },
-          ]);
+          setExamsList([]);
         }
       } catch (err) {
         console.warn('Failed to load real-time exams & attempts from API:', err);
@@ -113,6 +110,16 @@ export function PYQSelectionPage() {
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
           <div className="spinner" style={{ marginBottom: 12 }} />
           Fetching real-time exam archive and attempt status...
+        </div>
+      ) : examsList.length === 0 ? (
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-default)' }}>
+          <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
+            <Ico.Book size={40} />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Approved PYQ Papers Available Yet</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+            Previous year exam papers uploaded to S3 will appear here as soon as they are approved & published by an administrator.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>

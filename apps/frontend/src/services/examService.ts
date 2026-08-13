@@ -281,9 +281,13 @@ export interface ExamItem {
 }
 
 /** 11. Fetch All Available Registered Exams */
-export async function listExams(): Promise<ExamItem[]> {
+export async function listExams(status?: string): Promise<ExamItem[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/exams`, {
+    let url = `${API_BASE_URL}/exams`;
+    if (status) {
+      url += `?status=${encodeURIComponent(status)}`;
+    }
+    const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
     });

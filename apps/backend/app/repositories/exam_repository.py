@@ -19,8 +19,13 @@ class ExamRepository:
         res = await self.session.exec(stmt)
         return res.first()
 
-    async def list_all(self) -> List[Exam]:
-        stmt = select(Exam).order_by(col(Exam.created_at).desc())
+    async def list_all(self, status: Optional[str] = None) -> List[Exam]:
+        stmt = select(Exam)
+        if status:
+            from sqlmodel import cast, String
+            target_str = str(status.value) if hasattr(status, "value") else str(status)
+            stmt = stmt.where(cast(Exam.status, String) == target_str)
+        stmt = stmt.order_by(col(Exam.created_at).desc())
         res = await self.session.exec(stmt)
         return res.all()
 

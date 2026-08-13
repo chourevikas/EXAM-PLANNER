@@ -55,10 +55,13 @@ async def upload_exam_pdf(
 
 
 @router.get("", response_model=List[Exam])
-async def list_exams(session: AsyncSession = Depends(get_async_session)):
-    """Lists all registered competitive exams."""
+async def list_exams(
+    status: Optional[str] = Query(default=None, description="Filter by Exam status (e.g. 'PUBLISHED')"),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Lists all registered competitive exams, optionally filtered by status."""
     service = ExamService(session)
-    return await service.list_exams()
+    return await service.list_exams(status=status)
 
 
 @router.get("/export-zip")
