@@ -80,26 +80,6 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
             f"✨ [PAGE {page_num} EXTRACTED] Found {len(payload.extracted_questions)} question(s)."
         )
 
-        # Real-time Incremental Persistence to DB & Storage
-        if payload and payload.extracted_questions and exam_id_str:
-            try:
-                target_exam_uuid = uuid.UUID(exam_id_str)
-                single_page_registry = build_question_registry([(page_num, payload, None)])
-                registrar = BatchQuestionRegistrar(batch_size=5)
-                await registrar.commit_questions_in_batches(
-                    exam_id=target_exam_uuid,
-                    pdf_path=pdf_path,
-                    question_registry=single_page_registry,
-                    passage_id_map={},
-                    storage=get_storage_provider(),
-                    load_pdf_page_image_fn=load_pdf_page_image_lazily,
-                )
-                log.info(
-                    f"💾 [INCREMENTAL BATCH SAVE] Successfully committed Page {page_num} questions to DB & Storage."
-                )
-            except Exception as save_err:
-                log.warning(f"⚠️ Incremental save warning for Page {page_num}: {save_err}")
-
         return {"raw_page_payloads": [(page_num, payload, None)]}
     except Exception as e:
         err_str = f"Worker failed on Page {page_num}: {str(e)}"

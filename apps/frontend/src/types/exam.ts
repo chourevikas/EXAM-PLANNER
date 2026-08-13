@@ -14,6 +14,8 @@ export interface UploadExamPayload {
 export interface UploadExamResponse {
   message?: string;
   s3_path?: string;
+  canonical_exam_code?: string;
+  target_set_code?: string;
   detail?: string;
 }
 

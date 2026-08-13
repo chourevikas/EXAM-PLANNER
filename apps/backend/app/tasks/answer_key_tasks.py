@@ -9,7 +9,7 @@ from app.config.logger import setup_logger, TaskLoggerAdapter
 from app.db.session import async_init_db
 from app.pipeline.answer_key_graph import build_answer_key_pipeline
 from app.config.filename_parser import parse_answer_key_filename
-from app.core.cleanup import cleanup_temp_artifacts
+from app.core.cleanup import cleanup_file
 
 logger = setup_logger("TaskRunner")
 
@@ -114,6 +114,10 @@ async def async_process_answer_key_pdf(
         )
         raise
     finally:
-        # End-of-pipeline cleanup: remove temporary processing cache and temp files
+        # End-of-pipeline cleanup: remove task-specific temporary processing cache and temp files
         log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
-        cleanup_temp_artifacts(pdf_path, Path("./temp_pdf_cache"))
+        clean_name = str(pdf_path).replace("\\", "/").strip("/").replace("/", "_")
+        if not clean_name.lower().endswith(".pdf"):
+            clean_name = f"{clean_name}.pdf"
+        local_cache_file = Path("./temp_pdf_cache").resolve() / clean_name
+        cleanup_file(local_cache_file)

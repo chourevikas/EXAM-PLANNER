@@ -1,13 +1,17 @@
 import React from 'react';
 import { useExamUpload } from '../../hooks/useExamUpload';
-import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/exam';
+import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS, SET_OPTIONS } from '../../constants/exam';
 
 export function ExamUploadForm() {
   const {
+    uploadMode,
+    setUploadMode,
     examName,
     setExamName,
     year,
     setYear,
+    setCode,
+    setSetCode,
     paperType,
     setPaperType,
     selectedFile,
@@ -24,13 +28,55 @@ export function ExamUploadForm() {
 
   return (
     <div className="admin-card">
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-          Upload Exam Paper to S3
+          {uploadMode === 'ANSWER_KEY' ? 'Upload Answer Key PDF' : 'Upload Exam Question Paper PDF'}
         </h2>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-          Select exam parameters and upload your question paper PDF. Files will be stored in S3 for question extraction.
+          {uploadMode === 'ANSWER_KEY'
+            ? 'Upload answer key PDF and select mandatory Target Paper Set Code to initiate Pipeline 2.'
+            : 'Select exam parameters and upload your question paper PDF to initiate Pipeline 1.'}
         </p>
+      </div>
+
+      {/* Mode Switcher Buttons */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <button
+          type="button"
+          onClick={() => setUploadMode('QUESTION_PAPER')}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 700,
+            border: uploadMode === 'QUESTION_PAPER' ? '2px solid var(--royal, #2563eb)' : '1px solid #e2e8f0',
+            backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#eff6ff' : '#ffffff',
+            color: uploadMode === 'QUESTION_PAPER' ? '#1e40af' : '#64748b',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          📄 Question Paper PDF
+        </button>
+        <button
+          type="button"
+          onClick={() => setUploadMode('ANSWER_KEY')}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 700,
+            border: uploadMode === 'ANSWER_KEY' ? '2px solid var(--royal, #2563eb)' : '1px solid #e2e8f0',
+            backgroundColor: uploadMode === 'ANSWER_KEY' ? '#eff6ff' : '#ffffff',
+            color: uploadMode === 'ANSWER_KEY' ? '#1e40af' : '#64748b',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          🔑 Answer Key PDF
+        </button>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -75,24 +121,47 @@ export function ExamUploadForm() {
             </select>
           </div>
 
-          {/* Paper Type Select */}
+          {/* Mandatory Target Set Code Select */}
           <div className="form-group">
-            <label htmlFor="paper_type" className="form-label">
-              Paper Type
+            <label htmlFor="set_code" className="form-label" style={{ fontWeight: 700 }}>
+              Target Paper Set Code <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <select
-              id="paper_type"
-              value={paperType}
-              onChange={(e) => setPaperType(e.target.value)}
+              id="set_code"
+              value={setCode}
+              onChange={(e) => setSetCode(e.target.value)}
               className="form-select"
+              required
+              style={{ borderColor: !setCode ? '#fca5a5' : undefined }}
             >
-              {PAPER_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              {SET_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label} ({s.value})
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Paper Type Select (only for Question Paper mode) */}
+          {uploadMode === 'QUESTION_PAPER' && (
+            <div className="form-group">
+              <label htmlFor="paper_type" className="form-label">
+                Paper Type
+              </label>
+              <select
+                id="paper_type"
+                value={paperType}
+                onChange={(e) => setPaperType(e.target.value)}
+                className="form-select"
+              >
+                {PAPER_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Drag and Drop Zone */}
@@ -112,7 +181,7 @@ export function ExamUploadForm() {
           />
 
           <div style={{ fontSize: 36, marginBottom: 12 }}>
-            {selectedFile ? '📄' : '☁️'}
+            {selectedFile ? (uploadMode === 'ANSWER_KEY' ? '🔑' : '📄') : '☁️'}
           </div>
 
           {selectedFile ? (
@@ -127,7 +196,7 @@ export function ExamUploadForm() {
           ) : (
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>
-                Click to upload or drag & drop PDF file here
+                Click to upload {uploadMode === 'ANSWER_KEY' ? 'Answer Key' : 'Question Paper'} PDF file
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 Only PDF format supported (max size 25MB)
@@ -162,10 +231,12 @@ export function ExamUploadForm() {
           {isUploading ? (
             <>
               <span style={{ display: 'inline-block', animation: 'spin-slow 2s linear infinite' }}>⏳</span>
-              Uploading Exam Paper to S3...
+              Uploading {uploadMode === 'ANSWER_KEY' ? 'Answer Key' : 'Question Paper'} PDF...
             </>
+          ) : uploadMode === 'ANSWER_KEY' ? (
+            `Upload Answer Key (Target Set: ${setCode})`
           ) : (
-            'Upload to S3 Storage'
+            `Upload Question Paper (${setCode})`
           )}
         </button>
       </form>

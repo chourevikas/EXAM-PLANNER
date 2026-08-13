@@ -108,7 +108,23 @@ class PipelineManagementService:
             current_step="EXTRACTION_COMPLETE_AWAITING_ANSWER_KEY_UPLOAD" if not flagged_questions else "FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW",
             progress_percent=100.0,
         )
-        await self.check_and_trigger_pipeline_3_if_ready(exam_id)
+
+        # Check if Answer Key was uploaded previously and needs mapping against newly extracted questions from DB
+        from app.db.models import AnswerKeyBatch
+        ak_batch_res = await self.session.exec(
+            select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id)
+        )
+        ak_batches = ak_batch_res.all()
+        if ak_batches:
+            logger.info(
+                f"🔄 [AUTO-MAP FROM DB] Found existing AnswerKeyBatch for Exam {exam_id}. Mapping stored DB answer keys to newly extracted questions..."
+            )
+            from app.services.answer_key_service import AnswerKeyService
+            ak_service = AnswerKeyService(self.session)
+            await ak_service.map_stored_answers_from_db(exam_id)
+            await self.on_pipeline_2_completed(exam_id=exam_id, auto_trigger_pipeline_3=True)
+        else:
+            await self.check_and_trigger_pipeline_3_if_ready(exam_id)
         return run
 
     async def on_pipeline_2_completed(
@@ -156,7 +172,7 @@ class PipelineManagementService:
             )
             p3_run = (await self.session.exec(p3_query)).first()
 
-            if not p3_run or p3_run.status in ("PENDING", "FAILED"):
+            if not p3_run or p3_run.status != "COMPLETED":
                 logger.info(
                     f"🚀 [AUTO-ORCHESTRATION] Both Questions (P1) and Answer Keys (P2) are COMPLETE for Exam {exam_id}. Automatically triggering Pipeline 3!"
                 )

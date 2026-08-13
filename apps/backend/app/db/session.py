@@ -42,19 +42,18 @@ if db_url.startswith("sqlite"):
         cursor.execute("PRAGMA cache_size=-64000;")  # 64MB Cache
         cursor.execute("PRAGMA busy_timeout=60000;") # 60 second busy timeout
         cursor.close()
-elif IS_CELERY_WORKER:
-    logger.info("Initializing Database Engine for Celery Worker process (using NullPool for loop safety)...")
-    engine_kwargs = {
-        "echo": False,
-        "poolclass": NullPool,
-    }
-    engine = create_async_engine(db_url, **engine_kwargs)
 else:
-    logger.info("Initializing Database Engine for FastAPI Server (using AsyncAdaptedQueuePool for high HTTP throughput)...")
+    pool_size = getattr(settings, "DB_POOL_SIZE", 20)
+    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 10)
+    logger.info(
+        f"Initializing Database Engine (pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle=1800, pool_pre_ping=True)..."
+    )
     engine_kwargs = {
         "echo": False,
-        "pool_size": getattr(settings, "DB_POOL_SIZE", 15),
-        "max_overflow": getattr(settings, "DB_MAX_OVERFLOW", 10),
+        "pool_size": pool_size,
+        "max_overflow": max_overflow,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
         "pool_pre_ping": True,
     }
     engine = create_async_engine(db_url, **engine_kwargs)
@@ -98,7 +97,7 @@ def with_db_retry(max_retries: int = 5, initial_delay: float = 0.2):
 
 
 class ManagedAsyncSession:
-    """Async context manager wrapper providing lock-resilient database transactions."""
+    """Async context manager wrapper providing lock-resilient database transactions with guaranteed connection release."""
 
     def __init__(self, max_retries: int = 5):
         self.max_retries = max_retries
@@ -112,33 +111,20 @@ class ManagedAsyncSession:
         if not self.session:
             return False
 
-        if exc_type is not None:
-            await self.session.rollback()
-            await self.session.close()
-            return False
+        try:
+            if exc_type is not None:
+                await self.session.rollback()
+                return False
 
-        retries = 0
-        delay = 0.2
-        while True:
             try:
                 await self.session.commit()
-                break
-            except Exception as exc:
+            except Exception as commit_err:
                 await self.session.rollback()
-                if is_lock_or_concurrency_error(exc) and retries < self.max_retries:
-                    retries += 1
-                    sleep_time = delay + random.uniform(0.05, 0.15)
-                    logger.warning(
-                        f"⚠️ DB Commit Lock contention ({exc}). Retrying commit attempt {retries}/{self.max_retries} in {sleep_time:.2f}s..."
-                    )
-                    await asyncio.sleep(sleep_time)
-                    delay *= 2
-                else:
-                    await self.session.close()
-                    raise
-
-        await self.session.close()
-        return False
+                logger.error(f"❌ Transaction commit failed, rolling back: {commit_err}")
+                raise commit_err
+            return False
+        finally:
+            await self.session.close()
 
 
 def managed_async_session(max_retries: int = 5) -> ManagedAsyncSession:

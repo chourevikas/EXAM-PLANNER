@@ -12,7 +12,7 @@ from app.db.models import Exam
 from app.pipeline.graph import build_langgraph_pipeline
 from app.pipeline.vision_extractor import get_pdf_total_pages
 from app.config.filename_parser import parse_question_paper_filename
-from app.core.cleanup import cleanup_temp_artifacts
+from app.core.cleanup import cleanup_file
 
 logger = setup_logger("TaskRunner")
 
@@ -177,7 +177,7 @@ async def async_process_exam_pdf(
                 "raw_page_payloads": [],
                 "processed_question_keys": [],
             },
-            config={"max_concurrency": 2},
+            config={"max_concurrency": get_settings().MAX_VISION_CONCURRENCY},
         )
 
         async with managed_async_session() as session:
@@ -189,7 +189,6 @@ async def async_process_exam_pdf(
         log.info(
             f"✅ [EXTRACTION PIPELINE COMPLETE] Engine: {execution_engine} | Paper: '{exam_title}' | Task ID: '{t_id}'"
         )
-        log.info("📁 Output Artifacts Saved To Storage Provider")
         log.info("=" * 70)
         return {
             "status": "SUCCESS",
@@ -240,6 +239,10 @@ async def async_process_exam_pdf(
             pass
         raise
     finally:
-        # End-of-pipeline cleanup: remove temporary processing cache and temp files
+        # End-of-pipeline cleanup: remove task-specific temporary processing cache and temp files
         log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
-        cleanup_temp_artifacts(pdf_path, Path("./temp_pdf_cache"))
+        clean_name = str(pdf_path).replace("\\", "/").strip("/").replace("/", "_")
+        if not clean_name.lower().endswith(".pdf"):
+            clean_name = f"{clean_name}.pdf"
+        local_cache_file = Path("./temp_pdf_cache").resolve() / clean_name
+        cleanup_file(local_cache_file)

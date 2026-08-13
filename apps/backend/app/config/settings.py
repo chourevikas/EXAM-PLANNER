@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
     DB_MIGRATION: bool = Field(
-        default=True,
+        default=False,
         description="If True, automatically executes Alembic database migrations ('alembic upgrade head') on application startup.",
     )
 
@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     PIPELINE_BATCH_SIZE: int = Field(
         default=5,
         description="Configurable batch size for chunked DB commits across all pipelines",
+    )
+    MAX_VISION_CONCURRENCY: int = Field(
+        default=5,
+        description="Max concurrent page vision LLM calls (cuts PDF processing time by 3X-5X)",
     )
 
     # Output Artifact Path

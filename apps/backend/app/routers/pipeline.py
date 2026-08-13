@@ -222,7 +222,7 @@ async def upload_question_paper(
     temp_path = await save_upload_file_temp(file, temp_dir)
 
     storage = get_storage_provider()
-    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{clean_set}/{canonical_exam_code}_{clean_set}.pdf"
+    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     cleanup_file(temp_path)
@@ -247,6 +247,23 @@ async def upload_question_paper(
             pdf_path=persistent_path,
             is_active=False,
         )
+        db.add(exam)
+        try:
+            await db.commit()
+            await db.refresh(exam)
+        except Exception:
+            await db.rollback()
+            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            exam = (await db.exec(retry_stmt)).first()
+            if not exam:
+                raise
+            exam.paper_set_code = clean_set
+            exam.pdf_path = persistent_path
+            exam.total_questions = tot_q
+            exam.exam_type = e_type_enum
+            db.add(exam)
+            await db.commit()
+            await db.refresh(exam)
     else:
         exam.paper_set_code = clean_set
         exam.pdf_path = persistent_path
@@ -256,10 +273,9 @@ async def upload_question_paper(
             exam.stage = meta["stage"]
         if meta.get("year"):
             exam.source_year = meta["year"]
-    
-    db.add(exam)
-    await db.commit()
-    await db.refresh(exam)
+        db.add(exam)
+        await db.commit()
+        await db.refresh(exam)
 
     target_exam_id = exam.id
     task_id = f"p1_{uuid.uuid4().hex[:8]}"
@@ -305,6 +321,7 @@ async def upload_question_paper(
 async def upload_answer_key(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    set_code: str = Form(...),
     exam_name: Optional[str] = Form(default="UPSC"),
     stage: Optional[str] = Form(default="prelims"),
     exam_type: Optional[str] = Form(default="PYQ"),
@@ -315,9 +332,23 @@ async def upload_answer_key(
 ):
     """
     Uploads an Answer Key PDF and initiates Pipeline 2.
-    Accepts mandatory year and explicit metadata fields or falls back to filename stem.
-    Normalizes 'uspc' to 'UPSC' and defaults stage to 'prelims'.
+    Accepts mandatory set_code (e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D') and year.
     """
+    ALLOWED_SET_TOKENS = {
+        "SET_A", "SET_B", "SET_C", "SET_D",
+        "SET_1", "SET_2", "SET_3", "SET_4",
+        "A", "B", "C", "D",
+        "1", "2", "3", "4",
+    }
+    raw_set = str(set_code).strip().upper() if set_code else ""
+    if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid paper set code. Allowed values: SET_A, SET_B, SET_C, SET_D, SET_1, SET_2, SET_3, SET_4, A, B, C, D, 1, 2, 3, 4.",
+        )
+
+    clean_set = raw_set if raw_set.startswith("SET_") else f"SET_{raw_set}"
+
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
 
@@ -325,6 +356,7 @@ async def upload_answer_key(
         meta = parse_answer_key_filename(
             filename_or_code=file.filename,
             year=year,
+            user_set_code=clean_set,
             exam_name=exam_name,
             stage=stage,
         )
@@ -396,19 +428,39 @@ async def upload_answer_key(
             exam_type=e_type_enum,
             total_questions=tot_q,
             source_year=meta.get("year", 2024),
-            paper_set_code="SET_A",
-            pdf_path=persistent_path,
+            paper_set_code=clean_set,
+            pdf_path=None,
+            answer_key_pdf_path=persistent_path,
             is_active=False,
         )
         db.add(exam)
-        await db.commit()
-        await db.refresh(exam)
+        try:
+            await db.commit()
+            await db.refresh(exam)
+        except Exception:
+            await db.rollback()
+            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            exam = (await db.exec(retry_stmt)).first()
+            if not exam:
+                raise
+            exam.paper_set_code = clean_set
+            exam.answer_key_pdf_path = persistent_path
+            if total_questions is not None:
+                exam.total_questions = tot_q
+            db.add(exam)
+            await db.commit()
+            await db.refresh(exam)
     else:
+        exam.paper_set_code = clean_set
+        exam.answer_key_pdf_path = persistent_path
         if total_questions is not None:
             exam.total_questions = tot_q
+        db.add(exam)
+        await db.commit()
+        await db.refresh(exam)
 
     target_exam_id = exam.id
-    target_set_code = exam.paper_set_code or "SET_A"
+    target_set_code = clean_set
     task_id = f"p2_{uuid.uuid4().hex[:8]}"
 
     logger.info(
