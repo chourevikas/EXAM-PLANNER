@@ -84,7 +84,7 @@ export function AdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-body, #0f172a)', fontFamily: 'var(--font-sans)', color: 'var(--text-primary)', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top: 0) */}
       <AdminTopNav 
@@ -122,8 +122,8 @@ export function AdminPage() {
           <main style={{ 
             flex: 1, 
             overflowY: 'auto', 
-            background: 'var(--bg-body, #0f172a)', 
-            padding: isMobile ? '16px' : '28px', 
+            background: '#F7F7F5', 
+            padding: isMobile ? '16px 20px' : '24px 32px', 
             boxSizing: 'border-box' 
           }}>
             {renderView()}
@@ -133,5 +133,6 @@ export function AdminPage() {
       </div>
     </div>
   );
+
 }
 

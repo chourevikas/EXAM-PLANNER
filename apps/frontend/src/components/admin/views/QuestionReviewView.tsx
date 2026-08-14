@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ClipboardCheck, 
-  ThumbsUp, 
-  ThumbsDown, 
-  CheckCircle, 
-  XCircle, 
-  AlertTriangle, 
-  Edit3, 
-  Search, 
-  ArrowLeft, 
-  BookOpen, 
-  Filter, 
-  Loader2, 
-  Save, 
-  X, 
-  Check, 
+import {
+  Search,
+  ArrowLeft,
+  BookOpen,
+  Loader2,
+  Save,
+  X,
+  Check,
   FileText,
-  HelpCircle,
-  Clock,
-  Zap
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  CheckCircle2,
+  Edit3,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
-import { 
-  fetchExamPipelineStatuses, 
-  fetchQuestionsByExam, 
-  updateAdminQuestionDetail, 
+import {
+  fetchExamPipelineStatuses,
+  fetchQuestionsByExam,
+  updateAdminQuestionDetail,
   updateAdminQuestionStatus,
-  ExamPipelineStatusItem 
+  ExamPipelineStatusItem,
 } from '../../../services/adminService';
 
 interface QuestionOptionItem {
@@ -56,13 +52,14 @@ interface QuestionDetailItem {
 }
 
 export function QuestionReviewView() {
-  // Navigation State: null = showing Exam List view, string = selected exam ID
+  // Navigation State: null = Exam Directory Table, ExamPipelineStatusItem = Split-Pane Review Workspace
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
-  
+
   // Data States
   const [examsList, setExamsList] = useState<ExamPipelineStatusItem[]>([]);
   const [questionsList, setQuestionsList] = useState<QuestionDetailItem[]>([]);
-  
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number>(0);
+
   // Loading & Feedback States
   const [loadingExams, setLoadingExams] = useState<boolean>(true);
   const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
@@ -70,9 +67,17 @@ export function QuestionReviewView() {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
 
-  // Filters
+  // Exam Directory Filter States
   const [examSearchQuery, setExamSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL'); // ALL, PENDING_HUMAN_REVIEW, PUBLISHED, REJECTED
+  const [statusFilter, setStatusFilter] = useState<string>('ALL'); // ALL, PENDING, PUBLISHED
+  const [stageFilter, setStageFilter] = useState<string>('ALL'); // ALL, prelims, mains
+  const [yearFilter, setYearFilter] = useState<string>('ALL'); // ALL, 2025, 2024, 2023, 2022, 2021
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const pageSize = 10;
+
+  // Workspace Question Search/Filter State
+  const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
+  const [questionStatusFilter, setQuestionStatusFilter] = useState<string>('ALL');
 
   // Question Edit Modal State
   const [editingQuestion, setEditingQuestion] = useState<QuestionDetailItem | null>(null);
@@ -88,9 +93,9 @@ export function QuestionReviewView() {
 
   useEffect(() => {
     if (selectedExam) {
-      loadQuestions(selectedExam, statusFilter);
+      loadQuestions(selectedExam, questionStatusFilter);
     }
-  }, [selectedExam, statusFilter]);
+  }, [selectedExam, questionStatusFilter]);
 
   const loadExams = async () => {
     setLoadingExams(true);
@@ -100,7 +105,7 @@ export function QuestionReviewView() {
       setExamsList(data);
     } catch (err: any) {
       console.error('Failed to load exams list:', err);
-      setErrorMsg(err.message || 'Could not load exams from server.');
+      setErrorMsg(err.message || 'Could not load exam papers from server.');
     } finally {
       setLoadingExams(false);
     }
@@ -111,20 +116,20 @@ export function QuestionReviewView() {
     setErrorMsg('');
     try {
       let res = await fetchQuestionsByExam(exam.id, 1, 100, status);
-      
-      // Fallback 1: If 0 questions returned by exam.id, try querying by paper_set_code & exam_year
+
+      // Fallback if 0 items returned by exam.id
       if ((!res.items || res.items.length === 0) && (exam.paper_set_code || exam.source_year)) {
         let fallbackUrl = `/api/v1/questions?page=1&limit=100`;
         if (exam.paper_set_code) fallbackUrl += `&paper_set_code=${exam.paper_set_code}`;
         if (exam.source_year) fallbackUrl += `&exam_year=${exam.source_year}`;
         if (status && status !== 'ALL') fallbackUrl += `&status=${status}`;
-        
+
         const token = localStorage.getItem('access_token');
         const fallbackRes = await fetch(fallbackUrl, {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
         if (fallbackRes.ok) {
           const fallbackData = await fallbackRes.json();
@@ -134,35 +139,36 @@ export function QuestionReviewView() {
         }
       }
 
-      // Map API items to uniform frontend interface
-      const items = (res.items || []).map((q: any) => ({
+      const items = (res.items || []).map((q: any, idx: number) => ({
         id: q.question_id || q.id,
-        question_number_in_paper: q.question_number_in_paper || 1,
+        question_number_in_paper: q.question_number_in_paper || idx + 1,
         question_type: q.question_type || 'SINGLE_CHOICE',
         difficulty: q.difficulty || 'MEDIUM',
         marks: q.marks || 2.0,
         status: q.status || 'PENDING_HUMAN_REVIEW',
         question_text: q.question_text || 'No question text available',
         passage_text: q.passage_text,
-        subject_name: q.subject_name || q.hierarchy?.[0]?.subject_name || q.hierarchy_links?.[0]?.subject_name,
-        topic_name: q.topic_name || q.hierarchy?.[0]?.topic_name || q.hierarchy_links?.[0]?.topic_name,
-        subtopic_name: q.subtopic_name || q.hierarchy?.[0]?.subtopic_name || q.hierarchy_links?.[0]?.subtopic_name,
-        options: (q.options || []).map((opt: any, idx: number) => ({
+        subject_name: q.subject_name || q.hierarchy?.[0]?.subject_name || q.hierarchy_links?.[0]?.subject_name || 'General Studies',
+        topic_name: q.topic_name || q.hierarchy?.[0]?.topic_name || q.hierarchy_links?.[0]?.topic_name || 'Core Topic',
+        subtopic_name: q.subtopic_name || q.hierarchy?.[0]?.subtopic_name || q.hierarchy_links?.[0]?.subtopic_name || 'Subtopic',
+        options: (q.options || []).map((opt: any, optIdx: number) => ({
           option_id: opt.option_id || opt.id,
-          option_label: opt.option_label || String.fromCharCode(65 + idx),
+          option_label: opt.option_label || String.fromCharCode(65 + optIdx),
           option_text: opt.option_text || opt.text || '',
           is_correct: Boolean(opt.is_correct),
-          display_order: opt.display_order || idx + 1
+          display_order: opt.display_order || optIdx + 1,
         })),
         explanation: {
           core_concept: q.explanation?.core_concept,
-          detailed_solution: q.explanation?.detailed_solution || (typeof q.explanation === 'string' ? q.explanation : '')
-        }
+          detailed_solution: q.explanation?.detailed_solution || (typeof q.explanation === 'string' ? q.explanation : ''),
+        },
       }));
+
       setQuestionsList(items);
+      setSelectedQuestionIndex(0);
     } catch (err: any) {
       console.error('Failed to load questions:', err);
-      setErrorMsg(err.message || 'Could not load questions for this exam.');
+      setErrorMsg(err.message || 'Could not load questions for this examination paper.');
     } finally {
       setLoadingQuestions(false);
     }
@@ -173,11 +179,10 @@ export function QuestionReviewView() {
     setErrorMsg('');
     try {
       await updateAdminQuestionStatus(questionId, 'PUBLISHED');
-      setQuestionsList(prev => prev.map(q => q.id === questionId ? { ...q, status: 'PUBLISHED' } : q));
+      setQuestionsList((prev) => prev.map((q) => (q.id === questionId ? { ...q, status: 'PUBLISHED' } : q)));
       setSuccessMsg('Question approved & published successfully.');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
-      console.error('Failed to approve question:', err);
       setErrorMsg(err.message || 'Failed to approve question.');
     } finally {
       setActionLoadingId(null);
@@ -189,11 +194,10 @@ export function QuestionReviewView() {
     setErrorMsg('');
     try {
       await updateAdminQuestionStatus(questionId, 'REJECTED');
-      setQuestionsList(prev => prev.map(q => q.id === questionId ? { ...q, status: 'REJECTED' } : q));
-      setSuccessMsg('Question status marked as Rejected.');
+      setQuestionsList((prev) => prev.map((q) => (q.id === questionId ? { ...q, status: 'REJECTED' } : q)));
+      setSuccessMsg('Question marked as Rejected.');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
-      console.error('Failed to reject question:', err);
       setErrorMsg(err.message || 'Failed to reject question.');
     } finally {
       setActionLoadingId(null);
@@ -205,28 +209,16 @@ export function QuestionReviewView() {
     setEditFormText(q.question_text || '');
     setEditFormExplanation(q.explanation?.detailed_solution || q.explanation?.core_concept || '');
     setEditFormDifficulty(q.difficulty || 'MEDIUM');
-    
-    // Setup 4 options (A, B, C, D)
+
     const formattedOpts = ['A', 'B', 'C', 'D'].map((label, idx) => {
-      const existing = q.options.find(o => o.option_label.toUpperCase() === label) || q.options[idx];
+      const existing = q.options.find((o) => o.option_label.toUpperCase() === label) || q.options[idx];
       return {
         label,
         text: existing ? existing.option_text : '',
-        is_correct: existing ? existing.is_correct : idx === 0
+        is_correct: existing ? existing.is_correct : idx === 0,
       };
     });
     setEditFormOptions(formattedOpts);
-  };
-
-  const handleOptionCorrectChange = (targetLabel: string) => {
-    setEditFormOptions(prev => prev.map(o => ({
-      ...o,
-      is_correct: o.label === targetLabel
-    })));
-  };
-
-  const handleOptionTextChange = (label: string, text: string) => {
-    setEditFormOptions(prev => prev.map(o => o.label === label ? { ...o, text } : o));
   };
 
   const handleSaveQuestionEdit = async () => {
@@ -237,692 +229,1072 @@ export function QuestionReviewView() {
       const payload = {
         question_text: editFormText,
         difficulty: editFormDifficulty,
-        status: 'PUBLISHED', // Auto-publish edited questions
-        options: editFormOptions.map(o => ({
+        status: 'PUBLISHED',
+        options: editFormOptions.map((o) => ({
           option_label: o.label,
           option_text: o.text,
-          is_correct: o.is_correct
+          is_correct: o.is_correct,
         })),
-        detailed_solution: editFormExplanation
+        detailed_solution: editFormExplanation,
       };
 
-      const updated = await updateAdminQuestionDetail(editingQuestion.id, payload);
+      await updateAdminQuestionDetail(editingQuestion.id, payload);
 
-      setQuestionsList(prev => prev.map(q => {
-        if (q.id === editingQuestion.id) {
-          return {
-            ...q,
-            question_text: editFormText,
-            difficulty: editFormDifficulty,
-            status: 'PUBLISHED',
-            options: editFormOptions.map((o, idx) => ({
-              option_label: o.label,
-              option_text: o.text,
-              is_correct: o.is_correct,
-              display_order: idx + 1
-            })),
-            explanation: {
-              detailed_solution: editFormExplanation
-            }
-          };
-        }
-        return q;
-      }));
+      setQuestionsList((prev) =>
+        prev.map((q) => {
+          if (q.id === editingQuestion.id) {
+            return {
+              ...q,
+              question_text: editFormText,
+              difficulty: editFormDifficulty,
+              status: 'PUBLISHED',
+              options: editFormOptions.map((o, idx) => ({
+                option_label: o.label,
+                option_text: o.text,
+                is_correct: o.is_correct,
+                display_order: idx + 1,
+              })),
+              explanation: {
+                detailed_solution: editFormExplanation,
+              },
+            };
+          }
+          return q;
+        })
+      );
 
-      setSuccessMsg('Question and options updated & published successfully!');
+      setSuccessMsg('Question updated & published successfully!');
       setEditingQuestion(null);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
-      console.error('Failed to update question:', err);
       setErrorMsg(err.message || 'Could not update question details.');
     } finally {
       setSavingEdit(false);
     }
   };
 
-  // Filtered Exams list based on search
-  const filteredExams = examsList.filter(ex => 
-    ex.name?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
-    ex.code?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
-    ex.source_year?.toString().includes(examSearchQuery)
-  );
+  // Filter Directory Exams
+  const filteredExams = examsList.filter((ex) => {
+    const matchesSearch =
+      !examSearchQuery ||
+      ex.name?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
+      ex.code?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
+      ex.source_year?.toString().includes(examSearchQuery);
+
+    const statusUpper = (ex.status || '').toUpperCase();
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'PENDING' && (statusUpper.includes('PENDING') || statusUpper.includes('REVIEW'))) ||
+      (statusFilter === 'PUBLISHED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY')));
+
+    const stageUpper = (ex.stage || '').toUpperCase();
+    const matchesStage =
+      stageFilter === 'ALL' || stageUpper.includes(stageFilter.toUpperCase());
+
+    const matchesYear =
+      yearFilter === 'ALL' || ex.source_year?.toString() === yearFilter;
+
+    return matchesSearch && matchesStatus && matchesStage && matchesYear;
+  });
+
+  // Directory Pagination Logic
+  const totalPapersCount = filteredExams.length;
+  const pendingCount = examsList.filter((e) => (e.status || '').toUpperCase().includes('PENDING')).length;
+  const publishedCount = examsList.filter((e) => (e.status || '').toUpperCase().includes('PUBLISHED')).length;
+
+  const totalPages = Math.ceil(totalPapersCount / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedExams = filteredExams.slice(startIndex, startIndex + pageSize);
+
+  // Filter Workspace Questions
+  const filteredQuestions = questionsList.filter((q) => {
+    if (!questionSearchQuery) return true;
+    const term = questionSearchQuery.toLowerCase();
+    return (
+      q.question_text.toLowerCase().includes(term) ||
+      q.subtopic_name?.toLowerCase().includes(term) ||
+      q.question_number_in_paper.toString() === term
+    );
+  });
+
+  const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
+
+  const formatHumanStatus = (statusStr: string) => {
+    const s = (statusStr || '').toUpperCase();
+    if (s.includes('PUBLISHED') || s.includes('READY')) {
+      return { label: 'Published', bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' };
+    }
+    return { label: 'Pending review', bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' };
+  };
 
   return (
-    <div style={{ padding: 0, maxWidth: 1440, margin: '0 auto', fontFamily: 'var(--font-sans, sans-serif)' }}>
-      
-      {/* Alert Notifications */}
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      {/* Top Banner Alert Feedback */}
       {errorMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <AlertTriangle size={16} />
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 6,
+            background: '#FEF2F2',
+            border: '1px solid #FECDCA',
+            color: '#B42318',
+            fontSize: 13,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <AlertTriangle size={16} color="#B42318" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CheckCircle size={16} />
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 6,
+            background: '#DCFCE7',
+            border: '1px solid #BBF7D0',
+            color: '#15803D',
+            fontSize: 13,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <CheckCircle2 size={16} color="#15803D" />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* VIEW 1: EXAM SELECTOR GRID */}
+      {/* VIEW 1: EXAM PAPER MANAGEMENT TABLE DIRECTORY */}
       {!selectedExam ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          
-          {/* Header Banner */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          {/* Header Row (Sitting directly on background) */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              flexWrap: 'wrap',
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #059669, #047857)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(5,150,105,0.25)' }}>
-                  <ClipboardCheck size={22} />
-                </div>
-                <div>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                    Question Review & Verification Queue
-                  </h2>
-                  <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                    Select an extracted exam from S3/DB to inspect, edit question stems, option choices, answers, and solution explanations.
-                  </p>
-                </div>
-              </div>
+              <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+                Question Review
+              </h1>
+              <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
+                Select an examination paper to review extracted questions, answers, topics, and solution metadata.
+              </p>
             </div>
 
-            {/* Search Box for Exams */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#ffffff', borderRadius: 10, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-              <Search size={16} color="#94a3b8" />
+            {/* Compact Search Field */}
+            <div style={{ position: 'relative', width: 280 }}>
+              <Search size={15} style={{ position: 'absolute', left: 12, top: 13, color: '#667085' }} />
               <input
                 type="text"
-                placeholder="Search exam by code, title, or year..."
+                placeholder="Search exam code, title, or year..."
                 value={examSearchQuery}
-                onChange={(e) => setExamSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setExamSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{
-                  border: 'none',
-                  background: 'transparent',
+                  width: '100%',
+                  padding: '8px 12px 8px 36px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: 13.5,
+                  color: '#172033',
                   outline: 'none',
-                  fontSize: 13,
-                  color: '#0f172a',
-                  width: '100%'
+                  height: 40,
+                  boxSizing: 'border-box',
                 }}
               />
             </div>
           </div>
 
-          {/* Exam Cards Grid */}
-          {loadingExams ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80, gap: 12, color: '#2563eb' }}>
-              <Loader2 className="animate-spin" size={26} />
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Loading live exam papers from server...</span>
-            </div>
-          ) : filteredExams.length === 0 ? (
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 60, textAlign: 'center', color: '#64748b' }}>
-              <BookOpen size={36} color="#cbd5e1" style={{ margin: '0 auto 12px auto' }} />
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>No exam papers found</div>
-              <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Upload question paper PDFs via the Upload tab to populate the review queue.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
-              {filteredExams.map((exam) => {
-                const totalQ = exam.total_questions || 100;
-                const extractedQ = exam.extracted_questions_count || 0;
-                const progressPct = Math.round((extractedQ / totalQ) * 100);
+          {/* Textual Summary Row */}
+          <div style={{ fontSize: 13.5, color: '#667085', marginBottom: 16 }}>
+            <strong style={{ color: '#172033', fontWeight: 600 }}>{examsList.length} exam papers</strong>
+            <span> · {pendingCount} pending review · {publishedCount} published</span>
+          </div>
 
-                return (
-                  <div
-                    key={exam.id}
-                    onClick={() => setSelectedExam(exam)}
+          {/* Compact Filter Row */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Status Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  height: 38,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All</option>
+                <option value="PENDING">Pending review</option>
+                <option value="PUBLISHED">Published</option>
+              </select>
+            </div>
+
+            {/* Stage Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Stage:</label>
+              <select
+                value={stageFilter}
+                onChange={(e) => {
+                  setStageFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  height: 38,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All</option>
+                <option value="prelims">Prelims</option>
+                <option value="mains">Mains</option>
+              </select>
+            </div>
+
+            {/* Year Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Year:</label>
+              <select
+                value={yearFilter}
+                onChange={(e) => {
+                  setYearFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#172033',
+                  backgroundColor: '#FFFFFF',
+                  outline: 'none',
+                  height: 38,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <option value="ALL">All</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+                <option value="2021">2021</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Primary Operations Table */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #E4E7EC',
+              borderRadius: 6,
+              boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
+              overflow: 'hidden',
+            }}
+          >
+            {loadingExams ? (
+              <div style={{ padding: '36px', textAlign: 'center', color: '#667085', fontSize: 13 }}>
+                Loading examination papers...
+              </div>
+            ) : paginatedExams.length === 0 ? (
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: '#667085' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>No examination papers found</div>
+                <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
+                  Try adjusting your search or filters.
+                </div>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAMINATION PAPER</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CODE</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STAGE & YEAR</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXTRACTED</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedExams.map((exam, i) => {
+                    const statusObj = formatHumanStatus(exam.status);
+                    const totalQ = exam.total_questions || 100;
+                    const extQ = exam.extracted_questions_count || 0;
+                    const pct = Math.min(100, Math.round((extQ / totalQ) * 100));
+
+                    return (
+                      <tr
+                        key={exam.id}
+                        onClick={() => setSelectedExam(exam)}
+                        style={{
+                          borderBottom: i === paginatedExams.length - 1 ? 'none' : '1px solid #E4E7EC',
+                          cursor: 'pointer',
+                          transition: 'background 0.12s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        {/* 1. EXAMINATION PAPER */}
+                        <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', maxWidth: 300 }}>
+                          {exam.name || `UPSC Prelims ${exam.source_year} GS Paper 1`}
+                        </td>
+
+                        {/* 2. CODE */}
+                        <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, color: '#667085' }}>
+                          <div>{exam.code}</div>
+                          {exam.paper_set_code && <div style={{ marginTop: 2 }}>{exam.paper_set_code}</div>}
+                        </td>
+
+                        {/* 3. STAGE & YEAR */}
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: '#172033', textTransform: 'capitalize' }}>
+                            {exam.stage || 'Prelims'}
+                          </div>
+                          <div style={{ fontSize: 12.5, color: '#667085', marginTop: 1 }}>
+                            {exam.source_year || 2024}
+                          </div>
+                        </td>
+
+                        {/* 4. EXTRACTED QUESTIONS */}
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#172033' }}>
+                            {extQ} / {totalQ}
+                          </div>
+                          <div style={{ width: 80, height: 4, background: '#F2F4F7', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${pct}%`,
+                                backgroundColor: pct === 100 ? '#15803D' : '#3B6EA8',
+                              }}
+                            />
+                          </div>
+                        </td>
+
+                        {/* 5. STATUS */}
+                        <td style={{ padding: '14px 16px' }}>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              backgroundColor: statusObj.bg,
+                              color: statusObj.color,
+                              border: `1px solid ${statusObj.border}`,
+                              display: 'inline-block',
+                            }}
+                          >
+                            {statusObj.label}
+                          </span>
+                        </td>
+
+                        {/* 6. ACTION */}
+                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedExam(exam);
+                            }}
+                            style={{
+                              padding: '5px 12px',
+                              fontSize: 12.5,
+                              fontWeight: 500,
+                              color: '#172033',
+                              background: '#FFFFFF',
+                              border: '1px solid #E4E7EC',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(59, 110, 168, 0.06)';
+                              e.currentTarget.style.borderColor = '#3B6EA8';
+                              e.currentTarget.style.color = '#3B6EA8';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#FFFFFF';
+                              e.currentTarget.style.borderColor = '#E4E7EC';
+                              e.currentTarget.style.color = '#172033';
+                            }}
+                          >
+                            <span>Review</span>
+                            <span>→</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Clean Pagination Footer */}
+          {totalPapersCount > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: 16,
+                fontSize: 13,
+                color: '#667085',
+              }}
+            >
+              <div>
+                Showing {Math.min(startIndex + 1, totalPapersCount)}–
+                {Math.min(startIndex + pageSize, totalPapersCount)} of {totalPapersCount} papers
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 4,
+                    border: '1px solid #E4E7EC',
+                    background: '#FFFFFF',
+                    color: currentPage === 1 ? '#94A3B8' : '#172033',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: 12.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <ChevronLeft size={14} /> Previous
+                </button>
+
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pg) => (
+                  <button
+                    key={pg}
+                    onClick={() => setCurrentPage(pg)}
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 18,
-                      padding: 20,
+                      padding: '5px 10px',
+                      borderRadius: 4,
+                      border: '1px solid #E4E7EC',
+                      background: currentPage === pg ? '#12233F' : '#FFFFFF',
+                      color: currentPage === pg ? '#FFFFFF' : '#172033',
                       cursor: 'pointer',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 14
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.borderColor = '#93c5fd';
-                      e.currentTarget.style.boxShadow = '0 12px 28px rgba(37,99,235,0.08)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = '#e2e8f0';
-                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.03)';
+                      fontSize: 12.5,
+                      fontWeight: currentPage === pg ? 600 : 400,
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          {exam.code} • {exam.paper_set_code}
-                        </span>
-                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0, fontFamily: 'var(--font-display)' }}>
-                          {exam.name || `Exam ${exam.source_year}`}
-                        </h3>
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 12, backgroundColor: exam.status === 'PUBLISHED' ? '#ecfdf5' : '#eff6ff', color: exam.status === 'PUBLISHED' ? '#059669' : '#2563eb', border: `1px solid ${exam.status === 'PUBLISHED' ? '#a7f3d0' : '#bfdbfe'}` }}>
-                        {exam.status}
-                      </span>
-                    </div>
+                    {pg}
+                  </button>
+                ))}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-                      <span>Year: <strong>{exam.source_year}</strong></span>
-                      <span>•</span>
-                      <span>Stage: <strong>{exam.stage}</strong></span>
-                    </div>
-
-                    {/* Progress Indicator */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
-                        <span style={{ color: '#64748b' }}>Extracted Questions</span>
-                        <span style={{ color: '#0f172a', fontFamily: 'var(--font-mono)' }}>{extractedQ} / {totalQ}</span>
-                      </div>
-                      <div style={{ width: '100%', height: 6, borderRadius: 3, backgroundColor: '#f1f5f9', overflow: 'hidden' }}>
-                        <div style={{ width: `${Math.min(progressPct, 100)}%`, height: '100%', backgroundColor: progressPct >= 100 ? '#10b981' : '#2563eb', borderRadius: 3, transition: 'width 0.3s' }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 4,
+                    border: '1px solid #E4E7EC',
+                    background: '#FFFFFF',
+                    color: currentPage === totalPages ? '#94A3B8' : '#172033',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: 12.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
           )}
         </div>
       ) : (
-        /* VIEW 2: EXAM QUESTIONS REVIEW WORKSPACE */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
-          {/* Header Workspace Controls */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <button
+        /* VIEW 2: SPLIT-PANE QUESTION REVIEW WORKSPACE FOR SELECTED EXAM */
+        <div>
+          {/* Top Breadcrumb Header Bar */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#667085', marginBottom: 6 }}>
+              <span
                 onClick={() => setSelectedExam(null)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 14px',
-                  borderRadius: 10,
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#f8fafc',
-                  color: '#0f172a',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
+                style={{ cursor: 'pointer', textDecoration: 'none', color: '#3B6EA8', fontWeight: 500 }}
               >
-                <ArrowLeft size={16} />
-                <span>Back to Exam List</span>
-              </button>
-
-              <div style={{ height: 24, width: 1, backgroundColor: '#e2e8f0' }} />
-
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, fontFamily: 'var(--font-display)' }}>
-                    {selectedExam.name}
-                  </h3>
-                  <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 8, backgroundColor: '#eff6ff', color: '#2563eb', fontFamily: 'var(--font-mono)' }}>
-                    {selectedExam.paper_set_code}
-                  </span>
-                </div>
-                <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)', marginTop: 2, display: 'block' }}>
-                  {selectedExam.code} • Year {selectedExam.source_year} • {questionsList.length} Questions Loaded
-                </span>
-              </div>
+                ← Back to Question Review
+              </span>
+              <span>/</span>
+              <span style={{ color: '#172033', fontWeight: 600 }}>{selectedExam.name}</span>
             </div>
 
-            {/* Status Filter Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#f1f5f9', padding: 4, borderRadius: 12 }}>
-              {[
-                { id: 'ALL', label: 'All Questions' },
-                { id: 'PENDING_HUMAN_REVIEW', label: 'Pending Review' },
-                { id: 'PUBLISHED', label: 'Approved & Published' },
-                { id: 'REJECTED', label: 'Rejected' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 700, color: '#172033', margin: 0 }}>
+                  {selectedExam.name} ({selectedExam.code})
+                </h1>
+                <span style={{ fontSize: 13, color: '#667085', marginTop: 2, display: 'block' }}>
+                  {questionsList.length} questions loaded from database
+                </span>
+              </div>
+
+              {/* Question Status Filter for Workspace */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select
+                  value={questionStatusFilter}
+                  onChange={(e) => setQuestionStatusFilter(e.target.value)}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: 8,
-                    border: 'none',
-                    backgroundColor: statusFilter === tab.id ? '#ffffff' : 'transparent',
-                    color: statusFilter === tab.id ? '#0f172a' : '#64748b',
-                    fontSize: 12,
-                    fontWeight: statusFilter === tab.id ? 700 : 600,
-                    cursor: 'pointer',
-                    boxShadow: statusFilter === tab.id ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                    transition: 'all 0.15s ease'
+                    borderRadius: 6,
+                    border: '1px solid #E4E7EC',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#172033',
+                    backgroundColor: '#FFFFFF',
+                    outline: 'none',
+                    height: 38,
                   }}
                 >
-                  {tab.label}
-                </button>
-              ))}
+                  <option value="ALL">All Questions</option>
+                  <option value="PENDING_HUMAN_REVIEW">Pending Review</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Question List Cards */}
+          {/* Split-Pane Question Workspace Layout */}
           {loadingQuestions ? (
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#2563eb' }}>
-              <Loader2 className="animate-spin" size={26} />
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Loading questions for {selectedExam.code}...</span>
+            <div style={{ padding: '60px', textAlign: 'center', color: '#667085', background: '#FFFFFF', borderRadius: 6, border: '1px solid #E4E7EC' }}>
+              <Loader2 size={24} className="animate-spin" color="#3B6EA8" style={{ marginBottom: 12 }} />
+              <div>Loading exam questions from database...</div>
             </div>
-          ) : questionsList.length === 0 ? (
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 60, textAlign: 'center', color: '#64748b' }}>
-              <FileText size={36} color="#cbd5e1" style={{ margin: '0 auto 12px auto' }} />
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>No questions found</div>
-              <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>There are no questions matching status filter '{statusFilter}'.</p>
+          ) : filteredQuestions.length === 0 ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#667085', background: '#FFFFFF', borderRadius: 6, border: '1px solid #E4E7EC' }}>
+              <FileText size={32} color="#667085" style={{ marginBottom: 8 }} />
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#172033' }}>No questions found</div>
+              <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
+                No questions matched the selected status filter for this paper.
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {questionsList.map((q) => {
-                const isApproved = q.status === 'PUBLISHED';
-                const isRejected = q.status === 'REJECTED';
+            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+              {/* Left Pane: Question Item List */}
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E4E7EC',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  maxHeight: 'calc(100vh - 220px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {/* Search Bar in Left List */}
+                <div style={{ padding: 12, borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#667085' }} />
+                    <input
+                      type="text"
+                      placeholder="Filter Q1, topic..."
+                      value={questionSearchQuery}
+                      onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px 6px 30px',
+                        borderRadius: 4,
+                        border: '1px solid #E4E7EC',
+                        fontSize: 12.5,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
 
-                return (
-                  <div 
-                    key={q.id} 
-                    style={{ 
-                      background: '#ffffff', 
-                      border: `1px solid ${isApproved ? '#a7f3d0' : isRejected ? '#fecaca' : '#e2e8f0'}`, 
-                      borderRadius: 18, 
-                      padding: 22,
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                {/* Scrollable Question Items */}
+                <div style={{ overflowY: 'auto', flex: 1 }}>
+                  {filteredQuestions.map((q, idx) => {
+                    const isSelected = selectedQuestionIndex === idx;
+                    const isPub = q.status === 'PUBLISHED';
+                    const isRej = q.status === 'REJECTED';
+
+                    return (
+                      <div
+                        key={q.id}
+                        onClick={() => setSelectedQuestionIndex(idx)}
+                        style={{
+                          padding: '12px 14px',
+                          borderBottom: '1px solid #E4E7EC',
+                          backgroundColor: isSelected ? 'rgba(59, 110, 168, 0.08)' : '#FFFFFF',
+                          borderLeft: isSelected ? '3px solid #3B6EA8' : '3px solid transparent',
+                          cursor: 'pointer',
+                          transition: 'all 0.12s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
+                            Q{q.question_number_in_paper}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 6px',
+                              borderRadius: 3,
+                              backgroundColor: isPub ? '#DCFCE7' : isRej ? '#FEF2F2' : '#FEF3C7',
+                              color: isPub ? '#15803D' : isRej ? '#B42318' : '#B45309',
+                            }}
+                          >
+                            {isPub ? 'Published' : isRej ? 'Rejected' : 'Pending'}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: 12.5,
+                            color: '#344054',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {q.question_text}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Pane: Detailed Question Inspector & Review Actions */}
+              {selectedQuestion && (
+                <div
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E4E7EC',
+                    borderRadius: 6,
+                    padding: 24,
+                    boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
+                  }}
+                >
+                  {/* Question Metadata Bar */}
+                  <div
+                    style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 14
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid #E4E7EC',
+                      paddingBottom: 12,
+                      marginBottom: 20,
                     }}
                   >
-                    {/* Card Header Toolbar */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: '#ffffff', backgroundColor: '#0f1e3c', padding: '4px 10px', borderRadius: 8, fontFamily: 'var(--font-mono)' }}>
-                          Q{q.question_number_in_paper}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: '#172033' }}>
+                        Question #{selectedQuestion.question_number_in_paper}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: 4,
+                          backgroundColor:
+                            selectedQuestion.status === 'PUBLISHED'
+                              ? '#DCFCE7'
+                              : selectedQuestion.status === 'REJECTED'
+                              ? '#FEF2F2'
+                              : '#FEF3C7',
+                          color:
+                            selectedQuestion.status === 'PUBLISHED'
+                              ? '#15803D'
+                              : selectedQuestion.status === 'REJECTED'
+                              ? '#B42318'
+                              : '#B45309',
+                          border: `1px solid ${
+                            selectedQuestion.status === 'PUBLISHED'
+                              ? '#BBF7D0'
+                              : selectedQuestion.status === 'REJECTED'
+                              ? '#FECDCA'
+                              : '#FDE68A'
+                          }`,
+                        }}
+                      >
+                        {selectedQuestion.status === 'PUBLISHED'
+                          ? 'Published'
+                          : selectedQuestion.status === 'REJECTED'
+                          ? 'Rejected'
+                          : 'Pending Review'}
+                      </span>
+                    </div>
+
+                    {/* Action Bar */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => openEditModal(selectedQuestion)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: 12.5,
+                          fontWeight: 500,
+                          color: '#172033',
+                          background: '#FFFFFF',
+                          border: '1px solid #E4E7EC',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Edit3 size={14} /> Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleRejectQuestion(selectedQuestion.id)}
+                        disabled={actionLoadingId === selectedQuestion.id}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: 12.5,
+                          fontWeight: 500,
+                          color: '#B42318',
+                          background: '#FFFFFF',
+                          border: '1px solid #FECDCA',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <ThumbsDown size={14} /> Reject
+                      </button>
+
+                      <button
+                        onClick={() => handleApproveQuestion(selectedQuestion.id)}
+                        disabled={actionLoadingId === selectedQuestion.id}
+                        style={{
+                          padding: '6px 14px',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: '#FFFFFF',
+                          background: '#12233F',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {actionLoadingId === selectedQuestion.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <ThumbsUp size={14} />
+                        )}
+                        <span>Approve & Publish</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Passage Text (if available) */}
+                  {selectedQuestion.passage_text && (
+                    <div
+                      style={{
+                        padding: 14,
+                        background: '#F7F7F5',
+                        borderLeft: '3px solid #3B6EA8',
+                        borderRadius: 4,
+                        fontSize: 13.5,
+                        color: '#344054',
+                        marginBottom: 16,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong>Passage Context:</strong> {selectedQuestion.passage_text}
+                    </div>
+                  )}
+
+                  {/* Question Stem Text */}
+                  <div style={{ fontSize: 15, fontWeight: 500, color: '#172033', lineHeight: 1.6, marginBottom: 20 }}>
+                    {selectedQuestion.question_text}
+                  </div>
+
+                  {/* Options List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+                    {selectedQuestion.options.map((opt) => (
+                      <div
+                        key={opt.option_label}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 6,
+                          border: opt.is_correct ? '1.5px solid #15803D' : '1px solid #E4E7EC',
+                          backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: '50%',
+                            backgroundColor: opt.is_correct ? '#15803D' : '#F7F7F5',
+                            color: opt.is_correct ? '#FFFFFF' : '#344054',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: 12,
+                          }}
+                        >
+                          {opt.option_label}
                         </span>
 
-                        {q.subject_name && (
-                          <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', padding: '3px 9px', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
-                            {q.subject_name}
+                        <span style={{ fontSize: 13.5, color: '#172033', flex: 1 }}>{opt.option_text}</span>
+
+                        {opt.is_correct && (
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Check size={14} /> Correct Answer
                           </span>
                         )}
-
-                        <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: '#f8fafc', color: '#64748b', padding: '3px 9px', borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'var(--font-mono)' }}>
-                          {q.difficulty}
-                        </span>
-
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: isApproved ? '#ecfdf5' : isRejected ? '#fef2f2' : '#fffbe8', color: isApproved ? '#059669' : isRejected ? '#dc2626' : '#b45309', border: `1px solid ${isApproved ? '#a7f3d0' : isRejected ? '#fecaca' : '#fde68a'}` }}>
-                          {isApproved ? 'Approved & Published ✅' : isRejected ? 'Rejected ❌' : 'Pending Review ⏳'}
-                        </span>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button
-                          onClick={() => openEditModal(q)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '7px 12px',
-                            borderRadius: 8,
-                            border: '1px solid #cbd5e1',
-                            backgroundColor: '#ffffff',
-                            color: '#0f172a',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#eff6ff';
-                            e.currentTarget.style.borderColor = '#93c5fd';
-                            e.currentTarget.style.color = '#2563eb';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ffffff';
-                            e.currentTarget.style.borderColor = '#cbd5e1';
-                            e.currentTarget.style.color = '#0f172a';
-                          }}
-                        >
-                          <Edit3 size={14} />
-                          <span>Edit Q & A</span>
-                        </button>
-
-                        <button
-                          disabled={actionLoadingId === q.id}
-                          onClick={() => handleApproveQuestion(q.id)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '7px 14px',
-                            borderRadius: 8,
-                            border: `1px solid ${isApproved ? '#059669' : '#10b981'}`,
-                            backgroundColor: isApproved ? '#ecfdf5' : '#10b981',
-                            color: isApproved ? '#059669' : '#ffffff',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: actionLoadingId === q.id ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {actionLoadingId === q.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <>
-                              <ThumbsUp size={14} />
-                              <span>{isApproved ? 'Approved ✅' : 'Approve & Publish'}</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          disabled={actionLoadingId === q.id}
-                          onClick={() => handleRejectQuestion(q.id)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            padding: '7px 12px',
-                            borderRadius: 8,
-                            border: `1px solid ${isRejected ? '#dc2626' : '#ef4444'}`,
-                            backgroundColor: isRejected ? '#fef2f2' : 'rgba(239, 68, 68, 0.12)',
-                            color: isRejected ? '#dc2626' : '#dc2626',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: actionLoadingId === q.id ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {actionLoadingId === q.id ? (
-                            <Loader2 size={14} className="animate-spin" />
-                          ) : (
-                            <>
-                              <ThumbsDown size={14} />
-                              <span>{isRejected ? 'Rejected ❌' : 'Reject'}</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Question Stem Text */}
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                      {q.question_text}
-                    </div>
-
-                    {/* Options Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
-                      {q.options.map((opt) => (
-                        <div
-                          key={opt.option_label}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: 10,
-                            backgroundColor: opt.is_correct ? '#ecfdf5' : '#f8fafc',
-                            border: `1px solid ${opt.is_correct ? '#a7f3d0' : '#e2e8f0'}`,
-                            fontSize: 13,
-                            color: opt.is_correct ? '#065f46' : '#1e293b',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            fontWeight: opt.is_correct ? 700 : 500
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontWeight: 800, color: opt.is_correct ? '#059669' : '#2563eb', fontFamily: 'var(--font-mono)' }}>
-                              {opt.option_label}.
-                            </span>
-                            <span>{opt.option_text || <em>(Empty option text)</em>}</span>
-                          </div>
-                          {opt.is_correct && (
-                            <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', backgroundColor: '#d1fae5', padding: '2px 8px', borderRadius: 6 }}>
-                              Correct Answer
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Explanation / Solution Description Box */}
-                    {q.explanation?.detailed_solution && (
-                      <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <HelpCircle size={14} />
-                          <span>Solution Explanation & Description</span>
-                        </div>
-                        <p style={{ fontSize: 13, color: '#334155', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                          {q.explanation.detailed_solution}
-                        </p>
-                      </div>
-                    )}
-
+                    ))}
                   </div>
-                );
-              })}
+
+                  {/* Solution Explanation */}
+                  {selectedQuestion.explanation?.detailed_solution && (
+                    <div
+                      style={{
+                        padding: 16,
+                        backgroundColor: '#F7F7F5',
+                        border: '1px solid #E4E7EC',
+                        borderRadius: 6,
+                      }}
+                    >
+                      <h4 style={{ fontSize: 13.5, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
+                        Solution Explanation
+                      </h4>
+                      <p style={{ fontSize: 13, color: '#344054', margin: 0, lineHeight: 1.6 }}>
+                        {selectedQuestion.explanation.detailed_solution}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
-
         </div>
       )}
 
-      {/* INTERACTIVE QUESTION EDIT MODAL DRAWER */}
+      {/* QUESTION EDIT MODAL */}
       {editingQuestion && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <div 
-            style={{ 
-              width: '100%', 
-              maxWidth: 720, 
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(16, 33, 61, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 8,
+              border: '1px solid #E4E7EC',
+              width: '100%',
+              maxWidth: 680,
               maxHeight: '90vh',
-              backgroundColor: '#ffffff', 
-              borderRadius: 20, 
-              boxShadow: '0 20px 50px rgba(0,0,0,0.2)', 
-              display: 'flex', 
-              flexDirection: 'column',
-              overflow: 'hidden',
-              border: '1px solid #e2e8f0'
+              overflowY: 'auto',
+              padding: 24,
+              boxShadow: '0 4px 12px rgba(16, 24, 40, 0.1)',
             }}
           >
-            {/* Modal Header */}
-            <div style={{ padding: '20px 24px', backgroundColor: '#0f1e3c', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Edit3 size={20} color="#60a5fa" />
-                <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0, fontFamily: 'var(--font-display)' }}>
-                  Edit Question Q{editingQuestion.question_number_in_paper} & Answer Choices
-                </h3>
-              </div>
-              <button 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0 }}>
+                Edit Question #{editingQuestion.question_number_in_paper}
+              </h2>
+              <button
                 onClick={() => setEditingQuestion(null)}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 6, borderRadius: 8 }}
+                style={{ background: 'none', border: 'none', color: '#667085', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Modal Form Body */}
-            <div style={{ padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-              
-              {/* Question Text Input */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                  Question Stem Text
-                </label>
-                <textarea
-                  rows={4}
-                  value={editFormText}
-                  onChange={(e) => setEditFormText(e.target.value)}
-                  style={{
-                    padding: 12,
-                    borderRadius: 10,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 14,
-                    color: '#0f172a',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              {/* Options A, B, C, D Inputs & Radio Selection */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                  Option Choices (Select Radio Button for Correct Answer)
-                </label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {editFormOptions.map((opt) => (
-                    <div 
-                      key={opt.label}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 12, 
-                        padding: 12, 
-                        borderRadius: 10, 
-                        border: `1px solid ${opt.is_correct ? '#10b981' : '#cbd5e1'}`, 
-                        backgroundColor: opt.is_correct ? '#f0fdf4' : '#ffffff' 
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="correctOptionRadio"
-                        checked={opt.is_correct}
-                        onChange={() => handleOptionCorrectChange(opt.label)}
-                        style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#10b981' }}
-                      />
-
-                      <span style={{ fontSize: 14, fontWeight: 800, color: opt.is_correct ? '#059669' : '#2563eb', fontFamily: 'var(--font-mono)', width: 20 }}>
-                        {opt.label}.
-                      </span>
-
-                      <input
-                        type="text"
-                        value={opt.text}
-                        onChange={(e) => handleOptionTextChange(opt.label, e.target.value)}
-                        placeholder={`Option ${opt.label} content...`}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #e2e8f0',
-                          fontSize: 13,
-                          color: '#0f172a',
-                          outline: 'none'
-                        }}
-                      />
-
-                      {opt.is_correct && (
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', backgroundColor: '#d1fae5', padding: '3px 8px', borderRadius: 6 }}>
-                          Correct
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Difficulty Level Selection */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                  Difficulty Rating
-                </label>
-                <select
-                  value={editFormDifficulty}
-                  onChange={(e) => setEditFormDifficulty(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    color: '#0f172a',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="EASY">EASY</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HARD">HARD</option>
-                </select>
-              </div>
-
-              {/* Explanation / Description Input */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                  Solution Explanation / Description
-                </label>
-                <textarea
-                  rows={4}
-                  value={editFormExplanation}
-                  onChange={(e) => setEditFormExplanation(e.target.value)}
-                  placeholder="Provide step-by-step solution, references, or core concept explanations..."
-                  style={{
-                    padding: 12,
-                    borderRadius: 10,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    color: '#0f172a',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                Question Text
+              </label>
+              <textarea
+                rows={4}
+                value={editFormText}
+                onChange={(e) => setEditFormText(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  fontSize: 13.5,
+                  color: '#172033',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
             </div>
 
-            {/* Modal Footer Actions */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            {/* Options Editing */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 8 }}>
+                Options & Correct Answer
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {editFormOptions.map((opt, idx) => (
+                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033', width: 20 }}>
+                      {opt.label}.
+                    </span>
+                    <input
+                      type="text"
+                      value={opt.text}
+                      onChange={(e) => {
+                        const newOpts = [...editFormOptions];
+                        newOpts[idx].text = e.target.value;
+                        setEditFormOptions(newOpts);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '6px 10px',
+                        borderRadius: 4,
+                        border: '1px solid #E4E7EC',
+                        fontSize: 13,
+                        outline: 'none',
+                      }}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, cursor: 'pointer', color: '#172033' }}>
+                      <input
+                        type="radio"
+                        name="correctOpt"
+                        checked={opt.is_correct}
+                        onChange={() => {
+                          const newOpts = editFormOptions.map((o, i) => ({
+                            ...o,
+                            is_correct: i === idx,
+                          }));
+                          setEditFormOptions(newOpts);
+                        }}
+                      />
+                      Correct
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Solution Explanation */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                Solution Explanation
+              </label>
+              <textarea
+                rows={3}
+                value={editFormExplanation}
+                onChange={(e) => setEditFormExplanation(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: 6,
+                  border: '1px solid #E4E7EC',
+                  fontSize: 13.5,
+                  color: '#172033',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 onClick={() => setEditingQuestion(null)}
                 style={{
-                  padding: '9px 18px',
-                  borderRadius: 10,
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#475569',
+                  padding: '8px 16px',
                   fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer'
+                  fontWeight: 500,
+                  color: '#667085',
+                  background: '#FFFFFF',
+                  border: '1px solid #E4E7EC',
+                  borderRadius: 6,
+                  cursor: 'pointer',
                 }}
               >
                 Cancel
               </button>
-
               <button
-                disabled={savingEdit}
                 onClick={handleSaveQuestionEdit}
+                disabled={savingEdit}
                 style={{
+                  padding: '8px 20px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                  background: '#12233F',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: savingEdit ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '9px 20px',
-                  borderRadius: 10,
-                  border: 'none',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: savingEdit ? 'not-allowed' : 'pointer'
                 }}
               >
-                {savingEdit ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span>Save & Publish Changes</span>
-                  </>
-                )}
+                {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                <span>Save & Publish</span>
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

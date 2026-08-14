@@ -20,12 +20,12 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
-export function AdminSidebar({ 
-  activeView, 
-  onNavigate, 
-  collapsed, 
-  mobileOpen = false, 
-  onCloseMobile 
+export function AdminSidebar({
+  activeView,
+  onNavigate,
+  collapsed,
+  mobileOpen = false,
+  onCloseMobile
 }: SidebarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -68,36 +68,36 @@ export function AdminSidebar({
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: (collapsed && !isMobile) ? '12px 0' : '11px 16px',
+          padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 10,
-          background: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+          borderRadius: 4,
+          background: isActive ? 'rgba(59, 110, 168, 0.18)' : 'transparent',
           border: 'none',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #3b82f6' : '3px solid transparent',
-          color: isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.7)',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #3B6EA8' : '3px solid transparent',
+          color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           cursor: 'pointer',
           fontSize: 13.5,
-          fontFamily: 'var(--font-body)',
+          fontFamily: 'Inter, sans-serif',
           fontWeight: isActive ? 600 : 400,
-          transition: 'all 0.2s ease',
+          transition: 'all 0.15s ease',
           width: '100%',
           textAlign: 'left',
           whiteSpace: 'nowrap'
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
             e.currentTarget.style.color = '#ffffff';
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)';
           }
         }}
       >
-        <Icon size={18} color={isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.7)'} style={{ flexShrink: 0 }} />
+        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </button>
     );
@@ -105,7 +105,6 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
       {isMobile && mobileOpen && (
         <div
           onClick={onCloseMobile}
@@ -113,19 +112,18 @@ export function AdminSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(16, 33, 61, 0.65)',
+            backdropFilter: 'blur(2px)',
             zIndex: 110
           }}
         />
       )}
 
-      {/* Streamlined Admin Sidebar Positioned Below Top Header */}
       <aside
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          backgroundColor: '#0f1e3c',
+          backgroundColor: '#10213D',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -135,16 +133,15 @@ export function AdminSidebar({
           bottom: 0,
           zIndex: 120,
           transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
-          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease, min-width 0.25s ease',
+          transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease, min-width 0.2s ease',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
           overflow: 'hidden'
         }}
       >
         {/* Section Header */}
         <div
           style={{
-            padding: (collapsed && !isMobile) ? '16px 0' : '20px 20px 8px 20px',
+            padding: (collapsed && !isMobile) ? '16px 0' : '18px 18px 6px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: (collapsed && !isMobile) ? 'center' : 'space-between',
@@ -158,16 +155,15 @@ export function AdminSidebar({
                 fontWeight: 700,
                 color: 'rgba(255, 255, 255, 0.45)',
                 letterSpacing: '0.08em',
-                fontFamily: 'var(--font-mono)'
+                fontFamily: 'Inter, sans-serif'
               }}
             >
-              Core Platform
+              CORE PLATFORM
             </span>
           ) : (
-            <span style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.3)', fontFamily: 'var(--font-mono)' }}>•••</span>
+            <span style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.3)' }}>•••</span>
           )}
 
-          {/* Mobile Close Button */}
           {isMobile && onCloseMobile && (
             <button
               onClick={onCloseMobile}
@@ -182,28 +178,28 @@ export function AdminSidebar({
                 justifyContent: 'center'
               }}
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
         </div>
 
         {/* Navigation Items List */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 12px', flex: 1, overflowY: 'auto' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '6px 10px', flex: 1, overflowY: 'auto' }}>
           {coreNavItems.map(renderNavItem)}
 
           {(!collapsed || isMobile) && (
             <div
               style={{
-                margin: '20px 12px 8px 12px',
+                margin: '18px 10px 6px 10px',
                 fontSize: 11,
                 textTransform: 'uppercase',
                 fontWeight: 700,
                 color: 'rgba(255, 255, 255, 0.45)',
                 letterSpacing: '0.08em',
-                fontFamily: 'var(--font-mono)'
+                fontFamily: 'Inter, sans-serif'
               }}
             >
-              Management & Analytics
+              MANAGEMENT & ANALYTICS
             </div>
           )}
           {managementNavItems.map(renderNavItem)}
@@ -212,4 +208,3 @@ export function AdminSidebar({
     </>
   );
 }
-
