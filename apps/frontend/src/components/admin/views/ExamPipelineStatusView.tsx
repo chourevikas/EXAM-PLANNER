@@ -5,17 +5,18 @@ import {
   ExamPipelineStatusItem,
 } from '../../../services/adminService';
 import {
-  CheckCircle2,
-  Clock,
-  FileCheck2,
   RefreshCw,
   Search,
-  AlertTriangle,
-  FileText,
-  UploadCloud,
-  Check,
+  AlertCircle,
+  FileSpreadsheet,
+  X,
+  CheckCircle2,
+  Clock,
   Loader2,
+  ArrowRight,
   Database,
+  FileText,
+  Check,
 } from 'lucide-react';
 
 export function ExamPipelineStatusView() {
@@ -24,6 +25,10 @@ export function ExamPipelineStatusView() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [stageFilter, setStageFilter] = useState('ALL');
+
+  const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -33,6 +38,11 @@ export function ExamPipelineStatusView() {
     try {
       const data = await fetchExamPipelineStatuses();
       setExams(data);
+      // Keep selected exam updated if drawer is open
+      if (selectedExam) {
+        const updated = data.find((item) => item.id === selectedExam.id);
+        if (updated) setSelectedExam(updated);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load exam pipeline statuses.');
     } finally {
@@ -47,8 +57,8 @@ export function ExamPipelineStatusView() {
   const handleApprove = async (examId: string, examName: string) => {
     setApprovingId(examId);
     try {
-      const result = await approveAndPublishExam(examId);
-      setToastMessage(`✅ Successfully approved & published '${examName}'. S3 JSON folders created!`);
+      await approveAndPublishExam(examId);
+      setToastMessage(`Exam '${examName}' successfully approved & published. S3 JSON artifacts generated.`);
       setTimeout(() => setToastMessage(null), 5000);
       await loadData();
     } catch (err: any) {
@@ -58,14 +68,35 @@ export function ExamPipelineStatusView() {
     }
   };
 
+  // Filter exams
   const filteredExams = exams.filter((e) => {
     const matchesSearch =
       e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.code.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const statusUpper = e.status.toUpperCase();
     const matchesStatus =
-      statusFilter === 'ALL' || e.status.toUpperCase() === statusFilter.toUpperCase();
-    return matchesSearch && matchesStatus;
+      statusFilter === 'ALL' ||
+      (statusFilter === 'PENDING' && statusUpper.includes('PENDING')) ||
+      (statusFilter === 'PUBLISHED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY'))) ||
+      (statusFilter === 'PROCESSING' && (statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING')));
+
+    const matchesStage = stageFilter === 'ALL' || e.stage.toLowerCase() === stageFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus && matchesStage;
   });
+
+  // Calculate Pipeline Summary Counts
+  const totalExams = exams.length;
+  const processingCount = exams.filter((e) => {
+    const s = e.status.toUpperCase();
+    return s.includes('PROCESSING') || s.includes('PARSING');
+  }).length;
+  const pendingCount = exams.filter((e) => e.status.toUpperCase().includes('PENDING')).length;
+  const publishedCount = exams.filter((e) => {
+    const s = e.status.toUpperCase();
+    return s.includes('PUBLISHED') || s.includes('READY');
+  }).length;
 
   const getStatusBadge = (statusStr: string) => {
     const s = statusStr.toUpperCase();
@@ -75,17 +106,17 @@ export function ExamPipelineStatusView() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 20,
-            fontSize: 12,
-            fontWeight: 700,
-            backgroundColor: '#dcfce7',
-            color: '#15803d',
-            border: '1px solid #bbf7d0',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 4,
+            fontSize: 11.5,
+            fontWeight: 600,
+            backgroundColor: '#DCFCE7',
+            color: '#15803D',
+            border: '1px solid #BBF7D0',
           }}
         >
-          <CheckCircle2 size={14} /> PUBLISHED
+          Published
         </span>
       );
     }
@@ -95,17 +126,37 @@ export function ExamPipelineStatusView() {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 20,
-            fontSize: 12,
-            fontWeight: 700,
-            backgroundColor: '#fef3c7',
-            color: '#b45309',
-            border: '1px solid #fde68a',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 4,
+            fontSize: 11.5,
+            fontWeight: 600,
+            backgroundColor: '#FEF3C7',
+            color: '#B45309',
+            border: '1px solid #FDE68A',
           }}
         >
-          <Clock size={14} /> PENDING HUMAN REVIEW
+          Pending Review
+        </span>
+      );
+    }
+    if (s.includes('PROCESSING') || s.includes('PARSING')) {
+      return (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 4,
+            fontSize: 11.5,
+            fontWeight: 600,
+            backgroundColor: '#E0F2FE',
+            color: '#0369A1',
+            border: '1px solid #BAE6FD',
+          }}
+        >
+          Processing
         </span>
       );
     }
@@ -114,81 +165,78 @@ export function ExamPipelineStatusView() {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '4px 10px',
-          borderRadius: 20,
-          fontSize: 12,
-          fontWeight: 700,
-          backgroundColor: '#e0f2fe',
-          color: '#0369a1',
-          border: '1px solid #bae6fd',
+          gap: 5,
+          padding: '3px 8px',
+          borderRadius: 4,
+          fontSize: 11.5,
+          fontWeight: 600,
+          backgroundColor: '#F2F4F7',
+          color: '#344054',
+          border: '1px solid #E4E7EC',
         }}
       >
-        <FileCheck2 size={14} /> {statusStr}
+        {statusStr.replace('_', ' ')}
       </span>
     );
   };
 
+  const getS3StatusBadge = (exam: ExamPipelineStatusItem) => {
+    if (exam.questions_json_path || exam.status.toUpperCase().includes('PUBLISHED')) {
+      return (
+        <span style={{ fontSize: 12, fontWeight: 500, color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Check size={13} color="#15803D" /> Ready
+        </span>
+      );
+    }
+    return <span style={{ fontSize: 12, color: '#667085' }}>Not generated</span>;
+  };
+
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div
           style={{
             marginBottom: 20,
-            padding: '12px 20px',
-            borderRadius: 12,
-            backgroundColor: '#10b981',
-            color: '#ffffff',
-            fontWeight: 600,
-            fontSize: 14,
+            padding: '12px 16px',
+            borderRadius: 6,
+            backgroundColor: '#10B981',
+            color: '#FFFFFF',
+            fontWeight: 500,
+            fontSize: 13.5,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+            boxShadow: '0 1px 3px rgba(16,24,40,0.1)',
           }}
         >
           <span>{toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 14 }}
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Header */}
+      {/* 1. Page Header (Sitting directly on background) */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 28,
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginBottom: 20,
         }}
       >
         <div>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '4px 12px',
-              backgroundColor: '#eff6ff',
-              borderRadius: 20,
-              color: '#2563eb',
-              fontSize: 12,
-              fontWeight: 700,
-              marginBottom: 8,
-            }}
-          >
-            <Database size={14} /> EXAM PIPELINE MANAGEMENT
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>
-            Exam Extraction & S3 Pipeline Status
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+            Exam Pipeline
           </h1>
-          <p style={{ fontSize: 14, color: '#64748b', margin: '4px 0 0 0' }}>
-            Monitor database question extraction progress, S3 JSON artifact generation, and admin approvals.
+          <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
+            Monitor question extraction, review, and publishing status for uploaded examination papers.
           </p>
         </div>
 
@@ -196,37 +244,39 @@ export function ExamPipelineStatusView() {
           onClick={loadData}
           disabled={isLoading}
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
-            padding: '10px 16px',
-            backgroundColor: '#ffffff',
-            border: '1px solid #cbd5e1',
-            borderRadius: 10,
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#334155',
-            cursor: 'pointer',
+            gap: 6,
+            padding: '8px 14px',
+            fontSize: 13,
+            fontWeight: 500,
+            borderRadius: 6,
+            background: '#FFFFFF',
+            color: '#172033',
+            border: '1px solid #E4E7EC',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
           }}
+          title="Refresh Pipeline Status"
         >
-          <RefreshCw size={16} className={isLoading ? 'spin' : ''} /> Refresh Status
+          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} color="#667085" />
+          <span>Refresh Status</span>
         </button>
       </div>
 
-      {/* Search & Filters */}
+      {/* 2. Compact Search & Filter Controls */}
       <div
         style={{
           display: 'flex',
-          gap: 16,
-          marginBottom: 24,
+          gap: 12,
+          marginBottom: 20,
           alignItems: 'center',
           flexWrap: 'wrap',
         }}
       >
         <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
           <Search
-            size={18}
-            style={{ position: 'absolute', left: 14, top: 12, color: '#94a3b8' }}
+            size={15}
+            style={{ position: 'absolute', left: 12, top: 12, color: '#667085' }}
           />
           <input
             type="text"
@@ -235,11 +285,15 @@ export function ExamPipelineStatusView() {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              padding: '10px 16px 10px 42px',
-              borderRadius: 10,
-              border: '1px solid #cbd5e1',
-              fontSize: 14,
+              padding: '8px 12px 8px 36px',
+              borderRadius: 6,
+              border: '1px solid #E4E7EC',
+              backgroundColor: '#FFFFFF',
+              fontSize: 13.5,
+              color: '#172033',
               outline: 'none',
+              height: 40,
+              boxSizing: 'border-box',
             }}
           />
         </div>
@@ -248,289 +302,495 @@ export function ExamPipelineStatusView() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           style={{
-            padding: '10px 16px',
-            borderRadius: 10,
-            border: '1px solid #cbd5e1',
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#334155',
-            backgroundColor: '#ffffff',
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #E4E7EC',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#172033',
+            backgroundColor: '#FFFFFF',
             outline: 'none',
+            height: 40,
+            boxSizing: 'border-box',
           }}
         >
           <option value="ALL">All Statuses</option>
-          <option value="PENDING_HUMAN_REVIEW">Pending Human Review</option>
-          <option value="PUBLISHED">Published & Active</option>
+          <option value="PENDING">Pending Human Review</option>
+          <option value="PUBLISHED">Published</option>
+          <option value="PROCESSING">Processing</option>
+        </select>
+
+        <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #E4E7EC',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#172033',
+            backgroundColor: '#FFFFFF',
+            outline: 'none',
+            height: 40,
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="ALL">All Stages</option>
+          <option value="prelims">Prelims</option>
+          <option value="mains">Mains</option>
         </select>
       </div>
 
-      {/* Main Grid Content */}
-      {isLoading ? (
+      {/* 3. Pipeline Summary Block (Horizontal compact strip) */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #E4E7EC',
+          borderRadius: 6,
+          padding: '14px 20px',
+          marginBottom: 24,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 16,
+          boxShadow: '0 1px 2px rgba(16,24,40,0.02)',
+        }}
+      >
+        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#172033', lineHeight: 1.1 }}>{totalExams}</div>
+          <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Total Exams</div>
+        </div>
+
+        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#3B6EA8', lineHeight: 1.1 }}>{processingCount}</div>
+          <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Processing</div>
+        </div>
+
+        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#B45309', lineHeight: 1.1 }}>{pendingCount}</div>
+          <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Pending Review</div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#15803D', lineHeight: 1.1 }}>{publishedCount}</div>
+          <div style={{ fontSize: 12, color: '#667085', marginTop: 2, fontWeight: 500 }}>Published</div>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
         <div
           style={{
-            padding: 60,
-            textAlign: 'center',
-            color: '#64748b',
+            padding: '12px 16px',
+            background: '#FEF2F2',
+            border: '1px solid #FECDCA',
+            borderRadius: 6,
+            marginBottom: 20,
+            color: '#B42318',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 12,
           }}
         >
-          <Loader2 size={32} color="#2563eb" style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Loading exam pipeline statuses from backend database...</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={18} color="#B42318" />
+            <span style={{ fontSize: 13.5, fontWeight: 500 }}>{error}</span>
+          </div>
+          <button
+            onClick={loadData}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#B42318',
+              background: '#FFFFFF',
+              border: '1px solid #FECDCA',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
         </div>
-      ) : error ? (
-        <div
-          style={{
-            padding: 24,
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: 12,
-            color: '#991b1b',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <AlertTriangle size={20} />
-          <span>{error}</span>
-        </div>
-      ) : filteredExams.length === 0 ? (
-        <div
-          style={{
-            padding: 48,
-            textAlign: 'center',
-            backgroundColor: '#f8fafc',
-            borderRadius: 16,
-            border: '1px border-dashed #cbd5e1',
-            color: '#64748b',
-          }}
-        >
-          <FileText size={40} style={{ marginBottom: 12, opacity: 0.5 }} />
-          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>No Exams Found</h3>
-          <p style={{ fontSize: 14, margin: '4px 0 0 0' }}>
-            No exams matched your filter criteria or no exams are registered yet.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: 20 }}>
-          {filteredExams.map((exam) => {
-            const pct = Math.min(
-              100,
-              Math.round((exam.extracted_questions_count / (exam.total_questions || 100)) * 100)
-            );
-            const isApproved =
-              exam.status.toUpperCase().includes('PUBLISHED') ||
-              exam.status.toUpperCase().includes('READY');
+      )}
 
-            return (
-              <div
-                key={exam.id}
-                style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: 16,
-                  border: '1px solid #e2e8f0',
-                  padding: 24,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  {/* Top Bar */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: 12,
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#64748b',
-                          fontFamily: 'monospace',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        CODE: {exam.code}
-                      </span>
-                      <h3
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 700,
-                          color: '#0f172a',
-                          margin: '4px 0 0 0',
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {exam.name}
-                      </h3>
-                    </div>
-                    {getStatusBadge(exam.status)}
-                  </div>
+      {/* 4. Main Pipeline Table */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #E4E7EC',
+          borderRadius: 6,
+          boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
+          overflow: 'hidden',
+        }}
+      >
+        {isLoading ? (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 600, margin: '0 auto' }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 48,
+                    background: '#F7F7F5',
+                    borderRadius: 4,
+                    animation: 'pulse 1.5s infinite ease-in-out',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : filteredExams.length === 0 ? (
+          <div
+            style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              color: '#667085',
+            }}
+          >
+            <FileSpreadsheet size={32} color="#667085" style={{ marginBottom: 8 }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>No exam papers found</div>
+            <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
+              Try adjusting your search query or status filter.
+            </div>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                textAlign: 'left',
+                fontSize: 13.5,
+              }}
+            >
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAM PAPER</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CODE</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, width: 140 }}>PROGRESS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>QUESTIONS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>S3 ARTIFACT</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExams.map((exam, i) => {
+                  const total = exam.total_questions || 100;
+                  const ext = exam.extracted_questions_count || 0;
+                  const pct = Math.min(100, Math.round((ext / total) * 100));
 
-                  {/* Extraction Progress */}
-                  <div style={{ marginTop: 16, marginBottom: 16 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: '#475569',
-                        marginBottom: 6,
+                  return (
+                    <tr
+                      key={exam.id}
+                      onClick={() => {
+                        setSelectedExam(exam);
+                        setIsDrawerOpen(true);
                       }}
-                    >
-                      <span>Question Extraction Progress</span>
-                      <span>
-                        {exam.extracted_questions_count} / {exam.total_questions || 100} Questions ({pct}%)
-                      </span>
-                    </div>
-                    <div
                       style={{
-                        height: 8,
-                        backgroundColor: '#e2e8f0',
-                        borderRadius: 4,
-                        overflow: 'hidden',
+                        borderBottom: i === filteredExams.length - 1 ? 'none' : '1px solid #E4E7EC',
+                        cursor: 'pointer',
+                        transition: 'background 0.12s ease',
                       }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <div
-                        style={{
-                          width: `${pct}%`,
-                          height: '100%',
-                          backgroundColor: pct === 100 ? '#10b981' : pct > 0 ? '#2563eb' : '#94a3b8',
-                          transition: 'width 0.4s ease',
-                        }}
-                      />
-                    </div>
-                  </div>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', maxWidth: 260 }}>
+                        <div>{exam.name}</div>
+                        <div style={{ fontSize: 11, color: '#667085', fontWeight: 400, marginTop: 2 }}>
+                          {exam.source_year} • {exam.stage} • {exam.paper_set_code}
+                        </div>
+                      </td>
 
-                  {/* Metadata Chips */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: 10,
-                      backgroundColor: '#f8fafc',
-                      padding: 12,
-                      borderRadius: 10,
-                      fontSize: 13,
-                      marginBottom: 16,
-                    }}
-                  >
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Year & Stage</span>
-                      <strong style={{ color: '#334155' }}>
-                        {exam.source_year || 'N/A'} ({exam.stage || 'Prelims'})
-                      </strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Paper Set Code</span>
-                      <strong style={{ color: '#334155' }}>{exam.paper_set_code || 'SET_A'}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Extracted Count</span>
-                      <strong style={{ color: '#16a34a' }}>{exam.extracted_questions_count} Questions</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#64748b', fontSize: 11, display: 'block' }}>Missing Count</span>
-                      <strong style={{ color: exam.missing_questions_count > 0 ? '#dc2626' : '#64748b' }}>
-                        {exam.missing_questions_count} Missing
-                      </strong>
-                    </div>
-                  </div>
+                      <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, color: '#667085' }}>
+                        {exam.code}
+                      </td>
 
-                  {/* S3 Artifact Details */}
-                  <div
-                    style={{
-                      borderTop: '1px border-dashed #e2e8f0',
-                      paddingTop: 12,
-                      marginBottom: 20,
-                      fontSize: 12,
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: '#475569', marginBottom: 4 }}>S3 JSON Artifact Status:</div>
-                    {exam.questions_json_path ? (
-                      <div style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'monospace' }}>
-                        <Check size={14} /> {exam.questions_json_path}
-                      </div>
-                    ) : (
-                      <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>
-                        Not generated yet (Generated automatically on Admin Approval)
-                      </div>
-                    )}
-                  </div>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#172033', marginBottom: 4 }}>
+                          <span>{pct}%</span>
+                        </div>
+                        <div style={{ height: 5, background: '#F2F4F7', borderRadius: 2, overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              background: pct === 100 ? '#15803D' : '#3B6EA8',
+                              borderRadius: 2,
+                            }}
+                          />
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', color: '#172033', fontWeight: 500 }}>
+                        {ext} / {total}
+                      </td>
+
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        {getStatusBadge(exam.status)}
+                      </td>
+
+                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                        {getS3StatusBadge(exam)}
+                      </td>
+
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedExam(exam);
+                            setIsDrawerOpen(true);
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 12.5,
+                            fontWeight: 500,
+                            color: '#172033',
+                            background: '#FFFFFF',
+                            border: '1px solid #E4E7EC',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          View →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* 5. Exam Detail Drawer Overlay */}
+      {isDrawerOpen && selectedExam && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsDrawerOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(16, 33, 61, 0.4)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 190,
+            }}
+          />
+
+          {/* Right Slide-over Drawer */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 440,
+              maxWidth: '90vw',
+              backgroundColor: '#FFFFFF',
+              boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.12)',
+              zIndex: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            {/* Drawer Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #E4E7EC',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  EXAM DETAILS
                 </div>
-
-                {/* Actions */}
-                <div>
-                  {isApproved ? (
-                    <button
-                      disabled
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 10,
-                        border: '1px solid #bbf7d0',
-                        backgroundColor: '#f0fdf4',
-                        color: '#166534',
-                        fontWeight: 700,
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        cursor: 'default',
-                      }}
-                    >
-                      <Check size={18} /> Published & S3 JSONs Ready
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleApprove(exam.id, exam.name)}
-                      disabled={approvingId === exam.id || exam.extracted_questions_count === 0}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: 10,
-                        border: 'none',
-                        backgroundColor: exam.extracted_questions_count === 0 ? '#94a3b8' : '#2563eb',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        cursor: exam.extracted_questions_count === 0 ? 'not-allowed' : 'pointer',
-                        boxShadow: exam.extracted_questions_count === 0 ? 'none' : '0 4px 12px rgba(37,99,235,0.25)',
-                      }}
-                    >
-                      {approvingId === exam.id ? (
-                        <>
-                          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                          <span>Generating S3 JSONs & Publishing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud size={18} />
-                          <span>Approve & Build S3 JSON Folders</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
+                  {selectedExam.name}
+                </h2>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#667085', marginTop: 2 }}>
+                  {selectedExam.code}
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <button
+                onClick={() => setIsDrawerOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#667085',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Drawer Body (Scrollable) */}
+            <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Status Section */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: '#667085', fontWeight: 500 }}>Status</span>
+                <div>{getStatusBadge(selectedExam.status)}</div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+
+              {/* Extraction Progress Section */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  EXTRACTION PROGRESS
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, fontWeight: 600, color: '#172033', marginBottom: 6 }}>
+                  <span>{selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} questions</span>
+                  <span>{Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%</span>
+                </div>
+                <div style={{ height: 6, background: '#F2F4F7', borderRadius: 3, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%`,
+                      background: '#3B6EA8',
+                      borderRadius: 3,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+
+              {/* Metadata Grid */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  EXAM METADATA
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Year</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.source_year}</div>
+                  </div>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Stage</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.stage}</div>
+                  </div>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Subject Code</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.subject_code}</div>
+                  </div>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Paper Set Code</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.paper_set_code}</div>
+                  </div>
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+
+              {/* Question Counts */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  QUESTION METRICS
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Extracted Questions</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#15803D', marginTop: 2 }}>
+                      {selectedExam.extracted_questions_count} Questions
+                    </div>
+                  </div>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11, color: '#667085' }}>Missing Questions</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085', marginTop: 2 }}>
+                      {selectedExam.missing_questions_count} Missing
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+
+              {/* S3 Artifact Technical Info */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  S3 ARTIFACT PATHS
+                </div>
+                <div style={{ fontSize: 12, color: '#667085', marginBottom: 6 }}>
+                  Status: <strong style={{ color: selectedExam.questions_json_path ? '#15803D' : '#667085' }}>{selectedExam.questions_json_path ? 'Ready' : 'Not generated'}</strong>
+                </div>
+
+                {selectedExam.questions_json_path && (
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC', fontFamily: 'monospace', fontSize: 11, color: '#344054', wordBreak: 'break-all' }}>
+                    <div>questions: {selectedExam.questions_json_path}</div>
+                    {selectedExam.solutions_json_path && <div style={{ marginTop: 4 }}>solutions: {selectedExam.solutions_json_path}</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div style={{ padding: 20, borderTop: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+              {selectedExam.status.toUpperCase().includes('PUBLISHED') || selectedExam.status.toUpperCase().includes('READY') ? (
+                <div
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 6,
+                    border: '1px solid #BBF7D0',
+                    backgroundColor: '#DCFCE7',
+                    color: '#15803D',
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Check size={16} /> Published & S3 Artifacts Ready
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleApprove(selectedExam.id, selectedExam.name)}
+                  disabled={approvingId === selectedExam.id || selectedExam.extracted_questions_count === 0}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    borderRadius: 6,
+                    border: 'none',
+                    backgroundColor: selectedExam.extracted_questions_count === 0 ? '#94A3B8' : '#12233F',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: selectedExam.extracted_questions_count === 0 ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                  }}
+                >
+                  {approvingId === selectedExam.id ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Generating S3 JSONs & Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Approve & Build S3 JSON</span>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

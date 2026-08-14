@@ -113,3 +113,35 @@ class SystemStatsOut(BaseModel):
     aws_rds_status: str
     database_name: str
     db_host: str
+
+
+class OverviewMetricOut(BaseModel):
+    title: str
+    value: str
+    badge: str
+    color: str
+    bg: str
+    icon_name: str
+
+
+class RecentUploadItemOut(BaseModel):
+    id: str
+    title: str
+    questions: int
+    date: str
+    status: str
+    confidence: float
+
+
+class SubjectBreakdownItemOut(BaseModel):
+    subject: str
+    count: int
+    percent: float
+    color: str
+
+
+class AdminOverviewStatsOut(BaseModel):
+    metrics: list[OverviewMetricOut]
+    recent_uploads: list[RecentUploadItemOut]
+    subject_breakdown: list[SubjectBreakdownItemOut]
+

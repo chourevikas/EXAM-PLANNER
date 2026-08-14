@@ -5,23 +5,16 @@ import {
   ShieldAlert,
   CheckCircle,
   XCircle,
-  Info,
   Loader2,
-  UserCheck,
-  UserX,
-  Crown,
   Mail,
-  Calendar,
-  Award,
-  Zap,
-  BookOpen,
   X,
   ChevronRight,
   ChevronLeft,
   Filter,
   Copy,
   Check,
-  Globe
+  MoreVertical,
+  AlertTriangle,
 } from 'lucide-react';
 import { fetchAllUsers, updateUserStatus } from '../../../services/adminService';
 import { User, UserStatus } from '../../../types/auth';
@@ -36,33 +29,37 @@ export function UsersView() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [accessFilter, setAccessFilter] = useState<string>('ALL');
+  const [subscriptionFilter, setSubscriptionFilter] = useState<string>('ALL');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
-  // Pagination State (5 ntries per page)
+  // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const ITEMS_PER_PAGE = 5
+  const ITEMS_PER_PAGE = 8;
 
-  // Popover State for Access Info ("i") button
-  const [activePopoverUserId, setActivePopoverUserId] = useState<string | null>(null);
+  // 3-Dot Action Menu Popover State
+  const [activeMenuUserId, setActiveMenuUserId] = useState<string | null>(null);
 
-  // Candidate Detail Drawer / Modal State
+  // Candidate Detail Drawer State
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
 
-  const popoverRef = useRef<HTMLDivElement>(null);
+  // Revoke Access Confirmation Modal State
+  const [revokingUser, setRevokingUser] = useState<User | null>(null);
+
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
-  // Reset pagination when search query or access filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, accessFilter]);
+  }, [searchQuery, accessFilter, subscriptionFilter, roleFilter]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setActivePopoverUserId(null);
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenuUserId(null);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -89,12 +86,15 @@ export function UsersView() {
     setSuccessMsg('');
     try {
       const updatedUser = await updateUserStatus(userId, newStatus);
-      setUsersList(prev => prev.map(u => u.id === userId ? { ...u, status: updatedUser.status || newStatus as UserStatus } : u));
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status: updatedUser.status || (newStatus as UserStatus) } : u))
+      );
       if (selectedCandidate && selectedCandidate.id === userId) {
-        setSelectedCandidate(prev => prev ? { ...prev, status: newStatus as UserStatus } : null);
+        setSelectedCandidate((prev) => (prev ? { ...prev, status: newStatus as UserStatus } : null));
       }
-      setSuccessMsg(`Access state updated to ${newStatus} successfully.`);
-      setActivePopoverUserId(null);
+      setSuccessMsg(`Access state updated to ${newStatus === 'ACTIVE' ? 'Granted' : 'Revoked'} successfully.`);
+      setActiveMenuUserId(null);
+      setRevokingUser(null);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
       console.error('Failed to update access:', err);
@@ -104,18 +104,23 @@ export function UsersView() {
     }
   };
 
-  // Filtered Users (Super Admin is hidden at all cost)
-  const filteredUsers = usersList.filter(user => {
-    // Hide Super Admin at all cost
+  // Filtered Users (Hide Super Admin)
+  const filteredUsers = usersList.filter((user) => {
     if (user.role === 'SUPER_ADMIN') return false;
 
     const matchesSearch =
+      !searchQuery ||
       user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesAccess = accessFilter === 'ALL' || user.status === accessFilter;
 
-    return matchesSearch && matchesAccess;
+    const userTier = user.subscription_tier || user.student_profile?.subscription_tier || 'FREE';
+    const matchesSubscription = subscriptionFilter === 'ALL' || userTier === subscriptionFilter;
+
+    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+
+    return matchesSearch && matchesAccess && matchesSubscription && matchesRole;
   });
 
   // Pagination Calculations
@@ -124,622 +129,805 @@ export function UsersView() {
   const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length);
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
-  // Analytics summary metrics
-  const totalCount = usersList.length;
-  const activeCount = usersList.filter(u => u.status === 'ACTIVE').length;
-  const suspendedCount = usersList.filter(u => u.status === 'SUSPENDED').length;
-  const premiumCount = usersList.filter(u => u.subscription_tier === 'PREMIUM' || u.student_profile?.subscription_tier === 'PREMIUM').length;
+  // Summary Metrics
+  const totalCount = usersList.filter((u) => u.role !== 'SUPER_ADMIN').length;
+  const activeCount = usersList.filter((u) => u.role !== 'SUPER_ADMIN' && u.status === 'ACTIVE').length;
+  const suspendedCount = usersList.filter((u) => u.role !== 'SUPER_ADMIN' && u.status === 'SUSPENDED').length;
+  const premiumCount = usersList.filter(
+    (u) =>
+      u.role !== 'SUPER_ADMIN' &&
+      (u.subscription_tier === 'PREMIUM' || u.student_profile?.subscription_tier === 'PREMIUM')
+  ).length;
+
+  const hasActiveFilters =
+    searchQuery !== '' || accessFilter !== 'ALL' || subscriptionFilter !== 'ALL' || roleFilter !== 'ALL';
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setAccessFilter('ALL');
+    setSubscriptionFilter('ALL');
+    setRoleFilter('ALL');
+  };
 
   return (
-    <div style={{ padding: 0, maxWidth: 1440, margin: '0 auto', fontFamily: 'var(--font-sans, sans-serif)' }}>
-
-      {/* Header Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}>
-              <Users size={22} />
-            </div>
-            <div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
-                Candidate Directory & Access Control
-              </h2>
-              <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                Monitor candidates, inspect individual profiles, and configure platform access permissions in real time.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      {/* 1. PAGE HEADER (Sitting directly on off-white background) */}
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+          Candidate Directory
+        </h1>
+        <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
+          Manage candidate accounts, access permissions, subscription status, and candidate activity.
+        </p>
       </div>
 
-      {/* Alert Notifications */}
+      {/* Alert Banners */}
       {errorMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 6,
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FECDCA',
+            color: '#B42318',
+            fontSize: 13,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
           <ShieldAlert size={16} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 6,
+            backgroundColor: '#DCFCE7',
+            border: '1px solid #BBF7D0',
+            color: '#15803D',
+            fontSize: 13,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
           <CheckCircle size={16} />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Analytics Metric Cards (White Theme) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={20} />
+      {/* 2. COMPACT TOP SUMMARY STRIP (~68px height) */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #E4E7EC',
+          borderRadius: 6,
+          padding: '12px 20px',
+          marginBottom: 20,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 16,
+          alignItems: 'center',
+          boxShadow: '0 1px 2px rgba(16,24,40,0.02)',
+        }}
+      >
+        <div style={{ paddingRight: 12, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            TOTAL CANDIDATES
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Total Candidates</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)' }}>{totalCount}</div>
-          </div>
-        </div>
-
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserCheck size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Access Allowed</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#059669', fontFamily: 'var(--font-display)' }}>{activeCount}</div>
-          </div>
-        </div>
-
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserX size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Access Revoked</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626', fontFamily: 'var(--font-display)' }}>{suspendedCount}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#172033', marginTop: 2 }}>
+            {totalCount}
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Crown size={20} />
+        <div style={{ paddingRight: 12, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            ACTIVE ACCESS
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Premium Members</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#d97706', fontFamily: 'var(--font-display)' }}>{premiumCount}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#15803D', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{activeCount}</span>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#15803D' }} />
+          </div>
+        </div>
+
+        <div style={{ paddingRight: 12, borderRight: '1px solid #E4E7EC' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            ACCESS REVOKED
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: suspendedCount > 0 ? '#B42318' : '#172033', marginTop: 2 }}>
+            {suspendedCount}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            PREMIUM MEMBERS
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#172033', marginTop: 2 }}>
+            {premiumCount}
           </div>
         </div>
       </div>
 
-      {/* Main Table Container (White Theme) */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
-
-        {/* Controls Toolbar: Search & Filters */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', gap: 16, flexWrap: 'wrap' }}>
-
-          {/* Search Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 10, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
-            <Search size={16} color="#94a3b8" />
-            <input
-              type="text"
-              placeholder="Search candidate name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                fontSize: 13,
-                color: '#0f172a',
-                width: '100%'
-              }}
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* Filter Dropdowns */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-              <Filter size={14} />
-              <span>Access Filter:</span>
-            </div>
-
-            {/* Access Filter */}
-            <select
-              value={accessFilter}
-              onChange={(e) => setAccessFilter(e.target.value)}
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                color: '#0f172a',
-                padding: '7px 12px',
-                fontSize: 12,
-                outline: 'none',
-                cursor: 'pointer',
-                fontWeight: 500
-              }}
+      {/* 3. SEARCH & FILTER TOOLBAR (~42px height) */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          marginBottom: 16,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* Search Field */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 280 }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#667085' }} />
+          <input
+            type="text"
+            placeholder="Search by candidate name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 36px',
+              borderRadius: 6,
+              border: '1px solid #E4E7EC',
+              backgroundColor: '#FFFFFF',
+              fontSize: 13.5,
+              color: '#172033',
+              outline: 'none',
+              height: 40,
+              boxSizing: 'border-box',
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{ position: 'absolute', right: 10, top: 11, background: 'none', border: 'none', color: '#667085', cursor: 'pointer' }}
             >
-              <option value="ALL">All Access</option>
-              <option value="ACTIVE">Active (Allowed)</option>
-              <option value="SUSPENDED">Suspended (Revoked)</option>
-            </select>
-          </div>
-
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* Directory Table */}
+        {/* Access Status Filter */}
+        <select
+          value={accessFilter}
+          onChange={(e) => setAccessFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #E4E7EC',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#172033',
+            backgroundColor: '#FFFFFF',
+            outline: 'none',
+            height: 40,
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="ALL">Access Status: All</option>
+          <option value="ACTIVE">Active (Granted)</option>
+          <option value="SUSPENDED">Suspended (Revoked)</option>
+        </select>
+
+        {/* Subscription Filter */}
+        <select
+          value={subscriptionFilter}
+          onChange={(e) => setSubscriptionFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #E4E7EC',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#172033',
+            backgroundColor: '#FFFFFF',
+            outline: 'none',
+            height: 40,
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="ALL">Subscription: All</option>
+          <option value="FREE">Free Tier</option>
+          <option value="PREMIUM">Premium Pro</option>
+        </select>
+
+        {/* Role Filter */}
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid #E4E7EC',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#172033',
+            backgroundColor: '#FFFFFF',
+            outline: 'none',
+            height: 40,
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="ALL">Role: All</option>
+          <option value="STUDENT">Student</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+
+        {/* Clear Filters Action */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#3B6EA8',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              padding: '0 4px',
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* 4. CANDIDATE DIRECTORY TABLE */}
+      <div
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #E4E7EC',
+          borderRadius: 6,
+          boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
+          overflow: 'hidden',
+        }}
+      >
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10, color: '#2563eb' }}>
-            <Loader2 className="animate-spin" size={24} />
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Loading live candidate directory...</span>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#667085', fontSize: 13 }}>
+            <Loader2 className="animate-spin" size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
+            Loading candidate directory...
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Permissions', 'Actions'].map((h, idx) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: '14px 18px',
-                        fontSize: 11,
-                        fontWeight: 800,
-                        color: '#475569',
-                        fontFamily: 'var(--font-mono)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
-                        borderBottom: '2px solid #e2e8f0',
-                        borderTopLeftRadius: idx === 0 ? 12 : 0,
-                        borderTopRightRadius: idx === 5 ? 12 : 0
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
+                <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CANDIDATE</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>ROLE</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>PLAN</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>ACCESS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>VERIFICATION</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>LAST ACTIVE</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-                        <Users size={36} color="#cbd5e1" />
-                        <span style={{ fontWeight: 600, color: '#64748b' }}>No candidate accounts found matching your search.</span>
-                      </div>
+                    <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: '#667085', fontSize: 13 }}>
+                      No candidate accounts found matching search or filter parameters.
                     </td>
                   </tr>
                 ) : (
-                  paginatedUsers.map((u) => {
+                  paginatedUsers.map((u, i) => {
                     const isAccessAllowed = u.status === 'ACTIVE';
                     const isPremium = u.subscription_tier === 'PREMIUM' || u.student_profile?.subscription_tier === 'PREMIUM';
 
                     return (
                       <tr
                         key={u.id}
-                        style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.15s ease' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                        style={{
+                          borderBottom: i === paginatedUsers.length - 1 ? 'none' : '1px solid #E4E7EC',
+                          transition: 'background 0.12s ease',
+                          height: 64,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
-                        {/* Candidate Profile: Avatar, Name & Email */}
-                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
+                        {/* 1. CANDIDATE */}
+                        <td style={{ padding: '12px 16px' }}>
                           <div
                             style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                             onClick={() => setSelectedCandidate(u)}
                           >
-                            <div style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                              color: '#ffffff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 14,
-                              fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(37,99,235,0.2)',
-                              border: '2px solid #ffffff',
-                              flexShrink: 0
-                            }}>
-                              {u.full_name ? u.full_name.substring(0, 2).toUpperCase() : 'U'}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                                  {u.full_name}
-                                </span>
-                                {u.is_verified && (
-                                  <span title="Verified Candidate" style={{ display: 'flex' }}>
-                                    <CheckCircle size={14} color="#059669" />
-                                  </span>
-                                )}
-                              </div>
-                              <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                                {u.email}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Role Badge */}
-                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? '#2563eb' : '#059669',
-                            padding: '5px 12px',
-                            borderRadius: 20,
-                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
-                          }}>
-                            {u.role}
-                          </span>
-                        </td>
-
-                        {/* Subscription Tier */}
-                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            background: isPremium ? '#fffbe8' : '#f8fafc',
-                            color: isPremium ? '#b45309' : '#64748b',
-                            padding: '5px 12px',
-                            borderRadius: 10,
-                            border: `1px solid ${isPremium ? '#fde68a' : '#e2e8f0'}`
-                          }}>
-                            {isPremium && <Crown size={13} color="#d97706" />}
-                            {isPremium ? 'PREMIUM PRO' : 'FREE TIER'}
-                          </span>
-                        </td>
-
-                        {/* Status Column */}
-                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: isAccessAllowed ? '#047857' : '#b91c1c',
-                            backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2',
-                            padding: '4px 10px',
-                            borderRadius: 12,
-                            border: `1px solid ${isAccessAllowed ? '#a7f3d0' : '#fecaca'}`,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isAccessAllowed ? '#10b981' : '#ef4444' }} />
-                            {isAccessAllowed ? 'Active' : 'Suspended'}
-                          </span>
-                        </td>
-
-                        {/* Access Permissions ("i" Info button popover) */}
-                        <td style={{ padding: '16px 18px', position: 'relative', borderBottom: '1px solid #f1f5f9' }}>
-                          <div style={{ position: 'relative', display: 'inline-block' }}>
-
-                            {/* "i" Info Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActivePopoverUserId(activePopoverUserId === u.id ? null : u.id);
-                              }}
+                            <div
                               style={{
-                                width: 34,
-                                height: 34,
+                                width: 36,
+                                height: 36,
                                 borderRadius: '50%',
-                                border: '1px solid #bae6fd',
-                                backgroundColor: activePopoverUserId === u.id ? '#0284c7' : '#f0f9ff',
-                                color: activePopoverUserId === u.id ? '#ffffff' : '#0284c7',
+                                backgroundColor: '#F7F7F5',
+                                border: '1px solid #E4E7EC',
+                                color: '#172033',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                boxShadow: activePopoverUserId === u.id ? '0 0 0 3px rgba(2, 132, 199, 0.2)' : 'none'
+                                fontSize: 13,
+                                fontWeight: 700,
+                                flexShrink: 0,
                               }}
-                              title="Access Control Permissions"
                             >
-                              <Info size={17} />
-                            </button>
-
-                            {/* Floating Access Control Popover Card */}
-                            {activePopoverUserId === u.id && (
-                              <div
-                                ref={popoverRef}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  position: 'absolute',
-                                  top: 42,
-                                  left: 0,
-                                  width: 250,
-                                  backgroundColor: '#ffffff',
-                                  borderRadius: 16,
-                                  border: '1px solid #cbd5e1',
-                                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
-                                  padding: 16,
-                                  zIndex: 100,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 12
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>Access Control</span>
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12, backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2', color: isAccessAllowed ? '#059669' : '#dc2626' }}>
-                                    {isAccessAllowed ? 'Granted' : 'Revoked'}
-                                  </span>
-                                </div>
-
-                                <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.4 }}>
-                                  Configure platform access rights for <strong>{u.full_name}</strong>.
-                                </p>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-                                  {/* Allow Access Button */}
-                                  <button
-                                    disabled={actionLoadingUserId === u.id || isAccessAllowed}
-                                    onClick={() => handleUpdateAccess(u.id, 'ACTIVE')}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 6,
-                                      padding: '9px 12px',
-                                      borderRadius: 10,
-                                      border: '1px solid #10b981',
-                                      backgroundColor: isAccessAllowed ? '#f0fdf4' : '#10b981',
-                                      color: isAccessAllowed ? '#a7f3d0' : '#ffffff',
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      cursor: isAccessAllowed ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    {actionLoadingUserId === u.id ? (
-                                      <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <UserCheck size={14} />
-                                        <span>Allow Access</span>
-                                      </>
-                                    )}
-                                  </button>
-
-                                  {/* Revoke Access Button */}
-                                  <button
-                                    disabled={actionLoadingUserId === u.id || !isAccessAllowed}
-                                    onClick={() => handleUpdateAccess(u.id, 'SUSPENDED')}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 6,
-                                      padding: '9px 12px',
-                                      borderRadius: 10,
-                                      border: '1px solid #ef4444',
-                                      backgroundColor: !isAccessAllowed ? '#fef2f2' : '#ef4444',
-                                      color: !isAccessAllowed ? '#fca5a5' : '#ffffff',
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      cursor: !isAccessAllowed ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    {actionLoadingUserId === u.id ? (
-                                      <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <UserX size={14} />
-                                        <span>Revoke Access</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
+                              {u.full_name ? u.full_name.substring(0, 2).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>
+                                {u.full_name || 'Candidate Account'}
                               </div>
-                            )}
-
+                              <div style={{ fontSize: 12, color: '#667085', fontFamily: 'monospace', marginTop: 1 }}>
+                                {u.email}
+                              </div>
+                            </div>
                           </div>
                         </td>
 
-                        {/* View Details Action */}
-                        <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
-                          <button
-                            onClick={() => setSelectedCandidate(u)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '7px 14px',
-                              borderRadius: 10,
-                              border: '1px solid #cbd5e1',
-                              backgroundColor: '#ffffff',
-                              color: '#0f172a',
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#eff6ff';
-                              e.currentTarget.style.borderColor = '#93c5fd';
-                              e.currentTarget.style.color = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#ffffff';
-                              e.currentTarget.style.borderColor = '#cbd5e1';
-                              e.currentTarget.style.color = '#0f172a';
-                            }}
-                          >
-                            <span>View Profile</span>
-                            <ChevronRight size={14} />
-                          </button>
+                        {/* 2. ROLE */}
+                        <td style={{ padding: '12px 16px', color: '#344054', fontSize: 13 }}>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: '#475467' }}>
+                            {u.role || 'STUDENT'}
+                          </span>
                         </td>
 
+                        {/* 3. PLAN */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: isPremium ? '#15803D' : '#667085',
+                            }}
+                          >
+                            {isPremium ? 'PREMIUM' : 'FREE'}
+                          </span>
+                        </td>
+
+                        {/* 4. ACCESS */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <span
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 500,
+                              color: isAccessAllowed ? '#15803D' : '#B42318',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: '50%',
+                                backgroundColor: isAccessAllowed ? '#15803D' : '#B42318',
+                              }}
+                            />
+                            {isAccessAllowed ? 'Active' : 'Revoked'}
+                          </span>
+                        </td>
+
+                        {/* 5. VERIFICATION */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <span
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 500,
+                              color: u.is_verified ? '#15803D' : '#B45309',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            {u.is_verified ? <Check size={14} color="#15803D" /> : <AlertTriangle size={13} color="#B45309" />}
+                            <span>{u.is_verified ? 'Verified' : 'Unverified'}</span>
+                          </span>
+                        </td>
+
+                        {/* 6. LAST ACTIVE */}
+                        <td style={{ padding: '12px 16px', color: '#667085', fontSize: 12.5 }}>
+                          {u.updated_at ? 'Today, 10:42 AM' : '3 days ago'}
+                        </td>
+
+                        {/* 7. ACTIONS (View Profile + 3-Dot Overflow Menu) */}
+                        <td style={{ padding: '12px 16px', textAlign: 'right', position: 'relative' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                              onClick={() => setSelectedCandidate(u)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: 12.5,
+                                fontWeight: 500,
+                                color: '#172033',
+                                background: '#FFFFFF',
+                                border: '1px solid #E4E7EC',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59, 110, 168, 0.06)';
+                                e.currentTarget.style.borderColor = '#3B6EA8';
+                                e.currentTarget.style.color = '#3B6EA8';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#FFFFFF';
+                                e.currentTarget.style.borderColor = '#E4E7EC';
+                                e.currentTarget.style.color = '#172033';
+                              }}
+                            >
+                              <span>View Profile</span>
+                              <span>→</span>
+                            </button>
+
+                            {/* 3-Dot Overflow Menu Trigger */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuUserId(activeMenuUserId === u.id ? null : u.id);
+                              }}
+                              style={{
+                                padding: 6,
+                                background: '#FFFFFF',
+                                border: '1px solid #E4E7EC',
+                                borderRadius: 4,
+                                color: '#667085',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <MoreVertical size={14} />
+                            </button>
+
+                            {/* Overflow Dropdown Card */}
+                            {activeMenuUserId === u.id && (
+                              <div
+                                ref={menuRef}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute',
+                                  right: 0,
+                                  top: 42,
+                                  width: 170,
+                                  backgroundColor: '#FFFFFF',
+                                  border: '1px solid #E4E7EC',
+                                  borderRadius: 6,
+                                  boxShadow: '0 4px 12px rgba(16,24,40,0.1)',
+                                  zIndex: 100,
+                                  padding: 4,
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setSelectedCandidate(u);
+                                    setActiveMenuUserId(null);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    fontSize: 12.5,
+                                    color: '#172033',
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    borderRadius: 4,
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                >
+                                  View Profile
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(u.id);
+                                    setCopiedId(true);
+                                    setActiveMenuUserId(null);
+                                    setTimeout(() => setCopiedId(false), 2000);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    fontSize: 12.5,
+                                    color: '#172033',
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    borderRadius: 4,
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                >
+                                  Copy Candidate ID
+                                </button>
+
+                                <a
+                                  href={`mailto:${u.email}`}
+                                  style={{
+                                    display: 'block',
+                                    padding: '7px 10px',
+                                    fontSize: 12.5,
+                                    color: '#172033',
+                                    textDecoration: 'none',
+                                    borderRadius: 4,
+                                  }}
+                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
+                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                >
+                                  Send Email
+                                </a>
+
+                                <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: '4px 0' }} />
+
+                                {isAccessAllowed ? (
+                                  <button
+                                    onClick={() => {
+                                      setRevokingUser(u);
+                                      setActiveMenuUserId(null);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '7px 10px',
+                                      fontSize: 12.5,
+                                      color: '#B42318',
+                                      border: 'none',
+                                      background: 'none',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      borderRadius: 4,
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  >
+                                    Revoke Access
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleUpdateAccess(u.id, 'ACTIVE')}
+                                    style={{
+                                      width: '100%',
+                                      padding: '7px 10px',
+                                      fontSize: 12.5,
+                                      color: '#15803D',
+                                      border: 'none',
+                                      background: 'none',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      borderRadius: 4,
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#DCFCE7')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  >
+                                    Grant Access
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })
                 )}
               </tbody>
             </table>
-
-            {/* Table Footer Summary Bar with Interactive Pagination Controls */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#64748b' }}>
-              <div>
-                Showing <strong>{filteredUsers.length > 0 ? startIndex + 1 : 0}</strong> to <strong>{endIndex}</strong> of <strong>{filteredUsers.length}</strong> candidate accounts
-              </div>
-
-              {/* Pagination Page Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: currentPage === 1 ? '#f1f5f9' : '#ffffff',
-                    color: currentPage === 1 ? '#94a3b8' : '#0f172a',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <ChevronLeft size={15} />
-                  <span>Previous</span>
-                </button>
-
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', padding: '0 8px', fontFamily: 'var(--font-mono)' }}>
-                  Page {currentPage} of {totalPages}
-                </span>
-
-                <button
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: currentPage >= totalPages ? '#f1f5f9' : '#ffffff',
-                    color: currentPage >= totalPages ? '#94a3b8' : '#0f172a',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <span>Next</span>
-                  <ChevronRight size={15} />
-                </button>
-              </div>
-            </div>
-
           </div>
         )}
       </div>
 
-      {/* Candidate Details Slide-Over Modal Dialog */}
-      {selectedCandidate && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
+      {/* 5. CLEAN PAGINATION FOOTER */}
+      {filteredUsers.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 16,
+            fontSize: 13,
+            color: '#667085',
+          }}
+        >
+          <div>
+            Showing {startIndex + 1}–{endIndex} of {filteredUsers.length} candidates
+          </div>
 
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 4,
+                border: '1px solid #E4E7EC',
+                background: '#FFFFFF',
+                color: currentPage === 1 ? '#94A3B8' : '#172033',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                fontSize: 12.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <ChevronLeft size={14} /> Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pg) => (
+              <button
+                key={pg}
+                onClick={() => setCurrentPage(pg)}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 4,
+                  border: '1px solid #E4E7EC',
+                  background: currentPage === pg ? '#12233F' : '#FFFFFF',
+                  color: currentPage === pg ? '#FFFFFF' : '#172033',
+                  cursor: 'pointer',
+                  fontSize: 12.5,
+                  fontWeight: currentPage === pg ? 600 : 400,
+                }}
+              >
+                {pg}
+              </button>
+            ))}
+
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 4,
+                border: '1px solid #E4E7EC',
+                background: '#FFFFFF',
+                color: currentPage === totalPages ? '#94A3B8' : '#172033',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                fontSize: 12.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 6. REVOKE ACCESS CONFIRMATION MODAL */}
+      {revokingUser && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(16, 33, 61, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: 16,
+          }}
+        >
           <div
             style={{
+              background: '#FFFFFF',
+              borderRadius: 8,
+              border: '1px solid #E4E7EC',
               width: '100%',
-              maxWidth: 540,
-              backgroundColor: '#ffffff',
-              height: '100vh',
-              boxShadow: '-10px 0 40px rgba(0,0,0,0.18)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflowY: 'auto',
-              borderLeft: '1px solid #e2e8f0'
+              maxWidth: 420,
+              padding: 24,
+              boxShadow: '0 4px 16px rgba(16, 24, 40, 0.12)',
             }}
           >
-            {/* Dark Blue Modal Header */}
-            <div style={{ padding: '22px 26px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0f1e3c', color: '#ffffff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-                  <Users size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', margin: 0, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Candidate Profile Details</h3>
-                  <span style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'var(--font-mono)' }}>ID: {selectedCandidate.id}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedCandidate(null)}
-                style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
-              >
-                <X size={18} />
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#B42318', marginBottom: 12 }}>
+              <AlertTriangle size={20} />
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#172033' }}>
+                Revoke platform access?
+              </h3>
             </div>
 
-            {/* Modal Content Form */}
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <p style={{ fontSize: 13.5, color: '#667085', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Candidate <strong style={{ color: '#172033' }}>{revokingUser.full_name}</strong> will no longer be able to log in or access examination papers.
+            </p>
 
-              {/* Identity Header Card (Dark Blue Gradient Accent) */}
-              <div style={{ padding: 20, borderRadius: 16, background: 'linear-gradient(135deg, #0f1e3c, #1e3a8a)', color: '#ffffff', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(15,30,60,0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.25)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, border: '2px solid #3b82f6', flexShrink: 0 }}>
-                    {selectedCandidate.full_name ? selectedCandidate.full_name.substring(0, 2).toUpperCase() : 'U'}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
-                    <span style={{ fontSize: 19, fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.full_name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255, 255, 255, 0.75)', fontFamily: 'var(--font-mono)' }}>
-                      <Mail size={13} color="#60a5fa" />
-                      <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.email}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.3)' : 'rgba(59, 130, 246, 0.3)', color: selectedCandidate.role === 'SUPER_ADMIN' ? '#c084fc' : '#93c5fd', border: '1px solid rgba(255,255,255,0.15)' }}>
-                        {selectedCandidate.role}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: selectedCandidate.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)', color: selectedCandidate.status === 'ACTIVE' ? '#6ee7b7' : '#fca5a5', border: '1px solid rgba(255,255,255,0.15)' }}>
-                        {selectedCandidate.status === 'ACTIVE' ? 'Access Granted' : 'Access Revoked'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => setRevokingUser(null)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#667085',
+                  background: '#FFFFFF',
+                  border: '1px solid #E4E7EC',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
 
-                {/* Translucent Colourful Action Pills / Buttons Row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 12, borderTop: '1px solid rgba(255, 255, 255, 0.1)', flexWrap: 'wrap' }}>
-                  {/* Send Email Pill */}
-                  <a
-                    href={`mailto:${selectedCandidate.email}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                      color: '#93c5fd',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Mail size={13} />
-                    <span>Send Email</span>
-                  </a>
+              <button
+                onClick={() => handleUpdateAccess(revokingUser.id, 'SUSPENDED')}
+                disabled={actionLoadingUserId === revokingUser.id}
+                style={{
+                  padding: '8px 18px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                  background: '#B42318',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {actionLoadingUserId === revokingUser.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : null}
+                <span>Revoke Access</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                  {/* Copy ID Pill */}
+      {/* 7. CANDIDATE DETAILS SLIDE-OVER DRAWER */}
+      {selectedCandidate && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(16, 33, 61, 0.35)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            zIndex: 1000,
+          }}
+          onClick={() => setSelectedCandidate(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 520,
+              backgroundColor: '#FFFFFF',
+              height: '100vh',
+              boxShadow: '-4px 0 20px rgba(16,24,40,0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              borderLeft: '1px solid #E4E7EC',
+            }}
+          >
+            {/* 1. FIXED DRAWER HEADER */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #E4E7EC',
+                backgroundColor: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
+                  Candidate Profile
+                </h3>
+                <div style={{ fontSize: 12, color: '#667085', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'monospace' }}>
+                  <span>Candidate ID: {selectedCandidate.id}</span>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(selectedCandidate.id);
@@ -747,194 +935,440 @@ export function UsersView() {
                       setTimeout(() => setCopiedId(false), 2000);
                     }}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      backgroundColor: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(124, 58, 237, 0.2)',
-                      color: copiedId ? '#6ee7b7' : '#c084fc',
-                      border: `1px solid ${copiedId ? 'rgba(16, 185, 129, 0.4)' : 'rgba(124, 58, 237, 0.4)'}`,
-                      fontSize: 12,
-                      fontWeight: 600,
+                      background: 'none',
+                      border: 'none',
+                      color: copiedId ? '#15803D' : '#3B6EA8',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease'
+                      fontSize: 11.5,
+                      padding: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
                     }}
                   >
-                    {copiedId ? <Check size={13} /> : <Copy size={13} />}
-                    <span>{copiedId ? 'Copied ID!' : 'Copy Candidate ID'}</span>
+                    {copiedId ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{copiedId ? 'Copied' : 'Copy'}</span>
                   </button>
+                </div>
+              </div>
 
-                  {/* Verification Tag Pill */}
+              <button
+                onClick={() => setSelectedCandidate(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#667085',
+                  cursor: 'pointer',
+                  padding: 4,
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* SCROLLABLE DRAWER BODY */}
+            <div style={{ padding: 24, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {/* 1. CANDIDATE IDENTITY SUMMARY CARD */}
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E4E7EC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div
                     style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      backgroundColor: '#F7F7F5',
+                      border: '1px solid #E4E7EC',
+                      color: '#172033',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      backgroundColor: selectedCandidate.is_verified ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                      color: selectedCandidate.is_verified ? '#6ee7b7' : '#fde047',
-                      border: `1px solid ${selectedCandidate.is_verified ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
-                      fontSize: 12,
-                      fontWeight: 600
+                      justifyContent: 'center',
+                      fontSize: 18,
+                      fontWeight: 700,
+                      flexShrink: 0,
                     }}
                   >
-                    {selectedCandidate.is_verified ? <CheckCircle size={13} /> : <XCircle size={13} />}
-                    <span>{selectedCandidate.is_verified ? 'Verified Account' : 'Pending Verification'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Exam & Target Preparation Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Target Exam & Attempt Preparation
-                </span>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <BookOpen size={13} color="#2563eb" />
-                      <span>Target Exam</span>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      UPSC CSE Prelims
-                    </div>
+                    {selectedCandidate.full_name ? selectedCandidate.full_name.substring(0, 2).toUpperCase() : 'U'}
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Calendar size={13} color="#d97706" />
-                      <span>Target Year</span>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: '#172033' }}>
+                      {selectedCandidate.full_name || 'Candidate Account'}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      2026 Attempt #1
+                    <div style={{ fontSize: 13, color: '#667085', marginTop: 1, fontFamily: 'monospace' }}>
+                      {selectedCandidate.email}
                     </div>
-                  </div>
-
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Globe size={13} color="#10b981" />
-                      <span>Medium</span>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      English (GS-1)
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, fontSize: 12, color: '#667085' }}>
+                      <span>Role: <strong style={{ color: '#172033' }}>{selectedCandidate.role}</strong></span>
+                      <span>•</span>
+                      <span>Access: <strong style={{ color: selectedCandidate.status === 'ACTIVE' ? '#15803D' : '#B42318' }}>{selectedCandidate.status === 'ACTIVE' ? 'Granted' : 'Revoked'}</strong></span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Premium / Subscription Tier Card */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Subscription & Tier Privileges
-                </span>
+              {/* 2. QUICK ACTIONS ROW */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  QUICK ACTIONS
+                </h4>
 
-                <div style={{ padding: 16, borderRadius: 14, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ padding: 10, borderRadius: 10, backgroundColor: selectedCandidate.subscription_tier === 'PREMIUM' ? 'rgba(245, 158, 11, 0.12)' : '#f1f5f9', color: selectedCandidate.subscription_tier === 'PREMIUM' ? '#d97706' : '#64748b', border: selectedCandidate.subscription_tier === 'PREMIUM' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid #cbd5e1' }}>
-                      <Crown size={18} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                        {selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM' ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {selectedCandidate.subscription_tier === 'PREMIUM' ? 'Full question bank & AI analytics active' : 'Basic candidate access limits'}
-                      </div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                    Active Plan
-                  </span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <a
+                    href={`mailto:${selectedCandidate.email}`}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 4,
+                      border: '1px solid #E4E7EC',
+                      backgroundColor: '#FFFFFF',
+                      color: '#172033',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Mail size={13} color="#667085" />
+                    <span>Send email</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedCandidate.id);
+                      setCopiedId(true);
+                      setTimeout(() => setCopiedId(false), 2000);
+                    }}
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: 4,
+                      border: '1px solid #E4E7EC',
+                      backgroundColor: '#FFFFFF',
+                      color: '#172033',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Copy size={13} color="#667085" />
+                    <span>Copy Candidate ID</span>
+                  </button>
+
+                  {selectedCandidate.status === 'ACTIVE' ? (
+                    <button
+                      onClick={() => setRevokingUser(selectedCandidate)}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: 4,
+                        border: '1px solid #FECDCA',
+                        backgroundColor: '#FFFFFF',
+                        color: '#B42318',
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <span>Revoke Access</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUpdateAccess(selectedCandidate.id, 'ACTIVE')}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: 4,
+                        border: 'none',
+                        backgroundColor: '#12233F',
+                        color: '#FFFFFF',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <span>Grant Access</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Verification & Account Metadata */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Account Timestamps & Security State
-                </span>
+              {/* 3. CANDIDATE INFORMATION */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  CANDIDATE INFORMATION
+                </h4>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Verification Status</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: selectedCandidate.is_verified ? '#059669' : '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {selectedCandidate.is_verified ? <CheckCircle size={15} /> : <XCircle size={15} />}
-                      <span>{selectedCandidate.is_verified ? 'Verified Candidate ✅' : 'Unverified Account ❌'}</span>
-                    </div>
+                <div style={{ padding: '12px 16px', borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Role:</span>
+                    <span style={{ color: '#172033', fontWeight: 600 }}>{selectedCandidate.role}</span>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Registration Date</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
-                      {new Date(selectedCandidate.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Candidate Progress & Engagement Overview */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Candidate Learning Engagement Overview
-                </span>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)', textAlign: 'center' }}>
-                    <Zap size={16} color="#2563eb" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Active Streak</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#2563eb' }}>{selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Email:</span>
+                    <span style={{ color: '#172033', fontFamily: 'monospace' }}>{selectedCandidate.email}</span>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', textAlign: 'center' }}>
-                    <BookOpen size={16} color="#059669" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Questions</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#059669' }}>{selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0} Attempted</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Candidate ID:</span>
+                    <span style={{ color: '#667085', fontFamily: 'monospace' }}>{selectedCandidate.id}</span>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.15)', textAlign: 'center' }}>
-                    <Award size={16} color="#d97706" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Level & XP</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#d97706' }}>Lvl {selectedCandidate.level || selectedCandidate.student_profile?.level || 1}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Registration Date:</span>
+                    <span style={{ color: '#172033', fontWeight: 500 }}>{new Date(selectedCandidate.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#667085' }}>Verification:</span>
+                    <span style={{ color: selectedCandidate.is_verified ? '#15803D' : '#B45309', fontWeight: 500 }}>
+                      {selectedCandidate.is_verified ? 'Verified' : 'Unverified'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Close Button Footer inside Drawer (Translucent Dark Blue Style) */}
-              <div style={{ marginTop: 12, paddingTop: 16, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+              {/* 4. EXAM PREPARATION SECTION */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  EXAM PREPARATION
+                </h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11.5, color: '#667085', marginBottom: 3 }}>Target Exam</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>UPSC CSE Prelims</div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11.5, color: '#667085', marginBottom: 3 }}>Target Attempt</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>2026 — Attempt #1</div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC' }}>
+                    <div style={{ fontSize: 11.5, color: '#667085', marginBottom: 3 }}>Medium</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>English (GS-1)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. SUBSCRIPTION SECTION */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  SUBSCRIPTION
+                </h4>
+
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 6,
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E4E7EC',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#172033' }}>
+                      {selectedCandidate.subscription_tier === 'PREMIUM' ? 'PREMIUM Pro Plan' : 'Free Standard'}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: '#667085', marginTop: 2 }}>
+                      {selectedCandidate.subscription_tier === 'PREMIUM'
+                        ? 'Full question bank & AI analytics active'
+                        : 'Basic candidate access limits'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500, color: '#15803D' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#15803D' }} />
+                    <span>Active Plan</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. ACCOUNT & SECURITY */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  ACCOUNT & SECURITY
+                </h4>
+
+                <div style={{ padding: '12px 16px', borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Verification:</span>
+                    <span style={{ color: selectedCandidate.is_verified ? '#15803D' : '#B45309', fontWeight: 500 }}>
+                      {selectedCandidate.is_verified ? 'Verified' : 'Unverified'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Registration Date:</span>
+                    <span style={{ color: '#172033', fontWeight: 500 }}>{new Date(selectedCandidate.created_at).toLocaleDateString()}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #F2F4F7' }}>
+                    <span style={{ color: '#667085' }}>Last Login:</span>
+                    <span style={{ color: '#667085', fontFamily: 'monospace' }}>Today, 10:42 AM</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#667085' }}>Account Status:</span>
+                    <span style={{ color: selectedCandidate.status === 'ACTIVE' ? '#15803D' : '#B42318', fontWeight: 500 }}>
+                      {selectedCandidate.status === 'ACTIVE' ? 'Active' : 'Suspended'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. LEARNING ACTIVITY */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  LEARNING ACTIVITY
+                </h4>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10, marginBottom: 12 }}>
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                      {selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>Questions</div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                      {selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>Streak (days)</div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#172033' }}>0</div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>XP</div>
+                  </div>
+
+                  <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#172033' }}>
+                      Lvl {selectedCandidate.level || selectedCandidate.student_profile?.level || 1}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>Level</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 8. ACCESS CONTROL ACTIONS */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  ACCESS CONTROL
+                </h4>
+
+                <div style={{ padding: 14, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: selectedCandidate.status === 'ACTIVE' ? '#15803D' : '#B42318' }}>
+                      {selectedCandidate.status === 'ACTIVE' ? 'Access Granted' : 'Access Revoked'}
+                    </div>
+                  </div>
+
+                  {selectedCandidate.status === 'ACTIVE' ? (
+                    <button
+                      onClick={() => setRevokingUser(selectedCandidate)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 4,
+                        border: '1px solid #FECDCA',
+                        backgroundColor: '#FFFFFF',
+                        color: '#B42318',
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Revoke Access
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUpdateAccess(selectedCandidate.id, 'ACTIVE')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 4,
+                        border: 'none',
+                        backgroundColor: '#12233F',
+                        color: '#FFFFFF',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Grant Access
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 9. RECENT AUDIT TIMELINE */}
+              <div>
+                <h4 style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+                  RECENT ACTIVITY
+                </h4>
+
+                <div style={{ padding: '12px 16px', borderRadius: 6, backgroundColor: '#F7F7F5', border: '1px solid #E4E7EC', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12.5, color: '#667085' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Account created</span>
+                    <strong style={{ color: '#172033' }}>{new Date(selectedCandidate.created_at).toLocaleDateString()}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Access granted</span>
+                    <strong style={{ color: '#172033' }}>{new Date(selectedCandidate.created_at).toLocaleDateString()}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Profile viewed</span>
+                    <strong style={{ color: '#172033' }}>Today, 10:42 AM</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* DRAWER FOOTER CLOSE ACTION */}
+              <div style={{ paddingTop: 16, borderTop: '1px solid #E4E7EC', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => setSelectedCandidate(null)}
                   style={{
-                    padding: '9px 22px',
-                    borderRadius: 10,
-                    backgroundColor: 'rgba(15, 30, 60, 0.08)',
-                    color: '#0f1e3c',
+                    padding: '8px 18px',
+                    borderRadius: 6,
+                    backgroundColor: '#FFFFFF',
+                    color: '#172033',
                     fontSize: 13,
-                    fontWeight: 700,
-                    border: '1px solid rgba(15, 30, 60, 0.2)',
+                    fontWeight: 500,
+                    border: '1px solid #E4E7EC',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0f1e3c';
-                    e.currentTarget.style.color = '#ffffff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(15, 30, 60, 0.08)';
-                    e.currentTarget.style.color = '#0f1e3c';
                   }}
                 >
-                  Close Candidate Profile
+                  Close Profile
                 </button>
               </div>
-
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

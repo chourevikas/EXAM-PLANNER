@@ -263,4 +263,45 @@ export async function fetchCatalogQuestions(
   return await res.json();
 }
 
+export interface OverviewMetric {
+  title: string;
+  value: string;
+  badge: string;
+  color: string;
+  bg: string;
+  icon_name: string;
+}
+
+export interface RecentUploadItem {
+  id: string;
+  title: string;
+  questions: number;
+  date: string;
+  status: string;
+  confidence: number;
+}
+
+export interface SubjectBreakdownItem {
+  subject: string;
+  count: number;
+  percent: number;
+  color: string;
+}
+
+export interface AdminOverviewStats {
+  metrics: OverviewMetric[];
+  recent_uploads: RecentUploadItem[];
+  subject_breakdown: SubjectBreakdownItem[];
+}
+
+export async function fetchAdminOverviewStats(): Promise<AdminOverviewStats> {
+  const res = await fetch(`${API_BASE_URL}/overview-stats`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch admin overview statistics' }));
+    throw new Error(errorData.detail || 'Could not fetch admin overview stats.');
+  }
+  return await res.json();
+}
+
+
 

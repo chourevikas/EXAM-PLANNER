@@ -113,6 +113,7 @@ export function useExamUpload() {
     paperType,
     setPaperType,
     selectedFile,
+    setSelectedFile,
     isUploading,
     statusMessage,
     isDragOver,

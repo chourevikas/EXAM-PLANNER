@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Menu, 
-  Search, 
-  Bell, 
-  ChevronRight, 
-  Zap, 
-  Upload, 
-  User, 
-  Settings, 
-  LogOut, 
-  CheckCheck, 
-  Sparkles, 
-  Activity, 
-  Cpu, 
+import {
+  Menu,
+  Search,
+  Bell,
+  ChevronRight,
+  Shield,
+  Upload,
+  User,
+  LogOut,
+  CheckCheck,
+  Activity,
+  Cpu,
   ClipboardCheck,
   CreditCard,
   BarChart2,
@@ -58,7 +56,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
       }
     }
     const handleResize = () => setWindowWidth(window.innerWidth);
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', handleResize);
     return () => {
@@ -75,13 +73,13 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
   const adminNotifications = [
     {
       id: 1,
-      title: 'AI Processing Complete',
+      title: 'Question Extraction Complete',
       desc: '12 new questions extracted from UPSC 2023 Paper 1.',
       time: '10 mins ago',
       unread: true,
       icon: Cpu,
-      color: '#3b82f6',
-      bg: 'rgba(59, 130, 246, 0.15)',
+      color: '#3B6EA8',
+      bg: 'rgba(59, 110, 168, 0.15)',
       targetView: 'ai-queue'
     },
     {
@@ -91,8 +89,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
       time: '45 mins ago',
       unread: true,
       icon: ClipboardCheck,
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.15)',
+      color: '#B89B5E',
+      bg: 'rgba(184, 155, 94, 0.15)',
       targetView: 'review'
     },
     {
@@ -108,7 +106,6 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
     }
   ];
 
-  // Quick nav suggestions for admin search bar
   const quickSearchOptions = [
     { label: 'Upload Question Paper', id: 'upload', icon: Upload },
     { label: 'Question Bank Manager', id: 'questions', icon: BookOpen },
@@ -129,9 +126,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         right: 0,
         width: '100%',
         zIndex: 100,
-        backgroundColor: '#0f1e3c',
+        backgroundColor: '#10213D',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -141,8 +137,6 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
     >
       {/* Left: Hamburger Toggle, Brand Logo & Breadcrumbs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16 }}>
-        
-        {/* Sidebar Toggle Button */}
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -150,54 +144,52 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 34,
-              height: 34,
-              borderRadius: 8,
+              width: 32,
+              height: 32,
+              borderRadius: 4,
               border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
               color: '#ffffff',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.15s ease',
               flexShrink: 0
             }}
             title="Toggle Sidebar Menu"
             aria-label="Toggle Sidebar Menu"
           >
-            <Menu size={18} />
+            <Menu size={16} />
           </button>
         )}
 
-        {/* Divider */}
-        {!isSmallMobile && <div style={{ width: 1, height: 20, backgroundColor: 'rgba(255, 255, 255, 0.12)' }} />}
+        {!isSmallMobile && <div style={{ width: 1, height: 18, backgroundColor: 'rgba(255, 255, 255, 0.12)' }} />}
 
         {/* Brand Logo */}
-        <div 
-          onClick={() => onNavigate('dashboard')} 
+        <div
+          onClick={() => onNavigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
         >
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              width: 28,
+              height: 28,
+              borderRadius: 4,
+              background: '#3B6EA8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+              flexShrink: 0
             }}
           >
-            <Zap size={17} color="#fff" fill="#fff" />
+            <Shield size={16} color="#ffffff" />
           </div>
           {!isSmallMobile && (
             <span
               style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 800,
-                fontSize: 16,
+                fontWeight: 700,
+                fontSize: 15,
                 color: '#ffffff',
-                letterSpacing: '-0.02em'
+                letterSpacing: '-0.01em',
+                fontFamily: 'Inter, sans-serif'
               }}
             >
               RankEdge Admin
@@ -208,16 +200,16 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         {/* Breadcrumb Trail */}
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ color: 'rgba(255, 255, 255, 0.55)', fontWeight: 500 }}>Admin</span>
-            <ChevronRight size={14} color="rgba(255, 255, 255, 0.4)" />
-            <span style={{ color: '#ffffff', fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+            <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 400 }}>Admin</span>
+            <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+            <span style={{ color: '#ffffff', fontWeight: 600 }}>
               {currentViewLabel}
             </span>
           </div>
         )}
       </div>
 
-      {/* Center: Quick Search Bar */}
+      {/* Center: Search Bar */}
       {!isSmallMobile && (
         <div
           style={{
@@ -225,15 +217,15 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            padding: '6px 10px',
-            width: isMobile ? 150 : 260,
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: 4,
+            padding: '5px 10px',
+            width: isMobile ? 140 : 250,
             border: '1px solid rgba(255, 255, 255, 0.1)',
             transition: 'width 0.2s'
           }}
         >
-          <Search size={14} color="rgba(255, 255, 255, 0.45)" />
+          <Search size={14} color="rgba(255, 255, 255, 0.4)" />
           <input
             type="text"
             placeholder={isMobile ? "Search..." : "Search questions, papers..."}
@@ -245,7 +237,6 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               outline: 'none',
               fontSize: 12,
               color: '#ffffff',
-              fontFamily: 'var(--font-body)',
               width: '100%'
             }}
           />
@@ -253,33 +244,32 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             <span
               style={{
                 fontSize: 10,
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontFamily: 'var(--font-mono)',
-                background: 'rgba(255, 255, 255, 0.12)',
-                borderRadius: 4,
-                padding: '2px 5px',
-                fontWeight: 700
+                color: 'rgba(255, 255, 255, 0.5)',
+                fontFamily: 'monospace',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 3,
+                padding: '1px 4px',
+                fontWeight: 600
               }}
             >
               ⌘K
             </span>
           )}
 
-          {/* Quick Search Suggestions Dropdown */}
           {searchQuery.trim().length > 0 && (
             <div
               style={{
                 position: 'absolute',
-                top: 44,
+                top: 40,
                 left: 0,
                 width: '100%',
-                minWidth: 260,
-                backgroundColor: '#0f1e3c',
-                borderRadius: 10,
+                minWidth: 250,
+                backgroundColor: '#10213D',
+                borderRadius: 4,
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5)',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
                 zIndex: 150,
-                padding: 6,
+                padding: 4,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 2
@@ -298,9 +288,9 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                        padding: '8px 10px',
-                        borderRadius: 6,
+                        gap: 8,
+                        padding: '7px 10px',
+                        borderRadius: 4,
                         border: 'none',
                         background: 'transparent',
                         color: 'rgba(255, 255, 255, 0.9)',
@@ -308,16 +298,16 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         cursor: 'pointer',
                         textAlign: 'left'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.2)')}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(59, 110, 168, 0.2)')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      <OptIcon size={14} color="#60a5fa" />
+                      <OptIcon size={14} color="#3B6EA8" />
                       <span>{opt.label}</span>
                     </button>
                   );
                 })
               ) : (
-                <div style={{ padding: '10px', fontSize: 12, color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center' }}>
+                <div style={{ padding: '8px', fontSize: 12, color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center' }}>
                   No matching views found
                 </div>
               )}
@@ -326,10 +316,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         </div>
       )}
 
-      {/* Right: Notifications & Profile View */}
+      {/* Right: Notifications & User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, position: 'relative' }}>
-        
-        {/* Notifications Container */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
@@ -338,29 +326,29 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             }}
             style={{
               position: 'relative',
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: `1px solid ${showNotifications ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)'}`,
-              backgroundColor: showNotifications ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+              width: 32,
+              height: 32,
+              borderRadius: 4,
+              border: `1px solid ${showNotifications ? '#3B6EA8' : 'rgba(255, 255, 255, 0.12)'}`,
+              backgroundColor: showNotifications ? 'rgba(59, 110, 168, 0.2)' : 'rgba(255, 255, 255, 0.04)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
               color: '#ffffff',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.15s ease'
             }}
             title="Notifications"
           >
-            <Bell size={16} />
+            <Bell size={15} />
             {unreadCount > 0 && (
               <span
                 style={{
                   position: 'absolute',
                   top: 5,
                   right: 5,
-                  width: 7,
-                  height: 7,
+                  width: 6,
+                  height: 6,
                   borderRadius: '50%',
                   backgroundColor: '#ef4444'
                 }}
@@ -368,43 +356,42 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             )}
           </button>
 
-          {/* Floating Notifications Popover */}
           {showNotifications && (
             <div
               style={{
                 position: 'absolute',
-                top: 48,
+                top: 44,
                 right: isMobile ? -60 : 0,
-                width: isMobile ? 300 : 340,
-                backgroundColor: '#0f1e3c',
-                borderRadius: 16,
+                width: isMobile ? 290 : 320,
+                backgroundColor: '#10213D',
+                borderRadius: 4,
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.4)',
-                padding: 16,
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                padding: 14,
                 zIndex: 140,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12
+                gap: 10
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>System Alerts</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>System Alerts</span>
                   {unreadCount > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3, backgroundColor: 'rgba(59, 110, 168, 0.3)', color: '#ffffff' }}>
                       {unreadCount} New
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => setUnreadCount(0)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                 >
-                  <CheckCheck size={14} /> Read all
+                  <CheckCheck size={13} /> Clear
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 280, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
                 {adminNotifications.map(item => {
                   const ItemIcon = item.icon;
                   return (
@@ -415,53 +402,33 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         setShowNotifications(false);
                       }}
                       style={{
-                        padding: 10,
-                        borderRadius: 12,
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        padding: 8,
+                        borderRadius: 4,
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
                         border: '1px solid rgba(255, 255, 255, 0.06)',
                         display: 'flex',
-                        gap: 10,
+                        gap: 8,
                         alignItems: 'flex-start',
                         cursor: 'pointer'
                       }}
                     >
-                      <div style={{ padding: 6, borderRadius: 8, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
-                        <ItemIcon size={15} />
+                      <div style={{ padding: 4, borderRadius: 3, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
+                        <ItemIcon size={14} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#ffffff', marginBottom: 2 }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.4 }}>{item.desc}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>{item.time}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.65)' }}>{item.desc}</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', marginTop: 2 }}>{item.time}</div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-
-              <button
-                onClick={() => {
-                  onNavigate('ai-queue');
-                  setShowNotifications(false);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  textAlign: 'center',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#60a5fa',
-                  cursor: 'pointer',
-                  paddingTop: 8,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.08)'
-                }}
-              >
-                View AI Queue Status →
-              </button>
             </div>
           )}
         </div>
 
-        {/* Profile Avatar & Quick Menu Container */}
+        {/* Profile Avatar */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
@@ -469,69 +436,53 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               setShowNotifications(false);
             }}
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: '50%',
-              border: `2px solid ${showProfileMenu ? '#60a5fa' : '#3b82f6'}`,
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+              width: 32,
+              height: 32,
+              borderRadius: 4,
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#3B6EA8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: 700,
               color: '#ffffff',
-              transition: 'all 0.2s ease',
               padding: 0
             }}
-            title="Admin User Profile Menu"
+            title="User Menu"
           >
-            {user?.profile_image ? (
-              <img src={user.profile_image} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'SA'
-            )}
+            {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
           </button>
 
-          {/* Floating Profile Quick Menu Popover */}
           {showProfileMenu && (
             <div
               style={{
                 position: 'absolute',
-                top: 48,
+                top: 44,
                 right: 0,
-                width: 250,
-                backgroundColor: '#0f1e3c',
-                borderRadius: 16,
+                width: 230,
+                backgroundColor: '#10213D',
+                borderRadius: 4,
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.4)',
-                padding: 14,
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                padding: 12,
                 zIndex: 140,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10
+                gap: 8
               }}
             >
-              {/* User Identity Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 12, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-                  {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'SA'}
+              <div style={{ paddingBottom: 8, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>
+                  {user?.full_name || 'System Administrator'}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {user?.full_name || 'System Administrator'}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {user?.email || 'admin@rankedge.com'}
-                  </span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', marginTop: 2 }}>
-                    {user?.role || 'Administrator'}
-                  </span>
+                <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}>
+                  {user?.email || 'admin@rankedge.com'}
                 </div>
               </div>
 
-              {/* Menu Links */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <button
                   onClick={() => {
                     onNavigate('dashboard');
@@ -540,22 +491,19 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
+                    gap: 8,
+                    padding: '7px 10px',
+                    borderRadius: 4,
                     color: 'rgba(255, 255, 255, 0.85)',
                     background: 'transparent',
                     border: 'none',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 12,
                     cursor: 'pointer',
                     width: '100%',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <User size={15} color="#60a5fa" />
+                  <User size={14} color="#3B6EA8" />
                   <span>Admin Overview</span>
                 </button>
 
@@ -567,55 +515,24 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
+                    gap: 8,
+                    padding: '7px 10px',
+                    borderRadius: 4,
                     color: 'rgba(255, 255, 255, 0.85)',
                     background: 'transparent',
                     border: 'none',
-                    fontSize: 13,
-                    fontWeight: 500,
+                    fontSize: 12,
                     cursor: 'pointer',
                     width: '100%',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <BookOpen size={15} color="#f59e0b" />
+                  <BookOpen size={14} color="#3B6EA8" />
                   <span>Question Bank</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    onNavigate('analytics');
-                    setShowProfileMenu(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'left'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <BarChart2 size={15} color="#10b981" />
-                  <span>Reports & Analytics</span>
                 </button>
               </div>
 
-              {/* Sign Out Button */}
-              <div style={{ paddingTop: 8, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ paddingTop: 6, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
                 <Link
                   to="/signout"
                   onClick={() => setShowProfileMenu(false)}
@@ -623,27 +540,25 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 8,
-                    padding: '8px',
-                    borderRadius: 8,
+                    gap: 6,
+                    padding: '6px',
+                    borderRadius: 4,
                     textDecoration: 'none',
                     color: '#ef4444',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 600,
                     border: '1px solid rgba(239, 68, 68, 0.2)'
                   }}
                 >
-                  <LogOut size={15} />
+                  <LogOut size={13} />
                   <span>Sign Out</span>
                 </Link>
               </div>
             </div>
           )}
         </div>
-
       </div>
     </header>
   );
 }
-
