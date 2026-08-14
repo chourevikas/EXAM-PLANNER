@@ -52,6 +52,17 @@ interface QuestionDetailItem {
 }
 
 export function QuestionReviewView() {
+  // Window width tracking for mobile responsiveness
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 768;
+
   // Navigation State: null = Exam Directory Table, ExamPipelineStatusItem = Split-Pane Review Workspace
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
 
@@ -812,7 +823,7 @@ export function QuestionReviewView() {
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', gap: 16, alignItems: 'start' }}>
               {/* Left Pane: Question Item List */}
               <div
                 style={{

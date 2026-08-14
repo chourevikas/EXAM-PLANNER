@@ -1155,7 +1155,7 @@ export function UsersView() {
                   EXAM PREPARATION
                 </h4>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
                   <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11.5, color: '#667085', marginBottom: 3 }}>Target Exam</div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>UPSC CSE Prelims</div>
@@ -1247,7 +1247,7 @@ export function UsersView() {
                   LEARNING ACTIVITY
                 </h4>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10, marginBottom: 12 }}>
                   <div style={{ padding: 12, borderRadius: 6, backgroundColor: '#FFFFFF', border: '1px solid #E4E7EC', textAlign: 'center' }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: '#172033' }}>
                       {selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0}
