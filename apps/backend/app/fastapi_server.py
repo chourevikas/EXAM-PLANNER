@@ -108,4 +108,9 @@ app.include_router(search_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
-    return {"project": settings.PROJECT_NAME, "status": "online", "docs": "/docs"}
+    return {
+        "project": settings.PROJECT_NAME,
+        "status": "online",
+        "docs": "/docs",
+        "redoc": "/redoc",
+    }
