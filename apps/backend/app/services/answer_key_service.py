@@ -32,13 +32,14 @@ class AnswerKeyService:
     async def handle_answer_key_upload(
         self,
         file: UploadFile,
+        set_code: Optional[str] = "SET_A",
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         settings = get_settings()
 
         # 1. Automatically extract canonical code from filename
-        parsed_tokens = parse_answer_key_filename(file.filename)
+        parsed_tokens = parse_answer_key_filename(file.filename or "")
         canonical_code = parsed_tokens["canonical_code"]
 
         # 2. Look up matching Exam by canonical code first, then by token attributes
@@ -61,6 +62,7 @@ class AnswerKeyService:
         persistent_path = await storage.upload_file(temp_path, rel_path)
         logger.info(f"Saved persistent answer key file to '{persistent_path}'")
 
+        chosen_set_code = set_code or parsed_tokens.get("set_code") or "SET_A"
         if not target_exam:
             from app.db.models import Exam
             target_exam = Exam(
@@ -69,7 +71,7 @@ class AnswerKeyService:
                 stage=parsed_tokens["stage"],
                 subject_code=parsed_tokens["subject_code"],
                 source_year=parsed_tokens["year"],
-                paper_set_code=parsed_tokens.get("set_code", "SET_A"),
+                paper_set_code=chosen_set_code,
                 pdf_path=None,
                 answer_key_pdf_path=persistent_path,
             )

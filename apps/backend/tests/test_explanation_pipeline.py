@@ -68,6 +68,22 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(schema.options_breakdown), 2)
         self.assertTrue(schema.options_breakdown[1].is_correct)
 
+    def test_explanation_schema_hierarchy_auto_repair(self):
+        # Test that subtopic 'Pre Historic Times' automatically repairs subject to 'History' and topic to 'Ancient History'
+        schema = QuestionExplanationSchema(
+            core_concept="Test concept",
+            detailed_solution="Test solution",
+            options_breakdown=[OptionAnalysis(option_key="A", is_correct=True, explanation="Correct")],
+            key_takeaways=["Takeaway"],
+            subject="Random Subject",
+            topic="Random Topic",
+            subtopic="Pre Historic Times",
+            difficulty="Medium",
+        )
+        self.assertEqual(schema.subject, "History")
+        self.assertEqual(schema.topic, "Ancient History")
+        self.assertEqual(schema.subtopic, "Pre Historic Times")
+
     async def test_pipeline_saves_explanations_and_option_distractor_analysis(self):
         # 1. Seed Exam, Question, and Options in DB
         async with self.session_factory() as session:

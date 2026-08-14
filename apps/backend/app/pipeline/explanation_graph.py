@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, TypedDict, Optional, Tuple
 import aiofiles
-from sqlmodel import select, col
+from sqlmodel import select, col, func
 from langgraph.graph import StateGraph, END, START
 
 from app.db.session import managed_async_session
@@ -30,12 +30,12 @@ from app.db.models import (
 )
 from app.pipeline.explanation_generator import (
     ainvoke_explanation_llm,
-    ainvoke_translate_explanation_llm,
 )
 from app.pipeline.explanation_schema import (
     QuestionExplanationSchema,
     MultiConceptItemSchema,
 )
+from app.schemas.syllabus_literals import get_canonical_parents
 from app.services.pipeline_management_service import PipelineManagementService
 from app.config.logger import setup_logger, TaskLoggerAdapter
 
@@ -45,8 +45,9 @@ logger = setup_logger("ExplanationPipeline")
 class ExplanationPipelineState(TypedDict):
     exam_id: str
     question_ids: Optional[List[str]]
-    language: str
+    language: Optional[str]
     task_id: Optional[str]
+    execution_engine: Optional[str]
     total_questions: Optional[int]
     total_explanations_generated: Optional[int]
     failed_question_ids: Optional[List[str]]
@@ -56,15 +57,23 @@ async def _get_or_create_subtopic(
     session, syl_id: uuid.UUID, subj_name: str, topic_name: str, subtopic_name: str
 ) -> Tuple[Subtopic, Topic, Subject]:
     """Helper to upsert Subject -> Topic -> Subtopic hierarchy and return Subtopic, Topic, and Subject records."""
+    c_subj, c_top, c_subtop = get_canonical_parents(subj_name, topic_name, subtopic_name)
+    if c_subj:
+        subj_name = c_subj
+    if c_top:
+        topic_name = c_top
+    if c_subtop:
+        subtopic_name = c_subtop
+
     subj_stmt = select(Subject).where(
         Subject.syllabus_version_id == syl_id,
-        Subject.name == subj_name,
+        func.lower(Subject.name) == subj_name.lower(),
     )
     subj = (await session.exec(subj_stmt)).first()
     if not subj:
         subj = Subject(
             syllabus_version_id=syl_id,
-            code=subj_name[:10].upper(),
+            code=subj_name.upper().replace(" ", "_")[:50],
             name=subj_name,
         )
         session.add(subj)
@@ -72,32 +81,40 @@ async def _get_or_create_subtopic(
         await session.refresh(subj)
 
     top_stmt = select(Topic).where(
-        Topic.subject_id == subj.id, Topic.name == topic_name
+        Topic.subject_id == subj.id,
+        func.lower(Topic.name) == topic_name.lower(),
     )
     top = (await session.exec(top_stmt)).first()
     if not top:
         top = Topic(
             subject_id=subj.id,
-            code=topic_name[:10].upper(),
+            code=topic_name.upper().replace(" ", "_")[:50],
             name=topic_name,
         )
         session.add(top)
         await session.flush()
         await session.refresh(top)
+    elif top.subject_id != subj.id:
+        top.subject_id = subj.id
+        session.add(top)
 
     subtop_stmt = select(Subtopic).where(
-        Subtopic.topic_id == top.id, Subtopic.name == subtopic_name
+        Subtopic.topic_id == top.id,
+        func.lower(Subtopic.name) == subtopic_name.lower(),
     )
     subtop = (await session.exec(subtop_stmt)).first()
     if not subtop:
         subtop = Subtopic(
             topic_id=top.id,
-            code=subtopic_name[:10].upper(),
+            code=subtopic_name.upper().replace(" ", "_")[:50],
             name=subtopic_name,
         )
         session.add(subtop)
         await session.flush()
         await session.refresh(subtop)
+    elif subtop.topic_id != top.id:
+        subtop.topic_id = top.id
+        session.add(subtop)
 
     return subtop, top, subj
 
@@ -108,7 +125,7 @@ async def node_load_exam_questions(
     """Loads all questions for target exam from DB and updates PipelineRun progress."""
     exam_id = uuid.UUID(state["exam_id"])
     target_q_ids = state.get("question_ids")
-    lang_str = state.get("language", "ENGLISH").upper()
+    lang_str = (state.get("language") or "ENGLISH").upper()
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 
@@ -525,7 +542,7 @@ async def node_generate_and_save_explanations(
     """Generates explanations, distractor analyses, multi-concepts, and progress metrics."""
     exam_id = uuid.UUID(state["exam_id"])
     target_q_ids = state.get("question_ids")
-    lang_str = state.get("language", "ENGLISH").upper()
+    lang_str = (state.get("language") or "ENGLISH").upper()
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 

@@ -174,36 +174,59 @@ async def seed_database():
             exam_id=exam.id,
             version_code="2026.1",
             title="UPSC 2026 GS Prelims Canonical Syllabus",
-            effective_year=2026,
         )
         session.add(syllabus)
         await session.commit()
         await session.refresh(syllabus)
 
-        subject = Subject(
-            syllabus_version_id=syllabus.id,
-            code="POLITY",
-            name="Indian Polity & Governance",
-        )
-        session.add(subject)
-        await session.commit()
-        await session.refresh(subject)
+        from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
 
-        topic = Topic(
-            subject_id=subject.id, code="CONSTITUTION", name="Constitutional Framework"
-        )
-        session.add(topic)
-        await session.commit()
-        await session.refresh(topic)
+        subtopic = None
+        subj_order = 1
+        for subj_name, topics in SYLLABUS_HIERARCHY.items():
+            subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+            subj_obj = Subject(
+                syllabus_version_id=syllabus.id,
+                code=subj_code,
+                name=subj_name,
+                display_order=subj_order,
+            )
+            session.add(subj_obj)
+            await session.commit()
+            await session.refresh(subj_obj)
+            subj_order += 1
 
-        subtopic = Subtopic(
-            topic_id=topic.id,
-            code="FUNDAMENTAL_RIGHTS",
-            name="Fundamental Rights & Constitutional Remedies (Articles 12-35)",
-        )
-        session.add(subtopic)
-        await session.commit()
-        await session.refresh(subtopic)
+            top_order = 1
+            for top_name, subtopics_list in topics.items():
+                top_code = top_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                top_obj = Topic(
+                    subject_id=subj_obj.id,
+                    code=top_code,
+                    name=top_name,
+                    display_order=top_order,
+                )
+                session.add(top_obj)
+                await session.commit()
+                await session.refresh(top_obj)
+                top_order += 1
+
+                subtop_order = 1
+                for subtop_name in subtopics_list:
+                    subtop_code = subtop_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                    subtop_obj = Subtopic(
+                        topic_id=top_obj.id,
+                        code=subtop_code,
+                        name=subtop_name,
+                        display_order=subtop_order,
+                    )
+                    session.add(subtop_obj)
+                    await session.commit()
+                    await session.refresh(subtop_obj)
+                    if subtopic is None or subtop_name in ("Right to Freedom", "Fundamental Rights"):
+                        subtopic = subtop_obj
+                    subtop_order += 1
+
+        assert subtopic is not None
 
         # 4. Seed Reading Passage
         passage = Passage(

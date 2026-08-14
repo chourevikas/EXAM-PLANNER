@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import AnswerKeyBatch
 from app.services.answer_key_service import AnswerKeyService
@@ -17,6 +17,9 @@ async def upload_answer_key_pdf(
         ...,
         description="Uploaded Answer Key PDF filename following 4-token format e.g. 'upsc_cse-prelims-gs1-2023.pdf'",
     ),
+    set_code: Optional[str] = Form(
+        default="SET_A", description="Paper set code e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D'"
+    ),
     run_mode: Optional[str] = Form(
         default="auto", description="'celery', 'background', or 'auto'"
     ),
@@ -29,7 +32,7 @@ async def upload_answer_key_pdf(
     """
     service = AnswerKeyService(session)
     return await service.handle_answer_key_upload(
-        file=file, run_mode=run_mode, background_tasks=background_tasks
+        file=file, set_code=set_code, run_mode=run_mode, background_tasks=background_tasks
     )
 
 

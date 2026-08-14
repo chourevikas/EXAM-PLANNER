@@ -158,25 +158,26 @@ async def seed_psychometric_environment():
             session.add(syll)
             await session.commit()
 
+        from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
+
         subtopic_objs = []
-        for subj_code, subj_name, topics in TOPICS_DATA:
+        for subj_name, topics in SYLLABUS_HIERARCHY.items():
+            subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
             subj_res = await session.exec(
                 select(Subject).where(Subject.code == subj_code)
             )
             subj = subj_res.first()
             if not subj:
-                kwargs = {
-                    "syllabus_version_id": syll.id,
-                    "code": subj_code,
-                    "name": subj_name,
-                }
-                if hasattr(Subject, "is_optional_subject"):
-                    kwargs["is_optional_subject"] = False
-                subj = Subject(**kwargs)
+                subj = Subject(
+                    syllabus_version_id=syll.id,
+                    code=subj_code,
+                    name=subj_name,
+                )
                 session.add(subj)
                 await session.commit()
 
-            for top_idx, top_name in enumerate(topics, 1):
+            for top_idx, (top_name, subtopics_list) in enumerate(topics.items(), 1):
+                top_code = top_name.upper().replace(" ", "_").replace("&", "AND")[:50]
                 top_res = await session.exec(
                     select(Topic).where(Topic.name == top_name)
                 )
@@ -184,25 +185,27 @@ async def seed_psychometric_environment():
                 if not top:
                     top = Topic(
                         subject_id=subj.id,
-                        code=f"{subj_code}_T{top_idx}",
+                        code=top_code,
                         name=top_name,
                     )
                     session.add(top)
                     await session.commit()
 
-                sub_res = await session.exec(
-                    select(Subtopic).where(Subtopic.topic_id == top.id)
-                )
-                sub = sub_res.first()
-                if not sub:
-                    sub = Subtopic(
-                        topic_id=top.id,
-                        code=f"{subj_code}_ST{top_idx}",
-                        name=f"{top_name} Core Concepts",
+                for subtop_idx, subtop_name in enumerate(subtopics_list, 1):
+                    subtop_code = subtop_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                    sub_res = await session.exec(
+                        select(Subtopic).where(Subtopic.name == subtop_name)
                     )
-                    session.add(sub)
-                    await session.commit()
-                subtopic_objs.append(sub)
+                    sub = sub_res.first()
+                    if not sub:
+                        sub = Subtopic(
+                            topic_id=top.id,
+                            code=subtop_code,
+                            name=subtop_name,
+                        )
+                        session.add(sub)
+                        await session.commit()
+                    subtopic_objs.append(sub)
 
         print(f"📚 Verified Syllabus Hierarchy with {len(subtopic_objs)} Subtopics.")
 

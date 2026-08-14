@@ -321,7 +321,7 @@ async def upload_question_paper(
 async def upload_answer_key(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    set_code: str = Form(...),
+    set_code: Optional[str] = Form(default="SET_A"),
     exam_name: Optional[str] = Form(default="UPSC"),
     stage: Optional[str] = Form(default="prelims"),
     exam_type: Optional[str] = Form(default="PYQ"),
@@ -332,7 +332,7 @@ async def upload_answer_key(
 ):
     """
     Uploads an Answer Key PDF and initiates Pipeline 2.
-    Accepts mandatory set_code (e.g. 'SET_A', 'SET_B', 'SET_C', 'SET_D') and year.
+    Accepts set_code (defaulting to 'SET_A', or e.g. 'SET_B', 'SET_C', 'SET_D') and year.
     """
     ALLOWED_SET_TOKENS = {
         "SET_A", "SET_B", "SET_C", "SET_D",
@@ -340,7 +340,7 @@ async def upload_answer_key(
         "A", "B", "C", "D",
         "1", "2", "3", "4",
     }
-    raw_set = str(set_code).strip().upper() if set_code else ""
+    raw_set = str(set_code).strip().upper() if set_code else "SET_A"
     if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

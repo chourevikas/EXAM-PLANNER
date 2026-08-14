@@ -1,5 +1,11 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, Field, model_validator
+from typing import List, Optional, Union
+from app.schemas.syllabus_literals import (
+    SubjectLiteral,
+    TopicLiteral,
+    SubtopicLiteral,
+    get_canonical_parents,
+)
 
 
 class OptionAnalysis(BaseModel):
@@ -17,10 +23,10 @@ class OptionAnalysis(BaseModel):
 
 
 class MultiConceptItemSchema(BaseModel):
-    subject: str = Field(description="Subject name e.g. Indian Economy, General Science")
-    topic: str = Field(description="Topic name e.g. Inflation & Monetary Policy, Thermodynamics")
-    subtopic: Optional[str] = Field(
-        default=None, description="Granular subtopic name e.g. Repo Rate vs Reverse Repo"
+    subject: Union[SubjectLiteral, str] = Field(description="Subject name from syllabus e.g. History, Economy, Geography")
+    topic: Union[TopicLiteral, str] = Field(description="Topic name e.g. Ancient History, Money and Banking")
+    subtopic: Optional[Union[SubtopicLiteral, str]] = Field(
+        default=None, description="Granular subtopic name e.g. Pre Historic Times, Inflation"
     )
     is_primary: bool = Field(
         default=False, description="Set True for the primary subject/topic/subtopic category"
@@ -31,6 +37,21 @@ class MultiConceptItemSchema(BaseModel):
     concept_name: Optional[str] = Field(
         default=None, description="Specific concept label e.g. Monetary Expansion"
     )
+
+    @model_validator(mode="after")
+    def validate_and_auto_repair_hierarchy(self) -> "MultiConceptItemSchema":
+        c_subj, c_top, c_subtop = get_canonical_parents(
+            subject=str(self.subject) if self.subject else "",
+            topic=str(self.topic) if self.topic else "",
+            subtopic=str(self.subtopic) if self.subtopic else None,
+        )
+        if c_subj:
+            self.subject = c_subj
+        if c_top:
+            self.topic = c_top
+        if c_subtop:
+            self.subtopic = c_subtop
+        return self
 
 
 class QuestionExplanationSchema(BaseModel):
@@ -50,14 +71,14 @@ class QuestionExplanationSchema(BaseModel):
     key_takeaways: List[str] = Field(
         description="1-2 high-yield bullet points for quick revision before exams."
     )
-    subject: str = Field(
-        description="Primary subject category e.g., Physics, Quantitative Aptitude"
+    subject: Union[SubjectLiteral, str] = Field(
+        description="Primary subject category e.g., History, Economy, Geography"
     )
-    topic: str = Field(
-        description="Primary topic e.g., Thermodynamics, Quadratic Equations"
+    topic: Union[TopicLiteral, str] = Field(
+        description="Primary topic e.g., Ancient History, Money and Banking"
     )
-    subtopic: Optional[str] = Field(
-        default=None, description="Primary granular subtopic e.g., Carnot Engine"
+    subtopic: Optional[Union[SubtopicLiteral, str]] = Field(
+        default=None, description="Primary granular subtopic e.g., Pre Historic Times"
     )
     concepts: List[MultiConceptItemSchema] = Field(
         default_factory=list,
@@ -83,4 +104,19 @@ class QuestionExplanationSchema(BaseModel):
     irt_pseudo_guessing_c: Optional[float] = Field(
         default=0.18, description="3PL Pseudo-guessing parameter derived from distractor plausibility (0.05 to 0.25)"
     )
+
+    @model_validator(mode="after")
+    def validate_and_auto_repair_hierarchy(self) -> "QuestionExplanationSchema":
+        c_subj, c_top, c_subtop = get_canonical_parents(
+            subject=str(self.subject) if self.subject else "",
+            topic=str(self.topic) if self.topic else "",
+            subtopic=str(self.subtopic) if self.subtopic else None,
+        )
+        if c_subj:
+            self.subject = c_subj
+        if c_top:
+            self.topic = c_top
+        if c_subtop:
+            self.subtopic = c_subtop
+        return self
 
