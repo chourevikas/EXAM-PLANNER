@@ -17,6 +17,11 @@ if TYPE_CHECKING:
     from app.db.models.metadata import QuestionMetadata
     from app.db.models.explanation import QuestionExplanation
     from app.db.models.hierarchy_link import QuestionHierarchyLink
+    from app.db.models.hierarchy import Exam, Subtopic
+    from app.db.models.passage import Passage
+    from app.db.models.analytics import ExamQuestionResponse, ExamQuestionReport
+    from app.db.models.answer_key import AnswerKeyMapping
+    from app.db.models.review import HumanReviewTask
 
 
 class Question(SQLModel, table=True):
@@ -38,12 +43,11 @@ class Question(SQLModel, table=True):
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
     )
     subtopic_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="subtopics.id", ondelete="RESTRICT", index=True
+        default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
     passage_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="passages.id", ondelete="SET NULL", index=True
     )
-
     canonical_question_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
@@ -82,6 +86,31 @@ class Question(SQLModel, table=True):
     passage_page_numbers_json: Optional[list] = Field(
         default=[], sa_column=Column(PortableJSON)
     )
+    accuracy_percentage: Optional[float] = Field(
+        default=None,
+        description="Historical or mock candidate accuracy percentage (0.0 to 100.0)",
+    )
+    missing_fields_json: Optional[list] = Field(
+        default=[],
+        sa_column=Column(PortableJSON),
+        description="JSON array of missing field names e.g. ['options', 'hindi_text']",
+    )
+    requires_human_review: bool = Field(
+        default=False,
+        index=True,
+        description="True if confidence is low or text truncation detected",
+    )
+    validation_status: Optional[str] = Field(
+        default="PENDING",
+        index=True,
+        description="PENDING, VALID, REJECTED, AUTO_FIXED",
+    )
+    validation_issues_json: Optional[list] = Field(
+        default=[],
+        sa_column=Column(PortableJSON),
+        description="JSON array of validation error codes or issue descriptions",
+    )
+    page_number_in_pdf: Optional[int] = Field(default=None)
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -92,6 +121,9 @@ class Question(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    exam: Optional["Exam"] = Relationship(back_populates="questions")
+    subtopic: Optional["Subtopic"] = Relationship(back_populates="questions")
+    passage: Optional["Passage"] = Relationship(back_populates="questions")
     translations: list["QuestionTranslation"] = Relationship(
         back_populates="question", cascade_delete=True
     )
@@ -112,6 +144,18 @@ class Question(SQLModel, table=True):
     )
     canonical_question: Optional["Question"] = Relationship(
         sa_relationship_kwargs={"remote_side": "Question.id"}
+    )
+    exam_responses: list["ExamQuestionResponse"] = Relationship(
+        back_populates="question", cascade_delete=True
+    )
+    question_reports: list["ExamQuestionReport"] = Relationship(
+        back_populates="question", cascade_delete=True
+    )
+    answer_key_mappings: list["AnswerKeyMapping"] = Relationship(
+        back_populates="question"
+    )
+    review_tasks: list["HumanReviewTask"] = Relationship(
+        back_populates="question", cascade_delete=True
     )
 
 

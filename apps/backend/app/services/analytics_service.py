@@ -46,7 +46,7 @@ class AnalyticsService:
 
                 rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
                 rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db and rep_db.full_report_json:
+                if rep_db and rep_db.full_report_json is not None:
                     json_content = format_report_to_json(rep_db.full_report_json)
                     return Response(content=json_content, media_type="application/json")
 
@@ -108,21 +108,17 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
-            # 1. Instant Cache from ExamAttemptReport.markdown_audit_text
+            # 1. Instant Cache from ExamAttempt or ExamAttemptReport
             if attempt_id:
-                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-                rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db and rep_db.markdown_audit_text:
-                    return Response(content=rep_db.markdown_audit_text, media_type="text/markdown")
-
                 attempt = await self.session.get(ExamAttempt, attempt_id)
                 if attempt and attempt.report_metadata_json:
                     markdown_content = format_report_to_markdown(attempt.report_metadata_json)
-                    if rep_db:
-                        rep_db.markdown_audit_text = markdown_content
-                        self.session.add(rep_db)
-                        await self.session.commit()
                     return Response(content=markdown_content, media_type="text/markdown")
+
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.markdown_audit_text is not None:
+                    return Response(content=rep_db.markdown_audit_text, media_type="text/markdown")
 
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
@@ -328,11 +324,7 @@ class AnalyticsService:
 
         is_evaluated = attempt.status == AttemptStatus.EVALUATED
         has_report_json = bool(attempt.report_metadata_json)
-        
-        rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-        existing_rep = (await self.session.exec(rep_stmt)).first()
-
-        is_ready = is_evaluated or (has_report_json and existing_rep is not None)
+        is_ready = is_evaluated or has_report_json
 
         status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
         progress = 100 if is_ready else (75 if attempt.status == AttemptStatus.SUBMITTED else 25)

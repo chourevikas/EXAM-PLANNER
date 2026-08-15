@@ -1,9 +1,13 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.enums import MemoryType, LanguageCode
 from app.db.models.types import PortableJSON, DateTimeTZ
+
+if TYPE_CHECKING:
+    from app.db.models.hierarchy import Exam, Subtopic
+    from app.db.models.question import Question
 
 
 class Passage(SQLModel, table=True):
@@ -38,6 +42,9 @@ class Passage(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    exam: Optional["Exam"] = Relationship(back_populates="passages")
+    subtopic: Optional["Subtopic"] = Relationship(back_populates="passages")
+    questions: List["Question"] = Relationship(back_populates="passage")
     translations: List["PassageTranslation"] = Relationship(
         back_populates="passage", cascade_delete=True
     )

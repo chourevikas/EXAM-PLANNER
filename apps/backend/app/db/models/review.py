@@ -1,8 +1,13 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
-from sqlmodel import SQLModel, Field, Column, Index
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.types import PortableJSON, DateTimeTZ
+
+if TYPE_CHECKING:
+    from app.db.models.question import Question
+    from app.db.models.hierarchy import Exam
+    from app.db.models.user import User
 
 
 class HumanReviewTask(SQLModel, table=True):
@@ -39,3 +44,7 @@ class HumanReviewTask(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
     reviewed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+
+    question: Optional["Question"] = Relationship(back_populates="review_tasks")
+    exam: Optional["Exam"] = Relationship(back_populates="review_tasks")
+    assigned_admin: Optional["User"] = Relationship()

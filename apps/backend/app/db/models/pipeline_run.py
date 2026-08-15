@@ -38,4 +38,4 @@ class PipelineRun(SQLModel, table=True):
     )
     completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
 
-    exam: Optional["Exam"] = Relationship()
+    exam: Optional["Exam"] = Relationship(back_populates="pipeline_runs")

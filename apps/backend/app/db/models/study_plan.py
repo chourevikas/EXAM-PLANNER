@@ -1,10 +1,13 @@
 import uuid
 import datetime as dt
 from datetime import datetime, timezone
-from typing import Optional
-from sqlmodel import SQLModel, Field
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import SQLModel, Field, Relationship
 from app.db.models.types import DateTimeTZ
 from app.db.models.enums import StudyActivityType, ActivitySource
+
+if TYPE_CHECKING:
+    from app.db.models.user import User
 
 class StudyTask(SQLModel, table=True):
     __tablename__ = "study_tasks"
@@ -23,6 +26,8 @@ class StudyTask(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
     completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+
+    user: Optional["User"] = Relationship(back_populates="study_tasks")
 
 class StudyActivity(SQLModel, table=True):
     __tablename__ = "study_activities"
@@ -47,3 +52,5 @@ class StudyActivity(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+    user: Optional["User"] = Relationship(back_populates="study_activities")

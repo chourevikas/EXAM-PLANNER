@@ -8,6 +8,14 @@ from app.db.models.types import DateTimeTZ
 
 if TYPE_CHECKING:
     from app.db.models.subscription import UserSubscription
+    from app.db.models.analytics import (
+        ExamAttempt,
+        UserSkillProfile,
+        UserTaxonomyMastery,
+        UserMemoryState,
+    )
+    from app.db.models.study_plan import StudyTask, StudyActivity
+    from app.db.models.gamification import UserBadge, XPLog
 
 
 class SubscriptionTier(str, enum.Enum):
@@ -56,6 +64,31 @@ class User(SQLModel, table=True):
         back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
     subscriptions: List["UserSubscription"] = Relationship(back_populates="user")
+    exam_attempts: List["ExamAttempt"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    skill_profile: Optional["UserSkillProfile"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"},
+    )
+    taxonomy_masteries: List["UserTaxonomyMastery"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    memory_states: List["UserMemoryState"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    study_tasks: List["StudyTask"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    study_activities: List["StudyActivity"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    user_badges: List["UserBadge"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    xp_logs: List["XPLog"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     def _get_student_profile_safe(self) -> Optional["StudentProfile"]:
         from sqlalchemy import inspect
@@ -106,7 +139,10 @@ class StudentProfile(SQLModel, table=True):
     total_xp: int = Field(default=0)
     level: int = Field(default=1)
     last_study_date: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     user: Optional[User] = Relationship(back_populates="student_profile")
 
@@ -124,13 +160,16 @@ class AdminProfile(SQLModel, table=True):
     approved_by_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
-    approved_at: Optional[datetime] = Field(default=None)
+    approved_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     rejected_by_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
-    rejected_at: Optional[datetime] = Field(default=None)
+    rejected_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     rejection_reason: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     user: Optional[User] = Relationship(
         back_populates="admin_profile",
@@ -156,7 +195,10 @@ class AdminApprovalLog(SQLModel, table=True):
     )
     action: str = Field(max_length=50)
     reason: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
 
 class RefreshToken(SQLModel, table=True):
@@ -167,8 +209,11 @@ class RefreshToken(SQLModel, table=True):
     token_hash: str
     device_name: Optional[str] = Field(default=None, max_length=255)
     ip_address: Optional[str] = Field(default=None, max_length=45)
-    expires_at: datetime
-    revoked_at: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime = Field(sa_type=DateTimeTZ)
+    revoked_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     user: Optional[User] = Relationship(back_populates="refresh_tokens")

@@ -1,9 +1,17 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index, Column
 from app.db.models.enums import QuestionSourceType, ExamStatus
 from app.db.models.types import DateTimeTZ, PortableJSON
+
+if TYPE_CHECKING:
+    from app.db.models.question import Question
+    from app.db.models.analytics import ExamAttempt
+    from app.db.models.pipeline_run import PipelineRun
+    from app.db.models.passage import Passage
+    from app.db.models.answer_key import AnswerKeyBatch
+    from app.db.models.review import HumanReviewTask
 
 
 class Exam(SQLModel, table=True):
@@ -113,6 +121,24 @@ class Exam(SQLModel, table=True):
     syllabus_versions: List["SyllabusVersion"] = Relationship(
         back_populates="exam", cascade_delete=True
     )
+    questions: List["Question"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
+    attempts: List["ExamAttempt"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
+    pipeline_runs: List["PipelineRun"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
+    passages: List["Passage"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
+    answer_key_batches: List["AnswerKeyBatch"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
+    review_tasks: List["HumanReviewTask"] = Relationship(
+        back_populates="exam", cascade_delete=True
+    )
 
 
 class SyllabusVersion(SQLModel, table=True):
@@ -191,3 +217,5 @@ class Subtopic(SQLModel, table=True):
     )
 
     topic: Optional[Topic] = Relationship(back_populates="subtopics")
+    questions: List["Question"] = Relationship(back_populates="subtopic")
+    passages: List["Passage"] = Relationship(back_populates="subtopic")

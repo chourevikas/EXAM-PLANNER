@@ -1,9 +1,14 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
-from sqlmodel import SQLModel, Field, Index
+from typing import Optional, List, TYPE_CHECKING
+from sqlmodel import SQLModel, Field, Relationship, Index
 from app.db.models.enums import TestType, AttemptStatus, AttemptMode
 from app.db.models.types import DateTimeTZ
+
+if TYPE_CHECKING:
+    from app.db.models.user import User
+    from app.db.models.analytics import ExamAttempt, ExamQuestionResponse
+    from app.db.models.question import Question, QuestionOption
 
 
 class Test(SQLModel, table=True):
@@ -18,6 +23,10 @@ class Test(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
+    )
+
+    attempts: List["UserTestAttempt"] = Relationship(
+        back_populates="test", cascade_delete=True
     )
 
 
@@ -59,6 +68,13 @@ class UserTestAttempt(SQLModel, table=True):
     )
     submitted_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
 
+    user: Optional["User"] = Relationship()
+    test: Optional[Test] = Relationship(back_populates="attempts")
+    exam_attempt: Optional["ExamAttempt"] = Relationship(back_populates="user_test_attempts")
+    responses: List["UserQuestionResponse"] = Relationship(
+        back_populates="attempt", cascade_delete=True
+    )
+
 
 class UserQuestionResponse(SQLModel, table=True):
     __tablename__ = "user_question_responses"
@@ -87,6 +103,12 @@ class UserQuestionResponse(SQLModel, table=True):
     final_score: Optional[float] = Field(default=None)
     is_flagged_for_review: bool = Field(default=False)
 
+    attempt: Optional[UserTestAttempt] = Relationship(back_populates="responses")
+    exam_response: Optional["ExamQuestionResponse"] = Relationship(back_populates="user_question_responses")
+    switch_logs: List["QuestionSwitchLog"] = Relationship(
+        back_populates="response", cascade_delete=True
+    )
+
 
 class QuestionSwitchLog(SQLModel, table=True):
     __tablename__ = "question_switch_logs"
@@ -110,6 +132,9 @@ class QuestionSwitchLog(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+    response: Optional[UserQuestionResponse] = Relationship(back_populates="switch_logs")
+    exam_response: Optional["ExamQuestionResponse"] = Relationship(back_populates="question_switch_logs")
 
 
 

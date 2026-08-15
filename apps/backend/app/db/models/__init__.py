@@ -70,7 +70,7 @@ from app.db.models.answer_key import (
     AnswerKeyMapping,
 )
 from app.db.models.gamification import Badge, UserBadge, XPLog
-from app.db.models.study_plan import StudyTask
+from app.db.models.study_plan import StudyTask, StudyActivity
 
 __all__ = [
     "UserRole",
@@ -138,5 +138,6 @@ __all__ = [
     "UserBadge",
     "XPLog",
     "StudyTask",
+    "StudyActivity",
     "ExamStatus",
 ]

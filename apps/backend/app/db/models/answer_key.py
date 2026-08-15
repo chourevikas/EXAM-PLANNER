@@ -1,9 +1,13 @@
 import uuid
 from enum import Enum
-from datetime import datetime
-from typing import Optional, List
+from datetime import datetime, timezone
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON
+from app.db.models.types import PortableJSON, DateTimeTZ
+
+if TYPE_CHECKING:
+    from app.db.models.hierarchy import Exam
+    from app.db.models.question import Question
 
 
 class SetMatchStatus(str, Enum):
@@ -44,9 +48,13 @@ class AnswerKeyBatch(SQLModel, table=True):
     )
     total_keys_extracted: int = Field(default=0)
     total_keys_mapped: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
+    exam: Optional["Exam"] = Relationship(back_populates="answer_key_batches")
     mappings: List["AnswerKeyMapping"] = Relationship(
         back_populates="batch", cascade_delete=True
     )
@@ -71,7 +79,11 @@ class AnswerKeyMapping(SQLModel, table=True):
     paper_set_code: str = Field(default="SET_A", max_length=20, index=True)
     mapping_status: MappingStatus = Field(default=MappingStatus.APPLIED, index=True)
     notes: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     # Relationships
     batch: Optional[AnswerKeyBatch] = Relationship(back_populates="mappings")
+    question: Optional["Question"] = Relationship(back_populates="answer_key_mappings")

@@ -1,11 +1,19 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.types import PortableJSON, DateTimeTZ
-
-
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
+
+if TYPE_CHECKING:
+    from app.db.models.user import User
+    from app.db.models.hierarchy import Exam, Subtopic
+    from app.db.models.question import Question, QuestionOption
+    from app.db.models.telemetry import (
+        UserTestAttempt,
+        UserQuestionResponse,
+        QuestionSwitchLog,
+    )
 
 
 class ExamAttempt(SQLModel, table=True):
@@ -58,8 +66,23 @@ class ExamAttempt(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    user: Optional["User"] = Relationship(back_populates="exam_attempts")
+    exam: Optional["Exam"] = Relationship(back_populates="attempts")
     responses: List["ExamQuestionResponse"] = Relationship(
         back_populates="attempt", cascade_delete=True
+    )
+    question_reports: List["ExamQuestionReport"] = Relationship(
+        back_populates="attempt", cascade_delete=True
+    )
+    report: Optional["ExamAttemptReport"] = Relationship(
+        back_populates="attempt",
+        sa_relationship_kwargs={"uselist": False, "cascade": "all, delete-orphan"},
+    )
+    progression_reports: List["UserSkillProgressionReport"] = Relationship(
+        back_populates="attempt", cascade_delete=True
+    )
+    user_test_attempts: List["UserTestAttempt"] = Relationship(
+        back_populates="exam_attempt", cascade_delete=True
     )
 
 
@@ -109,7 +132,19 @@ class ExamQuestionResponse(SQLModel, table=True):
     )
 
     attempt: Optional[ExamAttempt] = Relationship(back_populates="responses")
-
+    question: Optional["Question"] = Relationship(back_populates="exam_responses")
+    selected_option: Optional["QuestionOption"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[ExamQuestionResponse.selected_option_id]"}
+    )
+    initial_option: Optional["QuestionOption"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[ExamQuestionResponse.initial_option_id]"}
+    )
+    user_question_responses: List["UserQuestionResponse"] = Relationship(
+        back_populates="exam_response"
+    )
+    question_switch_logs: List["QuestionSwitchLog"] = Relationship(
+        back_populates="exam_response"
+    )
 
 
 class UserMemoryState(SQLModel, table=True):
@@ -141,6 +176,10 @@ class UserMemoryState(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    user: Optional["User"] = Relationship(back_populates="memory_states")
+    question: Optional["Question"] = Relationship()
+    subtopic: Optional["Subtopic"] = Relationship()
+
 
 class UserSkillProfile(SQLModel, table=True):
     __tablename__ = "user_skill_profiles"
@@ -163,6 +202,8 @@ class UserSkillProfile(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+    user: Optional["User"] = Relationship(back_populates="skill_profile")
 
 
 class UserTaxonomyMastery(SQLModel, table=True):
@@ -201,6 +242,8 @@ class UserTaxonomyMastery(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    user: Optional["User"] = Relationship(back_populates="taxonomy_masteries")
+
 
 class ExamQuestionReport(SQLModel, table=True):
     __tablename__ = "exam_question_reports"
@@ -237,6 +280,9 @@ class ExamQuestionReport(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    attempt: Optional[ExamAttempt] = Relationship(back_populates="question_reports")
+    question: Optional["Question"] = Relationship(back_populates="question_reports")
+
 
 class ExamAttemptReport(SQLModel, table=True):
     __tablename__ = "exam_attempt_reports"
@@ -266,6 +312,10 @@ class ExamAttemptReport(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+    attempt: Optional[ExamAttempt] = Relationship(back_populates="report")
+    user: Optional["User"] = Relationship()
+    exam: Optional["Exam"] = Relationship()
 
 
 class UserSkillProgressionReport(SQLModel, table=True):
@@ -300,3 +350,5 @@ class UserSkillProgressionReport(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
 
+    attempt: Optional[ExamAttempt] = Relationship(back_populates="progression_reports")
+    user: Optional["User"] = Relationship()
