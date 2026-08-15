@@ -43,7 +43,7 @@ class S3StorageProvider(BaseStorageProvider):
         return kwargs
 
     async def _ensure_bucket_exists(self, s3_client):
-        """Ensures target S3/MinIO bucket exists, creating it automatically if missing."""
+        """Ensures target S3/MinIO bucket exists and has CORS enabled for frontend direct access."""
         try:
             await s3_client.head_bucket(Bucket=self.bucket_name)
         except Exception:
@@ -59,6 +59,28 @@ class S3StorageProvider(BaseStorageProvider):
                 logger.info(f"Successfully created bucket '{self.bucket_name}'.")
             except Exception as create_err:
                 logger.warning(f"Could not auto-create bucket '{self.bucket_name}': {create_err}")
+
+        # Auto-configure CORS for web frontend clients (e.g. localhost:3000, production origins)
+        if not getattr(self, "_cors_configured", False):
+            try:
+                cors_config = {
+                    "CORSRules": [
+                        {
+                            "AllowedHeaders": ["*"],
+                            "AllowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+                            "AllowedOrigins": ["*"],
+                            "ExposeHeaders": ["ETag", "x-amz-request-id"],
+                            "MaxAgeSeconds": 3600,
+                        }
+                    ]
+                }
+                await s3_client.put_bucket_cors(
+                    Bucket=self.bucket_name, CORSConfiguration=cors_config
+                )
+                self._cors_configured = True
+                logger.info(f"S3 CORS policy enabled for bucket '{self.bucket_name}'.")
+            except Exception as cors_err:
+                logger.debug(f"Could not set S3 CORS on '{self.bucket_name}': {cors_err}")
 
     async def upload_file(
         self, file_path: Union[str, Path], relative_destination: str

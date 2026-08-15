@@ -47,6 +47,9 @@ from app.db.models.analytics import (
     UserMemoryState,
     UserSkillProfile,
     UserTaxonomyMastery,
+    ExamQuestionReport,
+    ExamAttemptReport,
+    UserSkillProgressionReport,
 )
 from app.db.models.review import HumanReviewTask
 from app.db.models.subscription import (
@@ -117,6 +120,9 @@ __all__ = [
     "UserMemoryState",
     "UserSkillProfile",
     "UserTaxonomyMastery",
+    "ExamQuestionReport",
+    "ExamAttemptReport",
+    "UserSkillProgressionReport",
     "HumanReviewTask",
     "BillingInterval",
     "SubscriptionStatus",

@@ -429,6 +429,73 @@ class ExamSessionService:
             language=language,
         )
 
+    async def get_all_questions_bulk(
+        self,
+        attempt_id: uuid.UUID,
+        user_id: uuid.UUID,
+        language: Optional[str] = "ENGLISH",
+    ) -> Dict[str, Any]:
+        """
+        Loads all questions for an attempt in bulk.
+        Checks master JSON -> folder JSONs -> dynamic DB fallback via ExamJsonBuilder.
+        """
+        attempt = await self._get_attempt_safe(attempt_id, user_id)
+        exam = await self.session.get(Exam, attempt.exam_id)
+        if not exam:
+            raise HTTPException(
+                status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found."
+            )
+
+        # 1. Try master questions JSON
+        q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+        try:
+            if await self.storage.exists(q_json_path):
+                doc = await self.storage.download_json(q_json_path)
+                if doc and doc.get("questions"):
+                    return doc
+        except Exception as err:
+            logger.debug(f"Master questions json load failed: {err}")
+
+        # 2. Try questions folder (individual Q001.json...)
+        paper_set = exam.paper_set_code or "SET_A"
+        clean_set = str(paper_set).strip().lower().replace("_", "-")
+        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+        try:
+            q_count = attempt.total_questions or exam.total_questions or 100
+            q_list = []
+            for q_num in range(1, q_count + 1):
+                q_file = f"{q_folder.rstrip('/')}/Q{q_num:03d}.json"
+                if await self.storage.exists(q_file):
+                    q_data = await self.storage.download_json(q_file)
+                    if q_data:
+                        q_list.append(q_data)
+                else:
+                    if q_num == 1:
+                        break
+            if q_list:
+                return {
+                    "exam_id": str(exam.id),
+                    "exam_code": exam.code,
+                    "total_questions": len(q_list),
+                    "questions": q_list,
+                }
+        except Exception as err:
+            logger.debug(f"Folder questions load failed: {err}")
+
+        # 3. Fallback: Database ExamJsonBuilder
+        from app.services.exam_json_builder import ExamJsonBuilder
+        builder = ExamJsonBuilder(self.session)
+        res = await builder.generate_and_upload(exam.id)
+        if res.get("questions_json_path") and await self.storage.exists(res["questions_json_path"]):
+            return await self.storage.download_json(res["questions_json_path"])
+
+        return {
+            "exam_id": str(exam.id),
+            "exam_code": exam.code,
+            "total_questions": 0,
+            "questions": [],
+        }
+
     async def save_response(
         self, attempt_id: uuid.UUID, user_id: uuid.UUID, req: SaveResponseRequest
     ) -> SaveResponseResponse:

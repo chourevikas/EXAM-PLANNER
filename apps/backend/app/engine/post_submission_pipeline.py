@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from typing import Dict, Any, List, Optional
@@ -9,6 +10,7 @@ from app.db.models import (
     User,
     Exam,
     Question,
+    QuestionExplanation,
     Subtopic,
     ExamAttempt,
     ExamQuestionResponse,
@@ -16,6 +18,9 @@ from app.db.models import (
     UserConceptRetention,
     UserSkillProfile,
     UserTaxonomyMastery,
+    ExamQuestionReport,
+    ExamAttemptReport,
+    UserSkillProgressionReport,
     StudyTask,
 )
 from app.db.models.enums import AttemptStatus
@@ -50,19 +55,22 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
     except Exception as err:
         logger.warning(f"Tier 1 master solutions JSON '{s_rel_path}' failed: {err}")
 
-    # Tier 2: Try S3 Solutions Folder (individual Q001.json, Q002.json...)
+    # Tier 2: Try S3 Solutions Folder (individual Q001.json, Q002.json...) with concurrent downloads
     try:
         questions_count = exam.total_questions or exam.extracted_questions_count or 100
-        sol_list = []
-        for q_num in range(1, questions_count + 1):
+
+        async def _fetch_q_sol(q_num: int):
             q_file = f"{s_folder.rstrip('/')}/Q{q_num:03d}.json"
-            if await storage.exists(q_file):
-                sol_item = await storage.download_json(q_file)
-                if sol_item:
-                    sol_list.append(sol_item)
-            else:
-                if q_num == 1:
-                    break
+            try:
+                if await storage.exists(q_file):
+                    return await storage.download_json(q_file)
+            except Exception:
+                pass
+            return None
+
+        sol_tasks = [_fetch_q_sol(i) for i in range(1, questions_count + 1)]
+        sol_results = await asyncio.gather(*sol_tasks, return_exceptions=True)
+        sol_list = [r for r in sol_results if isinstance(r, dict) and r]
 
         if sol_list:
             logger.info(f"Loaded {len(sol_list)} solutions from folder '{s_folder}'.")
@@ -90,312 +98,442 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
     return {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
 
 
-async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
+async def run_post_submission_pipeline(
+    attempt_id: uuid.UUID, session: Optional[AsyncSession] = None
+) -> None:
     """
     Asynchronous post-submission pipeline triggered after exam submission:
     1. Executes mode-aware mathematical matrix engine via `MatrixOrchestrator` (zero LLM).
     2. Updates DB records: `ExamAttempt`, `UserSkillProfile`, `UserTaxonomyMastery`, `UserMemoryState`.
-    3. Saves 3-part report JSON to S3 / local storage at `exams/{exam_code}/reports/{attempt_id}_report.json`.
+    3. Saves 3-part report JSON to S3 / local storage.
     4. Executes **1 single LLM call** to generate personalized diagnostic insight & recommendations.
     5. Updates `ExamAttempt.report_metadata_json["llm_insight"]` and sets `status = EVALUATED`.
     """
     logger.info(f"Starting post-submission pipeline for attempt '{attempt_id}'...")
 
-    async with managed_async_session() as session:
-        # 1. Fetch Attempt
-        attempt = await session.get(ExamAttempt, attempt_id)
-        if not attempt:
-            logger.error(f"Attempt '{attempt_id}' not found for post-submission pipeline.")
-            return
+    if session is not None:
+        await _run_pipeline_core(session, attempt_id)
+    else:
+        async with managed_async_session() as managed_sess:
+            await _run_pipeline_core(managed_sess, attempt_id)
 
-        if attempt.status == AttemptStatus.EVALUATED:
-            logger.info(f"Attempt '{attempt_id}' is already EVALUATED. Skipping duplicate run.")
-            return
 
-        user = await session.get(User, attempt.user_id)
-        exam = await session.get(Exam, attempt.exam_id)
+async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> None:
+    # 1. Fetch Attempt
+    attempt = await session.get(ExamAttempt, attempt_id)
+    if not attempt:
+        logger.error(f"Attempt '{attempt_id}' not found for post-submission pipeline.")
+        return
 
-        if not user or not exam:
-            logger.error(f"User or Exam missing for attempt '{attempt_id}'. Aborting pipeline.")
-            return
+    if attempt.status == AttemptStatus.EVALUATED:
+        logger.info(f"Attempt '{attempt_id}' is already EVALUATED. Skipping duplicate run.")
+        return
 
-        # Fetch responses
-        resp_res = await session.exec(
-            select(ExamQuestionResponse)
-            .where(ExamQuestionResponse.attempt_id == attempt_id)
-            .order_by(col(ExamQuestionResponse.created_at).asc())
+    user = await session.get(User, attempt.user_id)
+    exam = await session.get(Exam, attempt.exam_id)
+
+    if not user or not exam:
+        logger.error(f"User or Exam missing for attempt '{attempt_id}'. Aborting pipeline.")
+        return
+
+    # Fetch responses
+    resp_res = await session.exec(
+        select(ExamQuestionResponse)
+        .where(ExamQuestionResponse.attempt_id == attempt_id)
+        .order_by(col(ExamQuestionResponse.created_at).asc())
+    )
+    responses_db = resp_res.all()
+
+    if not responses_db:
+        logger.warning(f"Attempt '{attempt_id}' has 0 response records.")
+        return
+
+    storage = get_storage_provider()
+
+    # 2. Load Solutions JSON via robust multi-tier resolver
+    solutions_data = await load_exam_solutions_data(exam, session, storage)
+
+    # 3. Load User Memories & User Profile
+    mem_res = await session.exec(
+        select(UserMemoryState).where(UserMemoryState.user_id == user.id)
+    )
+    user_memories = mem_res.all()
+    topic_mem_records = []
+    for m in user_memories:
+        sub = await session.get(Subtopic, m.subtopic_id) if m.subtopic_id else None
+        last_rev = m.last_reviewed_at.replace(tzinfo=timezone.utc) if m.last_reviewed_at.tzinfo is None else m.last_reviewed_at
+        elapsed = (datetime.now(timezone.utc) - last_rev).total_seconds() / 86400.0
+        topic_mem_records.append({
+            "topic_name": sub.name if sub else "General Concepts",
+            "stability": m.fsrs_stability,
+            "last_reviewed_days_ago": round(max(0.1, elapsed), 1),
+        })
+
+    prof_res = await session.exec(
+        select(UserSkillProfile).where(UserSkillProfile.user_id == user.id)
+    )
+    profile = prof_res.first()
+    profile_dict = {
+        "cumulative_icrs": profile.cumulative_icrs if profile else 65.0,
+        "cumulative_irt_theta": profile.cumulative_irt_theta if profile else 0.0,
+        "cumulative_gti": profile.cumulative_gti if profile else 0.20,
+        "cumulative_oeei": profile.cumulative_oeei if profile else 0.70,
+        "cumulative_satoi": profile.cumulative_satoi if profile else 85.0,
+        "total_tests_given": profile.total_tests_given if profile else 0,
+        "total_questions_answered": profile.total_questions_answered if profile else 0,
+    }
+
+    # Transform DB responses to dicts for orchestrator
+    responses_payload = []
+    for index, r in enumerate(responses_db, 1):
+        responses_payload.append({
+            "question_id": str(r.question_id),
+            "question_number": index,
+            "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
+            "is_correct": r.is_correct,
+            "closeness_score_awarded": r.closeness_score_awarded,
+            "final_score": r.final_score,
+            "time_taken_seconds": r.time_taken_seconds,
+            "expected_time_seconds": r.expected_time_seconds,
+            "is_switched": r.is_switched,
+            "initial_correct": False,  # Simplified fallback
+            "gti_item_score": r.gti_item_score,
+            "answer_revealed": r.answer_revealed,
+        })
+
+    # 4. Execute Mode-Aware Matrix Orchestrator
+    report = MatrixOrchestrator.compute_full_report(
+        attempt_id=attempt.id,
+        mode=attempt.mode,
+        responses=responses_payload,
+        solutions_data=solutions_data,
+        allocated_duration_minutes=float(exam.total_duration_minutes or 120),
+        user_memory_records=topic_mem_records,
+        candidate_info={"user_id": str(user.id), "full_name": user.full_name, "email": user.email},
+        exam_info={"exam_id": str(exam.id), "exam_name": exam.name, "exam_code": exam.code},
+        profile_data=profile_dict,
+    )
+
+    part_3 = report["part_3_aggregated_user_report"]
+
+    # 5. Update Attempt fields in DB
+    attempt.irt_theta = part_3["irt_3pl"]["latent_ability_theta"]
+    attempt.gti_score = part_3["gti"]["aggregate"]
+    attempt.oeei_score = part_3["oeei"]["oeei_score"]
+    attempt.satoi_score = part_3["satoi"]["satoi_score"]
+    attempt.icrs_score = part_3["icrs"]["icrs_score"]
+    attempt.pacing_status = part_3["pacing"]["pacing_status"]
+    session.add(attempt)
+
+    # 6. Update UserSkillProfile
+    if not profile:
+        profile = UserSkillProfile(
+            user_id=user.id,
+            cumulative_irt_theta=attempt.irt_theta,
+            cumulative_gti=attempt.gti_score,
+            cumulative_oeei=attempt.oeei_score,
+            cumulative_icrs=attempt.icrs_score,
+            cumulative_satoi=attempt.satoi_score,
+            total_tests_given=1,
+            total_questions_answered=len(responses_db),
         )
-        responses_db = resp_res.all()
+    else:
+        n = profile.total_tests_given + 1
+        profile.cumulative_irt_theta = round((profile.cumulative_irt_theta * profile.total_tests_given + attempt.irt_theta) / n, 2)
+        profile.cumulative_gti = round((profile.cumulative_gti * profile.total_tests_given + attempt.gti_score) / n, 4)
+        profile.cumulative_oeei = round((profile.cumulative_oeei * profile.total_tests_given + attempt.oeei_score) / n, 2)
+        profile.cumulative_icrs = round((profile.cumulative_icrs * profile.total_tests_given + attempt.icrs_score) / n, 1)
+        profile.cumulative_satoi = round((profile.cumulative_satoi * profile.total_tests_given + attempt.satoi_score) / n, 1)
+        profile.total_tests_given = n
+        profile.total_questions_answered += len(responses_db)
+        profile.updated_at = datetime.now(timezone.utc)
+    session.add(profile)
 
-        if not responses_db:
-            logger.warning(f"Attempt '{attempt_id}' has 0 response records.")
-            return
+    # 7. Update UserTaxonomyMastery & FSRS UserMemoryState
+    tax_by_subj = report["part_2_taxonomy_analysis"]["by_subject"]
+    tax_by_top = report["part_2_taxonomy_analysis"]["by_topic"]
+    tax_by_sub = report["part_2_taxonomy_analysis"]["by_subtopic"]
 
-        storage = get_storage_provider()
+    all_tax_items = [("SUBJECT", x) for x in tax_by_subj] + [("TOPIC", x) for x in tax_by_top] + [("SUBTOPIC", x) for x in tax_by_sub]
 
-        # 2. Load Solutions JSON via robust multi-tier resolver
-        solutions_data = await load_exam_solutions_data(exam, session, storage)
-
-        # 3. Load User Memories & User Profile
-        mem_res = await session.exec(
-            select(UserMemoryState).where(UserMemoryState.user_id == user.id)
+    for tax_type, item in all_tax_items:
+        code_name = item["taxonomy_name"]
+        existing_m = await session.exec(
+            select(UserTaxonomyMastery).where(
+                UserTaxonomyMastery.user_id == user.id,
+                UserTaxonomyMastery.taxonomy_type == tax_type,
+                UserTaxonomyMastery.taxonomy_id_code == code_name,
+            )
         )
-        user_memories = mem_res.all()
-        topic_mem_records = []
-        for m in user_memories:
-            sub = await session.get(Subtopic, m.subtopic_id) if m.subtopic_id else None
-            last_rev = m.last_reviewed_at.replace(tzinfo=timezone.utc) if m.last_reviewed_at.tzinfo is None else m.last_reviewed_at
-            elapsed = (datetime.now(timezone.utc) - last_rev).total_seconds() / 86400.0
-            topic_mem_records.append({
-                "topic_name": sub.name if sub else "General Concepts",
-                "stability": m.fsrs_stability,
-                "last_reviewed_days_ago": round(max(0.1, elapsed), 1),
-            })
-
-        prof_res = await session.exec(
-            select(UserSkillProfile).where(UserSkillProfile.user_id == user.id)
-        )
-        profile = prof_res.first()
-        profile_dict = {
-            "cumulative_icrs": profile.cumulative_icrs if profile else 65.0,
-            "cumulative_irt_theta": profile.cumulative_irt_theta if profile else 0.0,
-            "cumulative_gti": profile.cumulative_gti if profile else 0.20,
-            "cumulative_oeei": profile.cumulative_oeei if profile else 0.70,
-            "cumulative_satoi": profile.cumulative_satoi if profile else 85.0,
-            "total_tests_given": profile.total_tests_given if profile else 0,
-            "total_questions_answered": profile.total_questions_answered if profile else 0,
-        }
-
-        # Transform DB responses to dicts for orchestrator
-        responses_payload = []
-        for index, r in enumerate(responses_db, 1):
-            responses_payload.append({
-                "question_id": str(r.question_id),
-                "question_number": index,
-                "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
-                "is_correct": r.is_correct,
-                "closeness_score_awarded": r.closeness_score_awarded,
-                "final_score": r.final_score,
-                "time_taken_seconds": r.time_taken_seconds,
-                "expected_time_seconds": r.expected_time_seconds,
-                "is_switched": r.is_switched,
-                "initial_correct": False,  # Simplified fallback
-                "gti_item_score": r.gti_item_score,
-                "answer_revealed": r.answer_revealed,
-            })
-
-        # 4. Execute Mode-Aware Matrix Orchestrator
-        report = MatrixOrchestrator.compute_full_report(
-            attempt_id=attempt.id,
-            mode=attempt.mode,
-            responses=responses_payload,
-            solutions_data=solutions_data,
-            allocated_duration_minutes=float(exam.total_duration_minutes or 120),
-            user_memory_records=topic_mem_records,
-            candidate_info={"user_id": str(user.id), "full_name": user.full_name, "email": user.email},
-            exam_info={"exam_id": str(exam.id), "exam_name": exam.name, "exam_code": exam.code},
-            profile_data=profile_dict,
-        )
-
-        part_3 = report["part_3_aggregated_user_report"]
-
-        # 5. Update Attempt fields in DB
-        attempt.irt_theta = part_3["irt_3pl"]["latent_ability_theta"]
-        attempt.gti_score = part_3["gti"]["aggregate"]
-        attempt.oeei_score = part_3["oeei"]["oeei_score"]
-        attempt.satoi_score = part_3["satoi"]["satoi_score"]
-        attempt.icrs_score = part_3["icrs"]["icrs_score"]
-        attempt.pacing_status = part_3["pacing"]["pacing_status"]
-        session.add(attempt)
-
-        # 6. Update UserSkillProfile
-        if not profile:
-            profile = UserSkillProfile(
+        m_obj = existing_m.first()
+        if not m_obj:
+            m_obj = UserTaxonomyMastery(
                 user_id=user.id,
-                cumulative_irt_theta=attempt.irt_theta,
-                cumulative_gti=attempt.gti_score,
-                cumulative_oeei=attempt.oeei_score,
-                cumulative_icrs=attempt.icrs_score,
-                cumulative_satoi=attempt.satoi_score,
-                total_tests_given=1,
-                total_questions_answered=len(responses_db),
+                taxonomy_type=tax_type,
+                taxonomy_id_code=code_name,
+                taxonomy_name=code_name,
+                total_attempts=item["total_questions"],
+                correct_attempts=item["correct"],
+                mastery_percentage=item["accuracy_percentage"],
+                strength_status=item["strength_status"],
             )
         else:
-            n = profile.total_tests_given + 1
-            profile.cumulative_irt_theta = round((profile.cumulative_irt_theta * profile.total_tests_given + attempt.irt_theta) / n, 2)
-            profile.cumulative_gti = round((profile.cumulative_gti * profile.total_tests_given + attempt.gti_score) / n, 4)
-            profile.cumulative_oeei = round((profile.cumulative_oeei * profile.total_tests_given + attempt.oeei_score) / n, 2)
-            profile.cumulative_icrs = round((profile.cumulative_icrs * profile.total_tests_given + attempt.icrs_score) / n, 1)
-            profile.cumulative_satoi = round((profile.cumulative_satoi * profile.total_tests_given + attempt.satoi_score) / n, 1)
-            profile.total_tests_given = n
-            profile.total_questions_answered += len(responses_db)
-            profile.updated_at = datetime.now(timezone.utc)
-        session.add(profile)
+            m_obj.total_attempts += item["total_questions"]
+            m_obj.correct_attempts += item["correct"]
+            m_obj.mastery_percentage = round((m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100.0, 1)
+            m_obj.strength_status = "STRONG" if m_obj.mastery_percentage >= 75.0 else ("MODERATE" if m_obj.mastery_percentage >= 50.0 else "WEAK_REVISION_REQUIRED")
+            m_obj.updated_at = datetime.now(timezone.utc)
+    await session.commit()
 
-        # 7. Update UserTaxonomyMastery & FSRS UserMemoryState
-        tax_by_subj = report["part_2_taxonomy_analysis"]["by_subject"]
-        tax_by_top = report["part_2_taxonomy_analysis"]["by_topic"]
-        tax_by_sub = report["part_2_taxonomy_analysis"]["by_subtopic"]
+    # 7b. Upsert FSRS UserMemoryState & UserConceptRetention
+    now_t = datetime.now(timezone.utc)
+    for resp in responses_db:
+        q_obj = await session.get(Question, resp.question_id)
+        if not q_obj:
+            continue
 
-        all_tax_items = [("SUBJECT", x) for x in tax_by_subj] + [("TOPIC", x) for x in tax_by_top] + [("SUBTOPIC", x) for x in tax_by_sub]
-
-        for tax_type, item in all_tax_items:
-            code_name = item["taxonomy_name"]
-            existing_m = await session.exec(
-                select(UserTaxonomyMastery).where(
-                    UserTaxonomyMastery.user_id == user.id,
-                    UserTaxonomyMastery.taxonomy_type == tax_type,
-                    UserTaxonomyMastery.taxonomy_id_code == code_name,
-                )
-            )
-            m_obj = existing_m.first()
-            if not m_obj:
-                m_obj = UserTaxonomyMastery(
-                    user_id=user.id,
-                    taxonomy_type=tax_type,
-                    taxonomy_id_code=code_name,
-                    taxonomy_name=code_name,
-                    total_attempts=item["total_questions"],
-                    correct_attempts=item["correct"],
-                    mastery_percentage=item["accuracy_percentage"],
-                    strength_status=item["strength_status"],
-                )
-            else:
-                m_obj.total_attempts += item["total_questions"]
-                m_obj.correct_attempts += item["correct"]
-                m_obj.mastery_percentage = round((m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100.0, 1)
-                m_obj.strength_status = "STRONG" if m_obj.mastery_percentage >= 75.0 else ("MODERATE" if m_obj.mastery_percentage >= 50.0 else "WEAK_REVISION_REQUIRED")
-                m_obj.updated_at = datetime.now(timezone.utc)
-        await session.commit()
-
-        # 7b. Upsert FSRS UserMemoryState & UserConceptRetention
-        now_t = datetime.now(timezone.utc)
-        for resp in responses_db:
-            q_obj = await session.get(Question, resp.question_id)
-            if not q_obj:
-                continue
-
-            is_corr = resp.is_correct or False
-            mem_stmt = select(UserMemoryState).where(
-                UserMemoryState.user_id == user.id,
-                UserMemoryState.question_id == resp.question_id,
-            )
-            mem_res = await session.exec(mem_stmt)
-            mem_obj = mem_res.first()
-
-            if not mem_obj:
-                diff = 5.0 if not is_corr else 3.5
-                stab = 1.0 if not is_corr else 3.0
-                ret = 0.4 if not is_corr else 1.0
-                mem_obj = UserMemoryState(
-                    user_id=user.id,
-                    question_id=resp.question_id,
-                    subtopic_id=q_obj.subtopic_id,
-                    fsrs_difficulty=diff,
-                    fsrs_stability=stab,
-                    retrievability=ret,
-                    last_reviewed_at=now_t,
-                    next_scheduled_review=now_t + timedelta(days=max(1, int(stab))),
-                )
-                session.add(mem_obj)
-            else:
-                if is_corr:
-                    mem_obj.fsrs_stability = round(mem_obj.fsrs_stability * 1.5, 2)
-                    mem_obj.fsrs_difficulty = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
-                    mem_obj.retrievability = 1.0
-                else:
-                    mem_obj.fsrs_stability = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
-                    mem_obj.fsrs_difficulty = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
-                    mem_obj.retrievability = 0.4
-                mem_obj.last_reviewed_at = now_t
-                mem_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
-                session.add(mem_obj)
-
-            if q_obj.subtopic_id:
-                ret_stmt = select(UserConceptRetention).where(
-                    UserConceptRetention.user_id == user.id,
-                    UserConceptRetention.subtopic_id == q_obj.subtopic_id,
-                )
-                ret_res = await session.exec(ret_stmt)
-                ret_obj = ret_res.first()
-                if not ret_obj:
-                    ret_obj = UserConceptRetention(
-                        user_id=user.id,
-                        subtopic_id=q_obj.subtopic_id,
-                        fsrs_difficulty=mem_obj.fsrs_difficulty,
-                        fsrs_stability=mem_obj.fsrs_stability,
-                        fsrs_retrievability=mem_obj.retrievability,
-                        total_reviews=1,
-                        lapses=0 if is_corr else 1,
-                        last_reviewed_at=now_t,
-                        next_scheduled_review=now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability))),
-                    )
-                else:
-                    ret_obj.total_reviews += 1
-                    if not is_corr:
-                        ret_obj.lapses += 1
-                    ret_obj.fsrs_difficulty = mem_obj.fsrs_difficulty
-                    ret_obj.fsrs_stability = mem_obj.fsrs_stability
-                    ret_obj.fsrs_retrievability = mem_obj.retrievability
-                    ret_obj.last_reviewed_at = now_t
-                    ret_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
-                session.add(ret_obj)
-
-        # 7c. Award Gamification Badges & XP
-        try:
-            from app.services.gamification_service import GamificationService
-            g_service = GamificationService(session)
-            await g_service.check_and_update_daily_goal(user.id)
-        except Exception as badge_err:
-            logger.warning(f"Gamification processing warning: {badge_err}")
-
-        # 7d. Create Revision Tasks for Weak Topics
-        for tax_type, item in all_tax_items:
-            if item.get("strength_status") == "WEAK_REVISION_REQUIRED":
-                t_name = item.get("taxonomy_name")
-                st_stmt = select(StudyTask).where(
-                    StudyTask.user_id == user.id,
-                    StudyTask.title == f"Revision: {t_name}",
-                    StudyTask.is_completed == False,
-                )
-                st_res = await session.exec(st_stmt)
-                if not st_res.first():
-                    task = StudyTask(
-                        user_id=user.id,
-                        title=f"Revision: {t_name}",
-                        description=f"Automated revision task generated from weak area performance ({item.get('accuracy_percentage')}% accuracy) on {exam.name}.",
-                        scheduled_date=(now_t + timedelta(days=3)).date(),
-                        is_completed=False,
-                    )
-                    session.add(task)
-
-        await session.commit()
-
-        # 8. Save full report JSON to storage
-        report_s3_key = f"exams/{exam.code}/reports/{attempt.id}_report.json"
-        try:
-            await storage.upload_json(report, report_s3_key)
-            logger.info(f"Saved full report JSON to storage key '{report_s3_key}'.")
-        except Exception as s3_err:
-            logger.warning(f"Could not upload report JSON to storage: {s3_err}")
-
-        # 9. Execute 1 Single LLM Call for Personalized Aggregate Insights
-        llm_insight = await _generate_single_llm_insight(
-            user=user,
-            exam=exam,
-            attempt=attempt,
-            part_3=part_3,
-            taxonomy=report["part_2_taxonomy_analysis"],
+        is_corr = resp.is_correct or False
+        mem_stmt = select(UserMemoryState).where(
+            UserMemoryState.user_id == user.id,
+            UserMemoryState.question_id == resp.question_id,
         )
+        mem_res = await session.exec(mem_stmt)
+        mem_obj = mem_res.first()
 
-        # 10. Update attempt report_metadata_json and status = EVALUATED
-        report["part_3_aggregated_user_report"]["llm_insight"] = llm_insight
-        attempt.report_metadata_json = report
-        attempt.status = AttemptStatus.EVALUATED
-        session.add(attempt)
-        await session.commit()
+        if not mem_obj:
+            diff = 5.0 if not is_corr else 3.5
+            stab = 1.0 if not is_corr else 3.0
+            ret = 0.4 if not is_corr else 1.0
+            mem_obj = UserMemoryState(
+                user_id=user.id,
+                question_id=resp.question_id,
+                subtopic_id=q_obj.subtopic_id,
+                fsrs_difficulty=diff,
+                fsrs_stability=stab,
+                retrievability=ret,
+                last_reviewed_at=now_t,
+                next_scheduled_review=now_t + timedelta(days=max(1, int(stab))),
+            )
+            session.add(mem_obj)
+        else:
+            if is_corr:
+                mem_obj.fsrs_stability = round(mem_obj.fsrs_stability * 1.5, 2)
+                mem_obj.fsrs_difficulty = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
+                mem_obj.retrievability = 1.0
+            else:
+                mem_obj.fsrs_stability = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
+                mem_obj.fsrs_difficulty = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
+                mem_obj.retrievability = 0.4
+            mem_obj.last_reviewed_at = now_t
+            mem_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
+            session.add(mem_obj)
 
-        logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. Status set to EVALUATED.")
+        if q_obj.subtopic_id:
+            ret_stmt = select(UserConceptRetention).where(
+                UserConceptRetention.user_id == user.id,
+                UserConceptRetention.subtopic_id == q_obj.subtopic_id,
+            )
+            ret_res = await session.exec(ret_stmt)
+            ret_obj = ret_res.first()
+            if not ret_obj:
+                ret_obj = UserConceptRetention(
+                    user_id=user.id,
+                    subtopic_id=q_obj.subtopic_id,
+                    fsrs_difficulty=mem_obj.fsrs_difficulty,
+                    fsrs_stability=mem_obj.fsrs_stability,
+                    fsrs_retrievability=mem_obj.retrievability,
+                    total_reviews=1,
+                    lapses=0 if is_corr else 1,
+                    last_reviewed_at=now_t,
+                    next_scheduled_review=now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability))),
+                )
+            else:
+                ret_obj.total_reviews += 1
+                if not is_corr:
+                    ret_obj.lapses += 1
+                ret_obj.fsrs_difficulty = mem_obj.fsrs_difficulty
+                ret_obj.fsrs_stability = mem_obj.fsrs_stability
+                ret_obj.fsrs_retrievability = mem_obj.retrievability
+                ret_obj.last_reviewed_at = now_t
+                ret_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
+            session.add(ret_obj)
+
+    # 7c. Award Gamification Badges & XP
+    try:
+        from app.services.gamification_service import GamificationService
+        g_service = GamificationService(session)
+        await g_service.check_and_update_daily_goal(user.id)
+    except Exception as badge_err:
+        logger.warning(f"Gamification processing warning: {badge_err}")
+
+    # 7d. Create Revision Tasks for Weak Topics
+    for tax_type, item in all_tax_items:
+        if item.get("strength_status") == "WEAK_REVISION_REQUIRED":
+            t_name = item.get("taxonomy_name")
+            st_stmt = select(StudyTask).where(
+                StudyTask.user_id == user.id,
+                StudyTask.title == f"Revision: {t_name}",
+                StudyTask.is_completed == False,
+            )
+            st_res = await session.exec(st_stmt)
+            if not st_res.first():
+                task = StudyTask(
+                    user_id=user.id,
+                    title=f"Revision: {t_name}",
+                    description=f"Automated revision task generated from weak area performance ({item.get('accuracy_percentage')}% accuracy) on {exam.name}.",
+                    scheduled_date=(now_t + timedelta(days=3)).date(),
+                    is_completed=False,
+                )
+                session.add(task)
+
+    await session.commit()
+
+    # 8. Save Full Report JSON (Report 2) to storage
+    report_s3_key = f"exams/{exam.code}/reports/{attempt.id}_exam_report.json"
+    try:
+        await storage.upload_json(report, report_s3_key)
+        logger.info(f"Saved exam report JSON to storage key '{report_s3_key}'.")
+    except Exception as s3_err:
+        logger.warning(f"Could not upload report JSON to storage: {s3_err}")
+
+    # 9. Execute 1 Single LLM Call for Personalized Aggregate Insights
+    llm_insight = await _generate_single_llm_insight(
+        user=user,
+        exam=exam,
+        attempt=attempt,
+        part_3=part_3,
+        taxonomy=report["part_2_taxonomy_analysis"],
+    )
+
+    # 10. Persist Report 1 (Per-Question Detailed Diagnostic & Explanations)
+    part_1_items = report.get("part_1_per_question_analysis", [])
+    q_reports_data = []
+    for q_item in part_1_items:
+        q_uid = uuid.UUID(q_item["question_id"]) if isinstance(q_item["question_id"], str) else q_item["question_id"]
+        
+        # Fetch explanation from DB
+        expl_stmt = select(QuestionExplanation).where(QuestionExplanation.question_id == q_uid)
+        expl_res = await session.exec(expl_stmt)
+        expl_db = expl_res.first()
+        expl_dict = None
+        if expl_db:
+            expl_dict = {
+                "core_concept": expl_db.core_concept,
+                "detailed_solution": expl_db.detailed_solution,
+                "common_traps": expl_db.common_traps_json,
+                "key_takeaways": expl_db.key_takeaways_json,
+            }
+
+        q_rep_stmt = select(ExamQuestionReport).where(
+            ExamQuestionReport.attempt_id == attempt.id,
+            ExamQuestionReport.question_id == q_uid,
+        )
+        existing_q_rep = (await session.exec(q_rep_stmt)).first()
+        if not existing_q_rep:
+            q_rep = ExamQuestionReport(
+                attempt_id=attempt.id,
+                question_id=q_uid,
+                question_number=q_item.get("question_number", 1),
+                is_correct=q_item.get("is_correct", False),
+                final_score=float(q_item.get("marks_awarded", 0.0)),
+                time_taken_seconds=float(q_item.get("time_taken_seconds", 60.0)),
+                expected_time_seconds=float(q_item.get("expected_time_seconds", 60.0)),
+                time_window=q_item.get("time_window", "OPTIMAL"),
+                closeness_score=float(q_item.get("closeness_score", 0.0)),
+                closeness_classification=q_item.get("closeness_classification", "Neutral Distractor"),
+                gti_item_score=float(q_item.get("gti_item_score", 0.0)),
+                is_option_switched=bool(q_item.get("is_option_switched", False)),
+                blooms_level=q_item.get("blooms_level", "ANALYZE"),
+                explanation_json=expl_dict,
+            )
+            session.add(q_rep)
+        
+        q_reports_data.append({**q_item, "explanation": expl_dict})
+
+    # Save Report 1 JSON to storage
+    q_report_s3_key = f"exams/{exam.code}/reports/{attempt.id}_question_report.json"
+    try:
+        await storage.upload_json({
+            "attempt_id": str(attempt.id),
+            "exam_id": str(exam.id),
+            "user_id": str(user.id),
+            "total_questions": len(q_reports_data),
+            "questions": q_reports_data,
+        }, q_report_s3_key)
+    except Exception as q_s3_err:
+        logger.warning(f"Could not upload question report JSON: {q_s3_err}")
+
+    # 11. Persist Report 2 (Exam-Level 12-Matrix Aggregated Report)
+    report["part_3_aggregated_user_report"]["llm_insight"] = llm_insight
+    attempt_rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt.id)
+    existing_att_rep = (await session.exec(attempt_rep_stmt)).first()
+    if not existing_att_rep:
+        att_rep = ExamAttemptReport(
+            attempt_id=attempt.id,
+            user_id=user.id,
+            exam_id=exam.id,
+            matrices_summary_json=report["part_3_aggregated_user_report"],
+            taxonomy_breakdown_json=report["part_2_taxonomy_analysis"],
+            llm_insight_json=llm_insight,
+            s3_report_url=report_s3_key,
+        )
+        session.add(att_rep)
+    else:
+        existing_att_rep.matrices_summary_json = report["part_3_aggregated_user_report"]
+        existing_att_rep.taxonomy_breakdown_json = report["part_2_taxonomy_analysis"]
+        existing_att_rep.llm_insight_json = llm_insight
+        session.add(existing_att_rep)
+
+    # 12. Persist Report 3 (Cumulative User Skill Progression Delta Report)
+    updated_profile_dict = {
+        "cumulative_icrs": profile.cumulative_icrs,
+        "cumulative_irt_theta": profile.cumulative_irt_theta,
+        "cumulative_gti": profile.cumulative_gti,
+        "cumulative_oeei": profile.cumulative_oeei,
+        "cumulative_satoi": profile.cumulative_satoi,
+        "total_tests_given": profile.total_tests_given,
+        "total_questions_answered": profile.total_questions_answered,
+    }
+    deltas = {
+        "icrs_delta": round(profile.cumulative_icrs - profile_dict["cumulative_icrs"], 1),
+        "irt_theta_delta": round(profile.cumulative_irt_theta - profile_dict["cumulative_irt_theta"], 2),
+        "gti_delta": round(profile.cumulative_gti - profile_dict["cumulative_gti"], 4),
+        "oeei_delta": round(profile.cumulative_oeei - profile_dict["cumulative_oeei"], 2),
+        "satoi_delta": round(profile.cumulative_satoi - profile_dict["cumulative_satoi"], 1),
+    }
+    user_prog_stmt = select(UserSkillProgressionReport).where(UserSkillProgressionReport.attempt_id == attempt.id)
+    existing_user_prog = (await session.exec(user_prog_stmt)).first()
+    if not existing_user_prog:
+        user_prog = UserSkillProgressionReport(
+            attempt_id=attempt.id,
+            user_id=user.id,
+            previous_metrics_json=profile_dict,
+            updated_metrics_json=updated_profile_dict,
+            deltas_json=deltas,
+            taxonomy_promotions_json=report["part_2_taxonomy_analysis"],
+            spaced_repetition_schedule_json={"evaluated_at": now_t.isoformat()},
+        )
+        session.add(user_prog)
+
+    user_prog_s3_key = f"users/{user.id}/reports/progression_{attempt.id}.json"
+    try:
+        await storage.upload_json({
+            "user_id": str(user.id),
+            "attempt_id": str(attempt.id),
+            "previous_metrics": profile_dict,
+            "updated_metrics": updated_profile_dict,
+            "deltas": deltas,
+        }, user_prog_s3_key)
+    except Exception as up_s3_err:
+        logger.warning(f"Could not upload user progression report: {up_s3_err}")
+
+    # 13. Update attempt report_metadata_json and status = EVALUATED
+    attempt.report_metadata_json = report
+    attempt.status = AttemptStatus.EVALUATED
+    session.add(attempt)
+    await session.commit()
+
+    logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All 3 reports persisted. Status set to EVALUATED.")
 
 
 async def _generate_single_llm_insight(

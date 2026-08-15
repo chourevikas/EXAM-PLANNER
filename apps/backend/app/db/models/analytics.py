@@ -103,7 +103,10 @@ class ExamQuestionResponse(SQLModel, table=True):
     )
     is_switched: bool = Field(default=False, index=True)
     gti_item_score: float = Field(default=0.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
 
     attempt: Optional[ExamAttempt] = Relationship(back_populates="responses")
 
@@ -190,6 +193,101 @@ class UserTaxonomyMastery(SQLModel, table=True):
         description="'STRONG', 'MODERATE', 'WEAK_REVISION_REQUIRED'",
     )
     updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+
+
+class ExamQuestionReport(SQLModel, table=True):
+    __tablename__ = "exam_question_reports"
+    __table_args__ = (
+        Index("ix_eq_reports_attempt_q", "attempt_id", "question_id", unique=True),
+        Index("ix_eq_reports_attempt_num", "attempt_id", "question_number"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    attempt_id: uuid.UUID = Field(
+        foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
+    )
+    question_id: uuid.UUID = Field(
+        foreign_key="questions.id", ondelete="CASCADE", index=True
+    )
+    question_number: int = Field(index=True)
+    is_correct: bool = Field(default=False, index=True)
+    final_score: float = Field(default=0.0)
+    time_taken_seconds: float = Field(default=60.0)
+    expected_time_seconds: float = Field(default=60.0)
+    time_window: str = Field(default="OPTIMAL", max_length=50)
+    closeness_score: float = Field(default=0.0)
+    closeness_classification: str = Field(
+        default="Neutral Distractor", max_length=100
+    )
+    gti_item_score: float = Field(default=0.0)
+    is_option_switched: bool = Field(default=False)
+    blooms_level: str = Field(default="ANALYZE", max_length=50)
+    explanation_json: Optional[dict] = Field(
+        default=None, sa_column=Column(PortableJSON)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+
+
+class ExamAttemptReport(SQLModel, table=True):
+    __tablename__ = "exam_attempt_reports"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    attempt_id: uuid.UUID = Field(
+        foreign_key="exam_attempts.id", unique=True, index=True, ondelete="CASCADE"
+    )
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    exam_id: uuid.UUID = Field(foreign_key="exams.id", index=True, ondelete="CASCADE")
+
+    matrices_summary_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    taxonomy_breakdown_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    llm_insight_json: Optional[dict] = Field(
+        default=None, sa_column=Column(PortableJSON)
+    )
+    s3_report_url: Optional[str] = Field(default=None, max_length=500)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+
+
+class UserSkillProgressionReport(SQLModel, table=True):
+    __tablename__ = "user_skill_progression_reports"
+    __table_args__ = (
+        Index("ix_skill_prog_user_created", "user_id", "created_at"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    attempt_id: uuid.UUID = Field(
+        foreign_key="exam_attempts.id", index=True, ondelete="CASCADE"
+    )
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+
+    previous_metrics_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    updated_metrics_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    deltas_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    taxonomy_promotions_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    spaced_repetition_schedule_json: dict = Field(
+        default_factory=dict, sa_column=Column(PortableJSON)
+    )
+    created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
