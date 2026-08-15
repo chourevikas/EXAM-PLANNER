@@ -28,6 +28,68 @@ from app.config.logger import setup_logger
 logger = setup_logger("PostSubmissionPipeline")
 
 
+async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: Any) -> Dict[str, Any]:
+    """
+    Robust multi-tier solution resolver:
+    Tier 1: Master S3 JSON file (exam.solutions_json_path or exams/{code}/exam_solutions.json).
+    Tier 2: S3 Solutions Folder (exam.solutions_json_folder_path or artifacts/{code}/{set}/json/solutions/Qxxx.json).
+    Tier 3: Dynamic Database fallback via ExamJsonBuilder or DB models.
+    """
+    paper_set = exam.paper_set_code or "SET_A"
+    clean_set = str(paper_set).strip().lower().replace("_", "-")
+    s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
+    s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
+
+    # Tier 1: Try Master S3 JSON
+    try:
+        if await storage.exists(s_rel_path):
+            solutions_data = await storage.download_json(s_rel_path)
+            if solutions_data and solutions_data.get("questions"):
+                logger.info(f"Loaded solutions from master JSON '{s_rel_path}' ({len(solutions_data['questions'])} questions).")
+                return solutions_data
+    except Exception as err:
+        logger.warning(f"Tier 1 master solutions JSON '{s_rel_path}' failed: {err}")
+
+    # Tier 2: Try S3 Solutions Folder (individual Q001.json, Q002.json...)
+    try:
+        questions_count = exam.total_questions or exam.extracted_questions_count or 100
+        sol_list = []
+        for q_num in range(1, questions_count + 1):
+            q_file = f"{s_folder.rstrip('/')}/Q{q_num:03d}.json"
+            if await storage.exists(q_file):
+                sol_item = await storage.download_json(q_file)
+                if sol_item:
+                    sol_list.append(sol_item)
+            else:
+                if q_num == 1:
+                    break
+
+        if sol_list:
+            logger.info(f"Loaded {len(sol_list)} solutions from folder '{s_folder}'.")
+            return {
+                "exam_id": str(exam.id),
+                "exam_code": exam.code,
+                "questions": sol_list,
+            }
+    except Exception as err:
+        logger.warning(f"Tier 2 solutions folder '{s_folder}' failed: {err}")
+
+    # Tier 3: Dynamic Database Fallback
+    try:
+        from app.services.exam_json_builder import ExamJsonBuilder
+        logger.info(f"Tier 3: Generating solutions data from database for exam '{exam.code}'...")
+        builder = ExamJsonBuilder(session)
+        res = await builder.generate_and_upload(exam.id)
+        if res.get("solutions_json_path") and await storage.exists(res["solutions_json_path"]):
+            solutions_data = await storage.download_json(res["solutions_json_path"])
+            if solutions_data and solutions_data.get("questions"):
+                return solutions_data
+    except Exception as err:
+        logger.error(f"Tier 3 DB solutions generation failed: {err}", exc_info=True)
+
+    return {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
+
+
 async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
     """
     Asynchronous post-submission pipeline triggered after exam submission:
@@ -44,6 +106,10 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
         attempt = await session.get(ExamAttempt, attempt_id)
         if not attempt:
             logger.error(f"Attempt '{attempt_id}' not found for post-submission pipeline.")
+            return
+
+        if attempt.status == AttemptStatus.EVALUATED:
+            logger.info(f"Attempt '{attempt_id}' is already EVALUATED. Skipping duplicate run.")
             return
 
         user = await session.get(User, attempt.user_id)
@@ -67,13 +133,8 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
 
         storage = get_storage_provider()
 
-        # 2. Load Solutions JSON from S3 / Local storage
-        s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
-        try:
-            solutions_data = await storage.download_json(s_rel_path)
-        except Exception as err:
-            logger.warning(f"Could not load solutions JSON '{s_rel_path}': {err}. Falling back to empty dict.")
-            solutions_data = {"questions": []}
+        # 2. Load Solutions JSON via robust multi-tier resolver
+        solutions_data = await load_exam_solutions_data(exam, session, storage)
 
         # 3. Load User Memories & User Profile
         mem_res = await session.exec(
@@ -284,12 +345,9 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
         try:
             from app.services.gamification_service import GamificationService
             g_service = GamificationService(session)
-            await g_service.award_badge_if_eligible(user.id, "first_test_completed")
-            if attempt.total_score and attempt.max_possible_score and attempt.total_score >= (attempt.max_possible_score * 0.75):
-                await g_service.award_badge_if_eligible(user.id, "high_score_achiever")
-            await g_service.award_xp_for_activity(user.id, "test_completion", xp_amount=150)
+            await g_service.check_and_update_daily_goal(user.id)
         except Exception as badge_err:
-            logger.warning(f"Gamification badge processing error: {badge_err}")
+            logger.warning(f"Gamification processing warning: {badge_err}")
 
         # 7d. Create Revision Tasks for Weak Topics
         for tax_type, item in all_tax_items:
@@ -306,10 +364,8 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID) -> None:
                         user_id=user.id,
                         title=f"Revision: {t_name}",
                         description=f"Automated revision task generated from weak area performance ({item.get('accuracy_percentage')}% accuracy) on {exam.name}.",
-                        task_type="WEAK_AREA_REVISION",
-                        priority="HIGH",
-                        estimated_minutes=45,
-                        due_date=now_t + timedelta(days=3),
+                        scheduled_date=(now_t + timedelta(days=3)).date(),
+                        is_completed=False,
                     )
                     session.add(task)
 

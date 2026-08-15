@@ -110,6 +110,11 @@ class ExamSessionService:
             self.session.add(u_obj)
             await self.session.flush()
 
+        # Resolve Question folder path for exam
+        paper_set = exam.paper_set_code or "SET_A"
+        clean_set = str(paper_set).strip().lower().replace("_", "-")
+        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+
         # Check for existing IN_PROGRESS attempt
         existing = await self.session.exec(
             select(ExamAttempt).where(
@@ -123,6 +128,18 @@ class ExamSessionService:
             logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
             status_res = await self.get_exam_status(existing_attempt.id, user_id)
             q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
+            # Generate presigned URLs for questions JSON
+            q_presigned_url = None
+            q_f_url = None
+            try:
+                q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+                if await self.storage.exists(q_path):
+                    q_presigned_url = await self.storage.generate_presigned_url(q_path)
+                if q_folder and await self.storage.exists(q_folder):
+                    q_f_url = await self.storage.generate_presigned_url(q_folder)
+            except Exception as presign_err:
+                logger.warning(f"Could not generate presigned question URLs: {presign_err}")
+
             return StartExamResponse(
                 attempt_id=str(existing_attempt.id),
                 exam_id=str(exam.id),
@@ -133,17 +150,16 @@ class ExamSessionService:
                 total_questions=existing_attempt.total_questions,
                 first_question=q_nav,
                 palette=status_res.palette,
+                questions_presigned_url=q_presigned_url,
+                questions_folder_url=q_f_url,
             )
 
         # Fast Question Metadata Retrieval using DB index scan or folder
-        paper_set = exam.paper_set_code or "SET_A"
-        clean_set = str(paper_set).strip().lower().replace("_", "-")
-        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
 
         q_stmt = (
             select(Question.id, Question.question_number_in_paper, Question.expected_time_seconds)
             .where(Question.exam_id == exam.id)
-            .order_by(Question.question_number_in_paper)
+            .order_by(col(Question.question_number_in_paper))
         )
         q_res = await self.session.exec(q_stmt)
         q_rows = q_res.all()
@@ -244,6 +260,18 @@ class ExamSessionService:
             question_number=1,
         )
 
+        # Generate presigned URLs for questions JSON
+        q_presigned_url = None
+        q_f_url = None
+        try:
+            q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+            if await self.storage.exists(q_path):
+                q_presigned_url = await self.storage.generate_presigned_url(q_path)
+            if q_folder and await self.storage.exists(q_folder):
+                q_f_url = await self.storage.generate_presigned_url(q_folder)
+        except Exception as presign_err:
+            logger.warning(f"Could not generate presigned question URLs: {presign_err}")
+
         return StartExamResponse(
             attempt_id=str(attempt.id),
             exam_id=str(exam.id),
@@ -254,6 +282,8 @@ class ExamSessionService:
             total_questions=attempt.total_questions,
             first_question=q_nav,
             palette=palette_items,
+            questions_presigned_url=q_presigned_url,
+            questions_folder_url=q_f_url,
         )
 
     async def get_question(
@@ -938,14 +968,10 @@ class ExamSessionService:
         if final_reason == "TIMER_EXPIRED" and server_remaining > 10:
             final_reason = "USER_CLICKED_SUBMIT"
 
-        s_json_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
+        from app.engine.post_submission_pipeline import load_exam_solutions_data
 
-        try:
-            solutions_doc = await self.storage.download_json(s_json_path)
-            sol_list = solutions_doc.get("questions", [])
-        except Exception:
-            sol_list = []
-
+        solutions_doc = await load_exam_solutions_data(exam, self.session, self.storage)
+        sol_list = solutions_doc.get("questions", [])
         sol_map = {s["question_id"]: s for s in sol_list}
 
         # Synchronous scoring pass

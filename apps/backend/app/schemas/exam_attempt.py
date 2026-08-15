@@ -132,6 +132,8 @@ class StartExamResponse(BaseModel):
     total_questions: int
     first_question: QuestionNavResponse
     palette: List[QuestionPaletteItem]
+    questions_presigned_url: Optional[str] = None
+    questions_folder_url: Optional[str] = None
 
 
 class SaveResponseResponse(BaseModel):

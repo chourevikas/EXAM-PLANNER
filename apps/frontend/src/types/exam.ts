@@ -163,6 +163,8 @@ export interface StartExamResponse {
   total_questions: number;
   first_question: QuestionNavResponse;
   palette: QuestionPaletteItem[];
+  questions_presigned_url?: string | null;
+  questions_folder_url?: string | null;
 }
 
 export interface SaveResponseResponse {

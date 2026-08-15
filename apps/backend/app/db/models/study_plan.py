@@ -13,7 +13,10 @@ class StudyTask(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     title: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
-    scheduled_date: dt.date = Field(index=True)
+    scheduled_date: dt.date = Field(
+        default_factory=lambda: datetime.now(timezone.utc).date(),
+        index=True
+    )
     is_completed: bool = Field(default=False)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

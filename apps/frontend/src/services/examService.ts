@@ -202,6 +202,45 @@ export async function startExamAttempt(payload: StartExamRequest): Promise<Start
     questionCache.set(cacheKey, data.first_question);
   }
 
+  // Pre-load all questions in background via presigned URL if available
+  if (data.questions_presigned_url) {
+    fetch(data.questions_presigned_url)
+      .then(async (res) => {
+        if (res.ok) {
+          const doc = await res.json();
+          const qList = doc.questions || [];
+          const total = qList.length || data.total_questions;
+          qList.forEach((qItem: any, idx: number) => {
+            const qNum = qItem.question_number || idx + 1;
+            const qNav: QuestionNavResponse = {
+              question: qItem,
+              navigation: {
+                current: qNum,
+                total: total,
+                has_next: qNum < total,
+                has_prev: qNum > 1,
+              },
+              response_state: {
+                selected_option_id: null,
+                is_marked_for_review: false,
+                time_spent_seconds: 0,
+                question_status: idx === 0 ? 'VISITED' : 'UNVISITED',
+                answer_revealed: false,
+              },
+            };
+            const engKey = `${data.attempt_id}_${qNum}_ENGLISH`;
+            if (!questionCache.has(engKey) || qNum !== 1) {
+              questionCache.set(engKey, qNav);
+            }
+          });
+          console.info(`%c[ExamService:BULK_PRELOAD_SUCCESS] Preloaded ${qList.length} questions from presigned URL`, 'color: #10b981; font-weight: bold;');
+        }
+      })
+      .catch((err) => {
+        console.warn('[ExamService:PRESIGNED_PRELOAD_WARN] Presigned URL preload skipped:', err);
+      });
+  }
+
   return data;
 }
 

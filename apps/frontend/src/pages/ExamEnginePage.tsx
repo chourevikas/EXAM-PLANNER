@@ -47,6 +47,7 @@ export function ExamEnginePage() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
 
   // Active question & responses
@@ -378,21 +379,25 @@ export function ExamEnginePage() {
   };
 
   const handleConfirmSubmit = async () => {
-    setShowSubmitModal(false);
-    if (attemptId) {
-      try {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (attemptId) {
         // Zero-Data-Loss Guarantee: Flush all pending batches before final submission
         saveCurrentResponse();
         await flushPendingBatches();
 
         await submitExamAttempt(attemptId, { submission_reason: 'USER_CLICKED_SUBMIT' });
         navigate(`/analytics?attemptId=${attemptId}`);
-      } catch (err) {
-        console.error('Failed to submit exam attempt:', err);
+      } else {
         navigate('/analytics');
       }
-    } else {
-      navigate('/analytics');
+    } catch (err) {
+      console.error('Failed to submit exam attempt:', err);
+      navigate(attemptId ? `/analytics?attemptId=${attemptId}` : '/analytics');
+    } finally {
+      setIsSubmitting(false);
+      setShowSubmitModal(false);
     }
   };
 
@@ -450,6 +455,7 @@ export function ExamEnginePage() {
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}
+        isSubmitting={isSubmitting}
         onLanguageChange={setLanguage}
         onSubmitClick={() => setShowSubmitModal(true)}
       />
@@ -591,9 +597,37 @@ export function ExamEnginePage() {
         answeredCount={responseSummary.answered_count}
         markedCount={responseSummary.marked_for_review_count}
         unattemptedCount={responseSummary.unattempted_count}
-        onResume={() => setShowSubmitModal(false)}
+        isSubmitting={isSubmitting}
+        onResume={() => !isSubmitting && setShowSubmitModal(false)}
         onConfirmSubmit={handleConfirmSubmit}
       />
+
+      {/* Fullscreen Submitting & Evaluating Overlay */}
+      {isSubmitting && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            gap: 16,
+          }}
+        >
+          <Loader2 size={44} className="animate-spin" color="#3b82f6" />
+          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-display, sans-serif)' }}>
+            Submitting & Evaluating Test...
+          </div>
+          <div style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.75)', maxWidth: 420, textAlign: 'center', lineHeight: 1.5 }}>
+            Please wait while your responses are securely saved and your psychometric performance analysis is computed.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
