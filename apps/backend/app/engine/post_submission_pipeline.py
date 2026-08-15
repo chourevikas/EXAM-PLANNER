@@ -36,36 +36,30 @@ logger = setup_logger("PostSubmissionPipeline")
 async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: Any) -> Dict[str, Any]:
     """
     Robust multi-tier solution resolver:
-    Tier 1: Master S3 JSON file (exam.solutions_json_path or exams/{code}/exam_solutions.json).
-    Tier 2: S3 Solutions Folder (exam.solutions_json_folder_path or artifacts/{code}/{set}/json/solutions/Qxxx.json).
+    Tier 1: S3 Solutions Folder (individual Q001.json, Q002.json... in artifacts/{code}/{set}/json/solutions or exams/{code}/solutions).
+    Tier 2: Master S3 JSON file (exam.solutions_json_path or exams/{code}/exam_solutions.json).
     Tier 3: Dynamic Database fallback via ExamJsonBuilder or DB models.
     """
     paper_set = exam.paper_set_code or "SET_A"
     clean_set = str(paper_set).strip().lower().replace("_", "-")
-    s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
     s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
+    alt_folder = f"exams/{exam.code}/solutions"
+    s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
 
-    # Tier 1: Try Master S3 JSON
-    try:
-        if await storage.exists(s_rel_path):
-            solutions_data = await storage.download_json(s_rel_path)
-            if solutions_data and solutions_data.get("questions"):
-                logger.info(f"Loaded solutions from master JSON '{s_rel_path}' ({len(solutions_data['questions'])} questions).")
-                return solutions_data
-    except Exception as err:
-        logger.warning(f"Tier 1 master solutions JSON '{s_rel_path}' failed: {err}")
-
-    # Tier 2: Try S3 Solutions Folder (individual Q001.json, Q002.json...) with concurrent downloads
+    # Tier 1: Try S3 Solutions Folder (individual Q001.json, Q002.json...) with concurrent downloads
     try:
         questions_count = exam.total_questions or exam.extracted_questions_count or 100
 
         async def _fetch_q_sol(q_num: int):
-            q_file = f"{s_folder.rstrip('/')}/Q{q_num:03d}.json"
-            try:
-                if await storage.exists(q_file):
-                    return await storage.download_json(q_file)
-            except Exception:
-                pass
+            for f_prefix in [s_folder, alt_folder]:
+                q_file = f"{f_prefix.rstrip('/')}/Q{q_num:03d}.json"
+                try:
+                    if await storage.exists(q_file):
+                        data = await storage.download_json(q_file)
+                        if data:
+                            return data
+                except Exception:
+                    pass
             return None
 
         sol_tasks = [_fetch_q_sol(i) for i in range(1, questions_count + 1)]
@@ -80,7 +74,17 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
                 "questions": sol_list,
             }
     except Exception as err:
-        logger.warning(f"Tier 2 solutions folder '{s_folder}' failed: {err}")
+        logger.warning(f"Tier 1 solutions folder '{s_folder}' failed: {err}")
+
+    # Tier 2: Try Master S3 JSON
+    try:
+        if await storage.exists(s_rel_path):
+            solutions_data = await storage.download_json(s_rel_path)
+            if solutions_data and solutions_data.get("questions"):
+                logger.info(f"Loaded solutions from master JSON '{s_rel_path}' ({len(solutions_data['questions'])} questions).")
+                return solutions_data
+    except Exception as err:
+        logger.warning(f"Tier 2 master solutions JSON '{s_rel_path}' failed: {err}")
 
     # Tier 3: Dynamic Database Fallback
     try:

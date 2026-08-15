@@ -529,11 +529,12 @@ export function ExamEnginePage() {
           <div style={{ width: isMobile ? '100%' : 240, height: '100%' }}>
             <ExamSectionSidebar
               sections={sections}
-              activeSectionId="polity"
-              questions={[]}
-              selectedOptions={{}}
-              markedForReview={{}}
-              onSelectSection={() => { }}
+              activeSectionId="all"
+              palette={palette}
+              totalQuestions={totalQuestions}
+              currentQIndex={currentQIndex}
+              responseSummary={responseSummary}
+              onSelectQuestion={handleSelectQuestionFromPalette}
             />
           </div>
         )}
