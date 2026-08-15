@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  BookOpen, 
-  Brain, 
-  BarChart2, 
-  Sparkles, 
-  Trophy, 
+import {
+  LayoutDashboard,
+  Calendar,
+  BookOpen,
+  Brain,
+  BarChart2,
+  Sparkles,
+  Trophy,
   X
 } from 'lucide-react';
 
@@ -19,12 +19,12 @@ interface StudentSidebarProps {
   onCloseMobile: () => void;
 }
 
-export function StudentSidebar({ 
-  user, 
-  collapsed, 
-  mobileOpen, 
-  onToggleCollapse, 
-  onCloseMobile 
+export function StudentSidebar({
+  user,
+  collapsed,
+  mobileOpen,
+  onToggleCollapse,
+  onCloseMobile
 }: StudentSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
@@ -71,14 +71,14 @@ export function StudentSidebar({
           textDecoration: 'none',
           fontSize: 14,
           fontWeight: isActive ? 600 : 500,
-          color: isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.7)',
+          color: isActive ? '#60a5fa' : 'var(--text-secondary)',
           backgroundColor: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
           borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #3b82f6' : '3px solid transparent',
           transition: 'all 0.2s ease',
           position: 'relative'
         }}
       >
-        <Icon size={18} color={isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.7)'} />
+        <Icon size={18} color={isActive ? '#60a5fa' : 'var(--text-secondary)'} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </Link>
     );
@@ -94,7 +94,7 @@ export function StudentSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'var(--shadow-color-base)',
             backdropFilter: 'blur(4px)',
             zIndex: 110
           }}
@@ -106,7 +106,7 @@ export function StudentSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          backgroundColor: '#0f1e3c',
+          backgroundColor: 'var(--bg-card)',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -117,7 +117,7 @@ export function StudentSidebar({
           zIndex: 120,
           transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
           transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease, min-width 0.25s ease',
-          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRight: '1px solid var(--border-default)',
           boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
           overflow: 'hidden'
         }}
@@ -137,7 +137,7 @@ export function StudentSidebar({
                 fontSize: 11,
                 textTransform: 'uppercase',
                 fontWeight: 700,
-                color: 'rgba(255, 255, 255, 0.45)',
+                color: 'var(--text-muted)',
                 letterSpacing: '0.08em',
                 fontFamily: 'var(--font-mono)'
               }}
@@ -145,7 +145,7 @@ export function StudentSidebar({
               Main Navigation
             </span>
           ) : (
-            <span style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.3)', fontFamily: 'var(--font-mono)' }}>•••</span>
+            <span style={{ fontSize: 10, color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)' }}>•••</span>
           )}
 
           {/* Mobile close button */}
@@ -155,7 +155,7 @@ export function StudentSidebar({
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'var(--text-secondary)',
                 cursor: 'pointer',
                 padding: 4,
                 display: 'flex',
@@ -179,7 +179,7 @@ export function StudentSidebar({
                 fontSize: 11,
                 textTransform: 'uppercase',
                 fontWeight: 700,
-                color: 'rgba(255, 255, 255, 0.45)',
+                color: 'var(--text-muted)',
                 letterSpacing: '0.08em',
                 fontFamily: 'var(--font-mono)'
               }}

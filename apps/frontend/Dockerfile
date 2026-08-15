@@ -3,6 +3,9 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
+
+ENV VITE_CLERK_PUBLISHABLE_KEY=pk_test_YW1hemVkLXN0YXJsaW5nLTQ2LmNsZXJrLmFjY291bnRzLmRldiQ
+
 COPY . .
 RUN npm run build
 

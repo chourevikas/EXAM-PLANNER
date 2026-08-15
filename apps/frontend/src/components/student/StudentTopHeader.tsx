@@ -646,3 +646,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     </header>
   );
 }
+      </div>
+    </header>
+  );
+}
