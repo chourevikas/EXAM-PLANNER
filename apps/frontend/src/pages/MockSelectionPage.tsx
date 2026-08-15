@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
-import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem } from '../services/examService';
+import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
 import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
 
 interface DisplayMock {
@@ -26,15 +26,15 @@ export function MockSelectionPage() {
       setIsLoading(true);
       try {
         const [liveExams, userAttempts] = await Promise.all([
-          listExams(),
+          listExams(undefined, true),
           listCandidateAttempts(),
         ]);
 
         const mocks = liveExams.filter(
-          (e) => e.exam_type === 'STATIC_MOCK' || e.exam_type === 'QuestionSourceType.STATIC_MOCK'
+          (e) => e.is_active === true && (e.exam_type === 'STATIC_MOCK' || e.exam_type === 'QuestionSourceType.STATIC_MOCK')
         );
 
-        const targetList = mocks.length > 0 ? mocks : liveExams;
+        const targetList = mocks.length > 0 ? mocks : liveExams.filter((e) => e.is_active === true);
 
         if (targetList.length > 0) {
           const mapped: DisplayMock[] = targetList.map((e) => {
@@ -63,7 +63,7 @@ export function MockSelectionPage() {
 
             return {
               id: e.id,
-              title: e.name || e.code,
+              title: formatCanonicalExamTitle(e),
               category: e.stage || 'Full Length',
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
@@ -73,7 +73,8 @@ export function MockSelectionPage() {
             };
           });
           setMocksList(mapped);
-        } else {
+        }
+ else {
           setMocksList([
             { id: 'mock_full_1', title: 'Full Length UPSC Mock 1', category: 'Full Length', totalQuestions: 100, duration: '120 mins', status: 'NOT_STARTED' },
           ]);

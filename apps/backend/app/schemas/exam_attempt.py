@@ -20,6 +20,42 @@ class SaveResponseRequest(BaseModel):
     option_switch_count: int = 0
 
 
+class BatchSaveItem(BaseModel):
+    question_id: uuid.UUID | str
+    selected_option_id: Optional[uuid.UUID | str] = None
+    is_marked_for_review: bool = False
+    time_spent_seconds: float = 0.0
+    option_switch_count: int = 0
+    client_timestamp: Optional[datetime] = None
+
+
+class BatchSaveResponseRequest(BaseModel):
+    batch_id: uuid.UUID | str = Field(default_factory=uuid.uuid4)
+    responses: List[BatchSaveItem]
+
+
+class ResponseSummary(BaseModel):
+    answered_count: int = 0
+    marked_for_review_count: int = 0
+    unattempted_count: int = 0
+    total: int = 0
+
+
+class BatchSaveResponseAck(BaseModel):
+    batch_id: str
+    status: str = "ACCEPTED"
+    received_count: int
+    response_summary: Optional[ResponseSummary] = None
+
+
+class BatchStatusResponse(BaseModel):
+    batch_id: str
+    status: str  # "ACCEPTED", "PROCESSED", "FAILED"
+    processed_count: int
+    error: Optional[str] = None
+    updated_at: datetime
+
+
 class SubmitExamRequest(BaseModel):
     submission_reason: str = "USER_CLICKED_SUBMIT"
 
@@ -76,18 +112,13 @@ class QuestionNavResponse(BaseModel):
     question: QuestionOut
     navigation: NavigationMeta
     response_state: ResponseState
+    presigned_url: Optional[str] = None
 
 
 class QuestionPaletteItem(BaseModel):
     question_number: int
     question_id: uuid.UUID | str
     question_status: QuestionResponseStatus
-
-
-class ResponseSummary(BaseModel):
-    answered_count: int = 0
-    marked_for_review_count: int = 0
-    unattempted_count: int = 0
     total: int = 0
 
 

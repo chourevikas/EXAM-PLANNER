@@ -181,15 +181,23 @@ export function ExamPipelineStatusView() {
   };
 
   const getS3StatusBadge = (exam: ExamPipelineStatusItem) => {
-    if (exam.questions_json_path || exam.status.toUpperCase().includes('PUBLISHED')) {
+    if (exam.is_active) {
       return (
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Check size={13} color="#15803D" /> Ready
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Check size={13} color="#15803D" /> Active (S3 Ready)
+        </span>
+      );
+    }
+    if (exam.status.toUpperCase().includes('PUBLISHED') || approvingId === exam.id) {
+      return (
+        <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Loader2 size={13} className="animate-spin" color="#64748B" /> Uploading to S3...
         </span>
       );
     }
     return <span style={{ fontSize: 12, color: '#667085' }}>Not generated</span>;
   };
+
 
   return (
     <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
@@ -738,7 +746,7 @@ export function ExamPipelineStatusView() {
 
             {/* Drawer Footer Actions */}
             <div style={{ padding: 20, borderTop: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-              {selectedExam.status.toUpperCase().includes('PUBLISHED') || selectedExam.status.toUpperCase().includes('READY') ? (
+              {selectedExam.status.toUpperCase().includes('PUBLISHED') && selectedExam.is_active ? (
                 <div
                   style={{
                     width: '100%',
@@ -755,8 +763,30 @@ export function ExamPipelineStatusView() {
                     gap: 6,
                   }}
                 >
-                  <Check size={16} /> Published & S3 Artifacts Ready
+                  <Check size={16} /> ✓ Published & Active (S3 Ready)
                 </div>
+              ) : (selectedExam.status.toUpperCase().includes('PUBLISHED') && !selectedExam.is_active) || approvingId === selectedExam.id ? (
+                <button
+                  disabled
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#94A3B8',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: 'not-allowed',
+                  }}
+                >
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Published (Uploading S3 Artifacts...)</span>
+                </button>
               ) : (
                 <button
                   onClick={() => handleApprove(selectedExam.id, selectedExam.name)}
@@ -778,14 +808,7 @@ export function ExamPipelineStatusView() {
                     boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
                   }}
                 >
-                  {approvingId === selectedExam.id ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Generating S3 JSONs & Publishing...</span>
-                    </>
-                  ) : (
-                    <span>Approve & Build S3 JSON</span>
-                  )}
+                  <span>Approve & Build S3 JSON</span>
                 </button>
               )}
             </div>
@@ -795,3 +818,4 @@ export function ExamPipelineStatusView() {
     </div>
   );
 }
+

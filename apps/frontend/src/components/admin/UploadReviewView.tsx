@@ -33,12 +33,16 @@ export function UploadReviewView() {
     statusMessage,
     isDragOver,
     fileInputRef,
+    conflictModal,
+    setConflictModal,
     handleFileChange,
     handleDragOver,
     handleDragLeave,
     handleDrop,
     handleSubmit: handleHookSubmit,
+    handleConflictResolve,
   } = useExamUpload();
+
 
   // Real-time Queue Data State
   const [pipelineExams, setPipelineExams] = useState<ExamPipelineStatusItem[]>([]);
@@ -780,6 +784,102 @@ export function UploadReviewView() {
           )}
         </div>
       </div>
+
+      {/* Conflict Resolution Confirmation Popup Modal */}
+      {conflictModal && conflictModal.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 16,
+              maxWidth: 480,
+              width: '100%',
+              padding: 28,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              border: '1px solid #E2E8F0',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <div
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                  color: '#D97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+                  {conflictModal.title}
+                </h3>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  Conflict Resolution Action Required
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.5, marginBottom: 24 }}>
+              {conflictModal.message}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              {conflictModal.options.map((opt) => {
+                const isCancel = opt.toUpperCase() === 'CANCEL' || opt.toUpperCase() === 'IGNORE';
+                const isRestart = opt.toUpperCase() === 'RESTART' || opt.toUpperCase() === 'OVERWRITE';
+
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => handleConflictResolve(opt)}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 8,
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: isCancel ? '1px solid #CBD5E1' : 'none',
+                      backgroundColor: isCancel
+                        ? '#FFFFFF'
+                        : isRestart
+                        ? '#DC2626'
+                        : '#2563EB',
+                      color: isCancel ? '#475569' : '#FFFFFF',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {opt === 'RESTART'
+                      ? 'Cancel Old Task & Restart'
+                      : opt === 'OVERWRITE'
+                      ? 'Overwrite Existing Paper'
+                      : opt === 'CANCEL'
+                      ? 'Cancel Upload'
+                      : opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

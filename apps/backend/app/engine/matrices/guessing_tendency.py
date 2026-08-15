@@ -43,24 +43,39 @@ class GuessingTendencyStrategy:
 
     @classmethod
     def interpret_gti(cls, gti_value: float) -> Dict[str, Any]:
-        if gti_value > 0.65:
+        # 5-Tier Finer Risk Boundaries
+        if gti_value >= 0.70:
             return {
                 "category": "IMPULSIVE_BLIND_GUESSING",
-                "label": "High Impulsive Risk-Taking",
-                "color": "#ef4444",
-                "recommendation": "Slow down during test execution. You are taking rapid uncalculated guesses on unfamiliar questions.",
+                "label": "Severe Impulsive Guessing",
+                "color": "#dc2626",
+                "recommendation": "Critical negative mark leakage. Cease guessing on unreviewed questions.",
+            }
+        elif gti_value >= 0.50:
+            return {
+                "category": "ELEVATED_IMPULSIVE_RISK",
+                "label": "Elevated Impulsive Risk",
+                "color": "#ea580c",
+                "recommendation": "Frequent premature answering detected. Enforce a minimum 25s reading latency.",
             }
         elif gti_value >= 0.30:
             return {
-                "category": "TACTICAL_CALCULATED_RISK",
-                "label": "Tactical Elimination Risk",
+                "category": "MODERATE_ELIMINATION_GUESSING",
+                "label": "Moderate Elimination Guessing",
                 "color": "#f59e0b",
-                "recommendation": "Optimal elimination strategy. Your non-correct attempts stem from high-closeness distractors.",
+                "recommendation": "Calculated guesses on 50:50 questions. Monitor borderline items closely.",
+            }
+        elif gti_value >= 0.15:
+            return {
+                "category": "CONTROLLED_CALCULATED_RISK",
+                "label": "Controlled / Calculated Risk",
+                "color": "#3b82f6",
+                "recommendation": "Disciplined risk management. Minimal uncalculated impulse errors.",
             }
         else:
             return {
                 "category": "HIGH_CONFIDENCE_METHODICAL",
                 "label": "High Confidence Methodical",
                 "color": "#10b981",
-                "recommendation": "Strong precision and thorough pacing. High conceptual recall with minimal random guessing.",
+                "recommendation": "Exceptional cognitive discipline. Questions answered only upon full verification.",
             }

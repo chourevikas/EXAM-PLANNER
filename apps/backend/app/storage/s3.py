@@ -145,3 +145,21 @@ class S3StorageProvider(BaseStorageProvider):
             content = await res["Body"].read()
             return json.loads(content.decode("utf-8"))
 
+    async def generate_presigned_url(
+        self, relative_path: str, expiration_seconds: int = 3600
+    ) -> str:
+        async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            try:
+                url = await s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": self.bucket_name, "Key": relative_path},
+                    ExpiresIn=expiration_seconds,
+                )
+                return url
+            except Exception as e:
+                logger.warning(
+                    f"Failed generating presigned URL for '{relative_path}': {e}. Falling back to public URL."
+                )
+                return self.get_public_url(relative_path)
+
+

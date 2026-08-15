@@ -9,7 +9,7 @@ import sys
 import uuid
 import random
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Add project root to sys.path
@@ -103,7 +103,7 @@ BLOOMS_LEVELS = ["REMEMBER", "UNDERSTAND", "APPLY", "ANALYZE", "EVALUATE"]
 
 async def seed_psychometric_environment():
     print("=" * 80)
-    print("🌱 [SEEDING PSYCHOMETRIC ENVIRONMENT STARTED]")
+    print("[SEEDING PSYCHOMETRIC ENVIRONMENT STARTED]")
     print("=" * 80)
 
     await async_init_db()
@@ -128,11 +128,11 @@ async def seed_psychometric_environment():
             await session.commit()
             await session.refresh(user)
             print(
-                f"👤 Created Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
+                f"[USER] Created Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
             )
         else:
             print(
-                f"👤 Found Existing Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
+                f"[USER] Found Existing Target User: '{user.full_name}' ({user.email}) -> ID: {user.id}"
             )
 
         # 2. Create Syllabus & Topics Structure
@@ -161,53 +161,63 @@ async def seed_psychometric_environment():
         from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
 
         subtopic_objs = []
-        for subj_name, topics in SYLLABUS_HIERARCHY.items():
-            subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
-            subj_res = await session.exec(
-                select(Subject).where(Subject.code == subj_code)
-            )
-            subj = subj_res.first()
-            if not subj:
-                subj = Subject(
-                    syllabus_version_id=syll.id,
-                    code=subj_code,
-                    name=subj_name,
-                )
-                session.add(subj)
-                await session.commit()
-
-            for top_idx, (top_name, subtopics_list) in enumerate(topics.items(), 1):
-                top_code = top_name.upper().replace(" ", "_").replace("&", "AND")[:50]
-                top_res = await session.exec(
-                    select(Topic).where(Topic.name == top_name)
-                )
-                top = top_res.first()
-                if not top:
-                    top = Topic(
-                        subject_id=subj.id,
-                        code=top_code,
-                        name=top_name,
+        # Check if subtopics already exist in DB
+        all_subs_res = await session.exec(select(Subtopic))
+        existing_subs = all_subs_res.all()
+        if existing_subs:
+            subtopic_objs = list(existing_subs)
+            print(f"[SYLLABUS] Fast-loaded {len(subtopic_objs)} existing Subtopics from DB.")
+        else:
+            for subj_name, topics in SYLLABUS_HIERARCHY.items():
+                subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                subj_res = await session.exec(
+                    select(Subject).where(
+                        Subject.syllabus_version_id == syll.id,
+                        Subject.name == subj_name,
                     )
-                    session.add(top)
+                )
+                subj = subj_res.first()
+                if not subj:
+                    subj = Subject(
+                        syllabus_version_id=syll.id,
+                        code=subj_code,
+                        name=subj_name,
+                    )
+                    session.add(subj)
                     await session.commit()
 
-                for subtop_idx, subtop_name in enumerate(subtopics_list, 1):
-                    subtop_code = subtop_name.upper().replace(" ", "_").replace("&", "AND")[:50]
-                    sub_res = await session.exec(
-                        select(Subtopic).where(Subtopic.name == subtop_name)
+                for top_name, subtopics_list in topics.items():
+                    top_code = top_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                    top_res = await session.exec(
+                        select(Topic).where(Topic.name == top_name)
                     )
-                    sub = sub_res.first()
-                    if not sub:
-                        sub = Subtopic(
-                            topic_id=top.id,
-                            code=subtop_code,
-                            name=subtop_name,
+                    top = top_res.first()
+                    if not top:
+                        top = Topic(
+                            subject_id=subj.id,
+                            code=top_code,
+                            name=top_name,
                         )
-                        session.add(sub)
+                        session.add(top)
                         await session.commit()
-                    subtopic_objs.append(sub)
 
-        print(f"📚 Verified Syllabus Hierarchy with {len(subtopic_objs)} Subtopics.")
+                    for subtop_name in subtopics_list:
+                        subtop_code = subtop_name.upper().replace(" ", "_").replace("&", "AND")[:50]
+                        sub_res = await session.exec(
+                            select(Subtopic).where(Subtopic.name == subtop_name)
+                        )
+                        sub = sub_res.first()
+                        if not sub:
+                            sub = Subtopic(
+                                topic_id=top.id,
+                                code=subtop_code,
+                                name=subtop_name,
+                            )
+                            session.add(sub)
+                        subtopic_objs.append(sub)
+                    await session.commit()
+
+            print(f"[SYLLABUS] Verified Syllabus Hierarchy with {len(subtopic_objs)} Subtopics.")
 
         # 3. Create 3 Test Exams
         exams_config = [
@@ -233,14 +243,14 @@ async def seed_psychometric_environment():
                 session.add(exam)
                 await session.commit()
                 await session.refresh(exam)
-                print(f"📄 Created Exam: '{exam.name}' -> ID: {exam.id}")
+                print(f"[EXAM] Created Exam: '{exam.name}' -> ID: {exam.id}")
             else:
-                print(f"📄 Found Exam: '{exam.name}' -> ID: {exam.id}")
+                print(f"[EXAM] Found Exam: '{exam.name}' -> ID: {exam.id}")
             exam_entities.append(exam)
 
         # 4. Generate 100 Questions spread across 3 Exams
         print(
-            "\n⚙️ Generating 100 Psychometric Questions with Options & Closeness Scores..."
+            "\n[INFO] Generating 100 Psychometric Questions with Options & Closeness Scores..."
         )
         all_created_questions = []
 
@@ -258,7 +268,7 @@ async def seed_psychometric_environment():
             if len(q_existing_list) >= target_count:
                 all_created_questions.extend(q_existing_list)
                 print(
-                    f"   ⏩ Skipping generation for Exam '{exam.code}' (Already has {len(q_existing_list)} questions)"
+                    f"   [INFO] Skipping generation for Exam '{exam.code}' (Already has {len(q_existing_list)} questions)"
                 )
                 continue
 
@@ -355,13 +365,13 @@ async def seed_psychometric_environment():
                 question_counter += 1
 
             print(
-                f"   ✅ Seeded {target_count} questions with options for Exam '{exam.name}'."
+                f"   [QUESTIONS] Seeded {target_count} questions with options for Exam '{exam.name}'."
             )
 
         print(f"Total Psychometric Questions Ready: {len(all_created_questions)}")
 
         # 5. Create 3 Exam Attempts with realistic performance profiles
-        print("\n📊 Generating 3 Exam Attempts & Item Responses for User...")
+        print("\n[ATTEMPTS] Generating 3 Exam Attempts & Item Responses for User...")
 
         attempt_profiles = [
             {
@@ -561,29 +571,37 @@ async def seed_psychometric_environment():
 
                 session.add(att)
                 await session.commit()
+                await session.refresh(att)
+
+                from app.engine.report_compiler import compile_comprehensive_psychometric_report
+                report_dict = await compile_comprehensive_psychometric_report(session, attempt_id=att.id)
+                att.report_metadata_json = report_dict
+                session.add(att)
+                await session.commit()
+
                 print(
-                    f"   🏆 Seeded Attempt for '{exam.code}': Score={att.total_score}, Theta={att.irt_theta}, GTI={att.gti_score}, ICRS={att.icrs_score}"
+                    f"   [SUCCESS] Seeded Attempt for '{exam.code}': Score={att.total_score}, Theta={att.irt_theta}, GTI={att.gti_score}, ICRS={att.icrs_score}"
                 )
 
         # 6. Seed FSRS Topic Memory States
-        print("\n🧠 Generating FSRS Topic Memory States for User...")
-        for sub in subtopic_objs:
-            mem_res = await session.exec(
-                select(UserMemoryState).where(
-                    UserMemoryState.user_id == user.id,
-                    UserMemoryState.subtopic_id == sub.id,
-                )
+        print("\n[INFO] Generating FSRS Topic Memory States for User...")
+        existing_mems_res = await session.exec(
+            select(UserMemoryState.subtopic_id).where(
+                UserMemoryState.user_id == user.id
             )
-            mem = mem_res.first()
-            if not mem:
+        )
+        existing_sub_ids = set(existing_mems_res.all())
+
+        new_mems = []
+        for sub in subtopic_objs:
+            if sub.id not in existing_sub_ids:
                 diff = round(random.uniform(2.5, 7.5), 2)
                 stab = round(random.uniform(1.5, 14.0), 2)
                 elapsed_days = random.uniform(1.0, 10.0)
                 r_val = FSRSEngine.calculate_retrievability(elapsed_days, stab)
 
-                next_review = datetime.utcnow() + timedelta(
-                    days=max(1, int(stab * 1.5))
-                )
+                now_utc = datetime.now(timezone.utc)
+                next_review = now_utc + timedelta(days=max(1, int(stab * 1.5)))
 
                 mem = UserMemoryState(
                     user_id=user.id,
@@ -591,18 +609,22 @@ async def seed_psychometric_environment():
                     fsrs_difficulty=diff,
                     fsrs_stability=stab,
                     retrievability=round(r_val, 4),
-                    last_reviewed_at=datetime.utcnow() - timedelta(days=elapsed_days),
+                    last_reviewed_at=now_utc - timedelta(days=elapsed_days),
                     next_scheduled_review=next_review,
                 )
-                session.add(mem)
-        await session.commit()
-        print("   ✅ FSRS Memory States Seeded.")
+                new_mems.append(mem)
+
+        if new_mems:
+            session.add_all(new_mems)
+            await session.commit()
+        print(f"   [INFO] FSRS Memory States Seeded ({len(new_mems)} new records).")
 
     print("=" * 80)
-    print("✨ [PSYCHOMETRIC DATA SEEDING COMPLETE SUCCESS]")
+    print("[PSYCHOMETRIC DATA SEEDING COMPLETE SUCCESS]")
     print(f"User ID: '{user.id}' | Email: '{user.email}'")
     print("=" * 80)
 
 
 if __name__ == "__main__":
     asyncio.run(seed_psychometric_environment())
+

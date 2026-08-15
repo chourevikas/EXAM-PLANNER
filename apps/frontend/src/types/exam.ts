@@ -56,6 +56,35 @@ export interface SaveResponseRequest {
   option_switch_count?: number;
 }
 
+export interface BatchSaveItem {
+  question_id: string;
+  selected_option_id?: string | null;
+  is_marked_for_review?: boolean;
+  time_spent_seconds?: number;
+  option_switch_count?: number;
+  client_timestamp?: string;
+}
+
+export interface BatchSaveResponseRequest {
+  batch_id?: string;
+  responses: BatchSaveItem[];
+}
+
+export interface BatchSaveResponseAck {
+  batch_id: string;
+  status: string;
+  received_count: number;
+  response_summary?: ResponseSummary;
+}
+
+export interface BatchStatusResponse {
+  batch_id: string;
+  status: string;
+  processed_count: number;
+  error?: string | null;
+  updated_at: string;
+}
+
 export interface SubmitExamRequest {
   submission_reason?: string;
 }

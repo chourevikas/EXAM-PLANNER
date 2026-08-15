@@ -19,15 +19,20 @@ class ExamRepository:
         res = await self.session.exec(stmt)
         return res.first()
 
-    async def list_all(self, status: Optional[str] = None) -> List[Exam]:
+    async def list_all(
+        self, status: Optional[str] = None, is_active: Optional[bool] = None
+    ) -> List[Exam]:
         stmt = select(Exam)
         if status:
             from sqlmodel import cast, String
             target_str = str(status.value) if hasattr(status, "value") else str(status)
             stmt = stmt.where(cast(Exam.status, String) == target_str)
+        if is_active is not None:
+            stmt = stmt.where(Exam.is_active == is_active)
         stmt = stmt.order_by(col(Exam.created_at).desc())
         res = await self.session.exec(stmt)
         return res.all()
+
 
     async def find_matching_exams_for_answer_key(
         self, stage: str, subject_code: str, year: int

@@ -82,3 +82,10 @@ class LocalStorageProvider(BaseStorageProvider):
             content = await f.read()
         return json.loads(content)
 
+    async def generate_presigned_url(
+        self, relative_path: str, expiration_seconds: int = 3600
+    ) -> str:
+        # In local storage, return public asset URL or path
+        return self.get_public_url(relative_path)
+
+

@@ -33,21 +33,28 @@ class ExamMacroTimeStrategy:
         ) / max(1, len(second_half))
         fatigue_drop = max(0.0, acc_first - acc_second)
 
-        pacing_status = "BALANCED_PACING"
-        if time_ratio < 0.60:
-            pacing_status = "EXCESS_UNUSED_TIME_RUSHED"
-        elif time_ratio > 1.05:
+        # 7-Tier Finer Pacing Classifications
+        if time_ratio > 1.05:
             pacing_status = "TIME_EXHAUSTION_OVERTHOUGHT"
-        elif skew_ratio < 0.60:
-            pacing_status = "LATE_EXAM_PANIC_RUSH"
-        elif skew_ratio > 1.60:
+        elif time_ratio < 0.60:
+            pacing_status = "EXCESS_UNUSED_TIME_RUSHED"
+        elif skew_ratio > 1.45:
             pacing_status = "EARLY_BOTTLENECK_OVERTHINK"
+        elif skew_ratio > 1.15:
+            pacing_status = "MILD_EARLY_DELIBERATION"
+        elif skew_ratio < 0.65:
+            pacing_status = "LATE_EXAM_PANIC_RUSH"
+        elif skew_ratio < 0.85:
+            pacing_status = "MILD_END_ACCELERATION"
+        else:
+            pacing_status = "OPTIMAL_SUSTAINED_PACING"
 
         return {
             "total_time_spent_sec": total_time_spent_sec,
             "total_allocated_sec": allocated_sec,
             "time_utilization_pct": round(time_ratio * 100, 1),
             "pacing_status": pacing_status,
+            "pacing_classification": pacing_status,
             "skew_ratio": round(skew_ratio, 2),
             "fatigue_drop_pct": round(fatigue_drop * 100, 1),
             "ideal_time_per_q_sec": round(ideal_time_per_q, 1),

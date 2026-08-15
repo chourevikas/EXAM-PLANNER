@@ -346,6 +346,24 @@ async def compile_comprehensive_psychometric_report(
                 )
             )
             m_obj = existing_m.first()
+            acc_pct = round((t_data["correct"] / max(1, t_data["total"])) * 100, 1)
+            
+            def get_7tier_status(pct: float) -> str:
+                if pct >= 90.0:
+                    return "EXCEPTIONAL_MASTERY"
+                elif pct >= 75.0:
+                    return "STRONG_MASTERY"
+                elif pct >= 60.0:
+                    return "COMPETENT"
+                elif pct >= 45.0:
+                    return "MODERATE_DEVELOPING"
+                elif pct >= 30.0:
+                    return "VULNERABLE"
+                elif pct >= 15.0:
+                    return "CRITICAL_DEFICIT"
+                else:
+                    return "HIGH_RISK_DEFICIT"
+
             if not m_obj:
                 m_obj = UserTaxonomyMastery(
                     user_id=user_id,
@@ -354,16 +372,8 @@ async def compile_comprehensive_psychometric_report(
                     taxonomy_name=t_data["name"],
                     total_attempts=t_data["total"],
                     correct_attempts=t_data["correct"],
-                    mastery_percentage=round(
-                        (t_data["correct"] / max(1, t_data["total"])) * 100, 1
-                    ),
-                    strength_status="STRONG"
-                    if (t_data["correct"] / max(1, t_data["total"])) >= 0.75
-                    else (
-                        "MODERATE"
-                        if (t_data["correct"] / max(1, t_data["total"])) >= 0.50
-                        else "WEAK_REVISION_REQUIRED"
-                    ),
+                    mastery_percentage=acc_pct,
+                    strength_status=get_7tier_status(acc_pct),
                 )
                 session.add(m_obj)
             else:
@@ -372,15 +382,7 @@ async def compile_comprehensive_psychometric_report(
                 m_obj.mastery_percentage = round(
                     (m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100, 1
                 )
-                m_obj.strength_status = (
-                    "STRONG"
-                    if m_obj.mastery_percentage >= 75.0
-                    else (
-                        "MODERATE"
-                        if m_obj.mastery_percentage >= 50.0
-                        else "WEAK_REVISION_REQUIRED"
-                    )
-                )
+                m_obj.strength_status = get_7tier_status(m_obj.mastery_percentage)
                 m_obj.updated_at = datetime.now(timezone.utc)
                 session.add(m_obj)
 

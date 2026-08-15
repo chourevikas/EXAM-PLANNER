@@ -44,6 +44,15 @@ class BaseStorageProvider(ABC):
         """Asynchronously downloads and parses a JSON file from storage."""
         pass
 
+    @abstractmethod
+    async def generate_presigned_url(
+        self, relative_path: str, expiration_seconds: int = 3600
+    ) -> str:
+        """Asynchronously generates a secure presigned URL for the storage asset."""
+        pass
+
+
+
 
 
 # Alias for backward compatibility

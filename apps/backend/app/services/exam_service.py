@@ -145,8 +145,11 @@ class ExamService:
             "execution_engine": engine_name,
         }
 
-    async def list_exams(self, status: Optional[str] = None) -> List[Exam]:
-        return await self.repo.list_all(status=status)
+    async def list_exams(
+        self, status: Optional[str] = None, is_active: Optional[bool] = None
+    ) -> List[Exam]:
+        return await self.repo.list_all(status=status, is_active=is_active)
+
 
     async def get_exam_detail(self, exam_id: uuid.UUID) -> Exam:
         exam = await self.repo.get_by_id(exam_id)

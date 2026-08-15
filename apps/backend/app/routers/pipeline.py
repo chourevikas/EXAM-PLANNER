@@ -2,7 +2,16 @@ import uuid
 import asyncio
 from pathlib import Path
 from typing import Optional, Any
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    UploadFile,
+    File,
+    Form,
+    HTTPException,
+    BackgroundTasks,
+    status,
+)
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlmodel import select, func
@@ -16,14 +25,28 @@ from app.storage.factory import get_storage_provider
 from app.utils.file_utils import save_upload_file_temp
 from app.core.cleanup import cleanup_file
 from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
-from app.tasks.answer_key_tasks import async_process_answer_key_pdf, process_answer_key_pdf_task
-from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
+from app.tasks.answer_key_tasks import (
+    async_process_answer_key_pdf,
+    process_answer_key_pdf_task,
+)
+from app.tasks.explanation_tasks import (
+    async_process_exam_explanations,
+    process_exam_explanations_task,
+)
 from app.tasks.celery_app import has_active_celery_workers
-from app.config.filename_parser import parse_question_paper_filename, parse_answer_key_filename
+from app.config.filename_parser import (
+    parse_question_paper_filename,
+    parse_answer_key_filename,
+)
+from app.core.deps import require_roles
+from app.db.models.user import User, UserRole
 from app.config.logger import setup_logger
+
 
 logger = setup_logger("PipelineRouter")
 router = APIRouter(prefix="/pipeline", tags=["Pipeline Management"])
+
+
 def _clean_uuid_str(val: Any) -> str:
     return str(val).strip().strip('"').strip("'").strip()
 
@@ -40,7 +63,7 @@ def parse_exam_id_or_generate(raw_id: Optional[str]) -> uuid.UUID:
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b')."
+            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b').",
         )
 
 
@@ -51,36 +74,45 @@ def parse_required_exam_id(raw_id: Any) -> uuid.UUID:
     if not raw_id:
         raise HTTPException(
             status_code=400,
-            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID."
+            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID.",
         )
     cleaned = _clean_uuid_str(raw_id)
     if not cleaned:
         raise HTTPException(
             status_code=400,
-            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID."
+            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID.",
         )
     try:
         return uuid.UUID(cleaned)
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b')."
+            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b').",
         )
 
 
 class CheckDuplicateExamRequest(BaseModel):
-    exam_name: Optional[str] = Field(default=None, description="Exam name e.g. UPSC_CSE")
+    exam_name: Optional[str] = Field(
+        default=None, description="Exam name e.g. UPSC_CSE"
+    )
     year: Optional[int] = Field(default=None, description="Source year e.g. 2024")
     stage: Optional[str] = Field(default=None, description="Stage e.g. PRELIMS")
-    subject_code: Optional[str] = Field(default=None, description="Subject code e.g. GS1")
-    paper_set_code: Optional[str] = Field(default="SET_A", description="Paper set code e.g. SET_A")
-    filename: Optional[str] = Field(default=None, description="Optional PDF filename to parse keys")
+    subject_code: Optional[str] = Field(
+        default=None, description="Subject code e.g. GS1"
+    )
+    paper_set_code: Optional[str] = Field(
+        default="SET_A", description="Paper set code e.g. SET_A"
+    )
+    filename: Optional[str] = Field(
+        default=None, description="Optional PDF filename to parse keys"
+    )
 
 
 @router.post("/check-duplicate")
 async def check_duplicate_exam(
     req: CheckDuplicateExamRequest,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Checks if an exam paper matching all 5 keys (case-insensitive) already exists in DB."""
     parsed_meta = {}
@@ -93,7 +125,9 @@ async def check_duplicate_exam(
             except Exception:
                 pass
 
-    exam_name = req.exam_name or parsed_meta.get("exam_name") or parsed_meta.get("exam_code")
+    exam_name = (
+        req.exam_name or parsed_meta.get("exam_name") or parsed_meta.get("exam_code")
+    )
     year = req.year or parsed_meta.get("year")
     stage = req.stage or parsed_meta.get("stage")
     subject_code = req.subject_code or parsed_meta.get("subject_code")
@@ -107,9 +141,13 @@ async def check_duplicate_exam(
     if stage:
         stmt = stmt.where(func.lower(Exam.stage) == func.lower(str(stage).strip()))
     if subject_code:
-        stmt = stmt.where(func.lower(Exam.subject_code) == func.lower(str(subject_code).strip()))
+        stmt = stmt.where(
+            func.lower(Exam.subject_code) == func.lower(str(subject_code).strip())
+        )
     if paper_set_code:
-        stmt = stmt.where(func.lower(Exam.paper_set_code) == func.lower(str(paper_set_code).strip()))
+        stmt = stmt.where(
+            func.lower(Exam.paper_set_code) == func.lower(str(paper_set_code).strip())
+        )
 
     res = await db.exec(stmt)
     existing_exam = res.first()
@@ -145,6 +183,7 @@ async def upload_question_paper(
     set_code: Optional[str] = Form(default="SET_A"),
     conflict_resolution: str = Form(default="CHECK"),
     db: AsyncSession = Depends(get_async_session),
+    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Uploads a Question Paper PDF and initiates Pipeline 1 (Question Extraction).
@@ -153,7 +192,8 @@ async def upload_question_paper(
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            status_code=400, detail="Only PDF files are supported for Question Paper processing."
+            status_code=400,
+            detail="Only PDF files are supported for Question Paper processing.",
         )
 
     try:
@@ -174,8 +214,8 @@ async def upload_question_paper(
     clean_set = meta["set_code"]
 
     stmt = select(Exam).where(
-        (func.lower(Exam.code) == canonical_exam_code.lower()) |
-        (func.lower(Exam.name) == canonical_exam_code.lower())
+        (func.lower(Exam.code) == canonical_exam_code.lower())
+        | (func.lower(Exam.name) == canonical_exam_code.lower())
     )
     res = await db.exec(stmt)
     exam = res.first()
@@ -184,7 +224,9 @@ async def upload_question_paper(
         key = f"qp_{exam.id}"
         if task_registry.is_running(key):
             if conflict_resolution.upper() == "RESTART":
-                logger.info(f"User confirmed RESTART for running question paper task on exam '{canonical_exam_code}'. Cancelling active task...")
+                logger.info(
+                    f"User confirmed RESTART for running question paper task on exam '{canonical_exam_code}'. Cancelling active task..."
+                )
                 task_registry.cancel_task(key)
                 pm_service = PipelineManagementService(db)
                 await pm_service.update_pipeline_status(
@@ -222,7 +264,9 @@ async def upload_question_paper(
     temp_path = await save_upload_file_temp(file, temp_dir)
 
     storage = get_storage_provider()
-    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    rel_storage_path = (
+        f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    )
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     cleanup_file(temp_path)
@@ -253,7 +297,9 @@ async def upload_question_paper(
             await db.refresh(exam)
         except Exception:
             await db.rollback()
-            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            retry_stmt = select(Exam).where(
+                func.lower(Exam.code) == canonical_exam_code.lower()
+            )
             exam = (await db.exec(retry_stmt)).first()
             if not exam:
                 raise
@@ -279,7 +325,9 @@ async def upload_question_paper(
 
     target_exam_id = exam.id
     task_id = f"p1_{uuid.uuid4().hex[:8]}"
-    logger.info(f"Received Question Paper upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Set: '{clean_set}', Exam ID: '{target_exam_id}'")
+    logger.info(
+        f"Received Question Paper upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Set: '{clean_set}', Exam ID: '{target_exam_id}'"
+    )
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
@@ -292,7 +340,9 @@ async def upload_question_paper(
 
     key = f"qp_{target_exam_id}"
     if has_active_celery_workers():
-        celery_res = process_exam_pdf_task.delay(str(target_exam_id), persistent_path, task_id=task_id)
+        celery_res = process_exam_pdf_task.delay(
+            str(target_exam_id), persistent_path, task_id=task_id
+        )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
@@ -329,16 +379,29 @@ async def upload_answer_key(
     year: int = Form(...),
     conflict_resolution: str = Form(default="CHECK"),
     db: AsyncSession = Depends(get_async_session),
+    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Uploads an Answer Key PDF and initiates Pipeline 2.
     Accepts set_code (defaulting to 'SET_A', or e.g. 'SET_B', 'SET_C', 'SET_D') and year.
     """
     ALLOWED_SET_TOKENS = {
-        "SET_A", "SET_B", "SET_C", "SET_D",
-        "SET_1", "SET_2", "SET_3", "SET_4",
-        "A", "B", "C", "D",
-        "1", "2", "3", "4",
+        "SET_A",
+        "SET_B",
+        "SET_C",
+        "SET_D",
+        "SET_1",
+        "SET_2",
+        "SET_3",
+        "SET_4",
+        "A",
+        "B",
+        "C",
+        "D",
+        "1",
+        "2",
+        "3",
+        "4",
     }
     raw_set = str(set_code).strip().upper() if set_code else "SET_A"
     if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
@@ -350,7 +413,10 @@ async def upload_answer_key(
     clean_set = raw_set if raw_set.startswith("SET_") else f"SET_{raw_set}"
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are supported for Answer Key processing.",
+        )
 
     try:
         meta = parse_answer_key_filename(
@@ -368,8 +434,8 @@ async def upload_answer_key(
     canonical_exam_code = meta["canonical_code"]
 
     stmt = select(Exam).where(
-        (func.lower(Exam.code) == canonical_exam_code.lower()) |
-        (func.lower(Exam.name) == canonical_exam_code.lower())
+        (func.lower(Exam.code) == canonical_exam_code.lower())
+        | (func.lower(Exam.name) == canonical_exam_code.lower())
     )
     res = await db.exec(stmt)
     exam = res.first()
@@ -378,7 +444,9 @@ async def upload_answer_key(
         key = f"ak_{exam.id}"
         if task_registry.is_running(key):
             if conflict_resolution.upper() == "RESTART":
-                logger.info(f"User confirmed RESTART for running answer key task on exam '{canonical_exam_code}'. Cancelling active task...")
+                logger.info(
+                    f"User confirmed RESTART for running answer key task on exam '{canonical_exam_code}'. Cancelling active task..."
+                )
                 task_registry.cancel_task(key)
                 pm_service = PipelineManagementService(db)
                 await pm_service.update_pipeline_status(
@@ -407,7 +475,9 @@ async def upload_answer_key(
     temp_path = await save_upload_file_temp(file, temp_dir)
 
     storage = get_storage_provider()
-    rel_storage_path = f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    rel_storage_path = (
+        f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    )
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     cleanup_file(temp_path)
@@ -439,7 +509,9 @@ async def upload_answer_key(
             await db.refresh(exam)
         except Exception:
             await db.rollback()
-            retry_stmt = select(Exam).where(func.lower(Exam.code) == canonical_exam_code.lower())
+            retry_stmt = select(Exam).where(
+                func.lower(Exam.code) == canonical_exam_code.lower()
+            )
             exam = (await db.exec(retry_stmt)).first()
             if not exam:
                 raise
@@ -479,7 +551,10 @@ async def upload_answer_key(
     key = f"ak_{target_exam_id}"
     if has_active_celery_workers():
         celery_res = process_answer_key_pdf_task.delay(
-            str(target_exam_id), persistent_path, target_set_code=target_set_code, task_id=task_id
+            str(target_exam_id),
+            persistent_path,
+            target_set_code=target_set_code,
+            task_id=task_id,
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
@@ -508,6 +583,7 @@ async def upload_answer_key(
 async def get_exam_questions_extraction_status(
     exam_identifier: str,
     db: AsyncSession = Depends(get_async_session),
+    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Fetches real-time status of extracted questions, missing questions, and review statuses
@@ -523,8 +599,8 @@ async def get_exam_questions_extraction_status(
         target_exam = await db.get(Exam, exam_uuid)
     else:
         stmt = select(Exam).where(
-            (func.lower(Exam.code) == exam_identifier.lower()) |
-            (func.lower(Exam.name) == exam_identifier.lower())
+            (func.lower(Exam.code) == exam_identifier.lower())
+            | (func.lower(Exam.name) == exam_identifier.lower())
         )
         res = await db.exec(stmt)
         target_exam = res.first()
@@ -532,10 +608,16 @@ async def get_exam_questions_extraction_status(
     if not target_exam:
         raise HTTPException(
             status_code=404,
-            detail=f"Exam with identifier '{exam_identifier}' not found in database."
+            detail=f"Exam with identifier '{exam_identifier}' not found in database.",
         )
 
-    from app.db.models import Question, QuestionExplanation, QuestionOption, QuestionStatus
+    from app.db.models import (
+        Question,
+        QuestionExplanation,
+        QuestionOption,
+        QuestionStatus,
+    )
+
     q_stmt = (
         select(Question)
         .where(Question.exam_id == target_exam.id)
@@ -556,7 +638,9 @@ async def get_exam_questions_extraction_status(
         elif q.status == QuestionStatus.PUBLISHED:
             published_count += 1
 
-        exp_stmt = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+        exp_stmt = select(QuestionExplanation).where(
+            QuestionExplanation.question_id == q.id
+        )
         exp_res = await db.exec(exp_stmt)
         has_exp = exp_res.first() is not None
 
@@ -564,17 +648,23 @@ async def get_exam_questions_extraction_status(
         opt_res = await db.exec(opt_stmt)
         has_opts = len(opt_res.all()) > 0
 
-        questions_checklist.append({
-            "question_id": str(q.id),
-            "question_number": q.question_number_in_paper,
-            "status": q.status.value if hasattr(q.status, "value") else str(q.status),
-            "is_complete": q.is_complete,
-            "has_options": has_opts,
-            "has_explanation": has_exp,
-        })
+        questions_checklist.append(
+            {
+                "question_id": str(q.id),
+                "question_number": q.question_number_in_paper,
+                "status": q.status.value
+                if hasattr(q.status, "value")
+                else str(q.status),
+                "is_complete": q.is_complete,
+                "has_options": has_opts,
+                "has_explanation": has_exp,
+            }
+        )
 
     tot_expected = target_exam.total_questions or 100
-    missing_numbers = [num for num in range(1, tot_expected + 1) if num not in extracted_numbers]
+    missing_numbers = [
+        num for num in range(1, tot_expected + 1) if num not in extracted_numbers
+    ]
 
     target_exam.extracted_questions_count = len(questions)
     target_exam.missing_questions_count = len(missing_numbers)
@@ -586,7 +676,9 @@ async def get_exam_questions_extraction_status(
         "exam_id": str(target_exam.id),
         "exam_code": target_exam.code,
         "exam_name": target_exam.name,
-        "status": target_exam.status.value if hasattr(target_exam.status, "value") else str(target_exam.status),
+        "status": target_exam.status.value
+        if hasattr(target_exam.status, "value")
+        else str(target_exam.status),
         "is_active": target_exam.is_active,
         "total_questions": tot_expected,
         "extracted_questions_count": len(questions),
@@ -599,11 +691,11 @@ async def get_exam_questions_extraction_status(
     }
 
 
-
 @router.get("/status/{exam_identifier}")
 async def get_exam_pipeline_status(
     exam_identifier: str,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Fetches real-time status of all 3 pipelines using either canonical_exam_code or exam_id UUID."""
     exam_uuid = None
@@ -616,8 +708,8 @@ async def get_exam_pipeline_status(
         target_exam = await db.get(Exam, exam_uuid)
     else:
         stmt = select(Exam).where(
-            (func.lower(Exam.code) == exam_identifier.lower()) |
-            (func.lower(Exam.name) == exam_identifier.lower())
+            (func.lower(Exam.code) == exam_identifier.lower())
+            | (func.lower(Exam.name) == exam_identifier.lower())
         )
         res = await db.exec(stmt)
         target_exam = res.first()
@@ -625,7 +717,7 @@ async def get_exam_pipeline_status(
     if not target_exam:
         raise HTTPException(
             status_code=404,
-            detail=f"Exam with identifier '{exam_identifier}' not found in database."
+            detail=f"Exam with identifier '{exam_identifier}' not found in database.",
         )
 
     pm_service = PipelineManagementService(db)
@@ -638,6 +730,7 @@ async def trigger_explanation_pipeline(
     background_tasks: BackgroundTasks,
     language: str = "ENGLISH",
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Manual endpoint allowing admins to trigger or re-run Pipeline 3 (Explanation & Multi-Concept Indexing)."""
     target_uuid = parse_required_exam_id(exam_id)
@@ -682,6 +775,7 @@ async def trigger_explanation_pipeline(
 async def stop_pipeline_task(
     exam_id: str,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Stops/cancels any running background pipeline task for the given exam_id."""
     target_uuid = parse_required_exam_id(exam_id)
@@ -719,6 +813,7 @@ async def restart_pipeline_task(
     exam_id: str,
     language: str = "ENGLISH",
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Stops any existing task and restarts Pipeline 3 (Explanation & Knowledge Base) from scratch."""
     target_uuid = parse_required_exam_id(exam_id)
@@ -766,6 +861,7 @@ async def retry_pipeline_task(
     exam_id: str,
     language: str = "ENGLISH",
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Retries a stopped or failed pipeline task for the given exam_id."""
     target_uuid = parse_required_exam_id(exam_id)

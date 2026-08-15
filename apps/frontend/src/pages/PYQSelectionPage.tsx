@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
-import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem } from '../services/examService';
+import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
 import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
 
 interface DisplayExam {
@@ -27,13 +27,13 @@ export function PYQSelectionPage() {
       setIsLoading(true);
       try {
         const [liveExams, userAttempts] = await Promise.all([
-          listExams('PUBLISHED'),
+          listExams('PUBLISHED', true),
           listCandidateAttempts(),
         ]);
 
-        // Only display exams that have been Approved & Published by Admin (where S3 test bank JSONs exist)
+        // Only display exams that have been Approved & Published by Admin with is_active = True (where S3 test bank JSONs exist)
         const publishedPyqs = liveExams.filter(
-          (e) => (e.status === 'PUBLISHED' || e.status === 'ExamStatus.PUBLISHED')
+          (e) => e.is_active === true && (e.status === 'PUBLISHED' || e.status === 'ExamStatus.PUBLISHED')
         );
 
         if (publishedPyqs.length > 0) {
@@ -66,7 +66,7 @@ export function PYQSelectionPage() {
               id: e.id,
               code: e.code,
               year: e.source_year || 2025,
-              title: e.name || e.code,
+              title: formatCanonicalExamTitle(e),
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
@@ -84,6 +84,7 @@ export function PYQSelectionPage() {
         setIsLoading(false);
       }
     }
+
 
     fetchLiveExamsAndAttempts();
   }, []);

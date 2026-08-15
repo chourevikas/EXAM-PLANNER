@@ -9,6 +9,7 @@ class SATOIEngine:
                 "satoi_score": 100.0,
                 "fatigue_curve": [],
                 "cognitive_stamina_status": "STABLE_STAMINA",
+                "burnout_risk": "SUPERIOR_ENDURANCE_NO_FATIGUE",
             }
 
         n = len(responses)
@@ -42,11 +43,17 @@ class SATOIEngine:
         )
         drop = max(0.0, q1_acc - q4_acc)
 
-        status = "STABLE_COGNITIVE_STAMINA"
-        if drop > 25.0:
-            status = "CRITICAL_FATIGUE_BURNOUT"
+        # 5-Tier Finer Stamina / Burnout Risk Boundaries
+        if drop > 30.0:
+            status = "CRITICAL_BURNOUT_COLLAPSE"
+        elif drop > 20.0:
+            status = "SIGNIFICANT_STAMINA_DECAY"
         elif drop > 12.0:
-            status = "MODERATE_END_EXAM_FATIGUE"
+            status = "MILD_LATE_SESSION_FATIGUE"
+        elif drop > 5.0:
+            status = "STABLE_COGNITIVE_STAMINA"
+        else:
+            status = "SUPERIOR_ENDURANCE_NO_FATIGUE"
 
         satoi_score = max(0.0, round(100.0 - drop, 1))
 
@@ -54,5 +61,6 @@ class SATOIEngine:
             "satoi_score": satoi_score,
             "accuracy_drop_q1_to_q4_pct": round(drop, 1),
             "cognitive_stamina_status": status,
+            "burnout_risk": status,
             "quartile_fatigue_curve": fatigue_curve,
         }

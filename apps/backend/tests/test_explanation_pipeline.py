@@ -267,9 +267,7 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
             difficulty="Easy",
         )
 
-        with patch("app.pipeline.explanation_graph.ainvoke_explanation_llm", new=AsyncMock(return_value=mock_eng_schema)), \
-             patch("app.pipeline.explanation_graph.ainvoke_translate_explanation_llm", new=AsyncMock(return_value=mock_hin_schema)):
-
+        with patch("app.pipeline.explanation_graph.ainvoke_explanation_llm", new=AsyncMock(return_value=mock_eng_schema)):
             state = {
                 "exam_id": str(exam.id),
                 "question_ids": [str(q1.id)],

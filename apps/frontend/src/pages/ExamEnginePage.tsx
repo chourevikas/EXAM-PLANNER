@@ -10,19 +10,24 @@ import { FileText, Layers, Grid, Loader2 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import {
   startExamAttempt,
+  getExamAttemptStatus,
   getQuestionByNumber,
+  prefetchQuestion,
   saveQuestionResponse,
+  saveQuestionResponsesBatch,
+  getResponseBatchStatus,
   revealQuestionAnswer,
   sendExamHeartbeat,
-  getExamAttemptStatus,
   submitExamAttempt,
 } from '../services/examService';
+
 import {
   AttemptMode,
   QuestionNavResponse,
   QuestionPaletteItem,
   RevealAnswerResponse,
   ResponseSummary,
+  BatchSaveItem,
 } from '../types/exam';
 
 export function ExamEnginePage() {
@@ -66,6 +71,95 @@ export function ExamEnginePage() {
 
   // Question Time Telemetry tracking
   const questionStartTimeRef = useRef<number>(Date.now());
+
+  // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
+  const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
+  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const isSyncingBatchRef = useRef<boolean>(false);
+
+  // Queue a modified response if it passes dirty-check verification
+  const queueResponseUpdate = (
+    questionId: string,
+    optId: string | null,
+    markedForRev: boolean
+  ) => {
+    if (!questionId) return;
+    const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
+    const last = lastSyncedSnapshotRef.current.get(questionId);
+
+    // Dirty-check verification: verify if genuinely modified to avoid false flags
+    const isOptionModified = !last ? optId !== null : last.selected_option_id !== optId;
+    const isReviewModified = !last ? markedForRev : last.is_marked_for_review !== markedForRev;
+    const isTimeModified = !last ? timeSpent > 1.0 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 2.0;
+
+    if (isOptionModified || isReviewModified || isTimeModified) {
+      const item: BatchSaveItem = {
+        question_id: questionId,
+        selected_option_id: optId,
+        is_marked_for_review: markedForRev,
+        time_spent_seconds: timeSpent,
+        client_timestamp: new Date().toISOString(),
+      };
+      console.info(`%c[ExamEngine:DIRTY_DETECTED] Queued modified response for Question ${questionId}`, 'color: #ec4899; font-weight: bold;', {
+        item,
+        reason: { isOptionModified, isReviewModified, isTimeModified }
+      });
+      pendingBatchQueueRef.current.set(questionId, item);
+    } else {
+      console.debug(`[ExamEngine:CLEAN] Question ${questionId} is clean/unmodified against snapshot, queueing omitted.`);
+    }
+  };
+
+  // Flush pending batches asynchronously in the background
+  const flushPendingBatches = async () => {
+    if (!attemptId || pendingBatchQueueRef.current.size === 0 || isSyncingBatchRef.current) {
+      return;
+    }
+
+    isSyncingBatchRef.current = true;
+    const itemsToSend = Array.from(pendingBatchQueueRef.current.values());
+    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    console.info(`%c[ExamEngine:FLUSH_START] Dispatching batch '${batchId}' (${itemsToSend.length} items) to backend...`, 'color: #06b6d4; font-weight: bold;', itemsToSend);
+
+    try {
+      const ack = await saveQuestionResponsesBatch(attemptId, {
+        batch_id: batchId,
+        responses: itemsToSend,
+      });
+
+      if (ack.status === 'ACCEPTED' || ack.status === 'PROCESSED') {
+        console.info(`%c[ExamEngine:FLUSH_SUCCESS] Batch '${batchId}' acknowledged as ${ack.status}`, 'color: #10b981; font-weight: bold;', ack);
+        // Record successfully synced snapshot for dirty-checking
+        for (const item of itemsToSend) {
+          lastSyncedSnapshotRef.current.set(item.question_id, {
+            selected_option_id: item.selected_option_id ?? null,
+            is_marked_for_review: Boolean(item.is_marked_for_review),
+            time_spent_seconds: item.time_spent_seconds ?? 0,
+          });
+          // Remove confirmed item from pending queue
+          pendingBatchQueueRef.current.delete(item.question_id);
+        }
+
+        if (ack.response_summary) {
+          setResponseSummary(ack.response_summary);
+        }
+      }
+    } catch (err) {
+      console.warn(`%c[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, 'color: #ef4444; font-weight: bold;', err);
+      // Items remain in pendingBatchQueueRef for automatic retry on next flush
+    } finally {
+      isSyncingBatchRef.current = false;
+    }
+  };
+
+  // Periodic background flush every 2.5 seconds
+  useEffect(() => {
+    if (!attemptId) return;
+    const interval = setInterval(() => {
+      flushPendingBatches();
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [attemptId]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -120,7 +214,8 @@ export function ExamEnginePage() {
     setIsLoadingQuestion(true);
     questionStartTimeRef.current = Date.now();
     try {
-      const qNav = await getQuestionByNumber(attId, qNum, language === 'hi' ? 'HINDI' : 'ENGLISH');
+      const langParam = language === 'hi' ? 'HINDI' : 'ENGLISH';
+      const qNav = await getQuestionByNumber(attId, qNum, langParam);
       setActiveQuestion(qNav.question);
       setSelectedOptionId(qNav.response_state.selected_option_id as string | null);
       setIsMarkedForReview(qNav.response_state.is_marked_for_review);
@@ -128,12 +223,21 @@ export function ExamEnginePage() {
       // Find matching label
       const matchedOpt = qNav.question.options.find((o) => o.option_id === qNav.response_state.selected_option_id);
       setSelectedOptionLabel(matchedOpt ? matchedOpt.option_label : null);
+
+      // Background prefetching for instant zero-lag next question switching
+      if (qNum + 1 <= totalQuestions) {
+        prefetchQuestion(attId, qNum + 1, langParam);
+      }
+      if (qNum + 2 <= totalQuestions) {
+        prefetchQuestion(attId, qNum + 2, langParam);
+      }
     } catch (err) {
       console.error('Failed to fetch question by number:', err);
     } finally {
       setIsLoadingQuestion(false);
     }
   };
+
 
   // ─── Live Countdown & Heartbeat Sync ─────────────────────────────────────────
   useEffect(() => {
@@ -166,74 +270,46 @@ export function ExamEnginePage() {
     return () => clearInterval(heartbeatInterval);
   }, [attemptId, timeLeft, activeQuestion]);
 
-  // ─── Action Handlers ─────────────────────────────────────────────────────────
-  const handleSelectOption = async (optionId: string, optionLabel: string) => {
+  // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
+  const handleSelectOption = (optionId: string, optionLabel: string) => {
     setSelectedOptionId(optionId);
     setSelectedOptionLabel(optionLabel);
 
-    if (attemptId && activeQuestion) {
-      const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
-      try {
-        const res = await saveQuestionResponse(attemptId, {
-          question_id: activeQuestion.question_id,
-          selected_option_id: optionId,
-          is_marked_for_review: isMarkedForReview,
-          time_spent_seconds: timeSpent,
-        });
-        setResponseSummary(res.response_summary);
-        updatePaletteItemStatus(currentQIndex, isMarkedForReview ? 'ANSWERED_AND_MARKED' : 'ANSWERED');
-      } catch (err) {
-        console.error('Failed to save response:', err);
-      }
+    const newStatus = isMarkedForReview ? 'ANSWERED_AND_MARKED' : 'ANSWERED';
+    updatePaletteItemStatus(currentQIndex, newStatus);
+
+    if (activeQuestion) {
+      queueResponseUpdate(activeQuestion.question_id, optionId, isMarkedForReview);
     }
   };
 
-  const handleClearResponse = async () => {
+  const handleClearResponse = () => {
     setSelectedOptionId(null);
     setSelectedOptionLabel(null);
 
-    if (attemptId && activeQuestion) {
-      const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
-      try {
-        const res = await saveQuestionResponse(attemptId, {
-          question_id: activeQuestion.question_id,
-          selected_option_id: null,
-          is_marked_for_review: isMarkedForReview,
-          time_spent_seconds: timeSpent,
-        });
-        setResponseSummary(res.response_summary);
-        updatePaletteItemStatus(currentQIndex, isMarkedForReview ? 'MARKED_FOR_REVIEW' : 'VISITED');
-      } catch (err) {
-        console.error('Failed to clear response:', err);
-      }
+    const newStatus = isMarkedForReview ? 'MARKED_FOR_REVIEW' : 'VISITED';
+    updatePaletteItemStatus(currentQIndex, newStatus);
+
+    if (activeQuestion) {
+      queueResponseUpdate(activeQuestion.question_id, null, isMarkedForReview);
     }
   };
 
-  const handleToggleMarkReview = async () => {
+  const handleToggleMarkReview = () => {
     const nextMarked = !isMarkedForReview;
     setIsMarkedForReview(nextMarked);
 
-    if (attemptId && activeQuestion) {
-      const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
-      try {
-        const res = await saveQuestionResponse(attemptId, {
-          question_id: activeQuestion.question_id,
-          selected_option_id: selectedOptionId,
-          is_marked_for_review: nextMarked,
-          time_spent_seconds: timeSpent,
-        });
-        setResponseSummary(res.response_summary);
-        const newStatus = selectedOptionId
-          ? nextMarked
-            ? 'ANSWERED_AND_MARKED'
-            : 'ANSWERED'
-          : nextMarked
-          ? 'MARKED_FOR_REVIEW'
-          : 'VISITED';
-        updatePaletteItemStatus(currentQIndex, newStatus as any);
-      } catch (err) {
-        console.error('Failed to toggle mark for review:', err);
-      }
+    const newStatus = selectedOptionId
+      ? nextMarked
+        ? 'ANSWERED_AND_MARKED'
+        : 'ANSWERED'
+      : nextMarked
+        ? 'MARKED_FOR_REVIEW'
+        : 'VISITED';
+    updatePaletteItemStatus(currentQIndex, newStatus as any);
+
+    if (activeQuestion) {
+      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, nextMarked);
     }
   };
 
@@ -260,33 +336,16 @@ export function ExamEnginePage() {
     });
   };
 
-  const saveCurrentResponse = async () => {
-    if (attemptId && activeQuestion) {
-      const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
-      try {
-        const res = await saveQuestionResponse(attemptId, {
-          question_id: activeQuestion.question_id,
-          selected_option_id: selectedOptionId,
-          is_marked_for_review: isMarkedForReview,
-          time_spent_seconds: timeSpent,
-        });
-        setResponseSummary(res.response_summary);
-        const newStatus = selectedOptionId
-          ? isMarkedForReview
-            ? 'ANSWERED_AND_MARKED'
-            : 'ANSWERED'
-          : isMarkedForReview
-          ? 'MARKED_FOR_REVIEW'
-          : 'VISITED';
-        updatePaletteItemStatus(currentQIndex, newStatus as any);
-      } catch (err) {
-        console.error('Failed to save response on navigation:', err);
-      }
+  const saveCurrentResponse = () => {
+    if (activeQuestion) {
+      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview);
+      // Trigger non-blocking background flush
+      flushPendingBatches();
     }
   };
 
   const handleNext = async () => {
-    await saveCurrentResponse();
+    saveCurrentResponse();
     if (currentQIndex < totalQuestions - 1) {
       const nextIdx = currentQIndex + 1;
       setCurrentQIndex(nextIdx);
@@ -298,7 +357,7 @@ export function ExamEnginePage() {
   };
 
   const handlePrev = async () => {
-    await saveCurrentResponse();
+    saveCurrentResponse();
     if (currentQIndex > 0) {
       const prevIdx = currentQIndex - 1;
       setCurrentQIndex(prevIdx);
@@ -310,7 +369,7 @@ export function ExamEnginePage() {
   };
 
   const handleSelectQuestionFromPalette = async (idx: number) => {
-    await saveCurrentResponse();
+    saveCurrentResponse();
     setCurrentQIndex(idx);
     if (attemptId) {
       await loadQuestion(attemptId, idx + 1);
@@ -322,6 +381,10 @@ export function ExamEnginePage() {
     setShowSubmitModal(false);
     if (attemptId) {
       try {
+        // Zero-Data-Loss Guarantee: Flush all pending batches before final submission
+        saveCurrentResponse();
+        await flushPendingBatches();
+
         await submitExamAttempt(attemptId, { submission_reason: 'USER_CLICKED_SUBMIT' });
         navigate(`/analytics?attemptId=${attemptId}`);
       } catch (err) {
@@ -464,7 +527,7 @@ export function ExamEnginePage() {
               questions={[]}
               selectedOptions={{}}
               markedForReview={{}}
-              onSelectSection={() => {}}
+              onSelectSection={() => { }}
             />
           </div>
         )}

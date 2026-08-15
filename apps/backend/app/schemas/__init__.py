@@ -11,6 +11,10 @@ from app.schemas.exam_attempt import (
     HeartbeatResponse,
     ExamStatusResponse,
     QuestionNavResponse,
+    BatchSaveItem,
+    BatchSaveResponseRequest,
+    BatchSaveResponseAck,
+    BatchStatusResponse,
 )
 
 __all__ = [
@@ -29,5 +33,9 @@ __all__ = [
     "HeartbeatResponse",
     "ExamStatusResponse",
     "QuestionNavResponse",
+    "BatchSaveItem",
+    "BatchSaveResponseRequest",
+    "BatchSaveResponseAck",
+    "BatchStatusResponse",
 ]
 

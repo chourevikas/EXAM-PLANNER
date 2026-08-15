@@ -2,6 +2,14 @@ import { useState, useRef } from 'react';
 import { StatusMessage } from '../types/exam';
 import { uploadExamPaper, uploadAnswerKey } from '../services/examService';
 
+export interface ConflictModalState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  options: string[];
+  payload?: any;
+}
+
 export function useExamUpload() {
   const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER' | 'ANSWER_KEY'>('QUESTION_PAPER');
   const [examName, setExamName] = useState('upsc');
@@ -13,6 +21,7 @@ export function useExamUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [conflictModal, setConflictModal] = useState<ConflictModalState | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +56,7 @@ export function useExamUpload() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeUpload = async (conflictResolution: string = 'CHECK') => {
     if (!selectedFile) {
       setStatusMessage({ text: 'Please select a PDF file to upload.', isError: true });
       return;
@@ -69,6 +77,7 @@ export function useExamUpload() {
           year,
           set_code: setCode,
           file: selectedFile,
+          conflict_resolution: conflictResolution,
         });
         setStatusMessage({
           text: `Success! Answer key pipeline initiated for ${result.canonical_exam_code || examName} (Target Set: ${result.target_set_code || setCode}).`,
@@ -81,9 +90,10 @@ export function useExamUpload() {
           paperType,
           set_code: setCode,
           file: selectedFile,
+          conflict_resolution: conflictResolution,
         });
         setStatusMessage({
-          text: `Success! Question paper uploaded to S3: ${result.s3_path || result.message || 'File stored successfully.'}`,
+          text: `Success! Question paper extraction started: ${result.message || 'Pipeline 1 initiated.'}`,
           isError: false,
         });
       }
@@ -92,13 +102,36 @@ export function useExamUpload() {
         fileInputRef.current.value = '';
       }
     } catch (err: any) {
-      setStatusMessage({
-        text: err.message || 'Unable to connect to backend server.',
-        isError: true,
-      });
+      if (err.status === 409 && err.payload && err.payload.requires_confirmation) {
+        setConflictModal({
+          isOpen: true,
+          title: 'Active Task Conflict Detected',
+          message: err.payload.message || 'A pipeline task is already active for this exam paper. Please select how you want to proceed:',
+          options: err.payload.options || ['RESTART', 'CANCEL'],
+        });
+      } else {
+        setStatusMessage({
+          text: err.message || 'Unable to connect to backend server.',
+          isError: true,
+        });
+      }
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeUpload('CHECK');
+  };
+
+  const handleConflictResolve = async (chosenOption: string) => {
+    setConflictModal(null);
+    if (chosenOption === 'CANCEL') {
+      setStatusMessage({ text: 'Upload operation cancelled by user.', isError: false });
+      return;
+    }
+    await executeUpload(chosenOption);
   };
 
   return {
@@ -118,10 +151,13 @@ export function useExamUpload() {
     statusMessage,
     isDragOver,
     fileInputRef,
+    conflictModal,
+    setConflictModal,
     handleFileChange,
     handleDragOver,
     handleDragLeave,
     handleDrop,
     handleSubmit,
+    handleConflictResolve,
   };
 }

@@ -5,7 +5,7 @@ class OptionEliminationStrategy:
     @classmethod
     def evaluate_elimination(cls, responses: List[Dict]) -> Dict[str, Any]:
         if not responses:
-            return {"oeei_score": 0.0, "elimination_rating": "NEUTRAL"}
+            return {"oeei_score": 0.0, "elimination_rating": "NEUTRAL", "elimination_efficiency_rating": "NEUTRAL"}
 
         tactical_choices = 0
         blind_mistakes = 0
@@ -19,11 +19,17 @@ class OptionEliminationStrategy:
 
         oeei = tactical_choices / len(responses)
 
-        rating = "EXCELLENT_TACTICAL_ELIMINATION"
-        if oeei < 0.40:
+        # 5-Tier Finer Tactical Elimination Boundaries
+        if oeei >= 0.85:
+            rating = "ELITE_TACTICAL_PRECISION"
+        elif oeei >= 0.70:
+            rating = "HIGH_TACTICAL_PRECISION"
+        elif oeei >= 0.50:
+            rating = "MODERATE_ELIMINATION_DISCIPLINE"
+        elif oeei >= 0.30:
             rating = "VULNERABLE_TO_STATEMENT_TRAPS"
-        elif oeei < 0.70:
-            rating = "MODERATE_ELIMINATION_PRECISION"
+        else:
+            rating = "CRITICAL_DISTRACTOR_SUSCEPTIBILITY"
 
         return {
             "oeei_score": round(oeei, 2),
@@ -32,4 +38,5 @@ class OptionEliminationStrategy:
             ),
             "blind_mistakes_pct": round((blind_mistakes / len(responses)) * 100, 1),
             "elimination_rating": rating,
+            "elimination_efficiency_rating": rating,
         }

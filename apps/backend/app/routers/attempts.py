@@ -20,6 +20,9 @@ from app.schemas.exam_attempt import (
     HeartbeatResponse,
     ExamStatusResponse,
     QuestionNavResponse,
+    BatchSaveResponseRequest,
+    BatchSaveResponseAck,
+    BatchStatusResponse,
 )
 
 router = APIRouter(prefix="/attempts", tags=["Student Exam-Taking Sessions"])
@@ -94,6 +97,36 @@ async def save_question_response(
     """
     service = ExamSessionService(session)
     return await service.save_response(attempt_id=attempt_id, user_id=current_user.id, req=req)
+
+
+@router.post("/{attempt_id}/responses/batch", response_model=BatchSaveResponseAck)
+async def save_question_responses_batch(
+    attempt_id: uuid.UUID,
+    req: BatchSaveResponseRequest,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Persists a batch of student question responses with batch ID tracking and zero data loss.
+    """
+    service = ExamSessionService(session)
+    return await service.save_responses_batch(
+        attempt_id=attempt_id, user_id=current_user.id, req=req
+    )
+
+
+@router.get("/{attempt_id}/responses/batch/{batch_id}", response_model=BatchStatusResponse)
+async def get_response_batch_status(
+    attempt_id: uuid.UUID,
+    batch_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Checks the persistence and verification status of a submitted response batch.
+    """
+    service = ExamSessionService(session)
+    return service.get_batch_status(batch_id=batch_id)
 
 
 @router.post("/{attempt_id}/reveal/{question_id}", response_model=RevealAnswerResponse)

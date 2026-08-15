@@ -20,14 +20,14 @@ class TestPsychometricEngine(unittest.TestCase):
         self.assertEqual(ClosenessEvaluator.classify_option(1.0), "Correct Response")
         self.assertEqual(
             ClosenessEvaluator.classify_option(0.65),
-            "High-Closeness Distractor (Partial Knowledge)",
+            "High-Closeness Distractor (Near-Correct)",
         )
         self.assertEqual(
             ClosenessEvaluator.classify_option(0.15),
             "Neutral Distractor (Weak Alignment)",
         )
         self.assertEqual(
-            ClosenessEvaluator.classify_option(-0.35),
+            ClosenessEvaluator.classify_option(-0.15),
             "Misleading Distractor (Cognitive Trap)",
         )
 
