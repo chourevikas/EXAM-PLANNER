@@ -7,18 +7,18 @@ from app.config.secret_loaders.base import BaseSecretLoader
 def find_env_files(start_path: Optional[Path] = None) -> List[Path]:
     """
     Recursively searches upwards from start_path (and current working directory)
-    to find all existing .env files up to the root directory.
-    Returned list is ordered from workspace root to closest sub-directory.
+    to find all existing .env files up to the repository/workspace root.
+    Returned list is ordered from workspace root to closest sub-directory (root first, specific overrides later).
     """
-    found: List[Path] = []
+    found_set = set()
 
     # 1. Start from current working directory
     cwd = Path.cwd().resolve()
     curr = cwd
     while curr != curr.parent:
         candidate = curr / ".env"
-        if candidate.is_file() and candidate not in found:
-            found.append(candidate)
+        if candidate.is_file():
+            found_set.add(candidate)
         curr = curr.parent
 
     # 2. Trace upwards from start_path if provided
@@ -26,13 +26,13 @@ def find_env_files(start_path: Optional[Path] = None) -> List[Path]:
         curr = start_path.resolve()
         while curr != curr.parent:
             candidate = curr / ".env"
-            if candidate.is_file() and candidate not in found:
-                found.append(candidate)
+            if candidate.is_file():
+                found_set.add(candidate)
             curr = curr.parent
 
-    # Reverse so root .env is loaded first, allowing closer sub-directory .env to override
-    found.reverse()
-    return found
+    # Sort by path depth (fewer parts = higher up = root loaded first, sub-directory overrides later)
+    return sorted(list(found_set), key=lambda p: len(p.parts))
+
 
 
 class EnvSecretLoader(BaseSecretLoader):
