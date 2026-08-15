@@ -248,7 +248,6 @@ class AnalyticsService:
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
 
-        from app.db.models.exam import AttemptStatus
         is_evaluated = attempt.status == AttemptStatus.EVALUATED
         has_report_json = bool(attempt.report_metadata_json)
         
