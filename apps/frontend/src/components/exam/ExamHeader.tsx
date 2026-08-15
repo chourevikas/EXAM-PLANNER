@@ -6,6 +6,7 @@ interface ExamHeaderProps {
   paperSubtitle: string;
   timeLeft: number;
   language: 'en' | 'hi';
+  isSubmitting?: boolean;
   onLanguageChange: (lang: 'en' | 'hi') => void;
   onSubmitClick: () => void;
 }
@@ -15,6 +16,7 @@ export function ExamHeader({
   paperSubtitle,
   timeLeft,
   language,
+  isSubmitting = false,
   onLanguageChange,
   onSubmitClick,
 }: ExamHeaderProps) {
@@ -169,6 +171,7 @@ export function ExamHeader({
         {/* Submit Test Button */}
         <button
           onClick={onSubmitClick}
+          disabled={isSubmitting}
           style={{
             padding: '8px 18px',
             borderRadius: 10,
@@ -177,12 +180,13 @@ export function ExamHeader({
             color: '#ffffff',
             fontSize: 13,
             fontWeight: 700,
-            cursor: 'pointer',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.6 : 1,
             boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
             transition: 'transform 0.2s'
           }}
         >
-          Submit Test
+          {isSubmitting ? 'Submitting...' : 'Submit Test'}
         </button>
       </div>
     </header>

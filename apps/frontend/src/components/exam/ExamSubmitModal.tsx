@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award } from 'lucide-react';
+import { Award, Loader2 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 
 interface ExamSubmitModalProps {
@@ -7,6 +7,7 @@ interface ExamSubmitModalProps {
   answeredCount: number;
   markedCount: number;
   unattemptedCount: number;
+  isSubmitting?: boolean;
   onResume: () => void;
   onConfirmSubmit: () => void;
 }
@@ -16,6 +17,7 @@ export function ExamSubmitModal({
   answeredCount,
   markedCount,
   unattemptedCount,
+  isSubmitting = false,
   onResume,
   onConfirmSubmit,
 }: ExamSubmitModalProps) {
@@ -104,22 +106,25 @@ export function ExamSubmitModal({
         <div style={{ display: 'flex', gap: 12 }}>
           <button
             onClick={onResume}
+            disabled={isSubmitting}
             style={{
               flex: 1,
               padding: 12,
               borderRadius: 10,
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
-              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f8fafc',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'}`,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
               color: isDark ? '#ffffff' : '#0f172a',
               fontSize: 14,
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.5 : 1,
             }}
           >
             Resume Test
           </button>
           <button
             onClick={onConfirmSubmit}
+            disabled={isSubmitting}
             style={{
               flex: 1,
               padding: 12,
@@ -129,10 +134,22 @@ export function ExamSubmitModal({
               color: '#ffffff',
               fontSize: 14,
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            Confirm Submit
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <span>Confirm Submit</span>
+            )}
           </button>
         </div>
       </div>
