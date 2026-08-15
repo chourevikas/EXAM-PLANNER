@@ -98,13 +98,21 @@ export interface OptionOut {
   option_id: string;
   option_label: string;
   text: string;
+  textHindi?: string;
+  text_hindi?: string;
   display_order?: number;
+  translations?: Record<string, string | { option_text?: string }>;
 }
 
 export interface QuestionOut {
   question_id: string;
   question_number: number;
   text: string;
+  textHindi?: string;
+  text_hindi?: string;
+  question_text_hi?: string;
+  question_text_hindi?: string;
+  translations?: Record<string, string | { question_text?: string; parent_context_override?: string }>;
   options: OptionOut[];
   subject?: string;
   topic?: string;
@@ -117,6 +125,9 @@ export interface QuestionOut {
   has_image?: boolean;
   assets?: Record<string, any>[];
   passage_text?: string | null;
+  passage_text_hindi?: string | null;
+  passage_text_hi?: string | null;
+  passage_translations?: Record<string, string>;
 }
 
 export interface NavigationMeta {
@@ -451,5 +462,17 @@ export interface UserProgressionReportData {
   taxonomy_promotions?: any;
   spaced_repetition_schedule?: any;
 }
+
+export interface AttemptEvaluationStatus {
+  attempt_id: string;
+  status: string;
+  is_ready: boolean;
+  progress_percentage: number;
+  message: string;
+  submitted_at?: string | null;
+  raw_score?: number;
+  total_questions?: number;
+}
+
 
 

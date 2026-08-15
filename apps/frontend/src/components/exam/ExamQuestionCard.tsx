@@ -1,4 +1,6 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Bookmark, Eye, CheckCircle2, XCircle, Lightbulb } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { OptionOut, QuestionOut, RevealAnswerResponse } from '../../types/exam';
@@ -11,8 +13,21 @@ interface ExamQuestionCardProps {
     difficulty?: string;
     text: string;
     textHindi?: string;
+    text_hindi?: string;
+    question_text_hi?: string;
+    question_text_hindi?: string;
+    translations?: Record<string, any>;
     passage_text?: string | null;
-    options: { label: string; text: string; textHindi?: string; option_id?: string }[];
+    passage_text_hindi?: string | null;
+    passage_translations?: Record<string, string>;
+    options: {
+      label: string;
+      text: string;
+      textHindi?: string;
+      text_hindi?: string;
+      option_id?: string;
+      translations?: Record<string, any>;
+    }[];
   };
   questionIndex: number;
   totalQuestions: number;
@@ -26,6 +41,55 @@ interface ExamQuestionCardProps {
   onSelectOption: (optionId: string, optionLabel: string) => void;
   onToggleBookmark: () => void;
   onRevealAnswer?: () => void;
+}
+
+// ─── Multilingual Content Extraction Helpers ─────────────────────────────────
+
+function getQuestionText(q: any, lang: 'en' | 'hi'): string {
+  if (lang === 'hi') {
+    if (q.textHindi) return q.textHindi;
+    if (q.text_hindi) return q.text_hindi;
+    if (q.question_text_hindi) return q.question_text_hindi;
+    if (q.question_text_hi) return q.question_text_hi;
+    if (q.translations) {
+      if (typeof q.translations.HINDI === 'string') return q.translations.HINDI;
+      if (q.translations.HINDI?.question_text) return q.translations.HINDI.question_text;
+      if (typeof q.translations.HI === 'string') return q.translations.HI;
+      if (q.translations.HI?.question_text) return q.translations.HI.question_text;
+      if (typeof q.translations.hi === 'string') return q.translations.hi;
+      if (q.translations.hi?.question_text) return q.translations.hi.question_text;
+    }
+  }
+  return q.text || q.question_text || (typeof q.translations?.ENGLISH === 'string' ? q.translations.ENGLISH : q.translations?.ENGLISH?.question_text) || '';
+}
+
+function getPassageText(q: any, lang: 'en' | 'hi'): string | null {
+  if (lang === 'hi') {
+    if (q.passage_text_hindi) return q.passage_text_hindi;
+    if (q.passage_text_hi) return q.passage_text_hi;
+    if (q.passage_translations) {
+      if (typeof q.passage_translations.HINDI === 'string') return q.passage_translations.HINDI;
+      if (typeof q.passage_translations.HI === 'string') return q.passage_translations.HI;
+      if (typeof q.passage_translations.hi === 'string') return q.passage_translations.hi;
+    }
+  }
+  return q.passage_text || q.passage_translations?.ENGLISH || q.passage_translations?.EN || null;
+}
+
+function getOptionText(opt: any, lang: 'en' | 'hi'): string {
+  if (lang === 'hi') {
+    if (opt.textHindi) return opt.textHindi;
+    if (opt.text_hindi) return opt.text_hindi;
+    if (opt.translations) {
+      if (typeof opt.translations.HINDI === 'string') return opt.translations.HINDI;
+      if (opt.translations.HINDI?.option_text) return opt.translations.HINDI.option_text;
+      if (typeof opt.translations.HI === 'string') return opt.translations.HI;
+      if (opt.translations.HI?.option_text) return opt.translations.HI.option_text;
+      if (typeof opt.translations.hi === 'string') return opt.translations.hi;
+      if (opt.translations.hi?.option_text) return opt.translations.hi.option_text;
+    }
+  }
+  return opt.text || opt.option_text || (typeof opt.translations?.ENGLISH === 'string' ? opt.translations.ENGLISH : opt.translations?.ENGLISH?.option_text) || '';
 }
 
 export function ExamQuestionCard({
@@ -49,12 +113,87 @@ export function ExamQuestionCard({
   const sectionLabel = ('section_code' in question ? question.section_code : (question as any).sectionName) || 'General';
   const difficultyLabel = question.difficulty || 'MEDIUM';
 
-  const options: Array<{ id: string; label: string; text: string; textHindi?: string }> = question.options.map((opt: any) => ({
+  const passageContent = getPassageText(question, language);
+  const questionContent = getQuestionText(question, language);
+
+  const options = question.options.map((opt: any) => ({
     id: opt.option_id || opt.id || opt.label,
     label: opt.option_label || opt.label,
-    text: opt.text,
-    textHindi: opt.textHindi,
+    text: getOptionText(opt, language),
   }));
+
+  // Compact markdown components for option cards so block margins don't break flex alignment
+  const optionMarkdownComponents: any = {
+    p: ({ node, ...props }: any) => <span style={{ display: 'inline', margin: 0 }} {...props} />,
+    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
+    code: ({ node, ...props }: any) => (
+      <code
+        style={{
+          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+          padding: '1px 5px',
+          borderRadius: 4,
+          fontFamily: 'monospace',
+          fontSize: '0.9em',
+        }}
+        {...props}
+      />
+    ),
+  };
+
+  const questionMarkdownComponents: any = {
+    p: ({ node, ...props }: any) => <p style={{ margin: '6px 0', lineHeight: 1.65 }} {...props} />,
+    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
+    table: ({ node, ...props }: any) => (
+      <div style={{ overflowX: 'auto', margin: '12px 0' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 14,
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+            borderRadius: 8,
+          }}
+          {...props}
+        />
+      </div>
+    ),
+    th: ({ node, ...props }: any) => (
+      <th
+        style={{
+          padding: '8px 12px',
+          fontWeight: 700,
+          textAlign: 'left',
+          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+          borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
+        }}
+        {...props}
+      />
+    ),
+    td: ({ node, ...props }: any) => (
+      <td
+        style={{
+          padding: '8px 12px',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+        }}
+        {...props}
+      />
+    ),
+    code: ({ node, ...props }: any) => (
+      <code
+        style={{
+          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+          padding: '2px 6px',
+          borderRadius: 4,
+          fontFamily: 'monospace',
+          fontSize: '0.9em',
+        }}
+        {...props}
+      />
+    ),
+    ul: ({ node, ...props }: any) => <ul style={{ paddingLeft: 22, margin: '8px 0' }} {...props} />,
+    ol: ({ node, ...props }: any) => <ol style={{ paddingLeft: 22, margin: '8px 0' }} {...props} />,
+    li: ({ node, ...props }: any) => <li style={{ margin: '4px 0' }} {...props} />,
+  };
 
   return (
     <main
@@ -172,7 +311,7 @@ export function ExamQuestionCard({
         </div>
 
         {/* Passage Text (If Reading Comprehension / Passage Item) */}
-        {question.passage_text && (
+        {passageContent && (
           <div
             style={{
               backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : '#f1f5f9',
@@ -184,14 +323,16 @@ export function ExamQuestionCard({
               color: isDark ? '#cbd5e1' : '#334155',
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#2563eb', marginBottom: 6 }}>
-              Reading Passage
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#2563eb', marginBottom: 8 }}>
+              {language === 'hi' ? 'गद्यांश / संदर्भ' : 'Reading Passage / Context'}
             </div>
-            {question.passage_text}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={questionMarkdownComponents}>
+              {passageContent}
+            </ReactMarkdown>
           </div>
         )}
 
-        {/* Question Text Box */}
+        {/* Question Text Box with Markdown */}
         <div
           style={{
             backgroundColor: isDark ? '#131f37' : '#ffffff',
@@ -203,13 +344,14 @@ export function ExamQuestionCard({
             fontWeight: 500,
             color: isDark ? '#ffffff' : '#0f172a',
             boxShadow: isDark ? '0 4px 16px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.03)',
-            whiteSpace: 'pre-line',
           }}
         >
-          {language === 'hi' && (question as any).textHindi ? (question as any).textHindi : question.text}
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={questionMarkdownComponents}>
+            {questionContent}
+          </ReactMarkdown>
         </div>
 
-        {/* Options Selection Cards */}
+        {/* Options Selection Cards with Markdown */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {options.map((opt) => {
             const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.label;
@@ -288,9 +430,11 @@ export function ExamQuestionCard({
                   {opt.label}
                 </div>
 
-                {/* Option Text */}
+                {/* Option Text with Markdown support */}
                 <div style={{ fontSize: 15, fontWeight: isSelected ? 600 : 400, flex: 1, lineHeight: 1.5 }}>
-                  {language === 'hi' && opt.textHindi ? opt.textHindi : opt.text}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={optionMarkdownComponents}>
+                    {opt.text}
+                  </ReactMarkdown>
                 </div>
 
                 {revealResult && (
@@ -351,9 +495,11 @@ export function ExamQuestionCard({
                 borderRadius: 12,
               }}
             >
-              {typeof revealResult.explanation === 'string'
-                ? revealResult.explanation
-                : JSON.stringify(revealResult.explanation, null, 2)}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={questionMarkdownComponents}>
+                {typeof revealResult.explanation === 'string'
+                  ? revealResult.explanation
+                  : JSON.stringify(revealResult.explanation, null, 2)}
+              </ReactMarkdown>
             </div>
           </div>
         )}
@@ -361,4 +507,3 @@ export function ExamQuestionCard({
     </main>
   );
 }
-

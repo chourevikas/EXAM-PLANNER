@@ -85,7 +85,7 @@ export function DashboardPage() {
     fetchActivities();
 
     // Fetch user badges
-    getToken().then(token => {
+    getToken().then((token: string | null) => {
       if (token) {
         fetch('http://localhost:8000/api/v1/study-plan/badges', {
           headers: {

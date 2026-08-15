@@ -49,30 +49,65 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
     clean_set = str(paper_set).strip().lower().replace("_", "-")
     s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
     alt_folder = f"exams/{exam.code}/solutions"
+    q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+    alt_q_folder = f"exams/{exam.code}/questions"
     s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
 
-    # Tier 1: Try S3 Solutions Folder (individual Q001.json, Q002.json...) with concurrent downloads
+    # Tier 1: Try S3 Solutions & Questions Folders with concurrent downloads
     try:
         questions_count = exam.total_questions or exam.extracted_questions_count or 100
 
-        async def _fetch_q_sol(q_num: int):
-            for f_prefix in [s_folder, alt_folder]:
-                q_file = f"{f_prefix.rstrip('/')}/Q{q_num:03d}.json"
-                try:
-                    if await storage.exists(q_file):
-                        data = await storage.download_json(q_file)
-                        if data:
-                            return data
-                except Exception:
-                    pass
-            return None
+        async def _fetch_q_and_sol(q_num: int):
+            sol_data = None
+            for s_prefix in [s_folder, alt_folder]:
+                for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"]:
+                    q_file = f"{s_prefix.rstrip('/')}/{pattern}"
+                    try:
+                        if await storage.exists(q_file):
+                            sol_data = await storage.download_json(q_file)
+                            if sol_data:
+                                break
+                    except Exception:
+                        pass
+                if sol_data:
+                    break
 
-        sol_tasks = [_fetch_q_sol(i) for i in range(1, questions_count + 1)]
+            q_data = None
+            for q_prefix in [q_folder, alt_q_folder]:
+                for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
+                    q_file = f"{q_prefix.rstrip('/')}/{pattern}"
+                    try:
+                        if await storage.exists(q_file):
+                            q_data = await storage.download_json(q_file)
+                            if q_data:
+                                break
+                    except Exception:
+                        pass
+                if q_data:
+                    break
+
+            if not sol_data and not q_data:
+                return None
+
+            merged = {}
+            if q_data and isinstance(q_data, dict):
+                merged.update(q_data)
+            if sol_data and isinstance(sol_data, dict):
+                merged.update(sol_data)
+
+            # Ensure canonical keys
+            if q_data and isinstance(q_data, dict):
+                merged["question_text"] = q_data.get("text") or q_data.get("question_text") or merged.get("question_text")
+                merged["options"] = q_data.get("options") or merged.get("options")
+            merged["question_number"] = merged.get("question_number") or q_num
+            return merged
+
+        sol_tasks = [_fetch_q_and_sol(i) for i in range(1, questions_count + 1)]
         sol_results = await asyncio.gather(*sol_tasks, return_exceptions=True)
         sol_list = [r for r in sol_results if isinstance(r, dict) and r]
 
         if sol_list:
-            logger.info(f"Loaded {len(sol_list)} solutions from folder '{s_folder}'.")
+            logger.info(f"Loaded {len(sol_list)} question-solution pairs from S3 folders '{s_folder}' and '{q_folder}'.")
             return {
                 "exam_id": str(exam.id),
                 "exam_code": exam.code,
@@ -194,7 +229,17 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # Transform DB responses to dicts for orchestrator
     responses_payload = []
-    sol_map = {str(item.get("question_id")): item for item in solutions_data.get("questions", [])}
+    sol_by_id = {}
+    sol_by_num = {}
+    for item in solutions_data.get("questions", []):
+        if item.get("question_id"):
+            sol_by_id[str(item["question_id"])] = item
+        if item.get("question_number") is not None:
+            try:
+                sol_by_num[int(item["question_number"])] = item
+            except (ValueError, TypeError):
+                pass
+
     for index, r in enumerate(responses_db, 1):
         q_model = await session.get(Question, r.question_id)
         subtopic_obj = await session.get(Subtopic, q_model.subtopic_id) if q_model and q_model.subtopic_id else None
@@ -202,11 +247,16 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         subject_obj = await session.get(Subject, topic_obj.subject_id) if topic_obj and topic_obj.subject_id else None
         
         opt_model = await session.get(QuestionOption, r.selected_option_id) if r.selected_option_id else None
-        sol_item = sol_map.get(str(r.question_id), {})
+        
+        sol_item = sol_by_id.get(str(r.question_id))
+        if not sol_item and q_model and q_model.question_number_in_paper:
+            sol_item = sol_by_num.get(int(q_model.question_number_in_paper))
+        if not sol_item:
+            sol_item = sol_by_num.get(index, {})
         
         # Question text
         q_trans = (await session.exec(select(QuestionTranslation).where(QuestionTranslation.question_id == r.question_id))).first() if q_model else None
-        q_text = q_trans.question_text if q_trans else (getattr(q_model, "text", None) or sol_item.get("question_text", ""))
+        q_text = (q_trans.question_text if q_trans and q_trans.question_text else None) or getattr(q_model, "text", None) or sol_item.get("question_text") or sol_item.get("text") or ""
 
         # Options list
         options_db = (await session.exec(select(QuestionOption).where(QuestionOption.question_id == r.question_id))).all() if q_model else []
@@ -216,10 +266,10 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             options_payload.append({
                 "option_id": str(o.id),
                 "option_label": o.option_label,
-                "text": o_trans.option_text if o_trans else (getattr(o, "text_content", None) or getattr(o, "text", "")),
+                "text": (o_trans.option_text if o_trans and o_trans.option_text else None) or getattr(o, "text_content", None) or getattr(o, "text", "") or f"Option {o.option_label}",
                 "is_correct": o.is_correct,
             })
-        if not options_payload:
+        if not options_payload or not any(opt.get("text") for opt in options_payload):
             options_payload = sol_item.get("options", [])
         
         # Explanation
@@ -282,7 +332,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     attempt.pacing_status = part_3["pacing"]["pacing_status"]
     session.add(attempt)
 
-    # 6. Update UserSkillProfile
+    # 6. Update UserSkillProfile (only counting actual attempted questions)
+    actual_attempted_count = len([r for r in responses_db if r.selected_option_id is not None])
     if not profile:
         profile = UserSkillProfile(
             user_id=user.id,
@@ -292,7 +343,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             cumulative_icrs=attempt.icrs_score,
             cumulative_satoi=attempt.satoi_score,
             total_tests_given=1,
-            total_questions_answered=len(responses_db),
+            total_questions_answered=actual_attempted_count,
         )
     else:
         n = profile.total_tests_given + 1
@@ -302,7 +353,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         profile.cumulative_icrs = round((profile.cumulative_icrs * profile.total_tests_given + attempt.icrs_score) / n, 1)
         profile.cumulative_satoi = round((profile.cumulative_satoi * profile.total_tests_given + attempt.satoi_score) / n, 1)
         profile.total_tests_given = n
-        profile.total_questions_answered += len(responses_db)
+        profile.total_questions_answered += actual_attempted_count
         profile.updated_at = datetime.now(timezone.utc)
     session.add(profile)
 

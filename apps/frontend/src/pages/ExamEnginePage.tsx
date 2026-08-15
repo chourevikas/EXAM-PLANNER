@@ -12,6 +12,7 @@ import {
   startExamAttempt,
   getExamAttemptStatus,
   getQuestionByNumber,
+  getAllAttemptQuestionsBulk,
   prefetchQuestion,
   saveQuestionResponse,
   saveQuestionResponsesBatch,
@@ -24,6 +25,7 @@ import {
 import {
   AttemptMode,
   QuestionNavResponse,
+  QuestionOut,
   QuestionPaletteItem,
   RevealAnswerResponse,
   ResponseSummary,
@@ -49,6 +51,9 @@ export function ExamEnginePage() {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+
+  // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
+  const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
 
   // Active question & responses
   const [activeQuestion, setActiveQuestion] = useState<QuestionNavResponse['question'] | null>(null);
@@ -183,7 +188,21 @@ export function ExamEnginePage() {
           setPalette(sessionStatus.palette);
           setResponseSummary(sessionStatus.response_summary);
           setCurrentQIndex(sessionStatus.current_question_index);
-          await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
+
+          // 1-Call Bulk Preload for Zero-Lag Question Switching & Language Toggle
+          try {
+            const bulkData = await getAllAttemptQuestionsBulk(sessionStatus.attempt_id);
+            if (bulkData.questions && bulkData.questions.length > 0) {
+              setAllQuestions(bulkData.questions);
+              const curQ = bulkData.questions[sessionStatus.current_question_index] || bulkData.questions[0];
+              setActiveQuestion(curQ);
+            } else {
+              await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
+            }
+          } catch (bulkErr) {
+            console.warn('Bulk preload fallback to single fetch:', bulkErr);
+            await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
+          }
         } else if (examId) {
           // Start new attempt session
           const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM' });
@@ -195,6 +214,16 @@ export function ExamEnginePage() {
           setActiveQuestion(startRes.first_question.question);
           setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
           setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
+
+          // Preload rest in background
+          try {
+            const bulkData = await getAllAttemptQuestionsBulk(startRes.attempt_id);
+            if (bulkData.questions && bulkData.questions.length > 0) {
+              setAllQuestions(bulkData.questions);
+            }
+          } catch (bulkErr) {
+            console.warn('Bulk preload warning:', bulkErr);
+          }
         } else {
           // Fallback demo questions if no examId/attemptId provided in route
           loadFallbackDemoData();
@@ -212,6 +241,25 @@ export function ExamEnginePage() {
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: string, qNum: number) => {
+    if (allQuestions.length >= qNum && allQuestions[qNum - 1]) {
+      // Instant Client-Side Zero-Lag Question Flipping
+      questionStartTimeRef.current = Date.now();
+      const q = allQuestions[qNum - 1];
+      setActiveQuestion(q);
+      const saved = lastSyncedSnapshotRef.current.get(q.question_id) || pendingBatchQueueRef.current.get(q.question_id);
+      if (saved) {
+        setSelectedOptionId(saved.selected_option_id || null);
+        setIsMarkedForReview(Boolean(saved.is_marked_for_review));
+        const matched = q.options?.find((o: any) => o.option_id === saved.selected_option_id);
+        setSelectedOptionLabel(matched ? matched.option_label : null);
+      } else {
+        setSelectedOptionId(null);
+        setSelectedOptionLabel(null);
+        setIsMarkedForReview(false);
+      }
+      return;
+    }
+
     setIsLoadingQuestion(true);
     questionStartTimeRef.current = Date.now();
     try {

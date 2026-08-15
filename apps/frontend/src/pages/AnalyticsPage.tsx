@@ -10,10 +10,12 @@ import {
   getAttemptQuestionReport,
   getAttemptUserProgressionReport,
   listCandidateAttempts,
+  getAttemptEvaluationStatus,
+  pollAttemptReportUntilReady,
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport, QuestionReportItem, UserProgressionReportData } from '../types/exam';
-import { Loader2, FileCheck, ChevronDown } from 'lucide-react';
+import { Loader2, FileCheck, Sparkles, Cpu, Activity } from 'lucide-react';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -26,6 +28,9 @@ export function AnalyticsPage() {
   const [questionReportData, setQuestionReportData] = useState<QuestionReportItem[]>([]);
   const [userProgressionData, setUserProgressionData] = useState<UserProgressionReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evalProgress, setEvalProgress] = useState(25);
+  const [evalMessage, setEvalMessage] = useState('Evaluating responses...');
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,21 +68,55 @@ export function AnalyticsPage() {
     }
   }, [attemptIdParam]);
 
-  // 2. Fetch specific reports whenever selectedAttemptId changes
+  // 2. Fetch specific reports whenever selectedAttemptId changes with Long-Polling
   useEffect(() => {
     if (!selectedAttemptId) return;
     const targetId = selectedAttemptId;
+    let isCancelled = false;
 
-    async function fetchReport() {
+    async function fetchReportWithPolling() {
       setIsLoading(true);
       setError(null);
+
       try {
+        // Step 1: Check status via lightweight polling endpoint
+        const initialStatus = await getAttemptEvaluationStatus(targetId);
+        if (!initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
+          setIsEvaluating(true);
+          setEvalProgress(initialStatus.progress_percentage || 40);
+          setEvalMessage(initialStatus.message || 'Synthesizing 12 psychometric matrices & AI mentor recommendations...');
+
+          // Long-polling loop (every 1.5s)
+          const isReady = await pollAttemptReportUntilReady(
+            targetId,
+            (statusUpdate) => {
+              if (isCancelled) return;
+              setEvalProgress(statusUpdate.progress_percentage || 60);
+              setEvalMessage(statusUpdate.message || 'Computing IRT 3PL ability and FSRS decay curves...');
+            },
+            35,
+            1500
+          );
+
+          if (isCancelled) return;
+          setIsEvaluating(false);
+
+          if (!isReady) {
+            console.warn('[AnalyticsPage:POLL_TIMEOUT] Polling threshold reached, attempting direct fetch fallback.');
+          }
+        } else {
+          setIsEvaluating(false);
+        }
+
+        // Step 2: Fetch all 4 complete reports in parallel once ready
         const [jsonRes, mdRes, qRes, progRes] = await Promise.allSettled([
           getPsychometricReportJson(targetId),
           getPsychometricReportMarkdown(targetId),
           getAttemptQuestionReport(targetId),
           getAttemptUserProgressionReport(targetId),
         ]);
+
+        if (isCancelled) return;
 
         if (jsonRes.status === 'fulfilled') {
           setReport(jsonRes.value);
@@ -97,13 +136,22 @@ export function AnalyticsPage() {
           setUserProgressionData(progRes.value);
         }
       } catch (err: any) {
-        setError(err.message || 'Failed to load psychometric report.');
+        if (!isCancelled) {
+          setError(err.message || 'Failed to load psychometric report.');
+        }
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+          setIsEvaluating(false);
+        }
       }
     }
 
-    fetchReport();
+    fetchReportWithPolling();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [selectedAttemptId]);
 
   const handleSelectAttempt = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -193,18 +241,77 @@ export function AnalyticsPage() {
         )}
       </section>
 
+      {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
+      {isEvaluating && (
+        <div
+          style={{
+            padding: 32,
+            marginBottom: 28,
+            borderRadius: 20,
+            backgroundColor: 'var(--bg-card)',
+            border: '2px solid rgba(37, 99, 235, 0.3)',
+            boxShadow: '0 8px 32px rgba(37, 99, 235, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            alignItems: 'center',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb' }}>
+            <Cpu size={28} className="animate-spin" />
+            <Sparkles size={24} color="#8b5cf6" />
+          </div>
+
+          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+            Psychometric AI Evaluation Engine Active
+          </h2>
+
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 520 }}>
+            {evalMessage}
+          </p>
+
+          {/* Progress Bar */}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 480,
+              height: 8,
+              borderRadius: 8,
+              backgroundColor: 'var(--bg-subtle)',
+              overflow: 'hidden',
+              marginTop: 6,
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${evalProgress}%`,
+                background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
+                borderRadius: 8,
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
+
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+            Polling live diagnostics ({evalProgress}% Complete)
+          </span>
+        </div>
+      )}
+
       {/* Loading Spinner */}
-      {isLoading && (
+      {isLoading && !isEvaluating && (
         <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <Loader2 size={28} className="animate-spin" color="#2563eb" />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Compiling Psychometric Diagnostic Audit...
+            Loading 12 Psychometric Diagnostic Matrices...
           </span>
         </div>
       )}
 
       {/* Error / Processing Banner */}
-      {error && (
+      {error && !isEvaluating && (
         <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#d97706', marginBottom: 24 }}>
           <strong>Notice: </strong> {error}
         </div>
@@ -219,7 +326,7 @@ export function AnalyticsPage() {
           userProgressionData={userProgressionData}
         />
       ) : (
-        !isLoading && (
+        !isLoading && !isEvaluating && (
           <>
             {/* Main Charts Overview */}
             <PerformanceAnalyticsCharts />

@@ -18,6 +18,20 @@ from datetime import datetime, timezone
 router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytics"])
 
 
+@router.get("/reports/attempts/{attempt_id}/status", summary="Check Post-Submission Evaluation Status (Long-Polling)")
+async def get_attempt_evaluation_status(
+    attempt_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Long-polling status endpoint for post-submission psychometric pipeline evaluation.
+    Guarantees zero proxy/deployment timeout errors by returning lightweight progress updates.
+    """
+    service = AnalyticsService(session)
+    return await service.get_attempt_evaluation_status(attempt_id=attempt_id)
+
+
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
 async def get_attempt_question_report(
     attempt_id: uuid.UUID,

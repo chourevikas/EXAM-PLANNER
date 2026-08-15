@@ -10,7 +10,9 @@ from app.formatters.report_json_formatter import format_report_to_json
 from app.formatters.report_yaml_formatter import format_report_to_yaml
 from app.formatters.report_markdown_formatter import format_report_to_markdown
 from app.db.models import (
+    Exam,
     ExamAttempt,
+    AttemptStatus,
     UserSkillProfile,
     UserTaxonomyMastery,
     ExamQuestionReport,
@@ -86,6 +88,32 @@ class AnalyticsService:
             raise HTTPException(status_code=404, detail=str(val_err))
     async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
+        # 1. Try S3 storage report
+        try:
+            attempt = await self.session.get(ExamAttempt, attempt_id)
+            if attempt:
+                exam = await self.session.get(Exam, attempt.exam_id)
+                if exam:
+                    from app.storage.factory import get_storage_provider
+                    storage = get_storage_provider()
+                    q_key = f"exams/{exam.code}/reports/{attempt_id}_question_report.json"
+                    if await storage.exists(q_key):
+                        s3_data = await storage.download_json(q_key)
+                        if s3_data and s3_data.get("questions"):
+                            return s3_data
+        except Exception as err:
+            logger.warning(f"S3 question report retrieval skipped: {err}")
+
+        # 2. Fallback to comprehensive psychometric report compiler
+        rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
+        if rep and rep.get("part_1_per_question_analysis"):
+            return {
+                "attempt_id": str(attempt_id),
+                "total_questions": len(rep.get("part_1_per_question_analysis", [])),
+                "questions": rep.get("part_1_per_question_analysis", []),
+            }
+
+        # 3. Fallback to DB rows
         stmt = (
             select(ExamQuestionReport)
             .where(ExamQuestionReport.attempt_id == attempt_id)
@@ -93,15 +121,6 @@ class AnalyticsService:
         )
         res = await self.session.exec(stmt)
         rows = res.all()
-        if not rows:
-            # Fallback to compile_comprehensive_psychometric_report
-            rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
-            return {
-                "attempt_id": str(attempt_id),
-                "total_questions": len(rep.get("part_1_per_question_analysis", [])),
-                "questions": rep.get("part_1_per_question_analysis", []),
-            }
-
         return {
             "attempt_id": str(attempt_id),
             "total_questions": len(rows),
@@ -222,4 +241,39 @@ class AnalyticsService:
                 for t in tax_rows
             ],
         }
+
+    async def get_attempt_evaluation_status(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+        """Checks if the psychometric post-submission pipeline evaluation has completed for an attempt."""
+        attempt = await self.session.get(ExamAttempt, attempt_id)
+        if not attempt:
+            raise HTTPException(status_code=404, detail="Attempt not found.")
+
+        from app.db.models.exam import AttemptStatus
+        is_evaluated = attempt.status == AttemptStatus.EVALUATED
+        has_report_json = bool(attempt.report_metadata_json)
+        
+        rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+        existing_rep = (await self.session.exec(rep_stmt)).first()
+
+        is_ready = is_evaluated or (has_report_json and existing_rep is not None)
+
+        status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
+        progress = 100 if is_ready else (75 if attempt.status == AttemptStatus.SUBMITTED else 25)
+        message = (
+            "Psychometric and cognitive evaluation completed successfully."
+            if is_ready
+            else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance..."
+        )
+
+        return {
+            "attempt_id": str(attempt_id),
+            "status": status_str,
+            "is_ready": is_ready,
+            "progress_percentage": progress,
+            "message": message,
+            "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
+            "raw_score": attempt.total_score,
+            "total_questions": attempt.total_questions,
+        }
+
 

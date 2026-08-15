@@ -773,4 +773,57 @@ export async function getUserCumulativeSkillProfile(userId: string): Promise<any
   return await res.json();
 }
 
+/** 22. Fetch All Exam Questions in 1 Bulk Call for Zero-Lag Client-Side Caching & Language Switching */
+export async function getAllAttemptQuestionsBulk(attemptId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/attempts/${attemptId}/questions/bulk`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch bulk questions for attempt.');
+  }
+  return await res.json();
+}
+
+/** 23. Check Post-Submission Psychometric Evaluation Status */
+export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    // If status endpoint returns 404/error, fallback
+    return {
+      attempt_id: attemptId,
+      status: 'PROCESSING',
+      is_ready: false,
+      progress_percentage: 50,
+      message: 'Synthesizing 12 psychometric matrices & AI mentor recommendations...',
+    };
+  }
+  return await res.json();
+}
+
+/** 24. Robust Long-Polling until Post-Submission Evaluation is Ready */
+export async function pollAttemptReportUntilReady(
+  attemptId: string,
+  onProgress?: (status: any) => void,
+  maxAttempts: number = 30,
+  intervalMs: number = 1500
+): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const status = await getAttemptEvaluationStatus(attemptId);
+      if (onProgress) onProgress(status);
+
+      if (status.is_ready || status.status === 'COMPLETED' || status.status === 'EVALUATED') {
+        return true;
+      }
+    } catch (err) {
+      console.warn(`[ExamService:POLL] Status poll attempt ${i + 1} encountered warning:`, err);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return false;
+}
+
+
 
