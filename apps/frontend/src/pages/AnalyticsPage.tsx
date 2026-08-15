@@ -4,8 +4,15 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { PerformanceAnalyticsCharts } from '../components/student/PerformanceAnalyticsCharts';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
 import { Ico } from '../components/common/Icons';
-import { getPsychometricReportJson, getPsychometricReportMarkdown, listCandidateAttempts, AttemptHistoryItem } from '../services/examService';
-import { PsychometricReport } from '../types/exam';
+import {
+  getPsychometricReportJson,
+  getPsychometricReportMarkdown,
+  getAttemptQuestionReport,
+  getAttemptUserProgressionReport,
+  listCandidateAttempts,
+  AttemptHistoryItem,
+} from '../services/examService';
+import { PsychometricReport, QuestionReportItem, UserProgressionReportData } from '../types/exam';
 import { Loader2, FileCheck, ChevronDown } from 'lucide-react';
 
 export function AnalyticsPage() {
@@ -16,6 +23,8 @@ export function AnalyticsPage() {
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(attemptIdParam);
   const [report, setReport] = useState<PsychometricReport | null>(null);
   const [markdown, setMarkdown] = useState<string | undefined>(undefined);
+  const [questionReportData, setQuestionReportData] = useState<QuestionReportItem[]>([]);
+  const [userProgressionData, setUserProgressionData] = useState<UserProgressionReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +63,7 @@ export function AnalyticsPage() {
     }
   }, [attemptIdParam]);
 
-  // 2. Fetch specific report whenever selectedAttemptId changes
+  // 2. Fetch specific reports whenever selectedAttemptId changes
   useEffect(() => {
     if (!selectedAttemptId) return;
     const targetId = selectedAttemptId;
@@ -63,9 +72,11 @@ export function AnalyticsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [jsonRes, mdRes] = await Promise.allSettled([
+        const [jsonRes, mdRes, qRes, progRes] = await Promise.allSettled([
           getPsychometricReportJson(targetId),
           getPsychometricReportMarkdown(targetId),
+          getAttemptQuestionReport(targetId),
+          getAttemptUserProgressionReport(targetId),
         ]);
 
         if (jsonRes.status === 'fulfilled') {
@@ -76,6 +87,14 @@ export function AnalyticsPage() {
 
         if (mdRes.status === 'fulfilled') {
           setMarkdown(mdRes.value);
+        }
+
+        if (qRes.status === 'fulfilled' && qRes.value?.questions) {
+          setQuestionReportData(qRes.value.questions);
+        }
+
+        if (progRes.status === 'fulfilled') {
+          setUserProgressionData(progRes.value);
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load psychometric report.');
@@ -193,7 +212,12 @@ export function AnalyticsPage() {
 
       {/* Live Saved Psychometric Report View */}
       {report ? (
-        <PsychometricReportView report={report} markdownContent={markdown} />
+        <PsychometricReportView
+          report={report}
+          markdownContent={markdown}
+          questionReportData={questionReportData}
+          userProgressionData={userProgressionData}
+        />
       ) : (
         !isLoading && (
           <>

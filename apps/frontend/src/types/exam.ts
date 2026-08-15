@@ -383,3 +383,73 @@ export interface PsychometricReport {
   per_question_diagnostic_report: PerQuestionDiagnosticItem[];
 }
 
+export interface QuestionReportExplanation {
+  core_concept?: string;
+  detailed_solution?: string;
+  common_traps?: string[] | string | any;
+  key_takeaways?: string[] | string | any;
+}
+
+export interface QuestionReportItem {
+  question_id: string;
+  question_number: number;
+  question_text?: string;
+  subject_name?: string;
+  topic_name?: string;
+  difficulty?: string;
+  options?: Array<{
+    option_id: string;
+    option_label: string;
+    text: string;
+    is_correct?: boolean;
+  }>;
+  selected_option_id?: string | null;
+  selected_option_label?: string | null;
+  correct_option_id?: string;
+  correct_option_label?: string;
+  is_correct: boolean;
+  final_score: number;
+  time_taken_seconds: number;
+  expected_time_seconds: number;
+  time_window?: string;
+  closeness_score?: number;
+  closeness_classification?: string;
+  blooms_level?: string;
+  gti_item_score?: number;
+  is_option_switched?: boolean;
+  explanation?: QuestionReportExplanation | null;
+}
+
+export interface UserProgressionReportData {
+  attempt_id: string;
+  user_id: string;
+  previous_metrics: {
+    cumulative_icrs: number;
+    cumulative_irt_theta: number;
+    cumulative_gti: number;
+    cumulative_oeei: number;
+    cumulative_satoi: number;
+    total_tests_given: number;
+    total_questions_answered: number;
+  };
+  updated_metrics: {
+    cumulative_icrs: number;
+    cumulative_irt_theta: number;
+    cumulative_gti: number;
+    cumulative_oeei: number;
+    cumulative_satoi: number;
+    total_tests_given: number;
+    total_questions_answered: number;
+  };
+  deltas: {
+    icrs_delta: number;
+    irt_theta_delta: number;
+    gti_delta: number;
+    oeei_delta: number;
+    satoi_delta: number;
+  };
+  taxonomy_promotions?: any;
+  spaced_repetition_schedule?: any;
+}
+
+

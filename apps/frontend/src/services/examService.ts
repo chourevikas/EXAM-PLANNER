@@ -729,3 +729,48 @@ export async function getSolutionArtifact(examId: string, questionNumber: number
   return solData;
 }
 
+/** 18. Fetch Report 1: Question-Level Detailed Diagnostic & Explanations */
+export async function getAttemptQuestionReport(attemptId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/questions`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch question-level diagnostic report.');
+  }
+  return await res.json();
+}
+
+/** 19. Fetch Report 2: Exam-Level 12-Matrix Aggregated Report */
+export async function getAttemptExamReport(attemptId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/exam`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch exam-level 12-matrix report.');
+  }
+  return await res.json();
+}
+
+/** 20. Fetch Report 3: Cumulative User Skill Progression Delta Report */
+export async function getAttemptUserProgressionReport(attemptId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/user-delta`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch user skill progression delta report.');
+  }
+  return await res.json();
+}
+
+/** 21. Fetch User Cumulative Skill Profile (All 12 Matrices Aggregate) */
+export async function getUserCumulativeSkillProfile(userId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/analytics/reports/user/${userId}/skill-profile`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch user cumulative skill profile.');
+  }
+  return await res.json();
+}
+
+
