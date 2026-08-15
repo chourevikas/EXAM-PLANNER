@@ -38,6 +38,20 @@ import {
 import { MarkdownPreviewer } from '../common/MarkdownPreviewer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -76,6 +90,15 @@ export function PsychometricReportView({
     exam_macro_analytics = {},
     per_question_diagnostic_report = [],
   } = report || {};
+
+  const timelineData =
+    report?.exam_timeline ||
+    (report as any)?.metadata?.exam_timeline ||
+    (report as any)?.evolution_graphs?.exam_timeline ||
+    [];
+  const isCumulative =
+    report?.is_cumulative ||
+    report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
 
   const macroAnalytics: Record<string, any> =
     exam_macro_analytics || (report as any)?.part_3_aggregated_user_report || {};
@@ -1194,7 +1217,7 @@ export function PsychometricReportView({
             <div style={{ display: 'flex', gap: 30, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 12, color: '#64748b' }}>Full-Length Mock Tests Completed</div>
-                <div style={{ fontSize: 24, fontWeight: 800 }}>{userProfile.total_tests_given || 1} Tests</div>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{timelineData.length || userProfile.total_tests_given || 1} Tests</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#64748b' }}>Total Item Responses Analyzed</div>
@@ -1213,6 +1236,201 @@ export function PsychometricReportView({
               </div>
             </div>
           </div>
+
+          {/* Multi-Exam Evolution & Progression Visualizers (Cross-Exam Comparison) */}
+          {timelineData && timelineData.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 20 }}>
+                {/* Chart 1: Exam Score & Accuracy Evolution */}
+                <div style={cardStyle}>
+                  <div style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                      📈 Score & Accuracy Progression Across Exams
+                    </h3>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Tracks your net score and precision percentage across each evaluated exam session.
+                    </p>
+                  </div>
+                  <div style={{ height: 260, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <YAxis domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
+                          formatter={(value: any, name: any) => [name === 'total_score' ? `${value} Marks` : `${value}%`, name === 'total_score' ? 'Total Score' : 'Accuracy %']}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="total_score" name="Total Score" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                        <Line type="monotone" dataKey="accuracy_percentage" name="Accuracy %" stroke="#10b981" strokeWidth={3} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 2: Cognitive Readiness (ICRS) & Latent Ability Progression */}
+                <div style={cardStyle}>
+                  <div style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                      🧠 Integrated Cognitive Readiness (ICRS) Evolution
+                    </h3>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Longitudinal readiness metric combining IRT ability, elimination discipline, and pacing.
+                    </p>
+                  </div>
+                  <div style={{ height: 260, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="/100" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
+                          formatter={(value: any, name: any) => [`${value} / 100`, name === 'icrs_score' ? 'ICRS Score' : name]}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line type="monotone" dataKey="icrs_score" name="ICRS Readiness" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="satoi_score" name="SATOI Stamina" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 3: Tactical Elimination (OEEI) vs Guessing Risk (GTI) */}
+                <div style={cardStyle}>
+                  <div style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                      🎯 Tactical Elimination (OEEI) vs Guessing Impulse (GTI)
+                    </h3>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Higher elimination conversion (OEEI) and lower impulse guesswork (GTI) signify elite exam temperament.
+                    </p>
+                  </div>
+                  <div style={{ height: 260, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={timelineData.map((i: any) => ({ ...i, gti_pct: Math.round(i.gti_score * 100), oeei_pct: Math.round(i.oeei_score * 100) }))} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
+                          formatter={(value: any, name: any) => [`${value}%`, name === 'oeei_pct' ? 'Elimination Efficiency' : 'Guessing Impulse']}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Bar dataKey="oeei_pct" name="Elimination Precision (OEEI %)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="gti_pct" name="Guessing Risk (GTI %)" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 4: Latent Knowledge Ability (IRT 3PL Theta) */}
+                <div style={cardStyle}>
+                  <div style={{ marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                      ⚡ IRT Latent Ability (θ) Curve Progression
+                    </h3>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                      Item Response Theory latent skill calibrated across item discrimination (a), difficulty (b), and guessing floor (c).
+                    </p>
+                  </div>
+                  <div style={{ height: 260, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[-1, 3]} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                            borderColor: isDark ? '#334155' : '#cbd5e1',
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
+                          formatter={(value: any) => [`+${Number(value).toFixed(2)} θ`, 'Latent Ability']}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Area type="monotone" dataKey="irt_theta" name="IRT Ability (θ)" stroke="#2563eb" fill="rgba(37,99,235,0.2)" strokeWidth={3} dot={{ r: 5 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Side-by-Side Exam Comparison Matrix Table */}
+              <div style={cardStyle}>
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Award size={20} color="#2563eb" /> Longitudinal Cross-Exam Comparison Matrix
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, textAlign: 'left' }}>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>#</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Exam Paper</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Date</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Score</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Accuracy</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>ICRS</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>IRT θ</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>GTI (Impulse)</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>OEEI (Elimination)</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>SATOI (Stamina)</th>
+                        <th style={{ padding: '10px 12px', color: '#64748b' }}>Pacing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {timelineData.map((item: any, idx: number) => (
+                        <tr
+                          key={item.attempt_id || idx}
+                          style={{
+                            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+                            backgroundColor: idx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                          }}
+                        >
+                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{item.attempt_number || idx + 1}</td>
+                          <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
+                          <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
+                          <td style={{ padding: '10px 12px', fontWeight: 800 }}>
+                            {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#10b981' : item.accuracy_percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
+                            {item.accuracy_percentage}%
+                          </td>
+                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
+                          <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>+{Number(item.irt_theta).toFixed(2)} θ</td>
+                          <td style={{ padding: '10px 12px', color: item.gti_score <= 0.22 ? '#10b981' : '#f59e0b' }}>{(item.gti_score * 100).toFixed(1)}%</td>
+                          <td style={{ padding: '10px 12px', color: item.oeei_score >= 0.70 ? '#10b981' : '#8b5cf6' }}>{(item.oeei_score * 100).toFixed(1)}%</td>
+                          <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
+                              {item.pacing_status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

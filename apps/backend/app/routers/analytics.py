@@ -88,6 +88,38 @@ async def get_user_cumulative_skill_profile(
     return await service.get_user_skill_profile(user_id=user_id)
 
 
+@router.get("/users/{user_id}/aggregate-report", summary="Cumulative Multi-Exam Psychometric Performance Report")
+async def get_user_cumulative_aggregate_report(
+    user_id: uuid.UUID,
+    force_recompute: bool = False,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Synthesizes the complete longitudinal multi-exam performance report for all evaluated exams,
+    including cross-exam comparison trajectories, 12-matrix aggregates, and universal taxonomy mastery.
+    """
+    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative report.")
+    service = AnalyticsService(session)
+    return await service.get_user_cumulative_aggregate_report(user_id=user_id, force_recompute=force_recompute)
+
+
+@router.get("/users/{user_id}/aggregate-report/markdown", summary="Cumulative Multi-Exam Markdown Audit")
+async def get_user_cumulative_aggregate_markdown(
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns the complete cumulative multi-exam psychometric report rendered as a Markdown audit document.
+    """
+    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative audit.")
+    service = AnalyticsService(session)
+    return await service.get_user_cumulative_aggregate_markdown(user_id=user_id)
+
+
 @router.get("/reports/attempts/{attempt_id}/json")
 async def get_attempt_report_json(
     attempt_id: uuid.UUID,

@@ -272,9 +272,54 @@ export interface TaxonomyMasteryItem {
   strength_status: string;
 }
 
+export interface ExamTimelineItem {
+  attempt_number: number;
+  attempt_id: string;
+  exam_id: string;
+  exam_name: string;
+  exam_code: string;
+  date: string;
+  date_formatted: string;
+  total_score: number;
+  max_possible_score: number;
+  accuracy_percentage: number;
+  correct_count: number;
+  incorrect_count: number;
+  unattempted_count: number;
+  total_questions: number;
+  time_taken_seconds: number;
+  icrs_score: number;
+  irt_theta: number;
+  gti_score: number;
+  oeei_score: number;
+  satoi_score: number;
+  pacing_status: string;
+}
+
 export interface PsychometricReport {
+  is_cumulative?: boolean;
+  exam_timeline?: ExamTimelineItem[];
+  evolution_graphs?: {
+    labels: string[];
+    dates: string[];
+    scores: number[];
+    max_scores: number[];
+    accuracies: number[];
+    icrs_scores: number[];
+    irt_thetas: number[];
+    gti_percentages: number[];
+    oeei_percentages: number[];
+    satoi_scores: number[];
+  };
   metadata: {
     report_title: string;
+    report_type?: string;
+    total_exams_evaluated?: number;
+    total_questions_attempted?: number;
+    total_correct?: number;
+    total_incorrect?: number;
+    total_unattempted?: number;
+    cumulative_accuracy_percentage?: number;
     generated_at: string;
     candidate: {
       user_id: string;
@@ -282,14 +327,15 @@ export interface PsychometricReport {
       email: string;
     };
     exam_attempt: {
-      attempt_id: string;
-      exam_id: string;
+      attempt_id?: string;
+      exam_id?: string;
       exam_name: string;
       canonical_code: string;
-      total_score_awarded: number;
+      total_score_awarded?: number;
+      total_score?: number;
       max_possible_score: number;
       time_spent_seconds: number;
-      total_questions_attempted: number;
+      total_questions_attempted?: number;
       attempt_date: string;
     };
   };

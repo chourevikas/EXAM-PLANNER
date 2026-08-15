@@ -201,3 +201,23 @@ class TestThreeReportsAndBulk(unittest.IsolatedAsyncioTestCase):
             profile_rep = await analytics.get_user_skill_profile(user.id)
             self.assertIn("profile", profile_rep)
             self.assertEqual(profile_rep["profile"]["total_tests_given"], 1)
+
+            # 10. Verify Fast Direct Endpoints: Markdown, JSON & Cumulative Multi-Exam Aggregate
+            json_resp = await analytics.get_psychometric_report_json(attempt_id=attempt_id)
+            self.assertEqual(json_resp.status_code, 200)
+            self.assertIn(b"metadata", json_resp.body)
+
+            md_resp = await analytics.get_psychometric_report_markdown(attempt_id=attempt_id)
+            self.assertEqual(md_resp.status_code, 200)
+            self.assertIn(b"Psychometric", md_resp.body)
+
+            cum_report = await analytics.get_user_cumulative_aggregate_report(user_id=user.id)
+            self.assertTrue(cum_report.get("is_cumulative"))
+            self.assertIn("exam_timeline", cum_report)
+            self.assertIn("evolution_graphs", cum_report)
+            self.assertGreaterEqual(len(cum_report["exam_timeline"]), 1)
+            self.assertIn("scores", cum_report["evolution_graphs"])
+
+            cum_md = await analytics.get_user_cumulative_aggregate_markdown(user_id=user.id)
+            self.assertEqual(cum_md.status_code, 200)
+            self.assertIn(b"Cumulative", cum_md.body)

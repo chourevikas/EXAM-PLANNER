@@ -155,6 +155,10 @@ class UserSkillProfile(SQLModel, table=True):
     cumulative_satoi: float = Field(default=85.0)
     total_tests_given: int = Field(default=0)
     total_questions_answered: int = Field(default=0)
+    aggregate_report_json: Optional[dict] = Field(
+        default=None, sa_column=Column(PortableJSON)
+    )
+    aggregate_markdown_audit: Optional[str] = Field(default=None)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -253,6 +257,10 @@ class ExamAttemptReport(SQLModel, table=True):
     llm_insight_json: Optional[dict] = Field(
         default=None, sa_column=Column(PortableJSON)
     )
+    full_report_json: Optional[dict] = Field(
+        default=None, sa_column=Column(PortableJSON)
+    )
+    markdown_audit_text: Optional[str] = Field(default=None)
     s3_report_url: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

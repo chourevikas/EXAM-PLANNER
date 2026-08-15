@@ -78,6 +78,36 @@ export function AnalyticsPage() {
       setIsLoading(true);
       setError(null);
 
+      // Handle All Exams Cumulative Profile
+      if (targetId === 'CUMULATIVE_ALL') {
+        try {
+          const { getUserCumulativeAggregateReport, getUserCumulativeAggregateMarkdown } = await import('../services/examService');
+          const [cumRep, cumMd] = await Promise.allSettled([
+            getUserCumulativeAggregateReport(),
+            getUserCumulativeAggregateMarkdown(),
+          ]);
+          if (isCancelled) return;
+          if (cumRep.status === 'fulfilled') {
+            setReport(cumRep.value);
+          } else {
+            setError(cumRep.reason?.message || 'Failed to synthesize cumulative report.');
+          }
+          if (cumMd.status === 'fulfilled') {
+            setMarkdown(cumMd.value);
+          }
+          setQuestionReportData([]);
+          setUserProgressionData(null);
+        } catch (err: any) {
+          if (!isCancelled) setError(err.message || 'Failed to load cumulative report.');
+        } finally {
+          if (!isCancelled) {
+            setIsLoading(false);
+            setIsEvaluating(false);
+          }
+        }
+        return;
+      }
+
       try {
         // Step 1: Check status via lightweight polling endpoint
         const initialStatus = await getAttemptEvaluationStatus(targetId);
@@ -158,7 +188,11 @@ export function AnalyticsPage() {
     const newId = e.target.value;
     if (newId) {
       setSelectedAttemptId(newId);
-      setSearchParams({ attemptId: newId });
+      if (newId === 'CUMULATIVE_ALL') {
+        setSearchParams({});
+      } else {
+        setSearchParams({ attemptId: newId });
+      }
     }
   };
 
@@ -230,6 +264,9 @@ export function AnalyticsPage() {
                   appearance: 'none',
                 }}
               >
+                <option value="CUMULATIVE_ALL">
+                  🌟 All Exams Cumulative Performance (12-Matrix Aggregation & Cross-Exam Comparison)
+                </option>
                 {attemptsHistory.map((att) => (
                   <option key={att.attempt_id} value={att.attempt_id}>
                     {att.exam_name} ({new Date(att.started_at).toLocaleDateString()}) - Score: {att.total_score}/{att.max_possible_score}

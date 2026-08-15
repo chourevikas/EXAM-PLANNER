@@ -37,10 +37,33 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
+            # 1. Instant Cache from ExamAttempt or ExamAttemptReport
+            if attempt_id:
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json:
+                    json_content = format_report_to_json(attempt.report_metadata_json)
+                    return Response(content=json_content, media_type="application/json")
+
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.full_report_json:
+                    json_content = format_report_to_json(rep_db.full_report_json)
+                    return Response(content=json_content, media_type="application/json")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
             json_content = format_report_to_json(report_data)
+
+            # Background persist to DB if attempt_id is present
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db:
+                    rep_db.full_report_json = report_data
+                    self.session.add(rep_db)
+                    await self.session.commit()
+
             return Response(content=json_content, media_type="application/json")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
@@ -58,6 +81,12 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
+            if attempt_id:
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json:
+                    yaml_content = format_report_to_yaml(attempt.report_metadata_json)
+                    return Response(content=yaml_content, media_type="text/yaml")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -79,13 +108,45 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
+            # 1. Instant Cache from ExamAttemptReport.markdown_audit_text
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.markdown_audit_text:
+                    return Response(content=rep_db.markdown_audit_text, media_type="text/markdown")
+
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json:
+                    markdown_content = format_report_to_markdown(attempt.report_metadata_json)
+                    if rep_db:
+                        rep_db.markdown_audit_text = markdown_content
+                        self.session.add(rep_db)
+                        await self.session.commit()
+                    return Response(content=markdown_content, media_type="text/markdown")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
             markdown_content = format_report_to_markdown(report_data)
+
+            # Persist markdown cache to DB
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db:
+                    rep_db.markdown_audit_text = markdown_content
+                    self.session.add(rep_db)
+                    await self.session.commit()
+
             return Response(content=markdown_content, media_type="text/markdown")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
+        except Exception as exc:
+            logger.error(
+                f"Error compiling Markdown report for Attempt '{attempt_id or exam_id}': {exc}",
+                exc_info=True,
+            )
+            raise HTTPException(status_code=500, detail=str(exc))
     async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
         attempt = await self.session.get(ExamAttempt, attempt_id)
@@ -291,5 +352,28 @@ class AnalyticsService:
             "raw_score": attempt.total_score,
             "total_questions": attempt.total_questions,
         }
+
+    async def get_user_cumulative_aggregate_report(
+        self, user_id: uuid.UUID, force_recompute: bool = False
+    ) -> Dict[str, Any]:
+        """Synthesizes or retrieves the multi-exam cumulative psychometric report with cross-exam progression charts."""
+        from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
+        return await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
+            session=self.session,
+            user_id=user_id,
+            force_recompute=force_recompute,
+        )
+
+    async def get_user_cumulative_aggregate_markdown(
+        self, user_id: uuid.UUID
+    ) -> Response:
+        """Retrieves the formatted Markdown audit report for all evaluated exams cumulatively."""
+        from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
+        rep = await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
+            session=self.session,
+            user_id=user_id,
+        )
+        md_content = rep.get("markdown_audit") or "# Cumulative Psychometric Audit Report"
+        return Response(content=md_content, media_type="text/markdown")
 
 

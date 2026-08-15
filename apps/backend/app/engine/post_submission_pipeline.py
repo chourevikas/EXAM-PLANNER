@@ -580,6 +580,9 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # 11. Persist Report 2 (Exam-Level 12-Matrix Aggregated Report)
     report["part_3_aggregated_user_report"]["llm_insight"] = llm_insight
+    from app.formatters.report_markdown_formatter import format_report_to_markdown
+    markdown_audit = format_report_to_markdown(report)
+
     attempt_rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt.id)
     existing_att_rep = (await session.exec(attempt_rep_stmt)).first()
     if not existing_att_rep:
@@ -590,6 +593,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             matrices_summary_json=report["part_3_aggregated_user_report"],
             taxonomy_breakdown_json=report["part_2_taxonomy_analysis"],
             llm_insight_json=llm_insight,
+            full_report_json=report,
+            markdown_audit_text=markdown_audit,
             s3_report_url=report_s3_key,
         )
         session.add(att_rep)
@@ -597,6 +602,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         existing_att_rep.matrices_summary_json = report["part_3_aggregated_user_report"]
         existing_att_rep.taxonomy_breakdown_json = report["part_2_taxonomy_analysis"]
         existing_att_rep.llm_insight_json = llm_insight
+        existing_att_rep.full_report_json = report
+        existing_att_rep.markdown_audit_text = markdown_audit
         session.add(existing_att_rep)
 
     # 12. Persist Report 3 (Cumulative User Skill Progression Delta Report)
@@ -647,6 +654,17 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)
     await session.commit()
+
+    # 14. Trigger instant recomputation of multi-exam cumulative aggregate profile
+    try:
+        from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
+        await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
+            session=session,
+            user_id=user.id,
+            force_recompute=True,
+        )
+    except Exception as cum_err:
+        logger.warning(f"Cumulative profile auto-update warning: {cum_err}")
 
     logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All 3 reports persisted. Status set to EVALUATED.")
 

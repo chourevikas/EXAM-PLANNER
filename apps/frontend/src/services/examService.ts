@@ -538,6 +538,47 @@ export async function getPsychometricReportMarkdown(attemptId: string): Promise<
   return await response.text();
 }
 
+/** 11b. Fetch User's Multi-Exam Cumulative Aggregate Report */
+export async function getUserCumulativeAggregateReport(userId?: string, forceRecompute: boolean = false): Promise<PsychometricReport> {
+  const currentUserId = userId || localStorage.getItem('user_id') || '';
+  const url = `${API_BASE_URL}/analytics/users/${currentUserId}/aggregate-report${forceRecompute ? '?force_recompute=true' : ''}`;
+  
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  const text = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid cumulative report format received from server: ${text.slice(0, 100)}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch user cumulative aggregate report.');
+  }
+  return data;
+}
+
+/** 11c. Fetch User's Multi-Exam Cumulative Markdown Audit */
+export async function getUserCumulativeAggregateMarkdown(userId?: string): Promise<string> {
+  const currentUserId = userId || localStorage.getItem('user_id') || '';
+  const headers = getAuthHeaders();
+  delete headers['Content-Type'];
+
+  const response = await fetch(`${API_BASE_URL}/analytics/users/${currentUserId}/aggregate-report/markdown`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    return '# Cumulative Multi-Exam Performance Report';
+  }
+  return await response.text();
+}
+
 export interface ExamItem {
   id: string;
   code: string;
