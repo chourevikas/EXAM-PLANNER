@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useTheme } from '../../hooks/useTheme';
 import {
   Copy,
@@ -48,20 +50,154 @@ export function MarkdownPreviewer({
     URL.revokeObjectURL(url);
   };
 
-  // Helper to parse inline markdown (bold, italic, code, links)
-  const renderInline = (text: string): React.ReactNode => {
-    // Regex matches inline code `code`, bold **bold**, italic *italic*
-    const parts: React.ReactNode[] = [];
-    let remaining = text;
-    let keyIdx = 0;
+  // Custom components for ReactMarkdown
+  const markdownComponents: any = {
+    h1: ({ node, ...props }: any) => (
+      <h1
+        style={{
+          fontSize: 22,
+          fontWeight: 800,
+          color: isDark ? '#ffffff' : '#0f172a',
+          margin: '24px 0 12px 0',
+          borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          paddingBottom: 8,
+        }}
+        {...props}
+      />
+    ),
+    h2: ({ node, ...props }: any) => (
+      <h2
+        style={{
+          fontSize: 18,
+          fontWeight: 800,
+          color: isDark ? '#60a5fa' : '#2563eb',
+          margin: '20px 0 10px 0',
+        }}
+        {...props}
+      />
+    ),
+    h3: ({ node, ...props }: any) => (
+      <h3
+        style={{
+          fontSize: 15,
+          fontWeight: 700,
+          color: isDark ? '#e2e8f0' : '#1e293b',
+          margin: '16px 0 8px 0',
+        }}
+        {...props}
+      />
+    ),
+    h4: ({ node, ...props }: any) => (
+      <h4
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: isDark ? '#cbd5e1' : '#334155',
+          margin: '12px 0 6px 0',
+        }}
+        {...props}
+      />
+    ),
+    p: ({ node, ...props }: any) => (
+      <p
+        style={{
+          margin: '8px 0',
+          fontSize: 13.5,
+          lineHeight: 1.6,
+          color: isDark ? '#e2e8f0' : '#334155',
+        }}
+        {...props}
+      />
+    ),
+    table: ({ node, ...props }: any) => (
+      <div style={{ overflowX: 'auto', margin: '16px 0' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 13,
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+            borderRadius: 8,
+          }}
+          {...props}
+        />
+      </div>
+    ),
+    thead: ({ node, ...props }: any) => (
+      <thead
+        style={{
+          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+        }}
+        {...props}
+      />
+    ),
+    th: ({ node, ...props }: any) => (
+      <th
+        style={{
+          padding: '10px 14px',
+          fontWeight: 700,
+          textAlign: 'left',
+          borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
+          color: isDark ? '#ffffff' : '#0f172a',
+        }}
+        {...props}
+      />
+    ),
+    td: ({ node, ...props }: any) => (
+      <td
+        style={{
+          padding: '9px 14px',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+          color: isDark ? '#e2e8f0' : '#334155',
+        }}
+        {...props}
+      />
+    ),
+    blockquote: ({ node, children, ...props }: any) => {
+      // Check if this is an alert style: [!NOTE], [!IMPORTANT], etc.
+      const textContent = Array.isArray(children)
+        ? children.map((c) => (typeof c === 'string' ? c : c?.props?.children || '')).join('')
+        : '';
+      const isImportant = textContent.includes('[!IMPORTANT]') || textContent.includes('Integrated Cognitive Readiness');
+      const isTip = textContent.includes('[!TIP]') || textContent.includes('Recommendation');
+      const isWarning = textContent.includes('[!WARNING]');
 
-    while (remaining.length > 0) {
-      // 1. Inline code: `...`
-      const codeMatch = remaining.match(/^`([^`]+)`/);
-      if (codeMatch) {
-        parts.push(
+      let borderColor = '#2563eb';
+      let bgColor = isDark ? 'rgba(37, 99, 235, 0.08)' : '#eff6ff';
+      if (isImportant) {
+        borderColor = '#8b5cf6';
+        bgColor = isDark ? 'rgba(139, 92, 246, 0.12)' : '#f5f3ff';
+      } else if (isTip) {
+        borderColor = '#10b981';
+        bgColor = isDark ? 'rgba(16, 185, 129, 0.12)' : '#f0fdf4';
+      } else if (isWarning) {
+        borderColor = '#f59e0b';
+        bgColor = isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb';
+      }
+
+      return (
+        <blockquote
+          style={{
+            margin: '14px 0',
+            padding: '12px 18px',
+            borderLeft: `4px solid ${borderColor}`,
+            backgroundColor: bgColor,
+            borderRadius: '0 10px 10px 0',
+            color: isDark ? '#e2e8f0' : '#334155',
+            fontSize: 13.5,
+            lineHeight: 1.5,
+          }}
+          {...props}
+        >
+          {children}
+        </blockquote>
+      );
+    },
+    code: ({ node, inline, className, children, ...props }: any) => {
+      const isInline = !className && typeof children === 'string' && !children.includes('\n');
+      if (isInline) {
+        return (
           <code
-            key={keyIdx++}
             style={{
               backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
               color: isDark ? '#f472b6' : '#db2777',
@@ -70,415 +206,78 @@ export function MarkdownPreviewer({
               fontFamily: 'monospace',
               fontSize: '0.9em',
             }}
+            {...props}
           >
-            {codeMatch[1]}
+            {children}
           </code>
         );
-        remaining = remaining.slice(codeMatch[0].length);
-        continue;
       }
-
-      // 2. Bold: **...**
-      const boldMatch = remaining.match(/^\*\*([^*]+)\*\*/);
-      if (boldMatch) {
-        parts.push(
-          <strong key={keyIdx++} style={{ fontWeight: 700, color: isDark ? '#ffffff' : '#0f172a' }}>
-            {boldMatch[1]}
-          </strong>
-        );
-        remaining = remaining.slice(boldMatch[0].length);
-        continue;
-      }
-
-      // 3. Italic: *...*
-      const italicMatch = remaining.match(/^\*([^*]+)\*/);
-      if (italicMatch) {
-        parts.push(<em key={keyIdx++}>{italicMatch[1]}</em>);
-        remaining = remaining.slice(italicMatch[0].length);
-        continue;
-      }
-
-      // 4. Regular characters until next special token
-      const nextSpecial = remaining.search(/[`*]/);
-      if (nextSpecial === -1) {
-        parts.push(remaining);
-        break;
-      } else if (nextSpecial === 0) {
-        parts.push(remaining[0]);
-        remaining = remaining.slice(1);
-      } else {
-        parts.push(remaining.slice(0, nextSpecial));
-        remaining = remaining.slice(nextSpecial);
-      }
-    }
-
-    return parts;
-  };
-
-  // Parses block-level markdown elements
-  const renderMarkdownBlocks = (md: string): React.ReactNode => {
-    if (!md) return <div style={{ color: 'var(--text-muted)' }}>No audit content available.</div>;
-
-    const lines = md.split('\n');
-    const blocks: React.ReactNode[] = [];
-    let i = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-      const trimmed = line.trim();
-
-      // Empty line
-      if (!trimmed) {
-        i++;
-        continue;
-      }
-
-      // Horizontal Rule
-      if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
-        blocks.push(
-          <hr
-            key={`hr-${i}`}
-            style={{
-              border: 'none',
-              borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-              margin: '20px 0',
-            }}
-          />
-        );
-        i++;
-        continue;
-      }
-
-      // Headers
-      if (trimmed.startsWith('# ')) {
-        blocks.push(
-          <h1
-            key={`h1-${i}`}
-            style={{
-              fontSize: 22,
-              fontWeight: 800,
-              color: isDark ? '#ffffff' : '#0f172a',
-              margin: '24px 0 12px 0',
-              borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-              paddingBottom: 8,
-            }}
-          >
-            {renderInline(trimmed.slice(2))}
-          </h1>
-        );
-        i++;
-        continue;
-      }
-
-      if (trimmed.startsWith('## ')) {
-        blocks.push(
-          <h2
-            key={`h2-${i}`}
-            style={{
-              fontSize: 18,
-              fontWeight: 800,
-              color: isDark ? '#60a5fa' : '#2563eb',
-              margin: '20px 0 10px 0',
-            }}
-          >
-            {renderInline(trimmed.slice(3))}
-          </h2>
-        );
-        i++;
-        continue;
-      }
-
-      if (trimmed.startsWith('### ')) {
-        blocks.push(
-          <h3
-            key={`h3-${i}`}
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: isDark ? '#e2e8f0' : '#1e293b',
-              margin: '16px 0 8px 0',
-            }}
-          >
-            {renderInline(trimmed.slice(4))}
-          </h3>
-        );
-        i++;
-        continue;
-      }
-
-      if (trimmed.startsWith('#### ')) {
-        blocks.push(
-          <h4
-            key={`h4-${i}`}
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: isDark ? '#cbd5e1' : '#334155',
-              margin: '12px 0 6px 0',
-            }}
-          >
-            {renderInline(trimmed.slice(5))}
-          </h4>
-        );
-        i++;
-        continue;
-      }
-
-      // Code Block: ```
-      if (trimmed.startsWith('```')) {
-        const lang = trimmed.slice(3).trim();
-        const codeLines: string[] = [];
-        i++;
-        while (i < lines.length && !lines[i].trim().startsWith('```')) {
-          codeLines.push(lines[i]);
-          i++;
-        }
-        i++; // skip closing ```
-        blocks.push(
-          <div
-            key={`code-${i}`}
-            style={{
-              margin: '14px 0',
-              borderRadius: 12,
-              overflow: 'hidden',
-              backgroundColor: isDark ? '#0b1120' : '#0f172a',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#1e293b'}`,
-            }}
-          >
-            {lang && (
-              <div
-                style={{
-                  padding: '4px 12px',
-                  backgroundColor: isDark ? '#1e293b' : '#1e293b',
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  color: '#94a3b8',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {lang}
-              </div>
-            )}
-            <pre
-              style={{
-                margin: 0,
-                padding: 14,
-                color: '#f8fafc',
-                fontFamily: 'monospace',
-                fontSize: 12.5,
-                lineHeight: 1.5,
-                overflowX: 'auto',
-              }}
-            >
-              <code>{codeLines.join('\n')}</code>
-            </pre>
-          </div>
-        );
-        continue;
-      }
-
-      // GitHub Alert Callouts: > [!NOTE], > [!TIP], > [!IMPORTANT], > [!WARNING], > [!CAUTION]
-      if (trimmed.startsWith('> [!')) {
-        const alertTypeMatch = trimmed.match(/^> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i);
-        if (alertTypeMatch) {
-          const aType = alertTypeMatch[1].toUpperCase();
-          const alertLines: string[] = [];
-          i++;
-          while (i < lines.length && lines[i].trim().startsWith('>')) {
-            alertLines.push(lines[i].replace(/^>\s?/, ''));
-            i++;
-          }
-
-          const alertStyles: Record<string, { bg: string; border: string; color: string; icon: any; label: string }> = {
-            NOTE: { bg: 'rgba(59, 130, 246, 0.12)', border: '#3b82f6', color: '#3b82f6', icon: Info, label: 'Note' },
-            TIP: { bg: 'rgba(16, 185, 129, 0.12)', border: '#10b981', color: '#10b981', icon: Lightbulb, label: 'Tip' },
-            IMPORTANT: { bg: 'rgba(139, 92, 246, 0.12)', border: '#8b5cf6', color: '#8b5cf6', icon: CheckCircle2, label: 'Important' },
-            WARNING: { bg: 'rgba(245, 158, 11, 0.12)', border: '#f59e0b', color: '#f59e0b', icon: AlertTriangle, label: 'Warning' },
-            CAUTION: { bg: 'rgba(239, 68, 68, 0.12)', border: '#ef4444', color: '#ef4444', icon: ShieldAlert, label: 'Caution' },
-          };
-
-          const s = alertStyles[aType] || alertStyles.NOTE;
-          const AlertIcon = s.icon;
-
-          blocks.push(
-            <div
-              key={`alert-${i}`}
-              style={{
-                margin: '14px 0',
-                padding: 14,
-                borderRadius: 12,
-                backgroundColor: s.bg,
-                borderLeft: `4px solid ${s.border}`,
-                borderTop: `1px solid ${s.border}33`,
-                borderRight: `1px solid ${s.border}33`,
-                borderBottom: `1px solid ${s.border}33`,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13, color: s.color, marginBottom: 6 }}>
-                <AlertIcon size={16} />
-                <span>{s.label}</span>
-              </div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: isDark ? '#e2e8f0' : '#334155' }}>
-                {alertLines.map((al, idx) => (
-                  <p key={idx} style={{ margin: '4px 0' }}>{renderInline(al)}</p>
-                ))}
-              </div>
-            </div>
-          );
-          continue;
-        }
-      }
-
-      // Generic Blockquote: > text
-      if (trimmed.startsWith('>')) {
-        const quoteLines: string[] = [];
-        while (i < lines.length && lines[i].trim().startsWith('>')) {
-          quoteLines.push(lines[i].replace(/^>\s?/, ''));
-          i++;
-        }
-        blocks.push(
-          <blockquote
-            key={`quote-${i}`}
-            style={{
-              margin: '12px 0',
-              padding: '10px 16px',
-              borderLeft: '4px solid #2563eb',
-              backgroundColor: isDark ? 'rgba(37, 99, 235, 0.08)' : '#f8fafc',
-              borderRadius: '0 8px 8px 0',
-              fontStyle: 'italic',
-              color: isDark ? '#cbd5e1' : '#475569',
-              fontSize: 13.5,
-            }}
-          >
-            {quoteLines.map((ql, idx) => (
-              <p key={idx} style={{ margin: '4px 0' }}>{renderInline(ql)}</p>
-            ))}
-          </blockquote>
-        );
-        continue;
-      }
-
-      // Markdown Tables: | header | header |
-      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-        const tableLines: string[] = [];
-        while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
-          tableLines.push(lines[i].trim());
-          i++;
-        }
-
-        if (tableLines.length >= 2) {
-          const headerCells = tableLines[0].split('|').slice(1, -1).map((c) => c.trim());
-          const dataRows = tableLines.slice(2).map((row) => row.split('|').slice(1, -1).map((c) => c.trim()));
-
-          blocks.push(
-            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '16px 0' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 13,
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                  borderRadius: 8,
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
-                    {headerCells.map((h, hIdx) => (
-                      <th
-                        key={hIdx}
-                        style={{
-                          padding: '10px 14px',
-                          fontWeight: 700,
-                          textAlign: 'left',
-                          borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
-                          color: isDark ? '#ffffff' : '#0f172a',
-                        }}
-                      >
-                        {renderInline(h)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {dataRows.map((r, rIdx) => (
-                    <tr
-                      key={rIdx}
-                      style={{
-                        backgroundColor: rIdx % 2 === 1 ? (isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc') : 'transparent',
-                        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
-                      }}
-                    >
-                      {r.map((cell, cIdx) => (
-                        <td key={cIdx} style={{ padding: '9px 14px', color: isDark ? '#e2e8f0' : '#334155' }}>
-                          {renderInline(cell)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-          continue;
-        }
-      }
-
-      // Unordered Lists: - or *
-      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        const listItems: string[] = [];
-        while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('* '))) {
-          listItems.push(lines[i].trim().slice(2));
-          i++;
-        }
-        blocks.push(
-          <ul key={`ul-${i}`} style={{ margin: '8px 0', paddingLeft: 22, color: isDark ? '#e2e8f0' : '#334155' }}>
-            {listItems.map((li, liIdx) => (
-              <li key={liIdx} style={{ margin: '4px 0', fontSize: 13.5, lineHeight: 1.5 }}>
-                {renderInline(li)}
-              </li>
-            ))}
-          </ul>
-        );
-        continue;
-      }
-
-      // Ordered Lists: 1. 2.
-      if (/^\d+\.\s/.test(trimmed)) {
-        const listItems: string[] = [];
-        while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-          listItems.push(lines[i].trim().replace(/^\d+\.\s/, ''));
-          i++;
-        }
-        blocks.push(
-          <ol key={`ol-${i}`} style={{ margin: '8px 0', paddingLeft: 22, color: isDark ? '#e2e8f0' : '#334155' }}>
-            {listItems.map((li, liIdx) => (
-              <li key={liIdx} style={{ margin: '4px 0', fontSize: 13.5, lineHeight: 1.5 }}>
-                {renderInline(li)}
-              </li>
-            ))}
-          </ol>
-        );
-        continue;
-      }
-
-      // Paragraph
-      blocks.push(
-        <p
-          key={`p-${i}`}
+      return (
+        <div
           style={{
-            margin: '8px 0',
-            fontSize: 13.5,
-            lineHeight: 1.6,
-            color: isDark ? '#e2e8f0' : '#334155',
+            margin: '14px 0',
+            borderRadius: 12,
+            overflow: 'hidden',
+            backgroundColor: isDark ? '#0b1120' : '#0f172a',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#1e293b'}`,
           }}
         >
-          {renderInline(trimmed)}
-        </p>
+          <pre
+            style={{
+              margin: 0,
+              padding: 14,
+              color: '#f8fafc',
+              fontFamily: 'monospace',
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              overflowX: 'auto',
+            }}
+          >
+            <code {...props}>{children}</code>
+          </pre>
+        </div>
       );
-      i++;
-    }
-
-    return blocks;
+    },
+    ul: ({ node, ...props }: any) => (
+      <ul
+        style={{
+          margin: '8px 0',
+          paddingLeft: 22,
+          color: isDark ? '#e2e8f0' : '#334155',
+        }}
+        {...props}
+      />
+    ),
+    ol: ({ node, ...props }: any) => (
+      <ol
+        style={{
+          margin: '8px 0',
+          paddingLeft: 22,
+          color: isDark ? '#e2e8f0' : '#334155',
+        }}
+        {...props}
+      />
+    ),
+    li: ({ node, ...props }: any) => (
+      <li
+        style={{
+          margin: '4px 0',
+          fontSize: 13.5,
+          lineHeight: 1.5,
+        }}
+        {...props}
+      />
+    ),
+    hr: ({ node, ...props }: any) => (
+      <hr
+        style={{
+          border: 'none',
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          margin: '20px 0',
+        }}
+        {...props}
+      />
+    ),
   };
 
   return (
@@ -519,7 +318,7 @@ export function MarkdownPreviewer({
               border: '1px solid rgba(37,99,235,0.3)',
             }}
           >
-            Markdown Previewer
+            ReactMarkdown (remark-gfm)
           </span>
         </div>
 
@@ -624,7 +423,9 @@ export function MarkdownPreviewer({
       <div style={{ padding: 24 }}>
         {mode === 'preview' ? (
           <div style={{ lineHeight: 1.6, color: isDark ? '#e2e8f0' : '#1e293b' }}>
-            {renderMarkdownBlocks(content)}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {content || 'No audit content available.'}
+            </ReactMarkdown>
           </div>
         ) : (
           <textarea

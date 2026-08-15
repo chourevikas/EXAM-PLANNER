@@ -9,9 +9,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import (
     User,
     Exam,
-    Question,
-    QuestionExplanation,
+    Subject,
+    Topic,
     Subtopic,
+    Question,
+    QuestionTranslation,
+    QuestionOption,
+    OptionTranslation,
+    QuestionExplanation,
     ExamAttempt,
     ExamQuestionResponse,
     UserMemoryState,
@@ -189,20 +194,68 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # Transform DB responses to dicts for orchestrator
     responses_payload = []
+    sol_map = {str(item.get("question_id")): item for item in solutions_data.get("questions", [])}
     for index, r in enumerate(responses_db, 1):
+        q_model = await session.get(Question, r.question_id)
+        subtopic_obj = await session.get(Subtopic, q_model.subtopic_id) if q_model and q_model.subtopic_id else None
+        topic_obj = await session.get(Topic, subtopic_obj.topic_id) if subtopic_obj and subtopic_obj.topic_id else None
+        subject_obj = await session.get(Subject, topic_obj.subject_id) if topic_obj and topic_obj.subject_id else None
+        
+        opt_model = await session.get(QuestionOption, r.selected_option_id) if r.selected_option_id else None
+        sol_item = sol_map.get(str(r.question_id), {})
+        
+        # Question text
+        q_trans = (await session.exec(select(QuestionTranslation).where(QuestionTranslation.question_id == r.question_id))).first() if q_model else None
+        q_text = q_trans.question_text if q_trans else (getattr(q_model, "text", None) or sol_item.get("question_text", ""))
+
+        # Options list
+        options_db = (await session.exec(select(QuestionOption).where(QuestionOption.question_id == r.question_id))).all() if q_model else []
+        options_payload = []
+        for o in options_db:
+            o_trans = (await session.exec(select(OptionTranslation).where(OptionTranslation.option_id == o.id))).first()
+            options_payload.append({
+                "option_id": str(o.id),
+                "option_label": o.option_label,
+                "text": o_trans.option_text if o_trans else (getattr(o, "text_content", None) or getattr(o, "text", "")),
+                "is_correct": o.is_correct,
+            })
+        if not options_payload:
+            options_payload = sol_item.get("options", [])
+        
+        # Explanation
+        expl_obj = (await session.exec(select(QuestionExplanation).where(QuestionExplanation.question_id == r.question_id))).first() if q_model else None
+        expl_dict = None
+        if expl_obj:
+            expl_dict = {
+                "core_concept": expl_obj.core_concept,
+                "detailed_solution": expl_obj.detailed_solution,
+                "common_traps": expl_obj.common_traps_json,
+                "key_takeaways": expl_obj.key_takeaways_json,
+            }
+        elif sol_item.get("explanation"):
+            expl_dict = sol_item["explanation"]
+
         responses_payload.append({
             "question_id": str(r.question_id),
-            "question_number": index,
+            "question_number": q_model.question_number_in_paper if q_model and q_model.question_number_in_paper else index,
+            "question_text": q_text,
+            "options": options_payload,
+            "subject": subject_obj.name if subject_obj else sol_item.get("subject", "General Studies"),
+            "topic": topic_obj.name if topic_obj else sol_item.get("topic", "General Knowledge"),
+            "subtopic": subtopic_obj.name if subtopic_obj else sol_item.get("subtopic", "Core Concepts"),
+            "difficulty": q_model.difficulty.value if q_model and hasattr(q_model.difficulty, 'value') else (q_model.difficulty if q_model else sol_item.get("difficulty", "MEDIUM")),
             "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
+            "user_selected_label": opt_model.option_label if opt_model else "Unattempted",
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
             "time_taken_seconds": r.time_taken_seconds,
             "expected_time_seconds": r.expected_time_seconds,
             "is_switched": r.is_switched,
-            "initial_correct": False,  # Simplified fallback
+            "initial_correct": False,
             "gti_item_score": r.gti_item_score,
             "answer_revealed": r.answer_revealed,
+            "explanation": expl_dict,
         })
 
     # 4. Execute Mode-Aware Matrix Orchestrator
@@ -415,7 +468,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     for q_item in part_1_items:
         q_uid = uuid.UUID(q_item["question_id"]) if isinstance(q_item["question_id"], str) else q_item["question_id"]
         
-        # Fetch explanation from DB
+        # Fetch explanation from DB or q_item
         expl_stmt = select(QuestionExplanation).where(QuestionExplanation.question_id == q_uid)
         expl_res = await session.exec(expl_stmt)
         expl_db = expl_res.first()
@@ -427,6 +480,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 "common_traps": expl_db.common_traps_json,
                 "key_takeaways": expl_db.key_takeaways_json,
             }
+        elif q_item.get("explanation"):
+            expl_dict = q_item["explanation"]
 
         q_rep_stmt = select(ExamQuestionReport).where(
             ExamQuestionReport.attempt_id == attempt.id,
@@ -451,6 +506,11 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 explanation_json=expl_dict,
             )
             session.add(q_rep)
+        else:
+            existing_q_rep.explanation_json = expl_dict
+            existing_q_rep.is_correct = q_item.get("is_correct", False)
+            existing_q_rep.final_score = float(q_item.get("marks_awarded", 0.0))
+            session.add(existing_q_rep)
         
         q_reports_data.append({**q_item, "explanation": expl_dict})
 

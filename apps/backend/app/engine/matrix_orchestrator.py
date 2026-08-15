@@ -148,13 +148,17 @@ class MatrixOrchestrator:
                 {
                     "question_number": q_num,
                     "question_id": q_id,
+                    "question_text": r.get("question_text") or sol.get("question_text", ""),
+                    "options": r.get("options") or sol.get("options", []),
                     "subject": subj_name,
                     "topic": top_name,
                     "subtopic": sub_name,
                     "blooms_level": blooms_lbl,
                     "difficulty": r.get("difficulty", "MEDIUM"),
+                    "selected_option_id": r.get("selected_option_id"),
                     "user_selected_option": r.get("user_selected_label", "Unattempted"),
                     "correct_option": sol.get("correct_option_label", "A"),
+                    "correct_option_id": sol.get("correct_option_id"),
                     "is_correct": is_corr,
                     "closeness_score": round(c_score, 2),
                     "closeness_classification": c_class,
@@ -166,6 +170,7 @@ class MatrixOrchestrator:
                     "gti_item_score": round(gti_item, 4),
                     "is_option_switched": bool(r.get("is_switched", False)),
                     "answer_revealed_during_exam": bool(r.get("answer_revealed", False)),
+                    "explanation": r.get("explanation") or sol.get("explanation"),
                 }
             )
 
