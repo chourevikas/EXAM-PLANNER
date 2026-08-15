@@ -88,23 +88,53 @@ class AnalyticsService:
             raise HTTPException(status_code=404, detail=str(val_err))
     async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
-        # 1. Try S3 storage report
-        try:
-            attempt = await self.session.get(ExamAttempt, attempt_id)
-            if attempt:
-                exam = await self.session.get(Exam, attempt.exam_id)
-                if exam:
-                    from app.storage.factory import get_storage_provider
-                    storage = get_storage_provider()
-                    q_key = f"exams/{exam.code}/reports/{attempt_id}_question_report.json"
-                    if await storage.exists(q_key):
-                        s3_data = await storage.download_json(q_key)
-                        if s3_data and s3_data.get("questions"):
-                            return s3_data
-        except Exception as err:
-            logger.warning(f"S3 question report retrieval skipped: {err}")
+        attempt = await self.session.get(ExamAttempt, attempt_id)
+        if not attempt:
+            raise HTTPException(status_code=404, detail="Attempt not found.")
 
-        # 2. Fallback to comprehensive psychometric report compiler
+        # 1. Instant DB Cache from attempt.report_metadata_json (contains full per-question analysis & explanations)
+        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+            part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
+            if part_1 and len(part_1) > 0:
+                return {
+                    "attempt_id": str(attempt_id),
+                    "total_questions": len(part_1),
+                    "questions": part_1,
+                }
+
+        # 2. Database ExamQuestionReport Rows
+        stmt = (
+            select(ExamQuestionReport)
+            .where(ExamQuestionReport.attempt_id == attempt_id)
+            .order_by(col(ExamQuestionReport.question_number).asc())
+        )
+        res = await self.session.exec(stmt)
+        rows = res.all()
+        if rows:
+            return {
+                "attempt_id": str(attempt_id),
+                "total_questions": len(rows),
+                "questions": [
+                    {
+                        "question_number": r.question_number,
+                        "question_id": str(r.question_id),
+                        "is_correct": r.is_correct,
+                        "final_score": r.final_score,
+                        "time_taken_seconds": r.time_taken_seconds,
+                        "expected_time_seconds": r.expected_time_seconds,
+                        "time_window": r.time_window,
+                        "closeness_score": r.closeness_score,
+                        "closeness_classification": r.closeness_classification,
+                        "gti_item_score": r.gti_item_score,
+                        "is_option_switched": r.is_option_switched,
+                        "blooms_level": r.blooms_level,
+                        "explanation": r.explanation_json,
+                    }
+                    for r in rows
+                ],
+            }
+
+        # 3. Fallback to comprehensive psychometric report compiler
         rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
         if rep and rep.get("part_1_per_question_analysis"):
             return {
@@ -113,35 +143,10 @@ class AnalyticsService:
                 "questions": rep.get("part_1_per_question_analysis", []),
             }
 
-        # 3. Fallback to DB rows
-        stmt = (
-            select(ExamQuestionReport)
-            .where(ExamQuestionReport.attempt_id == attempt_id)
-            .order_by(col(ExamQuestionReport.question_number).asc())
-        )
-        res = await self.session.exec(stmt)
-        rows = res.all()
         return {
             "attempt_id": str(attempt_id),
-            "total_questions": len(rows),
-            "questions": [
-                {
-                    "question_number": r.question_number,
-                    "question_id": str(r.question_id),
-                    "is_correct": r.is_correct,
-                    "final_score": r.final_score,
-                    "time_taken_seconds": r.time_taken_seconds,
-                    "expected_time_seconds": r.expected_time_seconds,
-                    "time_window": r.time_window,
-                    "closeness_score": r.closeness_score,
-                    "closeness_classification": r.closeness_classification,
-                    "gti_item_score": r.gti_item_score,
-                    "is_option_switched": r.is_option_switched,
-                    "blooms_level": r.blooms_level,
-                    "explanation": r.explanation_json,
-                }
-                for r in rows
-            ],
+            "total_questions": 0,
+            "questions": [],
         }
 
     async def get_attempt_exam_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
@@ -160,7 +165,19 @@ class AnalyticsService:
                 "created_at": rep_db.created_at.isoformat() if rep_db.created_at else None,
             }
 
-        # Fallback to compiled report
+        # 2. Instant DB Cache: attempt.report_metadata_json
+        attempt = await self.session.get(ExamAttempt, attempt_id)
+        if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+            meta = attempt.report_metadata_json
+            return {
+                "attempt_id": str(attempt_id),
+                "matrices_summary": meta.get("part_3_aggregated_user_report", {}),
+                "taxonomy_breakdown": meta.get("part_2_taxonomy_analysis", {}),
+                "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
+                "metadata": meta.get("metadata", {}),
+            }
+
+        # 3. Fallback to compiled report
         full_rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
         return {
             "attempt_id": str(attempt_id),

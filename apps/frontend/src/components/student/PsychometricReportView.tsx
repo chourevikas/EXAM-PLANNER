@@ -1455,6 +1455,30 @@ export function PsychometricReportView({
                               opt.is_correct ||
                               correctOptLabel === optLabel;
 
+                            // Lookup distractor analysis for this option
+                            const distScores = q.distractor_scores || q.distractor_analysis || {};
+                            let optDistAnalysis: string | null = null;
+                            if (distScores && typeof distScores === 'object') {
+                              if (opt.option_id && distScores[opt.option_id]) {
+                                const entry = distScores[opt.option_id];
+                                optDistAnalysis = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
+                              }
+                              if (!optDistAnalysis) {
+                                const cleanOptLabel = String(optLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                for (const [k, v] of Object.entries(distScores)) {
+                                  const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  let vLabel = '';
+                                  if (typeof v === 'object' && v !== null) {
+                                    vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  }
+                                  if (cleanK === cleanOptLabel || vLabel === cleanOptLabel) {
+                                    optDistAnalysis = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
+                                    if (optDistAnalysis) break;
+                                  }
+                                }
+                              }
+                            }
+
                             let optBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
                             let optBg = isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc';
                             if (isSelected && isOptCorrect) {
@@ -1477,8 +1501,8 @@ export function PsychometricReportView({
                                   border: `1.5px solid ${optBorder}`,
                                   backgroundColor: optBg,
                                   display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
+                                  flexDirection: 'column',
+                                  gap: 6,
                                   fontSize: 13.5,
                                 }}
                               >
@@ -1486,119 +1510,188 @@ export function PsychometricReportView({
                                   style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 10,
-                                    flex: 1,
+                                    justifyContent: 'space-between',
                                   }}
                                 >
-                                  <span
+                                  <div
                                     style={{
-                                      fontWeight: 800,
-                                      color: isOptCorrect
-                                        ? '#10b981'
-                                        : isSelected
-                                        ? '#ef4444'
-                                        : '#64748b',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 10,
+                                      flex: 1,
                                     }}
                                   >
-                                    {optLabel}.
-                                  </span>
-                                  <div style={{ display: 'inline', margin: 0 }}>
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      components={{
-                                        p: ({ node, ...props }: any) => (
-                                          <span
-                                            style={{ display: 'inline', margin: 0 }}
-                                            {...props}
-                                          />
-                                        ),
+                                    <span
+                                      style={{
+                                        fontWeight: 800,
+                                        color: isOptCorrect
+                                          ? '#10b981'
+                                          : isSelected
+                                          ? '#ef4444'
+                                          : '#64748b',
                                       }}
                                     >
-                                      {opt.text || opt.option_text || `Option ${optLabel}`}
-                                    </ReactMarkdown>
+                                      {optLabel}.
+                                    </span>
+                                    <div style={{ display: 'inline', margin: 0 }}>
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                          p: ({ node, ...props }: any) => (
+                                            <span
+                                              style={{ display: 'inline', margin: 0 }}
+                                              {...props}
+                                            />
+                                          ),
+                                        }}
+                                      >
+                                        {opt.text || opt.option_text || `Option ${optLabel}`}
+                                      </ReactMarkdown>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                    {isSelected && (
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          fontWeight: 800,
+                                          padding: '2px 8px',
+                                          borderRadius: 8,
+                                          backgroundColor: isOptCorrect ? '#10b981' : '#ef4444',
+                                          color: '#ffffff',
+                                        }}
+                                      >
+                                        Your Choice
+                                      </span>
+                                    )}
+                                    {isOptCorrect && !isSelected && (
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          fontWeight: 800,
+                                          padding: '2px 8px',
+                                          borderRadius: 8,
+                                          backgroundColor: '#10b981',
+                                          color: '#ffffff',
+                                        }}
+                                      >
+                                        Correct Option
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                                  {isSelected && (
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        fontWeight: 800,
-                                        padding: '2px 8px',
-                                        borderRadius: 8,
-                                        backgroundColor: isOptCorrect ? '#10b981' : '#ef4444',
-                                        color: '#ffffff',
-                                      }}
-                                    >
-                                      Your Choice
-                                    </span>
-                                  )}
-                                  {isOptCorrect && !isSelected && (
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        fontWeight: 800,
-                                        padding: '2px 8px',
-                                        borderRadius: 8,
-                                        backgroundColor: '#10b981',
-                                        color: '#ffffff',
-                                      }}
-                                    >
-                                      Correct Option
-                                    </span>
-                                  )}
-                                </div>
+                                {/* Per-Option Distractor Analysis */}
+                                {optDistAnalysis && (
+                                  <div
+                                    style={{
+                                      marginTop: 4,
+                                      paddingLeft: 24,
+                                      fontSize: 12.5,
+                                      lineHeight: 1.45,
+                                      color: isOptCorrect
+                                        ? (isDark ? '#86efac' : '#166534')
+                                        : isSelected
+                                        ? (isDark ? '#fca5a5' : '#991b1b')
+                                        : '#64748b',
+                                      borderLeft: `2px solid ${isOptCorrect ? '#10b981' : isSelected ? '#ef4444' : (isDark ? '#475569' : '#cbd5e1')}`,
+                                    }}
+                                  >
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {optDistAnalysis}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
                         </div>
                       )}
 
-                      {/* Option Chosen Feedback & Distractor Explanation */}
-                      <div
-                        style={{
-                          padding: 14,
-                          borderRadius: 12,
-                          backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
-                          border: '1px solid rgba(245, 158, 11, 0.25)',
-                          fontSize: 13,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            color: '#d97706',
-                            marginBottom: 4,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <Lightbulb size={16} />
-                          <span>
-                            Why Option `{userOptLabel}` was selected & Distractor Feedback:
-                          </span>
-                        </div>
-                        <div style={{ color: isDark ? '#e2e8f0' : '#451a03' }}>
-                          <strong>Trap / Choice Classification:</strong>{' '}
-                          {q.closeness_classification || 'Standard Conceptual Distractor'}.
-                          {state.isUnatt ? (
-                            <span>
-                              {' '}You did not attempt this question. Option `{correctOptLabel}` is the correct choice. Review the step-by-step concept analysis below to reinforce this syllabus topic.
-                            </span>
-                          ) : state.isInc ? (
-                            <span>
-                              {' '}Option `{userOptLabel}` was selected because it represents a common chronological or factual distractor designed to test subtle syllabus precision. Option `{correctOptLabel}` is the uniquely correct choice.
-                            </span>
-                          ) : (
-                            <span>
-                              {' '}You successfully identified Option `{correctOptLabel}` as correct and avoided the deceptive distractor traps in this question.
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      {/* Option Chosen Feedback & Distractor Explanation Box */}
+                      {(() => {
+                        const distScores = q.distractor_scores || q.distractor_analysis || {};
+                        let chosenFeedback: string | null = null;
+                        if (distScores && typeof distScores === 'object') {
+                          if (q.selected_option_id && distScores[q.selected_option_id]) {
+                            const entry = distScores[q.selected_option_id];
+                            chosenFeedback = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
+                          }
+                          if (!chosenFeedback && userOptLabel && userOptLabel !== 'Unattempted') {
+                            const cleanUserLbl = String(userOptLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
+                            for (const [k, v] of Object.entries(distScores)) {
+                              const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                              let vLabel = '';
+                              if (typeof v === 'object' && v !== null) {
+                                vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                              }
+                              if (cleanK === cleanUserLbl || vLabel === cleanUserLbl) {
+                                chosenFeedback = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
+                                if (chosenFeedback) break;
+                              }
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            style={{
+                              padding: 14,
+                              borderRadius: 12,
+                              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
+                              border: '1px solid rgba(245, 158, 11, 0.25)',
+                              fontSize: 13,
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                color: '#d97706',
+                                marginBottom: 6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                              }}
+                            >
+                              <Lightbulb size={16} />
+                              <span>
+                                {state.isUnatt
+                                  ? 'Unattempted Question Analysis & Distractor Insight:'
+                                  : `Option (${userOptLabel}) Selected — Diagnostic Feedback:`}
+                              </span>
+                            </div>
+                            <div style={{ color: isDark ? '#e2e8f0' : '#451a03', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <div>
+                                <strong>Trap / Choice Classification:</strong>{' '}
+                                <span style={{ color: '#d97706', fontWeight: 600 }}>
+                                  {q.closeness_classification || 'Standard Conceptual Distractor'}
+                                </span>
+                              </div>
+                              {chosenFeedback ? (
+                                <div style={{ marginTop: 2 }}>
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {chosenFeedback}
+                                  </ReactMarkdown>
+                                </div>
+                              ) : state.isUnatt ? (
+                                <div>
+                                  You did not attempt this question. Option ({correctOptLabel}) is the uniquely correct choice. Review the step-by-step concept analysis below to reinforce this syllabus topic.
+                                </div>
+                              ) : state.isInc ? (
+                                <div>
+                                  Option ({userOptLabel}) was selected because it represents a common distractor trap. Option ({correctOptLabel}) is the correct choice.
+                                </div>
+                              ) : (
+                                <div>
+                                  You successfully identified Option ({correctOptLabel}) as correct and avoided the deceptive distractor traps in this question.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Comprehensive Solution Breakdown */}
                       {expl && (

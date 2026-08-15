@@ -73,6 +73,8 @@ class OptionOut(BaseModel):
     option_label: str
     text: str
     display_order: int = 1
+    translations: Optional[Dict[str, Any]] = None
+    text_hindi: Optional[str] = None
 
 
 class QuestionOut(BaseModel):
@@ -91,6 +93,10 @@ class QuestionOut(BaseModel):
     has_image: bool = False
     assets: List[Dict[str, Any]] = []
     passage_text: Optional[str] = None
+    translations: Optional[Dict[str, Any]] = None
+    passage_translations: Optional[Dict[str, Any]] = None
+    text_hindi: Optional[str] = None
+    passage_text_hindi: Optional[str] = None
 
 
 class NavigationMeta(BaseModel):

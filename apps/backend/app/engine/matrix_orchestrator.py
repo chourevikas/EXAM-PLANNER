@@ -171,6 +171,9 @@ class MatrixOrchestrator:
                     "is_option_switched": bool(r.get("is_switched", False)),
                     "answer_revealed_during_exam": bool(r.get("answer_revealed", False)),
                     "explanation": r.get("explanation") or sol.get("explanation"),
+                    "explanation_translations": sol.get("explanation_translations") or r.get("explanation_translations", {}),
+                    "distractor_scores": sol.get("distractor_scores") or r.get("distractor_scores", {}),
+                    "distractor_analysis": sol.get("distractor_scores") or r.get("distractor_scores", {}),
                 }
             )
 

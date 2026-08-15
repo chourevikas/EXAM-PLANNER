@@ -62,6 +62,13 @@ function getQuestionText(q: any, lang: 'en' | 'hi'): string {
       if (q.translations.HINDI?.text) return q.translations.HINDI.text;
       if (q.translations.HINDI?.question_text) return q.translations.HINDI.question_text;
     }
+    if (q.question_translations) {
+      if (typeof q.question_translations.HINDI === 'string') return q.question_translations.HINDI;
+      if (typeof q.question_translations.HI === 'string') return q.question_translations.HI;
+      if (typeof q.question_translations.hi === 'string') return q.question_translations.hi;
+    }
+    if (q.hi?.text) return q.hi.text;
+    if (q.hi?.question_text) return q.hi.question_text;
   }
   return (
     q.text ||
@@ -72,6 +79,9 @@ function getQuestionText(q: any, lang: 'en' | 'hi'): string {
     (typeof q.translations?.ENGLISH === 'string'
       ? q.translations.ENGLISH
       : q.translations?.ENGLISH?.text || q.translations?.ENGLISH?.question_text) ||
+    (typeof q.question_translations?.ENGLISH === 'string'
+      ? q.question_translations.ENGLISH
+      : q.question_translations?.ENGLISH?.text) ||
     ''
   );
 }
@@ -80,8 +90,10 @@ function getPassageText(q: any, lang: 'en' | 'hi'): string | null {
   if (lang === 'hi') {
     if (q.passage_text_hindi) return q.passage_text_hindi;
     if (q.passage_text_hi) return q.passage_text_hi;
+    if (q.passageTextHindi) return q.passageTextHindi;
     if (q.translations?.hi?.passage) return q.translations.hi.passage;
     if (q.translations?.HI?.passage) return q.translations.HI.passage;
+    if (q.translations?.HINDI?.passage) return q.translations.HINDI.passage;
     if (q.passage_translations) {
       if (typeof q.passage_translations.HINDI === 'string') return q.passage_translations.HINDI;
       if (typeof q.passage_translations.HI === 'string') return q.passage_translations.HI;
@@ -102,6 +114,8 @@ function getOptionText(opt: any, lang: 'en' | 'hi', optIdx?: number, q?: any): s
   if (lang === 'hi') {
     if (opt.textHindi) return opt.textHindi;
     if (opt.text_hindi) return opt.text_hindi;
+    if (opt.option_text_hindi) return opt.option_text_hindi;
+    if (opt.option_text_hi) return opt.option_text_hi;
     if (opt.translations) {
       if (typeof opt.translations.hi === 'string') return opt.translations.hi;
       if (opt.translations.hi?.text) return opt.translations.hi.text;
@@ -113,18 +127,34 @@ function getOptionText(opt: any, lang: 'en' | 'hi', optIdx?: number, q?: any): s
       if (opt.translations.HINDI?.text) return opt.translations.HINDI.text;
       if (opt.translations.HINDI?.option_text) return opt.translations.HINDI.option_text;
     }
-    if (
-      q &&
-      q.translations?.hi?.options &&
-      optIdx !== undefined &&
-      q.translations.hi.options[optIdx]
-    ) {
-      const hiOpt = q.translations.hi.options[optIdx];
-      if (typeof hiOpt === 'string') return hiOpt;
-      if (hiOpt.text) return hiOpt.text;
-      if (hiOpt.option_text) return hiOpt.option_text;
+
+    // Check parent question multilingual options container
+    const hiContainer = q?.translations?.hi || q?.translations?.HI || q?.translations?.HINDI;
+    if (hiContainer && hiContainer.options) {
+      // 1. Array index
+      if (Array.isArray(hiContainer.options) && optIdx !== undefined && hiContainer.options[optIdx]) {
+        const item = hiContainer.options[optIdx];
+        if (typeof item === 'string') return item;
+        if (item.text) return item.text;
+        if (item.option_text) return item.option_text;
+      }
+      // 2. Lookup by option_id or option_label
+      if (typeof hiContainer.options === 'object' && !Array.isArray(hiContainer.options)) {
+        if (opt.option_id && hiContainer.options[opt.option_id]) {
+          const item = hiContainer.options[opt.option_id];
+          return typeof item === 'string' ? item : (item.text || item.option_text || '');
+        }
+        const optLbl = String(opt.option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        for (const [k, v] of Object.entries(hiContainer.options)) {
+          const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (cleanK === optLbl) {
+            return typeof v === 'string' ? v : ((v as any).text || (v as any).option_text || '');
+          }
+        }
+      }
     }
   }
+
   return (
     opt.text ||
     opt.option_text ||
@@ -134,7 +164,7 @@ function getOptionText(opt: any, lang: 'en' | 'hi', optIdx?: number, q?: any): s
     (typeof opt.translations?.ENGLISH === 'string'
       ? opt.translations.ENGLISH
       : opt.translations?.ENGLISH?.text || opt.translations?.ENGLISH?.option_text) ||
-    ''
+    `Option ${opt.option_label || (optIdx !== undefined ? String.fromCharCode(65 + optIdx) : '')}`
   );
 }
 

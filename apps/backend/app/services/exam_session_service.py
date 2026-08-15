@@ -350,7 +350,7 @@ class ExamSessionService:
                 opts_stmt = (
                     select(QuestionOption)
                     .where(QuestionOption.question_id == q_model.id)
-                    .order_by(QuestionOption.display_order)
+                    .order_by(col(QuestionOption.display_order))
                 )
                 opts_res = await self.session.exec(opts_stmt)
                 db_opts = opts_res.all()
@@ -428,6 +428,84 @@ class ExamSessionService:
             nav_total=attempt.total_questions,
             resp=resp,
             language=language,
+            presigned_url=presigned_url,
+        )
+
+    def _build_question_nav_response(
+        self,
+        q_item: Dict[str, Any],
+        nav_current: int,
+        nav_total: int,
+        resp: Optional[ExamQuestionResponse],
+        language: Optional[str] = "ENGLISH",
+        presigned_url: Optional[str] = None,
+    ) -> QuestionNavResponse:
+        raw_opts = q_item.get("options", [])
+        opts_out = []
+        for idx, o in enumerate(raw_opts, 1):
+            if isinstance(o, dict):
+                opts_out.append(
+                    OptionOut(
+                        option_id=o.get("option_id") or o.get("id") or str(idx),
+                        option_label=o.get("option_label") or o.get("label") or chr(64 + idx),
+                        text=o.get("text") or o.get("option_text") or f"Option {chr(64 + idx)}",
+                        display_order=o.get("display_order") or idx,
+                        translations=o.get("translations"),
+                        text_hindi=o.get("text_hindi") or o.get("option_text_hindi"),
+                    )
+                )
+            elif isinstance(o, str):
+                opts_out.append(
+                    OptionOut(
+                        option_id=str(idx),
+                        option_label=chr(64 + idx),
+                        text=o,
+                        display_order=idx,
+                    )
+                )
+
+        q_out = QuestionOut(
+            question_id=q_item.get("question_id") or q_item.get("id") or str(uuid.uuid4()),
+            question_number=q_item.get("question_number") or nav_current,
+            text=q_item.get("text") or q_item.get("question_text") or "",
+            options=opts_out,
+            subject=q_item.get("subject", "General Knowledge"),
+            topic=q_item.get("topic", "General Studies"),
+            subtopic=q_item.get("subtopic", "Core Concepts"),
+            difficulty=q_item.get("difficulty", "MEDIUM"),
+            marks=float(q_item.get("marks", 2.0)),
+            negative_marks=float(q_item.get("negative_marks", 0.66)),
+            expected_time_seconds=int(q_item.get("expected_time_seconds", 60)),
+            section_code=q_item.get("section_code", "DEFAULT"),
+            has_image=bool(q_item.get("has_image", False)),
+            assets=q_item.get("assets", []),
+            passage_text=q_item.get("passage_text") or q_item.get("passage"),
+            translations=q_item.get("translations"),
+            passage_translations=q_item.get("passage_translations"),
+            text_hindi=q_item.get("text_hindi") or q_item.get("question_text_hindi"),
+            passage_text_hindi=q_item.get("passage_text_hindi"),
+        )
+
+        nav_meta = NavigationMeta(
+            current=nav_current,
+            total=nav_total,
+            has_next=nav_current < nav_total,
+            has_prev=nav_current > 1,
+        )
+
+        resp_state = ResponseState(
+            selected_option_id=resp.selected_option_id if resp else None,
+            is_marked_for_review=resp.is_marked_for_review if resp else False,
+            time_spent_seconds=resp.time_taken_seconds if resp else 0.0,
+            question_status=resp.question_status if resp else QuestionResponseStatus.UNVISITED,
+            answer_revealed=resp.answer_revealed if resp else False,
+        )
+
+        return QuestionNavResponse(
+            question=q_out,
+            navigation=nav_meta,
+            response_state=resp_state,
+            presigned_url=presigned_url,
         )
 
     async def get_all_questions_bulk(
@@ -1256,82 +1334,4 @@ class ExamSessionService:
             marked_for_review_count=marked,
             unattempted_count=unatt,
             total=len(responses),
-        )
-
-    def _build_question_nav_response(
-        self,
-        q_item: Dict[str, Any],
-        nav_current: int,
-        nav_total: int,
-        resp: Optional[ExamQuestionResponse],
-        language: Optional[str] = "ENGLISH",
-    ) -> QuestionNavResponse:
-        target_lang = (language or "ENGLISH").upper()
-
-        # Resolve question statement text
-        q_trans_dict = q_item.get("translations", {})
-        q_text = q_item.get("text", "")
-        if target_lang in q_trans_dict and q_trans_dict[target_lang].get("question_text"):
-            q_text = q_trans_dict[target_lang]["question_text"]
-
-        # Resolve passage text
-        pass_trans_dict = q_item.get("passage_translations", {})
-        passage_text = q_item.get("passage_text")
-        if target_lang in pass_trans_dict and pass_trans_dict[target_lang]:
-            passage_text = pass_trans_dict[target_lang]
-
-        # Resolve options text
-        opts = []
-        for idx, o in enumerate(q_item.get("options", []), 1):
-            opt_trans_dict = o.get("translations", {})
-            opt_text = o.get("text", "")
-            if target_lang in opt_trans_dict and opt_trans_dict[target_lang]:
-                opt_text = opt_trans_dict[target_lang]
-
-            opts.append(
-                OptionOut(
-                    option_id=o["option_id"],
-                    option_label=o["option_label"],
-                    text=opt_text,
-                    display_order=o.get("display_order", idx),
-                )
-            )
-
-        q_out = QuestionOut(
-            question_id=q_item["question_id"],
-            question_number=q_item["question_number"],
-            text=q_text,
-            options=opts,
-            subject=q_item.get("subject", "General Knowledge"),
-            topic=q_item.get("topic", "General Studies"),
-            subtopic=q_item.get("subtopic", "Core Concepts"),
-            difficulty=q_item.get("difficulty", "MEDIUM"),
-            marks=float(q_item.get("marks", 2.0)),
-            negative_marks=float(q_item.get("negative_marks", 0.66)),
-            expected_time_seconds=int(q_item.get("expected_time_seconds", 60)),
-            section_code=q_item.get("section_code", "DEFAULT"),
-            has_image=bool(q_item.get("has_image", False)),
-            assets=q_item.get("assets", []),
-            passage_text=passage_text,
-        )
-
-        nav_meta = NavigationMeta(
-            current=nav_current,
-            total=nav_total,
-            has_next=nav_current < nav_total,
-            has_prev=nav_current > 1,
-        )
-
-        resp_state = ResponseState(
-            selected_option_id=str(resp.selected_option_id) if resp and resp.selected_option_id else None,
-            is_marked_for_review=resp.is_marked_for_review if resp else False,
-            time_spent_seconds=resp.time_taken_seconds if resp else 0.0,
-            question_status=resp.question_status if resp else QuestionResponseStatus.UNVISITED,
-            answer_revealed=resp.answer_revealed if resp else False,
-        )
-
-        return QuestionNavResponse(
-            question=q_out,
-            navigation=nav_meta,
-            response_state=resp_state,
         )
