@@ -64,6 +64,22 @@ async def start_exam_attempt(
     return await service.start_exam(user_id=current_user.id, req=req)
 
 
+@router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
+async def get_all_attempt_questions_bulk(
+    attempt_id: uuid.UUID,
+    language: Optional[str] = "ENGLISH",
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrieves all exam questions in 1 single bulk response for seamless zero-lag client-side preloading.
+    """
+    service = ExamSessionService(session)
+    return await service.get_all_questions_bulk(
+        attempt_id=attempt_id, user_id=current_user.id, language=language
+    )
+
+
 @router.get("/{attempt_id}/questions/{question_number}", response_model=QuestionNavResponse)
 async def get_question_by_number(
     attempt_id: uuid.UUID,
@@ -82,22 +98,6 @@ async def get_question_by_number(
         user_id=current_user.id,
         question_number=question_number,
         language=language,
-    )
-
-
-@router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
-async def get_all_attempt_questions_bulk(
-    attempt_id: uuid.UUID,
-    language: Optional[str] = "ENGLISH",
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Retrieves all exam questions in 1 single bulk response for seamless zero-lag client-side preloading.
-    """
-    service = ExamSessionService(session)
-    return await service.get_all_questions_bulk(
-        attempt_id=attempt_id, user_id=current_user.id, language=language
     )
 
 

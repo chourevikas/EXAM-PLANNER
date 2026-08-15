@@ -1,4 +1,5 @@
 import uuid
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException, status, BackgroundTasks
@@ -460,18 +461,29 @@ class ExamSessionService:
         paper_set = exam.paper_set_code or "SET_A"
         clean_set = str(paper_set).strip().lower().replace("_", "-")
         q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+        alt_q_folder = f"exams/{exam.code}/questions"
         try:
             q_count = attempt.total_questions or exam.total_questions or 100
-            q_list = []
-            for q_num in range(1, q_count + 1):
-                q_file = f"{q_folder.rstrip('/')}/Q{q_num:03d}.json"
-                if await self.storage.exists(q_file):
-                    q_data = await self.storage.download_json(q_file)
-                    if q_data:
-                        q_list.append(q_data)
-                else:
-                    if q_num == 1:
-                        break
+
+            async def _fetch_single_q(q_num: int):
+                for q_prefix in [q_folder, alt_q_folder]:
+                    for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
+                        q_file = f"{q_prefix.rstrip('/')}/{pattern}"
+                        try:
+                            if await self.storage.exists(q_file):
+                                q_data = await self.storage.download_json(q_file)
+                                if q_data and isinstance(q_data, dict):
+                                    q_data["question_number"] = q_data.get("question_number") or q_num
+                                    q_data["text"] = q_data.get("text") or q_data.get("question_text")
+                                    return q_data
+                        except Exception:
+                            pass
+                return None
+
+            q_tasks = [_fetch_single_q(i) for i in range(1, q_count + 1)]
+            q_results = await asyncio.gather(*q_tasks, return_exceptions=True)
+            q_list = [r for r in q_results if isinstance(r, dict) and r]
+
             if q_list:
                 return {
                     "exam_id": str(exam.id),

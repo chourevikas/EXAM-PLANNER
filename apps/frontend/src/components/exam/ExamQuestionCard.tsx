@@ -52,44 +52,90 @@ function getQuestionText(q: any, lang: 'en' | 'hi'): string {
     if (q.question_text_hindi) return q.question_text_hindi;
     if (q.question_text_hi) return q.question_text_hi;
     if (q.translations) {
-      if (typeof q.translations.HINDI === 'string') return q.translations.HINDI;
-      if (q.translations.HINDI?.question_text) return q.translations.HINDI.question_text;
-      if (typeof q.translations.HI === 'string') return q.translations.HI;
-      if (q.translations.HI?.question_text) return q.translations.HI.question_text;
       if (typeof q.translations.hi === 'string') return q.translations.hi;
+      if (q.translations.hi?.text) return q.translations.hi.text;
       if (q.translations.hi?.question_text) return q.translations.hi.question_text;
+      if (typeof q.translations.HI === 'string') return q.translations.HI;
+      if (q.translations.HI?.text) return q.translations.HI.text;
+      if (q.translations.HI?.question_text) return q.translations.HI.question_text;
+      if (typeof q.translations.HINDI === 'string') return q.translations.HINDI;
+      if (q.translations.HINDI?.text) return q.translations.HINDI.text;
+      if (q.translations.HINDI?.question_text) return q.translations.HINDI.question_text;
     }
   }
-  return q.text || q.question_text || (typeof q.translations?.ENGLISH === 'string' ? q.translations.ENGLISH : q.translations?.ENGLISH?.question_text) || '';
+  return (
+    q.text ||
+    q.question_text ||
+    (typeof q.translations?.en === 'string'
+      ? q.translations.en
+      : q.translations?.en?.text || q.translations?.en?.question_text) ||
+    (typeof q.translations?.ENGLISH === 'string'
+      ? q.translations.ENGLISH
+      : q.translations?.ENGLISH?.text || q.translations?.ENGLISH?.question_text) ||
+    ''
+  );
 }
 
 function getPassageText(q: any, lang: 'en' | 'hi'): string | null {
   if (lang === 'hi') {
     if (q.passage_text_hindi) return q.passage_text_hindi;
     if (q.passage_text_hi) return q.passage_text_hi;
+    if (q.translations?.hi?.passage) return q.translations.hi.passage;
+    if (q.translations?.HI?.passage) return q.translations.HI.passage;
     if (q.passage_translations) {
       if (typeof q.passage_translations.HINDI === 'string') return q.passage_translations.HINDI;
       if (typeof q.passage_translations.HI === 'string') return q.passage_translations.HI;
       if (typeof q.passage_translations.hi === 'string') return q.passage_translations.hi;
     }
   }
-  return q.passage_text || q.passage_translations?.ENGLISH || q.passage_translations?.EN || null;
+  return (
+    q.passage_text ||
+    q.translations?.en?.passage ||
+    q.translations?.ENGLISH?.passage ||
+    q.passage_translations?.ENGLISH ||
+    q.passage_translations?.EN ||
+    null
+  );
 }
 
-function getOptionText(opt: any, lang: 'en' | 'hi'): string {
+function getOptionText(opt: any, lang: 'en' | 'hi', optIdx?: number, q?: any): string {
   if (lang === 'hi') {
     if (opt.textHindi) return opt.textHindi;
     if (opt.text_hindi) return opt.text_hindi;
     if (opt.translations) {
-      if (typeof opt.translations.HINDI === 'string') return opt.translations.HINDI;
-      if (opt.translations.HINDI?.option_text) return opt.translations.HINDI.option_text;
-      if (typeof opt.translations.HI === 'string') return opt.translations.HI;
-      if (opt.translations.HI?.option_text) return opt.translations.HI.option_text;
       if (typeof opt.translations.hi === 'string') return opt.translations.hi;
+      if (opt.translations.hi?.text) return opt.translations.hi.text;
       if (opt.translations.hi?.option_text) return opt.translations.hi.option_text;
+      if (typeof opt.translations.HI === 'string') return opt.translations.HI;
+      if (opt.translations.HI?.text) return opt.translations.HI.text;
+      if (opt.translations.HI?.option_text) return opt.translations.HI.option_text;
+      if (typeof opt.translations.HINDI === 'string') return opt.translations.HINDI;
+      if (opt.translations.HINDI?.text) return opt.translations.HINDI.text;
+      if (opt.translations.HINDI?.option_text) return opt.translations.HINDI.option_text;
+    }
+    if (
+      q &&
+      q.translations?.hi?.options &&
+      optIdx !== undefined &&
+      q.translations.hi.options[optIdx]
+    ) {
+      const hiOpt = q.translations.hi.options[optIdx];
+      if (typeof hiOpt === 'string') return hiOpt;
+      if (hiOpt.text) return hiOpt.text;
+      if (hiOpt.option_text) return hiOpt.option_text;
     }
   }
-  return opt.text || opt.option_text || (typeof opt.translations?.ENGLISH === 'string' ? opt.translations.ENGLISH : opt.translations?.ENGLISH?.option_text) || '';
+  return (
+    opt.text ||
+    opt.option_text ||
+    (typeof opt.translations?.en === 'string'
+      ? opt.translations.en
+      : opt.translations?.en?.text || opt.translations?.en?.option_text) ||
+    (typeof opt.translations?.ENGLISH === 'string'
+      ? opt.translations.ENGLISH
+      : opt.translations?.ENGLISH?.text || opt.translations?.ENGLISH?.option_text) ||
+    ''
+  );
 }
 
 export function ExamQuestionCard({
@@ -110,16 +156,19 @@ export function ExamQuestionCard({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const sectionLabel = ('section_code' in question ? question.section_code : (question as any).sectionName) || 'General';
+  const sectionLabel =
+    ('subject' in question && (question as any).subject) ||
+    ('section_code' in question ? question.section_code : (question as any).sectionName) ||
+    'General Studies';
   const difficultyLabel = question.difficulty || 'MEDIUM';
 
   const passageContent = getPassageText(question, language);
   const questionContent = getQuestionText(question, language);
 
-  const options = question.options.map((opt: any) => ({
+  const options = question.options.map((opt: any, optIdx: number) => ({
     id: opt.option_id || opt.id || opt.label,
     label: opt.option_label || opt.label,
-    text: getOptionText(opt, language),
+    text: getOptionText(opt, language, optIdx, question),
   }));
 
   // Compact markdown components for option cards so block margins don't break flex alignment

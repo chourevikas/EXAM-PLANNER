@@ -471,12 +471,40 @@ export function ExamEnginePage() {
     });
   }
 
-  const sections: Section[] = [
-    { id: 'polity', label: 'Indian Polity', total: 10 },
-    { id: 'economy', label: 'Indian Economy', total: 8 },
-    { id: 'history', label: 'History & Culture', total: 7 },
-    { id: 'geography', label: 'Geography & Environment', total: 8 },
-  ];
+  const [activeSectionId, setActiveSectionId] = useState<string>('all');
+
+  // Dynamic Subjects Extraction for Exam Sidebar (Shows all subjects, hides topics/subtopics)
+  const subjectSections: Section[] = React.useMemo(() => {
+    if (!allQuestions || allQuestions.length === 0) {
+      return [
+        { id: 'all', label: 'All Subjects', total: totalQuestions, startQuestionNumber: 1, endQuestionNumber: totalQuestions }
+      ];
+    }
+    const subjMap: Record<string, { total: number; startQNum: number; endQNum: number }> = {};
+    allQuestions.forEach((q, idx) => {
+      const qNum = (q as any).question_number || idx + 1;
+      const subj = (q as any).subject || (q as any).section_code || 'General Studies';
+      if (!subjMap[subj]) {
+        subjMap[subj] = { total: 0, startQNum: qNum, endQNum: qNum };
+      }
+      subjMap[subj].total += 1;
+      subjMap[subj].endQNum = qNum;
+    });
+
+    const result: Section[] = [
+      { id: 'all', label: 'All Subjects', total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length },
+    ];
+    Object.entries(subjMap).forEach(([name, data]) => {
+      result.push({
+        id: name,
+        label: name,
+        total: data.total,
+        startQuestionNumber: data.startQNum,
+        endQuestionNumber: data.endQNum,
+      });
+    });
+    return result;
+  }, [allQuestions, totalQuestions]);
 
   if (isLoadingSession) {
     return (
@@ -576,12 +604,18 @@ export function ExamEnginePage() {
         {(!isMobile || mobileTab === 'sections') && (
           <div style={{ width: isMobile ? '100%' : 240, height: '100%' }}>
             <ExamSectionSidebar
-              sections={sections}
-              activeSectionId="all"
+              sections={subjectSections}
+              activeSectionId={activeSectionId}
               palette={palette}
               totalQuestions={totalQuestions}
               currentQIndex={currentQIndex}
               responseSummary={responseSummary}
+              onSelectSection={(secId, startQ) => {
+                setActiveSectionId(secId);
+                if (startQ && startQ >= 1 && startQ <= totalQuestions) {
+                  handleSelectQuestionFromPalette(startQ - 1);
+                }
+              }}
               onSelectQuestion={handleSelectQuestionFromPalette}
             />
           </div>
