@@ -196,6 +196,8 @@ class ExamStatusResponse(BaseModel):
     total_questions: int
     response_summary: ResponseSummary
     palette: List[QuestionPaletteItem]
+    questions_presigned_url: Optional[str] = None
+    questions_folder_url: Optional[str] = None
 
 
 class HeartbeatResponse(BaseModel):

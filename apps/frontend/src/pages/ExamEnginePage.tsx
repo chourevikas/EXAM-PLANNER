@@ -191,7 +191,11 @@ export function ExamEnginePage() {
 
           // 1-Call Bulk Preload for Zero-Lag Question Switching & Language Toggle
           try {
-            const bulkData = await getAllAttemptQuestionsBulk(sessionStatus.attempt_id);
+            const bulkData = await getAllAttemptQuestionsBulk(
+              sessionStatus.attempt_id,
+              'ENGLISH',
+              sessionStatus.questions_presigned_url
+            );
             if (bulkData.questions && bulkData.questions.length > 0) {
               setAllQuestions(bulkData.questions);
               const curQ = bulkData.questions[sessionStatus.current_question_index] || bulkData.questions[0];
@@ -217,7 +221,11 @@ export function ExamEnginePage() {
 
           // Preload rest in background
           try {
-            const bulkData = await getAllAttemptQuestionsBulk(startRes.attempt_id);
+            const bulkData = await getAllAttemptQuestionsBulk(
+              startRes.attempt_id,
+              'ENGLISH',
+              startRes.questions_presigned_url
+            );
             if (bulkData.questions && bulkData.questions.length > 0) {
               setAllQuestions(bulkData.questions);
             }

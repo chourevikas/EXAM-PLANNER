@@ -340,11 +340,54 @@ export async function listCandidateAttempts(): Promise<AttemptHistoryItem[]> {
 
 
 
-export async function getAllAttemptQuestionsBulk(attemptId: string): Promise<any> {
+export async function getAllAttemptQuestionsBulk(
+  attemptId: string,
+  language: string = 'ENGLISH',
+  presignedUrl?: string | null
+): Promise<any> {
+  // 1. Primary Strategy: Fetch directly from S3 presigned URL for instant loading & 0 server load
+  if (presignedUrl) {
+    try {
+      const res = await fetch(presignedUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (Array.isArray(data.questions) || Array.isArray(data))) {
+          return { questions: data.questions || data };
+        }
+      }
+    } catch (err) {
+      console.warn('Presigned URL fetch failed, falling back to API bulk endpoint:', err);
+    }
+  }
+
+  // 2. Secondary Strategy: Fetch from FastAPI backend bulk questions endpoint
+  try {
+    const url = `${API_BASE_URL}/attempts/${attemptId}/questions/bulk?language=${encodeURIComponent(language)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { questions: data.questions || (Array.isArray(data) ? data : []) };
+    }
+  } catch (err) {
+    console.warn('Failed to fetch bulk questions from API:', err);
+  }
+
   return { questions: [] };
 }
 
-export async function prefetchQuestion(attemptId: string, qNum: number, lang: string): Promise<void> {}
+export async function prefetchQuestion(attemptId: string, qNum: number, lang: string = 'ENGLISH'): Promise<void> {
+  try {
+    const url = `${API_BASE_URL}/attempts/${attemptId}/questions/${qNum}?language=${encodeURIComponent(lang)}`;
+    fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    }).catch(() => {});
+  } catch (_) {}
+}
 
 export async function saveQuestionResponsesBatch(attemptId: string, payload: any): Promise<any> {
   return { status: 'ACCEPTED' };

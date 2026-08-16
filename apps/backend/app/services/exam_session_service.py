@@ -1066,6 +1066,20 @@ class ExamSessionService:
 
         summary = await self._compute_response_summary(attempt.id)
 
+        q_presigned_url = None
+        q_f_url = None
+        try:
+            paper_set = exam.paper_set_code or "SET_A"
+            clean_set = str(paper_set).strip().lower().replace("_", "-")
+            q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+            q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+            if await self.storage.exists(q_path):
+                q_presigned_url = await self.storage.generate_presigned_url(q_path)
+            if q_folder and await self.storage.exists(q_folder):
+                q_f_url = await self.storage.generate_presigned_url(q_folder)
+        except Exception as presign_err:
+            logger.warning(f"Could not generate presigned question URLs: {presign_err}")
+
         return ExamStatusResponse(
             attempt_id=str(attempt.id),
             exam_id=str(exam.id),
@@ -1079,6 +1093,8 @@ class ExamSessionService:
             total_questions=attempt.total_questions,
             response_summary=summary,
             palette=palette,
+            questions_presigned_url=q_presigned_url,
+            questions_folder_url=q_f_url,
         )
 
     async def submit_exam(

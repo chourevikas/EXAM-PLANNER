@@ -230,6 +230,8 @@ export interface ExamStatusResponse {
   total_questions: number;
   response_summary: ResponseSummary;
   palette: QuestionPaletteItem[];
+  questions_presigned_url?: string | null;
+  questions_folder_url?: string | null;
 }
 
 export interface HeartbeatResponse {

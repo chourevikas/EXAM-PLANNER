@@ -14,8 +14,8 @@ services:
 
   web:
     build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
+      context: ./apps/frontend
+      dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "3005:80"
     restart: unless-stopped
