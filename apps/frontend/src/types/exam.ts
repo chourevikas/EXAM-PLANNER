@@ -9,6 +9,7 @@ export interface UploadExamPayload {
   year: string;
   paperType: string;
   file: File;
+  conflict_resolution?: string;
 }
 
 export interface UploadExamResponse {

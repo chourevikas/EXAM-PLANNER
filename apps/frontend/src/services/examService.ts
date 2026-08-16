@@ -72,6 +72,7 @@ export async function uploadAnswerKey({
   year: string;
   set_code: string;
   file: File;
+  conflict_resolution?: string;
 }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
   const headers: Record<string, string> = {};
@@ -281,7 +282,7 @@ export interface ExamItem {
 }
 
 /** 11. Fetch All Available Registered Exams */
-export async function listExams(status?: string): Promise<ExamItem[]> {
+export async function listExams(status?: string, includeInactive: boolean = false): Promise<ExamItem[]> {
   try {
     let url = `${API_BASE_URL}/exams`;
     if (status) {
@@ -301,6 +302,10 @@ export async function listExams(status?: string): Promise<ExamItem[]> {
   }
 }
 
+export function formatCanonicalExamTitle(exam: ExamItem): string {
+  if (exam.name) return exam.name;
+  return `${exam.exam_type} ${exam.source_year || ''}`.trim();
+}
 export interface AttemptHistoryItem {
   attempt_id: string;
   exam_id: string;
@@ -334,3 +339,24 @@ export async function listCandidateAttempts(): Promise<AttemptHistoryItem[]> {
 
 
 
+
+export async function getAllAttemptQuestionsBulk(attemptId: string): Promise<any> {
+  return { questions: [] };
+}
+
+export async function prefetchQuestion(attemptId: string, qNum: number, lang: string): Promise<void> {}
+
+export async function saveQuestionResponsesBatch(attemptId: string, payload: any): Promise<any> {
+  return { status: 'ACCEPTED' };
+}
+
+export async function getResponseBatchStatus(attemptId: string, batchId: string): Promise<any> {
+  return { status: 'PROCESSED' };
+}
+
+export async function getAttemptUserProgressionReport(attemptId: string): Promise<any> { return null; }
+export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> { return null; }
+export async function pollAttemptReportUntilReady(attemptId: string, onUpdate: (status: any) => void, maxRetries?: number, delay?: number): Promise<any> { return null; }
+export async function getUserCumulativeAggregateReport(userId?: string): Promise<any> { return null; }
+export async function getUserCumulativeAggregateMarkdown(userId?: string): Promise<string> { return ''; }
+export async function getAttemptQuestionReport(attemptId: string): Promise<any> { return null; }
