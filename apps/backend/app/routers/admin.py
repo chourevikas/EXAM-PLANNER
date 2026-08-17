@@ -417,7 +417,12 @@ async def list_stuck_pipelines(
     stuck_list = []
 
     for exam in exams:
-        is_active = task_registry.is_running(str(exam.id)) or task_registry.is_running(f"exp_{exam.id}")
+        is_active = (
+            task_registry.is_running(str(exam.id))
+            or task_registry.is_running(f"qp_{exam.id}")
+            or task_registry.is_running(f"ak_{exam.id}")
+            or task_registry.is_running(f"exp_{exam.id}")
+        )
         if is_active:
             continue  # Actively running in current process/worker
 
@@ -537,9 +542,12 @@ async def resume_interrupted_pipeline(
 
     key = str(exam_uuid)
 
+    from app.tasks.celery_app import has_active_celery_workers
+    use_celery = has_active_celery_workers()
+
     # Case 1: Stage 1 (Extraction) incomplete and pdf_path exists
     if q_count == 0 and exam.pdf_path:
-        from app.tasks.exam_tasks import async_process_exam_pdf
+        from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
         await pm.update_pipeline_status(
             exam_id=exam_uuid,
             pipeline_type="QUESTION_EXTRACTION",
@@ -548,13 +556,17 @@ async def resume_interrupted_pipeline(
             progress_percent=10.0,
         )
         task_id = f"resume_p1_{uuid.uuid4().hex[:8]}"
-        background_tasks.add_task(
-            async_process_exam_pdf,
-            pdf_path_or_storage_key=exam.pdf_path,
-            exam_title=exam.name,
-            exam_id_str=str(exam_uuid),
-            task_id=task_id,
-        )
+        if use_celery:
+            task_res = process_exam_pdf_task.delay(str(exam_uuid), exam.pdf_path, exam.name, task_id)
+            task_registry.register_celery_task(key, getattr(task_res, "id", task_id))
+        else:
+            background_tasks.add_task(
+                async_process_exam_pdf,
+                pdf_path_or_storage_key=exam.pdf_path,
+                exam_title=exam.name,
+                exam_id_str=str(exam_uuid),
+                task_id=task_id,
+            )
         return {
             "status": "RESUMED",
             "stage": "QUESTION_EXTRACTION",
@@ -582,7 +594,7 @@ async def resume_interrupted_pipeline(
         }
 
     # Case 3: Stage 3 (Explanation Generation) incomplete
-    from app.tasks.explanation_tasks import async_process_exam_explanations
+    from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
     await pm.update_pipeline_status(
         exam_id=exam_uuid,
         pipeline_type="EXPLANATION_INDEXING",
@@ -591,11 +603,15 @@ async def resume_interrupted_pipeline(
         progress_percent=max(10.0, (exp_count / max(1, q_count)) * 90.0),
     )
     task_id = f"resume_p3_{uuid.uuid4().hex[:8]}"
-    background_tasks.add_task(
-        async_process_exam_explanations,
-        exam_id_str=str(exam_uuid),
-        task_id=task_id,
-    )
+    if use_celery:
+        task_res = process_exam_explanations_task.delay(str(exam_uuid), None, "ENGLISH", task_id)
+        task_registry.register_celery_task(f"exp_{exam_uuid}", getattr(task_res, "id", task_id))
+    else:
+        background_tasks.add_task(
+            async_process_exam_explanations,
+            exam_id_str=str(exam_uuid),
+            task_id=task_id,
+        )
     return {
         "status": "RESUMED",
         "stage": "EXPLANATION_INDEXING",

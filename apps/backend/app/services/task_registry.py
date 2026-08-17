@@ -64,9 +64,12 @@ class TaskRegistry:
         """Checks if a task is currently registered and running."""
         celery_id = self._celery_tasks.get(key)
         if celery_id:
-            res = celery_app.AsyncResult(celery_id)
-            if res.state in ("PENDING", "STARTED"):
-                return True
+            try:
+                res = celery_app.AsyncResult(celery_id)
+                if res.state in ("PENDING", "STARTED"):
+                    return True
+            except Exception as err:
+                logger.warning(f"Failed to inspect Celery task state for '{celery_id}': {err}")
 
         async_task = self._async_tasks.get(key)
         if async_task and not async_task.done():

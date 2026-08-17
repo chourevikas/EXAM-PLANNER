@@ -70,6 +70,10 @@ async def async_process_answer_key_pdf(
     log.info("=" * 70)
 
     try:
+        from app.services.task_registry import task_registry
+        task_registry.register_current_task(str(exam_id_str))
+        task_registry.register_current_task(f"ak_{exam_id_str}")
+
         pipeline = build_answer_key_pipeline()
 
         result = await pipeline.ainvoke(

@@ -131,7 +131,7 @@ class AnswerKeyService:
                 background_tasks.add_task(
                     async_process_answer_key_pdf,
                     str(target_exam.id),
-                    str(temp_path),
+                    persistent_path,
                     target_exam.paper_set_code,
                     task_id,
                     "FastAPI BackgroundTasks",
