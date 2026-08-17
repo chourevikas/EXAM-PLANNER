@@ -55,7 +55,7 @@ export function DashboardPage() {
   const fetchActivities = async () => {
     const token = await getToken();
     if (token) {
-      fetch('http://localhost:8000/api/v1/analytics/activity/today', {
+      fetch('/api/v1/analytics/activity/today', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
         .then(res => res.json())
@@ -87,7 +87,7 @@ export function DashboardPage() {
     // Fetch user badges
     getToken().then((token: string | null) => {
       if (token) {
-        fetch('http://localhost:8000/api/v1/study-plan/badges', {
+        fetch('/api/v1/study-plan/badges', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -630,7 +630,7 @@ export function DashboardPage() {
                 setIsSubmittingLog(true);
                 try {
                   const token = await getToken();
-                  const res = await fetch('http://localhost:8000/api/v1/analytics/activity', {
+                  const res = await fetch('/api/v1/analytics/activity', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

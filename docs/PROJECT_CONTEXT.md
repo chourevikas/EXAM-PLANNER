@@ -127,13 +127,14 @@ Should calculate: Daily Study Hours, Completion Rate, Subject Accuracy, Topic Ac
 - Database schema and core models (User, Profile, etc.) are implemented using SQLModel/SQLAlchemy.
 - Base UI layouts (StudentLayout) and multiple frontend pages (Dashboard, Study Planner, Mock Selection, etc.) are built.
 - Celery & Redis pipeline integration established.
+- Live Exam Engine interface, Admin panel views, and Analytics dashboards have been developed and integrated with backend services.
+- Release branch `release/0.0.1` has been updated with these core frontend and backend components.
 
 ## 12. What Can Be Done Next
 1. **Module 3 (AI Study Planner):** Implement the actual AI logic using LangChain/Google GenAI to generate personalized study plans based on user profiles.
 2. **Module 4 (PYQ Integration):** Build the data ingestion pipeline to parse and store the 20-year Previous Year Questions database, and connect it to the frontend UI.
-3. **Module 5 (Mock Tests):** Implement the backend logic for custom mock test generation and the live exam-taking engine UI.
-4. **Analytics Pipeline:** Connect the frontend charts (like the Dashboard Recharts) to live backend analytic endpoints instead of using mock data.
-5. **Background Tasks:** Utilize the newly integrated Celery workers to handle heavy background processing (like PDF parsing or scheduled email reminders).
+3. **Refine Exam Engine & Analytics:** Fine-tune the backend logic for custom mock test generation and the live exam-taking engine UI, mapping frontend charts to live backend endpoints.
+4. **Background Tasks:** Utilize the newly integrated Celery workers to handle heavy background processing (like PDF parsing or scheduled email reminders).
 
 ## 13. Tech Stack & Architecture Status
 **Frontend:** React 18, Vite, TypeScript, Recharts, Clerk Auth.

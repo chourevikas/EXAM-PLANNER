@@ -64,7 +64,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     const delayDebounceFn = setTimeout(() => {
       setIsSearching(true);
       const token = localStorage.getItem('access_token');
-      fetch(`http://localhost:8000/api/v1/search?q=${encodeURIComponent(searchQuery)}`, {
+      fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       })
       .then(res => res.json())
