@@ -51,7 +51,7 @@ export function Footer() {
                 lineHeight: 1.6,
               }}
             >
-              AI-powered exam preparation platform for serious aspirants.
+              Intelligent exam preparation platform for serious aspirants.
             </p>
           </div>
 

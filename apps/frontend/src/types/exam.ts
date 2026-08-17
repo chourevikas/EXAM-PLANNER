@@ -47,6 +47,7 @@ export type AttemptStatus =
 export interface StartExamRequest {
   exam_id: string;
   mode?: AttemptMode;
+  force_new?: boolean;
 }
 
 export interface SaveResponseRequest {

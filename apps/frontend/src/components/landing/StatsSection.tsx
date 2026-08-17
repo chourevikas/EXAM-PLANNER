@@ -120,9 +120,9 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
 export function StatsSection() {
   const stats: StatProps[] = [
     { value: 100000, suffix: '+', label: 'Questions in Bank',           icon: BookOpen,  color: '#2563eb', bg: 'rgba(37,99,235,0.15)'   },
-    { value: 95,     suffix: '%', label: 'AI Classification Accuracy', icon: BarChart2,  color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
+    { value: 95,     suffix: '%', label: 'Diagnostic Classification Accuracy', icon: BarChart2,  color: '#10b981', bg: 'rgba(16,185,129,0.15)'  },
     { value: 50,     suffix: '+', label: 'Subjects Covered',            icon: FileText,  color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)'  },
-    { value: 100,    suffix: '+', label: 'AI Insights Daily',           icon: Zap,       color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
+    { value: 100,    suffix: '+', label: 'Smart Insights Daily',           icon: Zap,       color: '#f59e0b', bg: 'rgba(245,158,11,0.15)'  },
   ];
 
   return (

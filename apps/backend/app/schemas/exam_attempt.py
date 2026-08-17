@@ -10,6 +10,7 @@ from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStat
 class StartExamRequest(BaseModel):
     exam_id: uuid.UUID | str
     mode: AttemptMode = AttemptMode.EXAM
+    force_new: bool = False
 
 
 class SaveResponseRequest(BaseModel):

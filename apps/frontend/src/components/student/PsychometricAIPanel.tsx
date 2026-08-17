@@ -26,7 +26,7 @@ export function PsychometricAIPanel({ isFreeTier }: PsychometricAIPanelProps) {
           </div>
           <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Pro Behavioral Insights Locked</h3>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, textAlign: 'center', maxWidth: 360 }}>
-            Unlock psychometric option hesitation tracking, mistake patterns, and custom AI recommendations.
+            Unlock psychometric option hesitation tracking, mistake patterns, and custom smart recommendations.
           </p>
           <Link to="/pricing" style={{
             padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#FFF',
@@ -44,7 +44,7 @@ export function PsychometricAIPanel({ isFreeTier }: PsychometricAIPanelProps) {
             <Ico.Brain />
           </div>
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Deep AI Psychometric Analysis</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Deep Psychometric Analysis</h3>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Behavioral metrics during actual test execution.</p>
           </div>
         </div>

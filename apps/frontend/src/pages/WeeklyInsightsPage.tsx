@@ -14,10 +14,10 @@ export function WeeklyInsightsPage() {
       }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--pink-bg)', borderRadius: 20, marginBottom: 10 }}>
           <Ico.Sparkles size={14} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pink-primary)', textTransform: 'uppercase' }}>Weekly AI Executive Summary</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pink-primary)', textTransform: 'uppercase' }}>Weekly Executive Summary</span>
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Weekly Performance Report</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>AI-generated weekly review for Aug 3 - Aug 9, 2026.</p>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Personalized weekly review for Aug 3 - Aug 9, 2026.</p>
       </section>
 
       {/* Grid of Report Cards */}

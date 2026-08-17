@@ -21,7 +21,7 @@ export function Testimonials() {
       accentColor: '#10b981',
       avatarBg: 'linear-gradient(135deg, #10b981, #059669)',
       quote:
-        'The personalized study plan felt like having a dedicated mentor. I never had to wonder what to study — the AI always knew exactly where I needed to focus.',
+        'The personalized study plan felt like having a dedicated mentor. I never had to wonder what to study — the platform always knew exactly where I needed to focus.',
     },
     {
       name: 'Rohit Gupta',
@@ -31,7 +31,7 @@ export function Testimonials() {
       accentColor: '#f59e0b',
       avatarBg: 'linear-gradient(135deg, #f59e0b, #EA580C)',
       quote:
-        '10,000+ questions with intelligent tagging is a game-changer. I solved 4 years of PYQs systematically and the AI analysis caught every gap.',
+        '10,000+ questions with intelligent tagging is a game-changer. I solved 4 years of PYQs systematically and the psychometric analysis caught every gap.',
     },
   ];
 

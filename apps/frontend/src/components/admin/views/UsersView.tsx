@@ -839,7 +839,7 @@ export function UsersView() {
                         {selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM' ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
                       </div>
                       <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {selectedCandidate.subscription_tier === 'PREMIUM' ? 'Full question bank & AI analytics active' : 'Basic candidate access limits'}
+                        {selectedCandidate.subscription_tier === 'PREMIUM' ? 'Full question bank & advanced analytics active' : 'Basic candidate access limits'}
                       </div>
                     </div>
                   </div>

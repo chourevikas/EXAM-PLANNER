@@ -62,11 +62,11 @@ export function PricingPage() {
 
   const features = [
     'Unlimited Access to 25+ Years UPSC CSE PYQs',
-    'Full-Length & Sectional AI Mock Test Series',
+    'Full-Length & Sectional Smart Mock Test Series',
     'Deep Psychometric Option Hesitation & Mistake Tracking',
-    'Dynamic AI Adaptive Daily Study Planner',
+    'Dynamic Adaptive Daily Study Planner',
     'All India Rank Projection & Percentile Matrix',
-    'Priority 24/7 AI Doubt Resolution & Detailed Explanations',
+    'Priority 24/7 Doubt Resolution & Detailed Explanations',
     'Export Performance Reports & Revision Worksheets'
   ];
 
@@ -90,7 +90,7 @@ export function PricingPage() {
           Unlock Your Full Potential with RankEdge Pro
         </h1>
         <p style={{ fontSize: 16, color: 'var(--text-muted)', margin: '0 auto', maxWidth: 600, lineHeight: 1.6 }}>
-          Get instant access to AI behavioral tracking, unlimited mock tests, and personalized study schedules designed for UPSC toppers.
+          Get instant access to behavioral tracking, unlimited mock tests, and personalized study schedules designed for UPSC toppers.
         </p>
 
         {/* Billing Toggle */}

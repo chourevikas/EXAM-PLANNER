@@ -397,9 +397,99 @@ export async function getResponseBatchStatus(attemptId: string, batchId: string)
   return { status: 'PROCESSED' };
 }
 
-export async function getAttemptUserProgressionReport(attemptId: string): Promise<any> { return null; }
-export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> { return null; }
-export async function pollAttemptReportUntilReady(attemptId: string, onUpdate: (status: any) => void, maxRetries?: number, delay?: number): Promise<any> { return null; }
-export async function getUserCumulativeAggregateReport(userId?: string): Promise<any> { return null; }
-export async function getUserCumulativeAggregateMarkdown(userId?: string): Promise<string> { return ''; }
-export async function getAttemptQuestionReport(attemptId: string): Promise<any> { return null; }
+export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/status`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      return { is_ready: true, status: 'EVALUATED' };
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch attempt evaluation status:', err);
+    return { is_ready: true, status: 'EVALUATED' };
+  }
+}
+
+export async function pollAttemptReportUntilReady(
+  attemptId: string,
+  onUpdate: (status: any) => void,
+  maxRetries: number = 35,
+  delay: number = 1500
+): Promise<boolean> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const status = await getAttemptEvaluationStatus(attemptId);
+      if (onUpdate) onUpdate(status);
+      if (status && (status.is_ready || status.status === 'COMPLETED' || status.status === 'EVALUATED')) {
+        return true;
+      }
+    } catch (err) {
+      console.warn('Polling error:', err);
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+  return false;
+}
+
+export async function getAttemptQuestionReport(attemptId: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/questions`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch attempt question report:', err);
+    return null;
+  }
+}
+
+export async function getAttemptUserProgressionReport(attemptId: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/user-delta`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch user progression report:', err);
+    return null;
+  }
+}
+
+export async function getUserCumulativeAggregateReport(userId?: string): Promise<any> {
+  try {
+    const target = userId || 'me';
+    const response = await fetch(`${API_BASE_URL}/analytics/users/${target}/aggregate-report`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch user cumulative aggregate report:', err);
+    return null;
+  }
+}
+
+export async function getUserCumulativeAggregateMarkdown(userId?: string): Promise<string> {
+  try {
+    const target = userId || 'me';
+    const headers = getAuthHeaders();
+    delete headers['Content-Type'];
+    const response = await fetch(`${API_BASE_URL}/analytics/users/${target}/aggregate-report/markdown`, {
+      method: 'GET',
+      headers,
+    });
+    if (!response.ok) return '';
+    return await response.text();
+  } catch (err) {
+    console.warn('Failed to fetch user cumulative markdown:', err);
+    return '';
+  }
+}

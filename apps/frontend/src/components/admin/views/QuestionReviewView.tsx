@@ -51,7 +51,11 @@ interface QuestionDetailItem {
   };
 }
 
-export function QuestionReviewView() {
+interface QuestionReviewViewProps {
+  initialExam?: ExamPipelineStatusItem | any | null;
+}
+
+export function QuestionReviewView({ initialExam }: QuestionReviewViewProps = {}) {
   // Window width tracking for mobile responsiveness
   const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
@@ -64,7 +68,13 @@ export function QuestionReviewView() {
   const isMobile = windowWidth <= 768;
 
   // Navigation State: null = Exam Directory Table, ExamPipelineStatusItem = Split-Pane Review Workspace
-  const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
+  const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | any | null>(initialExam || null);
+
+  useEffect(() => {
+    if (initialExam) {
+      setSelectedExam(initialExam);
+    }
+  }, [initialExam]);
 
   // Data States
   const [examsList, setExamsList] = useState<ExamPipelineStatusItem[]>([]);

@@ -61,7 +61,7 @@ export function DashboardPreview() {
               marginBottom: 16,
             }}
           >
-            Your Dashboard, Powered by AI
+            Your Dashboard, Data-Driven & Personal
           </h2>
           <p
             style={{
@@ -159,7 +159,7 @@ export function DashboardPreview() {
                     c: C.saffron,
                   },
                   {
-                    l: 'AI Insights',
+                    l: 'Smart Insights',
                     v: '89 Tips',
                     d: 'Personalized',
                     c: '#8B5CF6',
@@ -309,7 +309,7 @@ export function DashboardPreview() {
                         marginBottom: 10,
                       }}
                     >
-                      AI Recommendation
+                      Smart Recommendation
                     </div>
                     <div
                       style={{

@@ -126,8 +126,13 @@ class ExamSessionService:
         )
         existing_attempt = existing.first()
         if existing_attempt:
-            logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
-            status_res = await self.get_exam_status(existing_attempt.id, user_id)
+            if getattr(req, 'force_new', False):
+                logger.info(f"User '{user_id}' requested force_new attempt. Abandoning attempt '{existing_attempt.id}'...")
+                existing_attempt.status = AttemptStatus.ABANDONED
+                await self.session.flush()
+            else:
+                logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
+                status_res = await self.get_exam_status(existing_attempt.id, user_id)
             q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
             # Generate presigned URLs for questions JSON
             q_presigned_url = None

@@ -13,7 +13,8 @@ interface DisplayExam {
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  latestAttemptId?: string;
+  completedAttemptId?: string;
+  inProgressAttemptId?: string;
   scoreText?: string;
 }
 
@@ -31,35 +32,35 @@ export function PYQSelectionPage() {
           listCandidateAttempts(),
         ]);
 
-        // Only display exams that have been Approved & Published by Admin with is_active = True (where S3 test bank JSONs exist)
+        // Only display exams that have been Approved & Published by Admin with is_active = True
         const publishedPyqs = liveExams.filter(
           (e) => e.is_active === true && (e.status === 'PUBLISHED' || e.status === 'ExamStatus.PUBLISHED')
         );
 
         if (publishedPyqs.length > 0) {
           const mapped: DisplayExam[] = publishedPyqs.map((e) => {
-            // Find latest attempt for this exam
-            const matchingAttempt = userAttempts.find(
+            // Find attempts for this exam and sort by newest first
+            const examAttempts = userAttempts.filter(
               (att) => att.exam_id === e.id || att.exam_id === e.code
             );
+            examAttempts.sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime());
+
+            const completedAttempt = examAttempts.find((att) =>
+              ['COMPLETED', 'SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(att.status)
+            );
+            const inProgressAttempt = examAttempts.find((att) => att.status === 'IN_PROGRESS');
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
             let scoreText: string | undefined = undefined;
-            let latestAttemptId: string | undefined = undefined;
 
-            if (matchingAttempt) {
-              latestAttemptId = matchingAttempt.attempt_id;
-              if (
-                matchingAttempt.status === 'COMPLETED' ||
-                matchingAttempt.status === 'SUBMITTED' ||
-                matchingAttempt.status === 'AUTO_SUBMITTED' ||
-                matchingAttempt.status === 'EVALUATED'
-              ) {
-                status = 'COMPLETED';
-                scoreText = `${matchingAttempt.total_score} / ${matchingAttempt.max_possible_score}`;
-              } else if (matchingAttempt.status === 'IN_PROGRESS') {
-                status = 'IN_PROGRESS';
-              }
+            if (inProgressAttempt) {
+              status = 'IN_PROGRESS';
+            } else if (completedAttempt) {
+              status = 'COMPLETED';
+            }
+
+            if (completedAttempt) {
+              scoreText = `${completedAttempt.total_score} / ${completedAttempt.max_possible_score}`;
             }
 
             return {
@@ -70,7 +71,8 @@ export function PYQSelectionPage() {
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
-              latestAttemptId,
+              completedAttemptId: completedAttempt?.attempt_id,
+              inProgressAttemptId: inProgressAttempt?.attempt_id,
               scoreText,
             };
           });
@@ -84,7 +86,6 @@ export function PYQSelectionPage() {
         setIsLoading(false);
       }
     }
-
 
     fetchLiveExamsAndAttempts();
   }, []);
@@ -125,8 +126,8 @@ export function PYQSelectionPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
           {examsList.map((exam) => {
-            const isCompleted = exam.status === 'COMPLETED';
-            const isInProgress = exam.status === 'IN_PROGRESS';
+            const hasCompleted = Boolean(exam.completedAttemptId);
+            const hasInProgress = Boolean(exam.inProgressAttemptId);
 
             return (
               <div 
@@ -136,7 +137,7 @@ export function PYQSelectionPage() {
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderRadius: 20,
-                  border: `1px solid ${hoveredExam === exam.id ? 'var(--accent-primary)' : isCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
+                  border: `1px solid ${hoveredExam === exam.id ? 'var(--accent-primary)' : hasCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
                   padding: '24px',
                   boxShadow: hoveredExam === exam.id ? '0 12px 30px var(--shadow-color-accent)' : '0 8px 24px var(--shadow-color-base)',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -150,8 +151,8 @@ export function PYQSelectionPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{
-                      backgroundColor: isCompleted ? 'rgba(16,185,129,0.12)' : isInProgress ? 'rgba(245,158,11,0.12)' : 'var(--accent-bg)',
-                      color: isCompleted ? '#10b981' : isInProgress ? '#f59e0b' : 'var(--accent-primary)',
+                      backgroundColor: hasInProgress ? 'rgba(245,158,11,0.12)' : hasCompleted ? 'rgba(16,185,129,0.12)' : 'var(--accent-bg)',
+                      color: hasInProgress ? '#f59e0b' : hasCompleted ? '#10b981' : 'var(--accent-primary)',
                       padding: '6px 12px',
                       borderRadius: 20,
                       fontSize: 12,
@@ -160,13 +161,13 @@ export function PYQSelectionPage() {
                       alignItems: 'center',
                       gap: 6,
                     }}>
-                      {isCompleted ? (
-                        <>
-                          <CheckCircle2 size={14} /> Exam Completed
-                        </>
-                      ) : isInProgress ? (
+                      {hasInProgress ? (
                         <>
                           <PlayCircle size={14} /> In Progress
+                        </>
+                      ) : hasCompleted ? (
+                        <>
+                          <CheckCircle2 size={14} /> Exam Completed
                         </>
                       ) : (
                         <>
@@ -189,7 +190,7 @@ export function PYQSelectionPage() {
                     <span>{exam.duration}</span>
                   </div>
 
-                  {isCompleted && exam.scoreText && (
+                  {hasCompleted && exam.scoreText && (
                     <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#10b981', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Report Ready</span>
                       <span>Score: {exam.scoreText}</span>
@@ -199,10 +200,74 @@ export function PYQSelectionPage() {
 
                 {/* Actions */}
                 <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {isCompleted ? (
+                  {hasInProgress ? (
                     <>
                       <Link 
-                        to={`/analytics?attemptId=${exam.latestAttemptId}`}
+                        to={`/exam/${exam.id}`}
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          backgroundColor: '#f59e0b',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <PlayCircle size={16} /> Resume
+                      </Link>
+
+                      {hasCompleted && (
+                        <Link 
+                          to={`/analytics?attemptId=${exam.completedAttemptId}`}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title="View Previous Report"
+                        >
+                          <BarChart2 size={16} /> Report
+                        </Link>
+                      )}
+
+                      <Link 
+                        to={`/exam/${exam.id}?forceNew=true`}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          backgroundColor: 'var(--bg-subtle)',
+                          color: 'var(--text-primary)',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          border: '1px solid var(--border-default)',
+                        }}
+                        title="Start Fresh Attempt"
+                      >
+                        <RotateCcw size={14} /> Retake
+                      </Link>
+                    </>
+                  ) : hasCompleted ? (
+                    <>
+                      <Link 
+                        to={`/analytics?attemptId=${exam.completedAttemptId}`}
                         style={{
                           flex: 1,
                           padding: '10px 14px',
@@ -223,7 +288,7 @@ export function PYQSelectionPage() {
                       </Link>
 
                       <Link 
-                        to={`/exam/${exam.id}`}
+                        to={`/exam/${exam.id}?forceNew=true`}
                         style={{
                           padding: '10px 14px',
                           borderRadius: 12,
@@ -237,32 +302,11 @@ export function PYQSelectionPage() {
                           gap: 4,
                           border: '1px solid var(--border-default)',
                         }}
-                        title="Retake Exam"
+                        title="Start Exam Again"
                       >
                         <RotateCcw size={14} /> Retake
                       </Link>
                     </>
-                  ) : isInProgress ? (
-                    <Link 
-                      to={`/exam/${exam.id}`}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        backgroundColor: '#f59e0b',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        textAlign: 'center',
-                      }}
-                    >
-                      <PlayCircle size={16} /> Resume Exam
-                    </Link>
                   ) : (
                     <Link 
                       to={`/exam/${exam.id}`}

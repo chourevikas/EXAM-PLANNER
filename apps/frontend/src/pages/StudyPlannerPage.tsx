@@ -13,7 +13,7 @@ export function StudyPlannerPage() {
   ];
 
   return (
-    <StudentLayout pageTitle="AI Study Planner">
+    <StudentLayout pageTitle="Study Planner">
       {/* Header Banner */}
       <section style={{ 
         marginBottom: 32, padding: 32, borderRadius: 24,
@@ -25,10 +25,10 @@ export function StudyPlannerPage() {
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 20, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
             <Ico.Cal size={14} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>AI Dynamic Schedule</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Dynamic Schedule</span>
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Adaptive Study Planner</h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>AI-optimized daily timetable based on your accuracy trends & target exam date.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Personalized daily timetable based on your accuracy trends & target exam date.</p>
         </div>
 
         <button style={{

@@ -16,6 +16,7 @@ import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineSt
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
+  const [selectedExamForReview, setSelectedExamForReview] = useState<any>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -53,8 +54,13 @@ export function AdminPage() {
     }
   };
 
-  const handleNavigate = (view: string) => {
+  const handleNavigate = (view: string, extraData?: any) => {
     setActiveView(view);
+    if (extraData !== undefined) {
+      setSelectedExamForReview(extraData);
+    } else if (view !== 'review') {
+      setSelectedExamForReview(null);
+    }
     if (isMobile) setMobileOpen(false);
   };
 
@@ -68,7 +74,7 @@ export function AdminPage() {
       case 'ai-queue':
         return <AIQueueView />;
       case 'review':
-        return <QuestionReviewView />;
+        return <QuestionReviewView initialExam={selectedExamForReview} />;
       case 'mock-tests':
         return <MockTestsView />;
       case 'users':

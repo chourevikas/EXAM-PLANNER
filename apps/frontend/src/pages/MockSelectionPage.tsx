@@ -12,7 +12,8 @@ interface DisplayMock {
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  latestAttemptId?: string;
+  completedAttemptId?: string;
+  inProgressAttemptId?: string;
   scoreText?: string;
 }
 
@@ -38,27 +39,27 @@ export function MockSelectionPage() {
 
         if (targetList.length > 0) {
           const mapped: DisplayMock[] = targetList.map((e) => {
-            const matchingAttempt = userAttempts.find(
+            const examAttempts = userAttempts.filter(
               (att) => att.exam_id === e.id || att.exam_id === e.code
             );
+            examAttempts.sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime());
+
+            const completedAttempt = examAttempts.find((att) =>
+              ['COMPLETED', 'SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(att.status)
+            );
+            const inProgressAttempt = examAttempts.find((att) => att.status === 'IN_PROGRESS');
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
             let scoreText: string | undefined = undefined;
-            let latestAttemptId: string | undefined = undefined;
 
-            if (matchingAttempt) {
-              latestAttemptId = matchingAttempt.attempt_id;
-              if (
-                matchingAttempt.status === 'COMPLETED' ||
-                matchingAttempt.status === 'SUBMITTED' ||
-                matchingAttempt.status === 'AUTO_SUBMITTED' ||
-                matchingAttempt.status === 'EVALUATED'
-              ) {
-                status = 'COMPLETED';
-                scoreText = `${matchingAttempt.total_score} / ${matchingAttempt.max_possible_score}`;
-              } else if (matchingAttempt.status === 'IN_PROGRESS') {
-                status = 'IN_PROGRESS';
-              }
+            if (inProgressAttempt) {
+              status = 'IN_PROGRESS';
+            } else if (completedAttempt) {
+              status = 'COMPLETED';
+            }
+
+            if (completedAttempt) {
+              scoreText = `${completedAttempt.total_score} / ${completedAttempt.max_possible_score}`;
             }
 
             return {
@@ -68,16 +69,14 @@ export function MockSelectionPage() {
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
-              latestAttemptId,
+              completedAttemptId: completedAttempt?.attempt_id,
+              inProgressAttemptId: inProgressAttempt?.attempt_id,
               scoreText,
             };
           });
           setMocksList(mapped);
-        }
- else {
-          setMocksList([
-            { id: 'mock_full_1', title: 'Full Length UPSC Mock 1', category: 'Full Length', totalQuestions: 100, duration: '120 mins', status: 'NOT_STARTED' },
-          ]);
+        } else {
+          setMocksList([]);
         }
       } catch (err) {
         console.warn('Failed to load real-time mocks & attempts:', err);
@@ -98,25 +97,35 @@ export function MockSelectionPage() {
         boxShadow: 'var(--shadow-color-base)',
         backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(219,39,119,0.06) 100%)'
       }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--pink-bg)', borderRadius: 20, marginBottom: 10 }}>
-          <Ico.Brain size={14} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--pink-primary)', textTransform: 'uppercase' }}>AI-Powered Exam Simulation</span>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 20, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+          <Ico.Book size={14} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Adaptive Testing</span>
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Mock Test Series</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Select a full-length or sectional mock test stored in system database to get AI psychometric tracking.</p>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>UPSC Mock Tests</h1>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Practice with real test conditions, instant scoring, and psychometric feedback.</p>
       </section>
 
       {/* Grid */}
       {isLoading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
           <div className="spinner" style={{ marginBottom: 12 }} />
-          Fetching real-time mock test series and attempt status...
+          Fetching real-time mock test archive and attempt status...
+        </div>
+      ) : mocksList.length === 0 ? (
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-default)' }}>
+          <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
+            <Ico.Book size={40} />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Approved Mock Tests Available Yet</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+            Mock tests uploaded will appear here as soon as they are published by an administrator.
+          </p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
           {mocksList.map((mock) => {
-            const isCompleted = mock.status === 'COMPLETED';
-            const isInProgress = mock.status === 'IN_PROGRESS';
+            const hasCompleted = Boolean(mock.completedAttemptId);
+            const hasInProgress = Boolean(mock.inProgressAttemptId);
 
             return (
               <div 
@@ -126,7 +135,7 @@ export function MockSelectionPage() {
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderRadius: 20,
-                  border: `1px solid ${hoveredMock === mock.id ? 'var(--accent-primary)' : isCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
+                  border: `1px solid ${hoveredMock === mock.id ? 'var(--accent-primary)' : hasCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
                   padding: '24px',
                   boxShadow: hoveredMock === mock.id ? '0 12px 30px var(--shadow-color-accent)' : '0 8px 24px var(--shadow-color-base)',
                   transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -140,8 +149,8 @@ export function MockSelectionPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{
-                      backgroundColor: isCompleted ? 'rgba(16,185,129,0.12)' : isInProgress ? 'rgba(245,158,11,0.12)' : 'var(--accent-bg)',
-                      color: isCompleted ? '#10b981' : isInProgress ? '#f59e0b' : 'var(--accent-primary)',
+                      backgroundColor: hasInProgress ? 'rgba(245,158,11,0.12)' : hasCompleted ? 'rgba(16,185,129,0.12)' : 'var(--accent-bg)',
+                      color: hasInProgress ? '#f59e0b' : hasCompleted ? '#10b981' : 'var(--accent-primary)',
                       padding: '6px 12px',
                       borderRadius: 20,
                       fontSize: 12,
@@ -150,13 +159,13 @@ export function MockSelectionPage() {
                       alignItems: 'center',
                       gap: 6,
                     }}>
-                      {isCompleted ? (
-                        <>
-                          <CheckCircle2 size={14} /> Exam Completed
-                        </>
-                      ) : isInProgress ? (
+                      {hasInProgress ? (
                         <>
                           <PlayCircle size={14} /> In Progress
+                        </>
+                      ) : hasCompleted ? (
+                        <>
+                          <CheckCircle2 size={14} /> Completed
                         </>
                       ) : (
                         <>
@@ -165,7 +174,7 @@ export function MockSelectionPage() {
                       )}
                     </div>
                     <div style={{ color: 'var(--text-muted)' }}>
-                      <Ico.Brain size={20} />
+                      <Ico.Book size={20} />
                     </div>
                   </div>
                   
@@ -179,7 +188,7 @@ export function MockSelectionPage() {
                     <span>{mock.duration}</span>
                   </div>
 
-                  {isCompleted && mock.scoreText && (
+                  {hasCompleted && mock.scoreText && (
                     <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#10b981', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Report Ready</span>
                       <span>Score: {mock.scoreText}</span>
@@ -189,10 +198,74 @@ export function MockSelectionPage() {
 
                 {/* Actions */}
                 <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {isCompleted ? (
+                  {hasInProgress ? (
                     <>
                       <Link 
-                        to={`/analytics?attemptId=${mock.latestAttemptId}`}
+                        to={`/exam/${mock.id}`}
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          backgroundColor: '#f59e0b',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <PlayCircle size={16} /> Resume
+                      </Link>
+
+                      {hasCompleted && (
+                        <Link 
+                          to={`/analytics?attemptId=${mock.completedAttemptId}`}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title="View Previous Report"
+                        >
+                          <BarChart2 size={16} /> Report
+                        </Link>
+                      )}
+
+                      <Link 
+                        to={`/exam/${mock.id}?forceNew=true`}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          backgroundColor: 'var(--bg-subtle)',
+                          color: 'var(--text-primary)',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          border: '1px solid var(--border-default)',
+                        }}
+                        title="Start Fresh Test"
+                      >
+                        <RotateCcw size={14} /> Retake
+                      </Link>
+                    </>
+                  ) : hasCompleted ? (
+                    <>
+                      <Link 
+                        to={`/analytics?attemptId=${mock.completedAttemptId}`}
                         style={{
                           flex: 1,
                           padding: '10px 14px',
@@ -213,7 +286,7 @@ export function MockSelectionPage() {
                       </Link>
 
                       <Link 
-                        to={`/exam/${mock.id}`}
+                        to={`/exam/${mock.id}?forceNew=true`}
                         style={{
                           padding: '10px 14px',
                           borderRadius: 12,
@@ -232,27 +305,6 @@ export function MockSelectionPage() {
                         <RotateCcw size={14} /> Retake
                       </Link>
                     </>
-                  ) : isInProgress ? (
-                    <Link 
-                      to={`/exam/${mock.id}`}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        backgroundColor: '#f59e0b',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        textAlign: 'center',
-                      }}
-                    >
-                      <PlayCircle size={16} /> Resume Test
-                    </Link>
                   ) : (
                     <Link 
                       to={`/exam/${mock.id}`}

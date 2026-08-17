@@ -4,12 +4,20 @@ import { useTheme } from '../../hooks/useTheme';
 
 interface ExamSubmitModalProps {
   isOpen: boolean;
-  answeredCount: number;
-  markedCount: number;
-  unattemptedCount: number;
+  answeredCount?: number;
+  markedCount?: number;
+  unattemptedCount?: number;
+  summary?: {
+    answered_count: number;
+    marked_for_review_count: number;
+    unattempted_count: number;
+    total?: number;
+  };
   isSubmitting?: boolean;
-  onResume: () => void;
-  onConfirmSubmit: () => void;
+  onResume?: () => void;
+  onClose?: () => void;
+  onConfirmSubmit?: () => void;
+  onConfirm?: () => void;
 }
 
 export function ExamSubmitModal({
@@ -17,12 +25,21 @@ export function ExamSubmitModal({
   answeredCount,
   markedCount,
   unattemptedCount,
+  summary,
   isSubmitting = false,
   onResume,
+  onClose,
   onConfirmSubmit,
+  onConfirm,
 }: ExamSubmitModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const ans = answeredCount ?? summary?.answered_count ?? 0;
+  const mrk = markedCount ?? summary?.marked_for_review_count ?? 0;
+  const unatt = unattemptedCount ?? summary?.unattempted_count ?? 0;
+  const handleClose = onResume || onClose || (() => {});
+  const handleConfirm = onConfirmSubmit || onConfirm || (() => {});
 
   if (!isOpen) return null;
 
@@ -88,16 +105,16 @@ export function ExamSubmitModal({
           }}
         >
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{answeredCount}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{ans}</div>
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Answered</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>{markedCount}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>{mrk}</div>
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Review</div>
           </div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b' }}>
-              {unattemptedCount}
+              {unatt}
             </div>
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Left</div>
           </div>
@@ -105,7 +122,7 @@ export function ExamSubmitModal({
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button
-            onClick={onResume}
+            onClick={handleClose}
             disabled={isSubmitting}
             style={{
               flex: 1,
@@ -123,7 +140,7 @@ export function ExamSubmitModal({
             Resume Test
           </button>
           <button
-            onClick={onConfirmSubmit}
+            onClick={handleConfirm}
             disabled={isSubmitting}
             style={{
               flex: 1,

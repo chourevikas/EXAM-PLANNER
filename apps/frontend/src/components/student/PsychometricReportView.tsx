@@ -1012,7 +1012,7 @@ export function PsychometricReportView({
                       color: isDark ? '#ffffff' : '#0f172a',
                     }}
                   >
-                    12. Strategic AI Mentor Diagnostic Recommendations
+                    12. Strategic Mentor Diagnostic Recommendations
                   </h3>
                   <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>
                     Actionable Cognitive Roadmap
@@ -1070,7 +1070,7 @@ export function PsychometricReportView({
                     }}
                   >
                     <Sparkles size={16} />
-                    <span>AI Mentor Diagnostics: Module In Development (Rule-Engine Active)</span>
+                    <span>Mentor Diagnostics: Module In Development (Rule-Engine Active)</span>
                   </div>
                   <div
                     style={{

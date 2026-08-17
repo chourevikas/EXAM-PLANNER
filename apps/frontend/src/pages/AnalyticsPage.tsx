@@ -111,10 +111,10 @@ export function AnalyticsPage() {
       try {
         // Step 1: Check status via lightweight polling endpoint
         const initialStatus = await getAttemptEvaluationStatus(targetId);
-        if (!initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
+        if (initialStatus && !initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
           setIsEvaluating(true);
           setEvalProgress(initialStatus.progress_percentage || 40);
-          setEvalMessage(initialStatus.message || 'Synthesizing 12 psychometric matrices & AI mentor recommendations...');
+          setEvalMessage(initialStatus.message || 'Synthesizing 12 psychometric matrices & smart mentor recommendations...');
 
           // Long-polling loop (every 1.5s)
           const isReady = await pollAttemptReportUntilReady(
@@ -301,7 +301,7 @@ export function AnalyticsPage() {
           </div>
 
           <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-            Psychometric AI Evaluation Engine Active
+            Psychometric Evaluation Engine Active
           </h2>
 
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 520 }}>

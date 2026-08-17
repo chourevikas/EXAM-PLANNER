@@ -155,7 +155,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
 export function FeaturesSection() {
   const features: Feature[] = [
     { icon: <Ico.Chart />,   title: 'Psychometric Skill Analysis', desc: 'Deep subject-level accuracy tracking, time analysis, and behavioral performance insights.', num: '01' },
-    { icon: <Ico.Cal />,     title: 'Personalized Study Planner', desc: 'Daily AI-generated plans that adapt dynamically as your strengths and weaknesses evolve.',   num: '02' },
+    { icon: <Ico.Cal />,     title: 'Personalized Study Planner', desc: 'Daily personalized plans that adapt dynamically as your strengths and weaknesses evolve.',   num: '02' },
     { icon: <Ico.Book />,    title: '10,000+ PYQs',               desc: 'Complete bank from 2000–2024, tagged by year, topic, difficulty, and predicted importance.',   num: '03' },
     { icon: <Ico.Brain />,   title: 'Smart Syllabus Mentor',      desc: 'Ask any conceptual doubt and receive instant, syllabus-grounded, precise answers.',            num: '04' },
     { icon: <Ico.Refresh />, title: 'Revision & Retention',       desc: 'Spaced repetition ensures every topic is reviewed at the scientifically optimal interval.',    num: '05' },

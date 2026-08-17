@@ -32,7 +32,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>
             <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', flexShrink: 0 }}><Ico.Brain /></div>
-            <span><strong style={{ color: 'var(--text-primary)' }}>AI Tip:</strong> Polity accuracy up +12%! Focus on Economy next.</span>
+            <span><strong style={{ color: 'var(--text-primary)' }}>Smart Tip:</strong> Polity accuracy up +12%! Focus on Economy next.</span>
           </div>
         </div>
 

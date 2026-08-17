@@ -12,7 +12,7 @@ import {
 } from '../../services/adminService';
 
 interface AdminOverviewViewProps {
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, extraData?: any) => void;
 }
 
 export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
@@ -350,7 +350,18 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                       </td>
                       <td style={{ padding: '14px 12px', textAlign: 'right' }}>
                         <button
-                          onClick={() => onNavigate('upload')}
+                          onClick={() =>
+                            onNavigate('review', {
+                              id: paper.id,
+                              name: paper.title,
+                              code: paper.title,
+                              source_year: 2024,
+                              stage: 'prelims',
+                              status: paper.status,
+                              total_questions: paper.questions,
+                              extracted_questions_count: paper.questions,
+                            })
+                          }
                           style={{
                             padding: '5px 12px',
                             fontSize: 12.5,

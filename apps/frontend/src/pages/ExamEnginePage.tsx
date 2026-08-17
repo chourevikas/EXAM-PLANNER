@@ -386,9 +386,12 @@ export function ExamEnginePage() {
   const updatePaletteItemStatus = (idx: number, status: QuestionPaletteItem['question_status']) => {
     setPalette((prev) => {
       const copy = [...prev];
-      if (copy[idx]) {
-        copy[idx] = { ...copy[idx], question_status: status };
-      }
+      const qId = activeQuestion?.question_id || `q-${idx + 1}`;
+      copy[idx] = {
+        question_number: idx + 1,
+        question_id: copy[idx]?.question_id || qId,
+        question_status: status,
+      };
       return copy;
     });
   };
@@ -399,6 +402,30 @@ export function ExamEnginePage() {
       // Trigger non-blocking background flush
       flushPendingBatches();
     }
+  };
+
+  const handleOpenSubmitModal = () => {
+    saveCurrentResponse();
+    setShowSubmitModal(true);
+  };
+
+  // Dynamic Live Response Summary computed from Palette State
+  const liveAnsweredCount = palette.length > 0
+    ? palette.filter((p) => p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED').length
+    : responseSummary.answered_count;
+
+  const liveMarkedCount = palette.length > 0
+    ? palette.filter((p) => p.question_status === 'MARKED_FOR_REVIEW' || p.question_status === 'ANSWERED_AND_MARKED').length
+    : responseSummary.marked_for_review_count;
+
+  const liveTotal = palette.length > 0 ? palette.length : (responseSummary.total || totalQuestions || 100);
+  const liveUnattemptedCount = Math.max(0, liveTotal - liveAnsweredCount);
+
+  const liveResponseSummary: ResponseSummary = {
+    answered_count: liveAnsweredCount,
+    marked_for_review_count: liveMarkedCount,
+    unattempted_count: liveUnattemptedCount,
+    total: liveTotal,
   };
 
   const handleNext = async () => {
@@ -541,7 +568,7 @@ export function ExamEnginePage() {
         language={language}
         isSubmitting={isSubmitting}
         onLanguageChange={setLanguage}
-        onSubmitClick={() => setShowSubmitModal(true)}
+        onSubmitClick={handleOpenSubmitModal}
       />
 
       {/* Mobile Tab Switcher Bar (< 1024px) */}
@@ -617,7 +644,7 @@ export function ExamEnginePage() {
               palette={palette}
               totalQuestions={totalQuestions}
               currentQIndex={currentQIndex}
-              responseSummary={responseSummary}
+              responseSummary={liveResponseSummary}
               onSelectSection={(secId, startQ) => {
                 setActiveSectionId(secId);
                 if (startQ && startQ >= 1 && startQ <= totalQuestions) {
@@ -685,9 +712,9 @@ export function ExamEnginePage() {
       {/* Submit Confirmation Modal */}
       <ExamSubmitModal
         isOpen={showSubmitModal}
-        answeredCount={responseSummary.answered_count}
-        markedCount={responseSummary.marked_for_review_count}
-        unattemptedCount={responseSummary.unattempted_count}
+        answeredCount={liveResponseSummary.answered_count}
+        markedCount={liveResponseSummary.marked_for_review_count}
+        unattemptedCount={liveResponseSummary.unattempted_count}
         isSubmitting={isSubmitting}
         onResume={() => !isSubmitting && setShowSubmitModal(false)}
         onConfirmSubmit={handleConfirmSubmit}

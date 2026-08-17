@@ -203,7 +203,7 @@ export function HeroIllustration() {
           </div>
         </div>
 
-        {/* Floating AI Mentor badge */}
+        {/* Floating Smart Mentor badge */}
         <div
           className="anim-float-b"
           style={{
@@ -242,7 +242,7 @@ export function HeroIllustration() {
               }}
             />
           </div>
-          AI Mentor Active
+          Smart Mentor Active
         </div>
 
         {/* Weekly progress floating card */}
@@ -314,7 +314,7 @@ export function HeroIllustration() {
           </div>
         </div>
 
-        {/* AI Recommendation chip */}
+        {/* Smart Recommendation chip */}
         <div
           style={{
             position: 'absolute',
@@ -352,7 +352,7 @@ export function HeroIllustration() {
               <Ico.Brain />
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, color: C.royal }}>
-              AI Insight
+              Smart Insight
             </span>
           </div>
           <p style={{ fontSize: 11, color: C.grey, lineHeight: 1.5 }}>

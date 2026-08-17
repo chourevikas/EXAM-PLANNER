@@ -116,7 +116,7 @@ export function DashboardPage() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 15 }}>
             <div style={{ color: 'var(--accent-primary)' }}><Ico.Brain /></div>
-            <span><strong style={{ color: 'var(--text-primary)' }}>AI Insight:</strong> Your polity accuracy is up 12% this week. Keep up the momentum!</span>
+            <span><strong style={{ color: 'var(--text-primary)' }}>Smart Insight:</strong> Your polity accuracy is up 12% this week. Keep up the momentum!</span>
           </div>
         </div>
 
@@ -282,7 +282,7 @@ export function DashboardPage() {
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Premium Analytics Locked</h3>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, textAlign: 'center', maxWidth: 280 }}>
-                Unlock deep AI behavioral tracking and psychometric insights with the Pro Plan.
+                Unlock deep behavioral tracking and psychometric insights with the Pro Plan.
               </p>
               <Link to="/pricing" style={{
                 padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#FFF',
@@ -303,7 +303,7 @@ export function DashboardPage() {
                 <Ico.Brain />
               </div>
               <div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Deep AI Insights</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Deep Behavioral Insights</h3>
                 <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Behavioral & Psychometric Analysis</p>
               </div>
             </div>
