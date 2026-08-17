@@ -204,6 +204,51 @@ export async function fetchExamPipelineStatuses(): Promise<ExamPipelineStatusIte
   return await res.json();
 }
 
+export interface StuckPipelineItem {
+  exam_id: string;
+  exam_name: string;
+  exam_code: string;
+  pipeline_type: string;
+  status: string;
+  current_step: string;
+  progress_percent: number;
+  extracted_questions_count: number;
+  key_mapped_count: number;
+  explanations_count: number;
+  total_questions: number;
+  can_resume: boolean;
+}
+
+export async function fetchStuckPipelines(): Promise<StuckPipelineItem[]> {
+  const res = await fetch(`${API_BASE_URL}/exams/stuck-pipelines`, { headers: getAuthHeader() });
+  if (!res.ok) return [];
+  return await res.json();
+}
+
+export async function resumeExamPipeline(examId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/resume-pipeline`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to resume pipeline' }));
+    throw new Error(errorData.detail || 'Could not resume pipeline.');
+  }
+  return await res.json();
+}
+
+export async function dismissStuckPipeline(examId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/dismiss-stuck-pipeline`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to dismiss prompt' }));
+    throw new Error(errorData.detail || 'Could not dismiss prompt.');
+  }
+  return await res.json();
+}
+
 export async function approveAndPublishExam(examId: string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve`, {
     method: 'POST',

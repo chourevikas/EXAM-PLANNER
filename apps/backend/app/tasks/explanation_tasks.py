@@ -51,6 +51,10 @@ async def async_process_exam_explanations(
     log.info("=" * 70)
 
     try:
+        from app.services.task_registry import task_registry
+        task_registry.register_current_task(str(exam_id_str))
+        task_registry.register_current_task(f"exp_{exam_id_str}")
+
         from app.pipeline.explanation_graph import build_explanation_pipeline
         pipeline = build_explanation_pipeline()
 

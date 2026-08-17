@@ -2,6 +2,7 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import cast, String
 
 from app.db.session import get_async_session
 from app.db.models import LanguageCode, QuestionStatus
@@ -158,6 +159,7 @@ async def list_exam_pipeline_statuses(
     # 3. Aggregated correct answers per exam
     key_stmt = (
         select(Question.exam_id, func.count(func.distinct(Question.id)))
+        .select_from(Question)
         .join(QuestionOption, Question.id == QuestionOption.question_id)
         .where(QuestionOption.is_correct == True)
         .group_by(Question.exam_id)
@@ -165,16 +167,34 @@ async def list_exam_pipeline_statuses(
     key_rows = (await session.exec(key_stmt)).all()
     key_map = {row[0]: row[1] or 0 for row in key_rows}
 
-    # 4. Aggregated explanations per exam
+    # 4. Aggregated valid explanations per exam (only non-empty detailed solutions)
     exp_stmt = (
         select(Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id)))
+        .select_from(Question)
         .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
+        .where(
+            QuestionExplanation.detailed_solution != None,
+            QuestionExplanation.detailed_solution != "",
+        )
         .group_by(Question.exam_id)
     )
     exp_rows = (await session.exec(exp_stmt)).all()
     exp_map = {row[0]: row[1] or 0 for row in exp_rows}
 
-    # 5. Fetch all PipelineRun records for real-time stage statuses
+    # 5. Check AnswerKeyBatch for extracted key counts
+    from app.db.models.answer_key import AnswerKeyBatch
+    ak_stmt = select(
+        AnswerKeyBatch.exam_id,
+        func.max(AnswerKeyBatch.total_keys_mapped),
+        func.max(AnswerKeyBatch.total_keys_extracted),
+    ).group_by(AnswerKeyBatch.exam_id)
+    ak_rows = (await session.exec(ak_stmt)).all()
+    ak_map = {
+        row[0]: max(row[1] or 0, row[2] or 0)
+        for row in ak_rows
+    }
+
+    # 6. Fetch all PipelineRun records for real-time stage statuses
     run_stmt = select(PipelineRun)
     run_rows = (await session.exec(run_stmt)).all()
     run_map: dict = {}
@@ -191,9 +211,17 @@ async def list_exam_pipeline_statuses(
         pend_count = q_info["pend"]
         rej_count = q_info["rej"]
 
-        key_count = key_map.get(exam.id, 0)
-        exp_count = exp_map.get(exam.id, 0)
         total_exp = exam.total_questions or 100
+
+        # Exact and bounded key count
+        raw_key_count = key_map.get(exam.id, 0)
+        if raw_key_count == 0 and ak_map.get(exam.id, 0) > 0:
+            raw_key_count = ak_map.get(exam.id, 0)
+        key_count = min(raw_key_count, q_count if q_count > 0 else total_exp)
+
+        # Exact and bounded explanation count
+        raw_exp_count = exp_map.get(exam.id, 0)
+        exp_count = min(raw_exp_count, q_count if q_count > 0 else total_exp)
 
         has_paper = bool(exam.pdf_path or q_count > 0)
         has_key = bool(exam.answer_key_pdf_path or key_count > 0 or exam.paper_set_code)
@@ -330,6 +358,274 @@ async def list_exam_pipeline_statuses(
         })
 
     return pipeline_list
+
+
+@router.get("/exams/stuck-pipelines", summary="List Interrupted / Stuck Pipelines Requiring Admin Action")
+async def list_stuck_pipelines(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
+    so the admin UI can display an action prompt to resume with skipped pre-extracted items.
+    """
+    from sqlmodel import select, func
+    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, ExamStatus
+    from app.db.models.pipeline_run import PipelineRun
+    from app.services.task_registry import task_registry
+
+    # 1. Fetch all runs
+    runs = (await session.exec(select(PipelineRun))).all()
+    run_map: dict = {}
+    for r in runs:
+        if r.exam_id not in run_map:
+            run_map[r.exam_id] = {}
+        run_map[r.exam_id][r.pipeline_type] = r
+
+    # 2. Fetch all exams that are not published
+    exams = (await session.exec(
+        select(Exam).where(cast(Exam.status, String) != "PUBLISHED")
+    )).all()
+
+    # 3. Batch aggregate question counts
+    q_stmt = select(Question.exam_id, func.count(Question.id)).group_by(Question.exam_id)
+    q_map = {row[0]: row[1] or 0 for row in (await session.exec(q_stmt)).all()}
+
+    # 4. Batch aggregate key-mapped counts
+    key_stmt = (
+        select(Question.exam_id, func.count(func.distinct(Question.id)))
+        .select_from(Question)
+        .join(QuestionOption, Question.id == QuestionOption.question_id)
+        .where(QuestionOption.is_correct == True)
+        .group_by(Question.exam_id)
+    )
+    key_map = {row[0]: row[1] or 0 for row in (await session.exec(key_stmt)).all()}
+
+    # 5. Batch aggregate explanation counts
+    exp_stmt = (
+        select(Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id)))
+        .select_from(Question)
+        .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
+        .where(
+            QuestionExplanation.detailed_solution != None,
+            QuestionExplanation.detailed_solution != "",
+        )
+        .group_by(Question.exam_id)
+    )
+    exp_map = {row[0]: row[1] or 0 for row in (await session.exec(exp_stmt)).all()}
+
+    stuck_list = []
+
+    for exam in exams:
+        is_active = task_registry.is_running(str(exam.id)) or task_registry.is_running(f"exp_{exam.id}")
+        if is_active:
+            continue  # Actively running in current process/worker
+
+        q_count = q_map.get(exam.id, 0)
+        key_count = key_map.get(exam.id, 0)
+        exp_count = exp_map.get(exam.id, 0)
+
+        total_exp = exam.total_questions or 100
+        exam_runs = run_map.get(exam.id, {})
+        p1 = exam_runs.get("QUESTION_EXTRACTION")
+        p2 = exam_runs.get("ANSWER_KEY")
+        p3 = exam_runs.get("EXPLANATION_INDEXING") or exam_runs.get("EXPLANATION_GENERATION") or exam_runs.get("EXPLANATION")
+
+        # Determine if any stage is incomplete / interrupted
+        is_stuck = False
+        stuck_stage = "EXPLANATION_INDEXING"
+        stuck_step = "INTERRUPTED"
+        stuck_progress = 0.0
+
+        if p3 and p3.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+            is_stuck = True
+            stuck_stage = "EXPLANATION_INDEXING"
+            stuck_step = p3.current_step
+            stuck_progress = p3.progress_percent
+        elif p2 and p2.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+            is_stuck = True
+            stuck_stage = "ANSWER_KEY"
+            stuck_step = p2.current_step
+            stuck_progress = p2.progress_percent
+        elif p1 and p1.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+            is_stuck = True
+            stuck_stage = "QUESTION_EXTRACTION"
+            stuck_step = p1.current_step
+            stuck_progress = p1.progress_percent
+        elif q_count > 0 and exp_count < q_count and (p3 is None or p3.status != "COMPLETED"):
+            is_stuck = True
+            stuck_stage = "EXPLANATION_INDEXING"
+            stuck_step = f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
+            stuck_progress = round((exp_count / max(1, q_count)) * 100.0, 1)
+        elif q_count > 0 and key_count < q_count and exam.answer_key_pdf_path and (p2 is None or p2.status != "COMPLETED"):
+            is_stuck = True
+            stuck_stage = "ANSWER_KEY"
+            stuck_step = f"INCOMPLETE_ANSWER_KEY_MAPPING_({key_count}/{q_count})"
+            stuck_progress = round((key_count / max(1, q_count)) * 100.0, 1)
+
+        # Check if explicitly dismissed
+        if (p3 and p3.status == "DISMISSED") or (p1 and p1.status == "DISMISSED"):
+            continue
+
+        if is_stuck:
+            stuck_list.append({
+                "exam_id": str(exam.id),
+                "exam_name": exam.name,
+                "exam_code": exam.code,
+                "pipeline_type": stuck_stage,
+                "status": "INTERRUPTED",
+                "current_step": stuck_step,
+                "progress_percent": stuck_progress,
+                "extracted_questions_count": q_count,
+                "key_mapped_count": key_count,
+                "explanations_count": exp_count,
+                "total_questions": total_exp,
+                "can_resume": True,
+            })
+
+    return stuck_list
+
+
+@router.post("/exams/{exam_id}/resume-pipeline", summary="Resume Interrupted Pipeline Skipping Completed Parts")
+async def resume_interrupted_pipeline(
+    exam_id: str,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Resumes an interrupted pipeline for an exam in the background, immediately returning HTTP 200 in <10ms.
+    Automatically skips any questions/explanations that were already extracted or generated in the database.
+    """
+    import uuid
+    import asyncio
+    from fastapi import HTTPException
+    from sqlmodel import select, func
+    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, AnswerKeyBatch
+    from app.db.models.pipeline_run import PipelineRun
+    from app.services.pipeline_management_service import PipelineManagementService
+    from app.services.task_registry import task_registry
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam '{exam_id}' not found.")
+
+    pm = PipelineManagementService(session)
+
+    q_count = (await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam_uuid))).first() or 0
+    key_count = (await session.exec(
+        select(func.count(func.distinct(Question.id)))
+        .select_from(Question)
+        .join(QuestionOption, Question.id == QuestionOption.question_id)
+        .where(Question.exam_id == exam_uuid, QuestionOption.is_correct == True)
+    )).first() or 0
+    exp_count = (await session.exec(
+        select(func.count(func.distinct(QuestionExplanation.question_id)))
+        .select_from(Question)
+        .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
+        .where(
+            Question.exam_id == exam_uuid,
+            QuestionExplanation.detailed_solution != None,
+            QuestionExplanation.detailed_solution != "",
+        )
+    )).first() or 0
+
+    key = str(exam_uuid)
+
+    # Case 1: Stage 1 (Extraction) incomplete and pdf_path exists
+    if q_count == 0 and exam.pdf_path:
+        from app.tasks.exam_tasks import async_process_exam_pdf
+        await pm.update_pipeline_status(
+            exam_id=exam_uuid,
+            pipeline_type="QUESTION_EXTRACTION",
+            status="RUNNING",
+            current_step="RESUMING_QUESTION_EXTRACTION",
+            progress_percent=10.0,
+        )
+        task_id = f"resume_p1_{uuid.uuid4().hex[:8]}"
+        background_tasks.add_task(
+            async_process_exam_pdf,
+            pdf_path_or_storage_key=exam.pdf_path,
+            exam_title=exam.name,
+            exam_id_str=str(exam_uuid),
+            task_id=task_id,
+        )
+        return {
+            "status": "RESUMED",
+            "stage": "QUESTION_EXTRACTION",
+            "message": f"Extraction resumed for '{exam.name}'.",
+        }
+
+    # Case 2: Stage 2 (Answer Key Mapping) incomplete
+    ak_batch = (await session.exec(select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_uuid))).first()
+    if ak_batch and key_count < q_count:
+        async def _resume_stage_2():
+            from app.db.session import managed_async_session
+            from app.services.answer_key_service import AnswerKeyService
+            from app.services.pipeline_management_service import PipelineManagementService
+            async with managed_async_session() as bg_session:
+                bg_ak = AnswerKeyService(bg_session)
+                bg_pm = PipelineManagementService(bg_session)
+                await bg_ak.map_stored_answers_from_db(exam_uuid)
+                await bg_pm.on_pipeline_2_completed(exam_id=exam_uuid, auto_trigger_pipeline_3=True)
+
+        background_tasks.add_task(_resume_stage_2)
+        return {
+            "status": "RESUMED",
+            "stage": "ANSWER_KEY",
+            "message": f"Answer keys mapping resumed for '{exam.name}'.",
+        }
+
+    # Case 3: Stage 3 (Explanation Generation) incomplete
+    from app.tasks.explanation_tasks import async_process_exam_explanations
+    await pm.update_pipeline_status(
+        exam_id=exam_uuid,
+        pipeline_type="EXPLANATION_INDEXING",
+        status="RUNNING",
+        current_step=f"RESUMING_EXPLANATIONS_FROM_({exp_count}/{q_count})",
+        progress_percent=max(10.0, (exp_count / max(1, q_count)) * 90.0),
+    )
+    task_id = f"resume_p3_{uuid.uuid4().hex[:8]}"
+    background_tasks.add_task(
+        async_process_exam_explanations,
+        exam_id_str=str(exam_uuid),
+        task_id=task_id,
+    )
+    return {
+        "status": "RESUMED",
+        "stage": "EXPLANATION_INDEXING",
+        "message": f"Explanation generation resumed for '{exam.name}' (skipping {exp_count} existing explanations).",
+    }
+
+
+@router.post("/exams/{exam_id}/dismiss-stuck-pipeline", summary="Dismiss Interrupted Pipeline Prompt")
+async def dismiss_stuck_pipeline(
+    exam_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """Dismisses the interrupted status prompt for an exam."""
+    import uuid
+    from fastapi import HTTPException
+    from sqlmodel import select
+    from app.db.models.pipeline_run import PipelineRun
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    runs = (await session.exec(select(PipelineRun).where(PipelineRun.exam_id == exam_uuid, PipelineRun.status == "INTERRUPTED"))).all()
+    for r in runs:
+        r.status = "DISMISSED"
+        session.add(r)
+    await session.commit()
+    return {"status": "DISMISSED", "message": f"Interrupted pipeline prompt dismissed for exam {exam_id}."}
 
 
 @router.get(

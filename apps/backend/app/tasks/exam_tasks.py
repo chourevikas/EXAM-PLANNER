@@ -78,6 +78,9 @@ async def async_process_exam_pdf(
     log.info("=" * 70)
 
     try:
+        from app.services.task_registry import task_registry
+        task_registry.register_current_task(str(exam_id_str))
+
         exam_id = uuid.UUID(exam_id_str)
         output_dir.mkdir(parents=True, exist_ok=True)
 

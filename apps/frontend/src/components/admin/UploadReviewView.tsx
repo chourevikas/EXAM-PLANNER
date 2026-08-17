@@ -27,7 +27,11 @@ import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/
 import {
   fetchExamPipelineStatuses,
   approveAndPublishExam,
+  fetchStuckPipelines,
+  resumeExamPipeline,
+  dismissStuckPipeline,
   ExamPipelineStatusItem,
+  StuckPipelineItem,
 } from '../../services/adminService';
 
 interface UploadReviewViewProps {
@@ -64,6 +68,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
   // Real-time Pipeline & Queue State
   const [pipelineExams, setPipelineExams] = useState<ExamPipelineStatusItem[]>([]);
+  const [stuckPipelines, setStuckPipelines] = useState<StuckPipelineItem[]>([]);
+  const [resumingExamId, setResumingExamId] = useState<string | null>(null);
   const [loadingQueue, setLoadingQueue] = useState<boolean>(true);
   const [queueError, setQueueError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -78,6 +84,15 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const loadStuckPipelines = async () => {
+    try {
+      const stuckData = await fetchStuckPipelines();
+      setStuckPipelines(stuckData);
+    } catch (err: any) {
+      console.error('Failed to load stuck pipelines:', err);
+    }
+  };
 
   const loadRealTimeQueue = async (isSilent: boolean = false) => {
     if (!isSilent) {
@@ -103,8 +118,33 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
+  const handleResumePipeline = async (examId: string, examName: string) => {
+    setResumingExamId(examId);
+    try {
+      const res = await resumeExamPipeline(examId);
+      setToastMessage(res.message || `Pipeline for '${examName}' resumed successfully!`);
+      setTimeout(() => setToastMessage(null), 5000);
+      setStuckPipelines((prev) => prev.filter((p) => p.exam_id !== examId));
+      await loadRealTimeQueue(true);
+    } catch (err: any) {
+      alert(`Could not resume pipeline: ${err.message}`);
+    } finally {
+      setResumingExamId(null);
+    }
+  };
+
+  const handleDismissStuck = async (examId: string) => {
+    try {
+      await dismissStuckPipeline(examId);
+      setStuckPipelines((prev) => prev.filter((p) => p.exam_id !== examId));
+    } catch (err: any) {
+      console.error('Failed to dismiss stuck pipeline prompt:', err);
+    }
+  };
+
   useEffect(() => {
     loadRealTimeQueue(false);
+    loadStuckPipelines();
   }, []);
 
   // Adaptive Polling: Automatically polls every 4 seconds ONLY when tasks are actively processing
@@ -424,42 +464,46 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
 
     // Stage 2: Key Mapping Status & Style
+    const targetQ = ext > 0 ? ext : total;
     let s2Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' };
-    let s2Label = `2. Key (${exam.paper_set_code || 'SET_A'})`;
+    let s2Label = `2. Key (${keyCount}/${targetQ})`;
     let s2Icon = <Key size={11} />;
 
-    if (exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= ext && ext > 0)) {
+    if (exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= targetQ && targetQ > 0)) {
       s2Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
-      s2Label = `2. Key (${exam.paper_set_code || 'SET_A'})`;
+      s2Label = `2. Key Mapped (${keyCount}/${targetQ})`;
       s2Icon = <CheckCircle2 size={11} />;
-    } else if (exam.stage2_status === 'IN_PROGRESS' || (keyCount > 0 && keyCount < ext)) {
+    } else if (exam.stage2_status === 'IN_PROGRESS') {
       s2Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
-      s2Label = `2. Mapping Key...`;
+      s2Label = `2. Mapping Key (${keyCount}/${targetQ})`;
       s2Icon = <Loader2 size={11} className="animate-spin" />;
     } else if (exam.stage2_status === 'MISSING_INPUT' || (!exam.has_answer_key && keyCount === 0 && !exam.paper_set_code)) {
       s2Style = { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B' };
       s2Label = `2. Missing Key`;
       s2Icon = <AlertCircle size={11} />;
+    } else {
+      s2Label = `2. Key (${keyCount}/${targetQ})`;
     }
 
     // Stage 3: Explanations Status & Style
-    const prereqReady = (ext >= total || exam.stage1_status === 'COMPLETED') && (keyCount > 0 || exam.stage2_status === 'COMPLETED' || Boolean(exam.paper_set_code));
     let s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
-    let s3Label = `3. Explanations`;
+    let s3Label = `3. Explanations (${expCount}/${targetQ})`;
     let s3Icon = <Sparkles size={11} />;
 
-    if (exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= ext && ext > 0)) {
+    if (exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0)) {
       s3Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
-      s3Label = `3. Explanations Ready`;
+      s3Label = `3. Explanations (${expCount}/${targetQ})`;
       s3Icon = <CheckCircle2 size={11} />;
-    } else if (exam.stage3_status === 'IN_PROGRESS' || (prereqReady && (expCount > 0 || !isPublished))) {
+    } else if (exam.stage3_status === 'IN_PROGRESS') {
       s3Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
-      s3Label = `3. Generating...`;
+      s3Label = `3. Explanations (${expCount}/${targetQ})`;
       s3Icon = <Loader2 size={11} className="animate-spin" />;
-    } else if (!prereqReady) {
+    } else if (exam.stage3_status === 'WAITING_INPUTS') {
       s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
       s3Label = `3. Explanations (Waiting)`;
       s3Icon = <Clock size={11} />;
+    } else {
+      s3Label = `3. Explanations (${expCount}/${targetQ})`;
     }
 
     return (
@@ -630,6 +674,111 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Published & Active in S3</div>
         </div>
       </div>
+
+      {/* Stuck / Interrupted Pipeline Alert Banner */}
+      {stuckPipelines.length > 0 && (
+        <div
+          style={{
+            backgroundColor: '#FEF3F2',
+            border: '1px solid #FECDCA',
+            borderRadius: 8,
+            padding: '14px 18px',
+            marginBottom: 20,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            boxShadow: '0 2px 6px rgba(217,45,32,0.06)',
+          }}
+        >
+          {stuckPipelines.map((stuck) => (
+            <div
+              key={stuck.exam_id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    backgroundColor: '#FEE4E2',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <AlertTriangle size={18} color="#D92D20" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#912018' }}>
+                    Interrupted Task Detected: {stuck.exam_name}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#B42318', marginTop: 2 }}>
+                    Pipeline was interrupted during <strong>{stuck.pipeline_type}</strong> ({stuck.current_step || 'Server reload'}).
+                    {stuck.explanations_count > 0 && ` ${stuck.explanations_count}/${stuck.total_questions} explanations were already generated and saved.`}
+                    {' '}Resuming will skip all previously completed items.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={() => handleResumePipeline(stuck.exam_id, stuck.exam_name)}
+                  disabled={resumingExamId === stuck.exam_id}
+                  style={{
+                    padding: '7px 14px',
+                    backgroundColor: '#D92D20',
+                    color: '#FFFFFF',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                  }}
+                >
+                  {resumingExamId === stuck.exam_id ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Resuming...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={14} />
+                      ⚡ Resume Pipeline
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => handleDismissStuck(stuck.exam_id)}
+                  style={{
+                    padding: '7px 12px',
+                    backgroundColor: '#FFFFFF',
+                    color: '#475467',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: '1px solid #D0D5DD',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* View Switcher Controls */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -1249,7 +1398,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 2: Answer Key Mapping</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>
-                        Set Code: {selectedExam.paper_set_code || 'SET_A'} ({selectedExam.key_mapped_count || selectedExam.extracted_questions_count} mapped)
+                        Set Code: {selectedExam.paper_set_code || 'SET_A'} ({selectedExam.key_mapped_count ?? 0}/{selectedExam.extracted_questions_count || selectedExam.total_questions || 100} mapped)
                       </span>
                     </div>
                   </div>
@@ -1257,8 +1406,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   <div style={{ background: '#F9FAFB', border: '1px solid #E4E7EC', borderRadius: 6, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 3: Question Explanations & Solutions</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= selectedExam.extracted_questions_count ? '#15803D' : '#0369A1' }}>
-                        {selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= selectedExam.extracted_questions_count ? 'Ready & Verified' : 'In Progress'}
+                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? '#15803D' : '#0369A1' }}>
+                        {selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? `Ready & Verified (${selectedExam.explanations_count || selectedExam.extracted_questions_count}/${selectedExam.extracted_questions_count})` : `${selectedExam.explanations_count || 0}/${selectedExam.extracted_questions_count || selectedExam.total_questions || 100} Generated`}
                       </span>
                     </div>
                   </div>

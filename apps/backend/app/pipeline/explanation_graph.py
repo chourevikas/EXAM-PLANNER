@@ -560,20 +560,41 @@ async def node_generate_and_save_explanations(
         res = await session.exec(stmt)
         q_ids = res.all()
 
+        # Query fully completed explanations in DB to skip redundant LLM calls on resume/restart
+        exp_stmt = select(QuestionExplanation).where(
+            QuestionExplanation.question_id.in_(q_ids)
+        )
+        existing_exps = (await session.exec(exp_stmt)).all()
+        # Strict completeness validation: requires non-empty core_concept and detailed_solution
+        existing_exp_qids = {
+            e.question_id
+            for e in existing_exps
+            if e.core_concept
+            and len(e.core_concept.strip()) > 5
+            and e.detailed_solution
+            and len(e.detailed_solution.strip()) > 15
+        }
+
     total_generated = 0
     failed_ids = []
     total_count = len(q_ids) if q_ids else 1
 
     for idx, q_id in enumerate(q_ids, 1):
         try:
-            log.info(f"🤖 [LLM AGENT] Generating Explanation for Question ID {q_id} ({idx}/{total_count})...")
-            success = await _generate_and_save_single_question_explanation(
-                q_id, lang_enum, log
-            )
-            if success:
+            if q_id in existing_exp_qids:
+                log.info(
+                    f"⏩ [INCREMENTAL RESUME] Question ID {q_id} already has explanations in DB. Skipping LLM call ({idx}/{total_count})."
+                )
                 total_generated += 1
             else:
-                failed_ids.append(str(q_id))
+                log.info(f"🤖 [LLM AGENT] Generating Explanation for Question ID {q_id} ({idx}/{total_count})...")
+                success = await _generate_and_save_single_question_explanation(
+                    q_id, lang_enum, log
+                )
+                if success:
+                    total_generated += 1
+                else:
+                    failed_ids.append(str(q_id))
 
             # Update PipelineRun progress percentage dynamically
             async with managed_async_session() as session:

@@ -24,6 +24,15 @@ class TaskRegistry:
 
         task.add_done_callback(_cleanup)
 
+    def register_current_task(self, key: str) -> None:
+        """Registers the currently executing asyncio Task in memory."""
+        try:
+            curr = asyncio.current_task()
+            if curr:
+                self.register_async_task(key, curr)
+        except Exception:
+            pass
+
     def register_celery_task(self, key: str, celery_task_id: str) -> None:
         """Registers a Celery task ID mapped to exam/pipeline key."""
         self._celery_tasks[key] = celery_task_id

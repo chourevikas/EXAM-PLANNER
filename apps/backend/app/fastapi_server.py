@@ -32,6 +32,29 @@ from app.routers.search import router as search_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await async_init_db()
+
+    # Detect and mark interrupted pipeline runs on server startup
+    try:
+        from app.db.session import async_session_factory
+        from app.db.models.pipeline_run import PipelineRun
+        from sqlmodel import select
+        async with async_session_factory() as session:
+            stuck_stmt = select(PipelineRun).where(
+                PipelineRun.status.in_(["RUNNING", "INITIALIZING", "PROCESSING"])
+            )
+            stuck_runs = (await session.exec(stuck_stmt)).all()
+            if stuck_runs:
+                logger.warning(
+                    f"⚠️ Detected {len(stuck_runs)} interrupted pipeline run(s) from previous server session. Marking as INTERRUPTED for admin review/resume."
+                )
+                for run in stuck_runs:
+                    run.status = "INTERRUPTED"
+                    run.current_step = "INTERRUPTED_BY_SERVER_RELOAD"
+                    session.add(run)
+                await session.commit()
+    except Exception as err:
+        logger.warning(f"Could not check interrupted pipeline runs on startup: {err}")
+
     try:
         yield
     finally:
