@@ -12,6 +12,7 @@ from app.config.settings import get_settings
 from app.config.logger import setup_logger
 from app.config.filename_parser import parse_question_paper_filename
 from app.utils.file_utils import save_upload_file_temp
+from app.core.cleanup import cleanup_file
 
 logger = setup_logger("ExamService")
 
@@ -62,6 +63,7 @@ class ExamService:
         rel_path = f"uploads/question_papers/{canonical_code}/{clean_set}/{canonical_code}.pdf"
         persistent_path = await storage.upload_file(temp_path, rel_path)
         logger.info(f"Saved persistent PDF to '{persistent_path}'")
+        cleanup_file(temp_path)
 
         # 4. Save/update Exam record in DB
         if not exam:
@@ -128,12 +130,12 @@ class ExamService:
                 background_tasks.add_task(
                     async_process_exam_pdf,
                     str(exam.id),
-                    str(temp_path),
+                    persistent_path,
                     exam.name,
                     task_id,
                     "FastAPI BackgroundTasks",
                 )
-            execution_msg = f"PDF upload accepted. Vision extraction pipeline started via {engine_name} (Task ID: {task_id})."
+            execution_msg = "PDF upload accepted. Question extraction pipeline is now processing in the background."
 
         return {
             "message": execution_msg,

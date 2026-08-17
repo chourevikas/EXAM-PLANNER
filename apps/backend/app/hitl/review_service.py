@@ -121,18 +121,107 @@ class HumanReviewService:
                 select(OptionTranslation).where(OptionTranslation.option_id == opt.id)
             )
             opt_trans = opt_trans_res.all()
+            distractor_text = next((t.distractor_analysis for t in opt_trans if t.distractor_analysis), None)
             opt_details.append(
                 {
                     "option_id": str(opt.id),
                     "option_label": opt.option_label,
                     "display_order": opt.display_order,
                     "is_correct": opt.is_correct,
+                    "closeness_score": opt.closeness_score,
+                    "distractor_analysis": distractor_text,
                     "translations": [
-                        {"language": t.language.value, "text": t.option_text}
+                        {
+                            "language": t.language.value,
+                            "text": t.option_text,
+                            "distractor_analysis": t.distractor_analysis,
+                        }
                         for t in opt_trans
                     ],
                 }
             )
+
+        # Fetch Explanation
+        from app.db.models.explanation import QuestionExplanation
+        from app.db.models.metadata import QuestionMetadata
+        from app.db.models.hierarchy import Subject, Topic, Subtopic
+        from app.db.models.hierarchy_link import QuestionHierarchyLink
+
+        expl_res = await self.session.exec(
+            select(QuestionExplanation).where(QuestionExplanation.question_id == question_id)
+        )
+        expl_list = expl_res.all()
+        expl_detail = None
+        if expl_list:
+            e0 = expl_list[0]
+            expl_detail = {
+                "explanation_id": str(e0.id),
+                "language": e0.language.value if hasattr(e0.language, "value") else str(e0.language),
+                "core_concept": e0.core_concept,
+                "detailed_solution": e0.detailed_solution,
+                "common_traps": parse_json_field(e0.common_traps_json),
+                "key_takeaways": parse_json_field(e0.key_takeaways_json),
+                "translations": {
+                    (e.language.value if hasattr(e.language, "value") else str(e.language)): {
+                        "core_concept": e.core_concept,
+                        "detailed_solution": e.detailed_solution,
+                        "common_traps": parse_json_field(e.common_traps_json),
+                        "key_takeaways": parse_json_field(e.key_takeaways_json),
+                    }
+                    for e in expl_list
+                },
+            }
+
+        # Fetch Metadata
+        meta_res = await self.session.exec(
+            select(QuestionMetadata).where(QuestionMetadata.question_id == question_id)
+        )
+        qm = meta_res.first()
+        metadata_detail = None
+        if qm:
+            metadata_detail = {
+                "blooms_level": qm.blooms_level.value if hasattr(qm.blooms_level, "value") else str(qm.blooms_level),
+                "cognitive_skill": qm.cognitive_skill,
+                "primary_concept_tag": qm.primary_concept_tag,
+                "irt_discrimination_a": qm.irt_discrimination_a,
+                "irt_difficulty_b": qm.irt_difficulty_b,
+                "irt_pseudo_guessing_c": qm.irt_pseudo_guessing_c,
+            }
+
+        # Fetch Hierarchy Links
+        hierarchy_detail = []
+        links_res = await self.session.exec(
+            select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
+        )
+        links = links_res.all()
+        for link in links:
+            subj = await self.session.get(Subject, link.subject_id) if link.subject_id else None
+            top = await self.session.get(Topic, link.topic_id) if link.topic_id else None
+            subtop = await self.session.get(Subtopic, link.subtopic_id) if link.subtopic_id else None
+            hierarchy_detail.append({
+                "subject_id": str(subj.id) if subj else None,
+                "subject_name": subj.name if subj else None,
+                "topic_id": str(top.id) if top else None,
+                "topic_name": top.name if top else None,
+                "subtopic_id": str(subtop.id) if subtop else None,
+                "subtopic_name": subtop.name if subtop else None,
+                "is_primary": link.is_primary,
+            })
+
+        if not hierarchy_detail and question.subtopic_id:
+            subtop = await self.session.get(Subtopic, question.subtopic_id)
+            if subtop:
+                top = await self.session.get(Topic, subtop.topic_id) if subtop.topic_id else None
+                subj = await self.session.get(Subject, top.subject_id) if top and top.subject_id else None
+                hierarchy_detail.append({
+                    "subject_id": str(subj.id) if subj else None,
+                    "subject_name": subj.name if subj else None,
+                    "topic_id": str(top.id) if top else None,
+                    "topic_name": top.name if top else None,
+                    "subtopic_id": str(subtop.id),
+                    "subtopic_name": subtop.name,
+                    "is_primary": True,
+                })
 
         return {
             "question_id": str(question.id),
@@ -140,16 +229,16 @@ class HumanReviewService:
             "section_code": question.section_code,
             "question_number": question.question_number_in_paper,
             "status": question.status.value,
+            "difficulty": question.difficulty.value if hasattr(question.difficulty, "value") else str(question.difficulty),
+            "marks": question.marks,
+            "negative_marks": question.negative_marks,
+            "expected_time_seconds": question.expected_time_seconds,
             "is_complete": question.is_complete,
             "has_image": question.has_image,
             "page_numbers": parse_json_field(question.page_numbers_json),
             "passage": passage_detail,
-            "audit_flagged": review_task.is_flagged_by_validator
-            if review_task
-            else False,
-            "failure_reasons": parse_json_field(review_task.failure_reasons_json)
-            if review_task
-            else [],
+            "audit_flagged": review_task.is_flagged_by_validator if review_task else False,
+            "failure_reasons": parse_json_field(review_task.failure_reasons_json) if review_task else [],
             "translations": [
                 {
                     "language": t.language.value,
@@ -159,6 +248,9 @@ class HumanReviewService:
                 for t in translations
             ],
             "options": opt_details,
+            "explanation": expl_detail,
+            "metadata": metadata_detail,
+            "hierarchy": hierarchy_detail,
             "assets": [
                 {
                     "asset_id": str(a.id),

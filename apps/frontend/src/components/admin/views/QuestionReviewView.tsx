@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   ArrowLeft,
@@ -15,12 +15,28 @@ import {
   Edit3,
   ThumbsUp,
   ThumbsDown,
+  UploadCloud,
+  Layers,
+  Sparkles,
+  HelpCircle,
+  Clock,
+  Award,
+  Zap,
+  Tag,
+  FolderTree,
+  Plus,
+  Trash2,
+  RefreshCw,
+  Eye,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import {
   fetchExamPipelineStatuses,
-  fetchQuestionsByExam,
+  fetchExamQuestionsForReview,
   updateAdminQuestionDetail,
   updateAdminQuestionStatus,
+  approveAndPublishExam,
   ExamPipelineStatusItem,
 } from '../../../services/adminService';
 
@@ -30,33 +46,68 @@ interface QuestionOptionItem {
   option_text: string;
   is_correct: boolean;
   display_order?: number;
+  distractor_analysis?: string | null;
+  closeness_score?: number | null;
+}
+
+interface QuestionExplanationItem {
+  explanation_id?: string;
+  language?: string;
+  core_concept?: string;
+  detailed_solution?: string;
+  common_traps?: string[];
+  key_takeaways?: string[];
+  translations?: Record<string, any>;
+}
+
+interface HierarchyLinkItem {
+  subject_id?: string;
+  subject_name?: string;
+  subject_code?: string;
+  topic_id?: string;
+  topic_name?: string;
+  topic_code?: string;
+  subtopic_id?: string;
+  subtopic_name?: string;
+  subtopic_code?: string;
+  is_primary?: boolean;
 }
 
 interface QuestionDetailItem {
   id: string;
+  question_id?: string;
+  exam_id?: string;
+  exam_name?: string;
+  exam_code?: string;
   question_number_in_paper: number;
   question_type: string;
   difficulty: string;
   marks: number;
+  negative_marks?: number;
+  expected_time_seconds?: number;
   status: string;
   question_text: string;
-  passage_text?: string;
+  passage_id?: string;
+  passage_text?: string | null;
   subject_name?: string;
   topic_name?: string;
   subtopic_name?: string;
   options: QuestionOptionItem[];
-  explanation?: {
-    core_concept?: string;
-    detailed_solution?: string;
+  explanation?: QuestionExplanationItem | null;
+  hierarchy?: HierarchyLinkItem[];
+  metadata?: {
+    blooms_level?: string;
+    cognitive_skill?: string;
+    primary_concept_tag?: string;
   };
 }
 
 interface QuestionReviewViewProps {
   initialExam?: ExamPipelineStatusItem | any | null;
+  onNavigate?: (view: string, extraData?: any) => void;
 }
 
-export function QuestionReviewView({ initialExam }: QuestionReviewViewProps = {}) {
-  // Window width tracking for mobile responsiveness
+export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewViewProps = {}) {
   const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   useEffect(() => {
@@ -67,7 +118,7 @@ export function QuestionReviewView({ initialExam }: QuestionReviewViewProps = {}
 
   const isMobile = windowWidth <= 768;
 
-  // Navigation State: null = Exam Directory Table, ExamPipelineStatusItem = Split-Pane Review Workspace
+  // Selected Exam for Review
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | any | null>(initialExam || null);
 
   useEffect(() => {
@@ -76,1241 +127,2126 @@ export function QuestionReviewView({ initialExam }: QuestionReviewViewProps = {}
     }
   }, [initialExam]);
 
-  // Data States
+  // Exams List & Directory State
   const [examsList, setExamsList] = useState<ExamPipelineStatusItem[]>([]);
+  const [loadingExams, setLoadingExams] = useState<boolean>(true);
+  const [examSearchQuery, setExamSearchQuery] = useState<string>('');
+  const [examStatusFilter, setExamStatusFilter] = useState<string>('ALL');
+
+  // Review Questions State
   const [questionsList, setQuestionsList] = useState<QuestionDetailItem[]>([]);
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number>(0);
-
-  // Loading & Feedback States
-  const [loadingExams, setLoadingExams] = useState<boolean>(true);
   const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const [successMsg, setSuccessMsg] = useState<string>('');
-
-  // Exam Directory Filter States
-  const [examSearchQuery, setExamSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL'); // ALL, PENDING, PUBLISHED
-  const [stageFilter, setStageFilter] = useState<string>('ALL'); // ALL, prelims, mains
-  const [yearFilter, setYearFilter] = useState<string>('ALL'); // ALL, 2025, 2024, 2023, 2022, 2021
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 10;
-
-  // Workspace Question Search/Filter State
+  const [questionStatusFilter, setQuestionStatusFilter] = useState<string>('ALL'); // ALL, PENDING, PUBLISHED, REJECTED
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
-  const [questionStatusFilter, setQuestionStatusFilter] = useState<string>('ALL');
 
-  // Question Edit Modal State
+  // Review Counters from Backend
+  const [reviewMetrics, setReviewMetrics] = useState<{
+    total: number;
+    reviewed: number;
+    pending: number;
+    rejected: number;
+    canPublish: boolean;
+  }>({ total: 0, reviewed: 0, pending: 0, rejected: 0, canPublish: false });
+
+  // Action & Toast States
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [publishingExam, setPublishingExam] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
+
+  // Unsaved Changes Navigation Guard
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [pendingNavigationAction, setPendingNavigationAction] = useState<(() => void) | null>(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState<boolean>(false);
+
+  // S3 Publish Confirmation Modal
+  const [showPublishModal, setShowPublishModal] = useState<boolean>(false);
+  const [showPublishWarningModal, setShowPublishWarningModal] = useState<boolean>(false);
+
+  // Full Question Edit Modal State
   const [editingQuestion, setEditingQuestion] = useState<QuestionDetailItem | null>(null);
-  const [editFormText, setEditFormText] = useState<string>('');
-  const [editFormOptions, setEditFormOptions] = useState<{ label: string; text: string; is_correct: boolean }[]>([]);
-  const [editFormExplanation, setEditFormExplanation] = useState<string>('');
-  const [editFormDifficulty, setEditFormDifficulty] = useState<string>('MEDIUM');
+  const [editQuestionText, setEditQuestionText] = useState<string>('');
+  const [editPassageText, setEditPassageText] = useState<string>('');
+  const [editSubjectName, setEditSubjectName] = useState<string>('');
+  const [editTopicName, setEditTopicName] = useState<string>('');
+  const [editSubtopicName, setEditSubtopicName] = useState<string>('');
+  const [editDifficulty, setEditDifficulty] = useState<string>('MEDIUM');
+  const [editMarks, setEditMarks] = useState<number>(2.0);
+  const [editNegativeMarks, setEditNegativeMarks] = useState<number>(0.66);
+  const [editExpectedTime, setEditExpectedTime] = useState<number>(60);
+  const [editBloomsLevel, setEditBloomsLevel] = useState<string>('ANALYZE');
+
+  // 4 Solution Parameters Edit State
+  const [editCoreConcept, setEditCoreConcept] = useState<string>('');
+  const [editDetailedSolution, setEditDetailedSolution] = useState<string>('');
+  const [editCommonTraps, setEditCommonTraps] = useState<string[]>([]);
+  const [editKeyTakeaways, setEditKeyTakeaways] = useState<string[]>([]);
+  const [newTrapInput, setNewTrapInput] = useState<string>('');
+  const [newTakeawayInput, setNewTakeawayInput] = useState<string>('');
+
+  // Options Edit State
+  const [editOptions, setEditOptions] = useState<{
+    option_id?: string;
+    option_label: string;
+    option_text: string;
+    is_correct: boolean;
+    distractor_analysis: string;
+  }[]>([]);
+
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
   useEffect(() => {
-    loadExams();
-  }, []);
+    if (!selectedExam) {
+      loadExamsList();
+    }
+  }, [selectedExam]);
 
   useEffect(() => {
-    if (selectedExam) {
-      loadQuestions(selectedExam, questionStatusFilter);
+    if (selectedExam?.id) {
+      loadExamQuestions(selectedExam.id, questionStatusFilter);
     }
-  }, [selectedExam, questionStatusFilter]);
+  }, [selectedExam?.id, questionStatusFilter]);
 
-  const loadExams = async () => {
+  const showToast = (type: 'success' | 'error' | 'warning', text: string) => {
+    setToastMessage({ type, text });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  };
+
+  const loadExamsList = async () => {
     setLoadingExams(true);
-    setErrorMsg('');
     try {
       const data = await fetchExamPipelineStatuses();
       setExamsList(data);
     } catch (err: any) {
-      console.error('Failed to load exams list:', err);
-      setErrorMsg(err.message || 'Could not load exam papers from server.');
+      showToast('error', `Failed to load exams: ${err.message}`);
     } finally {
       setLoadingExams(false);
     }
   };
 
-  const loadQuestions = async (exam: ExamPipelineStatusItem, status?: string) => {
+  const loadExamQuestions = async (examId: string, statusFilterVal?: string) => {
     setLoadingQuestions(true);
-    setErrorMsg('');
     try {
-      let res = await fetchQuestionsByExam(exam.id, 1, 100, status);
+      const backendStatus =
+        statusFilterVal === 'PENDING'
+          ? 'PENDING_HUMAN_REVIEW'
+          : statusFilterVal === 'PUBLISHED'
+          ? 'PUBLISHED'
+          : statusFilterVal === 'REJECTED'
+          ? 'REJECTED'
+          : undefined;
 
-      // Fallback if 0 items returned by exam.id
-      if ((!res.items || res.items.length === 0) && (exam.paper_set_code || exam.source_year)) {
-        let fallbackUrl = `/api/v1/questions?page=1&limit=100`;
-        if (exam.paper_set_code) fallbackUrl += `&paper_set_code=${exam.paper_set_code}`;
-        if (exam.source_year) fallbackUrl += `&exam_year=${exam.source_year}`;
-        if (status && status !== 'ALL') fallbackUrl += `&status=${status}`;
+      const data = await fetchExamQuestionsForReview(examId, 1, 100, backendStatus);
 
-        const token = localStorage.getItem('access_token');
-        const fallbackRes = await fetch(fallbackUrl, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (fallbackRes.ok) {
-          const fallbackData = await fallbackRes.json();
-          if (fallbackData.items && fallbackData.items.length > 0) {
-            res = fallbackData;
-          }
-        }
-      }
-
-      const items = (res.items || []).map((q: any, idx: number) => ({
-        id: q.question_id || q.id,
-        question_number_in_paper: q.question_number_in_paper || idx + 1,
-        question_type: q.question_type || 'SINGLE_CHOICE',
-        difficulty: q.difficulty || 'MEDIUM',
-        marks: q.marks || 2.0,
-        status: q.status || 'PENDING_HUMAN_REVIEW',
-        question_text: q.question_text || 'No question text available',
-        passage_text: q.passage_text,
-        subject_name: q.subject_name || q.hierarchy?.[0]?.subject_name || q.hierarchy_links?.[0]?.subject_name || 'General Studies',
-        topic_name: q.topic_name || q.hierarchy?.[0]?.topic_name || q.hierarchy_links?.[0]?.topic_name || 'Core Topic',
-        subtopic_name: q.subtopic_name || q.hierarchy?.[0]?.subtopic_name || q.hierarchy_links?.[0]?.subtopic_name || 'Subtopic',
-        options: (q.options || []).map((opt: any, optIdx: number) => ({
-          option_id: opt.option_id || opt.id,
-          option_label: opt.option_label || String.fromCharCode(65 + optIdx),
-          option_text: opt.option_text || opt.text || '',
-          is_correct: Boolean(opt.is_correct),
-          display_order: opt.display_order || optIdx + 1,
-        })),
-        explanation: {
-          core_concept: q.explanation?.core_concept,
-          detailed_solution: q.explanation?.detailed_solution || (typeof q.explanation === 'string' ? q.explanation : ''),
-        },
-      }));
+      const items: QuestionDetailItem[] = (data.items || []).map((q: any) => {
+        const primaryH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy[0] : null;
+        return {
+          id: q.question_id || q.id,
+          question_id: q.question_id || q.id,
+          exam_id: q.exam_id,
+          exam_name: q.exam_name,
+          exam_code: q.exam_code,
+          question_number_in_paper: q.question_number_in_paper,
+          question_type: q.question_type || 'SINGLE_CHOICE',
+          difficulty: q.difficulty || 'MEDIUM',
+          marks: q.marks !== undefined ? q.marks : 2.0,
+          negative_marks: q.negative_marks !== undefined ? q.negative_marks : 0.66,
+          expected_time_seconds: q.expected_time_seconds || 60,
+          status: q.status || 'PENDING_HUMAN_REVIEW',
+          question_text: q.question_text || '',
+          passage_id: q.passage_id,
+          passage_text: q.passage_text || null,
+          subject_name: (primaryH && primaryH.subject_name) || q.subject_name || '',
+          topic_name: (primaryH && primaryH.topic_name) || q.topic_name || '',
+          subtopic_name: (primaryH && primaryH.subtopic_name) || q.subtopic_name || '',
+          options: (q.options || []).map((opt: any) => ({
+            option_id: opt.option_id,
+            option_label: opt.option_label,
+            option_text: opt.option_text || '',
+            is_correct: Boolean(opt.is_correct),
+            display_order: opt.display_order,
+            distractor_analysis: opt.distractor_analysis || null,
+            closeness_score: opt.closeness_score,
+          })),
+          explanation: q.explanation
+            ? {
+                explanation_id: q.explanation.explanation_id,
+                language: q.explanation.language,
+                core_concept: q.explanation.core_concept || '',
+                detailed_solution: q.explanation.detailed_solution || '',
+                common_traps: q.explanation.common_traps || [],
+                key_takeaways: q.explanation.key_takeaways || [],
+                translations: q.explanation.translations || {},
+              }
+            : null,
+          hierarchy: q.hierarchy || [],
+          metadata: q.metadata || {},
+        };
+      });
 
       setQuestionsList(items);
+      setReviewMetrics({
+        total: data.total_questions !== undefined ? data.total_questions : items.length,
+        reviewed: data.reviewed_count !== undefined ? data.reviewed_count : items.filter((i) => i.status === 'PUBLISHED').length,
+        pending: data.pending_count !== undefined ? data.pending_count : items.filter((i) => i.status === 'PENDING_HUMAN_REVIEW').length,
+        rejected: data.rejected_count !== undefined ? data.rejected_count : items.filter((i) => i.status === 'REJECTED').length,
+        canPublish: Boolean(data.can_publish),
+      });
+
       setSelectedQuestionIndex(0);
+      setHasUnsavedChanges(false);
     } catch (err: any) {
-      console.error('Failed to load questions:', err);
-      setErrorMsg(err.message || 'Could not load questions for this examination paper.');
+      showToast('error', `Failed to load review questions: ${err.message}`);
     } finally {
       setLoadingQuestions(false);
     }
   };
 
-  const handleApproveQuestion = async (questionId: string) => {
-    setActionLoadingId(questionId);
-    setErrorMsg('');
-    try {
-      await updateAdminQuestionStatus(questionId, 'PUBLISHED');
-      setQuestionsList((prev) => prev.map((q) => (q.id === questionId ? { ...q, status: 'PUBLISHED' } : q)));
-      setSuccessMsg('Question approved & published successfully.');
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to approve question.');
-    } finally {
-      setActionLoadingId(null);
+  // Guard navigation when there are unsaved edits
+  const safeNavigate = (action: () => void) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigationAction(() => action);
+      setShowUnsavedModal(true);
+    } else {
+      action();
     }
   };
 
-  const handleRejectQuestion = async (questionId: string) => {
-    setActionLoadingId(questionId);
-    setErrorMsg('');
-    try {
-      await updateAdminQuestionStatus(questionId, 'REJECTED');
-      setQuestionsList((prev) => prev.map((q) => (q.id === questionId ? { ...q, status: 'REJECTED' } : q)));
-      setSuccessMsg('Question marked as Rejected.');
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to reject question.');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const openEditModal = (q: QuestionDetailItem) => {
-    setEditingQuestion(q);
-    setEditFormText(q.question_text || '');
-    setEditFormExplanation(q.explanation?.detailed_solution || q.explanation?.core_concept || '');
-    setEditFormDifficulty(q.difficulty || 'MEDIUM');
-
-    const formattedOpts = ['A', 'B', 'C', 'D'].map((label, idx) => {
-      const existing = q.options.find((o) => o.option_label.toUpperCase() === label) || q.options[idx];
-      return {
-        label,
-        text: existing ? existing.option_text : '',
-        is_correct: existing ? existing.is_correct : idx === 0,
-      };
+  const handleSelectQuestion = (index: number) => {
+    safeNavigate(() => {
+      setSelectedQuestionIndex(index);
+      setHasUnsavedChanges(false);
     });
-    setEditFormOptions(formattedOpts);
   };
 
-  const handleSaveQuestionEdit = async () => {
+  const handleStatusFilterChange = (newFilter: string) => {
+    safeNavigate(() => {
+      setQuestionStatusFilter(newFilter);
+    });
+  };
+
+  const handleBackToExamsList = () => {
+    safeNavigate(() => {
+      setSelectedExam(null);
+      setQuestionsList([]);
+      setHasUnsavedChanges(false);
+      loadExamsList();
+    });
+  };
+
+  // Quick One-Click Approval for current question
+  const handleQuickApproveQuestion = async (question: QuestionDetailItem) => {
+    setActionLoadingId(question.id);
+    try {
+      await updateAdminQuestionStatus(question.id, 'PUBLISHED');
+      showToast('success', `Question #${question.question_number_in_paper} approved & published!`);
+      // Update local state immediately
+      setQuestionsList((prev) =>
+        prev.map((q) => (q.id === question.id ? { ...q, status: 'PUBLISHED' } : q))
+      );
+      setReviewMetrics((prev) => {
+        const nextPending = Math.max(0, prev.pending - 1);
+        const nextReviewed = prev.reviewed + (question.status !== 'PUBLISHED' ? 1 : 0);
+        const nextRejected = question.status === 'REJECTED' ? Math.max(0, prev.rejected - 1) : prev.rejected;
+        return {
+          ...prev,
+          pending: nextPending,
+          reviewed: nextReviewed,
+          rejected: nextRejected,
+          canPublish: nextPending === 0 && nextRejected === 0 && prev.total > 0,
+        };
+      });
+
+      // Auto-advance to next pending question if available
+      const nextPendingIndex = questionsList.findIndex(
+        (q, idx) => idx > selectedQuestionIndex && q.status === 'PENDING_HUMAN_REVIEW'
+      );
+      if (nextPendingIndex !== -1) {
+        setSelectedQuestionIndex(nextPendingIndex);
+      }
+    } catch (err: any) {
+      showToast('error', `Failed to approve question: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Reject Question
+  const handleRejectQuestion = async (question: QuestionDetailItem) => {
+    setActionLoadingId(question.id);
+    try {
+      await updateAdminQuestionStatus(question.id, 'REJECTED');
+      showToast('warning', `Question #${question.question_number_in_paper} marked as REJECTED.`);
+      setQuestionsList((prev) =>
+        prev.map((q) => (q.id === question.id ? { ...q, status: 'REJECTED' } : q))
+      );
+      setReviewMetrics((prev) => {
+        const nextPending = question.status === 'PENDING_HUMAN_REVIEW' ? Math.max(0, prev.pending - 1) : prev.pending;
+        const nextReviewed = question.status === 'PUBLISHED' ? Math.max(0, prev.reviewed - 1) : prev.reviewed;
+        const nextRejected = prev.rejected + (question.status !== 'REJECTED' ? 1 : 0);
+        return {
+          ...prev,
+          pending: nextPending,
+          reviewed: nextReviewed,
+          rejected: nextRejected,
+          canPublish: false,
+        };
+      });
+    } catch (err: any) {
+      showToast('error', `Failed to reject question: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Open Full Edit Modal
+  const handleOpenEditModal = (q: QuestionDetailItem) => {
+    setEditingQuestion(q);
+    setEditQuestionText(q.question_text || '');
+    setEditPassageText(q.passage_text || '');
+    setEditSubjectName(q.subject_name || '');
+    setEditTopicName(q.topic_name || '');
+    setEditSubtopicName(q.subtopic_name || '');
+    setEditDifficulty(q.difficulty || 'MEDIUM');
+    setEditMarks(q.marks !== undefined ? q.marks : 2.0);
+    setEditNegativeMarks(q.negative_marks !== undefined ? q.negative_marks : 0.66);
+    setEditExpectedTime(q.expected_time_seconds || 60);
+    setEditBloomsLevel(q.metadata?.blooms_level || 'ANALYZE');
+
+    // 4 Solution Parameters
+    setEditCoreConcept(q.explanation?.core_concept || '');
+    setEditDetailedSolution(q.explanation?.detailed_solution || '');
+    setEditCommonTraps(q.explanation?.common_traps ? [...q.explanation.common_traps] : []);
+    setEditKeyTakeaways(q.explanation?.key_takeaways ? [...q.explanation.key_takeaways] : []);
+
+    // Options
+    setEditOptions(
+      (q.options && q.options.length > 0 ? q.options : [
+        { option_label: 'A', option_text: '', is_correct: false, distractor_analysis: '' },
+        { option_label: 'B', option_text: '', is_correct: false, distractor_analysis: '' },
+        { option_label: 'C', option_text: '', is_correct: false, distractor_analysis: '' },
+        { option_label: 'D', option_text: '', is_correct: false, distractor_analysis: '' },
+      ]).map((opt) => ({
+        option_id: opt.option_id,
+        option_label: opt.option_label,
+        option_text: opt.option_text || '',
+        is_correct: Boolean(opt.is_correct),
+        distractor_analysis: opt.distractor_analysis || '',
+      }))
+    );
+  };
+
+  // Save Modal Changes
+  const handleSaveQuestionChanges = async (publishAfterSave: boolean = true) => {
     if (!editingQuestion) return;
     setSavingEdit(true);
-    setErrorMsg('');
     try {
-      const payload = {
-        question_text: editFormText,
-        difficulty: editFormDifficulty,
-        status: 'PUBLISHED',
-        options: editFormOptions.map((o) => ({
-          option_label: o.label,
-          option_text: o.text,
-          is_correct: o.is_correct,
+      const payload: any = {
+        question_text: editQuestionText,
+        passage_text: editPassageText || null,
+        difficulty: editDifficulty,
+        marks: editMarks,
+        negative_marks: editNegativeMarks,
+        expected_time_seconds: editExpectedTime,
+        status: publishAfterSave ? 'PUBLISHED' : editingQuestion.status,
+        subject_name: editSubjectName || null,
+        topic_name: editTopicName || null,
+        subtopic_name: editSubtopicName || null,
+        blooms_level: editBloomsLevel,
+        // 4 Solution Parameters
+        core_concept: editCoreConcept,
+        detailed_solution: editDetailedSolution,
+        common_traps: editCommonTraps,
+        key_takeaways: editKeyTakeaways,
+        // Options + Distractor Analyses
+        options: editOptions.map((opt, idx) => ({
+          option_id: opt.option_id,
+          option_label: opt.option_label,
+          option_text: opt.option_text,
+          is_correct: opt.is_correct,
+          display_order: idx + 1,
+          distractor_analysis: opt.distractor_analysis,
         })),
-        detailed_solution: editFormExplanation,
       };
 
       await updateAdminQuestionDetail(editingQuestion.id, payload);
+      showToast('success', `Question #${editingQuestion.question_number_in_paper} successfully updated!`);
 
+      // Update question in state
       setQuestionsList((prev) =>
-        prev.map((q) => {
-          if (q.id === editingQuestion.id) {
-            return {
-              ...q,
-              question_text: editFormText,
-              difficulty: editFormDifficulty,
-              status: 'PUBLISHED',
-              options: editFormOptions.map((o, idx) => ({
-                option_label: o.label,
-                option_text: o.text,
-                is_correct: o.is_correct,
-                display_order: idx + 1,
-              })),
-              explanation: {
-                detailed_solution: editFormExplanation,
-              },
-            };
-          }
-          return q;
-        })
+        prev.map((q) => (q.id === editingQuestion.id ? { ...q, ...payload, status: payload.status } : q))
       );
 
-      setSuccessMsg('Question updated & published successfully!');
+      // Recalculate metrics
+      if (selectedExam) {
+        await loadExamQuestions(selectedExam.id, questionStatusFilter);
+      }
+
       setEditingQuestion(null);
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setHasUnsavedChanges(false);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Could not update question details.');
+      showToast('error', `Failed to save changes: ${err.message}`);
     } finally {
       setSavingEdit(false);
     }
   };
 
-  // Filter Directory Exams
-  const filteredExams = examsList.filter((ex) => {
-    const matchesSearch =
-      !examSearchQuery ||
-      ex.name?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
-      ex.code?.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
-      ex.source_year?.toString().includes(examSearchQuery);
+  // Publish Whole Exam to S3
+  const handlePublishExamToS3 = async () => {
+    if (!selectedExam) return;
+    if (reviewMetrics.pending > 0 || reviewMetrics.rejected > 0) {
+      setShowPublishWarningModal(true);
+      return;
+    }
 
-    const statusUpper = (ex.status || '').toUpperCase();
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'PENDING' && (statusUpper.includes('PENDING') || statusUpper.includes('REVIEW'))) ||
-      (statusFilter === 'PUBLISHED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY')));
+    setShowPublishModal(true);
+  };
 
-    const stageUpper = (ex.stage || '').toUpperCase();
-    const matchesStage =
-      stageFilter === 'ALL' || stageUpper.includes(stageFilter.toUpperCase());
+  const confirmPublishExam = async () => {
+    if (!selectedExam) return;
+    setPublishingExam(true);
+    try {
+      await approveAndPublishExam(selectedExam.id);
+      showToast('success', `Exam '${selectedExam.name}' published to S3 successfully! Questions & solutions JSON generated.`);
+      setShowPublishModal(false);
+      await loadExamQuestions(selectedExam.id, questionStatusFilter);
+    } catch (err: any) {
+      showToast('error', `Publish failed: ${err.message}`);
+    } finally {
+      setPublishingExam(false);
+    }
+  };
 
-    const matchesYear =
-      yearFilter === 'ALL' || ex.source_year?.toString() === yearFilter;
-
-    return matchesSearch && matchesStatus && matchesStage && matchesYear;
-  });
-
-  // Directory Pagination Logic
-  const totalPapersCount = filteredExams.length;
-  const pendingCount = examsList.filter((e) => (e.status || '').toUpperCase().includes('PENDING')).length;
-  const publishedCount = examsList.filter((e) => (e.status || '').toUpperCase().includes('PUBLISHED')).length;
-
-  const totalPages = Math.ceil(totalPapersCount / pageSize) || 1;
-  const startIndex = (currentPage - 1) * pageSize;
-  const paginatedExams = filteredExams.slice(startIndex, startIndex + pageSize);
-
-  // Filter Workspace Questions
+  // Filter questions by search
   const filteredQuestions = questionsList.filter((q) => {
     if (!questionSearchQuery) return true;
-    const term = questionSearchQuery.toLowerCase();
+    const query = questionSearchQuery.toLowerCase();
     return (
-      q.question_text.toLowerCase().includes(term) ||
-      q.subtopic_name?.toLowerCase().includes(term) ||
-      q.question_number_in_paper.toString() === term
+      q.question_text.toLowerCase().includes(query) ||
+      `q${q.question_number_in_paper}`.includes(query) ||
+      `${q.question_number_in_paper}`.includes(query) ||
+      (q.subject_name && q.subject_name.toLowerCase().includes(query)) ||
+      (q.topic_name && q.topic_name.toLowerCase().includes(query))
     );
   });
 
-  const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
+  const activeQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0];
 
-  const formatHumanStatus = (statusStr: string) => {
-    const s = (statusStr || '').toUpperCase();
-    if (s.includes('PUBLISHED') || s.includes('READY')) {
-      return { label: 'Published', bg: '#DCFCE7', color: '#15803D', border: '#BBF7D0' };
-    }
-    return { label: 'Pending review', bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' };
-  };
+  // -------------------------------------------------------------
+  // VIEW 1: Exam Directory / Selection View
+  // -------------------------------------------------------------
+  if (!selectedExam) {
+    const filteredExams = examsList.filter((exam) => {
+      const matchesSearch =
+        !examSearchQuery ||
+        exam.name.toLowerCase().includes(examSearchQuery.toLowerCase()) ||
+        exam.code.toLowerCase().includes(examSearchQuery.toLowerCase());
+      const statusUpper = exam.status.toUpperCase();
+      const matchesStatus =
+        examStatusFilter === 'ALL' ||
+        (examStatusFilter === 'PENDING' && statusUpper.includes('PENDING')) ||
+        (examStatusFilter === 'PUBLISHED' && statusUpper.includes('PUBLISHED'));
+      return matchesSearch && matchesStatus;
+    });
 
-  return (
-    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      {/* Top Banner Alert Feedback */}
-      {errorMsg && (
-        <div
-          style={{
-            padding: '10px 14px',
-            borderRadius: 6,
-            background: '#FEF2F2',
-            border: '1px solid #FECDCA',
-            color: '#B42318',
-            fontSize: 13,
-            marginBottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <AlertTriangle size={16} color="#B42318" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {successMsg && (
-        <div
-          style={{
-            padding: '10px 14px',
-            borderRadius: 6,
-            background: '#DCFCE7',
-            border: '1px solid #BBF7D0',
-            color: '#15803D',
-            fontSize: 13,
-            marginBottom: 16,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <CheckCircle2 size={16} color="#15803D" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {/* VIEW 1: EXAM PAPER MANAGEMENT TABLE DIRECTORY */}
-      {!selectedExam ? (
-        <div>
-          {/* Header Row (Sitting directly on background) */}
+    return (
+      <div style={{ maxWidth: 1400, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+        {/* Toast Notification */}
+        {toastMessage && (
           <div
             style={{
+              position: 'fixed',
+              top: 75,
+              right: 24,
+              zIndex: 9999,
+              padding: '12px 20px',
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#D97706',
+              color: '#FFFFFF',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-              gap: 16,
-              marginBottom: 16,
+              alignItems: 'center',
+              gap: 8,
             }}
           >
+            {toastMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            {toastMessage.text}
+          </div>
+        )}
+
+        {/* Header */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1B365D', backgroundColor: '#E0E7FF', padding: '3px 8px', borderRadius: 4 }}>
+              Admin Verification Portal
+            </span>
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#10213D', margin: 0 }}>
+            Question & Solution QA Review Hub
+          </h1>
+          <p style={{ fontSize: 14, color: '#64748B', marginTop: 4, marginBottom: 0 }}>
+            Inspect extracted questions, verify 4-parameter solutions & option distractor analyses, update taxonomy, and approve exam packages for S3 release.
+          </p>
+        </div>
+
+        {/* Filters and Search */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 10,
+            border: '1px solid #E2E8F0',
+            padding: '16px 20px',
+            marginBottom: 24,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          <div style={{ position: 'relative', minWidth: 280, flex: 1 }}>
+            <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              placeholder="Search exams by title or code..."
+              value={examSearchQuery}
+              onChange={(e) => setExamSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '9px 12px 9px 36px',
+                fontSize: 14,
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>Status:</span>
+            <select
+              value={examStatusFilter}
+              onChange={(e) => setExamStatusFilter(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                fontSize: 13,
+                color: '#1E293B',
+                backgroundColor: '#FFFFFF',
+                outline: 'none',
+                fontWeight: 500,
+              }}
+            >
+              <option value="ALL">All Exams ({examsList.length})</option>
+              <option value="PENDING">Pending Review</option>
+              <option value="PUBLISHED">Published in S3</option>
+            </select>
+
+            <button
+              onClick={loadExamsList}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 6,
+                border: '1px solid #CBD5E1',
+                backgroundColor: '#F8FAFC',
+                color: '#334155',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <RefreshCw size={14} className={loadingExams ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Exams Table */}
+        <div style={{ backgroundColor: '#FFFFFF', borderRadius: 10, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          {loadingExams ? (
+            <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
+              <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#3B82F6' }} />
+              <div style={{ fontSize: 15, fontWeight: 600 }}>Loading exam repositories...</div>
+            </div>
+          ) : filteredExams.length === 0 ? (
+            <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
+              <BookOpen size={40} style={{ margin: '0 auto 12px auto', color: '#CBD5E1' }} />
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>No exam papers found</div>
+              <p style={{ fontSize: 14, marginTop: 4 }}>Try changing your search query or upload a new exam paper.</p>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Exam Title & Code</th>
+                  <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Stage / Year</th>
+                  <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Set / Extracted Qs</th>
+                  <th style={{ padding: '14px 16px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExams.map((exam) => {
+                  const isPublished = exam.status.toUpperCase().includes('PUBLISHED');
+                  return (
+                    <tr
+                      key={exam.id}
+                      style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
+                    >
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ fontWeight: 700, fontSize: 14.5, color: '#0F172A' }}>{exam.name}</div>
+                        <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>{exam.code}</div>
+                      </td>
+                      <td style={{ padding: '16px 16px', fontSize: 13.5, color: '#334155' }}>
+                        <div style={{ textTransform: 'capitalize', fontWeight: 600 }}>{exam.stage || 'Prelims'}</div>
+                        <div style={{ fontSize: 12, color: '#64748B' }}>{exam.source_year || '2024'}</div>
+                      </td>
+                      <td style={{ padding: '16px 16px', fontSize: 13.5 }}>
+                        <span style={{ fontWeight: 600, color: '#0F172A' }}>{exam.paper_set_code || 'SET_A'}</span>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                          {exam.extracted_questions_count || 0} / {exam.total_questions || 100} extracted
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 16px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '4px 10px',
+                            borderRadius: 12,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            backgroundColor: isPublished ? '#DCFCE7' : '#FEF3C7',
+                            color: isPublished ? '#15803D' : '#B45309',
+                          }}
+                        >
+                          {isPublished ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                          {isPublished ? 'Published to S3' : 'Pending QA Review'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedExam(exam);
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#1E40AF',
+                            color: '#FFFFFF',
+                            borderRadius: 6,
+                            border: 'none',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                          }}
+                        >
+                          <Eye size={14} />
+                          Review Questions
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 2: Dedicated Split-Pane Question QA Review Workspace
+  // -------------------------------------------------------------
+  return (
+    <div style={{ maxWidth: 1600, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 75,
+            right: 24,
+            zIndex: 9999,
+            padding: '12px 20px',
+            borderRadius: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#D97706',
+            color: '#FFFFFF',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          {toastMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+          {toastMessage.text}
+        </div>
+      )}
+
+      {/* Top Header & Breadcrumb */}
+      <div
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 10,
+          border: '1px solid #E2E8F0',
+          padding: '16px 24px',
+          marginBottom: 20,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={handleBackToExamsList}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#F1F5F9',
+                border: '1px solid #CBD5E1',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#334155',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <ArrowLeft size={14} />
+              All Exams
+            </button>
+
             <div>
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
-                Question Review
-              </h1>
-              <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
-                Select an examination paper to review extracted questions, answers, topics, and solution metadata.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  {selectedExam.name}
+                </h1>
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    backgroundColor: '#E0E7FF',
+                    color: '#3730A3',
+                  }}
+                >
+                  {selectedExam.paper_set_code || 'SET_A'}
+                </span>
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    backgroundColor: '#F1F5F9',
+                    color: '#475569',
+                  }}
+                >
+                  Year {selectedExam.source_year || '2024'}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+                Code: <code style={{ color: '#0369A1' }}>{selectedExam.code}</code> | Stage: <span style={{ textTransform: 'capitalize' }}>{selectedExam.stage || 'Prelims'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* S3 Publish Action Button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={handlePublishExamToS3}
+              disabled={publishingExam}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 6,
+                fontSize: 13.5,
+                fontWeight: 700,
+                border: 'none',
+                cursor: reviewMetrics.canPublish ? 'pointer' : 'not-allowed',
+                backgroundColor: reviewMetrics.canPublish ? '#15803D' : '#94A3B8',
+                color: '#FFFFFF',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: reviewMetrics.canPublish ? '0 4px 12px rgba(21, 128, 61, 0.25)' : 'none',
+              }}
+              title={
+                reviewMetrics.canPublish
+                  ? 'All questions reviewed! Click to publish to S3'
+                  : `${reviewMetrics.pending} questions are still pending review. All questions must be verified before S3 publish.`
+              }
+            >
+              {publishingExam ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : reviewMetrics.canPublish ? (
+                <Unlock size={16} />
+              ) : (
+                <Lock size={16} />
+              )}
+              {reviewMetrics.canPublish ? 'Publish Exam to S3' : 'Publish Locked (Pending QA)'}
+            </button>
+          </div>
+        </div>
+
+        {/* Progress Bar & Badges */}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                Review Progress: {reviewMetrics.reviewed} / {reviewMetrics.total} Verified ({reviewMetrics.total > 0 ? Math.round((reviewMetrics.reviewed / reviewMetrics.total) * 100) : 0}%)
+              </div>
             </div>
 
-            {/* Compact Search Field */}
-            <div style={{ position: 'relative', width: 280 }}>
-              <Search size={15} style={{ position: 'absolute', left: 12, top: 13, color: '#667085' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: '#FEF3C7', color: '#B45309' }}>
+                ⏳ {reviewMetrics.pending} Pending Review
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D' }}>
+                ✅ {reviewMetrics.reviewed} Approved
+              </span>
+              {reviewMetrics.rejected > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: '#FEE2E2', color: '#B91C1C' }}>
+                  ❌ {reviewMetrics.rejected} Rejected
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div style={{ width: '100%', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+            <div
+              style={{
+                height: '100%',
+                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : '#3B82F6',
+                width: `${reviewMetrics.total > 0 ? (reviewMetrics.reviewed / reviewMetrics.total) * 100 : 0}%`,
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Split-Pane Workspace */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '340px 1fr', gap: 20 }}>
+        {/* LEFT COLUMN: Question List & Filter Tabs */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 10,
+            border: '1px solid #E2E8F0',
+            display: 'flex',
+            flexDirection: 'column',
+            height: 'calc(100vh - 270px)',
+            minHeight: 550,
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          {/* Status Filter Tabs */}
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
+            <div style={{ display: 'flex', gap: 4, backgroundColor: '#E2E8F0', padding: 3, borderRadius: 6 }}>
+              {[
+                { id: 'ALL', label: `All (${reviewMetrics.total})` },
+                { id: 'PENDING', label: `Pending (${reviewMetrics.pending})` },
+                { id: 'PUBLISHED', label: `Approved (${reviewMetrics.reviewed})` },
+              ].map((tab) => {
+                const isActive = questionStatusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleStatusFilterChange(tab.id)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 4px',
+                      fontSize: 11.5,
+                      fontWeight: isActive ? 700 : 500,
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? '#FFFFFF' : 'transparent',
+                      color: isActive ? '#0F172A' : '#64748B',
+                      boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Question Search */}
+            <div style={{ position: 'relative', marginTop: 10 }}>
+              <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
-                placeholder="Search exam code, title, or year..."
-                value={examSearchQuery}
-                onChange={(e) => {
-                  setExamSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
+                placeholder="Filter by text or Q#..."
+                value={questionSearchQuery}
+                onChange={(e) => setQuestionSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 36px',
+                  padding: '7px 10px 7px 30px',
+                  fontSize: 12.5,
                   borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  backgroundColor: '#FFFFFF',
-                  fontSize: 13.5,
-                  color: '#172033',
+                  border: '1px solid #CBD5E1',
                   outline: 'none',
-                  height: 40,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
           </div>
 
-          {/* Textual Summary Row */}
-          <div style={{ fontSize: 13.5, color: '#667085', marginBottom: 16 }}>
-            <strong style={{ color: '#172033', fontWeight: 600 }}>{examsList.length} exam papers</strong>
-            <span> · {pendingCount} pending review · {publishedCount} published</span>
-          </div>
-
-          {/* Compact Filter Row */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Status Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Status:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#172033',
-                  backgroundColor: '#FFFFFF',
-                  outline: 'none',
-                  height: 38,
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="ALL">All</option>
-                <option value="PENDING">Pending review</option>
-                <option value="PUBLISHED">Published</option>
-              </select>
-            </div>
-
-            {/* Stage Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Stage:</label>
-              <select
-                value={stageFilter}
-                onChange={(e) => {
-                  setStageFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#172033',
-                  backgroundColor: '#FFFFFF',
-                  outline: 'none',
-                  height: 38,
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="ALL">All</option>
-                <option value="prelims">Prelims</option>
-                <option value="mains">Mains</option>
-              </select>
-            </div>
-
-            {/* Year Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: '#344054' }}>Year:</label>
-              <select
-                value={yearFilter}
-                onChange={(e) => {
-                  setYearFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#172033',
-                  backgroundColor: '#FFFFFF',
-                  outline: 'none',
-                  height: 38,
-                  boxSizing: 'border-box',
-                }}
-              >
-                <option value="ALL">All</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
-                <option value="2022">2022</option>
-                <option value="2021">2021</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Primary Operations Table */}
-          <div
-            style={{
-              background: '#FFFFFF',
-              border: '1px solid #E4E7EC',
-              borderRadius: 6,
-              boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
-              overflow: 'hidden',
-            }}
-          >
-            {loadingExams ? (
-              <div style={{ padding: '36px', textAlign: 'center', color: '#667085', fontSize: 13 }}>
-                Loading examination papers...
+          {/* Question List View */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+            {loadingQuestions ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>
+                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: '#3B82F6' }} />
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Loading questions...</div>
               </div>
-            ) : paginatedExams.length === 0 ? (
-              <div style={{ padding: '40px 24px', textAlign: 'center', color: '#667085' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#172033' }}>No examination papers found</div>
-                <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
-                  Try adjusting your search or filters.
-                </div>
+            ) : filteredQuestions.length === 0 ? (
+              <div style={{ padding: 30, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                No questions found under selected filter.
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAMINATION PAPER</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CODE</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STAGE & YEAR</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXTRACTED</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedExams.map((exam, i) => {
-                    const statusObj = formatHumanStatus(exam.status);
-                    const totalQ = exam.total_questions || 100;
-                    const extQ = exam.extracted_questions_count || 0;
-                    const pct = Math.min(100, Math.round((extQ / totalQ) * 100));
+              filteredQuestions.map((q, idx) => {
+                const isSelected = activeQuestion && activeQuestion.id === q.id;
+                const isPublished = q.status === 'PUBLISHED';
+                const isRejected = q.status === 'REJECTED';
 
-                    return (
-                      <tr
-                        key={exam.id}
-                        onClick={() => setSelectedExam(exam)}
-                        style={{
-                          borderBottom: i === paginatedExams.length - 1 ? 'none' : '1px solid #E4E7EC',
-                          cursor: 'pointer',
-                          transition: 'background 0.12s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        {/* 1. EXAMINATION PAPER */}
-                        <td style={{ padding: '14px 16px', fontWeight: 600, color: '#172033', maxWidth: 300 }}>
-                          {exam.name || `UPSC Prelims ${exam.source_year} GS Paper 1`}
-                        </td>
-
-                        {/* 2. CODE */}
-                        <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, color: '#667085' }}>
-                          <div>{exam.code}</div>
-                          {exam.paper_set_code && <div style={{ marginTop: 2 }}>{exam.paper_set_code}</div>}
-                        </td>
-
-                        {/* 3. STAGE & YEAR */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: '#172033', textTransform: 'capitalize' }}>
-                            {exam.stage || 'Prelims'}
-                          </div>
-                          <div style={{ fontSize: 12.5, color: '#667085', marginTop: 1 }}>
-                            {exam.source_year || 2024}
-                          </div>
-                        </td>
-
-                        {/* 4. EXTRACTED QUESTIONS */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#172033' }}>
-                            {extQ} / {totalQ}
-                          </div>
-                          <div style={{ width: 80, height: 4, background: '#F2F4F7', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                height: '100%',
-                                width: `${pct}%`,
-                                backgroundColor: pct === 100 ? '#15803D' : '#3B6EA8',
-                              }}
-                            />
-                          </div>
-                        </td>
-
-                        {/* 5. STATUS */}
-                        <td style={{ padding: '14px 16px' }}>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 500,
-                              padding: '3px 8px',
-                              borderRadius: 4,
-                              backgroundColor: statusObj.bg,
-                              color: statusObj.color,
-                              border: `1px solid ${statusObj.border}`,
-                              display: 'inline-block',
-                            }}
-                          >
-                            {statusObj.label}
-                          </span>
-                        </td>
-
-                        {/* 6. ACTION */}
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedExam(exam);
-                            }}
-                            style={{
-                              padding: '5px 12px',
-                              fontSize: 12.5,
-                              fontWeight: 500,
-                              color: '#172033',
-                              background: '#FFFFFF',
-                              border: '1px solid #E4E7EC',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              transition: 'all 0.15s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = 'rgba(59, 110, 168, 0.06)';
-                              e.currentTarget.style.borderColor = '#3B6EA8';
-                              e.currentTarget.style.color = '#3B6EA8';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#FFFFFF';
-                              e.currentTarget.style.borderColor = '#E4E7EC';
-                              e.currentTarget.style.color = '#172033';
-                            }}
-                          >
-                            <span>Review</span>
-                            <span>→</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Clean Pagination Footer */}
-          {totalPapersCount > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: 16,
-                fontSize: 13,
-                color: '#667085',
-              }}
-            >
-              <div>
-                Showing {Math.min(startIndex + 1, totalPapersCount)}–
-                {Math.min(startIndex + pageSize, totalPapersCount)} of {totalPapersCount} papers
-              </div>
-
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 4,
-                    border: '1px solid #E4E7EC',
-                    background: '#FFFFFF',
-                    color: currentPage === 1 ? '#94A3B8' : '#172033',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    fontSize: 12.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <ChevronLeft size={14} /> Previous
-                </button>
-
-                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pg) => (
-                  <button
-                    key={pg}
-                    onClick={() => setCurrentPage(pg)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: 4,
-                      border: '1px solid #E4E7EC',
-                      background: currentPage === pg ? '#12233F' : '#FFFFFF',
-                      color: currentPage === pg ? '#FFFFFF' : '#172033',
-                      cursor: 'pointer',
-                      fontSize: 12.5,
-                      fontWeight: currentPage === pg ? 600 : 400,
-                    }}
-                  >
-                    {pg}
-                  </button>
-                ))}
-
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: 4,
-                    border: '1px solid #E4E7EC',
-                    background: '#FFFFFF',
-                    color: currentPage === totalPages ? '#94A3B8' : '#172033',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    fontSize: 12.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  Next <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* VIEW 2: SPLIT-PANE QUESTION REVIEW WORKSPACE FOR SELECTED EXAM */
-        <div>
-          {/* Top Breadcrumb Header Bar */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#667085', marginBottom: 6 }}>
-              <span
-                onClick={() => setSelectedExam(null)}
-                style={{ cursor: 'pointer', textDecoration: 'none', color: '#3B6EA8', fontWeight: 500 }}
-              >
-                ← Back to Question Review
-              </span>
-              <span>/</span>
-              <span style={{ color: '#172033', fontWeight: 600 }}>{selectedExam.name}</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <div>
-                <h1 style={{ fontSize: 24, fontWeight: 700, color: '#172033', margin: 0 }}>
-                  {selectedExam.name} ({selectedExam.code})
-                </h1>
-                <span style={{ fontSize: 13, color: '#667085', marginTop: 2, display: 'block' }}>
-                  {questionsList.length} questions loaded from database
-                </span>
-              </div>
-
-              {/* Question Status Filter for Workspace */}
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select
-                  value={questionStatusFilter}
-                  onChange={(e) => setQuestionStatusFilter(e.target.value)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #E4E7EC',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: '#172033',
-                    backgroundColor: '#FFFFFF',
-                    outline: 'none',
-                    height: 38,
-                  }}
-                >
-                  <option value="ALL">All Questions</option>
-                  <option value="PENDING_HUMAN_REVIEW">Pending Review</option>
-                  <option value="PUBLISHED">Published</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Split-Pane Question Workspace Layout */}
-          {loadingQuestions ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#667085', background: '#FFFFFF', borderRadius: 6, border: '1px solid #E4E7EC' }}>
-              <Loader2 size={24} className="animate-spin" color="#3B6EA8" style={{ marginBottom: 12 }} />
-              <div>Loading exam questions from database...</div>
-            </div>
-          ) : filteredQuestions.length === 0 ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#667085', background: '#FFFFFF', borderRadius: 6, border: '1px solid #E4E7EC' }}>
-              <FileText size={32} color="#667085" style={{ marginBottom: 8 }} />
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#172033' }}>No questions found</div>
-              <div style={{ fontSize: 13, color: '#667085', marginTop: 4 }}>
-                No questions matched the selected status filter for this paper.
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', gap: 16, alignItems: 'start' }}>
-              {/* Left Pane: Question Item List */}
-              <div
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E4E7EC',
-                  borderRadius: 6,
-                  overflow: 'hidden',
-                  maxHeight: 'calc(100vh - 220px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                {/* Search Bar in Left List */}
-                <div style={{ padding: 12, borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: '#667085' }} />
-                    <input
-                      type="text"
-                      placeholder="Filter Q1, topic..."
-                      value={questionSearchQuery}
-                      onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '6px 10px 6px 30px',
-                        borderRadius: 4,
-                        border: '1px solid #E4E7EC',
-                        fontSize: 12.5,
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Scrollable Question Items */}
-                <div style={{ overflowY: 'auto', flex: 1 }}>
-                  {filteredQuestions.map((q, idx) => {
-                    const isSelected = selectedQuestionIndex === idx;
-                    const isPub = q.status === 'PUBLISHED';
-                    const isRej = q.status === 'REJECTED';
-
-                    return (
-                      <div
-                        key={q.id}
-                        onClick={() => setSelectedQuestionIndex(idx)}
-                        style={{
-                          padding: '12px 14px',
-                          borderBottom: '1px solid #E4E7EC',
-                          backgroundColor: isSelected ? 'rgba(59, 110, 168, 0.08)' : '#FFFFFF',
-                          borderLeft: isSelected ? '3px solid #3B6EA8' : '3px solid transparent',
-                          cursor: 'pointer',
-                          transition: 'all 0.12s ease',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
-                            Q{q.question_number_in_paper}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              padding: '2px 6px',
-                              borderRadius: 3,
-                              backgroundColor: isPub ? '#DCFCE7' : isRej ? '#FEF2F2' : '#FEF3C7',
-                              color: isPub ? '#15803D' : isRej ? '#B42318' : '#B45309',
-                            }}
-                          >
-                            {isPub ? 'Published' : isRej ? 'Rejected' : 'Pending'}
-                          </span>
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 12.5,
-                            color: '#344054',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {q.question_text}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right Pane: Detailed Question Inspector & Review Actions */}
-              {selectedQuestion && (
-                <div
-                  style={{
-                    background: '#FFFFFF',
-                    border: '1px solid #E4E7EC',
-                    borderRadius: 6,
-                    padding: 24,
-                    boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
-                  }}
-                >
-                  {/* Question Metadata Bar */}
+                return (
                   <div
+                    key={q.id}
+                    onClick={() => handleSelectQuestion(idx)}
                     style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderBottom: '1px solid #E4E7EC',
-                      paddingBottom: 12,
-                      marginBottom: 20,
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      marginBottom: 6,
+                      cursor: 'pointer',
+                      border: isSelected ? '1.5px solid #2563EB' : '1px solid #F1F5F9',
+                      backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: '#172033' }}>
-                        Question #{selectedQuestion.question_number_in_paper}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span
                         style={{
                           fontSize: 12,
-                          fontWeight: 600,
-                          padding: '3px 8px',
+                          fontWeight: 800,
+                          color: isSelected ? '#1D4ED8' : '#0F172A',
+                          backgroundColor: isSelected ? '#DBEAFE' : '#F1F5F9',
+                          padding: '2px 7px',
                           borderRadius: 4,
-                          backgroundColor:
-                            selectedQuestion.status === 'PUBLISHED'
-                              ? '#DCFCE7'
-                              : selectedQuestion.status === 'REJECTED'
-                              ? '#FEF2F2'
-                              : '#FEF3C7',
-                          color:
-                            selectedQuestion.status === 'PUBLISHED'
-                              ? '#15803D'
-                              : selectedQuestion.status === 'REJECTED'
-                              ? '#B42318'
-                              : '#B45309',
-                          border: `1px solid ${
-                            selectedQuestion.status === 'PUBLISHED'
-                              ? '#BBF7D0'
-                              : selectedQuestion.status === 'REJECTED'
-                              ? '#FECDCA'
-                              : '#FDE68A'
-                          }`,
                         }}
                       >
-                        {selectedQuestion.status === 'PUBLISHED'
-                          ? 'Published'
-                          : selectedQuestion.status === 'REJECTED'
-                          ? 'Rejected'
-                          : 'Pending Review'}
+                        Q{q.question_number_in_paper}
+                      </span>
+
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 10,
+                          backgroundColor: isPublished ? '#DCFCE7' : isRejected ? '#FEE2E2' : '#FEF3C7',
+                          color: isPublished ? '#15803D' : isRejected ? '#B91C1C' : '#B45309',
+                        }}
+                      >
+                        {isPublished ? 'Verified' : isRejected ? 'Rejected' : 'Pending'}
                       </span>
                     </div>
 
-                    {/* Action Bar */}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => openEditModal(selectedQuestion)}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: 12.5,
-                          fontWeight: 500,
-                          color: '#172033',
-                          background: '#FFFFFF',
-                          border: '1px solid #E4E7EC',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Edit3 size={14} /> Edit
-                      </button>
-
-                      <button
-                        onClick={() => handleRejectQuestion(selectedQuestion.id)}
-                        disabled={actionLoadingId === selectedQuestion.id}
-                        style={{
-                          padding: '6px 12px',
-                          fontSize: 12.5,
-                          fontWeight: 500,
-                          color: '#B42318',
-                          background: '#FFFFFF',
-                          border: '1px solid #FECDCA',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <ThumbsDown size={14} /> Reject
-                      </button>
-
-                      <button
-                        onClick={() => handleApproveQuestion(selectedQuestion.id)}
-                        disabled={actionLoadingId === selectedQuestion.id}
-                        style={{
-                          padding: '6px 14px',
-                          fontSize: 12.5,
-                          fontWeight: 600,
-                          color: '#FFFFFF',
-                          background: '#12233F',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        {actionLoadingId === selectedQuestion.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <ThumbsUp size={14} />
-                        )}
-                        <span>Approve & Publish</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Passage Text (if available) */}
-                  {selectedQuestion.passage_text && (
                     <div
                       style={{
-                        padding: 14,
-                        background: '#F7F7F5',
-                        borderLeft: '3px solid #3B6EA8',
-                        borderRadius: 4,
-                        fontSize: 13.5,
-                        color: '#344054',
-                        marginBottom: 16,
-                        lineHeight: 1.5,
+                        fontSize: 12.5,
+                        color: isSelected ? '#1E293B' : '#475569',
+                        lineHeight: 1.35,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
                       }}
                     >
-                      <strong>Passage Context:</strong> {selectedQuestion.passage_text}
+                      {q.question_text || 'No question text extracted.'}
                     </div>
-                  )}
 
-                  {/* Question Stem Text */}
-                  <div style={{ fontSize: 15, fontWeight: 500, color: '#172033', lineHeight: 1.6, marginBottom: 20 }}>
-                    {selectedQuestion.question_text}
+                    {q.subject_name && (
+                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Tag size={10} />
+                        {q.subject_name} {q.topic_name ? `› ${q.topic_name}` : ''}
+                      </div>
+                    )}
                   </div>
+                );
+              })
+            )}
+          </div>
+        </div>
 
-                  {/* Options List */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-                    {selectedQuestion.options.map((opt) => (
-                      <div
-                        key={opt.option_label}
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: 6,
-                          border: opt.is_correct ? '1.5px solid #15803D' : '1px solid #E4E7EC',
-                          backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                        }}
-                      >
+        {/* RIGHT COLUMN: Active Question QA Verification Canvas */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: 10,
+            border: '1px solid #E2E8F0',
+            display: 'flex',
+            flexDirection: 'column',
+            height: 'calc(100vh - 270px)',
+            minHeight: 550,
+            overflowY: 'auto',
+            padding: 24,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          {activeQuestion ? (
+            <div>
+              {/* Question Action Toolbar */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  paddingBottom: 16,
+                  borderBottom: '1px solid #E2E8F0',
+                  marginBottom: 20,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#0F172A' }}>
+                    Question #{activeQuestion.question_number_in_paper}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 12,
+                      backgroundColor:
+                        activeQuestion.status === 'PUBLISHED'
+                          ? '#DCFCE7'
+                          : activeQuestion.status === 'REJECTED'
+                          ? '#FEE2E2'
+                          : '#FEF3C7',
+                      color:
+                        activeQuestion.status === 'PUBLISHED'
+                          ? '#15803D'
+                          : activeQuestion.status === 'REJECTED'
+                          ? '#B91C1C'
+                          : '#B45309',
+                    }}
+                  >
+                    {activeQuestion.status === 'PUBLISHED'
+                      ? '✅ Approved & Published'
+                      : activeQuestion.status === 'REJECTED'
+                      ? '❌ Rejected'
+                      : '⏳ Pending QA Review'}
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => handleOpenEditModal(activeQuestion)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: '#FFFFFF',
+                      color: '#0F172A',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Edit3 size={14} color="#2563EB" />
+                    Modify Question & Solutions
+                  </button>
+
+                  <button
+                    onClick={() => handleRejectQuestion(activeQuestion)}
+                    disabled={actionLoadingId === activeQuestion.id}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: '1px solid #FECACA',
+                      backgroundColor: '#FEF2F2',
+                      color: '#DC2626',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <ThumbsDown size={14} />
+                    Reject
+                  </button>
+
+                  <button
+                    onClick={() => handleQuickApproveQuestion(activeQuestion)}
+                    disabled={actionLoadingId === activeQuestion.id || activeQuestion.status === 'PUBLISHED'}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      border: 'none',
+                      backgroundColor: activeQuestion.status === 'PUBLISHED' ? '#E2E8F0' : '#15803D',
+                      color: activeQuestion.status === 'PUBLISHED' ? '#64748B' : '#FFFFFF',
+                      cursor: activeQuestion.status === 'PUBLISHED' ? 'default' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {actionLoadingId === activeQuestion.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ThumbsUp size={14} />
+                    )}
+                    {activeQuestion.status === 'PUBLISHED' ? 'Already Approved' : 'Approve & Publish'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Taxonomy / Hierarchy Bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: '#F8FAFC',
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  marginBottom: 20,
+                  fontSize: 12.5,
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1E293B', fontWeight: 600 }}>
+                  <FolderTree size={14} color="#3B82F6" />
+                  <span>Subject:</span>
+                  <span style={{ color: '#2563EB' }}>{activeQuestion.subject_name || 'General Studies'}</span>
+                </div>
+
+                {activeQuestion.topic_name && (
+                  <>
+                    <span style={{ color: '#CBD5E1' }}>›</span>
+                    <span style={{ fontWeight: 600, color: '#475569' }}>{activeQuestion.topic_name}</span>
+                  </>
+                )}
+
+                {activeQuestion.subtopic_name && (
+                  <>
+                    <span style={{ color: '#CBD5E1' }}>›</span>
+                    <span style={{ fontWeight: 600, color: '#64748B' }}>{activeQuestion.subtopic_name}</span>
+                  </>
+                )}
+
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, color: '#64748B' }}>
+                  <span>Difficulty: <strong>{activeQuestion.difficulty}</strong></span>
+                  <span>Marks: <strong>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
+                  <span>Time: <strong>{activeQuestion.expected_time_seconds || 60}s</strong></span>
+                </div>
+              </div>
+
+              {/* Passage Box if passage exists */}
+              {activeQuestion.passage_text && (
+                <div
+                  style={{
+                    backgroundColor: '#F1F5F9',
+                    borderRadius: 8,
+                    padding: '16px 20px',
+                    marginBottom: 20,
+                    borderLeft: '4px solid #3B82F6',
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1E40AF', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Passage / Reference Context
+                  </div>
+                  <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {activeQuestion.passage_text}
+                  </div>
+                </div>
+              )}
+
+              {/* Question Text Card */}
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 8,
+                  padding: '20px',
+                  border: '1px solid #E2E8F0',
+                  marginBottom: 24,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                }}
+              >
+                <div style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {activeQuestion.question_text}
+                </div>
+              </div>
+
+              {/* Options & Distractor Analyses (Option Explanations) */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1E293B', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Layers size={16} color="#3B82F6" />
+                  Options & Option Explanations (Distractor Analysis)
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                  {activeQuestion.options.map((opt) => (
+                    <div
+                      key={opt.option_label}
+                      style={{
+                        borderRadius: 8,
+                        border: opt.is_correct ? '1.5px solid #22C55E' : '1px solid #E2E8F0',
+                        backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                        padding: '14px 18px',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                         <span
                           style={{
-                            width: 26,
-                            height: 26,
+                            width: 28,
+                            height: 28,
                             borderRadius: '50%',
-                            backgroundColor: opt.is_correct ? '#15803D' : '#F7F7F5',
-                            color: opt.is_correct ? '#FFFFFF' : '#344054',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: 12,
+                            fontWeight: 800,
+                            fontSize: 13,
+                            backgroundColor: opt.is_correct ? '#16A34A' : '#F1F5F9',
+                            color: opt.is_correct ? '#FFFFFF' : '#475569',
+                            flexShrink: 0,
                           }}
                         >
                           {opt.option_label}
                         </span>
 
-                        <span style={{ fontSize: 13.5, color: '#172033', flex: 1 }}>{opt.option_text}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14.5, fontWeight: opt.is_correct ? 700 : 500, color: '#0F172A' }}>
+                            {opt.option_text || '(Empty Option Text)'}
+                          </div>
+
+                          {/* Option Explanation / Distractor Analysis */}
+                          <div
+                            style={{
+                              marginTop: 8,
+                              padding: '8px 12px',
+                              borderRadius: 6,
+                              fontSize: 12.5,
+                              backgroundColor: opt.is_correct ? '#DCFCE7' : '#F8FAFC',
+                              color: opt.is_correct ? '#166534' : '#475569',
+                              borderLeft: `3px solid ${opt.is_correct ? '#16A34A' : '#94A3B8'}`,
+                              lineHeight: 1.45,
+                            }}
+                          >
+                            <span style={{ fontWeight: 700 }}>
+                              {opt.is_correct ? 'Why Option is Correct:' : 'Distractor Analysis:'}{' '}
+                            </span>
+                            {opt.distractor_analysis || (
+                              <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>
+                                No distractor analysis added yet. Click &apos;Modify Question & Solutions&apos; to add.
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
                         {opt.is_correct && (
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Check size={14} /> Correct Answer
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#15803D',
+                              backgroundColor: '#DCFCE7',
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              flexShrink: 0,
+                            }}
+                          >
+                            Correct Answer
                           </span>
                         )}
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4 Solution Parameters Knowledge Base */}
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#1E293B', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={18} color="#EAB308" />
+                  Full 4-Parameter Solutions Knowledge Base
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                  {/* Parameter 1: Core Concept */}
+                  <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#1E40AF', marginBottom: 6 }}>
+                      <Zap size={15} />
+                      1. Core Concept
+                    </div>
+                    <div style={{ fontSize: 13.5, color: '#1E293B', lineHeight: 1.55 }}>
+                      {activeQuestion.explanation?.core_concept || (
+                        <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No core concept specified.</span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Solution Explanation */}
-                  {selectedQuestion.explanation?.detailed_solution && (
-                    <div
-                      style={{
-                        padding: 16,
-                        backgroundColor: '#F7F7F5',
-                        border: '1px solid #E4E7EC',
-                        borderRadius: 6,
-                      }}
-                    >
-                      <h4 style={{ fontSize: 13.5, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
-                        Solution Explanation
-                      </h4>
-                      <p style={{ fontSize: 13, color: '#344054', margin: 0, lineHeight: 1.6 }}>
-                        {selectedQuestion.explanation.detailed_solution}
-                      </p>
+                  {/* Parameter 2: Step-by-Step Detailed Solution */}
+                  <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0F766E', marginBottom: 6 }}>
+                      <FileText size={15} />
+                      2. Step-by-Step Detailed Solution
                     </div>
-                  )}
+                    <div style={{ fontSize: 13.5, color: '#1E293B', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {activeQuestion.explanation?.detailed_solution || (
+                        <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No detailed solution added.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Parameter 3: Points to Remember / Common Traps */}
+                  <div style={{ backgroundColor: '#FFFBEB', border: '1px solid #FEF3C7', borderRadius: 8, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
+                      <AlertTriangle size={15} />
+                      3. Points to Remember & Common Traps
+                    </div>
+                    {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.55 }}>
+                        {activeQuestion.explanation.common_traps.map((trap, tIdx) => (
+                          <li key={tIdx} style={{ marginBottom: 4 }}>
+                            {trap}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{ fontSize: 12.5, color: '#D97706', fontStyle: 'italic' }}>
+                        No common traps or points to remember listed.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Parameter 4: Key Takeaways */}
+                  <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: 8, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#15803D', marginBottom: 8 }}>
+                      <Award size={15} />
+                      4. Key Takeaways
+                    </div>
+                    {activeQuestion.explanation?.key_takeaways && activeQuestion.explanation.key_takeaways.length > 0 ? (
+                      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#166534', lineHeight: 1.55 }}>
+                        {activeQuestion.explanation.key_takeaways.map((point, pIdx) => (
+                          <li key={pIdx} style={{ marginBottom: 4 }}>
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{ fontSize: 12.5, color: '#15803D', fontStyle: 'italic' }}>
+                        No key takeaways added.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Bottom Pagination Controller */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingTop: 16,
+                  borderTop: '1px solid #E2E8F0',
+                }}
+              >
+                <button
+                  onClick={() => handleSelectQuestion(Math.max(0, selectedQuestionIndex - 1))}
+                  disabled={selectedQuestionIndex === 0}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
+                    cursor: selectedQuestionIndex === 0 ? 'default' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                  Previous Question
+                </button>
+
+                <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>
+                  Question {selectedQuestionIndex + 1} of {filteredQuestions.length}
+                </div>
+
+                <button
+                  onClick={() => handleSelectQuestion(Math.min(filteredQuestions.length - 1, selectedQuestionIndex + 1))}
+                  disabled={selectedQuestionIndex === filteredQuestions.length - 1}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: selectedQuestionIndex === filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
+                    cursor: selectedQuestionIndex === filteredQuestions.length - 1 ? 'default' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  Next Question
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
+              <HelpCircle size={40} style={{ margin: '0 auto 12px auto', color: '#CBD5E1' }} />
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1E293B' }}>Select a question from the left sidebar</div>
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* QUESTION EDIT MODAL */}
+      {/* ============================================================= */}
+      {/* MODAL 1: Full Question & 4-Parameter Solutions Editor */}
+      {/* ============================================================= */}
       {editingQuestion && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(16, 33, 61, 0.4)',
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16,
+            padding: 20,
           }}
         >
           <div
             style={{
-              background: '#FFFFFF',
-              borderRadius: 8,
-              border: '1px solid #E4E7EC',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
               width: '100%',
-              maxWidth: 680,
+              maxWidth: 950,
               maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: 24,
-              boxShadow: '0 4px 12px rgba(16, 24, 40, 0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0 }}>
-                Edit Question #{editingQuestion.question_number_in_paper}
-              </h2>
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#F8FAFC',
+              }}
+            >
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  Modify Question #{editingQuestion.question_number_in_paper} & Solutions
+                </h2>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  Update question text, passage, options, 4-parameter solutions, and curriculum hierarchy.
+                </div>
+              </div>
               <button
                 onClick={() => setEditingQuestion(null)}
-                style={{ background: 'none', border: 'none', color: '#667085', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
-                Question Text
-              </label>
-              <textarea
-                rows={4}
-                value={editFormText}
-                onChange={(e) => setEditFormText(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  fontSize: 13.5,
-                  color: '#172033',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
+            {/* Modal Scrollable Body */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+              {/* Question Text */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 6 }}>
+                  Question Text:
+                </label>
+                <textarea
+                  rows={4}
+                  value={editQuestionText}
+                  onChange={(e) => setEditQuestionText(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: 14,
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
 
-            {/* Options Editing */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 8 }}>
-                Options & Correct Answer
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {editFormOptions.map((opt, idx) => (
-                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033', width: 20 }}>
-                      {opt.label}.
-                    </span>
+              {/* Passage Text */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 6 }}>
+                  Passage / Context (Optional):
+                </label>
+                <textarea
+                  rows={3}
+                  value={editPassageText}
+                  onChange={(e) => setEditPassageText(e.target.value)}
+                  placeholder="Paste or edit shared reading passage / context..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    fontSize: 13,
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+
+              {/* Hierarchy & Taxonomy */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 18 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                    Subject Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={editSubjectName}
+                    onChange={(e) => setEditSubjectName(e.target.value)}
+                    placeholder="e.g. Geography"
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                    Topic Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={editTopicName}
+                    onChange={(e) => setEditTopicName(e.target.value)}
+                    placeholder="e.g. Indian Geography"
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                    Subtopic Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={editSubtopicName}
+                    onChange={(e) => setEditSubtopicName(e.target.value)}
+                    placeholder="e.g. Rivers & Drainage"
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {/* Difficulty & Marks */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Difficulty:</label>
+                  <select
+                    value={editDifficulty}
+                    onChange={(e) => setEditDifficulty(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                  >
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Marks:</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editMarks}
+                    onChange={(e) => setEditMarks(parseFloat(e.target.value) || 2.0)}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Negative Marks:</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editNegativeMarks}
+                    onChange={(e) => setEditNegativeMarks(parseFloat(e.target.value) || 0.66)}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Expected Time (s):</label>
+                  <input
+                    type="number"
+                    value={editExpectedTime}
+                    onChange={(e) => setEditExpectedTime(parseInt(e.target.value, 10) || 60)}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {/* Options & Distractor Analyses */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#1E293B', marginBottom: 8 }}>
+                  Options & Distractor Analysis (Option Explanations):
+                </label>
+                {editOptions.map((opt, idx) => (
+                  <div
+                    key={opt.option_label}
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: '#F8FAFC',
+                      border: opt.is_correct ? '1.5px solid #22C55E' : '1px solid #CBD5E1',
+                      borderRadius: 8,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                      <span style={{ fontWeight: 800, fontSize: 14, color: '#1E293B', width: 20 }}>
+                        {opt.option_label}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.option_text}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditOptions((prev) =>
+                            prev.map((o, i) => (i === idx ? { ...o, option_text: val } : o))
+                          );
+                        }}
+                        placeholder={`Option ${opt.option_label} text...`}
+                        style={{ flex: 1, padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                      />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#15803D', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name="correctOptionRadio"
+                          checked={opt.is_correct}
+                          onChange={() => {
+                            setEditOptions((prev) =>
+                              prev.map((o, i) => ({ ...o, is_correct: i === idx }))
+                            );
+                          }}
+                        />
+                        Correct
+                      </label>
+                    </div>
+
+                    {/* Distractor Analysis Field */}
                     <input
                       type="text"
-                      value={opt.text}
+                      value={opt.distractor_analysis}
                       onChange={(e) => {
-                        const newOpts = [...editFormOptions];
-                        newOpts[idx].text = e.target.value;
-                        setEditFormOptions(newOpts);
+                        const val = e.target.value;
+                        setEditOptions((prev) =>
+                          prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                        );
                       }}
+                      placeholder={`Explanation for Option ${opt.option_label} (why it is correct/incorrect)...`}
                       style={{
-                        flex: 1,
+                        width: '100%',
                         padding: '6px 10px',
+                        fontSize: 12,
                         borderRadius: 4,
-                        border: '1px solid #E4E7EC',
-                        fontSize: 13,
-                        outline: 'none',
+                        border: '1px solid #CBD5E1',
+                        backgroundColor: '#FFFFFF',
+                        boxSizing: 'border-box',
                       }}
                     />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, cursor: 'pointer', color: '#172033' }}>
-                      <input
-                        type="radio"
-                        name="correctOpt"
-                        checked={opt.is_correct}
-                        onChange={() => {
-                          const newOpts = editFormOptions.map((o, i) => ({
-                            ...o,
-                            is_correct: i === idx,
-                          }));
-                          setEditFormOptions(newOpts);
-                        }}
-                      />
-                      Correct
-                    </label>
                   </div>
                 ))}
               </div>
+
+              {/* 4 Solution Parameters */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 800, color: '#1E293B', marginBottom: 12 }}>
+                  4 Solution Parameters:
+                </label>
+
+                {/* 1. Core Concept */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#1E40AF', marginBottom: 4 }}>
+                    1. Core Concept:
+                  </label>
+                  <input
+                    type="text"
+                    value={editCoreConcept}
+                    onChange={(e) => setEditCoreConcept(e.target.value)}
+                    placeholder="Fundamental principle or theory tested..."
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* 2. Detailed Solution */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0F766E', marginBottom: 4 }}>
+                    2. Step-by-Step Detailed Solution:
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={editDetailedSolution}
+                    onChange={(e) => setEditDetailedSolution(e.target.value)}
+                    placeholder="Comprehensive explanation with steps and derivations..."
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                {/* 3. Common Traps / Points to Remember */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#B45309', marginBottom: 4 }}>
+                    3. Points to Remember / Common Traps:
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      value={newTrapInput}
+                      onChange={(e) => setNewTrapInput(e.target.value)}
+                      placeholder="Add a common trap or memory tip..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTrapInput.trim()) {
+                          e.preventDefault();
+                          setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
+                          setNewTrapInput('');
+                        }
+                      }}
+                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newTrapInput.trim()) {
+                          setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
+                          setNewTrapInput('');
+                        }
+                      }}
+                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', backgroundColor: '#D97706', color: '#FFFFFF', cursor: 'pointer' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {editCommonTraps.map((trap, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#FEF3C7', borderRadius: 4, marginBottom: 4, fontSize: 12 }}>
+                      <span>{trap}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 4. Key Takeaways */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#15803D', marginBottom: 4 }}>
+                    4. Key Takeaways:
+                  </label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      value={newTakeawayInput}
+                      onChange={(e) => setNewTakeawayInput(e.target.value)}
+                      placeholder="Add an essential takeaway point..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTakeawayInput.trim()) {
+                          e.preventDefault();
+                          setEditKeyTakeaways((prev) => [...prev, newTakeawayInput.trim()]);
+                          setNewTakeawayInput('');
+                        }
+                      }}
+                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newTakeawayInput.trim()) {
+                          setEditKeyTakeaways((prev) => [...prev, newTakeawayInput.trim()]);
+                          setNewTakeawayInput('');
+                        }
+                      }}
+                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', backgroundColor: '#15803D', color: '#FFFFFF', cursor: 'pointer' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {editKeyTakeaways.map((takeaway, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#DCFCE7', borderRadius: 4, marginBottom: 4, fontSize: 12 }}>
+                      <span>{takeaway}</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditKeyTakeaways((prev) => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Solution Explanation */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
-                Solution Explanation
-              </label>
-              <textarea
-                rows={3}
-                value={editFormExplanation}
-                onChange={(e) => setEditFormExplanation(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: 6,
-                  border: '1px solid #E4E7EC',
-                  fontSize: 13.5,
-                  color: '#172033',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            {/* Modal Footer Actions */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #E2E8F0',
+                backgroundColor: '#F8FAFC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 12,
+              }}
+            >
               <button
+                type="button"
                 onClick={() => setEditingQuestion(null)}
                 style={{
-                  padding: '8px 16px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#667085',
-                  background: '#FFFFFF',
-                  border: '1px solid #E4E7EC',
+                  padding: '9px 18px',
                   borderRadius: 6,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveQuestionChanges(false)}
+                disabled={savingEdit}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  border: '1px solid #94A3B8',
+                  backgroundColor: '#F1F5F9',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Draft
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveQuestionChanges(true)}
+                disabled={savingEdit}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: 6,
+                  border: 'none',
+                  backgroundColor: '#15803D',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save & Mark Verified (Publish)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL 2: Unsaved Changes Warning Popup */}
+      {/* ============================================================= */}
+      {showUnsavedModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 10,
+              maxWidth: 460,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#D97706', marginBottom: 12 }}>
+              <AlertTriangle size={24} />
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+                Unsaved Question Modifications
+              </h3>
+            </div>
+            <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.5, margin: '0 0 20px 0' }}>
+              You have modified the active question without saving or publishing it. Would you like to discard changes and proceed, or stay on this question?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => setShowUnsavedModal(false)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 6,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Stay Here
+              </button>
+              <button
+                onClick={() => {
+                  setShowUnsavedModal(false);
+                  setHasUnsavedChanges(false);
+                  if (pendingNavigationAction) {
+                    pendingNavigationAction();
+                    setPendingNavigationAction(null);
+                  }
+                }}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Discard Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL 3: S3 Publish Warning (When questions are still pending) */}
+      {/* ============================================================= */}
+      {showPublishWarningModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 10,
+              maxWidth: 480,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#DC2626', marginBottom: 12 }}>
+              <Lock size={24} />
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+                Cannot Publish Exam to S3
+              </h3>
+            </div>
+            <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+              <strong>{reviewMetrics.pending} questions</strong> are still pending human review in exam package <em>&apos;{selectedExam?.name}&apos;</em>.
+            </p>
+            <div
+              style={{
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: 6,
+                padding: '12px 14px',
+                fontSize: 13,
+                color: '#991B1B',
+                marginBottom: 20,
+              }}
+            >
+              Every single question and solution must be verified and published by an administrator before deploying JSON artifacts to S3.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowPublishWarningModal(false);
+                  handleStatusFilterChange('PENDING');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  border: 'none',
+                  backgroundColor: '#1E40AF',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Review Remaining Questions
+              </button>
+              <button
+                onClick={() => setShowPublishWarningModal(false)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 6,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL 4: Final S3 Exam Publish Confirmation */}
+      {/* ============================================================= */}
+      {showPublishModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 10,
+              maxWidth: 480,
+              width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#15803D', marginBottom: 12 }}>
+              <UploadCloud size={26} />
+              <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: '#0F172A' }}>
+                Publish Exam Package to S3?
+              </h3>
+            </div>
+            <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+              All <strong>{reviewMetrics.total} questions & solutions</strong> have been verified. Publishing will:
+            </p>
+            <ul style={{ margin: '0 0 20px 0', paddingLeft: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+              <li>Generate standalone <code style={{ color: '#0369A1' }}>exam_questions.json</code> & <code style={{ color: '#0369A1' }}>exam_solutions.json</code></li>
+              <li>Deploy individual question & solution JSONs to Amazon S3</li>
+              <li>Activate this exam for candidate mock tests and live assessments</li>
+            </ul>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                onClick={() => setShowPublishModal(false)}
+                disabled={publishingExam}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: 6,
+                  border: '1px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
                   cursor: 'pointer',
                 }}
               >
                 Cancel
               </button>
               <button
-                onClick={handleSaveQuestionEdit}
-                disabled={savingEdit}
+                onClick={confirmPublishExam}
+                disabled={publishingExam}
                 style={{
-                  padding: '8px 20px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#FFFFFF',
-                  background: '#12233F',
-                  border: 'none',
+                  padding: '9px 20px',
                   borderRadius: 6,
-                  cursor: savingEdit ? 'not-allowed' : 'pointer',
-                  display: 'flex',
+                  border: 'none',
+                  backgroundColor: '#15803D',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 8,
                 }}
               >
-                {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                <span>Save & Publish</span>
+                {publishingExam ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                Confirm & Deploy to S3
               </button>
             </div>
           </div>

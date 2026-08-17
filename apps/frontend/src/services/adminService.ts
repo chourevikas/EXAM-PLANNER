@@ -172,10 +172,23 @@ export interface ExamPipelineStatusItem {
   subject_code: string;
   paper_set_code: string;
   status: string;
+  overall_status?: string;
   is_active: boolean;
   total_questions: number;
   extracted_questions_count: number;
   missing_questions_count: number;
+  published_questions_count?: number;
+  pending_questions_count?: number;
+  rejected_questions_count?: number;
+  key_mapped_count?: number;
+  explanations_count?: number;
+  has_question_paper?: boolean;
+  has_answer_key?: boolean;
+  pdf_path?: string;
+  answer_key_pdf_path?: string;
+  stage1_status?: 'COMPLETED' | 'IN_PROGRESS' | 'MISSING_INPUT' | 'QUEUED';
+  stage2_status?: 'COMPLETED' | 'IN_PROGRESS' | 'MISSING_INPUT' | 'QUEUED';
+  stage3_status?: 'COMPLETED' | 'IN_PROGRESS' | 'WAITING_INPUTS' | 'QUEUED' | 'ERROR';
   questions_json_path?: string;
   solutions_json_path?: string;
   questions_json_folder_path?: string;
@@ -199,6 +212,24 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to approve and publish exam' }));
     throw new Error(errorData.detail || 'Exam approval failed.');
+  }
+  return await res.json();
+}
+
+export async function fetchExamQuestionsForReview(
+  examId: string,
+  page: number = 1,
+  limit: number = 100,
+  status?: string
+): Promise<any> {
+  let url = `${API_BASE_URL}/exams/${examId}/review-questions?page=${page}&limit=${limit}`;
+  if (status && status !== 'ALL') {
+    url += `&status=${status}`;
+  }
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam review questions' }));
+    throw new Error(errorData.detail || 'Could not fetch exam review questions.');
   }
   return await res.json();
 }

@@ -1,9 +1,10 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_session
+from app.db.models import LanguageCode, QuestionStatus
 from app.db.models.user import User, UserRole
 from app.schemas.auth import (
     AdminApprovalRequestOut,
@@ -17,6 +18,7 @@ from app.schemas.question import (
     QuestionDetailResponse,
     QuestionUpdatePayload,
     QuestionCreatePayload,
+    ExamReviewQuestionsResponse,
 )
 from app.services.admin_service import AdminService
 from app.services.question_service import QuestionService
@@ -127,22 +129,166 @@ async def list_exam_pipeline_statuses(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
-    Returns list of all exams with detailed pipeline status, extracted question metrics,
-    and S3 JSON folder artifact paths.
+    Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
+    answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
     """
-    from sqlmodel import select, func
-    from app.db.models import Exam, Question
+    from sqlmodel import select, func, case
+    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, QuestionStatus
+    from app.db.models.pipeline_run import PipelineRun
+    from sqlalchemy import cast, String
 
-    res = await session.exec(select(Exam))
+    # 1. Fetch all exams ordered by source year desc
+    res = await session.exec(select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc()))
     exams = res.all()
+
+    # 2. Aggregated Question counts per exam
+    q_stmt = (
+        select(
+            Question.exam_id,
+            func.count(Question.id).label("total_q"),
+            func.sum(case((cast(Question.status, String) == "PUBLISHED", 1), else_=0)).label("pub_q"),
+            func.sum(case((cast(Question.status, String) == "PENDING_HUMAN_REVIEW", 1), else_=0)).label("pend_q"),
+            func.sum(case((cast(Question.status, String) == "REJECTED", 1), else_=0)).label("rej_q"),
+        )
+        .group_by(Question.exam_id)
+    )
+    q_rows = (await session.exec(q_stmt)).all()
+    q_map = {row[0]: {"total": row[1] or 0, "pub": row[2] or 0, "pend": row[3] or 0, "rej": row[4] or 0} for row in q_rows}
+
+    # 3. Aggregated correct answers per exam
+    key_stmt = (
+        select(Question.exam_id, func.count(func.distinct(Question.id)))
+        .join(QuestionOption, Question.id == QuestionOption.question_id)
+        .where(QuestionOption.is_correct == True)
+        .group_by(Question.exam_id)
+    )
+    key_rows = (await session.exec(key_stmt)).all()
+    key_map = {row[0]: row[1] or 0 for row in key_rows}
+
+    # 4. Aggregated explanations per exam
+    exp_stmt = (
+        select(Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id)))
+        .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
+        .group_by(Question.exam_id)
+    )
+    exp_rows = (await session.exec(exp_stmt)).all()
+    exp_map = {row[0]: row[1] or 0 for row in exp_rows}
+
+    # 5. Fetch all PipelineRun records for real-time stage statuses
+    run_stmt = select(PipelineRun)
+    run_rows = (await session.exec(run_stmt)).all()
+    run_map: dict = {}
+    for r in run_rows:
+        if r.exam_id not in run_map:
+            run_map[r.exam_id] = {}
+        run_map[r.exam_id][r.pipeline_type] = r
 
     pipeline_list = []
     for exam in exams:
-        # Get live count of extracted questions in DB
-        q_cnt_res = await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam.id))
-        q_count = q_cnt_res.one()
+        q_info = q_map.get(exam.id, {"total": 0, "pub": 0, "pend": 0, "rej": 0})
+        q_count = q_info["total"]
+        pub_count = q_info["pub"]
+        pend_count = q_info["pend"]
+        rej_count = q_info["rej"]
+
+        key_count = key_map.get(exam.id, 0)
+        exp_count = exp_map.get(exam.id, 0)
+        total_exp = exam.total_questions or 100
+
+        has_paper = bool(exam.pdf_path or q_count > 0)
+        has_key = bool(exam.answer_key_pdf_path or key_count > 0 or exam.paper_set_code)
 
         status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+
+        # PipelineRun lookups
+        exam_runs = run_map.get(exam.id, {})
+        p1 = exam_runs.get("QUESTION_EXTRACTION")
+        p2 = exam_runs.get("ANSWER_KEY")
+        p3 = exam_runs.get("EXPLANATION_INDEXING") or exam_runs.get("EXPLANATION_GENERATION") or exam_runs.get("EXPLANATION")
+
+        # Stage 1: Extraction Status
+        if p1:
+            p1_status_upper = str(p1.status).upper()
+            if p1_status_upper in ("COMPLETED", "WAITING_FOR_ANSWER_KEY", "WAITING_FOR_HITL") or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
+                stage1_status = "COMPLETED"
+            elif p1_status_upper in ("RUNNING", "PROCESSING", "INITIALIZING") or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+                stage1_status = "IN_PROGRESS"
+            elif p1_status_upper in ("FAILED", "STOPPED", "CANCELLED"):
+                stage1_status = "FAILED"
+            elif not has_paper:
+                stage1_status = "MISSING_INPUT"
+            else:
+                stage1_status = "QUEUED"
+        else:
+            if q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
+                stage1_status = "COMPLETED"
+            elif q_count > 0 or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+                stage1_status = "IN_PROGRESS"
+            elif not has_paper:
+                stage1_status = "MISSING_INPUT"
+            else:
+                stage1_status = "QUEUED"
+
+        # Stage 2: Key Mapping Status
+        if p2:
+            p2_status_upper = str(p2.status).upper()
+            if p2_status_upper in ("COMPLETED", "MATCHED") or status_str == "PUBLISHED" or (key_count >= q_count and q_count > 0):
+                stage2_status = "COMPLETED"
+            elif p2_status_upper in ("RUNNING", "PROCESSING"):
+                stage2_status = "IN_PROGRESS"
+            elif p2_status_upper in ("FAILED", "CANCELLED"):
+                stage2_status = "FAILED"
+            elif not has_key:
+                stage2_status = "MISSING_INPUT"
+            else:
+                stage2_status = "QUEUED"
+        else:
+            if status_str == "PUBLISHED" or (key_count > 0 and key_count >= q_count):
+                stage2_status = "COMPLETED"
+            elif not has_key:
+                stage2_status = "MISSING_INPUT"
+            elif key_count > 0 or status_str in ("ANSWER_KEY_MAPPING", "PROCESSING"):
+                stage2_status = "IN_PROGRESS"
+            elif stage1_status == "COMPLETED" and exam.paper_set_code:
+                stage2_status = "COMPLETED"
+            else:
+                stage2_status = "QUEUED"
+
+        # Stage 3: Explanations Status
+        if p3:
+            p3_status_upper = str(p3.status).upper()
+            if p3_status_upper == "COMPLETED" or status_str == "PUBLISHED" or (exp_count >= q_count and q_count > 0):
+                stage3_status = "COMPLETED"
+            elif p3_status_upper in ("RUNNING", "PROCESSING") or exp_count > 0:
+                stage3_status = "IN_PROGRESS"
+            elif p3_status_upper in ("FAILED", "CANCELLED"):
+                stage3_status = "FAILED"
+            elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
+                stage3_status = "WAITING_INPUTS"
+            else:
+                stage3_status = "QUEUED"
+        else:
+            if status_str == "PUBLISHED" or (exp_count > 0 and exp_count >= q_count):
+                stage3_status = "COMPLETED"
+            elif exp_count > 0:
+                stage3_status = "IN_PROGRESS"
+            elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
+                stage3_status = "WAITING_INPUTS"
+            else:
+                stage3_status = "QUEUED"
+
+        # Overall Status
+        is_s3_published = status_str == "PUBLISHED" and bool(exam.questions_json_path or exam.questions_json_folder_path)
+        if is_s3_published:
+            overall_status = "PUBLISHED"
+        elif not has_paper or not has_key:
+            overall_status = "MISSING_INPUTS"
+        elif stage1_status == "IN_PROGRESS" or stage2_status == "IN_PROGRESS" or stage3_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF"):
+            overall_status = "PROCESSING"
+        elif stage1_status == "COMPLETED" and stage2_status == "COMPLETED" and stage3_status == "COMPLETED":
+            overall_status = "READY_FOR_REVIEW"
+        else:
+            overall_status = "PENDING_REVIEW"
 
         pipeline_list.append({
             "id": str(exam.id),
@@ -153,10 +299,30 @@ async def list_exam_pipeline_statuses(
             "subject_code": exam.subject_code,
             "paper_set_code": exam.paper_set_code,
             "status": status_str,
+            "overall_status": overall_status,
+            "stage1_status": stage1_status,
+            "stage2_status": stage2_status,
+            "stage3_status": stage3_status,
+            "stage1_step": p1.current_step if p1 else None,
+            "stage2_step": p2.current_step if p2 else None,
+            "stage3_step": p3.current_step if p3 else None,
+            "stage3_progress": p3.progress_percent if p3 else (100.0 if stage3_status == "COMPLETED" else 0.0),
             "is_active": exam.is_active,
-            "total_questions": exam.total_questions or 100,
+            "total_questions": total_exp,
             "extracted_questions_count": q_count,
-            "missing_questions_count": exam.missing_questions_count or max(0, (exam.total_questions or 100) - q_count),
+            "missing_questions_count": exam.missing_questions_count or max(0, total_exp - q_count),
+            "published_questions_count": pub_count,
+            "pending_questions_count": pend_count,
+            "rejected_questions_count": rej_count,
+            "key_mapped_count": key_count,
+            "explanations_count": exp_count,
+            "has_question_paper": has_paper,
+            "has_answer_key": has_key,
+            "pdf_path": exam.pdf_path,
+            "answer_key_pdf_path": exam.answer_key_pdf_path,
+            "stage1_status": stage1_status,
+            "stage2_status": stage2_status,
+            "stage3_status": stage3_status,
             "questions_json_path": exam.questions_json_path,
             "solutions_json_path": exam.solutions_json_path,
             "questions_json_folder_path": exam.questions_json_folder_path,
@@ -164,6 +330,31 @@ async def list_exam_pipeline_statuses(
         })
 
     return pipeline_list
+
+
+@router.get(
+    "/exams/{exam_id}/review-questions",
+    response_model=ExamReviewQuestionsResponse,
+    summary="Get Exam Questions with Full Solution Knowledge Base for Review",
+)
+async def get_exam_review_questions_admin(
+    exam_id: uuid.UUID,
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=100, ge=1, le=100, description="Items per page"),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    q_service = QuestionService(session)
+    return await q_service.get_exam_questions_for_review(
+        exam_id=exam_id,
+        page=page,
+        limit=limit,
+        language=language,
+        status=status,
+    )
 
 
 @router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
@@ -181,7 +372,7 @@ async def approve_and_publish_exam(
     """
     import uuid
     from fastapi import HTTPException
-    from app.db.models import Exam, ExamStatus, Question
+    from app.db.models import Exam, ExamStatus, Question, QuestionStatus
     from app.services.exam_json_builder import ExamJsonBuilder
     from sqlmodel import select
 
@@ -201,6 +392,20 @@ async def approve_and_publish_exam(
         raise HTTPException(
             status_code=422,
             detail=f"EXAM_CANNOT_BE_APPROVED: Exam '{exam.code}' has no extracted questions."
+        )
+
+    # Validate that each and every question has been reviewed and published
+    unreviewed_qs = [q for q in questions if q.status != QuestionStatus.PUBLISHED]
+    if unreviewed_qs:
+        pending_count = sum(1 for q in unreviewed_qs if q.status == QuestionStatus.PENDING_HUMAN_REVIEW)
+        rejected_count = sum(1 for q in unreviewed_qs if q.status == QuestionStatus.REJECTED)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Cannot publish exam '{exam.name}': {len(unreviewed_qs)} question(s) are not yet approved "
+                f"({pending_count} pending review, {rejected_count} rejected). "
+                f"All questions must be reviewed and marked as PUBLISHED before publishing to S3."
+            ),
         )
 
     # 1 & 2. Generate JSON files and upload to S3 folder paths

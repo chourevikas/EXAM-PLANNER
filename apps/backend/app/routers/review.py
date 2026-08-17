@@ -7,6 +7,11 @@ from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
 
 
+from app.db.models import LanguageCode, QuestionStatus
+from app.schemas.question import ExamReviewQuestionsResponse
+from app.services.question_service import QuestionService
+
+
 router = APIRouter(prefix="/admin/review", tags=["Admin QA Review"])
 
 
@@ -22,6 +27,30 @@ class ApproveQuestionRequest(BaseModel):
     updated_options: Optional[List[OptionEditRequest]] = None
     correct_option_label: Optional[str] = None
     reviewer_notes: Optional[str] = None
+
+
+@router.get(
+    "/exams/{exam_id}/questions",
+    response_model=ExamReviewQuestionsResponse,
+    summary="Get Exam Questions with Full Solution Knowledge Base for Review",
+)
+async def get_exam_questions_review(
+    exam_id: uuid.UUID,
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=100, ge=1, le=100, description="Items per page"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    q_service = QuestionService(session)
+    return await q_service.get_exam_questions_for_review(
+        exam_id=exam_id,
+        page=page,
+        limit=limit,
+        language=language,
+        status=status,
+    )
 
 
 @router.get("/tasks")

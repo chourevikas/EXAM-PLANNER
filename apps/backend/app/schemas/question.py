@@ -44,6 +44,11 @@ class QuestionUpdatePayload(BaseModel):
     detailed_solution: Optional[str] = None
     common_traps: Optional[List[str]] = None
     key_takeaways: Optional[List[str]] = None
+    subject_name: Optional[str] = None
+    topic_name: Optional[str] = None
+    subtopic_name: Optional[str] = None
+    subject_id: Optional[uuid.UUID] = None
+    topic_id: Optional[uuid.UUID] = None
     subtopic_id: Optional[uuid.UUID] = None
     subtopic_ids: Optional[List[uuid.UUID]] = None
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
@@ -70,6 +75,11 @@ class QuestionCreatePayload(BaseModel):
     detailed_solution: Optional[str] = None
     common_traps: Optional[List[str]] = None
     key_takeaways: Optional[List[str]] = None
+    subject_name: Optional[str] = None
+    topic_name: Optional[str] = None
+    subtopic_name: Optional[str] = None
+    subject_id: Optional[uuid.UUID] = None
+    topic_id: Optional[uuid.UUID] = None
     subtopic_id: Optional[uuid.UUID] = None
     subtopic_ids: Optional[List[uuid.UUID]] = None
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
@@ -87,14 +97,17 @@ class QuestionOptionDetail(BaseModel):
     option_text: str
     distractor_analysis: Optional[str] = None
     closeness_score: float = 0.0
+    translations: Dict[str, str] = {}
 
 
 class QuestionExplanationDetail(BaseModel):
+    explanation_id: Optional[str] = None
     language: str
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
     common_traps: List[str] = []
     key_takeaways: List[str] = []
+    translations: Dict[str, Any] = {}
 
 
 class QuestionMetadataDetail(BaseModel):
@@ -157,6 +170,24 @@ class QuestionDetailResponse(BaseModel):
 class QuestionPaginatedResponse(BaseModel):
     items: List[QuestionDetailResponse]
     total: int
+    page: int
+    limit: int
+    pages: int
+
+
+class ExamReviewQuestionsResponse(BaseModel):
+    exam_id: str
+    exam_name: Optional[str] = None
+    exam_code: Optional[str] = None
+    stage: str = "prelims"
+    source_year: Optional[int] = None
+    paper_set_code: str = "SET_A"
+    total_questions: int
+    reviewed_count: int
+    pending_count: int
+    rejected_count: int
+    can_publish: bool
+    items: List[QuestionDetailResponse]
     page: int
     limit: int
     pages: int

@@ -239,8 +239,13 @@ async def async_process_exam_pdf(
             pass
         raise
     finally:
-        # End-of-pipeline cleanup: remove task-specific temporary processing cache and temp files
+        # End-of-pipeline cleanup: remove task-specific temporary processing cache and in-memory bytes
         log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
+        try:
+            from app.pipeline.vision_extractor import clear_pdf_cache
+            clear_pdf_cache(pdf_path)
+        except Exception:
+            pass
         clean_name = str(pdf_path).replace("\\", "/").strip("/").replace("/", "_")
         if not clean_name.lower().endswith(".pdf"):
             clean_name = f"{clean_name}.pdf"

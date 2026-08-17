@@ -80,7 +80,7 @@ export function useExamUpload() {
           conflict_resolution: conflictResolution,
         });
         setStatusMessage({
-          text: `Success! Answer key pipeline initiated for ${result.canonical_exam_code || examName} (Target Set: ${result.target_set_code || setCode}).`,
+          text: `Answer key uploaded successfully for ${result.canonical_exam_code || examName} (Set: ${result.target_set_code || setCode}). Automatic question mapping has started.`,
           isError: false,
         });
       } else {
@@ -93,7 +93,7 @@ export function useExamUpload() {
           conflict_resolution: conflictResolution,
         });
         setStatusMessage({
-          text: `Success! Question paper extraction started: ${result.message || 'Pipeline 1 initiated.'}`,
+          text: `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
           isError: false,
         });
       }

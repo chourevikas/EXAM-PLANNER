@@ -69,12 +69,13 @@ export function AdminPage() {
       case 'dashboard':
         return <AdminOverviewView onNavigate={handleNavigate} />;
       case 'pipeline-status':
-      case 'upload':
-        return <UploadReviewView />;
       case 'ai-queue':
-        return <AIQueueView />;
+      case 'upload':
+        return <UploadReviewView onNavigate={handleNavigate} />;
+      case 'questions':
+        return <QuestionBankManager />;
       case 'review':
-        return <QuestionReviewView initialExam={selectedExamForReview} />;
+        return <QuestionReviewView initialExam={selectedExamForReview} onNavigate={handleNavigate} />;
       case 'mock-tests':
         return <MockTestsView />;
       case 'users':

@@ -97,18 +97,31 @@ class S3StorageProvider(BaseStorageProvider):
     async def download_file(
         self, relative_path: str, local_destination: Union[str, Path]
     ) -> Path:
+        import uuid
+        import os
+
         dst_path = Path(local_destination).resolve()
         if dst_path.exists() and dst_path.is_file() and dst_path.stat().st_size > 0:
             logger.info(f"Local file '{dst_path}' is already cached. Skipping redundant S3 download.")
             return dst_path
 
         dst_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = dst_path.parent / f"{dst_path.name}.tmp_{uuid.uuid4().hex}"
         logger.info(
             f"Downloading S3 s3://{self.bucket_name}/{relative_path} to local '{dst_path}'"
         )
-        async with self.session.client("s3", **self._get_client_kwargs()) as s3:
-            await self._ensure_bucket_exists(s3)
-            await s3.download_file(self.bucket_name, relative_path, str(dst_path))
+        try:
+            async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+                await self._ensure_bucket_exists(s3)
+                await s3.download_file(self.bucket_name, relative_path, str(tmp_path))
+            os.replace(str(tmp_path), str(dst_path))
+        except Exception:
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except Exception:
+                    pass
+            raise
         return dst_path
 
     async def save_image(self, image: Image.Image, relative_destination: str) -> str:

@@ -39,11 +39,9 @@ export function AdminSidebar({
 
   const coreNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
-    { icon: Activity, label: 'Exam Pipeline Status', id: 'pipeline-status' },
-    { icon: BookOpen, label: 'Question Bank', id: 'questions' },
-    { icon: Upload, label: 'Upload Question Paper', id: 'upload' },
-    { icon: Cpu, label: 'AI Processing Queue', id: 'ai-queue' },
-    { icon: ClipboardCheck, label: 'Question Review', id: 'review' },
+    { icon: Upload, label: 'Upload & Exam Pipeline', id: 'upload' },
+    { icon: ClipboardCheck, label: 'Question & Solution QA', id: 'review' },
+    { icon: BookOpen, label: 'Question Bank Catalog', id: 'questions' },
     { icon: GraduationCap, label: 'Mock Tests', id: 'mock-tests' },
   ];
 

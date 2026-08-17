@@ -32,7 +32,28 @@ from app.routers.search import router as search_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await async_init_db()
-    yield
+    try:
+        yield
+    finally:
+        logger.info("🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...")
+        from pathlib import Path
+        import shutil
+
+        temp_roots = [
+            Path("./temp_uploads").resolve(),
+            Path("./temp_pdf_cache").resolve(),
+            Path("./temp_answer_keys").resolve(),
+        ]
+        for folder in temp_roots:
+            if folder.exists() and folder.is_dir():
+                for item in folder.iterdir():
+                    try:
+                        if item.is_file() or item.is_symlink():
+                            item.unlink()
+                        elif item.is_dir():
+                            shutil.rmtree(item, ignore_errors=True)
+                    except Exception as e:
+                        logger.warning(f"Could not clean up temporary item '{item}': {e}")
 
 
 app = FastAPI(

@@ -37,6 +37,7 @@ async def list_questions(
     stage: Optional[str] = Query(default=None, description="Filter by Stage e.g. prelims"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language for response text"),
+    include_solutions: bool = Query(default=False, description="Whether to include full solution explanations and option distractor analyses"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=20, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
@@ -45,7 +46,7 @@ async def list_questions(
     Requirement 3: Endpoint to get all questions with multi-filtering based on subjects, topics, subtopics,
     exam type, exam year, exam set, stage, and exam name (case-insensitive substring match e.g. 'upsc'),
     with pagination ordered by question number in paper.
-    Returns rich payload including IDs, names, codes, question text, options, explanations.
+    By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
     service = QuestionService(session)
     return await service.list_questions_paginated(
@@ -66,6 +67,7 @@ async def list_questions(
         stage=stage,
         status=status,
         language=language,
+        include_solutions=include_solutions,
         page=page,
         limit=limit,
     )

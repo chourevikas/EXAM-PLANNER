@@ -6,9 +6,11 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks,
 from fastapi.responses import FileResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
-from app.db.models import Exam
+from app.db.models import Exam, LanguageCode, QuestionStatus
+from app.schemas.question import ExamReviewQuestionsResponse
 from app.services.exam_service import ExamService
 from app.services.exam_export_service import ExamExportService
+from app.services.question_service import QuestionService
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,40 @@ async def list_exams(
     """Lists all registered competitive exams, optionally filtered by status and is_active."""
     service = ExamService(session)
     return await service.list_exams(status=status, is_active=is_active)
+
+
+@router.get(
+    "/{exam_id}/review-questions",
+    response_model=ExamReviewQuestionsResponse,
+    summary="Get All Exam Questions with Complete Solutions for Verification & Review",
+)
+@router.get(
+    "/{exam_id}/solutions",
+    response_model=ExamReviewQuestionsResponse,
+    summary="Get All Exam Questions with Complete Solutions (Alias)",
+)
+async def get_exam_questions_for_review(
+    exam_id: uuid.UUID,
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=100, ge=1, le=100, description="Items per page"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Dedicated endpoint for user/admin review per question in an exam.
+    Returns complete questions alongside full step-by-step solutions,
+    core concepts, option distractor analyses (option explanations),
+    key takeaways, and points to remember/common traps, with real-time review progress counters.
+    """
+    q_service = QuestionService(session)
+    return await q_service.get_exam_questions_for_review(
+        exam_id=exam_id,
+        page=page,
+        limit=limit,
+        language=language,
+        status=status,
+    )
 
 
 @router.get("/{exam_id}/question-artifact/{question_number}")

@@ -23,9 +23,9 @@ class OptionAnalysis(BaseModel):
 
 
 class MultiConceptItemSchema(BaseModel):
-    subject: Union[SubjectLiteral, str] = Field(description="Subject name from syllabus e.g. History, Economy, Geography")
-    topic: Union[TopicLiteral, str] = Field(description="Topic name e.g. Ancient History, Money and Banking")
-    subtopic: Optional[Union[SubtopicLiteral, str]] = Field(
+    subject: str = Field(description="Subject name from syllabus e.g. History, Economy, Geography")
+    topic: str = Field(description="Topic name e.g. Ancient History, Money and Banking")
+    subtopic: Optional[str] = Field(
         default=None, description="Granular subtopic name e.g. Pre Historic Times, Inflation"
     )
     is_primary: bool = Field(
@@ -38,20 +38,20 @@ class MultiConceptItemSchema(BaseModel):
         default=None, description="Specific concept label e.g. Monetary Expansion"
     )
 
-    @model_validator(mode="after")
-    def validate_and_auto_repair_hierarchy(self) -> "MultiConceptItemSchema":
-        c_subj, c_top, c_subtop = get_canonical_parents(
-            subject=str(self.subject) if self.subject else "",
-            topic=str(self.topic) if self.topic else "",
-            subtopic=str(self.subtopic) if self.subtopic else None,
-        )
-        if c_subj:
-            self.subject = c_subj
-        if c_top:
-            self.topic = c_top
-        if c_subtop:
-            self.subtopic = c_subtop
-        return self
+    # @model_validator(mode="after")
+    # def validate_and_auto_repair_hierarchy(self) -> "MultiConceptItemSchema":
+    #     c_subj, c_top, c_subtop = get_canonical_parents(
+    #         subject=str(self.subject) if self.subject else "",
+    #         topic=str(self.topic) if self.topic else "",
+    #         subtopic=str(self.subtopic) if self.subtopic else None,
+    #     )
+    #     if c_subj:
+    #         self.subject = c_subj
+    #     if c_top:
+    #         self.topic = c_top
+    #     if c_subtop:
+    #         self.subtopic = c_subtop
+    #     return self
 
 
 class QuestionExplanationSchema(BaseModel):
@@ -71,13 +71,13 @@ class QuestionExplanationSchema(BaseModel):
     key_takeaways: List[str] = Field(
         description="1-2 high-yield bullet points for quick revision before exams."
     )
-    subject: Union[SubjectLiteral, str] = Field(
+    subject: str = Field(
         description="Primary subject category e.g., History, Economy, Geography"
     )
-    topic: Union[TopicLiteral, str] = Field(
+    topic: str = Field(
         description="Primary topic e.g., Ancient History, Money and Banking"
     )
-    subtopic: Optional[Union[SubtopicLiteral, str]] = Field(
+    subtopic: str = Field(
         default=None, description="Primary granular subtopic e.g., Pre Historic Times"
     )
     concepts: List[MultiConceptItemSchema] = Field(

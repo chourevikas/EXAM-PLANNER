@@ -2,6 +2,7 @@ import uuid
 import math
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from app.db.models import (
     QuestionAsset,
     Passage,
     PassageTranslation,
+    SyllabusVersion,
     Subject,
     Topic,
     Subtopic,
@@ -23,6 +25,8 @@ from app.db.models import (
     QuestionStatus,
     QuestionSourceType,
     LanguageCode,
+    BloomsLevel,
+    DifficultyLevel,
 )
 from app.schemas.question import (
     QuestionUpdatePayload,
@@ -34,6 +38,7 @@ from app.schemas.question import (
     QuestionExplanationDetail,
     QuestionMetadataDetail,
     HierarchyLinkDetail,
+    ExamReviewQuestionsResponse,
 )
 from app.repositories.question_repository import QuestionRepository
 from app.storage.factory import get_storage_provider
@@ -67,6 +72,7 @@ class QuestionService:
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,
         language: LanguageCode = LanguageCode.ENGLISH,
+        include_solutions: bool = False,
         page: int = 1,
         limit: int = 20,
     ) -> QuestionPaginatedResponse:
@@ -95,13 +101,82 @@ class QuestionService:
             limit=limit,
         )
 
-        items = await self._build_batch_question_detail_responses(questions, target_lang=language)
+        items = await self._build_batch_question_detail_responses(
+            questions, target_lang=language, include_solutions=include_solutions
+        )
 
         pages = math.ceil(total / limit) if limit > 0 else 1
 
         return QuestionPaginatedResponse(
             items=items,
             total=total,
+            page=page,
+            limit=limit,
+            pages=pages,
+        )
+
+    async def get_exam_questions_for_review(
+        self,
+        exam_id: uuid.UUID,
+        page: int = 1,
+        limit: int = 100,
+        language: LanguageCode = LanguageCode.ENGLISH,
+        status: Optional[QuestionStatus] = None,
+    ) -> ExamReviewQuestionsResponse:
+        """
+        Dedicated Admin/Reviewer endpoint returning complete questions, options,
+        option explanations (distractor analysis), core concepts, detailed solutions,
+        key takeaways, and points to remember.
+        """
+        exam = await self.session.get(Exam, exam_id)
+        if not exam:
+            raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+        # Query all questions for this exam to calculate exact review status metrics
+        all_qs_stmt = (
+            select(Question)
+            .where(Question.exam_id == exam_id)
+            .order_by(Question.question_number_in_paper)
+        )
+        all_qs_res = await self.session.exec(all_qs_stmt)
+        all_questions = all_qs_res.all()
+
+        total_questions = len(all_questions)
+        reviewed_count = sum(1 for q in all_questions if q.status == QuestionStatus.PUBLISHED)
+        pending_count = sum(1 for q in all_questions if q.status == QuestionStatus.PENDING_HUMAN_REVIEW)
+        rejected_count = sum(1 for q in all_questions if q.status == QuestionStatus.REJECTED)
+        can_publish = (pending_count == 0 and rejected_count == 0 and total_questions > 0)
+
+        # Apply status filter if specified
+        filtered_qs = all_questions
+        if status is not None:
+            filtered_qs = [q for q in filtered_qs if q.status == status]
+
+        page = max(1, page)
+        limit = max(1, min(100, limit))
+        start_idx = (page - 1) * limit
+        paged_qs = filtered_qs[start_idx : start_idx + limit]
+
+        # Always include solutions for review endpoint
+        items = await self._build_batch_question_detail_responses(
+            paged_qs, target_lang=language, include_solutions=True
+        )
+
+        pages = math.ceil(len(filtered_qs) / limit) if limit > 0 else 1
+
+        return ExamReviewQuestionsResponse(
+            exam_id=str(exam.id),
+            exam_name=exam.name,
+            exam_code=exam.code,
+            stage=exam.stage,
+            source_year=exam.source_year,
+            paper_set_code=exam.paper_set_code,
+            total_questions=total_questions,
+            reviewed_count=reviewed_count,
+            pending_count=pending_count,
+            rejected_count=rejected_count,
+            can_publish=can_publish,
+            items=items,
             page=page,
             limit=limit,
             pages=pages,
@@ -137,10 +212,8 @@ class QuestionService:
             q.negative_marks = payload.negative_marks
         if payload.expected_time_seconds is not None:
             q.expected_time_seconds = payload.expected_time_seconds
-        if payload.subtopic_id:
-            q.subtopic_id = payload.subtopic_id
 
-        # Update question status if provided, else set to PUBLISHED
+        # Update question status if provided, else default to PUBLISHED
         if payload.status:
             q.status = payload.status
         else:
@@ -165,23 +238,34 @@ class QuestionService:
                 )
                 self.session.add(new_qt)
 
-        # Update Passage Translation
-        if payload.passage_text is not None and q.passage_id:
-            pt_stmt = select(PassageTranslation).where(
-                PassageTranslation.passage_id == q.passage_id,
-                PassageTranslation.language == target_lang,
-            )
-            pt = (await self.session.exec(pt_stmt)).first()
-            if pt:
-                pt.passage_text = payload.passage_text
-                self.session.add(pt)
-            else:
-                new_pt = PassageTranslation(
-                    passage_id=q.passage_id,
-                    language=target_lang,
-                    passage_text=payload.passage_text,
+        # Update Passage Translation or Create Passage
+        if payload.passage_text is not None:
+            if not q.passage_id and payload.passage_text.strip():
+                new_passage = Passage(
+                    exam_id=q.exam_id,
+                    is_complete=True,
                 )
-                self.session.add(new_pt)
+                self.session.add(new_passage)
+                await self.session.flush()
+                q.passage_id = new_passage.id
+                self.session.add(q)
+
+            if q.passage_id:
+                pt_stmt = select(PassageTranslation).where(
+                    PassageTranslation.passage_id == q.passage_id,
+                    PassageTranslation.language == target_lang,
+                )
+                pt = (await self.session.exec(pt_stmt)).first()
+                if pt:
+                    pt.passage_text = payload.passage_text
+                    self.session.add(pt)
+                else:
+                    new_pt = PassageTranslation(
+                        passage_id=q.passage_id,
+                        language=target_lang,
+                        passage_text=payload.passage_text,
+                    )
+                    self.session.add(new_pt)
 
         # Update Options
         if payload.options is not None:
@@ -220,8 +304,8 @@ class QuestionService:
                         )
                         self.session.add(new_ot)
 
-        # Update Explanation
-        if any([payload.core_concept, payload.detailed_solution, payload.common_traps, payload.key_takeaways]):
+        # Update Explanation (All 4 Parameters: core_concept, detailed_solution, common_traps, key_takeaways)
+        if any([payload.core_concept, payload.detailed_solution, payload.common_traps is not None, payload.key_takeaways is not None]):
             expl_stmt = select(QuestionExplanation).where(
                 QuestionExplanation.question_id == q.id,
                 QuestionExplanation.language == target_lang,
@@ -263,13 +347,80 @@ class QuestionService:
             else:
                 new_qm = QuestionMetadata(
                     question_id=q.id,
-                    blooms_level=payload.blooms_level or "ANALYZE",
+                    blooms_level=payload.blooms_level or BloomsLevel.ANALYZE,
                     cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
                     primary_concept_tag=payload.primary_concept_tag or "GENERAL",
                 )
                 self.session.add(new_qm)
 
-        # Update Hierarchy Links (Multiple Subjects, Topics & Subtopics)
+        # Resolve Subject, Topic, Subtopic by name if provided
+        if payload.subject_name or payload.topic_name or payload.subtopic_name:
+            resolved_subj_id = payload.subject_id
+            resolved_top_id = payload.topic_id
+            resolved_subtop_id = payload.subtopic_id
+
+            if payload.subject_name and payload.subject_name.strip():
+                clean_sname = payload.subject_name.strip()
+                s_stmt = select(Subject).where(func.lower(Subject.name) == clean_sname.lower())
+                subj_obj = (await self.session.exec(s_stmt)).first()
+                if not subj_obj:
+                    syl_stmt = select(SyllabusVersion)
+                    if q.exam_id:
+                        syl_stmt = syl_stmt.where(SyllabusVersion.exam_id == q.exam_id)
+                    syl_ver = (await self.session.exec(syl_stmt)).first()
+                    if not syl_ver:
+                        syl_ver = SyllabusVersion(
+                            exam_id=q.exam_id,
+                            version_code="DEFAULT_v1",
+                            title="Default Syllabus",
+                        )
+                        self.session.add(syl_ver)
+                        await self.session.flush()
+                    subj_obj = Subject(
+                        syllabus_version_id=syl_ver.id,
+                        name=clean_sname,
+                        code=clean_sname[:10].upper().replace(" ", "_"),
+                    )
+                    self.session.add(subj_obj)
+                    await self.session.flush()
+                resolved_subj_id = subj_obj.id
+
+            if payload.topic_name and payload.topic_name.strip():
+                clean_tname = payload.topic_name.strip()
+                t_stmt = select(Topic).where(func.lower(Topic.name) == clean_tname.lower())
+                if resolved_subj_id:
+                    t_stmt = t_stmt.where(Topic.subject_id == resolved_subj_id)
+                top_obj = (await self.session.exec(t_stmt)).first()
+                if not top_obj:
+                    top_obj = Topic(
+                        name=clean_tname,
+                        code=clean_tname[:10].upper().replace(" ", "_"),
+                        subject_id=resolved_subj_id,
+                    )
+                    self.session.add(top_obj)
+                    await self.session.flush()
+                resolved_top_id = top_obj.id
+
+            if payload.subtopic_name and payload.subtopic_name.strip():
+                clean_stname = payload.subtopic_name.strip()
+                st_stmt = select(Subtopic).where(func.lower(Subtopic.name) == clean_stname.lower())
+                if resolved_top_id:
+                    st_stmt = st_stmt.where(Subtopic.topic_id == resolved_top_id)
+                subtop_obj = (await self.session.exec(st_stmt)).first()
+                if not subtop_obj:
+                    subtop_obj = Subtopic(
+                        name=clean_stname,
+                        code=clean_stname[:10].upper().replace(" ", "_"),
+                        topic_id=resolved_top_id,
+                    )
+                    self.session.add(subtop_obj)
+                    await self.session.flush()
+                resolved_subtop_id = subtop_obj.id
+
+            if resolved_subtop_id:
+                payload.subtopic_id = resolved_subtop_id
+
+        # Update Hierarchy Links
         if payload.subtopic_id or payload.subtopic_ids or payload.hierarchy_links:
             await self._save_hierarchy_links(
                 question_id=q.id,
@@ -281,7 +432,7 @@ class QuestionService:
         await self.session.commit()
         await self.session.refresh(q)
         await self._recalculate_exam_metrics(q.exam_id)
-        return await self._build_question_detail_response(q, target_lang=target_lang)
+        return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _recalculate_exam_metrics(self, exam_id: Optional[uuid.UUID]):
         if not exam_id:
@@ -300,166 +451,99 @@ class QuestionService:
             self.session.add(exam_obj)
             await self.session.commit()
 
-    async def create_question(
-        self, payload: QuestionCreatePayload
-    ) -> QuestionDetailResponse:
-        exam_obj = await self.session.get(Exam, payload.exam_id)
-        if not exam_obj:
+    async def create_question(self, payload: QuestionCreatePayload) -> QuestionDetailResponse:
+        exam = await self.session.get(Exam, payload.exam_id)
+        if not exam:
             raise HTTPException(status_code=404, detail=f"Exam with ID '{payload.exam_id}' not found.")
 
-        # Check if question already exists in this exam
-        stmt = select(Question).where(
-            Question.exam_id == payload.exam_id,
-            Question.question_number_in_paper == payload.question_number_in_paper,
-        )
-        q = (await self.session.exec(stmt)).first()
         target_lang = payload.language or LanguageCode.ENGLISH
 
-        if not q:
-            q = Question(
-                exam_id=payload.exam_id,
-                paper_set_code=payload.paper_set_code or exam_obj.paper_set_code,
-                section_code=payload.section_code or "DEFAULT",
-                question_number_in_paper=payload.question_number_in_paper,
-                question_type=payload.question_type or "SINGLE_CHOICE",
-                difficulty=payload.difficulty or "MEDIUM",
-                marks=payload.marks if payload.marks is not None else 2.0,
-                negative_marks=payload.negative_marks if payload.negative_marks is not None else 0.66,
-                expected_time_seconds=payload.expected_time_seconds if payload.expected_time_seconds is not None else 60,
-                source_year=exam_obj.source_year or 2024,
-                is_complete=True,
-                status=QuestionStatus.PUBLISHED,
-                subtopic_id=payload.subtopic_id,
-            )
-            self.session.add(q)
-            await self.session.commit()
-            await self.session.refresh(q)
-        else:
-            q.status = QuestionStatus.PUBLISHED
-            if payload.difficulty:
-                q.difficulty = payload.difficulty
-            if payload.marks is not None:
-                q.marks = payload.marks
-            if payload.negative_marks is not None:
-                q.negative_marks = payload.negative_marks
-            if payload.expected_time_seconds is not None:
-                q.expected_time_seconds = payload.expected_time_seconds
-            if payload.subtopic_id:
-                q.subtopic_id = payload.subtopic_id
-            self.session.add(q)
+        q = Question(
+            exam_id=payload.exam_id,
+            question_number_in_paper=payload.question_number_in_paper,
+            paper_set_code=payload.paper_set_code or "SET_A",
+            section_code=payload.section_code or "DEFAULT",
+            question_type=payload.question_type or "SINGLE_CHOICE",
+            difficulty=payload.difficulty or DifficultyLevel.MEDIUM,
+            marks=payload.marks or 2.0,
+            negative_marks=payload.negative_marks or 0.66,
+            expected_time_seconds=payload.expected_time_seconds or 60,
+            status=QuestionStatus.PUBLISHED,
+            is_complete=True,
+            is_mcq=True,
+        )
+        self.session.add(q)
+        await self.session.flush()
 
         # Question Translation
-        if payload.question_text:
-            qt_stmt = select(QuestionTranslation).where(
-                QuestionTranslation.question_id == q.id,
-                QuestionTranslation.language == target_lang,
+        new_qt = QuestionTranslation(
+            question_id=q.id,
+            language=target_lang,
+            question_text=payload.question_text,
+        )
+        self.session.add(new_qt)
+
+        # Passage
+        if payload.passage_text:
+            passage = Passage(
+                exam_id=exam.id,
+                is_complete=True,
             )
-            qt = (await self.session.exec(qt_stmt)).first()
-            if qt:
-                qt.question_text = payload.question_text
-                self.session.add(qt)
-            else:
-                new_qt = QuestionTranslation(
-                    question_id=q.id,
-                    language=target_lang,
-                    question_text=payload.question_text,
-                )
-                self.session.add(new_qt)
+            self.session.add(passage)
+            await self.session.flush()
+            q.passage_id = passage.id
+            self.session.add(q)
+
+            pt = PassageTranslation(
+                passage_id=passage.id,
+                language=target_lang,
+                passage_text=payload.passage_text,
+            )
+            self.session.add(pt)
 
         # Options
         if payload.options:
             for opt_payload in payload.options:
-                opt_stmt = select(QuestionOption).where(
-                    QuestionOption.question_id == q.id,
-                    QuestionOption.option_label == opt_payload.option_label,
+                opt_obj = QuestionOption(
+                    question_id=q.id,
+                    option_label=opt_payload.option_label,
+                    display_order=opt_payload.display_order,
+                    is_correct=opt_payload.is_correct,
+                    closeness_score=opt_payload.closeness_score,
                 )
-                opt_obj = (await self.session.exec(opt_stmt)).first()
-                if not opt_obj:
-                    opt_obj = QuestionOption(
-                        question_id=q.id,
-                        option_label=opt_payload.option_label,
-                        display_order=opt_payload.display_order,
-                        is_correct=opt_payload.is_correct,
-                        closeness_score=opt_payload.closeness_score,
-                    )
-                    self.session.add(opt_obj)
-                    await self.session.commit()
-                    await self.session.refresh(opt_obj)
-                else:
-                    opt_obj.is_correct = opt_payload.is_correct
-                    opt_obj.display_order = opt_payload.display_order
-                    opt_obj.closeness_score = opt_payload.closeness_score
-                    self.session.add(opt_obj)
+                self.session.add(opt_obj)
+                await self.session.flush()
 
-                ot_stmt = select(OptionTranslation).where(
-                    OptionTranslation.option_id == opt_obj.id,
-                    OptionTranslation.language == target_lang,
+                new_ot = OptionTranslation(
+                    option_id=opt_obj.id,
+                    language=target_lang,
+                    option_text=opt_payload.option_text,
+                    distractor_analysis=opt_payload.distractor_analysis,
                 )
-                ot = (await self.session.exec(ot_stmt)).first()
-                if ot:
-                    ot.option_text = opt_payload.option_text
-                    if opt_payload.distractor_analysis:
-                        ot.distractor_analysis = opt_payload.distractor_analysis
-                    self.session.add(ot)
-                else:
-                    new_ot = OptionTranslation(
-                        option_id=opt_obj.id,
-                        language=target_lang,
-                        option_text=opt_payload.option_text,
-                        distractor_analysis=opt_payload.distractor_analysis,
-                    )
-                    self.session.add(new_ot)
+                self.session.add(new_ot)
 
         # Explanation
         if any([payload.core_concept, payload.detailed_solution, payload.common_traps, payload.key_takeaways]):
-            expl_stmt = select(QuestionExplanation).where(
-                QuestionExplanation.question_id == q.id,
-                QuestionExplanation.language == target_lang,
+            new_expl = QuestionExplanation(
+                question_id=q.id,
+                language=target_lang,
+                core_concept=payload.core_concept or "",
+                detailed_solution=payload.detailed_solution or "",
+                common_traps_json=payload.common_traps or [],
+                key_takeaways_json=payload.key_takeaways or [],
             )
-            expl = (await self.session.exec(expl_stmt)).first()
-            if expl:
-                if payload.core_concept is not None:
-                    expl.core_concept = payload.core_concept
-                if payload.detailed_solution is not None:
-                    expl.detailed_solution = payload.detailed_solution
-                if payload.common_traps is not None:
-                    expl.common_traps_json = payload.common_traps
-                if payload.key_takeaways is not None:
-                    expl.key_takeaways_json = payload.key_takeaways
-                self.session.add(expl)
-            else:
-                new_expl = QuestionExplanation(
-                    question_id=q.id,
-                    language=target_lang,
-                    core_concept=payload.core_concept or "",
-                    detailed_solution=payload.detailed_solution or "",
-                    common_traps_json=payload.common_traps or [],
-                    key_takeaways_json=payload.key_takeaways or [],
-                )
-                self.session.add(new_expl)
+            self.session.add(new_expl)
 
         # Metadata
-        if any([payload.blooms_level, payload.cognitive_skill, payload.primary_concept_tag]):
-            meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
-            qm = (await self.session.exec(meta_stmt)).first()
-            if qm:
-                if payload.blooms_level:
-                    qm.blooms_level = payload.blooms_level
-                if payload.cognitive_skill:
-                    qm.cognitive_skill = payload.cognitive_skill
-                if payload.primary_concept_tag:
-                    qm.primary_concept_tag = payload.primary_concept_tag
-                self.session.add(qm)
-            else:
-                new_qm = QuestionMetadata(
-                    question_id=q.id,
-                    blooms_level=payload.blooms_level or "ANALYZE",
-                    cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
-                    primary_concept_tag=payload.primary_concept_tag or "GENERAL",
-                )
-                self.session.add(new_qm)
+        new_qm = QuestionMetadata(
+            question_id=q.id,
+            blooms_level=payload.blooms_level or BloomsLevel.ANALYZE,
+            cognitive_skill=payload.cognitive_skill or "Conceptual Reasoning",
+            primary_concept_tag=payload.primary_concept_tag or "GENERAL",
+        )
+        self.session.add(new_qm)
 
-        # Update Hierarchy Links (Multiple Subjects, Topics & Subtopics)
+        # Hierarchy
         if payload.subtopic_id or payload.subtopic_ids or payload.hierarchy_links:
             await self._save_hierarchy_links(
                 question_id=q.id,
@@ -471,7 +555,7 @@ class QuestionService:
         await self.session.commit()
         await self.session.refresh(q)
         await self._recalculate_exam_metrics(payload.exam_id)
-        return await self._build_question_detail_response(q, target_lang=target_lang)
+        return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _save_hierarchy_links(
         self,
@@ -480,12 +564,8 @@ class QuestionService:
         subtopic_ids: Optional[List[uuid.UUID]] = None,
         hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None,
     ):
-        if not (subtopic_id or subtopic_ids or hierarchy_links):
-            return
-
         links_to_create = []
 
-        # 1. Process explicit hierarchy_links if provided
         if hierarchy_links:
             for idx, link_p in enumerate(hierarchy_links):
                 s_id = link_p.subtopic_id
@@ -507,7 +587,6 @@ class QuestionService:
                     (s_id, t_id, subj_id, is_prim, link_p.relevance_weight, link_p.concept_name)
                 )
 
-        # 2. Process subtopic_ids list if provided
         if subtopic_ids:
             for idx, s_id in enumerate(subtopic_ids):
                 if any(item[0] == s_id for item in links_to_create):
@@ -524,7 +603,6 @@ class QuestionService:
                 is_prim = (len(links_to_create) == 0 and idx == 0)
                 links_to_create.append((s_id, t_id, subj_id, is_prim, 1.0, None))
 
-        # 3. Process single subtopic_id if provided
         if subtopic_id and not any(item[0] == subtopic_id for item in links_to_create):
             t_id = None
             subj_id = None
@@ -541,7 +619,6 @@ class QuestionService:
         if not links_to_create:
             return
 
-        # Clear existing hierarchy links for this question to prevent conflicts/duplicates
         existing_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
         existing_links = (await self.session.exec(existing_stmt)).all()
         for el in existing_links:
@@ -562,7 +639,6 @@ class QuestionService:
             )
             self.session.add(link)
 
-        # Sync primary subtopic on Question
         if primary_subtopic_id or (links_to_create and links_to_create[0][0]):
             q_obj = await self.session.get(Question, question_id)
             if q_obj:
@@ -593,7 +669,10 @@ class QuestionService:
     # --- Internal Helper ---
 
     async def _build_question_detail_response(
-        self, q: Question, target_lang: LanguageCode = LanguageCode.ENGLISH
+        self,
+        q: Question,
+        target_lang: LanguageCode = LanguageCode.ENGLISH,
+        include_solutions: bool = True,
     ) -> QuestionDetailResponse:
         exam = await self.session.get(Exam, q.exam_id) if q.exam_id else None
 
@@ -637,10 +716,13 @@ class QuestionService:
 
             o_text = ""
             o_distractor = None
+            opt_trans_map = {}
             for ot in o_translations:
+                l_str = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
+                opt_trans_map[l_str] = ot.option_text
                 if ot.language == target_lang or not o_text:
                     o_text = ot.option_text
-                    if ot.distractor_analysis:
+                    if include_solutions and ot.distractor_analysis:
                         o_distractor = ot.distractor_analysis
 
             options_detail.append(
@@ -650,32 +732,34 @@ class QuestionService:
                     display_order=opt.display_order,
                     is_correct=opt.is_correct,
                     option_text=o_text,
-                    distractor_analysis=o_distractor,
+                    distractor_analysis=o_distractor if include_solutions else None,
                     closeness_score=opt.closeness_score,
+                    translations=opt_trans_map,
                 )
             )
 
         # Fetch Explanation
-        expl_stmt = select(QuestionExplanation).where(
-            QuestionExplanation.question_id == q.id,
-            QuestionExplanation.language == target_lang,
-        )
-        expl_res = await self.session.exec(expl_stmt)
-        expl_obj = expl_res.first()
-        if not expl_obj:
-            # Fallback to any explanation
-            expl_stmt_all = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
-            expl_obj = (await self.session.exec(expl_stmt_all)).first()
-
         explanation_detail = None
-        if expl_obj:
-            explanation_detail = QuestionExplanationDetail(
-                language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
-                core_concept=expl_obj.core_concept,
-                detailed_solution=expl_obj.detailed_solution,
-                common_traps=expl_obj.common_traps_json or [],
-                key_takeaways=expl_obj.key_takeaways_json or [],
+        if include_solutions:
+            expl_stmt = select(QuestionExplanation).where(
+                QuestionExplanation.question_id == q.id,
+                QuestionExplanation.language == target_lang,
             )
+            expl_res = await self.session.exec(expl_stmt)
+            expl_obj = expl_res.first()
+            if not expl_obj:
+                expl_stmt_all = select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+                expl_obj = (await self.session.exec(expl_stmt_all)).first()
+
+            if expl_obj:
+                explanation_detail = QuestionExplanationDetail(
+                    explanation_id=str(expl_obj.id),
+                    language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
+                    core_concept=expl_obj.core_concept,
+                    detailed_solution=expl_obj.detailed_solution,
+                    common_traps=expl_obj.common_traps_json or [],
+                    key_takeaways=expl_obj.key_takeaways_json or [],
+                )
 
         # Fetch Metadata
         meta_stmt = select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
@@ -716,27 +800,6 @@ class QuestionService:
                     relevance_weight=link.relevance_weight,
                 )
             )
-
-        if not hierarchy_detail and q.subtopic_id:
-            subtop = await self.session.get(Subtopic, q.subtopic_id)
-            if subtop:
-                top = await self.session.get(Topic, subtop.topic_id) if subtop.topic_id else None
-                subj = await self.session.get(Subject, top.subject_id) if top and top.subject_id else None
-                hierarchy_detail.append(
-                    HierarchyLinkDetail(
-                        subject_id=str(subj.id) if subj else None,
-                        subject_name=subj.name if subj else None,
-                        subject_code=subj.code if subj else None,
-                        topic_id=str(top.id) if top else None,
-                        topic_name=top.name if top else None,
-                        topic_code=top.code if top else None,
-                        subtopic_id=str(subtop.id),
-                        subtopic_name=subtop.name,
-                        subtopic_code=subtop.code,
-                        is_primary=True,
-                        relevance_weight=1.0,
-                    )
-                )
 
         # Fetch Assets
         asset_stmt = select(QuestionAsset).where(QuestionAsset.question_id == q.id)
@@ -786,7 +849,10 @@ class QuestionService:
         )
 
     async def _build_batch_question_detail_responses(
-        self, questions: List[Question], target_lang: LanguageCode = LanguageCode.ENGLISH
+        self,
+        questions: List[Question],
+        target_lang: LanguageCode = LanguageCode.ENGLISH,
+        include_solutions: bool = False,
     ) -> List[QuestionDetailResponse]:
         if not questions:
             return []
@@ -848,14 +914,15 @@ class QuestionService:
                 ot_map[ot.option_id][ot.language] = (ot.option_text, ot.distractor_analysis)
 
         # 5. Batch Question Explanations
-        expl_res = await self.session.exec(
-            select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids))
-        )
         expl_map = {}
-        for expl in expl_res.all():
-            if expl.question_id not in expl_map:
-                expl_map[expl.question_id] = {}
-            expl_map[expl.question_id][expl.language] = expl
+        if include_solutions:
+            expl_res = await self.session.exec(
+                select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids))
+            )
+            for expl in expl_res.all():
+                if expl.question_id not in expl_map:
+                    expl_map[expl.question_id] = {}
+                expl_map[expl.question_id][expl.language] = expl
 
         # 6. Batch Metadata & Hierarchy
         meta_res = await self.session.exec(
@@ -897,6 +964,10 @@ class QuestionService:
             
             # Question Text
             q_text_dict = qt_map.get(q.id, {})
+            q_text_dict_str = {
+                (k.value if hasattr(k, "value") else str(k)): v
+                for k, v in q_text_dict.items()
+            }
             q_text = q_text_dict.get(target_lang) or (next(iter(q_text_dict.values())) if q_text_dict else "")
 
             # Passage Text
@@ -911,6 +982,10 @@ class QuestionService:
             for opt in q_opts:
                 ot_dict = ot_map.get(opt.id, {})
                 ot_tuple = ot_dict.get(target_lang) or (next(iter(ot_dict.values())) if ot_dict else ("", None))
+                opt_trans_map = {
+                    (k.value if hasattr(k, "value") else str(k)): v[0]
+                    for k, v in ot_dict.items()
+                }
                 opts_detail.append(
                     QuestionOptionDetail(
                         option_id=str(opt.id),
@@ -918,24 +993,36 @@ class QuestionService:
                         display_order=opt.display_order,
                         is_correct=opt.is_correct,
                         option_text=ot_tuple[0] if ot_tuple else "",
-                        distractor_analysis=ot_tuple[1] if ot_tuple else None,
+                        distractor_analysis=ot_tuple[1] if (include_solutions and ot_tuple) else None,
                         closeness_score=opt.closeness_score,
+                        translations=opt_trans_map,
                     )
                 )
 
             # Explanation
-            expl_dict = expl_map.get(q.id, {})
-            expl_obj = expl_dict.get(target_lang) or (next(iter(expl_dict.values())) if expl_dict else None)
             explanation_detail = None
-            if expl_obj:
-                explanation_detail = QuestionExplanationDetail(
-                    explanation_id=str(expl_obj.id),
-                    language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
-                    core_concept=expl_obj.core_concept,
-                    detailed_solution=expl_obj.detailed_solution,
-                    common_traps=expl_obj.common_traps_json or [],
-                    key_takeaways=expl_obj.key_takeaways_json or [],
-                )
+            if include_solutions:
+                expl_dict = expl_map.get(q.id, {})
+                expl_obj = expl_dict.get(target_lang) or (next(iter(expl_dict.values())) if expl_dict else None)
+                if expl_obj:
+                    expl_translations = {
+                        (k.value if hasattr(k, "value") else str(k)): {
+                            "core_concept": e.core_concept,
+                            "detailed_solution": e.detailed_solution,
+                            "common_traps": e.common_traps_json or [],
+                            "key_takeaways": e.key_takeaways_json or [],
+                        }
+                        for k, e in expl_dict.items()
+                    }
+                    explanation_detail = QuestionExplanationDetail(
+                        explanation_id=str(expl_obj.id),
+                        language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
+                        core_concept=expl_obj.core_concept,
+                        detailed_solution=expl_obj.detailed_solution,
+                        common_traps=expl_obj.common_traps_json or [],
+                        key_takeaways=expl_obj.key_takeaways_json or [],
+                        translations=expl_translations,
+                    )
 
             # Metadata
             qm = meta_map.get(q.id)
@@ -945,6 +1032,9 @@ class QuestionService:
                     blooms_level=qm.blooms_level.value if hasattr(qm.blooms_level, "value") else str(qm.blooms_level),
                     cognitive_skill=qm.cognitive_skill,
                     primary_concept_tag=qm.primary_concept_tag,
+                    irt_discrimination_a=qm.irt_discrimination_a,
+                    irt_difficulty_b=qm.irt_difficulty_b,
+                    irt_pseudo_guessing_c=qm.irt_pseudo_guessing_c,
                 )
 
             # Hierarchy
@@ -969,6 +1059,27 @@ class QuestionService:
                         relevance_weight=l.relevance_weight,
                     )
                 )
+
+            if not hierarchy_detail and q.subtopic_id:
+                subtop = await self.session.get(Subtopic, q.subtopic_id)
+                if subtop:
+                    top = await self.session.get(Topic, subtop.topic_id) if subtop.topic_id else None
+                    subj = await self.session.get(Subject, top.subject_id) if top and top.subject_id else None
+                    hierarchy_detail.append(
+                        HierarchyLinkDetail(
+                            subject_id=str(subj.id) if subj else None,
+                            subject_name=subj.name if subj else None,
+                            subject_code=subj.code if subj else None,
+                            topic_id=str(top.id) if top else None,
+                            topic_name=top.name if top else None,
+                            topic_code=top.code if top else None,
+                            subtopic_id=str(subtop.id),
+                            subtopic_name=subtop.name,
+                            subtopic_code=subtop.code,
+                            is_primary=True,
+                            relevance_weight=1.0,
+                        )
+                    )
 
             results.append(
                 QuestionDetailResponse(
@@ -995,7 +1106,7 @@ class QuestionService:
                     passage_id=str(q.passage_id) if q.passage_id else None,
                     passage_text=p_text,
                     question_text=q_text,
-                    translations=q_text_dict,
+                    translations=q_text_dict_str,
                     options=opts_detail,
                     explanation=explanation_detail,
                     metadata=metadata_detail,

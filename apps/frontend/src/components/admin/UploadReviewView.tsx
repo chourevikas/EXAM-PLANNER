@@ -18,6 +18,9 @@ import {
   Eye,
   Layers,
   Sparkles,
+  CheckCheck,
+  XCircle,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
 import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/exam';
@@ -27,7 +30,11 @@ import {
   ExamPipelineStatusItem,
 } from '../../services/adminService';
 
-export function UploadReviewView() {
+interface UploadReviewViewProps {
+  onNavigate?: (view: string, extraData?: any) => void;
+}
+
+export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const {
     uploadMode,
     setUploadMode,
@@ -72,8 +79,10 @@ export function UploadReviewView() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const loadRealTimeQueue = async () => {
-    setLoadingQueue(true);
+  const loadRealTimeQueue = async (isSilent: boolean = false) => {
+    if (!isSilent) {
+      setLoadingQueue(true);
+    }
     setQueueError(null);
     try {
       const data = await fetchExamPipelineStatuses();
@@ -84,21 +93,46 @@ export function UploadReviewView() {
       }
     } catch (err: any) {
       console.error('Failed to load real-time pipeline queue:', err);
-      setQueueError(err.message || 'Could not load pipeline jobs.');
+      if (!isSilent) {
+        setQueueError(err.message || 'Could not load pipeline jobs.');
+      }
     } finally {
-      setLoadingQueue(false);
+      if (!isSilent) {
+        setLoadingQueue(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadRealTimeQueue();
+    loadRealTimeQueue(false);
   }, []);
+
+  // Adaptive Polling: Automatically polls every 4 seconds ONLY when tasks are actively processing
+  useEffect(() => {
+    const hasActiveTasks = pipelineExams.some((e) => {
+      const s = (e.overall_status || e.status || '').toUpperCase();
+      const isStage1Running = e.stage1_status === 'IN_PROGRESS' || (e.extracted_questions_count > 0 && e.extracted_questions_count < e.total_questions && !s.includes('PUBLISHED'));
+      const isStage2Running = e.stage2_status === 'IN_PROGRESS';
+      const isStage3Running = e.stage3_status === 'IN_PROGRESS' || ((e.explanations_count || 0) < e.extracted_questions_count && e.extracted_questions_count > 0 && !s.includes('PUBLISHED'));
+      return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
+    });
+
+    if (!hasActiveTasks && !isUploading) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      loadRealTimeQueue(true);
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [pipelineExams, isUploading]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);
     // Reload live queue after uploading
     setTimeout(() => {
-      loadRealTimeQueue();
+      loadRealTimeQueue(true);
     }, 1200);
   };
 
@@ -123,34 +157,162 @@ export function UploadReviewView() {
       exam.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       exam.code.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const statusUpper = exam.status.toUpperCase();
+    const statusUpper = (exam.status || '').toUpperCase();
+    const overallUpper = (exam.overall_status || '').toUpperCase();
     const matchesStatus =
       statusFilter === 'ALL' ||
-      (statusFilter === 'PROCESSING' && (statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING'))) ||
+      (statusFilter === 'PROCESSING' && (statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING') || overallUpper.includes('PROCESSING'))) ||
       (statusFilter === 'QUEUED' && statusUpper.includes('QUEUED')) ||
-      (statusFilter === 'PENDING' && statusUpper.includes('PENDING')) ||
-      (statusFilter === 'COMPLETED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY'))) ||
-      (statusFilter === 'FAILED' && (statusUpper.includes('FAILED') || statusUpper.includes('REJECTED')));
+      (statusFilter === 'PENDING' && (statusUpper.includes('PENDING') || overallUpper.includes('REVIEW'))) ||
+      (statusFilter === 'COMPLETED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY') || overallUpper === 'PUBLISHED')) ||
+      (statusFilter === 'FAILED' && (statusUpper.includes('FAILED') || statusUpper.includes('REJECTED') || overallUpper.includes('MISSING')));
 
     const matchesStage = stageFilter === 'ALL' || exam.stage?.toLowerCase() === stageFilter.toLowerCase();
 
     return matchesSearch && matchesStatus && matchesStage;
   });
 
-  // Calculate live summary stats
+  // Calculate live summary stats with accurate logic
   const totalExamsCount = pipelineExams.length;
-  const activeCount = pipelineExams.filter((e) => {
-    const s = e.status.toUpperCase();
-    return s.includes('PROCESSING') || s.includes('PARSING');
-  }).length;
-  const pendingCount = pipelineExams.filter((e) => e.status.toUpperCase().includes('PENDING')).length;
-  const completedCount = pipelineExams.filter((e) => {
-    const s = e.status.toUpperCase();
-    return s.includes('PUBLISHED') || s.includes('READY');
+
+  const publishedCount = pipelineExams.filter((e) => {
+    const s = (e.status || '').toUpperCase();
+    return s.includes('PUBLISHED') || Boolean(e.questions_json_path && e.solutions_json_path);
   }).length;
 
+  const activeCount = pipelineExams.filter((e) => {
+    const s = (e.overall_status || e.status || '').toUpperCase();
+    const isStage1Running = e.stage1_status === 'IN_PROGRESS' || (e.extracted_questions_count > 0 && e.extracted_questions_count < e.total_questions && !s.includes('PUBLISHED'));
+    const isStage2Running = e.stage2_status === 'IN_PROGRESS';
+    const isStage3Running = e.stage3_status === 'IN_PROGRESS' || ((e.explanations_count || 0) < e.extracted_questions_count && e.extracted_questions_count > 0 && !s.includes('PUBLISHED'));
+    return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
+  }).length;
+
+  const pendingCount = pipelineExams.filter((e) => {
+    const s = (e.status || '').toUpperCase();
+    const isPublished = s.includes('PUBLISHED') || Boolean(e.questions_json_path && e.solutions_json_path);
+    return !isPublished;
+  }).length;
+
+  const renderOverallStatusBadge = (exam: ExamPipelineStatusItem) => {
+    const statusUpper = (exam.status || '').toUpperCase();
+    const isPublished = statusUpper.includes('PUBLISHED') || Boolean(exam.questions_json_path && exam.solutions_json_path);
+    const overall = (exam.overall_status || '').toUpperCase();
+
+    if (isPublished) {
+      return (
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#15803D',
+            backgroundColor: '#DCFCE7',
+            border: '1px solid #86EFAC',
+            padding: '3px 9px',
+            borderRadius: 5,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <Database size={12} />
+          S3 Live & Ready
+        </span>
+      );
+    }
+
+    if (overall === 'MISSING_INPUTS' || exam.stage1_status === 'MISSING_INPUT' || exam.stage2_status === 'MISSING_INPUT') {
+      const missingPaper = !exam.has_question_paper && exam.extracted_questions_count === 0;
+      const missingKey = !exam.has_answer_key && (exam.key_mapped_count || 0) === 0 && !exam.paper_set_code;
+      const label = missingPaper && missingKey ? 'Missing Paper & Key' : missingPaper ? 'Missing Paper' : 'Missing Key';
+      return (
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#991B1B',
+            backgroundColor: '#FEE2E2',
+            border: '1px solid #FCA5A5',
+            padding: '3px 9px',
+            borderRadius: 5,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <AlertCircle size={12} />
+          {label}
+        </span>
+      );
+    }
+
+    if (overall === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS' || exam.stage2_status === 'IN_PROGRESS' || exam.stage3_status === 'IN_PROGRESS' || statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING')) {
+      return (
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#0369A1',
+            backgroundColor: '#E0F2FE',
+            border: '1px solid #BAE6FD',
+            padding: '3px 9px',
+            borderRadius: 5,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <Loader2 size={12} className="animate-spin" color="#0284C7" />
+          Pipeline Running...
+        </span>
+      );
+    }
+
+    if (overall === 'READY_FOR_REVIEW' || (exam.extracted_questions_count >= exam.total_questions && exam.extracted_questions_count > 0)) {
+      return (
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#B45309',
+            backgroundColor: '#FEF3C7',
+            border: '1px solid #FDE047',
+            padding: '3px 9px',
+            borderRadius: 5,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <ClipboardCheck size={12} />
+          Ready for QA Review
+        </span>
+      );
+    }
+
+    return (
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: '#475467',
+          backgroundColor: '#F2F4F7',
+          border: '1px solid #EAECF0',
+          padding: '3px 9px',
+          borderRadius: 5,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+        }}
+      >
+        <Clock size={12} />
+        Pending Review
+      </span>
+    );
+  };
+
   const renderStatusBadge = (statusStr: string) => {
-    const s = statusStr.toUpperCase();
+    const s = (statusStr || '').toUpperCase();
     if (s.includes('PUBLISHED') || s.includes('READY')) {
       return (
         <span
@@ -214,35 +376,14 @@ export function UploadReviewView() {
         </span>
       );
     }
-    if (s.includes('PENDING')) {
-      return (
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#B45309',
-            backgroundColor: '#FEF3C7',
-            border: '1px solid #FDE68A',
-            padding: '3px 8px',
-            borderRadius: 4,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706' }} />
-          Pending Review
-        </span>
-      );
-    }
     return (
       <span
         style={{
           fontSize: 12,
           fontWeight: 600,
-          color: '#475467',
-          backgroundColor: '#F2F4F7',
-          border: '1px solid #EAECF0',
+          color: '#B45309',
+          backgroundColor: '#FEF3C7',
+          border: '1px solid #FDE68A',
           padding: '3px 8px',
           borderRadius: 4,
           display: 'inline-flex',
@@ -250,8 +391,8 @@ export function UploadReviewView() {
           gap: 5,
         }}
       >
-        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#98A2B3' }} />
-        Queued
+        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706' }} />
+        Pending Review
       </span>
     );
   };
@@ -259,74 +400,132 @@ export function UploadReviewView() {
   const renderPipelineStageVisualizer = (exam: ExamPipelineStatusItem) => {
     const total = exam.total_questions || 100;
     const ext = exam.extracted_questions_count || 0;
-    const isExtractDone = ext >= total || ext > 0;
-    const isKeyMatched = Boolean(exam.paper_set_code) && (exam.status.toUpperCase().includes('PUBLISHED') || ext > 0);
-    const isExplDone = exam.status.toUpperCase().includes('PUBLISHED') || Boolean(exam.solutions_json_path);
+    const keyCount = exam.key_mapped_count || 0;
+    const expCount = exam.explanations_count || 0;
+    const isPublished = (exam.status || '').toUpperCase().includes('PUBLISHED') || Boolean(exam.questions_json_path && exam.solutions_json_path);
+
+    // Stage 1: Extraction Status & Style
+    let s1Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' };
+    let s1Label = `1. Extraction (${ext}/${total})`;
+    let s1Icon = <FileText size={11} />;
+
+    if (exam.stage1_status === 'COMPLETED' || isPublished || (ext >= total && ext > 0)) {
+      s1Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
+      s1Label = `1. Extraction (${ext}/${total})`;
+      s1Icon = <CheckCircle2 size={11} />;
+    } else if (exam.stage1_status === 'IN_PROGRESS' || (ext > 0 && ext < total)) {
+      s1Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
+      s1Label = `1. Extracting (${ext}/${total})`;
+      s1Icon = <Loader2 size={11} className="animate-spin" />;
+    } else if (exam.stage1_status === 'MISSING_INPUT' || (!exam.has_question_paper && ext === 0)) {
+      s1Style = { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B' };
+      s1Label = `1. Missing Paper`;
+      s1Icon = <AlertCircle size={11} />;
+    }
+
+    // Stage 2: Key Mapping Status & Style
+    let s2Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' };
+    let s2Label = `2. Key (${exam.paper_set_code || 'SET_A'})`;
+    let s2Icon = <Key size={11} />;
+
+    if (exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= ext && ext > 0)) {
+      s2Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
+      s2Label = `2. Key (${exam.paper_set_code || 'SET_A'})`;
+      s2Icon = <CheckCircle2 size={11} />;
+    } else if (exam.stage2_status === 'IN_PROGRESS' || (keyCount > 0 && keyCount < ext)) {
+      s2Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
+      s2Label = `2. Mapping Key...`;
+      s2Icon = <Loader2 size={11} className="animate-spin" />;
+    } else if (exam.stage2_status === 'MISSING_INPUT' || (!exam.has_answer_key && keyCount === 0 && !exam.paper_set_code)) {
+      s2Style = { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B' };
+      s2Label = `2. Missing Key`;
+      s2Icon = <AlertCircle size={11} />;
+    }
+
+    // Stage 3: Explanations Status & Style
+    const prereqReady = (ext >= total || exam.stage1_status === 'COMPLETED') && (keyCount > 0 || exam.stage2_status === 'COMPLETED' || Boolean(exam.paper_set_code));
+    let s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
+    let s3Label = `3. Explanations`;
+    let s3Icon = <Sparkles size={11} />;
+
+    if (exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= ext && ext > 0)) {
+      s3Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
+      s3Label = `3. Explanations Ready`;
+      s3Icon = <CheckCircle2 size={11} />;
+    } else if (exam.stage3_status === 'IN_PROGRESS' || (prereqReady && (expCount > 0 || !isPublished))) {
+      s3Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
+      s3Label = `3. Generating...`;
+      s3Icon = <Loader2 size={11} className="animate-spin" />;
+    } else if (!prereqReady) {
+      s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
+      s3Label = `3. Explanations (Waiting)`;
+      s3Icon = <Clock size={11} />;
+    }
 
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {/* Stage 1: Extraction */}
         <div
-          title={`Stage 1: Question Extraction (${ext}/${total} Qs)`}
+          title={`Stage 1: Question Paper Extraction (${ext}/${total} Qs)`}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            padding: '2px 6px',
+            padding: '2px 7px',
             borderRadius: 4,
             fontSize: 11,
             fontWeight: 600,
-            backgroundColor: isExtractDone ? '#DCFCE7' : '#F2F4F7',
-            color: isExtractDone ? '#15803D' : '#667085',
-            border: `1px solid ${isExtractDone ? '#BBF7D0' : '#E4E7EC'}`,
+            backgroundColor: s1Style.bg,
+            color: s1Style.text,
+            border: `1px solid ${s1Style.border}`,
           }}
         >
-          <FileText size={11} />
-          <span>1. Extraction ({ext}/{total})</span>
+          {s1Icon}
+          <span>{s1Label}</span>
         </div>
 
         <span style={{ color: '#98A2B3', fontSize: 10 }}>→</span>
 
         {/* Stage 2: Key Mapping */}
         <div
-          title={`Stage 2: Answer Key Mapping (${exam.paper_set_code || 'Set A'})`}
+          title={`Stage 2: Answer Key Mapping (${exam.paper_set_code || 'SET_A'})`}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            padding: '2px 6px',
+            padding: '2px 7px',
             borderRadius: 4,
             fontSize: 11,
             fontWeight: 600,
-            backgroundColor: isKeyMatched ? '#DCFCE7' : '#FEF3C7',
-            color: isKeyMatched ? '#15803D' : '#B45309',
-            border: `1px solid ${isKeyMatched ? '#BBF7D0' : '#FDE68A'}`,
+            backgroundColor: s2Style.bg,
+            color: s2Style.text,
+            border: `1px solid ${s2Style.border}`,
           }}
         >
-          <Key size={11} />
-          <span>2. Key ({exam.paper_set_code || 'Set A'})</span>
+          {s2Icon}
+          <span>{s2Label}</span>
         </div>
 
         <span style={{ color: '#98A2B3', fontSize: 10 }}>→</span>
 
         {/* Stage 3: Explanations */}
         <div
-          title="Stage 3: Explanations & Taxonomy Generation"
+          title="Stage 3: Question Explanations & Knowledge Base Generation (Starts after Paper & Key)"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            padding: '2px 6px',
+            padding: '2px 7px',
             borderRadius: 4,
             fontSize: 11,
             fontWeight: 600,
-            backgroundColor: isExplDone ? '#DCFCE7' : '#E0F2FE',
-            color: isExplDone ? '#15803D' : '#0369A1',
-            border: `1px solid ${isExplDone ? '#BBF7D0' : '#BAE6FD'}`,
+            backgroundColor: s3Style.bg,
+            color: s3Style.text,
+            border: `1px solid ${s3Style.border}`,
           }}
         >
-          <Sparkles size={11} />
-          <span>3. Explanations</span>
+          {s3Icon}
+          <span>{s3Label}</span>
         </div>
       </div>
     );
@@ -372,7 +571,7 @@ export function UploadReviewView() {
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button
-            onClick={loadRealTimeQueue}
+            onClick={() => loadRealTimeQueue(false)}
             disabled={loadingQueue}
             style={{
               display: 'inline-flex',
@@ -427,7 +626,7 @@ export function UploadReviewView() {
         </div>
 
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D' }}>{completedCount}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D' }}>{publishedCount}</div>
           <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Published & Active in S3</div>
         </div>
       </div>
@@ -819,7 +1018,7 @@ export function UploadReviewView() {
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAM PAPER</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>3-PIPELINE PROGRESS</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>S3 JSON ARTIFACTS</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>OVERALL STATUS</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTIONS</th>
                   </tr>
                 </thead>
@@ -856,15 +1055,7 @@ export function UploadReviewView() {
                         </td>
 
                         <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                          {exam.questions_json_path ? (
-                            <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Database size={13} /> S3 Ready
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 12, color: '#98A2B3', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <Clock size={13} /> Generating...
-                            </span>
-                          )}
+                          {renderOverallStatusBadge(exam)}
                         </td>
 
                         <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -888,28 +1079,32 @@ export function UploadReviewView() {
                               Details
                             </button>
 
-                            {exam.status.toUpperCase().includes('PENDING') && (
-                              <button
-                                onClick={() => handleApprove(exam.id, exam.name)}
-                                disabled={approvingId === exam.id}
-                                style={{
-                                  padding: '5px 12px',
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  color: '#FFFFFF',
-                                  background: '#15803D',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                }}
-                              >
-                                {approvingId === exam.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                                Publish
-                              </button>
-                            )}
+                            <button
+                              onClick={() => {
+                                if (onNavigate) {
+                                  onNavigate('review', exam);
+                                } else {
+                                  setSelectedExam(exam);
+                                  setIsDrawerOpen(true);
+                                }
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: '#FFFFFF',
+                                background: '#1E40AF',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              <Check size={12} />
+                              Review Exam
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -991,8 +1186,36 @@ export function UploadReviewView() {
             <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#667085', fontWeight: 500 }}>Overall Status</span>
-                <div>{renderStatusBadge(selectedExam.status)}</div>
+                <span style={{ fontSize: 13, color: '#667085', fontWeight: 500 }}>Overall Pipeline & S3 Status</span>
+                <div>{renderOverallStatusBadge(selectedExam)}</div>
+              </div>
+
+              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+
+              {/* 2 Required Inputs Check */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                  PIPELINE INPUT PREREQUISITES
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ padding: 10, background: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#15803D' : '#991B1B' }}>
+                      {selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '✓ Question Paper PDF' : '✕ Missing Question Paper'}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>
+                      {selectedExam.pdf_path ? selectedExam.pdf_path.split('/').pop() : selectedExam.extracted_questions_count > 0 ? `${selectedExam.extracted_questions_count} Questions Extracted` : 'Not uploaded yet'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 10, background: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#15803D' : '#991B1B' }}>
+                      {selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '✓ Answer Key Mapped' : '✕ Missing Answer Key'}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>
+                      Set Code: {selectedExam.paper_set_code || 'SET_A'}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
@@ -1026,16 +1249,16 @@ export function UploadReviewView() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 2: Answer Key Mapping</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>
-                        Set Code: {selectedExam.paper_set_code || 'SET_A'}
+                        Set Code: {selectedExam.paper_set_code || 'SET_A'} ({selectedExam.key_mapped_count || selectedExam.extracted_questions_count} mapped)
                       </span>
                     </div>
                   </div>
 
                   <div style={{ background: '#F9FAFB', border: '1px solid #E4E7EC', borderRadius: 6, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 3: Explanation & Taxonomy</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path ? '#15803D' : '#0369A1' }}>
-                        {selectedExam.solutions_json_path ? 'Ready & Verified' : 'In Progress'}
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 3: Question Explanations & Solutions</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= selectedExam.extracted_questions_count ? '#15803D' : '#0369A1' }}>
+                        {selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= selectedExam.extracted_questions_count ? 'Ready & Verified' : 'In Progress'}
                       </span>
                     </div>
                   </div>
@@ -1047,7 +1270,7 @@ export function UploadReviewView() {
               {/* S3 Artifacts */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  S3 ARTIFACT PATHS
+                  S3 ARTIFACT PATHS & DEPLOYMENT
                 </div>
                 <div style={{ background: '#F7F7F5', padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', fontFamily: 'monospace', fontSize: 11, color: '#344054', wordBreak: 'break-all' }}>
                   <div>Questions: {selectedExam.questions_json_path || 'artifacts/' + selectedExam.code + '/json/questions'}</div>
@@ -1076,15 +1299,19 @@ export function UploadReviewView() {
               </button>
 
               <button
-                onClick={() => handleApprove(selectedExam.id, selectedExam.name)}
-                disabled={approvingId === selectedExam.id}
+                onClick={() => {
+                  setIsDrawerOpen(false);
+                  if (onNavigate) {
+                    onNavigate('review', selectedExam);
+                  }
+                }}
                 style={{
                   flex: 1,
                   padding: '9px 16px',
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: 600,
-                  backgroundColor: '#15803D',
+                  backgroundColor: '#1E40AF',
                   border: 'none',
                   color: '#FFFFFF',
                   cursor: 'pointer',
@@ -1094,8 +1321,8 @@ export function UploadReviewView() {
                   gap: 6,
                 }}
               >
-                {approvingId === selectedExam.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                Approve & Publish Exam
+                <Check size={14} />
+                Open Full Question Review
               </button>
             </div>
           </div>

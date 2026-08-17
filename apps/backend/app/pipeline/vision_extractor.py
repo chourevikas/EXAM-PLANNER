@@ -30,107 +30,154 @@ def _is_valid_pdf(file_path: Path) -> bool:
         return False
 
 
+_download_locks: dict[str, asyncio.Lock] = {}
+_pdf_bytes_cache: dict[str, bytes] = {}
+
+
+def _get_cache_key(pdf_path_or_key: str) -> str:
+    clean = str(pdf_path_or_key).replace("\\", "/").strip("/").replace("/", "_")
+    if not clean.lower().endswith(".pdf"):
+        clean = f"{clean}.pdf"
+    return clean
+
+
+def clear_pdf_cache(pdf_path_or_key: str) -> None:
+    """Removes cached in-memory bytes for a PDF to release memory."""
+    key = _get_cache_key(pdf_path_or_key)
+    _pdf_bytes_cache.pop(key, None)
+    _download_locks.pop(key, None)
+
+
 async def _ensure_local_pdf(pdf_path_or_key: str, storage) -> Path:
     """Checks if PDF file is already cached locally in temp_pdf_cache to prevent redundant S3 downloads."""
-    # 1. Direct path check
-    p = Path(pdf_path_or_key).resolve()
-    if _is_valid_pdf(p):
-        return p
+    # 1. Direct local path check
+    p = Path(pdf_path_or_key)
+    if p.is_file() and _is_valid_pdf(p):
+        return p.resolve()
 
     # 2. Cached in temp_pdf_cache check with unique storage-path-derived filename
     temp_dir = Path("./temp_pdf_cache").resolve()
     temp_dir.mkdir(parents=True, exist_ok=True)
-    clean_name = str(pdf_path_or_key).replace("\\", "/").strip("/").replace("/", "_")
-    if not clean_name.lower().endswith(".pdf"):
-        clean_name = f"{clean_name}.pdf"
+    clean_name = _get_cache_key(pdf_path_or_key)
     local_target = temp_dir / clean_name
     if _is_valid_pdf(local_target):
         return local_target
 
-    # Remove corrupt/empty cache file if present
-    if local_target.exists():
-        try:
-            local_target.unlink()
-        except Exception:
-            pass
+    # Acquire per-file download lock to avoid race conditions between parallel page workers
+    if clean_name not in _download_locks:
+        _download_locks[clean_name] = asyncio.Lock()
 
-    # 3. Download from Storage Provider (S3/Local)
-    downloaded = await storage.download_file(pdf_path_or_key, local_target)
-    downloaded_path = Path(downloaded).resolve()
-    if not _is_valid_pdf(downloaded_path):
-        raise RuntimeError(
-            f"Downloaded PDF file '{pdf_path_or_key}' to '{downloaded_path}' is corrupted or empty."
-        )
-    return downloaded_path
+    async with _download_locks[clean_name]:
+        # Double check after acquiring lock
+        if _is_valid_pdf(local_target):
+            return local_target
+
+        if local_target.exists():
+            try:
+                local_target.unlink()
+            except Exception:
+                pass
+
+        # 3. Clean S3 Key
+        s3_key = str(pdf_path_or_key).replace("\\", "/").strip("/")
+        if "/uploads/" in s3_key:
+            s3_key = "uploads/" + s3_key.split("/uploads/", 1)[1]
+        elif "/temp_uploads/" in s3_key:
+            local_fallback = Path(pdf_path_or_key)
+            if local_fallback.is_file() and _is_valid_pdf(local_fallback):
+                return local_fallback.resolve()
+
+        # 4. Download from Storage Provider (S3/Local)
+        downloaded = await storage.download_file(s3_key, local_target)
+        downloaded_path = Path(downloaded).resolve()
+        if not _is_valid_pdf(downloaded_path):
+            raise RuntimeError(
+                f"Downloaded PDF file '{s3_key}' to '{downloaded_path}' is corrupted or empty."
+            )
+        return downloaded_path
+
+
+async def get_pdf_bytes(pdf_path_or_key: str) -> bytes:
+    """Returns in-memory bytes of the PDF file, caching globally so S3 download occurs exactly ONCE."""
+    key = _get_cache_key(pdf_path_or_key)
+    if key in _pdf_bytes_cache:
+        return _pdf_bytes_cache[key]
+
+    storage = get_storage_provider()
+    local_file = await _ensure_local_pdf(pdf_path_or_key, storage)
+    pdf_bytes = local_file.read_bytes()
+    _pdf_bytes_cache[key] = pdf_bytes
+    return pdf_bytes
 
 
 async def get_pdf_total_pages(pdf_path_or_key: str) -> int:
-    """Asynchronously reads total page count, reusing local temp_pdf_cache if present."""
-    storage = get_storage_provider()
-    local_file = await _ensure_local_pdf(pdf_path_or_key, storage)
+    """Asynchronously reads total page count from in-memory cached PDF bytes."""
+    pdf_bytes = await get_pdf_bytes(pdf_path_or_key)
 
     def _read():
         from pypdf import PdfReader
+        import io
 
-        reader = PdfReader(str(local_file))
+        reader = PdfReader(io.BytesIO(pdf_bytes))
         return len(reader.pages)
 
     return await asyncio.to_thread(_read)
 
 
+import threading
+
+_pdf_render_lock = threading.Lock()
+
+
 async def load_pdf_page_image_lazily(
     pdf_path_or_key: str, page_number_1_based: int
 ) -> Image.Image:
-    """Asynchronously loads a single PDF page image lazily, auto-recovering if local file was deleted or corrupted."""
-    storage = get_storage_provider()
+    """Asynchronously loads a single PDF page image lazily using the cached in-memory PDF bytes."""
+    pdf_bytes = await get_pdf_bytes(pdf_path_or_key)
 
     last_err = None
     for attempt in range(1, 4):
         try:
-            local_file = await _ensure_local_pdf(pdf_path_or_key, storage)
-
             def _convert():
-                try:
-                    import pypdfium2 as pdfium
-
-                    pdf = pdfium.PdfDocument(str(local_file))
-                    page = pdf[page_number_1_based - 1]
-                    image = page.render(scale=200 / 72).to_pil()
-                    pdf.close()
-                    return image
-                except Exception as pypdfium_err:  # noqa: BLE001
+                with _pdf_render_lock:
                     try:
-                        images = convert_from_path(
-                            str(local_file),
-                            dpi=200,
-                            first_page=page_number_1_based,
-                            last_page=page_number_1_based,
-                        )
-                        if not images:
-                            raise ValueError(
-                                f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+                        import pypdfium2 as pdfium
+
+                        pdf = pdfium.PdfDocument(pdf_bytes)
+                        try:
+                            page = pdf[page_number_1_based - 1]
+                            image = page.render(scale=200 / 72).to_pil()
+                            return image
+                        finally:
+                            pdf.close()
+                    except Exception as pypdfium_err:  # noqa: BLE001
+                        try:
+                            storage = get_storage_provider()
+                            local_file = Path("./temp_pdf_cache") / _get_cache_key(pdf_path_or_key)
+                            images = convert_from_path(
+                                str(local_file.resolve()),
+                                dpi=200,
+                                first_page=page_number_1_based,
+                                last_page=page_number_1_based,
                             )
-                        return images[0]
-                    except Exception as poppler_err:  # noqa: BLE001
-                        raise RuntimeError(
-                            f"Failed to render page {page_number_1_based} of '{pdf_path_or_key}'. "
-                            f"pypdfium2 error: {pypdfium_err}; poppler error: {poppler_err}"
-                        ) from poppler_err
+                            if not images:
+                                raise ValueError(
+                                    f"Could not load page {page_number_1_based} from {pdf_path_or_key}"
+                                )
+                            return images[0]
+                        except Exception as poppler_err:  # noqa: BLE001
+                            raise RuntimeError(
+                                f"Failed to render page {page_number_1_based} of '{pdf_path_or_key}'. "
+                                f"pypdfium2 error: {pypdfium_err}; poppler error: {poppler_err}"
+                            ) from poppler_err
 
             return await asyncio.to_thread(_convert)
         except Exception as exc:
             last_err = exc
             logger.warning(
-                f"⚠️ Page {page_number_1_based} rendering attempt {attempt}/3 failed: {exc}. Purging cache & retrying..."
+                f"⚠️ Page {page_number_1_based} rendering attempt {attempt}/3 failed: {exc}. Retrying..."
             )
-            temp_dir = Path("./temp_pdf_cache").resolve()
-            local_target = temp_dir / Path(pdf_path_or_key).name
-            if local_target.exists():
-                try:
-                    local_target.unlink()
-                except Exception:
-                    pass
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
 
     raise RuntimeError(
         f"Failed to load PDF page {page_number_1_based} after 3 attempts: {last_err}"

@@ -1,0 +1,166 @@
+import uuid
+import unittest
+from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from app.db.models import (
+    Exam,
+    Question,
+    QuestionTranslation,
+    QuestionOption,
+    OptionTranslation,
+    QuestionExplanation,
+    QuestionStatus,
+    ExamStatus,
+    LanguageCode,
+)
+from app.schemas.question import QuestionUpdatePayload, QuestionOptionPayload
+from app.services.question_service import QuestionService
+from app.routers.admin import approve_and_publish_exam
+from fastapi import HTTPException
+
+
+class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+        async with self.engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
+
+        self.session_factory = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+    async def asyncTearDown(self):
+        await self.engine.dispose()
+
+    async def test_review_questions_and_solutions_flow(self):
+        async with self.session_factory() as session:
+            # 1. Create a test exam
+            exam_id = uuid.uuid4()
+            exam = Exam(
+                id=exam_id,
+                code=f"test-review-exam-{uuid.uuid4().hex[:6]}",
+                name="Test Review Exam",
+                stage="prelims",
+                subject_code="gs1",
+                source_year=2024,
+                paper_set_code="SET_A",
+                status=ExamStatus.PENDING_HUMAN_REVIEW,
+                total_questions=2,
+            )
+            session.add(exam)
+            await session.commit()
+
+            # 2. Add 2 questions in PENDING_HUMAN_REVIEW
+            q1_id = uuid.uuid4()
+            q1 = Question(
+                id=q1_id,
+                exam_id=exam_id,
+                question_number_in_paper=1,
+                paper_set_code="SET_A",
+                status=QuestionStatus.PENDING_HUMAN_REVIEW,
+            )
+            session.add(q1)
+
+            q2_id = uuid.uuid4()
+            q2 = Question(
+                id=q2_id,
+                exam_id=exam_id,
+                question_number_in_paper=2,
+                paper_set_code="SET_A",
+                status=QuestionStatus.PENDING_HUMAN_REVIEW,
+            )
+            session.add(q2)
+            await session.commit()
+
+            # Add translations and options for Q1
+            qt1 = QuestionTranslation(
+                question_id=q1_id, language=LanguageCode.ENGLISH, question_text="What is the capital of India?"
+            )
+            session.add(qt1)
+
+            opt1 = QuestionOption(question_id=q1_id, option_label="A", display_order=1, is_correct=True)
+            session.add(opt1)
+            await session.flush()
+
+            ot1 = OptionTranslation(
+                option_id=opt1.id,
+                language=LanguageCode.ENGLISH,
+                option_text="New Delhi",
+                distractor_analysis="Correct national capital.",
+            )
+            session.add(ot1)
+
+            # Add 4-parameter explanation for Q1
+            expl1 = QuestionExplanation(
+                question_id=q1_id,
+                language=LanguageCode.ENGLISH,
+                core_concept="National capitals of South Asia",
+                detailed_solution="New Delhi is the official national capital of India under Article 239AA.",
+                common_traps_json=["Confusing Old Delhi with New Delhi as federal territory."],
+                key_takeaways_json=["New Delhi is the seat of executive, legislative, and judiciary."],
+            )
+            session.add(expl1)
+            await session.commit()
+
+            # 3. Test QuestionService.get_exam_questions_for_review
+            service = QuestionService(session)
+            review_data = await service.get_exam_questions_for_review(exam_id=exam_id)
+
+            self.assertEqual(review_data.total_questions, 2)
+            self.assertEqual(review_data.reviewed_count, 0)
+            self.assertEqual(review_data.pending_count, 2)
+            self.assertFalse(review_data.can_publish)
+            self.assertEqual(len(review_data.items), 2)
+
+            # Check Q1 solution parameters & option explanations
+            q1_item = next(item for item in review_data.items if item.question_id == str(q1_id))
+            self.assertIsNotNone(q1_item.explanation)
+            self.assertEqual(q1_item.explanation.core_concept, "National capitals of South Asia")
+            self.assertIn("New Delhi is the official national capital", q1_item.explanation.detailed_solution)
+            self.assertEqual(len(q1_item.explanation.common_traps), 1)
+            self.assertEqual(len(q1_item.explanation.key_takeaways), 1)
+            self.assertEqual(q1_item.options[0].distractor_analysis, "Correct national capital.")
+
+            # 4. Test candidate list_questions without solutions (include_solutions=False)
+            candidate_data = await service.list_questions_paginated(exam_id=exam_id, include_solutions=False)
+            cand_q1 = next(item for item in candidate_data.items if item.question_id == str(q1_id))
+            self.assertIsNone(cand_q1.explanation)
+            self.assertIsNone(cand_q1.options[0].distractor_analysis)
+
+            # 5. Test Exam publish fails when questions are still pending review
+            with self.assertRaises(HTTPException) as ctx:
+                await approve_and_publish_exam(exam_id=str(exam_id), session=session, current_user=None)
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertIn("not yet approved", ctx.exception.detail)
+
+            # 6. Update Q1 and Q2 to PUBLISHED via update_question_detail with hierarchy and solutions
+            await service.update_question_detail(
+                question_id=q1_id,
+                payload=QuestionUpdatePayload(
+                    status=QuestionStatus.PUBLISHED,
+                    subject_name="Geography",
+                    topic_name="Indian Geography",
+                    subtopic_name="Capital Cities",
+                    common_traps=["Updated common trap"],
+                    key_takeaways=["Updated takeaway point"],
+                ),
+            )
+
+            await service.update_question_detail(
+                question_id=q2_id,
+                payload=QuestionUpdatePayload(
+                    status=QuestionStatus.PUBLISHED,
+                    question_text="Second test question",
+                    detailed_solution="Solution for Q2",
+                    core_concept="Core concept for Q2",
+                ),
+            )
+
+            # 7. Check review metrics after publishing all questions
+            review_data_after = await service.get_exam_questions_for_review(exam_id=exam_id)
+            self.assertEqual(review_data_after.reviewed_count, 2)
+            self.assertEqual(review_data_after.pending_count, 0)
+            self.assertTrue(review_data_after.can_publish)
