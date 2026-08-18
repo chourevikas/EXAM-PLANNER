@@ -590,7 +590,11 @@ async def node_generate_and_save_explanations(
         lang_enum = LanguageCode.ENGLISH
 
     async with managed_async_session() as session:
-        stmt = select(Question.id).where(Question.exam_id == exam_id)
+        stmt = (
+            select(Question.id)
+            .where(Question.exam_id == exam_id)
+            .order_by(col(Question.question_number_in_paper))
+        )
         if target_q_ids:
             q_uuids = [uuid.UUID(qid) for qid in target_q_ids]
             stmt = stmt.where(col(Question.id).in_(q_uuids))
@@ -599,10 +603,12 @@ async def node_generate_and_save_explanations(
         q_ids = res.all()
 
         # Query fully completed explanations in DB to skip redundant LLM calls on resume/restart
-        exp_stmt = select(QuestionExplanation).where(
-            QuestionExplanation.question_id.in_(q_ids)
-        )
-        existing_exps = (await session.exec(exp_stmt)).all()
+        existing_exp_qids = set()
+        if q_ids:
+            exp_stmt = select(QuestionExplanation).where(
+                col(QuestionExplanation.question_id).in_(q_ids)
+            )
+            existing_exps = (await session.exec(exp_stmt)).all()
         # Strict completeness validation: requires non-empty core_concept and detailed_solution
         existing_exp_qids = {
             e.question_id

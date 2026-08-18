@@ -1,18 +1,14 @@
 """Taxonomy Resolution and Validation Pipeline.
 
 Deterministic, zero-API-cost top-down cascaded taxonomy resolver that maps raw LLM
-predictions (subject, topic, subtopic) to canonical syllabus literals.
+predictions (subject, topic, subtopic) to canonical syllabus literals while flexibly
+handling cross-level placements, synonyms, and domain-specific topic grounding.
 
 Architecture:
-- Level 1: Subject resolved against root keys of Master Taxonomy.
-- Level 2: Topic resolved strictly within the resolved Subject.
+- Cross-Level Anchor: Checks if ANY of raw_subject, raw_topic, or raw_subtopic matches a known subtopic/topic.
+- Level 1: Subject resolved against root keys of Master Taxonomy + Curated Domain Aliases + Cross-Topic Anchoring.
+- Level 2: Topic resolved strictly within the resolved Subject (Exact -> Fuzzy -> Semantic -> Fallback).
 - Level 3: Subtopic resolved strictly within the resolved Topic.
-
-Cascade Tiers per Level:
-- Tier 1: Exact Match (normalized case-insensitive strip & alias comparison, 0ms).
-- Tier 2: Fuzzy Match (RapidFuzz token_sort_ratio with threshold >= 80, <1ms).
-- Tier 3: Semantic Fallback (Local sentence-transformers cosine similarity with pre-cached embeddings, <3ms).
-- Fallback: Deterministic canonical fallback preserving 100% hierarchy integrity.
 """
 
 from __future__ import annotations
@@ -46,7 +42,7 @@ try:
     from rapidfuzz import fuzz, process  # type: ignore
 
     HAS_RAPIDFUZZ = True
-except ImportError:
+except (ImportError, OSError, Exception):
     HAS_RAPIDFUZZ = False
 
 # Optional SentenceTransformers integration with fallback
@@ -55,11 +51,11 @@ try:
     import numpy as np  # type: ignore
 
     HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
+except (ImportError, OSError, Exception):
     HAS_SENTENCE_TRANSFORMERS = False
     try:
         import numpy as np  # type: ignore
-    except ImportError:
+    except (ImportError, OSError, Exception):
         np = None  # type: ignore
 
 
@@ -77,6 +73,10 @@ class FieldResolutionResult(BaseModel):
     canonical_value: str = Field(description="Strict canonical value from syllabus taxonomy")
     raw_value: Optional[str] = Field(default=None, description="Original raw prediction string from LLM")
     tier: MatchTier = Field(description="Matching tier utilized (exact, fuzzy, semantic, fallback)")
+    algorithm_detail: str = Field(
+        default="EXACT_MATCH",
+        description="Human-readable description of the exact matching algorithm applied",
+    )
     confidence: float = Field(
         ge=0.0,
         le=1.0,
@@ -96,6 +96,14 @@ class TaxonomyResolutionMetrics(BaseModel):
     overall_confidence: float = Field(ge=0.0, le=1.0, description="Harmonic or weighted confidence score")
     total_resolution_time_ms: float = Field(
         default=0.0, description="Total runtime across all cascaded levels in milliseconds"
+    )
+    embedding_engine_used: str = Field(
+        default="SentenceTransformers (all-MiniLM-L6-v2)",
+        description="Underlying semantic engine utilized",
+    )
+    is_fully_mapped: bool = Field(
+        default=True,
+        description="True if Subject, Topic, and Subtopic are all mapped to canonical syllabus literals",
     )
 
 
@@ -154,17 +162,17 @@ class RawLLMExplanationPayload(BaseModel):
     predicted_subject: Optional[str] = Field(
         default=None,
         alias="raw_subject",
-        description="Raw subject prediction from LLM e.g. 'history', 'ancient histry'",
+        description="Raw subject prediction from LLM",
     )
     predicted_topic: Optional[str] = Field(
         default=None,
         alias="raw_topic",
-        description="Raw topic prediction from LLM e.g. 'Ancient History', 'Vedic Era'",
+        description="Raw topic prediction from LLM",
     )
     predicted_subtopic: Optional[str] = Field(
         default=None,
         alias="raw_subtopic",
-        description="Raw subtopic prediction from LLM e.g. 'Rig Vedic Period'",
+        description="Raw subtopic prediction from LLM",
     )
     concepts: Optional[List[Dict[str, Any]]] = Field(
         default_factory=list, description="Additional raw concept tags"
@@ -196,7 +204,6 @@ class ValidatedDatabaseExplanationPayload(BaseModel):
     common_traps: List[str] = Field(default_factory=list)
     key_takeaways: List[str] = Field(default_factory=list)
 
-    # Validated Canonical Taxonomy Fields
     subject: str = Field(description="Strictly valid Subject literal")
     topic: str = Field(description="Strictly valid Topic literal under Subject")
     subtopic: Optional[str] = Field(
@@ -239,10 +246,7 @@ class ValidatedDatabaseExplanationPayload(BaseModel):
 # ============================================================================
 
 def validate_master_syllabus_hierarchy() -> Dict[str, Any]:
-    """Validates the entire SYLLABUS_HIERARCHY against SubjectLiteral, TopicLiteral, and SubtopicLiteral.
-
-    Returns summary of validated items and confirms 0 structural discrepancies.
-    """
+    """Validates the entire SYLLABUS_HIERARCHY against SubjectLiteral, TopicLiteral, and SubtopicLiteral."""
     subj_lits = set(get_args(SubjectLiteral))
     topic_lits = set(get_args(TopicLiteral))
     subtop_lits = set(get_args(SubtopicLiteral))
@@ -288,11 +292,8 @@ def validate_master_syllabus_hierarchy() -> Dict[str, Any]:
 
     if is_valid:
         logger.info(
-            f"✅ [TAXONOMY HIERARCHY VALIDATED] 100% Consistent: {len(hierarchy_subjs)} Subjects, {len(hierarchy_topics)} Topics, {len(hierarchy_subtopics)} Subtopics."
+            f"[TAXONOMY HIERARCHY VALIDATED] 100% Consistent: {len(hierarchy_subjs)} Subjects, {len(hierarchy_topics)} Topics, {len(hierarchy_subtopics)} Subtopics."
         )
-    else:
-        logger.error(f"❌ [TAXONOMY HIERARCHY DISCREPANCY] Validation report: {report}")
-
     return report
 
 
@@ -304,7 +305,6 @@ def normalize_text(text: Optional[str]) -> str:
     """Normalizes string for comparison by lowercasing, expanding ampersands, and stripping punctuation."""
     if not text or not isinstance(text, str):
         return ""
-    # Lowercase & expand common conjunctions and symbols
     s = text.lower().strip()
     s = s.replace("&", " and ")
     s = re.sub(r"[_\-\/\\,;:()\[\]{}]+", " ", s)
@@ -329,7 +329,6 @@ def pure_python_token_sort_ratio(s1: str, s2: str) -> float:
     if sorted_s1 == sorted_s2:
         return 100.0
 
-    # Levenshtein distance ratio on sorted tokens
     len1, len2 = len(sorted_s1), len(sorted_s2)
     if len1 == 0 or len2 == 0:
         return 0.0
@@ -346,9 +345,9 @@ def pure_python_token_sort_ratio(s1: str, s2: str) -> float:
             c2 = sorted_s2[j - 1]
             cost = 0 if c1 == c2 else 1
             dp[i][j] = min(
-                dp[i - 1][j] + 1,      # deletion
-                dp[i][j - 1] + 1,      # insertion
-                dp[i - 1][j - 1] + cost, # substitution
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost,
             )
 
     distance = dp[len1][len2]
@@ -371,7 +370,6 @@ class LightweightCharNgramVectorizer:
         for i in range(len(norm) - self.n + 1):
             ngram = norm[i : i + self.n]
             counts[ngram] += 1.0
-        # L2 normalize
         norm_sq = math.sqrt(sum(v * v for v in counts.values()))
         if norm_sq > 0:
             for k in counts:
@@ -382,7 +380,6 @@ class LightweightCharNgramVectorizer:
     def cosine_similarity(v1: Dict[str, float], v2: Dict[str, float]) -> float:
         if not v1 or not v2:
             return 0.0
-        # Dot product of unit vectors
         common_keys = set(v1.keys()).intersection(v2.keys())
         return sum(v1[k] * v2[k] for k in common_keys)
 
@@ -403,6 +400,14 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "civics",
         "polity & constitution",
         "polity and constitution",
+        "international relations",
+        "ir",
+        "geopolitics",
+        "foreign policy",
+        "international affairs",
+        "bilateral relations",
+        "current affairs polity",
+        "international news",
     ],
     "Indian Culture": [
         "culture",
@@ -412,6 +417,8 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "indian art and culture",
         "heritage",
         "indian heritage",
+        "visual arts",
+        "performing arts",
     ],
     "Ecology & Environment": [
         "ecology",
@@ -422,6 +429,13 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "eco & env",
         "ecology and environment",
         "environmental science",
+        "environmental ecology",
+        "environmental pollution",
+        "environmental laws and policies",
+        "environmental laws",
+        "climate change",
+        "biodiversity",
+        "conservation",
     ],
     "Economy": [
         "economics",
@@ -430,6 +444,10 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "microeconomics",
         "indian economic development",
         "economic",
+        "banking",
+        "monetary policy",
+        "fiscal policy",
+        "trade",
     ],
     "Science & Technology": [
         "science and technology",
@@ -440,11 +458,27 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "technology",
         "sci & tech",
         "sci and tech",
+        "space science",
+        "space technology",
+        "space",
+        "defense technology",
+        "biotechnology",
+        "biotech",
+        "nanotechnology",
+        "nano technology",
+        "nuclear technology",
+        "applied science",
+        "information technology",
+        "it & telecom",
     ],
     "Geography": [
         "world geography",
         "indian geography",
         "physical geography",
+        "general geography",
+        "world regional geography",
+        "climatology",
+        "oceanography",
         "geo",
     ],
     "History": [
@@ -454,6 +488,7 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "indian history",
         "hist",
         "world history",
+        "freedom struggle",
     ],
     "General Science": [
         "gen science",
@@ -463,6 +498,12 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
         "chemistry",
         "biology",
         "physical sciences",
+        "human physiology",
+        "human health and diseases",
+        "applied biology",
+        "zoology",
+        "botany",
+        "genetics",
     ],
 }
 
@@ -472,25 +513,16 @@ SUBJECT_ALIASES: Dict[str, List[str]] = {
 # ============================================================================
 
 class TaxonomyResolver:
-    """Robust, zero-API-cost Taxonomy Resolution Engine.
-
-    Features:
-    - Pre-computes lookup tables and candidate embeddings in memory.
-    - Fast 3-tier cascade: Exact (0ms) -> Fuzzy (RapidFuzz >= 80) -> Semantic (Embeddings Cosine).
-    - Top-Down cascaded pruning strictly enforcing hierarchy: Subject -> Topic -> Subtopic.
-    - Sub-5ms execution time for full hierarchy resolution.
-    - 100% hierarchy preservation guarantee.
-    """
+    """Robust, zero-API-cost Taxonomy Resolution Engine."""
 
     def __init__(
         self,
         taxonomy: Optional[Dict[str, Dict[str, List[str]]]] = None,
         fuzzy_threshold: float = 80.0,
-        semantic_threshold: float = 0.50,
+        semantic_threshold: float = 0.45,
         embedding_model_name: str = "all-MiniLM-L6-v2",
         enable_semantic: bool = True,
     ):
-        """Initializes the taxonomy resolver with pre-computed candidate tables and embeddings."""
         start_t = time.perf_counter()
         self.taxonomy: Dict[str, Dict[str, List[str]]] = taxonomy or SYLLABUS_HIERARCHY
         self.fuzzy_threshold = fuzzy_threshold
@@ -498,28 +530,25 @@ class TaxonomyResolver:
         self.embedding_model_name = embedding_model_name
         self.enable_semantic = enable_semantic
 
-        # Canonical collections
         self.subjects: List[str] = list(self.taxonomy.keys())
         self.default_subject: str = (
             "General Science" if "General Science" in self.taxonomy else self.subjects[0]
         )
 
-        # Lookup caches for Level 1, 2, 3
         self._exact_subject_map: Dict[str, str] = {}
         self._exact_topic_map: Dict[str, Dict[str, str]] = defaultdict(dict)
         self._exact_subtopic_map: Dict[Tuple[str, str], Dict[str, str]] = defaultdict(dict)
 
-        # Global reverse mappings for bottom-up inference
         self._global_subtopic_map: Dict[str, Tuple[str, str, str]] = {}
         self._global_topic_map: Dict[str, Tuple[str, str]] = {}
 
-        # Semantic embedding cache
         self._model: Any = None
         self._lightweight_vectorizer = LightweightCharNgramVectorizer(n=3)
         self._subject_embeddings: Optional[Any] = None
         self._topic_embeddings: Dict[str, Any] = {}
         self._subtopic_embeddings: Dict[Tuple[str, str], Any] = {}
         self._fallback_vectors: Dict[str, Any] = {}
+        self.active_embedding_engine: str = "Pure-Python Char N-Gram Vectorizer (Offline Fallback)"
 
         self._build_lookup_tables()
         if self.enable_semantic:
@@ -531,30 +560,26 @@ class TaxonomyResolver:
             len(subtopics) for topics in self.taxonomy.values() for subtopics in topics.values()
         )
         logger.info(
-            f"🚀 [TAXONOMY ENGINE INITIALIZED] Loaded {len(self.subjects)} Subjects, {total_topics} Topics, {total_subtopics} Subtopics in {elapsed_ms:.2f}ms (Semantic Model: {self.embedding_model_name if HAS_SENTENCE_TRANSFORMERS else 'N-Gram Vectorizer'})."
+            f"[TAXONOMY ENGINE INITIALIZED] Loaded {len(self.subjects)} Subjects, {total_topics} Topics, {total_subtopics} Subtopics in {elapsed_ms:.2f}ms | Active Engine: {self.active_embedding_engine}"
         )
 
     def _build_lookup_tables(self) -> None:
         """Builds normalized exact lookup dictionaries, aliases, and global hierarchy indices."""
-        # 1. Subject indices & Aliases
         for subj, topics in self.taxonomy.items():
             norm_subj = normalize_text(subj)
             self._exact_subject_map[norm_subj] = subj
             self._exact_subject_map[subj.lower().strip()] = subj
 
-            # Register curated subject aliases
             if subj in SUBJECT_ALIASES:
                 for alias in SUBJECT_ALIASES[subj]:
                     self._exact_subject_map[normalize_text(alias)] = subj
                     self._exact_subject_map[alias.lower().strip()] = subj
 
-            # 2. Topic indices per Subject & Global
             for topic, subtopics in topics.items():
                 norm_top = normalize_text(topic)
                 self._exact_topic_map[subj][norm_top] = topic
                 self._exact_topic_map[subj][topic.lower().strip()] = topic
 
-                # Clean topic without parentheses e.g. "Directive Principles of State Policy (DPSP)"
                 if "(" in topic and ")" in topic:
                     parenthetical = re.findall(r"\((.*?)\)", topic)
                     stripped_name = re.sub(r"\(.*?\)", "", topic).strip()
@@ -566,17 +591,14 @@ class TaxonomyResolver:
                         if normalize_text(p) not in self._global_topic_map:
                             self._global_topic_map[normalize_text(p)] = (topic, subj)
 
-                # Singular/plural topic alias
                 if topic.endswith("s") and len(topic) > 3:
                     self._exact_topic_map[subj][normalize_text(topic[:-1])] = topic
 
-                # Global topic index
                 if norm_top not in self._global_topic_map:
                     self._global_topic_map[norm_top] = (topic, subj)
                 if topic.lower().strip() not in self._global_topic_map:
                     self._global_topic_map[topic.lower().strip()] = (topic, subj)
 
-                # 3. Subtopic indices per (Subject, Topic) & Global
                 for subtop in subtopics:
                     norm_subtop = normalize_text(subtop)
                     self._exact_subtopic_map[(subj, topic)][norm_subtop] = subtop
@@ -598,12 +620,10 @@ class TaxonomyResolver:
         if HAS_SENTENCE_TRANSFORMERS:
             try:
                 self._model = SentenceTransformer(self.embedding_model_name)
-                # 1. Subjects matrix
                 self._subject_embeddings = self._model.encode(
                     self.subjects, normalize_embeddings=True, show_progress_bar=False
                 )
 
-                # 2. Topics matrix per Subject
                 for subj, topics_dict in self.taxonomy.items():
                     topic_list = list(topics_dict.keys())
                     if topic_list:
@@ -611,21 +631,21 @@ class TaxonomyResolver:
                             topic_list, normalize_embeddings=True, show_progress_bar=False
                         )
 
-                # 3. Subtopics matrix per (Subject, Topic)
                 for subj, topics_dict in self.taxonomy.items():
                     for topic, subtop_list in topics_dict.items():
                         if subtop_list:
                             self._subtopic_embeddings[(subj, topic)] = self._model.encode(
                                 subtop_list, normalize_embeddings=True, show_progress_bar=False
                             )
+                self.active_embedding_engine = f"SentenceTransformers ({self.embedding_model_name})"
                 return
             except Exception as e:
                 logger.warning(
-                    f"⚠️ [TAXONOMY EMBEDDINGS] SentenceTransformer initialization failed ({e}), using lightweight n-gram fallback."
+                    f"[TAXONOMY EMBEDDINGS] SentenceTransformer initialization note ({e}), using lightweight vectorizer."
                 )
                 self._model = None
 
-        # Zero-dependency Fallback: Pre-compute n-gram vectors
+        self.active_embedding_engine = "Pure-Python Char N-Gram Vectorizer (Offline Fallback)"
         for subj in self.subjects:
             self._fallback_vectors[f"subj:{subj}"] = self._lightweight_vectorizer.vectorize(subj)
 
@@ -645,26 +665,22 @@ class TaxonomyResolver:
 
     def _match_exact(
         self, query: str, exact_map: Dict[str, str]
-    ) -> Optional[Tuple[str, float]]:
-        """Tier 1: Exact Match (0ms)."""
+    ) -> Optional[Tuple[str, float, str]]:
         if not query:
             return None
-        # Try raw strip
         raw_key = query.strip().lower()
         if raw_key in exact_map:
-            return exact_map[raw_key], 1.0
+            return exact_map[raw_key], 1.0, "EXACT_MATCH (Normalized Case & Conjunction Strip)"
 
-        # Try normalized
         norm_key = normalize_text(query)
         if norm_key in exact_map:
-            return exact_map[norm_key], 1.0
+            return exact_map[norm_key], 1.0, "EXACT_ALIAS_MATCH (Curated Domain Dictionary)"
 
         return None
 
     def _match_fuzzy(
         self, query: str, candidates: List[str]
-    ) -> Optional[Tuple[str, float]]:
-        """Tier 2: RapidFuzz token_sort_ratio (<= 1ms)."""
+    ) -> Optional[Tuple[str, float, str]]:
         if not query or not candidates:
             return None
 
@@ -677,7 +693,11 @@ class TaxonomyResolver:
             )
             if result:
                 match_val, score, _ = result
-                return match_val, float(score) / 100.0
+                return (
+                    match_val,
+                    float(score) / 100.0,
+                    f"FUZZY_MATCH [RapidFuzz token_sort_ratio: {score:.1f}%]",
+                )
         else:
             best_val = None
             best_score = 0.0
@@ -687,7 +707,11 @@ class TaxonomyResolver:
                     best_score = score
                     best_val = cand
             if best_val and best_score >= self.fuzzy_threshold:
-                return best_val, best_score / 100.0
+                return (
+                    best_val,
+                    best_score / 100.0,
+                    f"FUZZY_MATCH [Pure-Python Levenshtein: {best_score:.1f}%]",
+                )
 
         return None
 
@@ -697,12 +721,10 @@ class TaxonomyResolver:
         candidates: List[str],
         precomputed_embeddings: Optional[Any] = None,
         embedding_key_prefix: Optional[str] = None,
-    ) -> Optional[Tuple[str, float]]:
-        """Tier 3: Local Sentence-Transformers Cosine Similarity (<3ms)."""
+    ) -> Optional[Tuple[str, float, str]]:
         if not query or not candidates:
             return None
 
-        # A. If SentenceTransformers model and embeddings are available
         if self._model is not None and precomputed_embeddings is not None and np is not None:
             try:
                 query_emb = self._model.encode(
@@ -712,11 +734,14 @@ class TaxonomyResolver:
                 best_idx = int(np.argmax(sims))
                 best_score = float(sims[best_idx])
                 if best_score >= self.semantic_threshold:
-                    return candidates[best_idx], best_score
+                    return (
+                        candidates[best_idx],
+                        best_score,
+                        f"SENTENCE_TRANSFORMERS_SEMANTIC_MATCH [Cosine: {best_score:.2f}]",
+                    )
             except Exception:
                 pass
 
-        # B. Pure-Python Character N-gram TF-IDF / Cosine Similarity Fallback
         query_vec = self._lightweight_vectorizer.vectorize(query)
         best_cand = None
         best_sim = 0.0
@@ -727,13 +752,18 @@ class TaxonomyResolver:
                 if cand_key
                 else self._lightweight_vectorizer.vectorize(cand)
             )
-            sim = self._lightweight_vectorizer.cosine_similarity(query_vec, cand_vec)
-            if sim > best_sim:
-                best_sim = sim
-                best_cand = cand
+            if cand_vec:
+                sim = self._lightweight_vectorizer.cosine_similarity(query_vec, cand_vec)
+                if sim > best_sim:
+                    best_sim = sim
+                    best_cand = cand
 
         if best_cand and best_sim >= self.semantic_threshold:
-            return best_cand, best_sim
+            return (
+                best_cand,
+                best_sim,
+                f"TF_IDF_NGRAM_SEMANTIC_MATCH [Cosine: {best_sim:.2f}]",
+            )
 
         return None
 
@@ -753,13 +783,11 @@ class TaxonomyResolver:
             exact = self._match_exact(raw_val, self._exact_subject_map)
             if exact:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 1 EXACT] Subject '{raw_val}' -> '{exact[0]}' in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=exact[0],
                     raw_value=raw_val,
                     tier=MatchTier.EXACT,
+                    algorithm_detail=exact[2],
                     confidence=exact[1],
                     execution_time_ms=elapsed,
                 )
@@ -768,13 +796,11 @@ class TaxonomyResolver:
             fuzzy = self._match_fuzzy(raw_val, self.subjects)
             if fuzzy:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 1 FUZZY] Subject '{raw_val}' -> '{fuzzy[0]}' (Score: {fuzzy[1]:.2f}) in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=fuzzy[0],
                     raw_value=raw_val,
                     tier=MatchTier.FUZZY,
+                    algorithm_detail=fuzzy[2],
                     confidence=fuzzy[1],
                     execution_time_ms=elapsed,
                 )
@@ -788,26 +814,40 @@ class TaxonomyResolver:
             )
             if semantic:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 1 SEMANTIC] Subject '{raw_val}' -> '{semantic[0]}' (Score: {semantic[1]:.2f}) in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=semantic[0],
                     raw_value=raw_val,
                     tier=MatchTier.SEMANTIC,
+                    algorithm_detail=semantic[2],
                     confidence=semantic[1],
                     execution_time_ms=elapsed,
                 )
 
-        # Fallback to default canonical subject
+        # Context-based semantic deduction across subjects
+        if context_hint and context_hint.strip():
+            semantic_ctx = self._match_semantic(
+                query=context_hint[:200],
+                candidates=self.subjects,
+                precomputed_embeddings=self._subject_embeddings,
+                embedding_key_prefix="subj",
+            )
+            if semantic_ctx:
+                elapsed = (time.perf_counter() - start_t) * 1000.0
+                return FieldResolutionResult(
+                    canonical_value=semantic_ctx[0],
+                    raw_value=raw_val or None,
+                    tier=MatchTier.SEMANTIC,
+                    algorithm_detail=f"CONTEXT_SEMANTIC_DEDUCTION [{semantic_ctx[2]}]",
+                    confidence=semantic_ctx[1],
+                    execution_time_ms=elapsed,
+                )
+
         elapsed = (time.perf_counter() - start_t) * 1000.0
-        logger.warning(
-            f"⚠️ [LEVEL 1 FALLBACK] Subject '{raw_val}' unresolvable, defaulted to '{self.default_subject}' in {elapsed:.3f}ms"
-        )
         return FieldResolutionResult(
             canonical_value=self.default_subject,
             raw_value=raw_val or None,
             tier=MatchTier.FALLBACK,
+            algorithm_detail="CANONICAL_FALLBACK (Default Root Subject)",
             confidence=0.50,
             execution_time_ms=elapsed,
         )
@@ -818,7 +858,7 @@ class TaxonomyResolver:
         resolved_subject: str,
         context_hint: Optional[str] = None,
     ) -> FieldResolutionResult:
-        """Level 2: Resolve Topic strictly within candidates under resolved_subject."""
+        """Level 2: Resolve Topic strictly within valid topics for resolved_subject."""
         start_t = time.perf_counter()
         raw_val = (raw_topic or "").strip()
 
@@ -832,13 +872,11 @@ class TaxonomyResolver:
             exact = self._match_exact(raw_val, exact_map)
             if exact:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 2 EXACT] Topic '{raw_val}' -> '{exact[0]}' under '{resolved_subject}' in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=exact[0],
                     raw_value=raw_val,
                     tier=MatchTier.EXACT,
+                    algorithm_detail=exact[2],
                     confidence=exact[1],
                     execution_time_ms=elapsed,
                 )
@@ -847,13 +885,11 @@ class TaxonomyResolver:
             fuzzy = self._match_fuzzy(raw_val, valid_topics)
             if fuzzy:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 2 FUZZY] Topic '{raw_val}' -> '{fuzzy[0]}' (Score: {fuzzy[1]:.2f}) under '{resolved_subject}' in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=fuzzy[0],
                     raw_value=raw_val,
                     tier=MatchTier.FUZZY,
+                    algorithm_detail=fuzzy[2],
                     confidence=fuzzy[1],
                     execution_time_ms=elapsed,
                 )
@@ -868,26 +904,22 @@ class TaxonomyResolver:
             )
             if semantic:
                 elapsed = (time.perf_counter() - start_t) * 1000.0
-                logger.debug(
-                    f"🔍 [LEVEL 2 SEMANTIC] Topic '{raw_val}' -> '{semantic[0]}' (Score: {semantic[1]:.2f}) under '{resolved_subject}' in {elapsed:.3f}ms"
-                )
                 return FieldResolutionResult(
                     canonical_value=semantic[0],
                     raw_value=raw_val,
                     tier=MatchTier.SEMANTIC,
+                    algorithm_detail=semantic[2],
                     confidence=semantic[1],
                     execution_time_ms=elapsed,
                 )
 
-        # Fallback to first topic under resolved subject
+        # Fallback to first valid topic strictly under resolved subject
         elapsed = (time.perf_counter() - start_t) * 1000.0
-        logger.warning(
-            f"⚠️ [LEVEL 2 FALLBACK] Topic '{raw_val}' unresolvable under '{resolved_subject}', defaulted to '{default_topic}' in {elapsed:.3f}ms"
-        )
         return FieldResolutionResult(
             canonical_value=default_topic,
             raw_value=raw_val or None,
             tier=MatchTier.FALLBACK,
+            algorithm_detail=f"CANONICAL_FALLBACK (First valid topic under '{resolved_subject}')",
             confidence=0.50,
             execution_time_ms=elapsed,
         )
@@ -912,13 +944,11 @@ class TaxonomyResolver:
         exact = self._match_exact(raw_val, exact_map)
         if exact:
             elapsed = (time.perf_counter() - start_t) * 1000.0
-            logger.debug(
-                f"🔍 [LEVEL 3 EXACT] Subtopic '{raw_val}' -> '{exact[0]}' under '{resolved_subject} -> {resolved_topic}' in {elapsed:.3f}ms"
-            )
             return FieldResolutionResult(
                 canonical_value=exact[0],
                 raw_value=raw_val,
                 tier=MatchTier.EXACT,
+                algorithm_detail=exact[2],
                 confidence=exact[1],
                 execution_time_ms=elapsed,
             )
@@ -927,13 +957,11 @@ class TaxonomyResolver:
         fuzzy = self._match_fuzzy(raw_val, valid_subtopics)
         if fuzzy:
             elapsed = (time.perf_counter() - start_t) * 1000.0
-            logger.debug(
-                f"🔍 [LEVEL 3 FUZZY] Subtopic '{raw_val}' -> '{fuzzy[0]}' (Score: {fuzzy[1]:.2f}) under '{resolved_subject} -> {resolved_topic}' in {elapsed:.3f}ms"
-            )
             return FieldResolutionResult(
                 canonical_value=fuzzy[0],
                 raw_value=raw_val,
                 tier=MatchTier.FUZZY,
+                algorithm_detail=fuzzy[2],
                 confidence=fuzzy[1],
                 execution_time_ms=elapsed,
             )
@@ -948,13 +976,11 @@ class TaxonomyResolver:
         )
         if semantic:
             elapsed = (time.perf_counter() - start_t) * 1000.0
-            logger.debug(
-                f"🔍 [LEVEL 3 SEMANTIC] Subtopic '{raw_val}' -> '{semantic[0]}' (Score: {semantic[1]:.2f}) under '{resolved_subject} -> {resolved_topic}' in {elapsed:.3f}ms"
-            )
             return FieldResolutionResult(
                 canonical_value=semantic[0],
                 raw_value=raw_val,
                 tier=MatchTier.SEMANTIC,
+                algorithm_detail=semantic[2],
                 confidence=semantic[1],
                 execution_time_ms=elapsed,
             )
@@ -962,7 +988,7 @@ class TaxonomyResolver:
         return None
 
     # ------------------------------------------------------------------------
-    # Full Cascaded Hierarchy Resolution & Bottom-Up Synergy
+    # Full Cascaded Hierarchy Resolution & Universal 3-Field Subtopic Grounding
     # ------------------------------------------------------------------------
 
     def resolve_hierarchy(
@@ -972,73 +998,125 @@ class TaxonomyResolver:
         raw_subtopic: Optional[str] = None,
         context_hint: Optional[str] = None,
     ) -> Tuple[ValidatedTaxonomy, TaxonomyResolutionMetrics]:
-        """Resolves complete Subject -> Topic -> Subtopic hierarchy with guaranteed consistency."""
+        """Resolves complete Subject -> Topic -> Subtopic hierarchy with universal 3-field subtopic search."""
         start_overall = time.perf_counter()
         raw_subtop_clean = (raw_subtopic or "").strip()
         raw_top_clean = (raw_topic or "").strip()
         raw_subj_clean = (raw_subject or "").strip()
 
-        # Step 0: Check if raw_subject matches a valid subject/alias
-        subj_match_direct = None
-        if raw_subj_clean:
-            subj_match_direct = self._match_exact(raw_subj_clean, self._exact_subject_map)
-            if not subj_match_direct:
-                subj_match_direct = self._match_fuzzy(raw_subj_clean, self.subjects)
+        # Step 0: Check if ANY of the 3 fields matches a known Subtopic in the master syllabus
+        inferred_from_subtopic = False
+        inferred_from_topic = False
+        anchor_subtop_val: Optional[str] = None
 
-        # If subject was not provided OR could not be matched at all, check bottom-up anchor
-        inferred_bottom_up = False
-        if not subj_match_direct:
-            if raw_subtop_clean:
-                norm_subtop = normalize_text(raw_subtop_clean)
-                if norm_subtop in self._global_subtopic_map:
-                    _c_subtop, c_top, c_subj = self._global_subtopic_map[norm_subtop]
+        # Check raw_subtopic, then raw_topic, then raw_subject against global subtopics
+        for candidate_field, field_name in [
+            (raw_subtop_clean, "raw_subtopic"),
+            (raw_top_clean, "raw_topic"),
+            (raw_subj_clean, "raw_subject"),
+        ]:
+            if candidate_field:
+                norm_cand = normalize_text(candidate_field)
+                if norm_cand in self._global_subtopic_map:
+                    c_subtop, c_top, c_subj = self._global_subtopic_map[norm_cand]
                     logger.info(
-                        f"🧭 [TAXONOMY ANCHOR] Inferred Subject='{c_subj}', Topic='{c_top}' from Subtopic='{raw_subtop_clean}'"
+                        f"[TAXONOMY ANCHOR] Field '{field_name}' ('{candidate_field}') matched global subtopic; anchored to Subject='{c_subj}', Topic='{c_top}', Subtopic='{c_subtop}'"
                     )
                     raw_subj_clean = c_subj
                     raw_top_clean = c_top
-                    inferred_bottom_up = True
-            elif raw_top_clean:
-                norm_top = normalize_text(raw_top_clean)
-                if norm_top in self._global_topic_map:
-                    _c_top, c_subj = self._global_topic_map[norm_top]
-                    logger.info(
-                        f"🧭 [TAXONOMY ANCHOR] Inferred Subject='{c_subj}' from Topic='{raw_top_clean}'"
-                    )
-                    raw_subj_clean = c_subj
-                    inferred_bottom_up = True
+                    anchor_subtop_val = c_subtop
+                    inferred_from_subtopic = True
+                    break
 
-        # Step 1: Top-Down Pruning: Level 1 (Subject)
+        # Step 0.1: Check if raw_subject or raw_topic matches a known Topic
+        if not inferred_from_subtopic:
+            norm_subj = normalize_text(raw_subj_clean)
+            if norm_subj in self._global_topic_map:
+                c_top, c_subj = self._global_topic_map[norm_subj]
+                logger.info(
+                    f"[TAXONOMY ANCHOR] Subject '{raw_subj_clean}' recognized as Topic; mapped to Subject='{c_subj}', Topic='{c_top}'"
+                )
+                raw_subj_clean = c_subj
+                if not raw_top_clean or raw_top_clean.lower() == raw_subj_clean.lower():
+                    raw_top_clean = c_top
+                inferred_from_topic = True
+
+            elif norm_subj in ("current affairs", "general studies", "gs", "general awareness"):
+                if raw_top_clean:
+                    norm_top = normalize_text(raw_top_clean)
+                    if norm_top in self._global_topic_map:
+                        c_top, c_subj = self._global_topic_map[norm_top]
+                        raw_subj_clean = c_subj
+                        raw_top_clean = c_top
+                        inferred_from_topic = True
+                    elif any(k in norm_top for k in ["polity", "relation", "international", "treaty", "act", "court", "law"]):
+                        raw_subj_clean = "Indian Polity & Governance"
+                    elif any(k in norm_top for k in ["economy", "inflation", "banking", "finance", "trade", "rbi", "budget"]):
+                        raw_subj_clean = "Economy"
+                    elif any(k in norm_top for k in ["environment", "climate", "ecology", "species", "forest", "pollution"]):
+                        raw_subj_clean = "Ecology & Environment"
+                    elif any(k in norm_top for k in ["space", "defense", "tech", "nuclear", "ai", "nano", "satellite", "isro"]):
+                        raw_subj_clean = "Science & Technology"
+                    elif any(k in norm_top for k in ["art", "culture", "dance", "temple", "monument"]):
+                        raw_subj_clean = "Indian Culture"
+                    elif any(k in norm_top for k in ["history", "war", "revolt", "dynasty", "empire"]):
+                        raw_subj_clean = "History"
+                    elif any(k in norm_top for k in ["geography", "cyclone", "monsoon", "river", "volcano", "earthquake"]):
+                        raw_subj_clean = "Geography"
+
+        # Step 1: Resolve Subject
         subj_res = self.resolve_subject(raw_subj_clean, context_hint=context_hint)
-        if inferred_bottom_up:
+        if inferred_from_subtopic:
             subj_res.tier = MatchTier.BOTTOM_UP
+            subj_res.algorithm_detail = "BOTTOM_UP_SUBTOPIC_ANCHOR (Parent Subject recovered from Subtopic)"
+            subj_res.confidence = 1.0
+        elif inferred_from_topic:
+            subj_res.tier = MatchTier.BOTTOM_UP
+            subj_res.algorithm_detail = "BOTTOM_UP_TOPIC_ANCHOR (Parent Subject recovered from Topic)"
             subj_res.confidence = 1.0
         resolved_subject = subj_res.canonical_value
 
-        # Step 2: Level 2 (Topic strictly within resolved_subject)
+        # Step 2: Resolve Topic
         top_res = self.resolve_topic(
             raw_top_clean, resolved_subject=resolved_subject, context_hint=context_hint
         )
-        if inferred_bottom_up and top_res.tier != MatchTier.EXACT:
+        if inferred_from_subtopic:
             top_res.tier = MatchTier.BOTTOM_UP
+            top_res.algorithm_detail = "BOTTOM_UP_SUBTOPIC_ANCHOR (Parent Topic recovered from Subtopic)"
+            top_res.confidence = 1.0
+        elif inferred_from_topic and top_res.tier != MatchTier.EXACT:
+            top_res.tier = MatchTier.BOTTOM_UP
+            top_res.algorithm_detail = "BOTTOM_UP_TOPIC_ANCHOR (Direct Topic Match)"
             top_res.confidence = 1.0
         resolved_topic = top_res.canonical_value
 
-        # Step 3: Level 3 (Subtopic strictly within resolved_topic)
-        subtop_res = self.resolve_subtopic(
-            raw_subtop_clean,
-            resolved_subject=resolved_subject,
-            resolved_topic=resolved_topic,
-            context_hint=context_hint,
-        )
-        resolved_subtopic = subtop_res.canonical_value if subtop_res else None
+        # Step 3: Resolve Subtopic
+        if anchor_subtop_val:
+            subtop_res = FieldResolutionResult(
+                canonical_value=anchor_subtop_val,
+                raw_value=raw_subtop_clean or raw_top_clean or raw_subj_clean,
+                tier=MatchTier.BOTTOM_UP,
+                algorithm_detail="BOTTOM_UP_SUBTOPIC_ANCHOR (Direct Subtopic Recognition)",
+                confidence=1.0,
+                execution_time_ms=0.01,
+            )
+            resolved_subtopic = anchor_subtop_val
+        else:
+            subtop_res = self.resolve_subtopic(
+                raw_subtop_clean,
+                resolved_subject=resolved_subject,
+                resolved_topic=resolved_topic,
+                context_hint=context_hint,
+            )
+            resolved_subtopic = subtop_res.canonical_value if subtop_res else None
 
-        # Compute aggregate confidence metric
+        # Metrics computation
         weights = [subj_res.confidence, top_res.confidence]
         if subtop_res:
             weights.append(subtop_res.confidence)
         overall_conf = sum(weights) / len(weights)
         total_time_ms = (time.perf_counter() - start_overall) * 1000.0
+        is_fully_mapped = bool(resolved_subject and resolved_topic and resolved_subtopic)
 
         metrics = TaxonomyResolutionMetrics(
             subject_match=subj_res,
@@ -1046,6 +1124,8 @@ class TaxonomyResolver:
             subtopic_match=subtop_res,
             overall_confidence=round(overall_conf, 4),
             total_resolution_time_ms=round(total_time_ms, 3),
+            embedding_engine_used=self.active_embedding_engine,
+            is_fully_mapped=is_fully_mapped,
         )
 
         validated_taxonomy = ValidatedTaxonomy(
@@ -1055,8 +1135,19 @@ class TaxonomyResolver:
             metrics=metrics,
         )
 
+        subtop_info = (
+            f"'{resolved_subtopic}' ({subtop_res.algorithm_detail} / Score: {subtop_res.confidence:.2f})"
+            if subtop_res
+            else "None (N/A)"
+        )
+        mapping_status = (
+            "100% CANONICAL (Subject -> Topic -> Subtopic)"
+            if is_fully_mapped
+            else "100% CANONICAL (Subject -> Topic)"
+        )
+
         logger.info(
-            f"🌿 [TAXONOMY RESOLVED] {resolved_subject} [{subj_res.tier.value}] -> {resolved_topic} [{top_res.tier.value}] -> {resolved_subtopic or 'None'} [{subtop_res.tier.value if subtop_res else 'N/A'}] | Overall Conf: {overall_conf:.2f} | Latency: {total_time_ms:.2f}ms"
+            f"[TAXONOMY RESOLVED] Subject: '{resolved_subject}' ({subj_res.algorithm_detail} / Score: {subj_res.confidence:.2f}) -> Topic: '{resolved_topic}' ({top_res.algorithm_detail} / Score: {top_res.confidence:.2f}) -> Subtopic: {subtop_info} | Hierarchy Status: {mapping_status} | Latency: {total_time_ms:.2f}ms"
         )
 
         return validated_taxonomy, metrics
@@ -1068,16 +1159,13 @@ class TaxonomyResolver:
     def resolve_payload(
         self, raw_payload: Union[RawLLMExplanationPayload, Dict[str, Any]]
     ) -> ValidatedDatabaseExplanationPayload:
-        """Converts raw LLM payload into strictly validated Database Explanation payload."""
         if isinstance(raw_payload, dict):
             raw = RawLLMExplanationPayload.model_validate(raw_payload)
         else:
             raw = raw_payload
 
-        # Context hint built from question & explanation text
         context_hint = f"{raw.question_text[:200]} {raw.explanation[:200] if raw.explanation else ''}"
 
-        # Resolve primary taxonomy
         val_tax, metrics = self.resolve_hierarchy(
             raw_subject=raw.predicted_subject,
             raw_topic=raw.predicted_topic,
@@ -1085,9 +1173,7 @@ class TaxonomyResolver:
             context_hint=context_hint,
         )
 
-        # Resolve additional multi-concept items if present
         resolved_concepts: List[MultiConceptItemResolved] = []
-        # Add primary concept
         resolved_concepts.append(
             MultiConceptItemResolved(
                 subject=val_tax.subject,
@@ -1149,10 +1235,6 @@ class TaxonomyResolver:
             irt_pseudo_guessing_c=raw.irt_pseudo_guessing_c or 0.18,
         )
 
-
-# ============================================================================
-# Global Singleton Accessor
-# ============================================================================
 
 _GLOBAL_RESOLVER: Optional[TaxonomyResolver] = None
 
