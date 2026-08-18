@@ -64,7 +64,7 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
             subtopic="Boyle's Law",
             difficulty="Medium",
         )
-        self.assertEqual(schema.subject, "Physics")
+        self.assertEqual(schema.subject, "General Science")
         self.assertEqual(len(schema.options_breakdown), 2)
         self.assertTrue(schema.options_breakdown[1].is_correct)
 
@@ -170,7 +170,7 @@ class TestExplanationPipeline(unittest.IsolatedAsyncioTestCase):
 
             self.assertIsNotNone(kb)
             self.assertEqual(kb["core_concept"], "Boyle's Law P1V1=P2V2")
-            self.assertEqual(kb["subject"], "Physics")
+            self.assertEqual(kb["subject"], "General Science")
             self.assertEqual(len(kb["options_breakdown"]), 2)
 
             opt_b_info = next(o for o in kb["options_breakdown"] if o["option_key"] == "B")

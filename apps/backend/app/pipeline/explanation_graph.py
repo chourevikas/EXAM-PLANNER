@@ -2,12 +2,10 @@ import uuid
 import json
 from pathlib import Path
 from typing import List, Dict, Any, TypedDict, Optional, Tuple
-import aiofiles
 from sqlmodel import select, col, func
 from langgraph.graph import StateGraph, END, START
 
 from app.db.session import managed_async_session
-from app.config.settings import get_settings
 from app.db.models import (
     Exam,
     Question,
@@ -22,7 +20,6 @@ from app.db.models import (
     DifficultyLevel,
     BloomsLevel,
     LanguageCode,
-    HumanReviewTask,
     SyllabusVersion,
     QuestionMetadata,
     QuestionHierarchyLink,
@@ -35,7 +32,7 @@ from app.pipeline.explanation_schema import (
     QuestionExplanationSchema,
     MultiConceptItemSchema,
 )
-from app.schemas.syllabus_literals import get_canonical_parents
+from app.pipeline.taxonomy_resolver import get_taxonomy_resolver
 from app.services.pipeline_management_service import PipelineManagementService
 from app.config.logger import setup_logger, TaskLoggerAdapter
 
@@ -57,13 +54,22 @@ async def _get_or_create_subtopic(
     session, syl_id: uuid.UUID, subj_name: str, topic_name: str, subtopic_name: str
 ) -> Tuple[Subtopic, Topic, Subject]:
     """Helper to upsert Subject -> Topic -> Subtopic hierarchy and return Subtopic, Topic, and Subject records."""
-    c_subj, c_top, c_subtop = get_canonical_parents(subj_name, topic_name, subtopic_name)
-    if c_subj:
-        subj_name = c_subj
-    if c_top:
-        topic_name = c_top
-    if c_subtop:
-        subtopic_name = c_subtop
+    try:
+        resolver = get_taxonomy_resolver()
+        val_tax, metrics = resolver.resolve_hierarchy(subj_name, topic_name, subtopic_name)
+        subj_name = val_tax.subject
+        topic_name = val_tax.topic
+        subtopic_name = val_tax.subtopic or topic_name
+        logger.info(
+            f"🌿 [TAXONOMY RECORD] Resolved '{subj_name}' -> '{topic_name}' -> '{subtopic_name}' (Confidence: {metrics.overall_confidence:.2f})"
+        )
+    except Exception as e:
+        logger.warning(
+            f"⚠️ [TAXONOMY RECORD FALLBACK] Taxonomy resolution encountered error ({e}); using safe fallback."
+        )
+        subj_name = subj_name.strip() if subj_name and subj_name.strip() else "General Science"
+        topic_name = topic_name.strip() if topic_name and topic_name.strip() else "General Concepts"
+        subtopic_name = subtopic_name.strip() if subtopic_name and subtopic_name.strip() else topic_name
 
     subj_stmt = select(Subject).where(
         Subject.syllabus_version_id == syl_id,
@@ -223,9 +229,7 @@ async def _generate_and_save_single_question_explanation(
                 o_translations[0] if o_translations else None,
             )
             o_text = (
-                opt_trans.option_text
-                if opt_trans
-                else f"Option {opt.option_label}"
+                opt_trans.option_text if opt_trans else f"Option {opt.option_label}"
             )
 
             if opt.is_correct:
@@ -289,7 +293,9 @@ async def _generate_and_save_single_question_explanation(
             # Update Per-Option Distractor Analysis in OptionTranslation & closeness_score in QuestionOption
             distractor_scores = []
             for opt_analysis in lang_schema.options_breakdown:
-                clean_key = str(opt_analysis.option_key).strip().strip("()").strip(".").upper()
+                clean_key = (
+                    str(opt_analysis.option_key).strip().strip("()").strip(".").upper()
+                )
                 target_opt = next(
                     (
                         o
@@ -325,7 +331,13 @@ async def _generate_and_save_single_question_explanation(
                     # Save QuestionOption closeness_score
                     db_opt = await session.get(QuestionOption, o_id)
                     if db_opt:
-                        c_score = float(getattr(opt_analysis, "closeness_score", 1.0 if db_opt.is_correct else 0.4))
+                        c_score = float(
+                            getattr(
+                                opt_analysis,
+                                "closeness_score",
+                                1.0 if db_opt.is_correct else 0.4,
+                            )
+                        )
                         db_opt.closeness_score = round(max(0.0, min(1.0, c_score)), 2)
                         session.add(db_opt)
                         if not db_opt.is_correct:
@@ -392,16 +404,42 @@ async def _generate_and_save_single_question_explanation(
             calc_irt_c = round(max(0.05, min(0.25, raw_c)), 3)
 
             # Discrimination (a) derived from Bloom's level + distractor complexity
-            is_high_cognitive = 1.0 if blooms_enum in (BloomsLevel.ANALYZE, BloomsLevel.EVALUATE) else 0.0
+            is_high_cognitive = (
+                1.0
+                if blooms_enum in (BloomsLevel.ANALYZE, BloomsLevel.EVALUATE)
+                else 0.0
+            )
             calc_irt_a = round(
-                max(0.8, min(2.4, getattr(english_schema, "irt_discrimination_a", 1.5) or (1.20 + 0.40 * is_high_cognitive + 0.30 * avg_distractor_closeness))),
+                max(
+                    0.8,
+                    min(
+                        2.4,
+                        getattr(english_schema, "irt_discrimination_a", 1.5)
+                        or (
+                            1.20
+                            + 0.40 * is_high_cognitive
+                            + 0.30 * avg_distractor_closeness
+                        ),
+                    ),
+                ),
                 2,
             )
 
             # Item Difficulty (b) z-score (-3.0 to +3.0)
-            blooms_b_mod = 0.50 if is_high_cognitive else (-0.50 if blooms_enum == BloomsLevel.REMEMBER else 0.0)
+            blooms_b_mod = (
+                0.50
+                if is_high_cognitive
+                else (-0.50 if blooms_enum == BloomsLevel.REMEMBER else 0.0)
+            )
             calc_irt_b = round(
-                max(-2.5, min(2.5, getattr(english_schema, "irt_difficulty_b", 0.0) or (base_b + blooms_b_mod + 0.4 * avg_distractor_closeness))),
+                max(
+                    -2.5,
+                    min(
+                        2.5,
+                        getattr(english_schema, "irt_difficulty_b", 0.0)
+                        or (base_b + blooms_b_mod + 0.4 * avg_distractor_closeness),
+                    ),
+                ),
                 2,
             )
 
@@ -587,7 +625,9 @@ async def node_generate_and_save_explanations(
                 )
                 total_generated += 1
             else:
-                log.info(f"🤖 [LLM AGENT] Generating Explanation for Question ID {q_id} ({idx}/{total_count})...")
+                log.info(
+                    f"🤖 [LLM AGENT] Generating Explanation for Question ID {q_id} ({idx}/{total_count})..."
+                )
                 success = await _generate_and_save_single_question_explanation(
                     q_id, lang_enum, log
                 )
@@ -656,16 +696,25 @@ async def node_explanation_validator_and_hitl(
 
             if exam_questions:
                 import math
-                raw_times = [max(1.0, float(q.expected_time_seconds)) for q in exam_questions]
+
+                raw_times = [
+                    max(1.0, float(q.expected_time_seconds)) for q in exam_questions
+                ]
                 sum_raw = sum(raw_times)
                 weights = [t / sum_raw for t in raw_times]
 
-                allocations = [max(15, math.floor(total_target_seconds * w)) for w in weights]
+                allocations = [
+                    max(15, math.floor(total_target_seconds * w)) for w in weights
+                ]
                 allocated_sum = sum(allocations)
 
                 if allocated_sum > total_target_seconds:
                     excess = allocated_sum - total_target_seconds
-                    indices = sorted(range(len(allocations)), key=lambda idx: allocations[idx], reverse=True)
+                    indices = sorted(
+                        range(len(allocations)),
+                        key=lambda idx: allocations[idx],
+                        reverse=True,
+                    )
                     for idx in indices:
                         if excess <= 0:
                             break
@@ -679,7 +728,11 @@ async def node_explanation_validator_and_hitl(
                         (total_target_seconds * weights[i]) - allocations[i]
                         for i in range(len(allocations))
                     ]
-                    indices = sorted(range(len(allocations)), key=lambda idx: fractional[idx], reverse=True)
+                    indices = sorted(
+                        range(len(allocations)),
+                        key=lambda idx: fractional[idx],
+                        reverse=True,
+                    )
                     for i in range(deficit):
                         allocations[indices[i % len(indices)]] += 1
 
