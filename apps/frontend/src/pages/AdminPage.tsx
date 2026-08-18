@@ -69,6 +69,7 @@ export function AdminPage() {
       case 'dashboard':
         return <AdminOverviewView onNavigate={handleNavigate} />;
       case 'pipeline-status':
+        return <ExamPipelineStatusView onNavigate={handleNavigate} />;
       case 'ai-queue':
       case 'upload':
         return <UploadReviewView onNavigate={handleNavigate} />;

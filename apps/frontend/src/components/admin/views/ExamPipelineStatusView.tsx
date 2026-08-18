@@ -19,7 +19,11 @@ import {
   Check,
 } from 'lucide-react';
 
-export function ExamPipelineStatusView() {
+interface ExamPipelineStatusViewProps {
+  onNavigate?: (view: string, extraData?: any) => void;
+}
+
+export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewProps = {}) {
   const [exams, setExams] = useState<ExamPipelineStatusItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +36,8 @@ export function ExamPipelineStatusView() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (isSilent: boolean = false) => {
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const data = await fetchExamPipelineStatuses();
@@ -44,14 +48,23 @@ export function ExamPipelineStatusView() {
         if (updated) setSelectedExam(updated);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load exam pipeline statuses.');
+      if (!isSilent) setError(err.message || 'Failed to load exam pipeline statuses.');
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(false);
+  }, []);
+
+  // Polling for exam pipeline statuses using GET /exams/pipeline-status every 10 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadData(true);
+    }, 10000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleApprove = async (examId: string, examName: string) => {
@@ -249,7 +262,7 @@ export function ExamPipelineStatusView() {
         </div>
 
         <button
-          onClick={loadData}
+          onClick={() => loadData()}
           disabled={isLoading}
           style={{
             display: 'inline-flex',
@@ -406,7 +419,7 @@ export function ExamPipelineStatusView() {
             <span style={{ fontSize: 13.5, fontWeight: 500 }}>{error}</span>
           </div>
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             style={{
               padding: '4px 10px',
               fontSize: 12,

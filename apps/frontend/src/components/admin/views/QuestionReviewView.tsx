@@ -29,6 +29,10 @@ import {
   Eye,
   Lock,
   Unlock,
+  RotateCcw,
+  Database,
+  AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   fetchExamPipelineStatuses,
@@ -147,6 +151,31 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     rejected: number;
     canPublish: boolean;
   }>({ total: 0, reviewed: 0, pending: 0, rejected: 0, canPublish: false });
+
+  // Dedicated S3 Pipeline Status across 3 Scenarios
+  const [s3PublishStatus, setS3PublishStatus] = useState<{
+    is_published: boolean;
+    publish_status: string; // 'PUBLISHED' | 'PUBLISH_FAILED' | 'CORRUPTED' | 'READY_FOR_PUBLISH' | 'PENDING_REVIEW'
+    can_retry: boolean;
+    is_corrupted: boolean;
+    publish_error: string | null;
+    corruption_reason: string | null;
+    questions_json_path: string | null;
+    solutions_json_path: string | null;
+    questions_json_folder_path: string | null;
+    solutions_json_folder_path: string | null;
+  }>({
+    is_published: false,
+    publish_status: 'PENDING_REVIEW',
+    can_retry: false,
+    is_corrupted: false,
+    publish_error: null,
+    corruption_reason: null,
+    questions_json_path: null,
+    solutions_json_path: null,
+    questions_json_folder_path: null,
+    solutions_json_folder_path: null,
+  });
 
   // Action & Toast States
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -292,6 +321,20 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         pending: data.pending_count !== undefined ? data.pending_count : items.filter((i) => i.status === 'PENDING_HUMAN_REVIEW').length,
         rejected: data.rejected_count !== undefined ? data.rejected_count : items.filter((i) => i.status === 'REJECTED').length,
         canPublish: Boolean(data.can_publish),
+      });
+
+      const isExamPublished = Boolean(data.is_published || (selectedExam?.status || '').toUpperCase().includes('PUBLISHED'));
+      setS3PublishStatus({
+        is_published: isExamPublished,
+        publish_status: data.publish_status || (isExamPublished ? 'PUBLISHED' : 'PENDING_REVIEW'),
+        can_retry: Boolean(data.can_retry),
+        is_corrupted: Boolean(data.is_corrupted),
+        publish_error: data.publish_error || null,
+        corruption_reason: data.corruption_reason || null,
+        questions_json_path: data.questions_json_path || selectedExam?.questions_json_path || null,
+        solutions_json_path: data.solutions_json_path || selectedExam?.solutions_json_path || null,
+        questions_json_folder_path: data.questions_json_folder_path || selectedExam?.questions_json_folder_path || null,
+        solutions_json_folder_path: data.solutions_json_folder_path || selectedExam?.solutions_json_folder_path || null,
       });
 
       setSelectedQuestionIndex(0);
@@ -493,12 +536,35 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     if (!selectedExam) return;
     setPublishingExam(true);
     try {
-      await approveAndPublishExam(selectedExam.id);
+      const res = await approveAndPublishExam(selectedExam.id);
       showToast('success', `Exam '${selectedExam.name}' published to S3 successfully! Questions & solutions JSON deployed.`);
       setShowPublishModal(false);
+      setS3PublishStatus((prev) => ({
+        ...prev,
+        is_published: true,
+        publish_status: 'PUBLISHED',
+        can_retry: false,
+        is_corrupted: false,
+        publish_error: null,
+        corruption_reason: null,
+        questions_json_path: res.questions_json_path || prev.questions_json_path,
+        solutions_json_path: res.solutions_json_path || prev.solutions_json_path,
+        questions_json_folder_path: res.questions_json_folder_path || prev.questions_json_folder_path,
+        solutions_json_folder_path: res.solutions_json_folder_path || prev.solutions_json_folder_path,
+      }));
       await loadExamQuestions(selectedExam.id, questionStatusFilter);
     } catch (err: any) {
-      showToast('error', `Publish failed: ${err.message}`);
+      const msg = err.message || 'Publish failed';
+      const isCorrupted = msg.includes('EXAM_DATA_CORRUPTED') || msg.includes('CORRUPTED');
+      setS3PublishStatus((prev) => ({
+        ...prev,
+        publish_status: isCorrupted ? 'CORRUPTED' : 'PUBLISH_FAILED',
+        can_retry: !isCorrupted,
+        is_corrupted: isCorrupted,
+        publish_error: msg,
+        corruption_reason: isCorrupted ? msg : null,
+      }));
+      showToast('error', `Publish failed: ${msg}`);
     } finally {
       setPublishingExam(false);
     }
@@ -868,40 +934,243 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
           {/* S3 Publish Action Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button
-              onClick={handlePublishExamToS3}
-              disabled={publishingExam}
-              style={{
-                padding: '9px 18px',
-                border: reviewMetrics.canPublish ? 'none' : '1px solid #CBD5E1',
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: reviewMetrics.canPublish ? 'pointer' : 'not-allowed',
-                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : '#F1F5F9',
-                color: reviewMetrics.canPublish ? '#FFFFFF' : '#64748B',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                boxShadow: reviewMetrics.canPublish ? '0 2px 6px rgba(22, 163, 74, 0.25)' : 'none',
-              }}
-              title={
-                reviewMetrics.canPublish
-                  ? 'All questions reviewed! Click to publish to S3'
-                  : `${reviewMetrics.pending} questions are pending review.`
-              }
-            >
-              {publishingExam ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : reviewMetrics.canPublish ? (
-                <Unlock size={15} />
-              ) : (
-                <Lock size={15} color="#64748B" />
-              )}
-              {reviewMetrics.canPublish ? 'Approve & Publish Package to S3' : 'Publish Locked (Pending QA)'}
-            </button>
+            {s3PublishStatus.is_published ? (
+              <button
+                disabled={true}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'default',
+                  backgroundColor: '#DCFCE7',
+                  color: '#15803D',
+                  border: '1px solid #86EFAC',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <CheckCircle2 size={16} color="#16A34A" />
+                Published to S3 (Live)
+              </button>
+            ) : s3PublishStatus.is_corrupted ? (
+              <button
+                disabled={true}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'not-allowed',
+                  backgroundColor: '#FEE2E2',
+                  color: '#991B1B',
+                  border: '1px solid #FCA5A5',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                title="Database record contains corrupted question data. Please repair data before publishing."
+              >
+                <ShieldAlert size={16} color="#DC2626" />
+                Database Corrupted
+              </button>
+            ) : s3PublishStatus.can_retry ? (
+              <button
+                onClick={confirmPublishExam}
+                disabled={publishingExam}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: '#D97706',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 2px 6px rgba(217, 119, 6, 0.35)',
+                }}
+              >
+                {publishingExam ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={15} />}
+                Retry Publish to S3
+              </button>
+            ) : reviewMetrics.canPublish ? (
+              <button
+                onClick={handlePublishExamToS3}
+                disabled={publishingExam}
+                style={{
+                  padding: '9px 18px',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: '#059669',
+                  color: '#FFFFFF',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 2px 8px rgba(5, 150, 105, 0.35)',
+                }}
+                title="All questions reviewed! Click to publish to S3"
+              >
+                {publishingExam ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Unlock size={15} />
+                )}
+                Approve & Publish Package to S3
+              </button>
+            ) : (
+              <button
+                disabled={true}
+                style={{
+                  padding: '9px 18px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'not-allowed',
+                  backgroundColor: '#F1F5F9',
+                  color: '#94A3B8',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                title={`${reviewMetrics.pending} questions are pending review.`}
+              >
+                <Lock size={15} color="#94A3B8" />
+                Publish Locked ({reviewMetrics.pending} Pending Review)
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Dedicated S3 Pipeline Status Banner (3 Scenarios) */}
+        {s3PublishStatus.is_published && (
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle2 size={20} color="#16A34A" />
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#15803D' }}>
+                  Exam Published & Graded in S3
+                </div>
+                <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>
+                  All questions verified. JSON artifacts deployed to S3: <code style={{ backgroundColor: '#DCFCE7', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>{s3PublishStatus.questions_json_folder_path || `artifacts/${selectedExam.code}/json`}</code>
+                </div>
+              </div>
+            </div>
+            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+              LIVE IN CATALOG
+            </span>
+          </div>
+        )}
+
+        {s3PublishStatus.publish_status === 'PUBLISH_FAILED' && s3PublishStatus.can_retry && (
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={20} color="#D97706" />
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B45309' }}>
+                  S3 Publishing Task Interrupted (Fixable via Retry)
+                </div>
+                <div style={{ fontSize: 12, color: '#92400E', marginTop: 2 }}>
+                  {s3PublishStatus.publish_error || 'Network timeout or transient storage communication error occurred.'}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter)}
+                disabled={loadingQuestions}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#B45309',
+                  border: '1px solid #FCD34D',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                title="Re-check database integrity and S3 publish status"
+              >
+                <RefreshCw size={13} className={loadingQuestions ? 'animate-spin' : ''} />
+                Re-evaluate Status
+              </button>
+              <button
+                onClick={confirmPublishExam}
+                disabled={publishingExam}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#D97706',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(217, 119, 6, 0.3)',
+                }}
+              >
+                {publishingExam ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Retry Publish
+              </button>
+            </div>
+          </div>
+        )}
+
+        {s3PublishStatus.is_corrupted && (
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ShieldAlert size={20} color="#DC2626" />
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B91C1C' }}>
+                  Database Record Corrupted
+                </div>
+                <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>
+                  {s3PublishStatus.corruption_reason || s3PublishStatus.publish_error || 'Critical question statement or answer option records are missing in database.'} Edit the question in the editor below to repair data, then click Re-evaluate.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter)}
+                disabled={loadingQuestions}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#B91C1C',
+                  border: '1px solid #FCA5A5',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 2px rgba(185, 28, 28, 0.1)',
+                }}
+                title="Re-check database records and clear corruption status if resolved"
+              >
+                <RefreshCw size={13} className={loadingQuestions ? 'animate-spin' : ''} />
+                Re-evaluate Integrity
+              </button>
+              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5' }}>
+                CORRUPTED DATA
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Verification Progress Bar & Metrics */}
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>

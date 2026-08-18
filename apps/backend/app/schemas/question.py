@@ -187,6 +187,16 @@ class ExamReviewQuestionsResponse(BaseModel):
     pending_count: int
     rejected_count: int
     can_publish: bool
+    is_published: bool = False
+    publish_status: str = "PENDING_REVIEW"
+    can_retry: bool = False
+    is_corrupted: bool = False
+    publish_error: Optional[str] = None
+    corruption_reason: Optional[str] = None
+    questions_json_path: Optional[str] = None
+    solutions_json_path: Optional[str] = None
+    questions_json_folder_path: Optional[str] = None
+    solutions_json_folder_path: Optional[str] = None
     items: List[QuestionDetailResponse]
     page: int
     limit: int

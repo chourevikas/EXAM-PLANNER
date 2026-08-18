@@ -720,19 +720,88 @@ async def approve_and_publish_exam(
             ),
         )
 
-    # 1 & 2. Generate JSON files and upload to S3 folder paths
-    builder = ExamJsonBuilder(session)
-    json_paths = await builder.generate_and_upload(exam_uuid)
+    # Pre-flight Database Integrity / Corruption Validation
+    from app.db.models import PipelineRun, QuestionTranslation, QuestionOption
 
-    # 3 & 4. Mark exam status as PUBLISHED and is_active as True
+    for q in questions:
+        qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
+        qt_res = await session.exec(qt_stmt)
+        q_trans = qt_res.all()
+        has_text = any(t.question_text and t.question_text.strip() for t in q_trans)
+        if not has_text:
+            corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
+            corrupt_run = PipelineRun(
+                exam_id=exam_uuid,
+                pipeline_type="S3_PUBLISH",
+                status="CORRUPTED",
+                current_step="CORRUPTED_DATABASE_RECORD",
+                progress_percent=0.0,
+                error_log=corruption_msg,
+            )
+            session.add(corrupt_run)
+            await session.commit()
+            raise HTTPException(status_code=422, detail=corruption_msg)
+
+        opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
+        opt_res = await session.exec(opt_stmt)
+        q_opts = opt_res.all()
+        if not q_opts:
+            corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has 0 answer options in database."
+            corrupt_run = PipelineRun(
+                exam_id=exam_uuid,
+                pipeline_type="S3_PUBLISH",
+                status="CORRUPTED",
+                current_step="CORRUPTED_DATABASE_RECORD",
+                progress_percent=0.0,
+                error_log=corruption_msg,
+            )
+            session.add(corrupt_run)
+            await session.commit()
+            raise HTTPException(status_code=422, detail=corruption_msg)
+
+    # 1 & 2. Generate JSON files and upload to S3 folder paths with Retryable Error Handling
+    builder = ExamJsonBuilder(session)
+    try:
+        json_paths = await builder.generate_and_upload(exam_uuid)
+    except Exception as s3_err:
+        logger.error(f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True)
+        # Record retryable failed pipeline run
+        failed_run = PipelineRun(
+            exam_id=exam_uuid,
+            pipeline_type="S3_PUBLISH",
+            status="FAILED",
+            current_step="S3_UPLOAD_FAILED",
+            progress_percent=0.0,
+            error_log=str(s3_err),
+        )
+        session.add(failed_run)
+        await session.commit()
+        raise HTTPException(
+            status_code=500,
+            detail=f"S3_PUBLISH_FAILED: {str(s3_err)}. This failure is fixable through retry.",
+        )
+
+    # 3 & 4. Mark exam status as PUBLISHED and is_active as True, and record successful PipelineRun
     exam.status = ExamStatus.PUBLISHED
     exam.is_active = True
     session.add(exam)
+
+    success_run = PipelineRun(
+        exam_id=exam_uuid,
+        pipeline_type="S3_PUBLISH",
+        status="COMPLETED",
+        current_step="PUBLISHED_TO_S3",
+        progress_percent=100.0,
+        error_log=None,
+    )
+    session.add(success_run)
+
     await session.commit()
     await session.refresh(exam)
 
     return {
         "status": "APPROVED_AND_PUBLISHED",
+        "publish_status": "PUBLISHED",
         "exam_id": str(exam.id),
         "exam_code": exam.code,
         "exam_status": exam.status.value if hasattr(exam.status, "value") else str(exam.status),

@@ -103,6 +103,24 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
                 key_takeaways_json=["New Delhi is the seat of executive, legislative, and judiciary."],
             )
             session.add(expl1)
+
+            # Add translations and options for Q2
+            qt2 = QuestionTranslation(
+                question_id=q2_id, language=LanguageCode.ENGLISH, question_text="What is the currency of Japan?"
+            )
+            session.add(qt2)
+
+            opt2 = QuestionOption(question_id=q2_id, option_label="A", display_order=1, is_correct=True)
+            session.add(opt2)
+            await session.flush()
+
+            ot2 = OptionTranslation(
+                option_id=opt2.id,
+                language=LanguageCode.ENGLISH,
+                option_text="Yen",
+                distractor_analysis="Official currency of Japan.",
+            )
+            session.add(ot2)
             await session.commit()
 
             # 3. Test QuestionService.get_exam_questions_for_review
@@ -156,6 +174,13 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
                     question_text="Second test question",
                     detailed_solution="Solution for Q2",
                     core_concept="Core concept for Q2",
+                    options=[
+                        QuestionOptionPayload(
+                            option_label="A",
+                            option_text="Option A for Q2",
+                            is_correct=True,
+                        )
+                    ],
                 ),
             )
 
@@ -164,3 +189,68 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(review_data_after.reviewed_count, 2)
             self.assertEqual(review_data_after.pending_count, 0)
             self.assertTrue(review_data_after.can_publish)
+
+            # 8. Approve and Publish exam to S3
+            publish_res = await approve_and_publish_exam(exam_id=str(exam_id), session=session, current_user=None)
+            self.assertEqual(publish_res["status"], "APPROVED_AND_PUBLISHED")
+            self.assertEqual(publish_res["publish_status"], "PUBLISHED")
+            self.assertTrue(publish_res["is_active"])
+            self.assertIsNotNone(publish_res["questions_json_folder_path"])
+            self.assertIsNotNone(publish_res["solutions_json_folder_path"])
+
+            # 9. Verify get_exam_questions_for_review reflects published status (Scenario 1: Published)
+            review_data_published = await service.get_exam_questions_for_review(exam_id=exam_id)
+            self.assertTrue(review_data_published.is_published)
+            self.assertEqual(review_data_published.publish_status, "PUBLISHED")
+            self.assertFalse(review_data_published.is_corrupted)
+            self.assertFalse(review_data_published.can_retry)
+
+    async def test_corrupted_question_detection(self):
+        async with self.session_factory() as session:
+            exam_id = uuid.uuid4()
+            exam = Exam(
+                id=exam_id,
+                code=f"test-corrupt-exam-{uuid.uuid4().hex[:6]}",
+                name="Test Corrupt Exam",
+                stage="prelims",
+                subject_code="gs1",
+                source_year=2024,
+                paper_set_code="SET_A",
+                status=ExamStatus.PENDING_HUMAN_REVIEW,
+                total_questions=1,
+            )
+            session.add(exam)
+            await session.commit()
+
+            # Add question with NO options (Corrupted)
+            q_id = uuid.uuid4()
+            q = Question(
+                id=q_id,
+                exam_id=exam_id,
+                question_number_in_paper=1,
+                paper_set_code="SET_A",
+                status=QuestionStatus.PUBLISHED,
+            )
+            session.add(q)
+            await session.commit()
+
+            # Add translation with empty text
+            qt = QuestionTranslation(
+                question_id=q_id, language=LanguageCode.ENGLISH, question_text="   "
+            )
+            session.add(qt)
+            await session.commit()
+
+            # 1. Test get_exam_questions_for_review detects corruption (Scenario 3: Corrupted)
+            service = QuestionService(session)
+            review_data = await service.get_exam_questions_for_review(exam_id=exam_id)
+            self.assertTrue(review_data.is_corrupted)
+            self.assertEqual(review_data.publish_status, "CORRUPTED")
+            self.assertIn("Corrupted", review_data.corruption_reason or "")
+
+            # 2. Test approve_and_publish_exam rejects corrupted record with 422
+            with self.assertRaises(HTTPException) as ctx:
+                await approve_and_publish_exam(exam_id=str(exam_id), session=session, current_user=None)
+            self.assertEqual(ctx.exception.status_code, 422)
+            self.assertIn("EXAM_DATA_CORRUPTED", ctx.exception.detail)
+

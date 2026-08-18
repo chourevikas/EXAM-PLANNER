@@ -146,11 +146,11 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
 // ----------------------------------------------------------------------
 function FiveStagePipelinePreview() {
   const stages = [
-    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: '#2563EB', bg: '#EFF6FF' },
-    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#2563EB', bg: '#EFF6FF' },
-    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: Sparkles, color: '#2563EB', bg: '#EFF6FF' },
-    { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#D97706', bg: '#FEF3C7' },
-    { num: '05', title: 'Publish', desc: 'Live S3 catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5' },
+    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' },
+    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' },
+    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: Sparkles, color: '#2563EB', bg: '#EFF6FF', border: '#DBEAFE' },
+    { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#D97706', bg: '#FEF3C7', border: '#FDE68A' },
+    { num: '05', title: 'Publish', desc: 'Live S3 catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
   ];
 
   return (
@@ -159,14 +159,14 @@ function FiveStagePipelinePreview() {
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: 14,
-        padding: '20px 24px',
+        padding: '18px 22px',
         marginBottom: 24,
         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <div style={{ width: 4, height: 18, backgroundColor: '#2563EB', borderRadius: 2 }} />
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
           Examination Content Processing Flow
         </h3>
         <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500, marginLeft: 4 }}>
@@ -177,60 +177,59 @@ function FiveStagePipelinePreview() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
           gap: 12,
-          alignItems: 'center',
+          alignItems: 'stretch',
         }}
       >
-        {stages.map((stg, idx) => {
+        {stages.map((stg) => {
           const StageIcon = stg.icon;
           return (
-            <React.Fragment key={stg.num}>
+            <div
+              key={stg.num}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 14px',
+                borderRadius: 10,
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                boxSizing: 'border-box',
+                minHeight: 64,
+                transition: 'all 0.15s ease',
+              }}
+            >
               <div
                 style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  backgroundColor: stg.bg,
+                  color: stg.color,
+                  border: `1px solid ${stg.border}`,
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    backgroundColor: stg.bg,
-                    color: stg.color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <StageIcon size={16} />
+                <StageIcon size={16} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.04em', fontFamily: 'monospace' }}>
+                    {stg.num}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {stg.title}
+                  </span>
                 </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.05em' }}>
-                      {stg.num}
-                    </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-                      {stg.title}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2, lineHeight: 1.3 }}>
-                    {stg.desc}
-                  </div>
+                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2, lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {stg.desc}
                 </div>
               </div>
-
-              {idx < stages.length - 1 && (
-                <div style={{ display: 'none' /* Responsive grid fallback */ }} />
-              )}
-            </React.Fragment>
+            </div>
           );
         })}
       </div>
@@ -656,29 +655,20 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
+  // Initial load when visiting the page: load queue and check stuck pipelines once
   useEffect(() => {
     loadRealTimeQueue(false);
     loadStuckPipelines();
   }, []);
 
-  // Polling for active background jobs
+  // Polling for exam pipeline status updates using GET /exams/pipeline-status every 10 seconds
   useEffect(() => {
-    const hasActiveTasks = pipelineExams.some((e) => {
-      const s = (e.overall_status || e.status || '').toUpperCase();
-      const isStage1Running = e.stage1_status === 'IN_PROGRESS' || (e.extracted_questions_count > 0 && e.extracted_questions_count < e.total_questions && !s.includes('PUBLISHED'));
-      const isStage2Running = e.stage2_status === 'IN_PROGRESS';
-      const isStage3Running = e.stage3_status === 'IN_PROGRESS' || ((e.explanations_count || 0) < e.extracted_questions_count && e.extracted_questions_count > 0 && !s.includes('PUBLISHED'));
-      return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
-    });
-
-    if (!hasActiveTasks && !isUploading) return;
-
     const intervalId = setInterval(() => {
       loadRealTimeQueue(true);
-    }, 4000);
+    }, 10000);
 
     return () => clearInterval(intervalId);
-  }, [pipelineExams, isUploading]);
+  }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);
@@ -1946,10 +1936,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     {opt === 'RESTART'
                       ? 'Cancel Old Task & Restart'
                       : opt === 'OVERWRITE'
-                      ? 'Overwrite Existing Paper'
-                      : opt === 'CANCEL'
-                      ? 'Cancel Upload'
-                      : opt}
+                        ? 'Overwrite Existing Paper'
+                        : opt === 'CANCEL'
+                          ? 'Cancel Upload'
+                          : opt}
                   </button>
                 );
               })}

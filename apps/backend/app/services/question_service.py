@@ -162,6 +162,64 @@ class QuestionService:
             paged_qs, target_lang=language, include_solutions=True
         )
 
+        # 1. Check Database Integrity / Corruption across ALL questions for this exam
+        is_corrupted = False
+        corruption_reason = None
+        if total_questions == 0 and (exam.extracted_questions_count or 0) > 0:
+            is_corrupted = True
+            corruption_reason = f"Exam '{exam.code}' has extracted question count recorded ({exam.extracted_questions_count}) but 0 questions exist in database."
+        else:
+            for q in all_questions:
+                qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
+                qt_res = await self.session.exec(qt_stmt)
+                q_trans = qt_res.all()
+                has_text = any(t.question_text and t.question_text.strip() for t in q_trans)
+                if not has_text:
+                    is_corrupted = True
+                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
+                    break
+
+                opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
+                opt_res = await self.session.exec(opt_stmt)
+                q_opts = opt_res.all()
+                if not q_opts:
+                    is_corrupted = True
+                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has 0 answer options in database."
+                    break
+
+        # 2. Check S3 Publish Status
+        from app.db.models.pipeline_run import PipelineRun
+        exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        is_s3_published = (exam_status_str == "PUBLISHED") and bool(exam.questions_json_path or exam.questions_json_folder_path)
+
+        # 3. Check PipelineRun for S3 publish run status and error logs
+        publish_run_stmt = (
+            select(PipelineRun)
+            .where(PipelineRun.exam_id == exam_id, PipelineRun.pipeline_type.in_(["S3_PUBLISH", "EXAM_PUBLISH"]))
+            .order_by(PipelineRun.started_at.desc())
+        )
+        publish_run = (await self.session.exec(publish_run_stmt)).first()
+
+        publish_error = None
+        can_retry = False
+
+        if is_s3_published:
+            publish_status = "PUBLISHED"
+        elif is_corrupted:
+            publish_status = "CORRUPTED"
+            publish_error = corruption_reason
+            can_retry = False
+        elif publish_run and str(publish_run.status).upper() in ("FAILED", "ERROR"):
+            publish_status = "PUBLISH_FAILED"
+            publish_error = publish_run.error_log or "Previous S3 publishing task encountered an error."
+            can_retry = True
+        elif can_publish:
+            publish_status = "READY_FOR_PUBLISH"
+            can_retry = False
+        else:
+            publish_status = "PENDING_REVIEW"
+            can_retry = False
+
         pages = math.ceil(len(filtered_qs) / limit) if limit > 0 else 1
 
         return ExamReviewQuestionsResponse(
@@ -176,6 +234,16 @@ class QuestionService:
             pending_count=pending_count,
             rejected_count=rejected_count,
             can_publish=can_publish,
+            is_published=is_s3_published,
+            publish_status=publish_status,
+            can_retry=can_retry,
+            is_corrupted=is_corrupted,
+            publish_error=publish_error,
+            corruption_reason=corruption_reason,
+            questions_json_path=exam.questions_json_path,
+            solutions_json_path=exam.solutions_json_path,
+            questions_json_folder_path=exam.questions_json_folder_path,
+            solutions_json_folder_path=exam.solutions_json_folder_path,
             items=items,
             page=page,
             limit=limit,

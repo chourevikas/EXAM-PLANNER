@@ -261,12 +261,40 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
   return await res.json();
 }
 
+export interface ExamReviewQuestionsResponse {
+  exam_id: string;
+  exam_name?: string;
+  exam_code?: string;
+  stage?: string;
+  source_year?: number;
+  paper_set_code?: string;
+  total_questions: number;
+  reviewed_count: number;
+  pending_count: number;
+  rejected_count: number;
+  can_publish: boolean;
+  is_published?: boolean;
+  publish_status?: 'PUBLISHED' | 'PUBLISH_FAILED' | 'CORRUPTED' | 'READY_FOR_PUBLISH' | 'PENDING_REVIEW';
+  can_retry?: boolean;
+  is_corrupted?: boolean;
+  publish_error?: string;
+  corruption_reason?: string;
+  questions_json_path?: string;
+  solutions_json_path?: string;
+  questions_json_folder_path?: string;
+  solutions_json_folder_path?: string;
+  items: any[];
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 export async function fetchExamQuestionsForReview(
   examId: string,
   page: number = 1,
   limit: number = 100,
   status?: string
-): Promise<any> {
+): Promise<ExamReviewQuestionsResponse> {
   let url = `${API_BASE_URL}/exams/${examId}/review-questions?page=${page}&limit=${limit}`;
   if (status && status !== 'ALL') {
     url += `&status=${status}`;
