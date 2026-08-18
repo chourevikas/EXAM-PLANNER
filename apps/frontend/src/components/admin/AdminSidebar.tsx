@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Menu,
   LayoutDashboard,
   BookOpen,
   Upload,
@@ -18,6 +19,7 @@ interface SidebarProps {
   collapsed: boolean;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export function AdminSidebar({
@@ -25,7 +27,8 @@ export function AdminSidebar({
   onNavigate,
   collapsed,
   mobileOpen = false,
-  onCloseMobile
+  onCloseMobile,
+  onToggleSidebar
 }: SidebarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -68,10 +71,10 @@ export function AdminSidebar({
           gap: 12,
           padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 4,
-          background: isActive ? 'rgba(59, 110, 168, 0.18)' : 'transparent',
+          borderRadius: 6,
+          background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
           border: 'none',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #3B6EA8' : '3px solid transparent',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #2563EB' : '3px solid transparent',
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           cursor: 'pointer',
           fontSize: 13.5,
@@ -84,7 +87,7 @@ export function AdminSidebar({
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
             e.currentTarget.style.color = '#ffffff';
           }
         }}
@@ -95,7 +98,7 @@ export function AdminSidebar({
           }
         }}
       >
-        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'} style={{ flexShrink: 0 }} />
+        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </button>
     );
@@ -121,7 +124,7 @@ export function AdminSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          backgroundColor: '#10213D',
+          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -136,30 +139,77 @@ export function AdminSidebar({
           overflow: 'hidden'
         }}
       >
-        {/* Section Header */}
+        {/* Section Header with Borderless Hamburger Button */}
         <div
           style={{
-            padding: (collapsed && !isMobile) ? '16px 0' : '18px 18px 6px 18px',
+            padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: (collapsed && !isMobile) ? 'center' : 'space-between',
           }}
         >
           {(!collapsed || isMobile) ? (
-            <span
-              style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                color: 'rgba(255, 255, 255, 0.45)',
-                letterSpacing: '0.08em',
-                fontFamily: 'Inter, sans-serif'
-              }}
-            >
-              CORE PLATFORM
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {onToggleSidebar && (
+                <button
+                  onClick={onToggleSidebar}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 4,
+                    transition: 'color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
+                  title="Toggle Sidebar Menu"
+                  aria-label="Toggle Sidebar Menu"
+                >
+                  <Menu size={18} />
+                </button>
+              )}
+              <span
+                style={{
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'rgba(255, 255, 255, 0.45)',
+                  letterSpacing: '0.08em',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              >
+                CORE PLATFORM
+              </span>
+            </div>
           ) : (
-            <span style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.3)' }}>•••</span>
+            onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 4,
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
+                title="Expand Sidebar Menu"
+                aria-label="Expand Sidebar Menu"
+              >
+                <Menu size={18} />
+              </button>
+            )
           )}
 
           {isMobile && onCloseMobile && (
