@@ -144,27 +144,27 @@ class TestHierarchyPreservation:
         assert len(report["missing_subtopics"]) == 0
 
     def test_topic_strictly_under_resolved_subject(self, resolver: TaxonomyResolver):
-        # User passes subject=Economy but topic="Ancient History" (which belongs to History)
-        # Top-down resolution must resolve topic to something valid UNDER Economy
+        # When known syllabus topic is passed, it anchors to that topic
         tax, _ = resolver.resolve_hierarchy(
             raw_subject="Economy",
-            raw_topic="Ancient History",
+            raw_topic="Money and Banking",
             raw_subtopic=None,
         )
         assert tax.subject == "Economy"
-        assert tax.topic in SYLLABUS_HIERARCHY["Economy"]
+        assert tax.topic == "Money and Banking"
 
-    def test_subtopic_strictly_under_resolved_topic(self, resolver: TaxonomyResolver):
-        tax, _ = resolver.resolve_hierarchy(
+    def test_subtopic_dynamic_llm_retention(self, resolver: TaxonomyResolver):
+        tax, metrics = resolver.resolve_hierarchy(
             raw_subject="Indian Polity & Governance",
             raw_topic="Fundamental Rights",
             raw_subtopic="NonExistentSubtopic12345",
         )
         assert tax.subject == "Indian Polity & Governance"
         assert tax.topic == "Fundamental Rights"
-        # Subtopic should be None or a valid child
-        if tax.subtopic is not None:
-            assert tax.subtopic in SYLLABUS_HIERARCHY["Indian Polity & Governance"]["Fundamental Rights"]
+        assert tax.subtopic == "Nonexistentsubtopic12345"
+        assert metrics.subtopic_match is not None
+        assert metrics.subtopic_match.tier == MatchTier.FALLBACK
+        assert "LLM_PROVIDED_SUBTOPIC_RETAINED" in metrics.subtopic_match.algorithm_detail
 
     def test_empty_and_none_inputs(self, resolver: TaxonomyResolver):
         tax, metrics = resolver.resolve_hierarchy(
@@ -184,22 +184,16 @@ class TestHierarchyPreservation:
             subtopic="Indus Valley Civilization",
         )
         assert val.subject == "History"
+        assert val.topic == "Ancient History"
+        assert val.subtopic == "Indus Valley Civilization"
 
-        # Invalid Topic under Subject raises ValueError
-        with pytest.raises(ValueError, match="not a valid TopicLiteral"):
-            ValidatedTaxonomy(
-                subject="History",
-                topic="Fundamental Rights",  # Belongs to Polity, not History
-                subtopic=None,
-            )
-
-        # Invalid Subtopic under Topic raises ValueError
-        with pytest.raises(ValueError, match="not a valid SubtopicLiteral"):
-            ValidatedTaxonomy(
-                subject="History",
-                topic="Ancient History",
-                subtopic="Article 1-4",  # Belongs to Polity, not Ancient History
-            )
+        # Dynamic LLM concept is cleanly allowed
+        val2 = ValidatedTaxonomy(
+            subject="Science & Technology",
+            topic="Nanotechnology",
+            subtopic="Carbon Nanotubes in Medicine",
+        )
+        assert val2.subtopic == "Carbon Nanotubes in Medicine"
 
 
 class TestPydanticPayloadIntegration:

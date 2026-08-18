@@ -136,6 +136,15 @@ class QuestionExplanationSchema(BaseModel):
             self.subject = val_tax.subject
             self.topic = val_tax.topic
             self.subtopic = val_tax.subtopic
+
+            # If root subtopic is missing but available in concepts, inherit granular subtopic
+            if not self.subtopic and self.concepts:
+                for concept in self.concepts:
+                    if concept.subtopic and str(concept.subtopic).strip():
+                        self.subject = concept.subject
+                        self.topic = concept.topic
+                        self.subtopic = str(concept.subtopic).strip()
+                        break
         except Exception:
             # Safe canonical fallback so individual question explanations never crash
             if not self.subject or self.subject not in SYLLABUS_HIERARCHY:
