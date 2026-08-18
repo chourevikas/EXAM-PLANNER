@@ -108,6 +108,7 @@ export function AdminPage() {
           collapsed={sidebarCollapsed}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
+          onToggleSidebar={handleToggleSidebar}
         />
 
         {/* Main Content Area */}

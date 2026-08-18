@@ -126,8 +126,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         right: 0,
         width: '100%',
         zIndex: 100,
-        backgroundColor: '#10213D',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -135,34 +135,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         boxSizing: 'border-box'
       }}
     >
-      {/* Left: Hamburger Toggle, Brand Logo & Breadcrumbs */}
+      {/* Left: Brand Logo & Breadcrumbs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16 }}>
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              borderRadius: 4,
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              color: '#ffffff',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              flexShrink: 0
-            }}
-            title="Toggle Sidebar Menu"
-            aria-label="Toggle Sidebar Menu"
-          >
-            <Menu size={16} />
-          </button>
-        )}
-
-        {!isSmallMobile && <div style={{ width: 1, height: 18, backgroundColor: 'rgba(255, 255, 255, 0.12)' }} />}
-
         {/* Brand Logo */}
         <div
           onClick={() => onNavigate('dashboard')}
@@ -173,7 +147,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               width: 28,
               height: 28,
               borderRadius: 4,
-              background: '#3B6EA8',
+              background: '#2563EB',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -363,10 +337,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 top: 44,
                 right: isMobile ? -60 : 0,
                 width: isMobile ? 290 : 320,
-                backgroundColor: '#10213D',
-                borderRadius: 4,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
                 padding: 14,
                 zIndex: 140,
                 display: 'flex',
@@ -374,18 +348,18 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 gap: 10
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>System Alerts</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>System Alerts</span>
                   {unreadCount > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3, backgroundColor: 'rgba(59, 110, 168, 0.3)', color: '#ffffff' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, backgroundColor: '#EFF6FF', color: '#2563EB' }}>
                       {unreadCount} New
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => setUnreadCount(0)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                 >
                   <CheckCheck size={13} /> Clear
                 </button>
@@ -402,23 +376,26 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         setShowNotifications(false);
                       }}
                       style={{
-                        padding: 8,
-                        borderRadius: 4,
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        padding: 10,
+                        borderRadius: 8,
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
                         display: 'flex',
-                        gap: 8,
+                        gap: 10,
                         alignItems: 'flex-start',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'background-color 150ms ease-out',
                       }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
                     >
-                      <div style={{ padding: 4, borderRadius: 3, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
+                      <div style={{ padding: 6, borderRadius: 6, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
                         <ItemIcon size={14} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#ffffff', marginBottom: 2 }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.65)' }}>{item.desc}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', marginTop: 2 }}>{item.time}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0F172A', marginBottom: 2 }}>{item.title}</div>
+                        <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.3 }}>{item.desc}</div>
+                        <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 3 }}>{item.time}</div>
                       </div>
                     </div>
                   );
@@ -440,7 +417,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               height: 32,
               borderRadius: 4,
               border: '1px solid rgba(255, 255, 255, 0.2)',
-              backgroundColor: '#3B6EA8',
+              backgroundColor: '#2563EB',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -462,10 +439,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 top: 44,
                 right: 0,
                 width: 230,
-                backgroundColor: '#10213D',
-                borderRadius: 4,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 10,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
                 padding: 12,
                 zIndex: 140,
                 display: 'flex',
@@ -473,11 +450,11 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 gap: 8
               }}
             >
-              <div style={{ paddingBottom: 8, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#ffffff' }}>
+              <div style={{ paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>
                   {user?.full_name || 'System Administrator'}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}>
+                <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
                   {user?.email || 'admin@rankedge.com'}
                 </div>
               </div>
@@ -492,18 +469,22 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    padding: '7px 10px',
-                    borderRadius: 4,
-                    color: 'rgba(255, 255, 255, 0.85)',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    color: '#334155',
                     background: 'transparent',
                     border: 'none',
-                    fontSize: 12,
+                    fontSize: 12.5,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     width: '100%',
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    transition: 'background-color 150ms ease-out',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <User size={14} color="#3B6EA8" />
+                  <User size={15} color="#2563EB" />
                   <span>Admin Overview</span>
                 </button>
 
@@ -516,23 +497,27 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    padding: '7px 10px',
-                    borderRadius: 4,
-                    color: 'rgba(255, 255, 255, 0.85)',
+                    padding: '8px 10px',
+                    borderRadius: 6,
+                    color: '#334155',
                     background: 'transparent',
                     border: 'none',
-                    fontSize: 12,
+                    fontSize: 12.5,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     width: '100%',
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    transition: 'background-color 150ms ease-out',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <BookOpen size={14} color="#3B6EA8" />
+                  <BookOpen size={15} color="#2563EB" />
                   <span>Question Bank</span>
                 </button>
               </div>
 
-              <div style={{ paddingTop: 6, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ paddingTop: 6, borderTop: '1px solid #E2E8F0' }}>
                 <Link
                   to="/signout"
                   onClick={() => setShowProfileMenu(false)}
@@ -541,17 +526,18 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
-                    padding: '6px',
-                    borderRadius: 4,
+                    padding: '7px 10px',
+                    borderRadius: 6,
                     textDecoration: 'none',
-                    color: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fontSize: 12,
+                    color: '#DC2626',
+                    backgroundColor: '#FEF2F2',
+                    fontSize: 12.5,
                     fontWeight: 600,
-                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                    border: '1px solid #FECDCA',
+                    transition: 'background-color 150ms ease-out',
                   }}
                 >
-                  <LogOut size={13} />
+                  <LogOut size={14} />
                   <span>Sign Out</span>
                 </Link>
               </div>

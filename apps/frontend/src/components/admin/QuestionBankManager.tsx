@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   HelpCircle,
   Clock,
+  ArrowRight,
 } from 'lucide-react';
 import {
   fetchCatalogQuestions,
@@ -74,6 +75,46 @@ interface SubjectItem {
   subtopicsCount: number;
 }
 
+// ----------------------------------------------------------------------
+// Reusable Explore Button with Smooth Hover Micro-Interaction
+// ----------------------------------------------------------------------
+function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '7px 14px',
+        fontSize: 12.5,
+        fontWeight: 600,
+        color: isHovered ? '#2563EB' : '#0F172A',
+        backgroundColor: isHovered ? '#EFF6FF' : '#FFFFFF',
+        border: `1px solid ${isHovered ? '#2563EB' : '#CBD5E1'}`,
+        borderRadius: 6,
+        cursor: 'pointer',
+        boxShadow: isHovered ? '0 2px 6px rgba(37, 99, 235, 0.15)' : 'none',
+        transition: 'all 150ms ease-out',
+      }}
+    >
+      <span>Explore</span>
+      <ArrowRight
+        size={14}
+        style={{
+          transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
+          transition: 'transform 150ms ease-out',
+          color: isHovered ? '#2563EB' : '#64748B',
+        }}
+      />
+    </button>
+  );
+}
+
 export function QuestionBankManager() {
   // Navigation State: null = Directory View, SubjectItem = Selected Subject
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
@@ -101,7 +142,7 @@ export function QuestionBankManager() {
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // Subject Directory Definition (Monochrome institutional aesthetic - NO RAINBOW COLORS)
+  // Subject Directory Definition
   const subjectList: SubjectItem[] = [
     {
       id: 'polity',
@@ -174,6 +215,13 @@ export function QuestionBankManager() {
       subtopicsCount: 14,
     },
   ];
+
+  // Dynamic Aggregate Metadata Calculations
+  const totalQuestionsSum = subjectList.reduce(
+    (acc, s) => acc + parseInt(s.questionsCount.replace(/,/g, ''), 10),
+    0
+  );
+  const totalSubtopicsSum = subjectList.reduce((acc, s) => acc + s.subtopicsCount, 0);
 
   useEffect(() => {
     if (selectedSubject) {
@@ -356,7 +404,7 @@ export function QuestionBankManager() {
   const selectedQuestion = filteredQuestions[selectedQuestionIndex] || filteredQuestions[0] || null;
 
   return (
-    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif', paddingBottom: 60 }}>
       {/* Global Toast / Alerts */}
       {errorMsg && (
         <div
@@ -364,13 +412,14 @@ export function QuestionBankManager() {
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 6,
+            borderRadius: 8,
             marginBottom: 20,
             color: '#B42318',
             fontSize: 13.5,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
+            boxShadow: '0 4px 12px rgba(180, 35, 24, 0.1)',
           }}
         >
           <AlertTriangle size={18} color="#B42318" />
@@ -383,14 +432,15 @@ export function QuestionBankManager() {
           style={{
             padding: '12px 16px',
             background: '#DCFCE7',
-            border: '1px solid #BBF7D0',
-            borderRadius: 6,
+            border: '1px solid #86EFAC',
+            borderRadius: 8,
             marginBottom: 20,
             color: '#15803D',
             fontSize: 13.5,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
+            boxShadow: '0 4px 12px rgba(21, 128, 61, 0.1)',
           }}
         >
           <CheckCircle2 size={18} color="#15803D" />
@@ -398,10 +448,10 @@ export function QuestionBankManager() {
         </div>
       )}
 
-      {/* MODE 1: SUBJECT DIRECTORY / MANAGEMENT VIEW */}
+      {/* MODE 1: SUBJECT DIRECTORY / CATALOG MANAGEMENT VIEW */}
       {!selectedSubject ? (
         <div>
-          {/* Header */}
+          {/* Editorial Header */}
           <div
             style={{
               display: 'flex',
@@ -409,21 +459,38 @@ export function QuestionBankManager() {
               alignItems: 'flex-start',
               flexWrap: 'wrap',
               gap: 16,
-              marginBottom: 20,
+              marginBottom: 24,
             }}
           >
             <div>
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: 30, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
                 Question Bank
               </h1>
-              <p style={{ fontSize: 14, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
+              <p style={{ fontSize: 14, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
                 Browse and review questions organized by subject and mapped subtopics.
               </p>
+              {/* Contextual Metadata Badge Line */}
+              <div style={{ marginTop: 8 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: '#2563EB',
+                    backgroundColor: '#EFF6FF',
+                    border: '1px solid #BFDBFE',
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                  }}
+                >
+                  {subjectList.length} Subjects · {totalQuestionsSum.toLocaleString()} Questions · {totalSubtopicsSum} Subtopics
+                </span>
+              </div>
             </div>
 
-            {/* Subtle Search Input */}
-            <div style={{ position: 'relative', width: 300 }}>
-              <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#667085' }} />
+            {/* Compact Search Field */}
+            <div style={{ position: 'relative', width: 280 }}>
+              <Search size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#64748B' }} />
               <input
                 type="text"
                 placeholder="Search subjects or questions..."
@@ -431,27 +498,26 @@ export function QuestionBankManager() {
                 onChange={(e) => setSubjectSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 12px 8px 36px',
+                  padding: '9px 12px 9px 36px',
                   borderRadius: 6,
-                  border: '1px solid #E4E7EC',
+                  border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
-                  fontSize: 13.5,
-                  color: '#172033',
+                  fontSize: 13,
+                  color: '#0F172A',
                   outline: 'none',
-                  height: 40,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
           </div>
 
-          {/* Subject Directory Table (Clean institutional presentation) */}
+          {/* Premium Subject Catalog List Container */}
           <div
             style={{
               background: '#FFFFFF',
-              border: '1px solid #E4E7EC',
-              borderRadius: 6,
-              boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
+              border: '1px solid #E2E8F0',
+              borderRadius: 14,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
               overflow: 'hidden',
             }}
           >
@@ -464,13 +530,13 @@ export function QuestionBankManager() {
               }}
             >
               <thead>
-                <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>SUBJECT</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>DESCRIPTION</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>QUESTIONS</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>PENDING REVIEW</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>SUBTOPICS</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTION</th>
+                <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
+                  <th style={{ padding: '12px 20px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>SUBJECT</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>DESCRIPTION</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>QUESTIONS</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>PENDING REVIEW</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>SUBTOPICS</th>
+                  <th style={{ padding: '12px 20px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -481,59 +547,95 @@ export function QuestionBankManager() {
                       key={sub.id}
                       onClick={() => setSelectedSubject(sub)}
                       style={{
-                        borderBottom: i === filteredSubjects.length - 1 ? 'none' : '1px solid #E4E7EC',
+                        borderBottom: i === filteredSubjects.length - 1 ? 'none' : '1px solid #E2E8F0',
                         cursor: 'pointer',
-                        transition: 'background 0.12s ease',
+                        transition: 'all 150ms ease-out',
+                        position: 'relative',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F7F7F5')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.borderLeft = '3px solid #2563EB';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderLeft = '3px solid transparent';
+                      }}
                     >
-                      <td style={{ padding: '16px', fontWeight: 600, color: '#172033', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 4, background: '#F7F7F5', border: '1px solid #E4E7EC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <IconComponent size={16} color="#3B6EA8" />
+                      {/* Subject Column Anchor */}
+                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 8,
+                              background: '#EFF6FF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <IconComponent size={17} color="#2563EB" />
                           </div>
-                          <span>{sub.name}</span>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
+                              {sub.name}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: 400 }}>
+                              {sub.subtopicsCount} subtopics
+                            </div>
+                          </div>
                         </div>
                       </td>
 
-                      <td style={{ padding: '16px', color: '#667085', fontSize: 13, maxWidth: 360 }}>
+                      {/* Description */}
+                      <td style={{ padding: '16px', color: '#64748B', fontSize: 13.5, maxWidth: 380, lineHeight: 1.45 }}>
                         {sub.description}
                       </td>
 
-                      <td style={{ padding: '16px', color: '#172033', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {sub.questionsCount}
+                      {/* Question Count */}
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
+                          {sub.questionsCount}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>questions</div>
                       </td>
 
+                      {/* Pending Review Semantic Amber Badge */}
                       <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#B45309', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: 4 }}>
-                          {sub.pendingCount} Pending
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#B45309',
+                            backgroundColor: '#FEF3C7',
+                            border: '1px solid #FDE68A',
+                            padding: '3px 9px',
+                            borderRadius: 12,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706' }} />
+                          {sub.pendingCount} Pending Review
                         </span>
                       </td>
 
-                      <td style={{ padding: '16px', color: '#667085', whiteSpace: 'nowrap' }}>
+                      {/* Subtopics */}
+                      <td style={{ padding: '16px', color: '#475569', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {sub.subtopicsCount} Subtopics
                       </td>
 
-                      <td style={{ padding: '16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button
+                      {/* Explore Action Button */}
+                      <td style={{ padding: '16px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <ExploreButton
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedSubject(sub);
                           }}
-                          style={{
-                            padding: '5px 12px',
-                            fontSize: 12.5,
-                            fontWeight: 500,
-                            color: '#172033',
-                            background: '#FFFFFF',
-                            border: '1px solid #E4E7EC',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Explore →
-                        </button>
+                        />
                       </td>
                     </tr>
                   );
@@ -543,47 +645,66 @@ export function QuestionBankManager() {
           </div>
         </div>
       ) : (
-        /* MODE 2: SPLIT-PANE QUESTION REVIEW WORKSPACE */
+        /* MODE 2: SPLIT-PANE QUESTION REVIEW WORKSPACE FOR SELECTED SUBJECT */
         <div>
-          {/* Breadcrumb Header sitting directly on main background */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#667085', marginBottom: 4 }}>
-              <span onClick={() => setSelectedSubject(null)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
-                Question Bank
-              </span>
-              <span>/</span>
-              <span style={{ color: '#172033', fontWeight: 600 }}>{selectedSubject.name}</span>
-            </div>
-
+          {/* Header & Back Navigation */}
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 14,
+              border: '1px solid #E2E8F0',
+              padding: '20px 24px',
+              marginBottom: 20,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <div>
-                <h1 style={{ fontSize: 24, fontWeight: 700, color: '#172033', margin: 0 }}>
-                  {selectedSubject.name} Questions
-                </h1>
-                <span style={{ fontSize: 13, color: '#667085', marginTop: 2, display: 'block' }}>
-                  {questions.length} questions cataloged in database
-                </span>
-              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <button
+                  onClick={() => setSelectedSubject(null)}
+                  style={{
+                    padding: '8px 14px',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#334155',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to Question Bank</span>
+                </button>
 
-              <button
-                onClick={() => setSelectedSubject(null)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '7px 12px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  borderRadius: 4,
-                  background: '#FFFFFF',
-                  border: '1px solid #E4E7EC',
-                  color: '#172033',
-                  cursor: 'pointer',
-                }}
-              >
-                <ArrowLeft size={14} />
-                <span>Back to Subject Directory</span>
-              </button>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.015em' }}>
+                      {selectedSubject.name} Questions
+                    </h1>
+                    <span
+                      style={{
+                        padding: '3px 9px',
+                        borderRadius: 6,
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        backgroundColor: '#EFF6FF',
+                        color: '#2563EB',
+                        border: '1px solid #BFDBFE',
+                      }}
+                    >
+                      {selectedSubject.subtopicsCount} Subtopics
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 12.5, color: '#64748B', marginTop: 2, display: 'block' }}>
+                    {questions.length} questions cataloged in database
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -591,7 +712,7 @@ export function QuestionBankManager() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '300px 1fr',
+              gridTemplateColumns: '320px 1fr',
               gap: 20,
               minHeight: 640,
             }}
@@ -600,38 +721,38 @@ export function QuestionBankManager() {
             <div
               style={{
                 background: '#FFFFFF',
-                border: '1px solid #E4E7EC',
-                borderRadius: 6,
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
                 padding: 16,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
-                boxShadow: '0 1px 2px rgba(16,24,40,0.02)',
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
               }}
             >
               {/* List Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>Questions</span>
-                <span style={{ fontSize: 12, color: '#667085' }}>{filteredQuestions.length} total</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>Questions</span>
+                <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>{filteredQuestions.length} total</span>
               </div>
 
               {/* Status Filter Tabs */}
-              <div style={{ display: 'flex', gap: 4, background: '#F7F7F5', padding: 3, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+              <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 8 }}>
                 {(['ALL', 'PENDING', 'APPROVED'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setStatusFilter(tab)}
                     style={{
                       flex: 1,
-                      padding: '4px 6px',
+                      padding: '5px 6px',
                       fontSize: 11.5,
-                      fontWeight: statusFilter === tab ? 600 : 500,
+                      fontWeight: statusFilter === tab ? 700 : 500,
                       border: 'none',
-                      borderRadius: 3,
+                      borderRadius: 6,
                       background: statusFilter === tab ? '#FFFFFF' : 'transparent',
-                      color: statusFilter === tab ? '#172033' : '#667085',
+                      color: statusFilter === tab ? '#0F172A' : '#64748B',
                       cursor: 'pointer',
-                      boxShadow: statusFilter === tab ? '0 1px 2px rgba(16,24,40,0.05)' : 'none',
+                      boxShadow: statusFilter === tab ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
                     }}
                   >
                     {tab === 'ALL' ? 'All' : tab === 'PENDING' ? 'Pending' : 'Approved'}
@@ -641,7 +762,7 @@ export function QuestionBankManager() {
 
               {/* Quick Search */}
               <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: 8, top: 9, color: '#667085' }} />
+                <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: '#64748B' }} />
                 <input
                   type="text"
                   placeholder="Search Q# or text..."
@@ -649,22 +770,23 @@ export function QuestionBankManager() {
                   onChange={(e) => setQuestionSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '6px 8px 6px 28px',
-                    borderRadius: 4,
-                    border: '1px solid #E4E7EC',
-                    fontSize: 12,
+                    padding: '7px 8px 7px 30px',
+                    borderRadius: 6,
+                    border: '1px solid #CBD5E1',
+                    fontSize: 12.5,
+                    color: '#0F172A',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
                 />
               </div>
 
-              {/* High Density Question Rows */}
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 520 }}>
+              {/* Question Rows */}
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 520 }}>
                 {loadingQuestions ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#667085', fontSize: 12 }}>Loading questions...</div>
+                  <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>Loading questions...</div>
                 ) : filteredQuestions.length === 0 ? (
-                  <div style={{ padding: 24, textAlign: 'center', color: '#667085', fontSize: 12 }}>No questions match filter</div>
+                  <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>No questions match filter</div>
                 ) : (
                   filteredQuestions.map((q, idx) => {
                     const isSelected = selectedQuestion?.id === q.id;
@@ -675,29 +797,26 @@ export function QuestionBankManager() {
                         key={q.id}
                         onClick={() => setSelectedQuestionIndex(idx)}
                         style={{
-                          padding: '8px 10px',
-                          borderRadius: 4,
+                          padding: '10px 12px',
+                          borderRadius: 8,
                           cursor: 'pointer',
-                          backgroundColor: isSelected ? 'rgba(59, 110, 168, 0.1)' : 'transparent',
-                          borderLeft: isSelected ? '3px solid #3B6EA8' : '3px solid transparent',
+                          backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                          border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
+                          borderLeft: isSelected ? '3px solid #2563EB' : '1px solid #E2E8F0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           fontSize: 12.5,
-                          color: isSelected ? '#172033' : '#344054',
-                          fontWeight: isSelected ? 600 : 400,
-                          transition: 'background 0.12s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = '#F7F7F5';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                          color: isSelected ? '#0F172A' : '#475569',
+                          fontWeight: isSelected ? 700 : 400,
+                          transition: 'all 150ms ease-out',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}</span>
-                          <span style={{ fontSize: 11.5, color: '#667085', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isSelected ? '#2563EB' : '#0F172A' }}>
+                            Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}
+                          </span>
+                          <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
                             {q.subtopic_name}
                           </span>
                         </div>
@@ -707,7 +826,7 @@ export function QuestionBankManager() {
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            backgroundColor: isApproved ? '#15803D' : '#B45309',
+                            backgroundColor: isApproved ? '#16A34A' : '#D97706',
                           }}
                           title={isApproved ? 'Approved' : 'Pending Review'}
                         />
@@ -722,28 +841,28 @@ export function QuestionBankManager() {
             <div
               style={{
                 background: '#FFFFFF',
-                border: '1px solid #E4E7EC',
-                borderRadius: 6,
-                padding: 24,
+                border: '1px solid #E2E8F0',
+                borderRadius: 14,
+                padding: 26,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                boxShadow: '0 1px 2px rgba(16,24,40,0.02)',
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
               }}
             >
               {selectedQuestion ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {/* Top Bar: Question Number & Actions */}
+                  {/* Top Action Toolbar */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                     <div>
-                      <div style={{ fontSize: 12, color: '#667085', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>Q{selectedQuestion.question_number_in_paper}</span>
+                      <div style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 700, color: '#0F172A' }}>Q{selectedQuestion.question_number_in_paper}</span>
                         <span>•</span>
                         <span>{selectedQuestion.subject_name}</span>
                         <span>•</span>
                         <span>{selectedQuestion.subtopic_name}</span>
                         <span>•</span>
-                        <span style={{ fontWeight: 600, color: '#172033' }}>{selectedQuestion.difficulty}</span>
+                        <span style={{ fontWeight: 600, color: '#2563EB' }}>{selectedQuestion.difficulty}</span>
                       </div>
                     </div>
 
@@ -754,18 +873,18 @@ export function QuestionBankManager() {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 12px',
-                          borderRadius: 4,
-                          border: '1px solid #E4E7EC',
+                          gap: 5,
+                          padding: '7px 14px',
+                          borderRadius: 6,
+                          border: '1px solid #CBD5E1',
                           background: '#FFFFFF',
-                          color: '#172033',
+                          color: '#0F172A',
                           fontSize: 12.5,
-                          fontWeight: 500,
+                          fontWeight: 600,
                           cursor: 'pointer',
                         }}
                       >
-                        <Edit3 size={13} />
+                        <Edit3 size={14} color="#2563EB" />
                         <span>Edit</span>
                       </button>
 
@@ -775,18 +894,19 @@ export function QuestionBankManager() {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 14px',
-                          borderRadius: 4,
+                          gap: 5,
+                          padding: '7px 16px',
+                          borderRadius: 6,
                           border: 'none',
-                          background: selectedQuestion.status === 'PUBLISHED' ? '#DCFCE7' : '#12233F',
+                          background: selectedQuestion.status === 'PUBLISHED' ? '#DCFCE7' : '#16A34A',
                           color: selectedQuestion.status === 'PUBLISHED' ? '#15803D' : '#FFFFFF',
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: actionLoadingId === selectedQuestion.id ? 'not-allowed' : 'pointer',
+                          boxShadow: selectedQuestion.status === 'PUBLISHED' ? 'none' : '0 2px 6px rgba(22, 163, 74, 0.25)',
                         }}
                       >
-                        <Check size={13} />
+                        <Check size={14} />
                         <span>{selectedQuestion.status === 'PUBLISHED' ? 'Approved' : 'Approve'}</span>
                       </button>
 
@@ -796,58 +916,58 @@ export function QuestionBankManager() {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 10px',
-                          borderRadius: 4,
+                          gap: 5,
+                          padding: '7px 12px',
+                          borderRadius: 6,
                           border: '1px solid #FECDCA',
                           background: '#FEF2F2',
                           color: '#B42318',
                           fontSize: 12.5,
-                          fontWeight: 500,
+                          fontWeight: 600,
                           cursor: actionLoadingId === selectedQuestion.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        <ThumbsDown size={13} />
+                        <ThumbsDown size={14} />
                         <span>Flag</span>
                       </button>
                     </div>
                   </div>
 
-                  <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+                  <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
-                  {/* Question Stem Text */}
+                  {/* Question Stem */}
                   <div>
-                    <h3 style={{ fontSize: 18, fontWeight: 600, color: '#172033', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
                       Q{selectedQuestion.question_number_in_paper} [{selectedQuestion.source_year}]: {selectedQuestion.question_text}
                     </h3>
                   </div>
 
-                  {/* Answer Options Vertical List */}
+                  {/* Answer Choices */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {selectedQuestion.options.map((opt) => (
                       <div
                         key={opt.option_label}
                         style={{
-                          padding: '10px 14px',
-                          borderRadius: 4,
+                          padding: '12px 16px',
+                          borderRadius: 8,
                           backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
-                          border: `1px solid ${opt.is_correct ? '#BBF7D0' : '#E4E7EC'}`,
-                          fontSize: 13.5,
-                          color: '#172033',
+                          border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
+                          fontSize: 14,
+                          color: '#0F172A',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontWeight: 700, color: opt.is_correct ? '#15803D' : '#3B6EA8', width: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ fontWeight: 700, color: opt.is_correct ? '#15803D' : '#2563EB', width: 20 }}>
                             {opt.option_label}.
                           </span>
                           <span>{opt.option_text || <em>(Empty option text)</em>}</span>
                         </div>
 
                         {opt.is_correct && (
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 3 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 4, border: '1px solid #86EFAC' }}>
                             ✓ Correct Answer
                           </span>
                         )}
@@ -857,40 +977,39 @@ export function QuestionBankManager() {
 
                   {/* Solution Explanation Box */}
                   {selectedQuestion.explanation?.detailed_solution && (
-                    <div style={{ padding: 14, borderRadius: 4, backgroundColor: '#F7F7F5', border: '1px solid #E4E7EC' }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#667085', textTransform: 'uppercase', marginBottom: 4 }}>
+                    <div style={{ padding: 16, borderRadius: 8, backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
                         Solution Explanation & Core Concept
                       </div>
-                      <p style={{ fontSize: 13, color: '#344054', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                      <p style={{ fontSize: 13.5, color: '#334155', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
                         {selectedQuestion.explanation.detailed_solution}
                       </p>
                     </div>
                   )}
 
                   {/* Navigation Buttons Row */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid #E4E7EC' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>
                     <button
                       disabled={selectedQuestionIndex === 0}
                       onClick={() => setSelectedQuestionIndex((prev) => Math.max(0, prev - 1))}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4,
-                        padding: '6px 12px',
-                        fontSize: 12.5,
-                        fontWeight: 500,
-                        borderRadius: 4,
-                        border: '1px solid #E4E7EC',
+                        gap: 5,
+                        padding: '7px 14px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: '1px solid #CBD5E1',
                         background: '#FFFFFF',
-                        color: '#172033',
+                        color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
                         cursor: selectedQuestionIndex === 0 ? 'not-allowed' : 'pointer',
-                        opacity: selectedQuestionIndex === 0 ? 0.5 : 1,
                       }}
                     >
-                      <ChevronLeft size={14} /> Previous
+                      <ChevronLeft size={15} /> Previous
                     </button>
 
-                    <span style={{ fontSize: 12, color: '#667085' }}>
+                    <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>
                       Question {selectedQuestionIndex + 1} of {filteredQuestions.length}
                     </span>
 
@@ -900,24 +1019,23 @@ export function QuestionBankManager() {
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4,
-                        padding: '6px 12px',
-                        fontSize: 12.5,
-                        fontWeight: 500,
-                        borderRadius: 4,
-                        border: '1px solid #E4E7EC',
+                        gap: 5,
+                        padding: '7px 14px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        border: '1px solid #CBD5E1',
                         background: '#FFFFFF',
-                        color: '#172033',
+                        color: selectedQuestionIndex >= filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
                         cursor: selectedQuestionIndex >= filteredQuestions.length - 1 ? 'not-allowed' : 'pointer',
-                        opacity: selectedQuestionIndex >= filteredQuestions.length - 1 ? 0.5 : 1,
                       }}
                     >
-                      Next <ChevronRight size={14} />
+                      Next <ChevronRight size={15} />
                     </button>
                   </div>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', color: '#667085', padding: 40 }}>
+                <div style={{ textAlign: 'center', color: '#64748B', padding: 40 }}>
                   Select a question from the navigation panel to view details.
                 </div>
               )}
@@ -928,29 +1046,29 @@ export function QuestionBankManager() {
 
       {/* EDIT MODAL DRAWER */}
       {editingQuestion && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(16, 33, 61, 0.5)', backdropFilter: 'blur(2px)', zIndex: 300, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <div
             style={{
               width: '100%',
               maxWidth: 680,
               maxHeight: '90vh',
               backgroundColor: '#FFFFFF',
-              borderRadius: 6,
-              boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+              borderRadius: 14,
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              border: '1px solid #E4E7EC',
+              border: '1px solid #E2E8F0',
             }}
           >
             {/* Header */}
-            <div style={{ padding: '16px 20px', backgroundColor: '#10213D', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>
+            <div style={{ padding: '16px 20px', backgroundColor: '#FAFAFA', borderBottom: '1px solid #E2E8F0', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>
                 Edit Question Q{editingQuestion.question_number_in_paper} & Answer Choices
               </div>
               <button
                 onClick={() => setEditingQuestion(null)}
-                style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
@@ -959,59 +1077,59 @@ export function QuestionBankManager() {
             {/* Body */}
             <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#172033' }}>Question Stem Text</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Question Stem Text</label>
                 <textarea
                   rows={3}
                   value={editFormText}
                   onChange={(e) => setEditFormText(e.target.value)}
-                  style={{ padding: 10, borderRadius: 4, border: '1px solid #E4E7EC', fontSize: 13.5, outline: 'none' }}
+                  style={{ padding: 10, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13.5, outline: 'none' }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#172033' }}>Options & Correct Answer</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Options & Correct Answer</label>
                 {editFormOptions.map((opt) => (
-                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8, borderRadius: 4, border: `1px solid ${opt.is_correct ? '#BBF7D0' : '#E4E7EC'}`, backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF' }}>
+                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 8, border: `1px solid ${opt.is_correct ? '#86EFAC' : '#CBD5E1'}`, backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF' }}>
                     <input
                       type="radio"
                       name="correctRadio"
                       checked={opt.is_correct}
                       onChange={() => setEditFormOptions((prev) => prev.map((o) => ({ ...o, is_correct: o.label === opt.label })))}
                     />
-                    <span style={{ fontWeight: 700, width: 16 }}>{opt.label}.</span>
+                    <span style={{ fontWeight: 700, width: 16, color: '#0F172A' }}>{opt.label}.</span>
                     <input
                       type="text"
                       value={opt.text}
                       onChange={(e) => setEditFormOptions((prev) => prev.map((o) => (o.label === opt.label ? { ...o, text: e.target.value } : o)))}
-                      style={{ flex: 1, padding: 6, borderRadius: 4, border: '1px solid #E4E7EC', fontSize: 13, outline: 'none' }}
+                      style={{ flex: 1, padding: 7, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
                     />
                   </div>
                 ))}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#172033' }}>Solution Explanation</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Solution Explanation</label>
                 <textarea
                   rows={3}
                   value={editFormExplanation}
                   onChange={(e) => setEditFormExplanation(e.target.value)}
-                  style={{ padding: 10, borderRadius: 4, border: '1px solid #E4E7EC', fontSize: 13, outline: 'none' }}
+                  style={{ padding: 10, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
                 />
               </div>
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '12px 20px', borderTop: '1px solid #E4E7EC', backgroundColor: '#F7F7F5', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #E2E8F0', backgroundColor: '#FAFAFA', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 onClick={() => setEditingQuestion(null)}
-                style={{ padding: '6px 14px', borderRadius: 4, border: '1px solid #E4E7EC', background: '#FFFFFF', color: '#172033', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 disabled={savingEdit}
                 onClick={handleSaveQuestionEdit}
-                style={{ padding: '6px 16px', borderRadius: 4, border: 'none', background: '#12233F', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: '#16A34A', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)' }}
               >
                 {savingEdit ? 'Saving...' : 'Save & Publish'}
               </button>

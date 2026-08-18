@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Upload,
   Cloud,
@@ -15,12 +15,13 @@ import {
   Check,
   Clock,
   FileSpreadsheet,
-  Eye,
   Layers,
   Sparkles,
-  CheckCheck,
-  XCircle,
   ClipboardCheck,
+  Activity,
+  ArrowRight,
+  ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
 import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/exam';
@@ -38,6 +39,526 @@ interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
 }
 
+// ----------------------------------------------------------------------
+// 1. MetricCard Component (Single Variant Blue & Left-to-Right Hover Line)
+// ----------------------------------------------------------------------
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  supportingText: string;
+  icon: React.ReactNode;
+  isProcessing?: boolean;
+}
+
+function MetricCard({ title, value, supportingText, icon, isProcessing = false }: MetricCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const accentColor = '#2563EB';
+
+  return (
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        background: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 14,
+        position: 'relative',
+        overflow: 'hidden',
+        padding: '18px 20px',
+        boxShadow: isHovered
+          ? '0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03)'
+          : '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+        transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 120,
+      }}
+    >
+      {/* Top Edge Accent Line (Appears Left-to-Right on Hover) */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          backgroundColor: accentColor,
+          transform: isHovered ? 'scaleX(1)' : 'scaleX(0)',
+          transformOrigin: 'left center',
+          transition: 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      />
+
+      {/* Header Row: Title & Tinted Icon Container */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', letterSpacing: '-0.01em' }}>
+          {title}
+        </div>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            backgroundColor: '#EFF6FF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            transform: isHovered ? 'scale(1.06)' : 'scale(1)',
+            transition: 'transform 200ms ease-out',
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+
+      {/* Value & Supporting Detail */}
+      <div style={{ marginTop: 10 }}>
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: isHovered ? accentColor : '#0F172A',
+            lineHeight: 1.05,
+            letterSpacing: '-0.025em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'color 200ms ease-out',
+          }}
+        >
+          <span>{value}</span>
+          {isProcessing && <Loader2 size={18} className="animate-spin" color="#2563EB" />}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>
+          {supportingText}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// 2. Horizontal 5-Stage Pipeline Visualizer Preview Banner
+// ----------------------------------------------------------------------
+function FiveStagePipelinePreview() {
+  const stages = [
+    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: '#2563EB', bg: '#EFF6FF' },
+    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#2563EB', bg: '#EFF6FF' },
+    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: Sparkles, color: '#2563EB', bg: '#EFF6FF' },
+    { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#D97706', bg: '#FEF3C7' },
+    { num: '05', title: 'Publish', desc: 'Live S3 catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5' },
+  ];
+
+  return (
+    <div
+      style={{
+        background: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 14,
+        padding: '20px 24px',
+        marginBottom: 24,
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ width: 4, height: 18, backgroundColor: '#2563EB', borderRadius: 2 }} />
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+          Examination Content Processing Flow
+        </h3>
+        <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500, marginLeft: 4 }}>
+          (5-Stage Pipeline Standard)
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          alignItems: 'center',
+        }}
+      >
+        {stages.map((stg, idx) => {
+          const StageIcon = stg.icon;
+          return (
+            <React.Fragment key={stg.num}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: stg.bg,
+                    color: stg.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <StageIcon size={16} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.05em' }}>
+                      {stg.num}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      {stg.title}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2, lineHeight: 1.3 }}>
+                    {stg.desc}
+                  </div>
+                </div>
+              </div>
+
+              {idx < stages.length - 1 && (
+                <div style={{ display: 'none' /* Responsive grid fallback */ }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// 3. Table Row with Stage Checkpoint Hover & Dimming Behavior
+// ----------------------------------------------------------------------
+function TableRowItem({
+  exam,
+  isLast,
+  onSelect,
+  onNavigate,
+  renderOverallStatusBadge,
+  renderStatusBadge,
+}: {
+  exam: ExamPipelineStatusItem;
+  isLast: boolean;
+  onSelect: (exam: ExamPipelineStatusItem) => void;
+  onNavigate?: (view: string, extraData?: any) => void;
+  renderOverallStatusBadge: (exam: ExamPipelineStatusItem) => React.ReactNode;
+  renderStatusBadge: (status: string) => React.ReactNode;
+}) {
+  const [rowHovered, setRowHovered] = useState(false);
+  const [hoveredStageIndex, setHoveredStageIndex] = useState<number | null>(null);
+
+  const total = exam.total_questions || 100;
+  const ext = exam.extracted_questions_count || 0;
+  const keyCount = exam.key_mapped_count || 0;
+  const expCount = exam.explanations_count || 0;
+  const isPublished =
+    (exam.status || '').toUpperCase().includes('PUBLISHED') ||
+    Boolean(exam.questions_json_path && exam.solutions_json_path);
+
+  // Stage 1 status
+  const s1Completed = exam.stage1_status === 'COMPLETED' || isPublished || (ext >= total && ext > 0);
+  const s1InProgress = exam.stage1_status === 'IN_PROGRESS' || (ext > 0 && ext < total);
+  const s1Missing = exam.stage1_status === 'MISSING_INPUT' || (!exam.has_question_paper && ext === 0);
+
+  // Stage 2 status
+  const targetQ = ext > 0 ? ext : total;
+  const s2Completed = exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= targetQ && targetQ > 0);
+  const s2InProgress = exam.stage2_status === 'IN_PROGRESS';
+  const s2Missing = exam.stage2_status === 'MISSING_INPUT' || (!exam.has_answer_key && keyCount === 0 && !exam.paper_set_code);
+
+  // Stage 3 status
+  const s3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
+  const s3InProgress = exam.stage3_status === 'IN_PROGRESS';
+
+  return (
+    <tr
+      onClick={() => onSelect(exam)}
+      onMouseEnter={() => setRowHovered(true)}
+      onMouseLeave={() => {
+        setRowHovered(false);
+        setHoveredStageIndex(null);
+      }}
+      style={{
+        borderBottom: isLast ? 'none' : '1px solid #E2E8F0',
+        backgroundColor: rowHovered ? '#F8FAFC' : '#FFFFFF',
+        cursor: 'pointer',
+        transition: 'background-color 150ms ease-out',
+        position: 'relative',
+      }}
+    >
+      {/* EXAM PAPER (Two-line title hierarchy) */}
+      <td
+        style={{
+          padding: '14px 16px',
+          maxWidth: 280,
+          borderLeft: rowHovered ? '3px solid #2563EB' : '3px solid transparent',
+          transition: 'border-left 150ms ease-out',
+        }}
+      >
+        <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0F172A', lineHeight: 1.3 }}>
+          {exam.name}
+        </div>
+        <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
+          {exam.code} • {exam.source_year} • Set {exam.paper_set_code || 'A'}
+        </div>
+      </td>
+
+      {/* STATUS */}
+      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+        {renderStatusBadge(exam.status)}
+      </td>
+
+      {/* 3-STAGE PROGRESS CHECKPOINTS */}
+      <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+          {/* Stage 1 Checkpoint */}
+          <div
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(1);
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(null);
+            }}
+            style={{
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: s1Completed ? '#DCFCE7' : s1InProgress ? '#FEF3C7' : s1Missing ? '#FEF2F2' : '#F1F5F9',
+              color: s1Completed ? '#15803D' : s1InProgress ? '#B45309' : s1Missing ? '#B42318' : '#64748B',
+              border: `1px solid ${s1Completed ? '#86EFAC' : s1InProgress ? '#FDE68A' : s1Missing ? '#FECDCA' : '#CBD5E1'}`,
+              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 1 ? 0.45 : 1,
+              transform: hoveredStageIndex === 1 ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 150ms ease-out',
+              position: 'relative',
+            }}
+          >
+            {s1Completed ? <CheckCircle2 size={12} /> : s1InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+            <span>01 Extraction ({ext}/{total})</span>
+
+            {/* Stage Hover Tooltip Popover */}
+            {hoveredStageIndex === 1 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: 6,
+                  backgroundColor: '#0F172A',
+                  color: '#FFFFFF',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                  zIndex: 100,
+                }}
+              >
+                <div><strong>Stage 1: Question Extraction</strong></div>
+                <div>Completion: {Math.round((ext / (total || 1)) * 100)}% ({ext}/{total} Qs)</div>
+                <div>State: {s1Completed ? 'COMPLETED' : s1InProgress ? 'PARSING' : 'PENDING'}</div>
+              </div>
+            )}
+          </div>
+
+          <span style={{ color: '#CBD5E1', fontSize: 11, fontWeight: 700 }}>→</span>
+
+          {/* Stage 2 Checkpoint */}
+          <div
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(2);
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(null);
+            }}
+            style={{
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: s2Completed ? '#DCFCE7' : s2InProgress ? '#FEF3C7' : s2Missing ? '#FEF2F2' : '#F1F5F9',
+              color: s2Completed ? '#15803D' : s2InProgress ? '#B45309' : s2Missing ? '#B42318' : '#64748B',
+              border: `1px solid ${s2Completed ? '#86EFAC' : s2InProgress ? '#FDE68A' : s2Missing ? '#FECDCA' : '#CBD5E1'}`,
+              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 2 ? 0.45 : 1,
+              transform: hoveredStageIndex === 2 ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 150ms ease-out',
+              position: 'relative',
+            }}
+          >
+            {s2Completed ? <CheckCircle2 size={12} /> : s2InProgress ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />}
+            <span>02 Key ({keyCount}/{targetQ})</span>
+
+            {/* Stage Hover Tooltip Popover */}
+            {hoveredStageIndex === 2 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: 6,
+                  backgroundColor: '#0F172A',
+                  color: '#FFFFFF',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                  zIndex: 100,
+                }}
+              >
+                <div><strong>Stage 2: Answer Key Mapping</strong></div>
+                <div>Mapped: {keyCount}/{targetQ} Keys (Set {exam.paper_set_code || 'A'})</div>
+                <div>State: {s2Completed ? 'MAPPED' : s2InProgress ? 'MAPPING' : 'MISSING KEY'}</div>
+              </div>
+            )}
+          </div>
+
+          <span style={{ color: '#CBD5E1', fontSize: 11, fontWeight: 700 }}>→</span>
+
+          {/* Stage 3 Checkpoint */}
+          <div
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(3);
+            }}
+            onMouseLeave={(e) => {
+              e.stopPropagation();
+              setHoveredStageIndex(null);
+            }}
+            style={{
+              padding: '3px 8px',
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              backgroundColor: s3Completed ? '#DCFCE7' : s3InProgress ? '#FEF3C7' : '#F1F5F9',
+              color: s3Completed ? '#15803D' : s3InProgress ? '#B45309' : '#64748B',
+              border: `1px solid ${s3Completed ? '#86EFAC' : s3InProgress ? '#FDE68A' : '#CBD5E1'}`,
+              opacity: hoveredStageIndex !== null && hoveredStageIndex !== 3 ? 0.45 : 1,
+              transform: hoveredStageIndex === 3 ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 150ms ease-out',
+              position: 'relative',
+            }}
+          >
+            {s3Completed ? <CheckCircle2 size={12} /> : s3InProgress ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            <span>03 Explanations ({expCount}/{targetQ})</span>
+
+            {/* Stage Hover Tooltip Popover */}
+            {hoveredStageIndex === 3 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: 6,
+                  backgroundColor: '#0F172A',
+                  color: '#FFFFFF',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                  zIndex: 100,
+                }}
+              >
+                <div><strong>Stage 3: Explanations Generator</strong></div>
+                <div>Generated: {expCount}/{targetQ} Detailed Solutions</div>
+                <div>State: {s3Completed ? 'COMPLETED' : s3InProgress ? 'GENERATING' : 'QUEUED'}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* OVERALL STATUS */}
+      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+        {renderOverallStatusBadge(exam)}
+      </td>
+
+      {/* ACTIONS */}
+      <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+        <div style={{ display: 'inline-flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => onSelect(exam)}
+            style={{
+              padding: '5px 12px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: '#0F172A',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 6,
+              cursor: 'pointer',
+              boxShadow: rowHovered ? '0 1px 2px rgba(15, 23, 42, 0.05)' : 'none',
+              transition: 'all 150ms ease-out',
+            }}
+          >
+            Details
+          </button>
+
+          <button
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate('review', exam);
+              } else {
+                onSelect(exam);
+              }
+            }}
+            style={{
+              padding: '5px 13px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: '#FFFFFF',
+              background: '#2563EB',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 1px 2px rgba(37, 99, 235, 0.2)',
+              transition: 'all 150ms ease-out',
+            }}
+          >
+            <Check size={13} />
+            Review Exam
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ----------------------------------------------------------------------
+// Main UploadReviewView Component
+// ----------------------------------------------------------------------
 export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const {
     uploadMode,
@@ -66,7 +587,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     handleConflictResolve,
   } = useExamUpload();
 
-  // Real-time Pipeline & Queue State
+  // Live Pipeline State
   const [pipelineExams, setPipelineExams] = useState<ExamPipelineStatusItem[]>([]);
   const [stuckPipelines, setStuckPipelines] = useState<StuckPipelineItem[]>([]);
   const [resumingExamId, setResumingExamId] = useState<string | null>(null);
@@ -76,13 +597,12 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
 
-  // UI Tabs / View Sections
+  // UI Tabs ('UNIFIED' | 'UPLOAD_ONLY' | 'PIPELINE_ONLY')
   const [activeTab, setActiveTab] = useState<'UNIFIED' | 'UPLOAD_ONLY' | 'PIPELINE_ONLY'>('UNIFIED');
 
-  // Drawer and Approval State
+  // Slide-out Audit Drawer
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadStuckPipelines = async () => {
@@ -95,9 +615,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   };
 
   const loadRealTimeQueue = async (isSilent: boolean = false) => {
-    if (!isSilent) {
-      setLoadingQueue(true);
-    }
+    if (!isSilent) setLoadingQueue(true);
     setQueueError(null);
     try {
       const data = await fetchExamPipelineStatuses();
@@ -108,13 +626,9 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
       }
     } catch (err: any) {
       console.error('Failed to load real-time pipeline queue:', err);
-      if (!isSilent) {
-        setQueueError(err.message || 'Could not load pipeline jobs.');
-      }
+      if (!isSilent) setQueueError(err.message || 'Could not load pipeline jobs.');
     } finally {
-      if (!isSilent) {
-        setLoadingQueue(false);
-      }
+      if (!isSilent) setLoadingQueue(false);
     }
   };
 
@@ -147,7 +661,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     loadStuckPipelines();
   }, []);
 
-  // Adaptive Polling: Automatically polls every 4 seconds ONLY when tasks are actively processing
+  // Polling for active background jobs
   useEffect(() => {
     const hasActiveTasks = pipelineExams.some((e) => {
       const s = (e.overall_status || e.status || '').toUpperCase();
@@ -157,9 +671,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
       return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
     });
 
-    if (!hasActiveTasks && !isUploading) {
-      return;
-    }
+    if (!hasActiveTasks && !isUploading) return;
 
     const intervalId = setInterval(() => {
       loadRealTimeQueue(true);
@@ -170,24 +682,9 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);
-    // Reload live queue after uploading
     setTimeout(() => {
       loadRealTimeQueue(true);
     }, 1200);
-  };
-
-  const handleApprove = async (examId: string, examTitle: string) => {
-    setApprovingId(examId);
-    try {
-      await approveAndPublishExam(examId);
-      setToastMessage(`Exam '${examTitle}' successfully approved & published. S3 JSON artifacts generated.`);
-      setTimeout(() => setToastMessage(null), 5000);
-      await loadRealTimeQueue();
-    } catch (err: any) {
-      alert(`Error approving exam: ${err.message}`);
-    } finally {
-      setApprovingId(null);
-    }
   };
 
   // Filter real-time jobs
@@ -202,7 +699,6 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     const matchesStatus =
       statusFilter === 'ALL' ||
       (statusFilter === 'PROCESSING' && (statusUpper.includes('PROCESSING') || statusUpper.includes('PARSING') || overallUpper.includes('PROCESSING'))) ||
-      (statusFilter === 'QUEUED' && statusUpper.includes('QUEUED')) ||
       (statusFilter === 'PENDING' && (statusUpper.includes('PENDING') || overallUpper.includes('REVIEW'))) ||
       (statusFilter === 'COMPLETED' && (statusUpper.includes('PUBLISHED') || statusUpper.includes('READY') || overallUpper === 'PUBLISHED')) ||
       (statusFilter === 'FAILED' && (statusUpper.includes('FAILED') || statusUpper.includes('REJECTED') || overallUpper.includes('MISSING')));
@@ -212,9 +708,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     return matchesSearch && matchesStatus && matchesStage;
   });
 
-  // Calculate live summary stats with accurate logic
+  // KPI Counts
   const totalExamsCount = pipelineExams.length;
-
   const publishedCount = pipelineExams.filter((e) => {
     const s = (e.status || '').toUpperCase();
     return s.includes('PUBLISHED') || Boolean(e.questions_json_path && e.solutions_json_path);
@@ -249,7 +744,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             backgroundColor: '#DCFCE7',
             border: '1px solid #86EFAC',
             padding: '3px 9px',
-            borderRadius: 5,
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -262,26 +757,23 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
 
     if (overall === 'MISSING_INPUTS' || exam.stage1_status === 'MISSING_INPUT' || exam.stage2_status === 'MISSING_INPUT') {
-      const missingPaper = !exam.has_question_paper && exam.extracted_questions_count === 0;
-      const missingKey = !exam.has_answer_key && (exam.key_mapped_count || 0) === 0 && !exam.paper_set_code;
-      const label = missingPaper && missingKey ? 'Missing Paper & Key' : missingPaper ? 'Missing Paper' : 'Missing Key';
       return (
         <span
           style={{
             fontSize: 12,
             fontWeight: 600,
-            color: '#991B1B',
-            backgroundColor: '#FEE2E2',
-            border: '1px solid #FCA5A5',
+            color: '#B42318',
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FECDCA',
             padding: '3px 9px',
-            borderRadius: 5,
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
           <AlertCircle size={12} />
-          {label}
+          Missing Input
         </span>
       );
     }
@@ -296,36 +788,14 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             backgroundColor: '#E0F2FE',
             border: '1px solid #BAE6FD',
             padding: '3px 9px',
-            borderRadius: 5,
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
           <Loader2 size={12} className="animate-spin" color="#0284C7" />
-          Pipeline Running...
-        </span>
-      );
-    }
-
-    if (overall === 'READY_FOR_REVIEW' || (exam.extracted_questions_count >= exam.total_questions && exam.extracted_questions_count > 0)) {
-      return (
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#B45309',
-            backgroundColor: '#FEF3C7',
-            border: '1px solid #FDE047',
-            padding: '3px 9px',
-            borderRadius: 5,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-          }}
-        >
-          <ClipboardCheck size={12} />
-          Ready for QA Review
+          Pipeline Processing
         </span>
       );
     }
@@ -335,18 +805,18 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         style={{
           fontSize: 12,
           fontWeight: 600,
-          color: '#475467',
-          backgroundColor: '#F2F4F7',
-          border: '1px solid #EAECF0',
+          color: '#B45309',
+          backgroundColor: '#FEF3C7',
+          border: '1px solid #FDE68A',
           padding: '3px 9px',
-          borderRadius: 5,
+          borderRadius: 12,
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
         }}
       >
         <Clock size={12} />
-        Pending Review
+        Pending QA Review
       </span>
     );
   };
@@ -361,15 +831,15 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             fontWeight: 600,
             color: '#15803D',
             backgroundColor: '#DCFCE7',
-            border: '1px solid #BBF7D0',
-            padding: '3px 8px',
-            borderRadius: 4,
+            border: '1px solid #86EFAC',
+            padding: '3px 9px',
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#15803D' }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#16A34A' }} />
           Published
         </span>
       );
@@ -383,8 +853,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             color: '#0369A1',
             backgroundColor: '#E0F2FE',
             border: '1px solid #BAE6FD',
-            padding: '3px 8px',
-            borderRadius: 4,
+            padding: '3px 9px',
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
@@ -404,14 +874,14 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             color: '#B42318',
             backgroundColor: '#FEF2F2',
             border: '1px solid #FECDCA',
-            padding: '3px 8px',
-            borderRadius: 4,
+            padding: '3px 9px',
+            borderRadius: 12,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#B42318' }} />
+          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#DC2626' }} />
           Failed
         </span>
       );
@@ -424,8 +894,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           color: '#B45309',
           backgroundColor: '#FEF3C7',
           border: '1px solid #FDE68A',
-          padding: '3px 8px',
-          borderRadius: 4,
+          padding: '3px 9px',
+          borderRadius: 12,
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
@@ -437,146 +907,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     );
   };
 
-  const renderPipelineStageVisualizer = (exam: ExamPipelineStatusItem) => {
-    const total = exam.total_questions || 100;
-    const ext = exam.extracted_questions_count || 0;
-    const keyCount = exam.key_mapped_count || 0;
-    const expCount = exam.explanations_count || 0;
-    const isPublished = (exam.status || '').toUpperCase().includes('PUBLISHED') || Boolean(exam.questions_json_path && exam.solutions_json_path);
-
-    // Stage 1: Extraction Status & Style
-    let s1Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' };
-    let s1Label = `1. Extraction (${ext}/${total})`;
-    let s1Icon = <FileText size={11} />;
-
-    if (exam.stage1_status === 'COMPLETED' || isPublished || (ext >= total && ext > 0)) {
-      s1Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
-      s1Label = `1. Extraction (${ext}/${total})`;
-      s1Icon = <CheckCircle2 size={11} />;
-    } else if (exam.stage1_status === 'IN_PROGRESS' || (ext > 0 && ext < total)) {
-      s1Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
-      s1Label = `1. Extracting (${ext}/${total})`;
-      s1Icon = <Loader2 size={11} className="animate-spin" />;
-    } else if (exam.stage1_status === 'MISSING_INPUT' || (!exam.has_question_paper && ext === 0)) {
-      s1Style = { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B' };
-      s1Label = `1. Missing Paper`;
-      s1Icon = <AlertCircle size={11} />;
-    }
-
-    // Stage 2: Key Mapping Status & Style
-    const targetQ = ext > 0 ? ext : total;
-    let s2Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#64748B' };
-    let s2Label = `2. Key (${keyCount}/${targetQ})`;
-    let s2Icon = <Key size={11} />;
-
-    if (exam.stage2_status === 'COMPLETED' || isPublished || (keyCount >= targetQ && targetQ > 0)) {
-      s2Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
-      s2Label = `2. Key Mapped (${keyCount}/${targetQ})`;
-      s2Icon = <CheckCircle2 size={11} />;
-    } else if (exam.stage2_status === 'IN_PROGRESS') {
-      s2Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
-      s2Label = `2. Mapping Key (${keyCount}/${targetQ})`;
-      s2Icon = <Loader2 size={11} className="animate-spin" />;
-    } else if (exam.stage2_status === 'MISSING_INPUT' || (!exam.has_answer_key && keyCount === 0 && !exam.paper_set_code)) {
-      s2Style = { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B' };
-      s2Label = `2. Missing Key`;
-      s2Icon = <AlertCircle size={11} />;
-    } else {
-      s2Label = `2. Key (${keyCount}/${targetQ})`;
-    }
-
-    // Stage 3: Explanations Status & Style
-    let s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
-    let s3Label = `3. Explanations (${expCount}/${targetQ})`;
-    let s3Icon = <Sparkles size={11} />;
-
-    if (exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0)) {
-      s3Style = { bg: '#DCFCE7', border: '#86EFAC', text: '#15803D' };
-      s3Label = `3. Explanations (${expCount}/${targetQ})`;
-      s3Icon = <CheckCircle2 size={11} />;
-    } else if (exam.stage3_status === 'IN_PROGRESS') {
-      s3Style = { bg: '#FEF3C7', border: '#FDE047', text: '#B45309' };
-      s3Label = `3. Explanations (${expCount}/${targetQ})`;
-      s3Icon = <Loader2 size={11} className="animate-spin" />;
-    } else if (exam.stage3_status === 'WAITING_INPUTS') {
-      s3Style = { bg: '#F1F5F9', border: '#CBD5E1', text: '#94A3B8' };
-      s3Label = `3. Explanations (Waiting)`;
-      s3Icon = <Clock size={11} />;
-    } else {
-      s3Label = `3. Explanations (${expCount}/${targetQ})`;
-    }
-
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {/* Stage 1: Extraction */}
-        <div
-          title={`Stage 1: Question Paper Extraction (${ext}/${total} Qs)`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 7px',
-            borderRadius: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            backgroundColor: s1Style.bg,
-            color: s1Style.text,
-            border: `1px solid ${s1Style.border}`,
-          }}
-        >
-          {s1Icon}
-          <span>{s1Label}</span>
-        </div>
-
-        <span style={{ color: '#98A2B3', fontSize: 10 }}>→</span>
-
-        {/* Stage 2: Key Mapping */}
-        <div
-          title={`Stage 2: Answer Key Mapping (${exam.paper_set_code || 'SET_A'})`}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 7px',
-            borderRadius: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            backgroundColor: s2Style.bg,
-            color: s2Style.text,
-            border: `1px solid ${s2Style.border}`,
-          }}
-        >
-          {s2Icon}
-          <span>{s2Label}</span>
-        </div>
-
-        <span style={{ color: '#98A2B3', fontSize: 10 }}>→</span>
-
-        {/* Stage 3: Explanations */}
-        <div
-          title="Stage 3: Question Explanations & Knowledge Base Generation (Starts after Paper & Key)"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 7px',
-            borderRadius: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            backgroundColor: s3Style.bg,
-            color: s3Style.text,
-            border: `1px solid ${s3Style.border}`,
-          }}
-        >
-          {s3Icon}
-          <span>{s3Label}</span>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div style={{ maxWidth: 1380, margin: '0 auto', fontFamily: 'Inter, sans-serif', paddingBottom: 60 }}>
+    <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif', paddingBottom: 60 }}>
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -589,7 +921,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             color: '#FFFFFF',
             padding: '12px 20px',
             borderRadius: 8,
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
@@ -602,18 +934,36 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         </div>
       )}
 
-      {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      {/* 1. Page Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
-            Question Paper Upload & 3-Stage Pipeline Ingestion Center
+          <h1
+            style={{
+              fontSize: 26,
+              fontWeight: 700,
+              color: '#0F172A',
+              margin: 0,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Exam Paper Pipeline
           </h1>
-          <p style={{ fontSize: 13.5, color: '#667085', marginTop: 4, margin: '4px 0 0 0' }}>
-            Upload question papers and answer keys, track the 3 extraction & explanation pipeline stages, and manage exam publishing.
+          <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
+            Upload, process, review and publish examination papers through the content pipeline.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button
             onClick={() => loadRealTimeQueue(false)}
             disabled={loadingQueue}
@@ -623,71 +973,94 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               gap: 6,
               padding: '8px 14px',
               fontSize: 13,
-              fontWeight: 600,
-              backgroundColor: '#FFFFFF',
-              color: '#172033',
-              border: '1px solid #E4E7EC',
+              fontWeight: 500,
               borderRadius: 6,
+              backgroundColor: '#FFFFFF',
+              color: '#0F172A',
+              border: '1px solid #E2E8F0',
+              cursor: loadingQueue ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+            }}
+            title="Refresh Real-Time Pipeline Status"
+          >
+            <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
+            <span>Refresh Pipeline</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('UPLOAD_ONLY')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              fontSize: 13.5,
+              fontWeight: 600,
+              borderRadius: 6,
+              backgroundColor: '#0F172A',
+              color: '#FFFFFF',
+              border: '1px solid #0F172A',
               cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+              transition: 'background 0.15s ease',
             }}
           >
-            <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} />
-            Refresh Pipeline
+            <Upload size={15} />
+            <span>Upload Exam Paper</span>
           </button>
         </div>
       </div>
 
-      {/* 4-Metric Summary KPIs */}
+      {/* 2. Compact 4 Metric Cards */}
       <div
         style={{
-          background: '#FFFFFF',
-          border: '1px solid #E4E7EC',
-          borderRadius: 8,
-          padding: '16px 24px',
-          marginBottom: 24,
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 16,
-          boxShadow: '0 1px 3px rgba(16,24,40,0.03)',
+          marginBottom: 24,
         }}
       >
-        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#172033' }}>{totalExamsCount}</div>
-          <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Total Exam Papers</div>
-        </div>
-
-        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#0369A1', display: 'flex', alignItems: 'center', gap: 8 }}>
-            {activeCount}
-            {activeCount > 0 && <Loader2 size={18} className="animate-spin" color="#0369A1" />}
-          </div>
-          <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Active Pipeline Tasks</div>
-        </div>
-
-        <div style={{ paddingRight: 16, borderRight: '1px solid #E4E7EC' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#B45309' }}>{pendingCount}</div>
-          <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Pending Review & Publish</div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#15803D' }}>{publishedCount}</div>
-          <div style={{ fontSize: 12, color: '#667085', fontWeight: 600, marginTop: 2 }}>Published & Active in S3</div>
-        </div>
+        <MetricCard
+          title="Total Exam Papers"
+          value={totalExamsCount}
+          supportingText="Extracted & cataloged"
+          icon={<FileSpreadsheet size={17} color="#2563EB" />}
+        />
+        <MetricCard
+          title="Active Pipeline Tasks"
+          value={activeCount}
+          supportingText="Processing in background"
+          icon={<Activity size={17} color="#2563EB" />}
+          isProcessing={activeCount > 0}
+        />
+        <MetricCard
+          title="Pending Review"
+          value={pendingCount}
+          supportingText="Awaiting verification"
+          icon={<Clock size={17} color="#2563EB" />}
+        />
+        <MetricCard
+          title="Published"
+          value={publishedCount}
+          supportingText="S3 JSON live & active"
+          icon={<CheckCircle2 size={17} color="#2563EB" />}
+        />
       </div>
 
-      {/* Stuck / Interrupted Pipeline Alert Banner */}
+      {/* Interrupted Task Alert */}
       {stuckPipelines.length > 0 && (
         <div
           style={{
-            backgroundColor: '#FEF3F2',
+            backgroundColor: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 8,
-            padding: '14px 18px',
-            marginBottom: 20,
+            borderRadius: 12,
+            padding: '16px 20px',
+            marginBottom: 24,
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            boxShadow: '0 2px 6px rgba(217,45,32,0.06)',
+            boxShadow: '0 2px 6px rgba(220,38,38,0.06)',
           }}
         >
           {stuckPipelines.map((stuck) => (
@@ -707,23 +1080,22 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     width: 36,
                     height: 36,
                     borderRadius: '50%',
-                    backgroundColor: '#FEE4E2',
+                    backgroundColor: '#FEE2E2',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}
                 >
-                  <AlertTriangle size={18} color="#D92D20" />
+                  <AlertTriangle size={18} color="#DC2626" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#912018' }}>
-                    Interrupted Task Detected: {stuck.exam_name}
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#991B1B' }}>
+                    Interrupted Task: {stuck.exam_name}
                   </div>
-                  <div style={{ fontSize: 12, color: '#B42318', marginTop: 2 }}>
-                    Pipeline was interrupted during <strong>{stuck.pipeline_type}</strong> ({stuck.current_step || 'Server reload'}).
-                    {stuck.explanations_count > 0 && ` ${stuck.explanations_count}/${stuck.total_questions} explanations were already generated and saved.`}
-                    {' '}Resuming will skip all previously completed items.
+                  <div style={{ fontSize: 12.5, color: '#B91C1C', marginTop: 2 }}>
+                    Task was interrupted during <strong>{stuck.pipeline_type}</strong> ({stuck.current_step || 'Server reload'}).
+                    Resuming will automatically skip previously completed items.
                   </div>
                 </div>
               </div>
@@ -734,17 +1106,16 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   disabled={resumingExamId === stuck.exam_id}
                   style={{
                     padding: '7px 14px',
-                    backgroundColor: '#D92D20',
+                    backgroundColor: '#DC2626',
                     color: '#FFFFFF',
-                    fontSize: 12,
-                    fontWeight: 700,
+                    fontSize: 12.5,
+                    fontWeight: 600,
                     borderRadius: 6,
                     border: 'none',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
                   }}
                 >
                   {resumingExamId === stuck.exam_id ? (
@@ -755,7 +1126,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   ) : (
                     <>
                       <RefreshCw size={14} />
-                      ⚡ Resume Pipeline
+                      Resume Task
                     </>
                   )}
                 </button>
@@ -764,11 +1135,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   style={{
                     padding: '7px 12px',
                     backgroundColor: '#FFFFFF',
-                    color: '#475467',
-                    fontSize: 12,
+                    color: '#475569',
+                    fontSize: 12.5,
                     fontWeight: 600,
                     borderRadius: 6,
-                    border: '1px solid #D0D5DD',
+                    border: '1px solid #CBD5E1',
                     cursor: 'pointer',
                   }}
                 >
@@ -780,100 +1151,106 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         </div>
       )}
 
-      {/* View Switcher Controls */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      {/* 3. Workspace Tab Navigation */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid #E2E8F0', paddingBottom: 12 }}>
         <button
           onClick={() => setActiveTab('UNIFIED')}
           style={{
-            padding: '7px 16px',
+            padding: '8px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: activeTab === 'UNIFIED' ? '#3B6EA8' : '#FFFFFF',
-            color: activeTab === 'UNIFIED' ? '#FFFFFF' : '#344054',
+            borderRadius: 8,
+            border: activeTab === 'UNIFIED' ? 'none' : '1px solid #E2E8F0',
+            backgroundColor: activeTab === 'UNIFIED' ? '#2563EB' : '#FFFFFF',
+            color: activeTab === 'UNIFIED' ? '#FFFFFF' : '#475569',
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+            boxShadow: activeTab === 'UNIFIED' ? '0 2px 6px rgba(37, 99, 235, 0.25)' : 'none',
+            transition: 'all 150ms ease-out',
           }}
         >
-          Unified View (Upload + Live Pipelines)
+          Overview & Upload
         </button>
         <button
           onClick={() => setActiveTab('UPLOAD_ONLY')}
           style={{
-            padding: '7px 16px',
+            padding: '8px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: activeTab === 'UPLOAD_ONLY' ? '#3B6EA8' : '#FFFFFF',
-            color: activeTab === 'UPLOAD_ONLY' ? '#FFFFFF' : '#344054',
+            borderRadius: 8,
+            border: activeTab === 'UPLOAD_ONLY' ? 'none' : '1px solid #E2E8F0',
+            backgroundColor: activeTab === 'UPLOAD_ONLY' ? '#2563EB' : '#FFFFFF',
+            color: activeTab === 'UPLOAD_ONLY' ? '#FFFFFF' : '#475569',
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+            boxShadow: activeTab === 'UPLOAD_ONLY' ? '0 2px 6px rgba(37, 99, 235, 0.25)' : 'none',
+            transition: 'all 150ms ease-out',
           }}
         >
-          Upload Form Only
+          Upload Only
         </button>
         <button
           onClick={() => setActiveTab('PIPELINE_ONLY')}
           style={{
-            padding: '7px 16px',
+            padding: '8px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: activeTab === 'PIPELINE_ONLY' ? '#3B6EA8' : '#FFFFFF',
-            color: activeTab === 'PIPELINE_ONLY' ? '#FFFFFF' : '#344054',
+            borderRadius: 8,
+            border: activeTab === 'PIPELINE_ONLY' ? 'none' : '1px solid #E2E8F0',
+            backgroundColor: activeTab === 'PIPELINE_ONLY' ? '#2563EB' : '#FFFFFF',
+            color: activeTab === 'PIPELINE_ONLY' ? '#FFFFFF' : '#475569',
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+            boxShadow: activeTab === 'PIPELINE_ONLY' ? '0 2px 6px rgba(37, 99, 235, 0.25)' : 'none',
+            transition: 'all 150ms ease-out',
           }}
         >
-          3-Stage Pipeline Status & S3 Artifacts
+          Pipeline & Artifacts
         </button>
       </div>
 
-      {/* SECTION 1: Question Paper & Answer Key Upload Module */}
+      {/* 4. Upload Examination Document Card (Visual Focal Point) */}
       {(activeTab === 'UNIFIED' || activeTab === 'UPLOAD_ONLY') && (
         <div
           style={{
             background: '#FFFFFF',
-            border: '1px solid #E4E7EC',
-            borderRadius: 8,
-            padding: 24,
+            border: '1px solid #E2E8F0',
+            borderRadius: 14,
+            padding: 26,
             marginBottom: 24,
-            boxShadow: '0 1px 3px rgba(16, 24, 40, 0.03)',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Upload size={18} color="#3B6EA8" />
-              Upload Examination Document
-            </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 4, height: 20, backgroundColor: '#2563EB', borderRadius: 2 }} />
+              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+                Upload Examination Document
+              </h2>
+            </div>
 
-            {/* Document Type Selector */}
+            {/* Selector: Question Paper vs Answer Key */}
             <div
               style={{
                 display: 'inline-flex',
                 gap: 4,
-                background: '#F7F7F5',
-                padding: 3,
-                borderRadius: 6,
-                border: '1px solid #E4E7EC',
+                background: '#F1F5F9',
+                padding: 4,
+                borderRadius: 8,
+                border: '1px solid #E2E8F0',
               }}
             >
               <button
                 type="button"
                 onClick={() => setUploadMode('QUESTION_PAPER')}
                 style={{
-                  padding: '5px 12px',
-                  fontSize: 12,
+                  padding: '6px 14px',
+                  fontSize: 12.5,
                   fontWeight: 600,
-                  borderRadius: 4,
+                  borderRadius: 6,
                   border: 'none',
                   backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#FFFFFF' : 'transparent',
-                  color: uploadMode === 'QUESTION_PAPER' ? '#172033' : '#667085',
-                  boxShadow: uploadMode === 'QUESTION_PAPER' ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
+                  color: uploadMode === 'QUESTION_PAPER' ? '#0F172A' : '#64748B',
+                  boxShadow: uploadMode === 'QUESTION_PAPER' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
                   cursor: 'pointer',
+                  transition: 'all 150ms ease-out',
                 }}
               >
                 Question Paper (PDF/JSON)
@@ -882,15 +1259,16 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 type="button"
                 onClick={() => setUploadMode('ANSWER_KEY')}
                 style={{
-                  padding: '5px 12px',
-                  fontSize: 12,
+                  padding: '6px 14px',
+                  fontSize: 12.5,
                   fontWeight: 600,
-                  borderRadius: 4,
+                  borderRadius: 6,
                   border: 'none',
                   backgroundColor: uploadMode === 'ANSWER_KEY' ? '#FFFFFF' : 'transparent',
-                  color: uploadMode === 'ANSWER_KEY' ? '#172033' : '#667085',
-                  boxShadow: uploadMode === 'ANSWER_KEY' ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
+                  color: uploadMode === 'ANSWER_KEY' ? '#0F172A' : '#64748B',
+                  boxShadow: uploadMode === 'ANSWER_KEY' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
                   cursor: 'pointer',
+                  transition: 'all 150ms ease-out',
                 }}
               >
                 Official Answer Key (PDF/JSON)
@@ -899,7 +1277,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           </div>
 
           <form onSubmit={handleFormSubmit}>
-            {/* Metadata Fields Grid */}
+            {/* Metadata Inputs Grid */}
             <div
               style={{
                 display: 'grid',
@@ -909,7 +1287,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               }}
             >
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Target Exam
                 </label>
                 <select
@@ -917,12 +1295,13 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   onChange={(e) => setExamName(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     borderRadius: 6,
-                    border: '1px solid #D0D5DD',
+                    border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
                     backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
                   }}
                 >
                   {EXAM_OPTIONS.map((opt) => (
@@ -934,7 +1313,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Examination Year
                 </label>
                 <select
@@ -942,12 +1321,13 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   onChange={(e) => setYear(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     borderRadius: 6,
-                    border: '1px solid #D0D5DD',
+                    border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
                     backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
                   }}
                 >
                   {YEAR_OPTIONS.map((yr) => (
@@ -959,7 +1339,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Paper Set Code
                 </label>
                 <input
@@ -969,18 +1349,20 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   placeholder="SET_A, SET_B, etc."
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     borderRadius: 6,
-                    border: '1px solid #D0D5DD',
+                    border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
+                    backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
                     boxSizing: 'border-box',
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#344054', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Paper Classification
                 </label>
                 <select
@@ -988,12 +1370,13 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   onChange={(e) => setPaperType(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     borderRadius: 6,
-                    border: '1px solid #D0D5DD',
+                    border: '1px solid #CBD5E1',
                     fontSize: 13,
                     outline: 'none',
                     backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
                   }}
                 >
                   {PAPER_TYPE_OPTIONS.map((opt) => (
@@ -1005,21 +1388,21 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </div>
             </div>
 
-            {/* Dropzone */}
+            {/* Drag & Drop Upload Zone */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: `2px dashed ${isDragOver ? '#3B6EA8' : '#D0D5DD'}`,
-                backgroundColor: isDragOver ? '#F0F9FF' : '#F9FAFB',
-                borderRadius: 8,
-                padding: '28px 20px',
+                border: `2px dashed ${isDragOver ? '#2563EB' : '#93C5FD'}`,
+                backgroundColor: isDragOver ? '#DBEAFE' : '#EFF6FF',
+                borderRadius: 12,
+                padding: '32px 24px',
                 textAlign: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                marginBottom: 16,
+                transition: 'all 200ms ease-out',
+                marginBottom: 20,
               }}
             >
               <input
@@ -1029,20 +1412,37 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 accept=".pdf,.json,.zip"
                 style={{ display: 'none' }}
               />
-              <Cloud size={32} color={isDragOver ? '#3B6EA8' : '#667085'} style={{ margin: '0 auto 8px' }} />
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033' }}>
-                {selectedFile ? selectedFile.name : 'Click to upload or drag & drop exam document'}
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  backgroundColor: '#FFFFFF',
+                  color: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.15)',
+                  transform: isDragOver ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 200ms ease-out',
+                }}
+              >
+                <Cloud size={26} />
               </div>
-              <div style={{ fontSize: 12, color: '#667085', marginTop: 4 }}>
-                Supports standard PDF question papers, S3 JSON format, and multi-file packages (Max 100MB)
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                {selectedFile ? selectedFile.name : 'Click to upload or drag & drop examination document'}
+              </div>
+              <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                Supports standard PDF question papers, answer keys, and S3 JSON packages (Max 50MB)
               </div>
             </div>
 
-            {/* Upload Button and Status */}
+            {/* Footer Row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 13, color: '#667085' }}>
+              <div style={{ fontSize: 13 }}>
                 {statusMessage && (
-                  <span style={{ color: statusMessage.isError ? '#B42318' : '#15803D', fontWeight: 500 }}>
+                  <span style={{ color: statusMessage.isError ? '#DC2626' : '#16A34A', fontWeight: 600 }}>
                     {statusMessage.text}
                   </span>
                 )}
@@ -1055,52 +1455,67 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  padding: '9px 20px',
+                  padding: '10px 22px',
                   borderRadius: 6,
                   fontSize: 13.5,
                   fontWeight: 600,
-                  backgroundColor: !selectedFile || isUploading ? '#98A2B3' : '#3B6EA8',
+                  backgroundColor: !selectedFile || isUploading ? '#94A3B8' : '#2563EB',
                   color: '#FFFFFF',
                   border: 'none',
                   cursor: !selectedFile || isUploading ? 'not-allowed' : 'pointer',
+                  boxShadow: !selectedFile || isUploading ? 'none' : '0 2px 6px rgba(37, 99, 235, 0.3)',
+                  transition: 'all 150ms ease-out',
                 }}
               >
                 {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                {isUploading ? 'Uploading & Triggering Pipeline...' : 'Upload & Start 3-Stage Pipeline'}
+                {isUploading ? 'Uploading & Starting Pipeline...' : 'Upload & Start 3-Stage Pipeline'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* SECTION 2: 3-Stage Pipeline Progress & Exam Status Table */}
+      {/* 5. 5-Stage Pipeline Flow Preview Banner */}
+      {(activeTab === 'UNIFIED' || activeTab === 'UPLOAD_ONLY') && <FiveStagePipelinePreview />}
+
+      {/* 6. Pipeline Table View */}
       {(activeTab === 'UNIFIED' || activeTab === 'PIPELINE_ONLY') && (
         <div
           style={{
             background: '#FFFFFF',
-            border: '1px solid #E4E7EC',
-            borderRadius: 8,
-            boxShadow: '0 1px 3px rgba(16, 24, 40, 0.03)',
+            border: '1px solid #E2E8F0',
+            borderRadius: 14,
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             overflow: 'hidden',
           }}
         >
-          {/* Header & Filter Controls */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E4E7EC', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Header & Filter Controls Bar */}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #E2E8F0',
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              backgroundColor: '#FAFAFA',
+            }}
+          >
             <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
-              <Search size={14} style={{ position: 'absolute', left: 10, top: 12, color: '#667085' }} />
+              <Search size={15} style={{ position: 'absolute', left: 12, top: 11, color: '#64748B' }} />
               <input
                 type="text"
-                placeholder="Search exam by code or name..."
+                placeholder="Search paper by code or title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '8px 10px 8px 32px',
+                  padding: '8px 12px 8px 36px',
                   borderRadius: 6,
-                  border: '1px solid #E4E7EC',
+                  border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   fontSize: 13,
-                  color: '#172033',
+                  color: '#0F172A',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
@@ -1113,10 +1528,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               style={{
                 padding: '8px 12px',
                 borderRadius: 6,
-                border: '1px solid #E4E7EC',
+                border: '1px solid #CBD5E1',
                 fontSize: 13,
                 fontWeight: 500,
-                color: '#172033',
+                color: '#0F172A',
                 backgroundColor: '#FFFFFF',
                 outline: 'none',
               }}
@@ -1134,10 +1549,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               style={{
                 padding: '8px 12px',
                 borderRadius: 6,
-                border: '1px solid #E4E7EC',
+                border: '1px solid #CBD5E1',
                 fontSize: 13,
                 fontWeight: 500,
-                color: '#172033',
+                color: '#0F172A',
                 backgroundColor: '#FFFFFF',
                 outline: 'none',
               }}
@@ -1146,119 +1561,78 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               <option value="prelims">Prelims</option>
               <option value="mains">Mains</option>
             </select>
+
+            {(searchQuery || statusFilter !== 'ALL' || stageFilter !== 'ALL') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('ALL');
+                  setStageFilter('ALL');
+                }}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: '#64748B',
+                  background: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
 
           {/* Table Content */}
           {loadingQueue ? (
-            <div style={{ padding: 48, textAlign: 'center', color: '#667085', fontSize: 13.5 }}>
-              <Loader2 size={24} className="animate-spin" color="#3B6EA8" style={{ margin: '0 auto 10px' }} />
-              Loading exam pipeline records from database...
+            <div style={{ padding: 48, textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
+              <Loader2 size={24} className="animate-spin" color="#2563EB" style={{ margin: '0 auto 10px' }} />
+              Loading pipeline records from database...
             </div>
           ) : filteredQueueExams.length === 0 ? (
-            <div style={{ padding: 48, textAlign: 'center', color: '#667085', fontSize: 13.5 }}>
-              <FileSpreadsheet size={32} color="#98A2B3" style={{ margin: '0 auto 10px' }} />
+            <div style={{ padding: 48, textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
+              <FileSpreadsheet size={32} color="#94A3B8" style={{ margin: '0 auto 10px' }} />
               <div>No examination papers found matching filter criteria.</div>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>EXAM PAPER</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>3-PIPELINE PROGRESS</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>OVERALL STATUS</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTIONS</th>
+                  <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                      EXAM PAPER
+                    </th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                      STATUS
+                    </th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                      3-STAGE PROGRESS
+                    </th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
+                      OVERALL STATUS
+                    </th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em', textAlign: 'right' }}>
+                      ACTIONS
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQueueExams.map((exam, i) => {
-                    return (
-                      <tr
-                        key={exam.id}
-                        onClick={() => {
-                          setSelectedExam(exam);
-                          setIsDrawerOpen(true);
-                        }}
-                        style={{
-                          borderBottom: i === filteredQueueExams.length - 1 ? 'none' : '1px solid #E4E7EC',
-                          cursor: 'pointer',
-                          transition: 'background 0.12s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <td style={{ padding: '14px 16px', maxWidth: 280 }}>
-                          <div style={{ fontWeight: 600, color: '#172033' }}>{exam.name}</div>
-                          <div style={{ fontSize: 11.5, color: '#667085', fontFamily: 'monospace', marginTop: 2 }}>
-                            {exam.code} • {exam.source_year} • {exam.paper_set_code}
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                          {renderStatusBadge(exam.status)}
-                        </td>
-
-                        <td style={{ padding: '14px 16px' }}>
-                          {renderPipelineStageVisualizer(exam)}
-                        </td>
-
-                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                          {renderOverallStatusBadge(exam)}
-                        </td>
-
-                        <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => {
-                                setSelectedExam(exam);
-                                setIsDrawerOpen(true);
-                              }}
-                              style={{
-                                padding: '5px 10px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: '#172033',
-                                background: '#FFFFFF',
-                                border: '1px solid #E4E7EC',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Details
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                if (onNavigate) {
-                                  onNavigate('review', exam);
-                                } else {
-                                  setSelectedExam(exam);
-                                  setIsDrawerOpen(true);
-                                }
-                              }}
-                              style={{
-                                padding: '5px 12px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: '#FFFFFF',
-                                background: '#1E40AF',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <Check size={12} />
-                              Review Exam
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredQueueExams.map((exam, i) => (
+                    <TableRowItem
+                      key={exam.id}
+                      exam={exam}
+                      isLast={i === filteredQueueExams.length - 1}
+                      onSelect={(item) => {
+                        setSelectedExam(item);
+                        setIsDrawerOpen(true);
+                      }}
+                      onNavigate={onNavigate}
+                      renderOverallStatusBadge={renderOverallStatusBadge}
+                      renderStatusBadge={renderStatusBadge}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1266,7 +1640,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         </div>
       )}
 
-      {/* Slide-out Examination Pipeline Inspection Drawer */}
+      {/* Slide-out Examination Pipeline Audit Drawer */}
       {isDrawerOpen && selectedExam && (
         <>
           <div
@@ -1274,7 +1648,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(16, 33, 61, 0.4)',
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
               backdropFilter: 'blur(2px)',
               zIndex: 190,
             }}
@@ -1289,7 +1663,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               width: 480,
               maxWidth: '90vw',
               backgroundColor: '#FFFFFF',
-              boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.12)',
+              boxShadow: '-4px 0 24px rgba(15, 23, 42, 0.15)',
               zIndex: 200,
               display: 'flex',
               flexDirection: 'column',
@@ -1300,21 +1674,21 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             <div
               style={{
                 padding: '20px 24px',
-                borderBottom: '1px solid #E4E7EC',
+                borderBottom: '1px solid #E2E8F0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
               }}
             >
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#667085', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                   PIPELINE AUDIT & INSPECTION
                 </div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: '4px 0 0 0' }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '4px 0 0 0' }}>
                   {selectedExam.name}
                 </h2>
-                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#667085', marginTop: 2 }}>
-                  {selectedExam.code}
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#64748B', marginTop: 2 }}>
+                  {selectedExam.code} • Year {selectedExam.source_year} • Set {selectedExam.paper_set_code || 'A'}
                 </div>
               </div>
               <button
@@ -1322,7 +1696,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#667085',
+                  color: '#64748B',
                   cursor: 'pointer',
                   padding: 4,
                 }}
@@ -1333,80 +1707,94 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
             {/* Drawer Body */}
             <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Status */}
+              {/* Overall Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#667085', fontWeight: 500 }}>Overall Pipeline & S3 Status</span>
+                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Overall Pipeline & S3 Status</span>
                 <div>{renderOverallStatusBadge(selectedExam)}</div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+              <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
-              {/* 2 Required Inputs Check */}
+              {/* Prerequisites Check */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
                   PIPELINE INPUT PREREQUISITES
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ padding: 10, background: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#15803D' : '#991B1B' }}>
+                  <div
+                    style={{
+                      padding: 10,
+                      background: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#F0FDF4' : '#FEF2F2',
+                      border: `1px solid ${selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#BBF7D0' : '#FECDCA'}`,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '#15803D' : '#DC2626' }}>
                       {selectedExam.has_question_paper !== false || selectedExam.extracted_questions_count > 0 ? '✓ Question Paper PDF' : '✕ Missing Question Paper'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>
-                      {selectedExam.pdf_path ? selectedExam.pdf_path.split('/').pop() : selectedExam.extracted_questions_count > 0 ? `${selectedExam.extracted_questions_count} Questions Extracted` : 'Not uploaded yet'}
+                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                      {selectedExam.extracted_questions_count > 0 ? `${selectedExam.extracted_questions_count} Questions Extracted` : 'Not uploaded'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 10, background: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#BBF7D0' : '#FECACA'}`, borderRadius: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#15803D' : '#991B1B' }}>
+                  <div
+                    style={{
+                      padding: 10,
+                      background: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#F0FDF4' : '#FEF2F2',
+                      border: `1px solid ${selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#BBF7D0' : '#FECDCA'}`,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '#15803D' : '#DC2626' }}>
                       {selectedExam.has_answer_key !== false || (selectedExam.key_mapped_count || 0) > 0 || selectedExam.paper_set_code ? '✓ Answer Key Mapped' : '✕ Missing Answer Key'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#667085', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                       Set Code: {selectedExam.paper_set_code || 'SET_A'}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+              <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
               {/* 3 Pipeline Stages Breakdown */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-                  3-STAGE PIPELINE PROGRESS
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  3-STAGE PIPELINE PROGRESS DETAILS
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ background: '#F9FAFB', border: '1px solid #E4E7EC', borderRadius: 6, padding: 12 }}>
+                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 1: Question Extraction</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Stage 1: Question Extraction</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>
                         {selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} Qs
                       </span>
                     </div>
-                    <div style={{ height: 6, background: '#EAECF0', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
                       <div
                         style={{
                           height: '100%',
                           width: `${Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%`,
-                          background: '#15803D',
+                          background: '#16A34A',
                         }}
                       />
                     </div>
                   </div>
 
-                  <div style={{ background: '#F9FAFB', border: '1px solid #E4E7EC', borderRadius: 6, padding: 12 }}>
+                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 2: Answer Key Mapping</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Stage 2: Answer Key Mapping</span>
                       <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D' }}>
                         Set Code: {selectedExam.paper_set_code || 'SET_A'} ({selectedExam.key_mapped_count ?? 0}/{selectedExam.extracted_questions_count || selectedExam.total_questions || 100} mapped)
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ background: '#F9FAFB', border: '1px solid #E4E7EC', borderRadius: 6, padding: 12 }}>
+                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>Stage 3: Question Explanations & Solutions</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? '#15803D' : '#0369A1' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>Stage 3: Explanations & Knowledge Base</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? '#15803D' : '#0284C7' }}>
                         {selectedExam.solutions_json_path || (selectedExam.explanations_count || 0) >= (selectedExam.extracted_questions_count || 1) ? `Ready & Verified (${selectedExam.explanations_count || selectedExam.extracted_questions_count}/${selectedExam.extracted_questions_count})` : `${selectedExam.explanations_count || 0}/${selectedExam.extracted_questions_count || selectedExam.total_questions || 100} Generated`}
                       </span>
                     </div>
@@ -1414,22 +1802,22 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 </div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
+              <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
               {/* S3 Artifacts */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                   S3 ARTIFACT PATHS & DEPLOYMENT
                 </div>
-                <div style={{ background: '#F7F7F5', padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', fontFamily: 'monospace', fontSize: 11, color: '#344054', wordBreak: 'break-all' }}>
-                  <div>Questions: {selectedExam.questions_json_path || 'artifacts/' + selectedExam.code + '/json/questions'}</div>
-                  <div style={{ marginTop: 6 }}>Solutions: {selectedExam.solutions_json_path || 'artifacts/' + selectedExam.code + '/json/solutions'}</div>
+                <div style={{ background: '#FAFAFA', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: 11.5, color: '#334155', wordBreak: 'break-all' }}>
+                  <div>Questions JSON: {selectedExam.questions_json_path || 'artifacts/' + selectedExam.code + '/json/questions.json'}</div>
+                  <div style={{ marginTop: 6 }}>Solutions JSON: {selectedExam.solutions_json_path || 'artifacts/' + selectedExam.code + '/json/solutions.json'}</div>
                 </div>
               </div>
             </div>
 
             {/* Drawer Actions */}
-            <div style={{ padding: 20, borderTop: '1px solid #E4E7EC', backgroundColor: '#F7F7F5', display: 'flex', gap: 10 }}>
+            <div style={{ padding: 20, borderTop: '1px solid #E2E8F0', backgroundColor: '#FAFAFA', display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setIsDrawerOpen(false)}
                 style={{
@@ -1439,8 +1827,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   fontSize: 13,
                   fontWeight: 600,
                   backgroundColor: '#FFFFFF',
-                  border: '1px solid #D0D5DD',
-                  color: '#344054',
+                  border: '1px solid #CBD5E1',
+                  color: '#334155',
                   cursor: 'pointer',
                 }}
               >
@@ -1460,7 +1848,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: 600,
-                  backgroundColor: '#1E40AF',
+                  backgroundColor: '#2563EB',
                   border: 'none',
                   color: '#FFFFFF',
                   cursor: 'pointer',
@@ -1468,10 +1856,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                 }}
               >
                 <Check size={14} />
-                Open Full Question Review
+                Open Question Review
               </button>
             </div>
           </div>
