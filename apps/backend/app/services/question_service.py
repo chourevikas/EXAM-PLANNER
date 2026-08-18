@@ -640,7 +640,74 @@ class QuestionService:
                 t_id = link_p.topic_id
                 subj_id = link_p.subject_id
 
-                if s_id and (not t_id or not subj_id):
+                if not s_id and (link_p.subtopic_name or link_p.topic_name or link_p.subject_name):
+                    s_name = (link_p.subject_name or "").strip() or "General Science"
+                    t_name = (link_p.topic_name or "").strip() or "General Concepts"
+                    st_name = (link_p.subtopic_name or "").strip() or t_name
+
+                    syl_stmt = select(SyllabusVersion)
+                    q_rec = await self.session.get(Question, question_id)
+                    if q_rec and q_rec.exam_id:
+                        syl_stmt = syl_stmt.where(SyllabusVersion.exam_id == q_rec.exam_id)
+                    syl_ver = (await self.session.exec(syl_stmt)).first()
+                    if not syl_ver:
+                        syl_ver = SyllabusVersion(
+                            exam_id=q_rec.exam_id if q_rec else None,
+                            version_code="DEFAULT_v1",
+                            title="Default Syllabus",
+                        )
+                        self.session.add(syl_ver)
+                        await self.session.flush()
+
+                    # Upsert Subject
+                    s_stmt = select(Subject).where(
+                        Subject.syllabus_version_id == syl_ver.id,
+                        func.lower(Subject.name) == s_name.lower(),
+                    )
+                    subj = (await self.session.exec(s_stmt)).first()
+                    if not subj:
+                        subj = Subject(
+                            syllabus_version_id=syl_ver.id,
+                            name=s_name,
+                            code=s_name[:10].upper().replace(" ", "_"),
+                        )
+                        self.session.add(subj)
+                        await self.session.flush()
+                    subj_id = subj.id
+
+                    # Upsert Topic
+                    t_stmt = select(Topic).where(
+                        Topic.subject_id == subj.id,
+                        func.lower(Topic.name) == t_name.lower(),
+                    )
+                    top = (await self.session.exec(t_stmt)).first()
+                    if not top:
+                        top = Topic(
+                            subject_id=subj.id,
+                            name=t_name,
+                            code=t_name[:10].upper().replace(" ", "_"),
+                        )
+                        self.session.add(top)
+                        await self.session.flush()
+                    t_id = top.id
+
+                    # Upsert Subtopic
+                    st_stmt = select(Subtopic).where(
+                        Subtopic.topic_id == top.id,
+                        func.lower(Subtopic.name) == st_name.lower(),
+                    )
+                    subtop = (await self.session.exec(st_stmt)).first()
+                    if not subtop:
+                        subtop = Subtopic(
+                            topic_id=top.id,
+                            name=st_name,
+                            code=st_name[:10].upper().replace(" ", "_"),
+                        )
+                        self.session.add(subtop)
+                        await self.session.flush()
+                    s_id = subtop.id
+
+                elif s_id and (not t_id or not subj_id):
                     subtop = await self.session.get(Subtopic, s_id)
                     if subtop:
                         if not t_id:
@@ -853,6 +920,7 @@ class QuestionService:
             top = await self.session.get(Topic, link.topic_id) if link.topic_id else None
             subtop = await self.session.get(Subtopic, link.subtopic_id) if link.subtopic_id else None
 
+            rel_pct = int(round((link.relevance_weight or 1.0) * 100))
             hierarchy_detail.append(
                 HierarchyLinkDetail(
                     subject_id=str(link.subject_id) if link.subject_id else None,
@@ -866,6 +934,8 @@ class QuestionService:
                     subtopic_code=subtop.code if subtop else None,
                     is_primary=link.is_primary,
                     relevance_weight=link.relevance_weight,
+                    relevance_percentage=rel_pct,
+                    concept_name=link.concept_name,
                 )
             )
 
@@ -1112,6 +1182,7 @@ class QuestionService:
                 st = subtopics_map.get(l.subtopic_id)
                 top = topics_map.get(st.topic_id) if st else None
                 subj = subjects_map.get(top.subject_id) if top else None
+                rel_pct = int(round((l.relevance_weight or 1.0) * 100))
                 hierarchy_detail.append(
                     HierarchyLinkDetail(
                         subject_id=str(subj.id) if subj else None,
@@ -1125,6 +1196,8 @@ class QuestionService:
                         subtopic_code=st.code if st else None,
                         is_primary=l.is_primary,
                         relevance_weight=l.relevance_weight,
+                        relevance_percentage=rel_pct,
+                        concept_name=l.concept_name,
                     )
                 )
 
@@ -1146,6 +1219,8 @@ class QuestionService:
                             subtopic_code=subtop.code,
                             is_primary=True,
                             relevance_weight=1.0,
+                            relevance_percentage=100,
+                            concept_name=top.name if top else None,
                         )
                     )
 

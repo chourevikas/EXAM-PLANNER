@@ -21,9 +21,12 @@ class QuestionOptionPayload(BaseModel):
 
 
 class QuestionHierarchyLinkPayload(BaseModel):
-    subtopic_id: uuid.UUID
+    subtopic_id: Optional[uuid.UUID] = None
     topic_id: Optional[uuid.UUID] = None
     subject_id: Optional[uuid.UUID] = None
+    subject_name: Optional[str] = None
+    topic_name: Optional[str] = None
+    subtopic_name: Optional[str] = None
     is_primary: bool = False
     relevance_weight: float = 1.0
     concept_name: Optional[str] = None
@@ -131,6 +134,8 @@ class HierarchyLinkDetail(BaseModel):
     subtopic_code: Optional[str] = None
     is_primary: bool = True
     relevance_weight: float = 1.0
+    relevance_percentage: int = 100
+    concept_name: Optional[str] = None
 
 
 class QuestionDetailResponse(BaseModel):

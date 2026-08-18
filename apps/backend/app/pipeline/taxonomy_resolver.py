@@ -523,6 +523,7 @@ class TaxonomyResolver:
         self._topic_embeddings: Dict[str, Any] = {}
         self._subtopic_embeddings: Dict[Tuple[str, str], Any] = {}
         self._fallback_vectors: Dict[str, Any] = {}
+        self._query_emb_cache: Dict[str, Any] = {}
         self.active_embedding_engine: str = "Pure-Python Char N-Gram Vectorizer (Offline Fallback)"
 
         self._build_lookup_tables()
@@ -702,9 +703,15 @@ class TaxonomyResolver:
 
         if self._model is not None and precomputed_embeddings is not None and np is not None:
             try:
-                query_emb = self._model.encode(
-                    [query], normalize_embeddings=True, show_progress_bar=False
-                )[0]
+                if query in self._query_emb_cache:
+                    query_emb = self._query_emb_cache[query]
+                else:
+                    query_emb = self._model.encode(
+                        [query], normalize_embeddings=True, show_progress_bar=False
+                    )[0]
+                    if len(self._query_emb_cache) < 2048:
+                        self._query_emb_cache[query] = query_emb
+
                 sims = np.dot(precomputed_embeddings, query_emb)
                 best_idx = int(np.argmax(sims))
                 best_score = float(sims[best_idx])

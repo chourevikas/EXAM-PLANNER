@@ -33,6 +33,10 @@ import {
   Database,
   AlertCircle,
   ShieldAlert,
+  Plus,
+  Percent,
+  Sliders,
+  GitBranch,
 } from 'lucide-react';
 import {
   fetchExamPipelineStatuses,
@@ -74,6 +78,9 @@ interface HierarchyLinkItem {
   subtopic_name?: string;
   subtopic_code?: string;
   is_primary?: boolean;
+  relevance_weight?: number;
+  relevance_percentage?: number;
+  concept_name?: string;
 }
 
 interface QuestionDetailItem {
@@ -198,6 +205,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [editSubjectName, setEditSubjectName] = useState<string>('');
   const [editTopicName, setEditTopicName] = useState<string>('');
   const [editSubtopicName, setEditSubtopicName] = useState<string>('');
+  const [editHierarchyLinks, setEditHierarchyLinks] = useState<HierarchyLinkItem[]>([]);
   const [editDifficulty, setEditDifficulty] = useState<string>('MEDIUM');
   const [editMarks, setEditMarks] = useState<number>(2.0);
   const [editNegativeMarks, setEditNegativeMarks] = useState<number>(0.66);
@@ -309,7 +317,21 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 translations: q.explanation.translations || {},
               }
             : null,
-          hierarchy: q.hierarchy || [],
+          hierarchy: (q.hierarchy || []).map((h: any) => ({
+            subject_id: h.subject_id,
+            subject_name: h.subject_name,
+            subject_code: h.subject_code,
+            topic_id: h.topic_id,
+            topic_name: h.topic_name,
+            topic_code: h.topic_code,
+            subtopic_id: h.subtopic_id,
+            subtopic_name: h.subtopic_name,
+            subtopic_code: h.subtopic_code,
+            is_primary: Boolean(h.is_primary),
+            relevance_weight: h.relevance_weight !== undefined ? h.relevance_weight : 1.0,
+            relevance_percentage: h.relevance_percentage !== undefined ? h.relevance_percentage : (h.relevance_weight ? Math.round(h.relevance_weight * 100) : 100),
+            concept_name: h.concept_name || '',
+          })),
           metadata: q.metadata || {},
         };
       });
@@ -451,6 +473,34 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setEditExpectedTime(q.expected_time_seconds || 60);
     setEditBloomsLevel(q.metadata?.blooms_level || 'ANALYZE');
 
+    const rawH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy : [];
+    const initialH: HierarchyLinkItem[] = rawH.length > 0
+      ? rawH.map((h) => ({
+          subject_id: h.subject_id,
+          subject_name: h.subject_name || q.subject_name || '',
+          topic_id: h.topic_id,
+          topic_name: h.topic_name || q.topic_name || '',
+          subtopic_id: h.subtopic_id,
+          subtopic_name: h.subtopic_name || q.subtopic_name || '',
+          is_primary: Boolean(h.is_primary),
+          relevance_weight: h.relevance_weight !== undefined ? h.relevance_weight : 1.0,
+          relevance_percentage: h.relevance_percentage !== undefined ? h.relevance_percentage : (h.relevance_weight ? Math.round(h.relevance_weight * 100) : 100),
+          concept_name: h.concept_name || h.topic_name || '',
+        }))
+      : [
+          {
+            subject_name: q.subject_name || 'General Science',
+            topic_name: q.topic_name || 'General Concepts',
+            subtopic_name: q.subtopic_name || '',
+            is_primary: true,
+            relevance_weight: 1.0,
+            relevance_percentage: 100,
+            concept_name: q.topic_name || '',
+          },
+        ];
+
+    setEditHierarchyLinks(initialH);
+
     setEditCoreConcept(q.explanation?.core_concept || '');
     setEditDetailedSolution(q.explanation?.detailed_solution || '');
     setEditCommonTraps(q.explanation?.common_traps ? [...q.explanation.common_traps] : []);
@@ -476,6 +526,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     if (!editingQuestion) return;
     setSavingEdit(true);
     try {
+      const primH = editHierarchyLinks.find((h) => h.is_primary) || editHierarchyLinks[0];
+      const finalSubj = editSubjectName || primH?.subject_name || null;
+      const finalTop = editTopicName || primH?.topic_name || null;
+      const finalSubtop = editSubtopicName || primH?.subtopic_name || null;
+
       const payload: any = {
         question_text: editQuestionText,
         passage_text: editPassageText || null,
@@ -484,9 +539,20 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         negative_marks: editNegativeMarks,
         expected_time_seconds: editExpectedTime,
         status: publishAfterSave ? 'PUBLISHED' : editingQuestion.status,
-        subject_name: editSubjectName || null,
-        topic_name: editTopicName || null,
-        subtopic_name: editSubtopicName || null,
+        subject_name: finalSubj,
+        topic_name: finalTop,
+        subtopic_name: finalSubtop,
+        hierarchy_links: editHierarchyLinks.map((h, i) => ({
+          subject_id: h.subject_id || null,
+          subject_name: h.subject_name || finalSubj,
+          topic_id: h.topic_id || null,
+          topic_name: h.topic_name || finalTop,
+          subtopic_id: h.subtopic_id || null,
+          subtopic_name: h.subtopic_name || finalSubtop,
+          is_primary: Boolean(h.is_primary) || (i === 0),
+          relevance_weight: (h.relevance_percentage !== undefined ? h.relevance_percentage : 100) / 100,
+          concept_name: h.concept_name || null,
+        })),
         blooms_level: editBloomsLevel,
         core_concept: editCoreConcept,
         detailed_solution: editDetailedSolution,
@@ -1519,7 +1585,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   backgroundColor: '#FAFAFA',
                   padding: '12px 18px',
                   borderRadius: 10,
-                  marginBottom: 24,
+                  marginBottom: 16,
                   fontSize: 12.5,
                   border: '1px solid #E2E8F0',
                 }}
@@ -1548,6 +1614,178 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   <span>Difficulty: <strong style={{ color: '#0F172A' }}>{activeQuestion.difficulty}</strong></span>
                   <span>Marks: <strong style={{ color: '#0F172A' }}>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
                   <span>Time: <strong style={{ color: '#0F172A' }}>{activeQuestion.expected_time_seconds || 60}s</strong></span>
+                </div>
+              </div>
+
+              {/* Authoritative Taxonomy & Interdisciplinary Concepts with Relevance Percentage */}
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 10,
+                  padding: '14px 18px',
+                  marginBottom: 24,
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FolderTree size={16} color="#2563EB" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      Syllabus Hierarchy & Concept Relevance Mappings
+                    </span>
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        backgroundColor: '#EFF6FF',
+                        color: '#2563EB',
+                        borderRadius: 12,
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                        ? `${activeQuestion.hierarchy.length} Concepts`
+                        : '1 Primary'}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => handleOpenEditModal(activeQuestion)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#2563EB',
+                      backgroundColor: '#F8FAFC',
+                      border: '1px solid #CBD5E1',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Sliders size={13} />
+                    Update Taxonomy & Relevance
+                  </button>
+                </div>
+
+                {/* Concept Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                  {(activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                    ? activeQuestion.hierarchy
+                    : [
+                        {
+                          subject_name: activeQuestion.subject_name || 'General Studies',
+                          topic_name: activeQuestion.topic_name || 'General Concepts',
+                          subtopic_name: activeQuestion.subtopic_name || '',
+                          is_primary: true,
+                          relevance_percentage: 100,
+                          relevance_weight: 1.0,
+                          concept_name: activeQuestion.topic_name || 'Primary Syllabus Concept',
+                        },
+                      ]
+                  ).map((hItem, hIdx) => {
+                    const pct =
+                      hItem.relevance_percentage !== undefined
+                        ? hItem.relevance_percentage
+                        : hItem.relevance_weight !== undefined
+                        ? Math.round(hItem.relevance_weight * 100)
+                        : 100;
+                    const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
+                    const badgeColor = pct >= 80 ? '#10B981' : pct >= 50 ? '#3B82F6' : '#F59E0B';
+                    const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#EFF6FF' : '#FFFBEB';
+                    const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
+
+                    return (
+                      <div
+                        key={hIdx}
+                        style={{
+                          backgroundColor: isPrim ? '#FAFCFF' : '#FAFAFA',
+                          border: isPrim ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
+                          borderRadius: 8,
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isPrim ? (
+                              <Sparkles size={14} color="#2563EB" />
+                            ) : (
+                              <GitBranch size={14} color="#64748B" />
+                            )}
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#1E40AF' : '#334155' }}>
+                              {hItem.concept_name || hItem.topic_name || 'Taxonomy Mapping'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                backgroundColor: isPrim ? '#DBEAFE' : '#F1F5F9',
+                                color: isPrim ? '#1E40AF' : '#475569',
+                              }}
+                            >
+                              {isPrim ? 'PRIMARY' : 'INTERDISCIPLINARY'}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                padding: '2px 7px',
+                                borderRadius: 10,
+                                backgroundColor: badgeBg,
+                                color: badgeColor,
+                                border: `1px solid ${badgeBorder}`,
+                              }}
+                            >
+                              {pct}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Breadcrumbs */}
+                        <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                          <span style={{ fontWeight: 600, color: '#0F172A' }}>{hItem.subject_name || 'General Studies'}</span>
+                          <span style={{ color: '#94A3B8' }}>›</span>
+                          <span style={{ fontWeight: 600, color: '#2563EB' }}>{hItem.topic_name || 'General Concepts'}</span>
+                          {hItem.subtopic_name && (
+                            <>
+                              <span style={{ color: '#94A3B8' }}>›</span>
+                              <span style={{ fontWeight: 500, color: '#64748B' }}>{hItem.subtopic_name}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Relevance Bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                          <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                width: `${pct}%`,
+                                height: '100%',
+                                backgroundColor: badgeColor,
+                                borderRadius: 3,
+                                transition: 'width 300ms ease-out',
+                              }}
+                            />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                            {pct}% Relevance
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1925,43 +2163,251 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 />
               </div>
 
-              {/* Hierarchy & Taxonomy */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 18 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-                    Subject Name:
-                  </label>
-                  <input
-                    type="text"
-                    value={editSubjectName}
-                    onChange={(e) => setEditSubjectName(e.target.value)}
-                    placeholder="e.g. Geography"
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
+              {/* Hierarchy & Interdisciplinary Concept Relevance Manager */}
+              <div
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: 10,
+                  padding: '16px 18px',
+                  marginBottom: 20,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <FolderTree size={16} color="#2563EB" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      Taxonomy Hierarchy & Concept Relevance Manager
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditHierarchyLinks((prev) => [
+                        ...prev,
+                        {
+                          subject_name: editSubjectName || 'General Studies',
+                          topic_name: '',
+                          subtopic_name: '',
+                          is_primary: prev.length === 0,
+                          relevance_percentage: 75,
+                          relevance_weight: 0.75,
+                          concept_name: '',
+                        },
+                      ]);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: '#2563EB',
+                      backgroundColor: '#EFF6FF',
+                      border: '1px solid #BFDBFE',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={13} />
+                    Add Concept Link
+                  </button>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-                    Topic Name:
-                  </label>
-                  <input
-                    type="text"
-                    value={editTopicName}
-                    onChange={(e) => setEditTopicName(e.target.value)}
-                    placeholder="e.g. Indian Geography"
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-                    Subtopic Name:
-                  </label>
-                  <input
-                    type="text"
-                    value={editSubtopicName}
-                    onChange={(e) => setEditSubtopicName(e.target.value)}
-                    placeholder="e.g. Rivers & Drainage"
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {editHierarchyLinks.map((hLink, hIdx) => {
+                    const pct = hLink.relevance_percentage !== undefined ? hLink.relevance_percentage : 100;
+                    return (
+                      <div
+                        key={hIdx}
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: hLink.is_primary ? '1.5px solid #2563EB' : '1px solid #E2E8F0',
+                          borderRadius: 8,
+                          padding: '14px 16px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? '#2563EB' : '#475569', cursor: 'pointer' }}>
+                              <input
+                                type="radio"
+                                name="primaryHierarchyRadio"
+                                checked={Boolean(hLink.is_primary)}
+                                onChange={() => {
+                                  setEditHierarchyLinks((prev) =>
+                                    prev.map((item, i) => ({
+                                      ...item,
+                                      is_primary: i === hIdx,
+                                    }))
+                                  );
+                                  if (hLink.subject_name) setEditSubjectName(hLink.subject_name);
+                                  if (hLink.topic_name) setEditTopicName(hLink.topic_name);
+                                  if (hLink.subtopic_name) setEditSubtopicName(hLink.subtopic_name);
+                                }}
+                              />
+                              {hLink.is_primary ? '★ Primary Hierarchy' : 'Secondary / Interdisciplinary Concept'}
+                            </label>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 800,
+                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? '#2563EB' : '#D97706',
+                                backgroundColor: pct >= 80 ? '#F0FDF4' : pct >= 50 ? '#EFF6FF' : '#FFFBEB',
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                                border: `1px solid ${pct >= 80 ? '#BBF7D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A'}`,
+                              }}
+                            >
+                              {pct}% Relevance
+                            </span>
+                            {editHierarchyLinks.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditHierarchyLinks((prev) => prev.filter((_, i) => i !== hIdx));
+                                }}
+                                style={{
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  color: '#EF4444',
+                                  cursor: 'pointer',
+                                  padding: 4,
+                                }}
+                                title="Remove Concept Link"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Input Row: Subject, Topic, Subtopic, Concept Name */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                              Subject:
+                            </label>
+                            <input
+                              type="text"
+                              value={hLink.subject_name || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditHierarchyLinks((prev) =>
+                                  prev.map((item, i) => (i === hIdx ? { ...item, subject_name: val } : item))
+                                );
+                                if (hLink.is_primary) setEditSubjectName(val);
+                              }}
+                              placeholder="e.g. Economy"
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                              Topic:
+                            </label>
+                            <input
+                              type="text"
+                              value={hLink.topic_name || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditHierarchyLinks((prev) =>
+                                  prev.map((item, i) => (i === hIdx ? { ...item, topic_name: val } : item))
+                                );
+                                if (hLink.is_primary) setEditTopicName(val);
+                              }}
+                              placeholder="e.g. Money and Banking"
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                              Subtopic:
+                            </label>
+                            <input
+                              type="text"
+                              value={hLink.subtopic_name || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditHierarchyLinks((prev) =>
+                                  prev.map((item, i) => (i === hIdx ? { ...item, subtopic_name: val } : item))
+                                );
+                                if (hLink.is_primary) setEditSubtopicName(val);
+                              }}
+                              placeholder="e.g. Banking Structure in India"
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                              Concept Tag / Name:
+                            </label>
+                            <input
+                              type="text"
+                              value={hLink.concept_name || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditHierarchyLinks((prev) =>
+                                  prev.map((item, i) => (i === hIdx ? { ...item, concept_name: val } : item))
+                                );
+                              }}
+                              placeholder="e.g. Monetary Policy"
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Relevance Slider & Percentage Control */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', padding: '8px 12px', borderRadius: 6 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                            Relevance Percentage:
+                          </span>
+                          <input
+                            type="range"
+                            min="10"
+                            max="100"
+                            step="5"
+                            value={pct}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              setEditHierarchyLinks((prev) =>
+                                prev.map((item, i) =>
+                                  i === hIdx
+                                    ? { ...item, relevance_percentage: val, relevance_weight: val / 100 }
+                                    : item
+                                )
+                              );
+                            }}
+                            style={{ flex: 1, accentColor: '#2563EB', cursor: 'pointer' }}
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={pct}
+                              onChange={(e) => {
+                                const val = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
+                                setEditHierarchyLinks((prev) =>
+                                  prev.map((item, i) =>
+                                    i === hIdx
+                                      ? { ...item, relevance_percentage: val, relevance_weight: val / 100 }
+                                      : item
+                                  )
+                                );
+                              }}
+                              style={{ width: 52, padding: '4px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center', borderRadius: 4, border: '1px solid #CBD5E1' }}
+                            />
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>%</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

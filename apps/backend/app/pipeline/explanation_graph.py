@@ -506,11 +506,13 @@ async def _generate_and_save_single_question_explanation(
                 db_q.subtopic_id = subtop_record.id
                 session.add(db_q)
 
-                # Process Multi-Concept Items (Subjects / Topics / Subtopics)
-                concepts_list = (
-                    english_schema.concepts if english_schema.concepts else []
+                # Process Multi-Concept Items (Primary + Extra Remaining Concepts)
+                raw_concepts = (
+                    list(english_schema.concepts) if english_schema.concepts else []
                 )
-                if not concepts_list:
+                has_primary = any(c.is_primary for c in raw_concepts)
+                concepts_list: List[MultiConceptItemSchema] = []
+                if not has_primary:
                     concepts_list.append(
                         MultiConceptItemSchema(
                             subject=primary_subj,
@@ -521,6 +523,7 @@ async def _generate_and_save_single_question_explanation(
                             concept_name=primary_topic,
                         )
                     )
+                concepts_list.extend(raw_concepts)
 
                 processed_links: Dict[uuid.UUID, QuestionHierarchyLink] = {}
                 for concept in concepts_list:
