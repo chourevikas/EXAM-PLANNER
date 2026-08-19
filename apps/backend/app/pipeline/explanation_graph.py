@@ -56,7 +56,9 @@ async def _get_or_create_subtopic(
     """Helper to upsert Subject -> Topic -> Subtopic hierarchy and return Subtopic, Topic, and Subject records."""
     try:
         resolver = get_taxonomy_resolver()
-        val_tax, metrics = resolver.resolve_hierarchy(subj_name, topic_name, subtopic_name)
+        val_tax, metrics = await asyncio.to_thread(
+            resolver.resolve_hierarchy, subj_name, topic_name, subtopic_name
+        )
         subj_name = val_tax.subject
         topic_name = val_tax.topic
         subtopic_name = val_tax.subtopic or topic_name
