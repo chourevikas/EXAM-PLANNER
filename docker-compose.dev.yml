@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: exam_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+      POSTGRES_DB: exam_platform_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exam_user -d exam_platform_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis Message Broker & Cache for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: exam_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. MinIO S3-Compatible Object Storage with Web UI Console
+  minio:
+    image: minio/minio:latest
+    container_name: exam_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # MinIO S3 API Port
+      - "9001:9001"   # MinIO Web UI Console Port
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 4. Flower Web UI (Celery Real-Time Dashboard)
+  flower:
+    image: mher/flower:latest
+    container_name: exam_flower
+    restart: always
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "5555:5555"   # Flower Web UI Dashboard Port
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # 5. Redis Commander (Lightweight Redis Web UI Dashboard)
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    container_name: exam_redis_commander
+    restart: always
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"   # Redis Commander Web UI Port
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # 6. RedisInsight (Official Redis Ltd Web UI Studio)
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: exam_redisinsight
+    restart: always
+    ports:
+      - "5540:5540"   # RedisInsight Web UI Studio Port
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  redisinsight_data:

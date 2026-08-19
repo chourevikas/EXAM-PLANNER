@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0f172a; }
+      .title { fill: #f8fafc; font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: 700; }
+      .subtitle { fill: #94a3b8; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; }
+      .card { fill: #1e293b; stroke: #334155; stroke-width: 2px; rx: 12px; }
+      .card-header-user { fill: #3b82f6; }
+      .card-header-sub { fill: #8b5cf6; }
+      .card-header-acad { fill: #10b981; }
+      .card-header-quest { fill: #f59e0b; }
+      .card-header-psy { fill: #ec4899; }
+      .card-header-qa { fill: #06b6d4; }
+      .card-title { fill: #ffffff; font-family: system-ui, -apple-system, sans-serif; font-size: 15px; font-weight: 700; }
+      .field-name { fill: #e2e8f0; font-family: monospace; font-size: 12px; }
+      .field-type { fill: #64748b; font-family: monospace; font-size: 11px; }
+      .field-pk { fill: #f59e0b; font-family: monospace; font-size: 10px; font-weight: bold; }
+      .field-fk { fill: #38bdf8; font-family: monospace; font-size: 10px; font-weight: bold; }
+      .line { stroke: #64748b; stroke-width: 2px; stroke-dasharray: 4; fill: none; }
+      .arrow { fill: #64748b; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" width="1200" height="800" rx="16"/>
+
+  <!-- Title Header -->
+  <text x="40" y="45" class="title">Exam Mentorship Platform — Entity-Relationship (ER) Architecture</text>
+  <text x="40" y="70" class="subtitle">Complete Database Schemas, Foreign Key Bindings &amp; Domain Isolation</text>
+
+  <!-- DOMAIN 1: USER IDENTITY -->
+  <g transform="translate(40, 100)">
+    <rect class="card" width="320" height="180"/>
+    <path d="M 0 12 Q 0 0 12 0 L 308 0 Q 320 0 320 12 L 320 36 L 0 36 Z" class="card-header-user"/>
+    <text x="16" y="24" class="card-title">DOMAIN 1: users</text>
+    <text x="16" y="60" class="field-name">id <tspan class="field-pk">[PK]</tspan></text><text x="220" y="60" class="field-type">UUID</text>
+    <text x="16" y="82" class="field-name">email <tspan class="field-pk">[UNIQUE]</tspan></text><text x="220" y="82" class="field-type">VARCHAR(255)</text>
+    <text x="16" y="104" class="field-name">full_name</text><text x="220" y="104" class="field-type">VARCHAR(200)</text>
+    <text x="16" y="126" class="field-name">role</text><text x="220" y="126" class="field-type">UserRole ENUM</text>
+    <text x="16" y="148" class="field-name">status</text><text x="220" y="148" class="field-type">UserStatus ENUM</text>
+  </g>
+
+  <!-- DOMAIN 2: MONETIZATION & SUBSCRIPTIONS -->
+  <g transform="translate(420, 100)">
+    <rect class="card" width="340" height="220"/>
+    <path d="M 0 12 Q 0 0 12 0 L 328 0 Q 340 0 340 12 L 340 36 L 0 36 Z" class="card-header-sub"/>
+    <text x="16" y="24" class="card-title">DOMAIN 2: subscription_plans &amp; user_subs</text>
+    <text x="16" y="60" class="field-name">subscription_plans.id <tspan class="field-pk">[PK]</tspan></text><text x="250" y="60" class="field-type">UUID</text>
+    <text x="16" y="82" class="field-name">plan_code <tspan class="field-pk">[UNIQUE]</tspan></text><text x="250" y="82" class="field-type">VARCHAR(100)</text>
+    <text x="16" y="104" class="field-name">price_cents / currency</text><text x="250" y="104" class="field-type">INT / VARCHAR</text>
+    <text x="16" y="132" class="field-name">user_subscriptions.user_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="132" class="field-type">UUID → users</text>
+    <text x="16" y="154" class="field-name">plan_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="154" class="field-type">UUID → plans</text>
+    <text x="16" y="176" class="field-name">status / current_period_end</text><text x="250" y="176" class="field-type">ENUM / TIMESTAMPTZ</text>
+  </g>
+
+  <!-- DOMAIN 3: ACADEMIC HIERARCHY -->
+  <g transform="translate(800, 100)">
+    <rect class="card" width="360" height="220"/>
+    <path d="M 0 12 Q 0 0 12 0 L 348 0 Q 360 0 360 12 L 360 36 L 0 36 Z" class="card-header-acad"/>
+    <text x="16" y="24" class="card-title">DOMAIN 3: exams → syllabus → subtopics</text>
+    <text x="16" y="60" class="field-name">exams.id <tspan class="field-pk">[PK]</tspan> / code</text><text x="250" y="60" class="field-type">UUID / VARCHAR</text>
+    <text x="16" y="82" class="field-name">syllabus_versions.exam_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="82" class="field-type">UUID → exams</text>
+    <text x="16" y="104" class="field-name">subjects.syllabus_version_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="104" class="field-type">UUID → syllabus</text>
+    <text x="16" y="126" class="field-name">topics.subject_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="126" class="field-type">UUID → subjects</text>
+    <text x="16" y="148" class="field-name">subtopics.topic_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="148" class="field-type">UUID → topics</text>
+  </g>
+
+  <!-- DOMAIN 4: PASSAGE CONTEXT -->
+  <g transform="translate(40, 360)">
+    <rect class="card" width="320" height="190"/>
+    <path d="M 0 12 Q 0 0 12 0 L 308 0 Q 320 0 320 12 L 320 36 L 0 36 Z" fill="#6366f1"/>
+    <text x="16" y="24" class="card-title">DOMAIN 4: passages &amp; translations</text>
+    <text x="16" y="60" class="field-name">passages.id <tspan class="field-pk">[PK]</tspan></text><text x="220" y="60" class="field-type">UUID</text>
+    <text x="16" y="82" class="field-name">subtopic_id <tspan class="field-fk">[FK]</tspan></text><text x="220" y="82" class="field-type">UUID → subtopics</text>
+    <text x="16" y="104" class="field-name">page_numbers_json</text><text x="220" y="104" class="field-type">PortableJSON</text>
+    <text x="16" y="126" class="field-name">question_ids_json</text><text x="220" y="126" class="field-type">PortableJSON</text>
+    <text x="16" y="148" class="field-name">passage_translations.text</text><text x="220" y="148" class="field-type">TEXT</text>
+  </g>
+
+  <!-- DOMAIN 5: QUESTION ENGINE -->
+  <g transform="translate(420, 360)">
+    <rect class="card" width="340" height="250"/>
+    <path d="M 0 12 Q 0 0 12 0 L 328 0 Q 340 0 340 12 L 340 36 L 0 36 Z" class="card-header-quest"/>
+    <text x="16" y="24" class="card-title">DOMAIN 5: questions &amp; options</text>
+    <text x="16" y="60" class="field-name">questions.id <tspan class="field-pk">[PK]</tspan></text><text x="240" y="60" class="field-type">UUID</text>
+    <text x="16" y="82" class="field-name">exam_id <tspan class="field-fk">[FK]</tspan> / subtopic_id <tspan class="field-fk">[FK]</tspan></text><text x="240" y="82" class="field-type">UUIDs</text>
+    <text x="16" y="104" class="field-name">passage_id <tspan class="field-fk">[FK]</tspan></text><text x="240" y="104" class="field-type">UUID → passages</text>
+    <text x="16" y="126" class="field-name">question_number_in_paper</text><text x="240" y="126" class="field-type">INT</text>
+    <text x="16" y="148" class="field-name">difficulty / status</text><text x="240" y="148" class="field-type">ENUMs</text>
+    <text x="16" y="170" class="field-name">question_translations.text</text><text x="240" y="170" class="field-type">TEXT (LaTeX)</text>
+    <text x="16" y="192" class="field-name">question_options (A,B,C,D)</text><text x="240" y="192" class="field-type">is_correct BOOL</text>
+    <text x="16" y="214" class="field-name">question_assets.path</text><text x="240" y="214" class="field-type">Diagram Image S3</text>
+  </g>
+
+  <!-- DOMAIN 6: PSYCHOMETRICS & HITL QA -->
+  <g transform="translate(800, 360)">
+    <rect class="card" width="360" height="250"/>
+    <path d="M 0 12 Q 0 0 12 0 L 348 0 Q 360 0 360 12 L 360 36 L 0 36 Z" class="card-header-psy"/>
+    <text x="16" y="24" class="card-title">DOMAIN 6: psychometrics &amp; HITL audit</text>
+    <text x="16" y="60" class="field-name">question_metadata.question_id <tspan class="field-fk">[FK]</tspan></text><text x="250" y="60" class="field-type">UUID → questions</text>
+    <text x="16" y="82" class="field-name">irt_discrimination (a)</text><text x="250" y="82" class="field-type">FLOAT</text>
+    <text x="16" y="104" class="field-name">irt_difficulty (b)</text><text x="250" y="104" class="field-type">FLOAT</text>
+    <text x="16" y="126" class="field-name">irt_guessing (c)</text><text x="250" y="126" class="field-type">FLOAT</text>
+    <text x="16" y="154" class="field-name">human_review_tasks.status</text><text x="250" y="154" class="field-type">PENDING/VERIFIED</text>
+    <text x="16" y="176" class="field-name">is_flagged_by_validator</text><text x="250" y="176" class="field-type">BOOL</text>
+    <text x="16" y="204" class="field-name">user_concept_retention (FSRS-6)</text><text x="250" y="204" class="field-type">Memory Decay</text>
+  </g>
+
+  <!-- RELATIONSHIP CONNECTORS -->
+  <path d="M 360 190 L 420 190" class="line" marker-end="url(#arrow)"/>
+  <path d="M 760 190 L 800 190" class="line" marker-end="url(#arrow)"/>
+  <path d="M 980 320 L 980 360" class="line" marker-end="url(#arrow)"/>
+  <path d="M 200 360 L 200 320 L 980 320" class="line"/>
+  <path d="M 360 450 L 420 450" class="line" marker-end="url(#arrow)"/>
+  <path d="M 760 450 L 800 450" class="line" marker-end="url(#arrow)"/>
+  <path d="M 590 310 L 590 360" class="line" marker-end="url(#arrow)"/>
+</svg>

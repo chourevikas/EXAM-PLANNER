@@ -1,0 +1,25 @@
+{
+  "name": "exam-planner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/examplanner/exam-planner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/examplanner/exam-planner/issues"
+  },
+  "homepage": "https://github.com/examplanner/exam-planner#readme",
+  "private": true,
+  "workspaces": [
+    "apps/frontend"
+  ]
+}
