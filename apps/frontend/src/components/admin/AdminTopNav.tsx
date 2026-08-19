@@ -166,7 +166,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 fontFamily: 'Inter, sans-serif'
               }}
             >
-              RankEdge Admin
+              ExamPlanner Admin
             </span>
           )}
         </div>
@@ -455,7 +455,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   {user?.full_name || 'System Administrator'}
                 </div>
                 <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
-                  {user?.email || 'admin@rankedge.com'}
+                  {user?.email || 'admin@examplanner.com'}
                 </div>
               </div>
 

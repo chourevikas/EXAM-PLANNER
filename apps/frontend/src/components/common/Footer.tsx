@@ -114,7 +114,7 @@ export function Footer() {
           }}
         >
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            © {new Date().getFullYear()} RankEdge. All rights reserved.
+            © {new Date().getFullYear()} ExamPlanner. All rights reserved.
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
             {['Twitter', 'LinkedIn', 'YouTube', 'Telegram'].map((s) => (

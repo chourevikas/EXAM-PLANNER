@@ -43,7 +43,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
             color: inverted ? '#fff' : C.navy,
           }}
         >
-          RankEdge
+          ExamPlanner
         </div>
         <div
           style={{

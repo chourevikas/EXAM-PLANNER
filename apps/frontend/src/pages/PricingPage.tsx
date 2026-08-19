@@ -36,10 +36,10 @@ export function PricingPage() {
     : (discountApplied ? Math.round(priceMonthly * 0.85) : priceMonthly);
 
   const handleApplyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'RANKEDGE2026' || promoCode.trim().toUpperCase() === 'PRO50') {
+    if (promoCode.trim().toUpperCase() === 'EXAMPLANNER2026' || promoCode.trim().toUpperCase() === 'PRO50') {
       setDiscountApplied(true);
     } else {
-      alert('Invalid Promo Code. Try "RANKEDGE2026" for 15% OFF!');
+      alert('Invalid Promo Code. Try "EXAMPLANNER2026" for 15% OFF!');
     }
   };
 
@@ -87,7 +87,7 @@ export function PricingPage() {
           </span>
         </div>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 12px 0', letterSpacing: '-0.02em' }}>
-          Unlock Your Full Potential with RankEdge Pro
+          Unlock Your Full Potential with ExamPlanner Pro
         </h1>
         <p style={{ fontSize: 16, color: 'var(--text-muted)', margin: '0 auto', maxWidth: 600, lineHeight: 1.6 }}>
           Get instant access to behavioral tracking, unlimited mock tests, and personalized study schedules designed for UPSC toppers.
@@ -193,7 +193,7 @@ export function PricingPage() {
 
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-              RankEdge Pro Membership
+              ExamPlanner Pro Membership
             </div>
             <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
               {billingCycle === 'annual' ? '₹499' : '₹999'} 
@@ -259,7 +259,7 @@ export function PricingPage() {
                 </div>
                 <h3 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px 0' }}>Payment Successful! 🎉</h3>
                 <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', margin: '0 0 20px 0' }}>
-                  Welcome to RankEdge Pro Membership. All features unlocked!
+                  Welcome to ExamPlanner Pro Membership. All features unlocked!
                 </p>
                 <div style={{ fontSize: 13, color: '#60a5fa', fontWeight: 600 }}>Redirecting to your Dashboard...</div>
               </div>
@@ -295,7 +295,7 @@ export function PricingPage() {
                   <div style={{ position: 'relative', flex: 1 }}>
                     <input
                       type="text"
-                      placeholder="Enter Promo Code (e.g. RANKEDGE2026)"
+                      placeholder="Enter Promo Code (e.g. EXAMPLANNER2026)"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value)}
                       disabled={discountApplied}

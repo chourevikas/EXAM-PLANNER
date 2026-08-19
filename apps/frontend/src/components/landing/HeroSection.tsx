@@ -645,7 +645,7 @@ export function HeroSection({}: HeroSectionProps) {
 
               {/* Subtle Identity Footer */}
               <div style={{ marginTop: 10, textAlign: 'center', fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>
-                RankEdge PYQ Engine
+                ExamPlanner PYQ Engine
               </div>
             </form>
           </div>

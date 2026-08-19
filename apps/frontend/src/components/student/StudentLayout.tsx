@@ -15,7 +15,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    document.title = `${pageTitle} - RankEdge Exam Planner`;
+    document.title = `${pageTitle} - ExamPlanner`;
     fetchCurrentUser().then(data => {
       setUser(data);
     }).catch(err => {

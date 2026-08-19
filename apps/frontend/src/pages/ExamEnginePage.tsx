@@ -722,7 +722,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <Loader2 size={28} className="animate-spin" color="#2563eb" />
-        <span style={{ fontSize: 16, fontWeight: 700 }}>Initializing RankEdge Exam Session...</span>
+        <span style={{ fontSize: 16, fontWeight: 700 }}>Initializing ExamPlanner Exam Session...</span>
       </div>
     );
   }
@@ -739,7 +739,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     >
       {/* Top Header */}
       <ExamHeader
-        examTitle="RankEdge PYQ Engine"
+        examTitle="ExamPlanner PYQ Engine"
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}

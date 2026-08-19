@@ -51,7 +51,7 @@ export function ExamHeader({
         boxSizing: 'border-box',
       }}
     >
-      {/* Left: Admin Theme RankEdge Logo & Paper Metadata */}
+      {/* Left: Admin Theme ExamPlanner Logo & Paper Metadata */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div
           style={{

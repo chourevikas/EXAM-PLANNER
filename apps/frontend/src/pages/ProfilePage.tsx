@@ -48,7 +48,7 @@ export function ProfilePage() {
   const [twoFactor, setTwoFactor] = useState(true);
 
   useEffect(() => {
-    document.title = 'Profile Settings - RankEdge';
+    document.title = 'Profile Settings - ExamPlanner';
   }, []);
 
   const handleSaveChanges = (e: React.FormEvent) => {
@@ -567,7 +567,7 @@ export function ProfilePage() {
                   Current Subscription Plan
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{isPro ? 'RankEdge Pro Annual Plan' : 'Free Starter Plan'}</span>
+                  <span>{isPro ? 'ExamPlanner Pro Annual Plan' : 'Free Starter Plan'}</span>
                   {isPro && <Star size={16} fill="#60a5fa" color="#60a5fa" />}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>

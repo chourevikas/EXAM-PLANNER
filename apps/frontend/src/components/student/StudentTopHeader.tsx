@@ -194,7 +194,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 letterSpacing: '-0.02em'
               }}
             >
-              RankEdge
+              ExamPlanner
             </span>
           )}
         </Link>

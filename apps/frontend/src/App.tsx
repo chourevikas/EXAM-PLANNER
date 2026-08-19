@@ -69,7 +69,7 @@ function LoadingFallback() {
         fontWeight: 600,
       }}
     >
-      Loading RankEdge...
+      Loading ExamPlanner...
     </div>
   );
 }
