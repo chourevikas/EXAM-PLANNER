@@ -39,7 +39,7 @@ async def get_exam_questions_review(
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
     page: int = Query(default=1, ge=1, description="Page number"),
-    limit: int = Query(default=100, ge=1, le=100, description="Items per page"),
+    limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""

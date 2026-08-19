@@ -292,7 +292,7 @@ export interface ExamReviewQuestionsResponse {
 export async function fetchExamQuestionsForReview(
   examId: string,
   page: number = 1,
-  limit: number = 100,
+  limit: number = 10,
   status?: string
 ): Promise<ExamReviewQuestionsResponse> {
   let url = `${API_BASE_URL}/exams/${examId}/review-questions?page=${page}&limit=${limit}`;
