@@ -7,8 +7,9 @@ interface ExamHeaderProps {
   timeLeft: number;
   language: 'en' | 'hi';
   isSubmitting?: boolean;
+  showSubmitButton?: boolean;
   onLanguageChange: (lang: 'en' | 'hi') => void;
-  onSubmitClick: () => void;
+  onSubmitClick?: () => void;
 }
 
 export function ExamHeader({
@@ -17,6 +18,7 @@ export function ExamHeader({
   timeLeft,
   language,
   isSubmitting = false,
+  showSubmitButton = true,
   onLanguageChange,
   onSubmitClick,
 }: ExamHeaderProps) {
@@ -148,35 +150,35 @@ export function ExamHeader({
         </div>
       </div>
 
-      {/* Right: Submit Test CTA */}
+      {/* Right: Submit Test CTA (Only when showSubmitButton is true) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-
-        {/* Submit Test Button */}
-        <button
-          type="button"
-          onClick={onSubmitClick}
-          disabled={isSubmitting}
-          style={{
-            padding: '6px 16px',
-            borderRadius: 6,
-            border: '1px solid rgba(255, 255, 255, 0.25)',
-            backgroundColor: 'rgba(255, 255, 255, 0.09)',
-            color: '#FFFFFF',
-            fontSize: 12.5,
-            fontWeight: 600,
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.6 : 1,
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
-          }}
-          onMouseLeave={(e) => {
-            if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
-          }}
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Test'}
-        </button>
+        {showSubmitButton && onSubmitClick && (
+          <button
+            type="button"
+            onClick={onSubmitClick}
+            disabled={isSubmitting}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 6,
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(255, 255, 255, 0.09)',
+              color: '#FFFFFF',
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.6 : 1,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
+            }}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Test'}
+          </button>
+        )}
       </div>
     </header>
   );

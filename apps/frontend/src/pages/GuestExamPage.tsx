@@ -8,7 +8,7 @@ import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2 } from 'lucide-react';
-import { QuestionOut, QuestionPaletteItem } from '../types/exam';
+import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -36,16 +36,15 @@ export function GuestExamPage() {
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionOut | null>(null);
   const [userResponses, setUserResponses] = useState<Record<string, { optionId: string; optionLabel: string }>>({});
+  const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
 
-  // Guest Score Modal
-  const [showGuestScoreModal, setShowGuestScoreModal] = useState(false);
-  const [guestScoreData, setGuestScoreData] = useState<any>(null);
-
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gTopic}_${gSubtopic}_${gCount}`;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -61,7 +60,7 @@ export function GuestExamPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Guest Questions with Fallback Enrichment for Full Target Count
+  // Fetch Guest Questions
   useEffect(() => {
     async function loadGuestQuestions() {
       setIsLoading(true);
@@ -69,24 +68,35 @@ export function GuestExamPage() {
       const targetCount = Math.max(1, gCount);
       const fetchedMap = new Map<string, any>();
 
-      const formatQuestion = (q: any, idx: number): QuestionOut => ({
-        question_id: q.question_id || `q-guest-${idx + 1}`,
-        question_number: idx + 1,
-        text: q.question_text || q.text || `Question #${idx + 1}`,
-        options: (q.options || []).map((o: any, oIdx: number) => ({
+      const formatQuestion = (q: any, idx: number): QuestionOut => {
+        const rawOptions = q.options || [];
+        const optionsList = rawOptions.map((o: any, oIdx: number) => ({
           option_id: o.option_id || `opt-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
           option_label: o.option_label || String.fromCharCode(65 + oIdx),
           text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
           is_correct: Boolean(o.is_correct),
-        })),
-        section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
-        topic_name: q.topic_name || gTopic,
-        subtopic_name: q.subtopic_name || gSubtopic,
-        difficulty: q.difficulty || 'MEDIUM',
-        marks: q.marks || 2.0,
-        negative_marks: q.negative_marks || 0.66,
-        expected_time_seconds: q.expected_time_seconds || 60,
-      });
+        }));
+
+        const expText = q.explanation ||
+          q.explanation_text ||
+          q.description ||
+          `Option (${optionsList.find((o: any) => o.is_correct)?.option_label || 'A'}) is correct. Under constitutional provisions & standard syllabus references, this question tests key principles of ${q.topic_name || gTopic}.`;
+
+        return {
+          question_id: q.question_id || `q-guest-${idx + 1}`,
+          question_number: idx + 1,
+          text: q.question_text || q.text || `Question #${idx + 1}`,
+          options: optionsList,
+          section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
+          topic_name: q.topic_name || gTopic,
+          subtopic_name: q.subtopic_name || gSubtopic,
+          difficulty: q.difficulty || 'MEDIUM',
+          marks: q.marks || 2.0,
+          negative_marks: q.negative_marks || 0.66,
+          expected_time_seconds: q.expected_time_seconds || 60,
+          explanation: expText,
+        } as any;
+      };
 
       // Pass 1: Strict filters
       const p1 = new URLSearchParams({ limit: targetCount.toString() });
@@ -193,12 +203,31 @@ export function GuestExamPage() {
           marks: 2.0,
           negative_marks: 0.66,
           expected_time_seconds: 60,
-        });
+          explanation: `Option (A) is correct. Fundamental Rights are codified under Part III (Articles 12-35) of the Indian Constitution and are directly enforceable through writ petitions under Article 32 & Article 226.`,
+        } as any);
       }
 
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
       setActiveQuestion(questionsList[0]);
+
+      // Restore session state from sessionStorage
+      try {
+        const savedRaw = sessionStorage.getItem(SESSION_KEY);
+        if (savedRaw) {
+          const savedData = JSON.parse(savedRaw);
+          if (savedData.userResponses) setUserResponses(savedData.userResponses);
+          if (savedData.revealedMap) setRevealedMap(savedData.revealedMap);
+          if (savedData.markedForReview) setMarkedForReview(savedData.markedForReview);
+          if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
+          if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
+            setCurrentQIndex(savedData.currentQIndex);
+            setActiveQuestion(questionsList[savedData.currentQIndex]);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to restore guest sessionStorage:', err);
+      }
 
       const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => ({
         question_number: i + 1,
@@ -211,6 +240,23 @@ export function GuestExamPage() {
 
     loadGuestQuestions();
   }, [gExam, gYear, gTopic, gSubtopic, gCount]);
+
+  // Persist session state to sessionStorage
+  useEffect(() => {
+    if (isLoading || allQuestions.length === 0) return;
+    try {
+      const payload = {
+        userResponses,
+        revealedMap,
+        markedForReview,
+        bookmarkedQs,
+        currentQIndex,
+      };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Failed to write guest sessionStorage:', err);
+    }
+  }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, isLoading, allQuestions]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -250,6 +296,45 @@ export function GuestExamPage() {
         return item;
       })
     );
+  };
+
+  // Reveal Instant Per-Question Answer & Description
+  const handleRevealAnswer = (qId?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return;
+
+    const targetQuestion = allQuestions.find((q) => q.question_id === targetId) || activeQuestion;
+    if (!targetQuestion) return;
+
+    const userResp = userResponses[targetId];
+    const correctOpt = targetQuestion.options?.find((o) => o.is_correct) || targetQuestion.options?.[0];
+    const correctLabel = correctOpt?.option_label || 'A';
+    const isUserCorrect = userResp ? (userResp.optionId === correctOpt?.option_id || userResp.optionLabel === correctLabel) : false;
+
+    const expText = (targetQuestion as any).explanation ||
+      (targetQuestion as any).description ||
+      (targetQuestion as any).explanation_text ||
+      `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+
+    const revealObj: RevealAnswerResponse = {
+      question_id: targetId,
+      question_number: targetQuestion.question_number,
+      correct_option_id: correctOpt?.option_id || '',
+      correct_option_label: correctLabel,
+      is_user_correct: isUserCorrect,
+      user_selected_option_id: userResp?.optionId || null,
+      user_selected_label: userResp?.optionLabel || null,
+      marks_awarded: isUserCorrect ? (targetQuestion.marks || 2.0) : -(targetQuestion.negative_marks || 0.66),
+      closeness_score: isUserCorrect ? 100 : 0,
+      closeness_classification: isUserCorrect ? 'EXACT' : 'INCORRECT',
+      explanation: expText,
+      distractor_scores: {},
+    };
+
+    setRevealedMap((prev) => ({
+      ...prev,
+      [targetId]: revealObj,
+    }));
   };
 
   // Clear Response
@@ -302,49 +387,6 @@ export function GuestExamPage() {
     );
   };
 
-  // Submit Test & Compute Scorecard
-  const handleSubmitTest = () => {
-    let score = 0;
-    let correctCount = 0;
-    let incorrectCount = 0;
-    let unattemptedCount = 0;
-
-    allQuestions.forEach((q) => {
-      const resp = userResponses[q.question_id];
-      if (resp) {
-        const matchedOption = q.options?.find((o: any) => o.option_id === resp.optionId || o.option_label === resp.optionLabel);
-        if (matchedOption && matchedOption.is_correct) {
-          score += q.marks || 2.0;
-          correctCount += 1;
-        } else {
-          score -= q.negative_marks || 0.66;
-          incorrectCount += 1;
-        }
-      } else {
-        unattemptedCount += 1;
-      }
-    });
-
-    const totalMarksPossible = allQuestions.reduce((acc, q) => acc + (q.marks || 2.0), 0);
-    const accuracy = correctCount + incorrectCount > 0 ? Math.round((correctCount / (correctCount + incorrectCount)) * 100) : 0;
-
-    setGuestScoreData({
-      score: Math.max(0, Math.round(score * 100) / 100),
-      totalMarksPossible,
-      correctCount,
-      incorrectCount,
-      unattemptedCount,
-      accuracy,
-      totalQuestions: allQuestions.length,
-      topicName: gTopic,
-      subtopicName: gSubtopic,
-      targetExam: gExam,
-      targetYear: gYear,
-    });
-
-    setShowGuestScoreModal(true);
-  };
-
   if (isLoading || !activeQuestion) {
     return (
       <ExamLoaderOverlay
@@ -357,6 +399,7 @@ export function GuestExamPage() {
   const currentResponse = userResponses[activeQuestion.question_id];
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = !!markedForReview[activeQuestion.question_id];
+  const currentRevealedResult = revealedMap[activeQuestion.question_id] || null;
 
   const selectedOptionsMap: Record<number, string> = {};
   allQuestions.forEach((q, idx) => {
@@ -393,8 +436,8 @@ export function GuestExamPage() {
         paperSubtitle={`${gExam} · ${gYear} · ${gSubtopic}`}
         timeLeft={timeLeft}
         language={language}
+        showSubmitButton={false}
         onLanguageChange={(lang) => setLanguage(lang)}
-        onSubmitClick={handleSubmitTest}
       />
 
       {/* Slide-out Drawer Left Sidebar */}
@@ -439,8 +482,10 @@ export function GuestExamPage() {
           isBookmarked={!!bookmarkedQs[currentQIndex]}
           language={language}
           mode="PRACTICE"
+          revealResult={currentRevealedResult}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
+          onRevealAnswer={() => handleRevealAnswer()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
 
@@ -464,33 +509,17 @@ export function GuestExamPage() {
         isAnswered={isCurrentAnswered}
         isMarkedForReview={isCurrentMarked}
         isFirstQuestion={currentQIndex === 0}
+        isRevealed={!!currentRevealedResult}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
+        onSubmitAnswer={() => handleRevealAnswer()}
         onPrev={() => handleSelectQuestion(currentQIndex - 1)}
         onNext={() => {
           if (currentQIndex < totalQuestions - 1) {
             handleSelectQuestion(currentQIndex + 1);
-          } else {
-            handleSubmitTest();
           }
         }}
       />
-
-      {/* Guest Scorecard Modal */}
-      {showGuestScoreModal && guestScoreData && (
-        <GuestScoreModal
-          isOpen={showGuestScoreModal}
-          scoreData={guestScoreData}
-          onClose={() => {
-            setShowGuestScoreModal(false);
-            navigate('/');
-          }}
-          onRetake={() => {
-            setShowGuestScoreModal(false);
-            window.location.reload();
-          }}
-        />
-      )}
     </div>
   );
 }

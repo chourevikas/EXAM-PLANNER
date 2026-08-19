@@ -151,3 +151,5 @@ export function StudentMetricCard({
     </div>
   );
 }
+
+export default StudentMetricCard;

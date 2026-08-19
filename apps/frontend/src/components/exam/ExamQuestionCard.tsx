@@ -383,39 +383,6 @@ export function ExamQuestionCard({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Practice Mode Only: Reveal Solution */}
-              {mode !== 'EXAM' && onRevealAnswer && (
-                <button
-                  type="button"
-                  onClick={onRevealAnswer}
-                  disabled={isRevealing}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    backgroundColor: '#EFF6FF',
-                    color: '#2563EB',
-                    border: '1px solid #93C5FD',
-                    borderRadius: 5,
-                    padding: '4px 10px',
-                    cursor: isRevealing ? 'wait' : 'pointer',
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    transition: 'all 0.18s ease-out',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isRevealing) e.currentTarget.style.backgroundColor = '#DBEAFE';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isRevealing) e.currentTarget.style.backgroundColor = '#EFF6FF';
-                  }}
-                >
-                  <Eye size={12} />
-                  <span>{revealResult ? 'Answer Revealed' : isRevealing ? 'Revealing...' : 'Reveal Solution'}</span>
-                </button>
-              )}
-
               {/* Bookmark Button */}
               <button
                 type="button"
@@ -478,6 +445,31 @@ export function ExamQuestionCard({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
             {options.map((opt) => {
               const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
+              
+              const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
+              const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
+
+              let borderStyle = isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0';
+              let bgStyle = isSelected ? '#EFF6FF' : '#F8FAFC';
+              let badgeBg = isSelected ? '#2563EB' : '#FFFFFF';
+              let badgeColor = isSelected ? '#FFFFFF' : '#475569';
+              let badgeBorder = isSelected ? '1px solid #2563EB' : '1px solid #CBD5E1';
+
+              if (revealResult) {
+                if (isCorrectOpt) {
+                  borderStyle = '1.5px solid #10B981';
+                  bgStyle = '#ECFDF5';
+                  badgeBg = '#10B981';
+                  badgeColor = '#FFFFFF';
+                  badgeBorder = '1px solid #10B981';
+                } else if (isWrongSelectedOpt) {
+                  borderStyle = '1.5px solid #EF4444';
+                  bgStyle = '#FEF2F2';
+                  badgeBg = '#EF4444';
+                  badgeColor = '#FFFFFF';
+                  badgeBorder = '1px solid #EF4444';
+                }
+              }
 
               return (
                 <button
@@ -490,27 +482,13 @@ export function ExamQuestionCard({
                     gap: 10,
                     padding: '10px 14px',
                     borderRadius: 8,
-                    border: isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0',
-                    backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
+                    border: borderStyle,
+                    backgroundColor: bgStyle,
                     color: '#0F172A',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.18s ease-out',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#EFF6FF';
-                      e.currentTarget.style.borderColor = '#93C5FD';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#F8FAFC';
-                      e.currentTarget.style.borderColor = '#E2E8F0';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
                   }}
                 >
                   {/* Option Label Badge ([A], [B], [C], [D]) */}
@@ -519,9 +497,9 @@ export function ExamQuestionCard({
                       width: 28,
                       height: 28,
                       borderRadius: 6,
-                      backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
-                      color: isSelected ? '#FFFFFF' : '#475569',
-                      border: isSelected ? '1px solid #2563EB' : '1px solid #CBD5E1',
+                      backgroundColor: badgeBg,
+                      color: badgeColor,
+                      border: badgeBorder,
                       fontWeight: 700,
                       fontSize: 12.5,
                       display: 'flex',
@@ -540,7 +518,7 @@ export function ExamQuestionCard({
                     style={{
                       fontSize: 14.5,
                       color: '#0F172A',
-                      fontWeight: isSelected ? 600 : 500,
+                      fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
                       lineHeight: 1.45,
                       flex: 1,
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -551,19 +529,25 @@ export function ExamQuestionCard({
                     </ReactMarkdown>
                   </div>
 
-                  {/* Right Selection Radio Circle */}
-                  <div
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: '50%',
-                      border: isSelected ? '4.5px solid #2563EB' : '1.5px solid #CBD5E1',
-                      backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
-                      flexShrink: 0,
-                      boxSizing: 'border-box',
-                      transition: 'all 0.18s ease-out',
-                    }}
-                  />
+                  {/* Right Status Indicator */}
+                  {isCorrectOpt ? (
+                    <CheckCircle2 size={18} style={{ color: '#10B981', flexShrink: 0 }} />
+                  ) : isWrongSelectedOpt ? (
+                    <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
+                  ) : (
+                    <div
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        border: isSelected ? '4.5px solid #2563EB' : '1.5px solid #CBD5E1',
+                        backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
+                        flexShrink: 0,
+                        boxSizing: 'border-box',
+                        transition: 'all 0.18s ease-out',
+                      }}
+                    />
+                  )}
                 </button>
               );
             })}

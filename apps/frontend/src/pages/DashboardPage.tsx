@@ -8,7 +8,7 @@ import { fetchCurrentUser } from '../services/authService';
 import { listExams } from '../services/examService';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { StudentMetricCard } from '../components/student/StudentMetricCard';
+import StudentMetricCard from '../components/student/StudentMetricCard';
 
 const subjectData = [
   { subject: 'History', accuracy: 85 },

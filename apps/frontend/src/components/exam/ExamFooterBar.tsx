@@ -9,6 +9,8 @@ interface ExamFooterBarProps {
   onToggleMarkReview: () => void;
   onPrev: () => void;
   onNext: () => void;
+  isRevealed?: boolean;
+  onSubmitAnswer?: () => void;
 }
 
 export function ExamFooterBar({
@@ -19,6 +21,8 @@ export function ExamFooterBar({
   onToggleMarkReview,
   onPrev,
   onNext,
+  isRevealed = false,
+  onSubmitAnswer,
 }: ExamFooterBarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
 
@@ -99,8 +103,35 @@ export function ExamFooterBar({
         </button>
       </div>
 
-      {/* Right Actions: Previous & Save Next */}
+      {/* Right Actions: Previous, Submit Answer, & Save Next */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10 }}>
+        {/* Submit & Show Solution Button (Guest Mode Per-Question Reveal) */}
+        {onSubmitAnswer && (
+          <button
+            type="button"
+            onClick={onSubmitAnswer}
+            disabled={!isAnswered}
+            style={{
+              padding: isMobile ? '7px 12px' : '9px 18px',
+              borderRadius: 6,
+              border: '1px solid #10B981',
+              backgroundColor: isAnswered ? '#10B981' : '#F0FDF4',
+              color: isAnswered ? '#FFFFFF' : '#059669',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: isAnswered ? 'pointer' : 'not-allowed',
+              opacity: isAnswered ? 1 : 0.6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: isAnswered ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>{isRevealed ? 'Solution Revealed ✓' : 'Submit & Show Solution'}</span>
+          </button>
+        )}
+
         {/* Previous Button (Outline/Subtle) */}
         <button
           type="button"
@@ -154,8 +185,6 @@ export function ExamFooterBar({
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          <span>Save & Next</span>
-          <ChevronRight size={16} />
         </button>
       </div>
     </footer>
