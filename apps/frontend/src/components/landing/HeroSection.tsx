@@ -127,7 +127,7 @@ const TARGET_YEAR_OPTIONS = [
 
 const QUESTION_COUNTS = [5, 10, 15, 20];
 
-export function HeroSection({}: HeroSectionProps) {
+export function HeroSection({ }: HeroSectionProps) {
   const navigate = useNavigate();
 
   // Dynamic taxonomy state fetched directly from DB
@@ -517,51 +517,6 @@ export function HeroSection({}: HeroSectionProps) {
                 </div>
               </div>
 
-              {/* Form Row 3: Question Count Controls */}
-              <div style={{ marginBottom: 16 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#0F172A',
-                    marginBottom: 7,
-                  }}
-                >
-                  Question count
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 9 }}>
-                  {QUESTION_COUNTS.map((cnt) => {
-                    const isSelected = questionCount === cnt;
-                    return (
-                      <button
-                        key={cnt}
-                        type="button"
-                        onClick={() => setQuestionCount(cnt)}
-                        style={{
-                          padding: '8px 10px',
-                          borderRadius: 9,
-                          border: isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0',
-                          backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
-                          color: isSelected ? '#2563EB' : '#64748B',
-                          fontSize: 12.5,
-                          fontWeight: isSelected ? 600 : 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 5,
-                        }}
-                      >
-                        {isSelected && <Check size={11.5} strokeWidth={3} style={{ color: '#2563EB' }} />}
-                        {cnt} Questions
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* Contextual Mock Summary Bar */}
               <div
                 style={{
@@ -579,7 +534,7 @@ export function HeroSection({}: HeroSectionProps) {
               >
                 <span style={{ fontWeight: 600, color: '#0F172A' }}>Your mock:</span>
                 <span style={{ color: '#0F172A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedExam} · {selectedYear} · {selectedSubtopic} · {questionCount} questions
+                  {selectedExam} · {selectedYear} · {selectedSubtopic}
                 </span>
               </div>
 
@@ -651,7 +606,7 @@ export function HeroSection({}: HeroSectionProps) {
           </div>
 
           {/* Right Column: Hero Illustration Animation */}
-          <div className="hero-illustration-wrap">
+          <div className="hero-illustration-wrap" style={{ paddingTop: 90 }}>
             <HeroIllustration />
           </div>
         </div>

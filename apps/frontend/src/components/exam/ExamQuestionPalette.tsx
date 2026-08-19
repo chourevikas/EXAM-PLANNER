@@ -61,7 +61,11 @@ export function ExamQuestionPalette({
         padding: '24px 20px',
         boxSizing: 'border-box',
         flexShrink: 0,
-        height: '100%',
+        height: 'calc(100vh - 124px)',
+        maxHeight: 'calc(100vh - 124px)',
+        position: 'sticky',
+        top: 60,
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -189,7 +193,7 @@ export function ExamQuestionPalette({
         ))}
       </div>
 
-      {/* Elevated Numbered Grid (40px x 40px, 8px radius) */}
+      {/* Elevated Numbered Grid (40px x 40px, 8px radius) with dedicated scrollbar */}
       <div
         style={{
           display: 'grid',
@@ -198,6 +202,8 @@ export function ExamQuestionPalette({
           flex: 1,
           overflowY: 'auto',
           alignContent: 'start',
+          paddingRight: 4,
+          maxHeight: '100%',
         }}
       >
         {Array.from({ length: totalCount }).map((_, idx) => {

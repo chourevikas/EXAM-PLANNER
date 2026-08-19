@@ -6,6 +6,7 @@ import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
+import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2 } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem } from '../types/exam';
 
@@ -346,22 +347,10 @@ export function GuestExamPage() {
 
   if (isLoading || !activeQuestion) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#F8FAFC',
-          color: '#0F172A',
-        }}
-      >
-        <Loader2 size={32} className="animate-spin" color="#2563EB" />
-        <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: '#64748B' }}>
-          Loading Mock Examination Console...
-        </div>
-      </div>
+      <ExamLoaderOverlay
+        title="Preparing Mock Examination"
+        subtitle="Structuring authentic PYQs and setting up your workspace..."
+      />
     );
   }
 

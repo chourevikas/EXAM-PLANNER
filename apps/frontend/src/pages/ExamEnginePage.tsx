@@ -6,6 +6,7 @@ import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
+import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import {
@@ -720,10 +721,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   if (isLoadingSession) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <Loader2 size={28} className="animate-spin" color="#2563eb" />
-        <span style={{ fontSize: 16, fontWeight: 700 }}>Initializing ExamPlanner Exam Session...</span>
-      </div>
+      <ExamLoaderOverlay
+        title="Initializing Exam Session"
+        subtitle="Loading questions, anti-cheat status, and timer configuration..."
+      />
     );
   }
 

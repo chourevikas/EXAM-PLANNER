@@ -86,25 +86,26 @@ export function ExamSectionSidebar({
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 140,
-          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          zIndex: 200,
+          backgroundColor: 'rgba(15, 23, 42, 0.45)',
           backdropFilter: 'blur(3px)',
           transition: 'opacity 0.2s ease-out',
         }}
       />
 
-      {/* Slide-out Drawer Panel */}
+      {/* Full-Height Slide-out Drawer Panel */}
       <aside
         style={{
           position: 'fixed',
-          top: 58,
-          bottom: 64,
+          top: 0,
+          bottom: 0,
           left: 0,
-          zIndex: 150,
-          width: 260,
+          height: '100vh',
+          zIndex: 210,
+          width: 280,
           backgroundColor: '#FFFFFF',
           borderRight: '1px solid #E2E8F0',
-          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.15)',
+          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.18)',
           display: 'flex',
           flexDirection: 'column',
           padding: '20px 16px',
