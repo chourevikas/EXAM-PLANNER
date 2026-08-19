@@ -143,12 +143,15 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [examSearchQuery, setExamSearchQuery] = useState<string>('');
   const [examStatusFilter, setExamStatusFilter] = useState<string>('ALL');
 
-  // Review Questions State
+  // Review Questions State & Server-side Pagination (10 items/query)
   const [questionsList, setQuestionsList] = useState<QuestionDetailItem[]>([]);
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number>(0);
   const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
   const [questionStatusFilter, setQuestionStatusFilter] = useState<string>('ALL'); // ALL, PENDING, PUBLISHED, REJECTED
   const [questionSearchQuery, setQuestionSearchQuery] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const pageSize = 10;
 
   // Review Counters from Backend
   const [reviewMetrics, setReviewMetrics] = useState<{
@@ -239,7 +242,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
   useEffect(() => {
     if (selectedExam?.id) {
-      loadExamQuestions(selectedExam.id, questionStatusFilter);
+      loadExamQuestions(selectedExam.id, questionStatusFilter, 1);
     }
   }, [selectedExam?.id, questionStatusFilter]);
 
@@ -262,7 +265,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     }
   };
 
-  const loadExamQuestions = async (examId: string, statusFilterVal?: string) => {
+  const loadExamQuestions = async (
+    examId: string,
+    statusFilterVal?: string,
+    pageNum: number = 1,
+    targetSelectIdx: number = 0
+  ) => {
     setLoadingQuestions(true);
     try {
       const backendStatus =
@@ -274,7 +282,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           ? 'REJECTED'
           : undefined;
 
-      const data = await fetchExamQuestionsForReview(examId, 1, 100, backendStatus);
+      const data = await fetchExamQuestionsForReview(examId, pageNum, 10, backendStatus);
 
       const items: QuestionDetailItem[] = (data.items || []).map((q: any) => {
         const primaryH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy[0] : null;
@@ -337,6 +345,20 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       });
 
       setQuestionsList(items);
+      setCurrentPage(data.page || pageNum);
+
+      const filterCount =
+        statusFilterVal === 'PENDING'
+          ? (data.pending_count !== undefined ? data.pending_count : items.filter((i) => i.status === 'PENDING_HUMAN_REVIEW').length)
+          : statusFilterVal === 'PUBLISHED'
+          ? (data.reviewed_count !== undefined ? data.reviewed_count : items.filter((i) => i.status === 'PUBLISHED').length)
+          : statusFilterVal === 'REJECTED'
+          ? (data.rejected_count !== undefined ? data.rejected_count : items.filter((i) => i.status === 'REJECTED').length)
+          : (data.total_questions !== undefined ? data.total_questions : items.length);
+
+      const calculatedPages = data.pages || Math.ceil(filterCount / 10) || 1;
+      setTotalPages(Math.max(1, calculatedPages));
+
       setReviewMetrics({
         total: data.total_questions !== undefined ? data.total_questions : items.length,
         reviewed: data.reviewed_count !== undefined ? data.reviewed_count : items.filter((i) => i.status === 'PUBLISHED').length,
@@ -359,7 +381,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         solutions_json_folder_path: data.solutions_json_folder_path || selectedExam?.solutions_json_folder_path || null,
       });
 
-      setSelectedQuestionIndex(0);
+      const safeIdx = Math.max(0, Math.min(items.length - 1, targetSelectIdx));
+      setSelectedQuestionIndex(safeIdx);
       setHasUnsavedChanges(false);
     } catch (err: any) {
       showToast('error', `Failed to load review questions: ${err.message}`);
@@ -384,9 +407,19 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     });
   };
 
+  const handlePageChange = (newPage: number, targetSelectIdx: number = 0) => {
+    if (newPage < 1 || newPage > totalPages || (newPage === currentPage && !loadingQuestions)) return;
+    safeNavigate(() => {
+      if (selectedExam?.id) {
+        loadExamQuestions(selectedExam.id, questionStatusFilter, newPage, targetSelectIdx);
+      }
+    });
+  };
+
   const handleStatusFilterChange = (newFilter: string) => {
     safeNavigate(() => {
       setQuestionStatusFilter(newFilter);
+      setCurrentPage(1);
     });
   };
 
@@ -394,9 +427,28 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     safeNavigate(() => {
       setSelectedExam(null);
       setQuestionsList([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setSelectedQuestionIndex(0);
       setHasUnsavedChanges(false);
       loadExamsList();
     });
+  };
+
+  const handlePrevQuestionClick = () => {
+    if (selectedQuestionIndex > 0) {
+      handleSelectQuestion(selectedQuestionIndex - 1);
+    } else if (currentPage > 1) {
+      handlePageChange(currentPage - 1, 9);
+    }
+  };
+
+  const handleNextQuestionClick = () => {
+    if (selectedQuestionIndex < questionsList.length - 1) {
+      handleSelectQuestion(selectedQuestionIndex + 1);
+    } else if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1, 0);
+    }
   };
 
   const handleQuickApproveQuestion = async (question: QuestionDetailItem) => {
@@ -425,6 +477,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       );
       if (nextPendingIndex !== -1) {
         setSelectedQuestionIndex(nextPendingIndex);
+      } else if (selectedQuestionIndex < questionsList.length - 1) {
+        setSelectedQuestionIndex(selectedQuestionIndex + 1);
+      } else if (currentPage < totalPages) {
+        showToast('success', `Current page verified! Advancing to Page ${currentPage + 1}...`);
+        handlePageChange(currentPage + 1, 0);
       }
     } catch (err: any) {
       showToast('error', `Failed to approve question: ${err.message}`);
@@ -453,6 +510,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           canPublish: false,
         };
       });
+
+      if (selectedQuestionIndex < questionsList.length - 1) {
+        setSelectedQuestionIndex(selectedQuestionIndex + 1);
+      }
     } catch (err: any) {
       showToast('error', `Failed to reject question: ${err.message}`);
     } finally {
@@ -576,7 +637,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       );
 
       if (selectedExam) {
-        await loadExamQuestions(selectedExam.id, questionStatusFilter);
+        await loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex);
       }
 
       setEditingQuestion(null);
@@ -618,7 +679,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         questions_json_folder_path: res.questions_json_folder_path || prev.questions_json_folder_path,
         solutions_json_folder_path: res.solutions_json_folder_path || prev.solutions_json_folder_path,
       }));
-      await loadExamQuestions(selectedExam.id, questionStatusFilter);
+      await loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex);
     } catch (err: any) {
       const msg = err.message || 'Publish failed';
       const isCorrupted = msg.includes('EXAM_DATA_CORRUPTED') || msg.includes('CORRUPTED');
@@ -1150,7 +1211,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
-                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter)}
+                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex)}
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 12px',
@@ -1210,7 +1271,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
-                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter)}
+                onClick={() => selectedExam && loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex)}
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 14px',
@@ -1431,6 +1492,156 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 );
               })
             )}
+          </div>
+
+          {/* Pagination Toolbar Footer in Left Column */}
+          <div
+            style={{
+              padding: '10px 12px',
+              borderTop: '1px solid #E2E8F0',
+              backgroundColor: '#F8FAFC',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#475569', fontWeight: 600 }}>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+              <span style={{ fontSize: 11, color: '#64748B' }}>
+                {(() => {
+                  const filterCount =
+                    questionStatusFilter === 'PENDING'
+                      ? reviewMetrics.pending
+                      : questionStatusFilter === 'PUBLISHED'
+                      ? reviewMetrics.reviewed
+                      : questionStatusFilter === 'REJECTED'
+                      ? reviewMetrics.rejected
+                      : reviewMetrics.total;
+                  if (filterCount === 0) return '0 questions';
+                  const startItem = (currentPage - 1) * pageSize + 1;
+                  const endItem = Math.min(currentPage * pageSize, filterCount);
+                  return `Questions ${startItem}–${endItem} of ${filterCount}`;
+                })()}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1 || loadingQuestions}
+                  style={{
+                    padding: '5px 7px',
+                    borderRadius: 5,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: currentPage === 1 || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: currentPage === 1 || loadingQuestions ? 'not-allowed' : 'pointer',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                  title="First Page"
+                >
+                  «
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || loadingQuestions}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: 5,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: currentPage === 1 || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: currentPage === 1 || loadingQuestions ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <ChevronLeft size={13} />
+                  Prev
+                </button>
+              </div>
+
+              {/* Page Numbers */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, idx, arr) => {
+                    const prevP = arr[idx - 1];
+                    const hasGap = prevP && p - prevP > 1;
+                    const isCur = p === currentPage;
+                    return (
+                      <React.Fragment key={p}>
+                        {hasGap && <span style={{ fontSize: 10, color: '#94A3B8', padding: '0 1px' }}>…</span>}
+                        <button
+                          onClick={() => handlePageChange(p)}
+                          disabled={loadingQuestions}
+                          style={{
+                            minWidth: 22,
+                            height: 22,
+                            padding: '0 3px',
+                            borderRadius: 4,
+                            border: isCur ? '1px solid #2563EB' : '1px solid #E2E8F0',
+                            backgroundColor: isCur ? '#2563EB' : '#FFFFFF',
+                            color: isCur ? '#FFFFFF' : '#475569',
+                            fontSize: 11,
+                            fontWeight: isCur ? 700 : 500,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || loadingQuestions}
+                  style={{
+                    padding: '5px 8px',
+                    borderRadius: 5,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: currentPage === totalPages || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: currentPage === totalPages || loadingQuestions ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  Next
+                  <ChevronRight size={13} />
+                </button>
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages || loadingQuestions}
+                  style={{
+                    padding: '5px 7px',
+                    borderRadius: 5,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: currentPage === totalPages || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: currentPage === totalPages || loadingQuestions ? 'not-allowed' : 'pointer',
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                  title="Last Page"
+                >
+                  »
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2002,11 +2213,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   justifyContent: 'space-between',
                   paddingTop: 18,
                   borderTop: '1px solid #E2E8F0',
+                  gap: 12,
                 }}
               >
                 <button
-                  onClick={() => handleSelectQuestion(Math.max(0, selectedQuestionIndex - 1))}
-                  disabled={selectedQuestionIndex === 0}
+                  onClick={handlePrevQuestionClick}
+                  disabled={(selectedQuestionIndex === 0 && currentPage === 1) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
                     borderRadius: 6,
@@ -2014,24 +2226,24 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
-                    color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
-                    cursor: selectedQuestionIndex === 0 ? 'default' : 'pointer',
+                    color: (selectedQuestionIndex === 0 && currentPage === 1) || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: (selectedQuestionIndex === 0 && currentPage === 1) || loadingQuestions ? 'default' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                   }}
                 >
                   <ChevronLeft size={16} />
-                  Previous Question
+                  {selectedQuestionIndex === 0 && currentPage > 1 ? `Previous (Page ${currentPage - 1})` : 'Previous Question'}
                 </button>
 
-                <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>
-                  Question {selectedQuestionIndex + 1} of {filteredQuestions.length}
+                <div style={{ fontSize: 13, color: '#64748B', fontWeight: 600, textAlign: 'center' }}>
+                  Question #{activeQuestion.question_number_in_paper} &nbsp;•&nbsp; ({selectedQuestionIndex + 1} of {filteredQuestions.length} on Page {currentPage}/{totalPages})
                 </div>
 
                 <button
-                  onClick={() => handleSelectQuestion(Math.min(filteredQuestions.length - 1, selectedQuestionIndex + 1))}
-                  disabled={selectedQuestionIndex === filteredQuestions.length - 1}
+                  onClick={handleNextQuestionClick}
+                  disabled={(selectedQuestionIndex === filteredQuestions.length - 1 && currentPage === totalPages) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
                     borderRadius: 6,
@@ -2039,14 +2251,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
-                    color: selectedQuestionIndex === filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
-                    cursor: selectedQuestionIndex === filteredQuestions.length - 1 ? 'default' : 'pointer',
+                    color: (selectedQuestionIndex === filteredQuestions.length - 1 && currentPage === totalPages) || loadingQuestions ? '#CBD5E1' : '#334155',
+                    cursor: (selectedQuestionIndex === filteredQuestions.length - 1 && currentPage === totalPages) || loadingQuestions ? 'default' : 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
                   }}
                 >
-                  Next Question
+                  {selectedQuestionIndex === filteredQuestions.length - 1 && currentPage < totalPages ? `Next (Page ${currentPage + 1})` : 'Next Question'}
                   <ChevronRight size={16} />
                 </button>
               </div>

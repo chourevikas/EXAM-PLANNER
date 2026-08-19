@@ -119,7 +119,7 @@ class QuestionService:
         self,
         exam_id: uuid.UUID,
         page: int = 1,
-        limit: int = 100,
+        limit: int = 10,
         language: LanguageCode = LanguageCode.ENGLISH,
         status: Optional[QuestionStatus] = None,
     ) -> ExamReviewQuestionsResponse:
@@ -162,27 +162,33 @@ class QuestionService:
             paged_qs, target_lang=language, include_solutions=True
         )
 
-        # 1. Check Database Integrity / Corruption across ALL questions for this exam
+        # 1. Check Database Integrity / Corruption across ALL questions for this exam (Batch optimized)
         is_corrupted = False
         corruption_reason = None
         if total_questions == 0 and (exam.extracted_questions_count or 0) > 0:
             is_corrupted = True
             corruption_reason = f"Exam '{exam.code}' has extracted question count recorded ({exam.extracted_questions_count}) but 0 questions exist in database."
-        else:
+        elif all_questions:
+            q_ids = [q.id for q in all_questions]
+            qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
+            qt_res = await self.session.exec(qt_stmt)
+            q_trans_map: dict[uuid.UUID, list[str]] = {}
+            for t in qt_res.all():
+                q_trans_map.setdefault(t.question_id, []).append(t.question_text or "")
+
+            opt_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
+            opt_res = await self.session.exec(opt_stmt)
+            q_opts_set: set[uuid.UUID] = {opt.question_id for opt in opt_res.all()}
+
             for q in all_questions:
-                qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
-                qt_res = await self.session.exec(qt_stmt)
-                q_trans = qt_res.all()
-                has_text = any(t.question_text and t.question_text.strip() for t in q_trans)
+                trans_texts = q_trans_map.get(q.id, [])
+                has_text = any(t and t.strip() for t in trans_texts)
                 if not has_text:
                     is_corrupted = True
                     corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
                     break
 
-                opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
-                opt_res = await self.session.exec(opt_stmt)
-                q_opts = opt_res.all()
-                if not q_opts:
+                if q.id not in q_opts_set:
                     is_corrupted = True
                     corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has 0 answer options in database."
                     break
