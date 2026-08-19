@@ -394,6 +394,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     await session.commit()
 
     # 7b. Upsert FSRS UserMemoryState & UserConceptRetention
+    # In-memory cache for the current transaction to prevent IntegrityError on duplicate subtopics
+    session_retention_cache = {}
     now_t = datetime.now(timezone.utc)
     for resp in responses_db:
         q_obj = await session.get(Question, resp.question_id)
@@ -437,12 +439,19 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             session.add(mem_obj)
 
         if q_obj.subtopic_id:
-            ret_stmt = select(UserConceptRetention).where(
-                UserConceptRetention.user_id == user.id,
-                UserConceptRetention.subtopic_id == q_obj.subtopic_id,
-            )
-            ret_res = await session.exec(ret_stmt)
-            ret_obj = ret_res.first()
+            cache_key = (user.id, q_obj.subtopic_id)
+            if cache_key in session_retention_cache:
+                ret_obj = session_retention_cache[cache_key]
+            else:
+                ret_stmt = select(UserConceptRetention).where(
+                    UserConceptRetention.user_id == user.id,
+                    UserConceptRetention.subtopic_id == q_obj.subtopic_id,
+                )
+                ret_res = await session.exec(ret_stmt)
+                ret_obj = ret_res.first()
+                if ret_obj:
+                    session_retention_cache[cache_key] = ret_obj
+
             if not ret_obj:
                 ret_obj = UserConceptRetention(
                     user_id=user.id,
@@ -455,6 +464,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                     last_reviewed_at=now_t,
                     next_scheduled_review=now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability))),
                 )
+                session.add(ret_obj)
+                session_retention_cache[cache_key] = ret_obj
             else:
                 ret_obj.total_reviews += 1
                 if not is_corr:

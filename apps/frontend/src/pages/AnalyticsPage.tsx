@@ -124,7 +124,7 @@ export function AnalyticsPage() {
               setEvalProgress(statusUpdate.progress_percentage || 60);
               setEvalMessage(statusUpdate.message || 'Computing IRT 3PL ability and FSRS decay curves...');
             },
-            35,
+            200, // Increased to 300 seconds (5 mins)
             1500
           );
 
@@ -132,7 +132,10 @@ export function AnalyticsPage() {
           setIsEvaluating(false);
 
           if (!isReady) {
-            console.warn('[AnalyticsPage:POLL_TIMEOUT] Polling threshold reached, attempting direct fetch fallback.');
+            console.warn('[AnalyticsPage:POLL_TIMEOUT] Polling threshold reached. Evaluation still in progress.');
+            setError('The psychometric evaluation is taking longer than expected. You can safely leave this page and check back later.');
+            setIsLoading(false);
+            return; // Stop here, don't fetch incomplete reports
           }
         } else {
           setIsEvaluating(false);

@@ -20,9 +20,10 @@ from app.db.models import (
     UserSkillProgressionReport,
 )
 from app.config.logger import setup_logger
-
 logger = setup_logger("AnalyticsService")
 
+# Track attempts that have been auto-retriggered in this worker to prevent concurrent duplicate pipelines
+_RETRIGGERED_ATTEMPTS = set()
 
 class AnalyticsService:
     """Service compiling and formatting psychometric diagnostic analytics reports."""
@@ -40,6 +41,11 @@ class AnalyticsService:
             # 1. Instant Cache from ExamAttempt or ExamAttemptReport
             if attempt_id:
                 attempt = await self.session.get(ExamAttempt, attempt_id)
+                
+                # Check if it's still processing in background
+                if attempt and attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+                    raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
+                
                 if attempt and attempt.report_metadata_json:
                     json_content = format_report_to_json(attempt.report_metadata_json)
                     return Response(content=json_content, media_type="application/json")
@@ -67,6 +73,8 @@ class AnalyticsService:
             return Response(content=json_content, media_type="application/json")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
+        except HTTPException:
+            raise
         except Exception as exc:
             logger.error(
                 f"Error compiling JSON report for Attempt '{attempt_id or exam_id}': {exc}",
@@ -83,6 +91,10 @@ class AnalyticsService:
         try:
             if attempt_id:
                 attempt = await self.session.get(ExamAttempt, attempt_id)
+                
+                if attempt and attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+                    raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
+                    
                 if attempt and attempt.report_metadata_json:
                     yaml_content = format_report_to_yaml(attempt.report_metadata_json)
                     return Response(content=yaml_content, media_type="text/yaml")
@@ -94,6 +106,8 @@ class AnalyticsService:
             return Response(content=yaml_content, media_type="text/yaml")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
+        except HTTPException:
+            raise
         except Exception as exc:
             logger.error(
                 f"Error compiling YAML report for Attempt '{attempt_id or exam_id}': {exc}",
@@ -111,6 +125,10 @@ class AnalyticsService:
             # 1. Instant Cache from ExamAttempt or ExamAttemptReport
             if attempt_id:
                 attempt = await self.session.get(ExamAttempt, attempt_id)
+                
+                if attempt and attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+                    raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
+                    
                 if attempt and attempt.report_metadata_json:
                     markdown_content = format_report_to_markdown(attempt.report_metadata_json)
                     return Response(content=markdown_content, media_type="text/markdown")
@@ -137,6 +155,8 @@ class AnalyticsService:
             return Response(content=markdown_content, media_type="text/markdown")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
+        except HTTPException:
+            raise
         except Exception as exc:
             logger.error(
                 f"Error compiling Markdown report for Attempt '{attempt_id or exam_id}': {exc}",
@@ -148,6 +168,9 @@ class AnalyticsService:
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
+            
+        if attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+            raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
 
         # 1. Instant DB Cache from attempt.report_metadata_json (contains full per-question analysis & explanations)
         if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
@@ -224,6 +247,9 @@ class AnalyticsService:
 
         # 2. Instant DB Cache: attempt.report_metadata_json
         attempt = await self.session.get(ExamAttempt, attempt_id)
+        if attempt and attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+            raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
+            
         if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
             meta = attempt.report_metadata_json
             return {
@@ -265,6 +291,9 @@ class AnalyticsService:
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
+            
+        if attempt.status == AttemptStatus.SUBMITTED and not attempt.report_metadata_json:
+            raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
 
         profile = (await self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == attempt.user_id))).first()
         return {
@@ -318,6 +347,10 @@ class AnalyticsService:
 
     async def get_attempt_evaluation_status(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Checks if the psychometric post-submission pipeline evaluation has completed for an attempt."""
+        import asyncio
+        from datetime import datetime, timezone
+        from app.engine.post_submission_pipeline import run_post_submission_pipeline
+
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
@@ -325,6 +358,14 @@ class AnalyticsService:
         is_evaluated = attempt.status == AttemptStatus.EVALUATED
         has_report_json = bool(attempt.report_metadata_json)
         is_ready = is_evaluated or has_report_json
+
+        # Auto-recovery for stuck attempts
+        if not is_ready and attempt.status == AttemptStatus.SUBMITTED and attempt.submitted_at:
+            time_since = (datetime.now(timezone.utc) - attempt.submitted_at.replace(tzinfo=timezone.utc)).total_seconds()
+            if time_since > 120 and attempt_id not in _RETRIGGERED_ATTEMPTS:  # 2 minutes
+                _RETRIGGERED_ATTEMPTS.add(attempt_id)
+                logger.warning(f"Attempt {attempt_id} stuck in SUBMITTED for {time_since}s. Auto-retriggering pipeline.")
+                asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
         status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
         progress = 100 if is_ready else (75 if attempt.status == AttemptStatus.SUBMITTED else 25)

@@ -416,7 +416,7 @@ export async function getAttemptEvaluationStatus(attemptId: string): Promise<any
 export async function pollAttemptReportUntilReady(
   attemptId: string,
   onUpdate: (status: any) => void,
-  maxRetries: number = 35,
+  maxRetries: number = 80,
   delay: number = 1500
 ): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
