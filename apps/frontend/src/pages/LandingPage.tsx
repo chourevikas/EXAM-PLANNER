@@ -4,7 +4,6 @@ import { HeroSection } from '../components/landing/HeroSection';
 import { WorkflowSection } from '../components/landing/WorkflowSection';
 import { FeaturesSection } from '../components/landing/FeaturesSection';
 import { WhySection } from '../components/landing/WhySection';
-import { ExamsSection } from '../components/landing/ExamsSection';
 import { StatsSection } from '../components/landing/StatsSection';
 import { Testimonials } from '../components/landing/Testimonials';
 import { CTASection } from '../components/landing/CTASection';
@@ -32,7 +31,6 @@ export function LandingPage() {
       <WorkflowSection />
       <FeaturesSection />
       <WhySection />
-      <ExamsSection />
       <StatsSection />
       <Testimonials />
       <CTASection onLogin={handleOpenLogin} onSignup={handleOpenSignup} />

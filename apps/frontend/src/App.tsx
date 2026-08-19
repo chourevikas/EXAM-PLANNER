@@ -84,7 +84,8 @@ export default function App() {
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/signout" element={<SignOutPage />} />
-          
+          <Route path="/guest-exam" element={<ExamEnginePage isGuest={true} />} />
+
           {/* Exam Engine - Protected Route */}
           <Route
             path="/exam/:examId"

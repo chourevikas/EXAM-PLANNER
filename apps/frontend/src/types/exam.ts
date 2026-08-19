@@ -100,6 +100,7 @@ export interface OptionOut {
   option_id: string;
   option_label: string;
   text: string;
+  is_correct?: boolean;
   textHindi?: string;
   text_hindi?: string;
   display_order?: number;
@@ -119,6 +120,8 @@ export interface QuestionOut {
   subject?: string;
   topic?: string;
   subtopic?: string;
+  topic_name?: string;
+  subtopic_name?: string;
   difficulty?: string;
   marks?: number;
   negative_marks?: number;

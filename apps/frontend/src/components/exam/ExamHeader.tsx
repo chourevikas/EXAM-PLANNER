@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, Clock } from 'lucide-react';
+import { Clock, Shield } from 'lucide-react';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -20,7 +20,10 @@ export function ExamHeader({
   onLanguageChange,
   onSubmitClick,
 }: ExamHeaderProps) {
+  const isCriticalTime = timeLeft < 120; // < 2 mins
   const isLowTime = timeLeft < 600; // < 10 mins
+
+  const timerColor = isCriticalTime ? '#FCA5A5' : isLowTime ? '#FDE68A' : '#FFFFFF';
 
   const formatTime = (secs: number) => {
     const h = Math.floor(secs / 3600);
@@ -32,90 +35,112 @@ export function ExamHeader({
   return (
     <header
       style={{
-        height: 64,
+        height: 60,
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 100,
-        backgroundColor: '#0f1e3c',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 20px rgba(15, 29, 56, 0.25)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '0 24px',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
       }}
     >
-      {/* Left: Logo & Exam Info */}
+      {/* Left: Admin Theme RankEdge Logo & Paper Metadata */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 9,
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+            width: 32,
+            height: 32,
+            borderRadius: 6,
+            backgroundColor: '#2563EB',
+            color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
-            flexShrink: 0
+            fontWeight: 800,
+            fontSize: 15,
+            flexShrink: 0,
+            boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
           }}
         >
-          <Zap size={18} color="#fff" fill="#fff" />
+          <Shield size={18} color="#FFFFFF" />
         </div>
         <div>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 800,
-              color: '#ffffff',
-              letterSpacing: '-0.01em',
-              fontFamily: 'var(--font-display)'
-            }}
-          >
-            {examTitle}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: '#FFFFFF',
+                lineHeight: 1.2,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {examTitle}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 7px',
+                borderRadius: 4,
+                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                color: 'rgba(255, 255, 255, 0.85)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              CONSOLE
+            </span>
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.55)', fontWeight: 500 }}>
+          <div style={{ fontSize: 11.5, color: 'rgba(255, 255, 255, 0.65)', fontWeight: 500, lineHeight: 1.2, marginTop: 2 }}>
             {paperSubtitle}
           </div>
         </div>
       </div>
 
-      {/* Center: Live Timer Widget */}
+      {/* Center: Monospaced Precision Clock Module */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '6px 16px',
-          borderRadius: 20,
-          backgroundColor: isLowTime ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-          border: `1px solid ${isLowTime ? 'rgba(239, 68, 68, 0.4)' : 'rgba(59, 130, 246, 0.3)'}`,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          padding: '4px 18px',
+          borderRadius: 6,
+          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.15)',
         }}
       >
-        <Clock size={16} color={isLowTime ? '#ef4444' : '#60a5fa'} />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <Clock size={15} color={timerColor} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span
             style={{
-              fontSize: 10,
-              color: isLowTime ? '#ef4444' : 'rgba(255, 255, 255, 0.6)',
+              fontSize: 9,
+              color: 'rgba(255, 255, 255, 0.55)',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              fontWeight: 700
+              letterSpacing: '0.08em',
+              fontWeight: 700,
+              lineHeight: 1,
             }}
           >
-            Time Remaining
+            TIME REMAINING
           </span>
           <span
             style={{
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: 800,
-              color: isLowTime ? '#ef4444' : '#ffffff',
-              fontFamily: 'var(--font-mono, monospace)',
-              letterSpacing: '0.05em'
+              color: timerColor,
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '0.04em',
+              marginTop: 2,
             }}
           >
             {formatTime(timeLeft)}
@@ -123,45 +148,48 @@ export function ExamHeader({
         </div>
       </div>
 
-      {/* Right: Language Switcher & Submit CTA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        
-        {/* Language Switcher */}
+      {/* Right: Language Switch & Submit Test CTA */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* English / Hindi Switcher */}
         <div
           style={{
             display: 'flex',
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            padding: 3,
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: 6,
+            padding: 2,
+            border: '1px solid rgba(255, 255, 255, 0.12)',
           }}
         >
           <button
+            type="button"
             onClick={() => onLanguageChange('en')}
             style={{
-              padding: '4px 10px',
-              borderRadius: 6,
+              padding: '4px 11px',
+              borderRadius: 4,
               border: 'none',
-              backgroundColor: language === 'en' ? '#2563eb' : 'transparent',
-              color: language === 'en' ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
+              backgroundColor: language === 'en' ? '#2563EB' : 'transparent',
+              color: language === 'en' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
               fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer'
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
             English
           </button>
           <button
+            type="button"
             onClick={() => onLanguageChange('hi')}
             style={{
-              padding: '4px 10px',
-              borderRadius: 6,
+              padding: '4px 11px',
+              borderRadius: 4,
               border: 'none',
-              backgroundColor: language === 'hi' ? '#2563eb' : 'transparent',
-              color: language === 'hi' ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
+              backgroundColor: language === 'hi' ? '#2563EB' : 'transparent',
+              color: language === 'hi' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
               fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer'
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
             हिंदी
@@ -170,20 +198,26 @@ export function ExamHeader({
 
         {/* Submit Test Button */}
         <button
+          type="button"
           onClick={onSubmitClick}
           disabled={isSubmitting}
           style={{
-            padding: '8px 18px',
-            borderRadius: 10,
-            border: 'none',
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
-            fontSize: 13,
-            fontWeight: 700,
+            padding: '6px 16px',
+            borderRadius: 6,
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            backgroundColor: 'rgba(255, 255, 255, 0.09)',
+            color: '#FFFFFF',
+            fontSize: 12.5,
+            fontWeight: 600,
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
             opacity: isSubmitting ? 0.6 : 1,
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
-            transition: 'transform 0.2s'
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+          }}
+          onMouseLeave={(e) => {
+            if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
           }}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Test'}

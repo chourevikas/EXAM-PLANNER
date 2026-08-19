@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar, Section, Question } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
-import { FileText, Layers, Grid, Loader2 } from 'lucide-react';
+import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import {
   startExamAttempt,
@@ -32,11 +32,15 @@ import {
   BatchSaveItem,
 } from '../types/exam';
 
-export function ExamEnginePage() {
+export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const { examId, attemptId: paramAttemptId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const isGuestMode = isGuest || location.pathname === '/guest-exam';
 
   // ─── Session State ───────────────────────────────────────────────────────────
   const [attemptId, setAttemptId] = useState<string | null>(paramAttemptId || null);
@@ -51,6 +55,11 @@ export function ExamEnginePage() {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Guest Scorecard Modal State
+  const [showGuestScoreModal, setShowGuestScoreModal] = useState(false);
+  const [guestScoreData, setGuestScoreData] = useState<any>(null);
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
@@ -178,6 +187,11 @@ export function ExamEnginePage() {
     async function initSession() {
       setIsLoadingSession(true);
       try {
+        if (isGuestMode) {
+          await loadGuestSessionQuestions();
+          return;
+        }
+
         if (paramAttemptId) {
           // Resume existing session
           const sessionStatus = await getExamAttemptStatus(paramAttemptId);
@@ -245,7 +259,123 @@ export function ExamEnginePage() {
     }
 
     initSession();
-  }, [examId, paramAttemptId]);
+  }, [examId, paramAttemptId, isGuestMode]);
+
+  const loadGuestSessionQuestions = async () => {
+    const gExam = searchParams.get('exam') || 'UPSC Prelims (GS Paper 1)';
+    const gYear = searchParams.get('year') || '2023';
+    const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
+    const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+    const gCount = parseInt(searchParams.get('count') || '10', 10);
+
+    setTotalQuestions(gCount);
+    setTimeLeft(gCount * 120);
+    setAttemptMode('PRACTICE');
+
+    const apiParams = new URLSearchParams({
+      limit: gCount.toString(),
+    });
+
+    if (gTopic && gTopic !== 'All Topics') {
+      apiParams.append('topic_name', gTopic);
+    }
+    if (gSubtopic && gSubtopic !== 'All Subtopics') {
+      apiParams.append('subtopic_name', gSubtopic);
+    }
+    if (gYear && gYear !== 'All Years (2018 - 2024)' && !isNaN(Number(gYear))) {
+      apiParams.append('exam_year', gYear);
+    }
+    if (gExam && gExam.toLowerCase().includes('upsc')) {
+      apiParams.append('exam_name', 'upsc');
+    }
+
+    try {
+      const res = await fetch(`/api/v1/questions?${apiParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const questionsList: QuestionOut[] = data.items.map((q: any, idx: number) => ({
+            question_id: q.question_id || `q-guest-${idx + 1}`,
+            question_number: idx + 1,
+            text: q.question_text || `Question #${idx + 1}`,
+            options: (q.options || []).map((o: any) => ({
+              option_id: o.option_id || `opt-${idx}-${o.option_label}`,
+              option_label: o.option_label,
+              text: o.option_text || o.text || `Option ${o.option_label}`,
+              is_correct: Boolean(o.is_correct),
+            })),
+            section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
+            difficulty: q.difficulty || 'MEDIUM',
+            marks: q.marks || 2.0,
+            negative_marks: q.negative_marks || 0.66,
+            expected_time_seconds: q.expected_time_seconds || 60,
+          }));
+
+          setAllQuestions(questionsList);
+          setTotalQuestions(questionsList.length);
+          setActiveQuestion(questionsList[0]);
+
+          const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => ({
+            question_number: i + 1,
+            question_id: q.question_id,
+            question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
+          }));
+          setPalette(initialPalette);
+          setResponseSummary({
+            answered_count: 0,
+            marked_for_review_count: 0,
+            unattempted_count: questionsList.length,
+            total: questionsList.length,
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('API questions fetch warning for guest mode:', err);
+    }
+
+    // Fallback demo questions if database has no matching items for the criteria
+    loadGuestFallbackData(gTopic, gSubtopic, gCount);
+  };
+
+  function loadGuestFallbackData(topicName: string, subtopicName: string, count: number) {
+    const sampleQuestions: QuestionOut[] = Array.from({ length: count }, (_, idx) => {
+      const qNum = idx + 1;
+      return {
+        question_id: `guest-q-${qNum}`,
+        question_number: qNum,
+        text: `[${topicName} - ${subtopicName}] Question #${qNum}: Which of the following statements regarding ${subtopicName !== 'All Subtopics' ? subtopicName : topicName} under the Indian Constitution / Syllabus is correct?`,
+        options: [
+          { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `Statement I: It is guaranteed under Part III of the Constitution and enforceable by law.`, is_correct: true },
+          { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `Statement II: It requires explicit legislative enactment for enforcement in all scenarios.`, is_correct: false },
+          { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both Statement I and Statement II are incorrect.`, is_correct: false },
+          { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither Statement I nor Statement II applies to this subtopic.`, is_correct: false },
+        ],
+        section_code: topicName,
+        difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
+        marks: 2.0,
+        negative_marks: 0.66,
+        expected_time_seconds: 60,
+      };
+    });
+
+    setAllQuestions(sampleQuestions);
+    setTotalQuestions(sampleQuestions.length);
+    setActiveQuestion(sampleQuestions[0]);
+
+    const initialPalette: QuestionPaletteItem[] = sampleQuestions.map((q, i) => ({
+      question_number: i + 1,
+      question_id: q.question_id,
+      question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
+    }));
+    setPalette(initialPalette);
+    setResponseSummary({
+      answered_count: 0,
+      marked_for_review_count: 0,
+      unattempted_count: sampleQuestions.length,
+      total: sampleQuestions.length,
+    });
+  }
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: string, qNum: number) => {
@@ -464,6 +594,53 @@ export function ExamEnginePage() {
   const handleConfirmSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    if (isGuestMode || !attemptId) {
+      let correctCount = 0;
+      let wrongCount = 0;
+      let unattemptedCount = 0;
+
+      allQuestions.forEach((q) => {
+        const saved = lastSyncedSnapshotRef.current.get(q.question_id) || pendingBatchQueueRef.current.get(q.question_id);
+        const selId = saved?.selected_option_id;
+        if (!selId) {
+          unattemptedCount++;
+        } else {
+          const opt = q.options?.find((o: any) => o.option_id === selId);
+          if (opt && opt.is_correct) {
+            correctCount++;
+          } else {
+            wrongCount++;
+          }
+        }
+      });
+
+      const totalScore = allQuestions.length * 2.0;
+      const score = Math.max(0, Number((correctCount * 2.0 - wrongCount * 0.66).toFixed(2)));
+      const accuracy = Math.round((correctCount / (correctCount + wrongCount || 1)) * 100);
+
+      const gExam = searchParams.get('exam') || 'UPSC Prelims';
+      const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
+      const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+
+      setGuestScoreData({
+        score,
+        totalScore,
+        correctCount,
+        wrongCount,
+        unattemptedCount,
+        accuracy,
+        totalQuestions: allQuestions.length,
+        exam: gExam,
+        topic: gTopic,
+        subtopic: gSubtopic,
+      });
+      setShowGuestScoreModal(true);
+      setIsSubmitting(false);
+      setShowSubmitModal(false);
+      return;
+    }
+
     try {
       if (attemptId) {
         // Zero-Data-Loss Guarantee: Flush all pending batches before final submission
@@ -623,46 +800,45 @@ export function ExamEnginePage() {
         </div>
       )}
 
+      {/* Slide-out Drawer Left Sidebar */}
+      <ExamSectionSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        sections={subjectSections}
+        activeSectionId={activeSectionId}
+        palette={palette}
+        totalQuestions={totalQuestions}
+        currentQIndex={currentQIndex}
+        responseSummary={liveResponseSummary}
+        onSelectSection={(secId, startQ) => {
+          setActiveSectionId(secId);
+          if (startQ && startQ >= 1 && startQ <= totalQuestions) {
+            handleSelectQuestionFromPalette(startQ - 1);
+          }
+        }}
+        onSelectQuestion={handleSelectQuestionFromPalette}
+      />
+
       {/* Main Viewport Body */}
       <div
         style={{
-          marginTop: isMobile ? 108 : 64,
-          marginBottom: 70,
+          marginTop: isMobile ? 104 : 60,
+          marginBottom: 64,
           display: 'flex',
           flex: 1,
-          height: isMobile ? 'calc(100vh - 178px)' : 'calc(100vh - 134px)',
+          height: isMobile ? 'calc(100vh - 168px)' : 'calc(100vh - 124px)',
           boxSizing: 'border-box',
           overflow: 'hidden',
+          backgroundColor: '#F8FAFC',
         }}
       >
-        {/* Left: Section Sidebar */}
-        {(!isMobile || mobileTab === 'sections') && (
-          <div style={{ width: isMobile ? '100%' : 240, height: '100%' }}>
-            <ExamSectionSidebar
-              sections={subjectSections}
-              activeSectionId={activeSectionId}
-              palette={palette}
-              totalQuestions={totalQuestions}
-              currentQIndex={currentQIndex}
-              responseSummary={liveResponseSummary}
-              onSelectSection={(secId, startQ) => {
-                setActiveSectionId(secId);
-                if (startQ && startQ >= 1 && startQ <= totalQuestions) {
-                  handleSelectQuestionFromPalette(startQ - 1);
-                }
-              }}
-              onSelectQuestion={handleSelectQuestionFromPalette}
-            />
-          </div>
-        )}
-
-        {/* Center: Question Card */}
+        {/* Center: Question Card Workspace with Collapsible Trigger Button */}
         {(!isMobile || mobileTab === 'question') && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
             {isLoadingQuestion ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="#2563eb" />
-                <span>Loading question #{currentQIndex + 1}...</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#64748B' }}>Loading question #{currentQIndex + 1}...</span>
               </div>
             ) : activeQuestion ? (
               <ExamQuestionCard
@@ -679,6 +855,7 @@ export function ExamEnginePage() {
                 onSelectOption={handleSelectOption}
                 onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
                 onRevealAnswer={handleRevealAnswer}
+                onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
               />
             ) : null}
           </div>
@@ -686,15 +863,13 @@ export function ExamEnginePage() {
 
         {/* Right: Question Palette */}
         {(!isMobile || mobileTab === 'palette') && (
-          <div style={{ width: isMobile ? '100%' : 300, height: '100%' }}>
-            <ExamQuestionPalette
-              palette={palette.length > 0 ? palette : undefined}
-              currentQIndex={currentQIndex}
-              paletteFilter={paletteFilter}
-              onSelectQuestion={handleSelectQuestionFromPalette}
-              onFilterChange={setPaletteFilter}
-            />
-          </div>
+          <ExamQuestionPalette
+            palette={palette.length > 0 ? palette : undefined}
+            currentQIndex={currentQIndex}
+            paletteFilter={paletteFilter}
+            onSelectQuestion={handleSelectQuestionFromPalette}
+            onFilterChange={setPaletteFilter}
+          />
         )}
       </div>
 
@@ -719,6 +894,162 @@ export function ExamEnginePage() {
         onResume={() => !isSubmitting && setShowSubmitModal(false)}
         onConfirmSubmit={handleConfirmSubmit}
       />
+
+      {/* Guest Performance Scorecard Modal */}
+      {showGuestScoreModal && guestScoreData && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 500,
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderRadius: 24,
+              padding: '32px',
+              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+              }}
+            >
+              <Trophy size={28} />
+            </div>
+
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#0f172a', marginBottom: 4 }}>
+              Guest Test Results
+            </h2>
+
+            <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 20 }}>
+              Topic: <strong>{guestScoreData.topic}</strong> • Subtopic: <strong>{guestScoreData.subtopic}</strong>
+            </p>
+
+            {/* Score Pill */}
+            <div
+              style={{
+                backgroundColor: isDark ? '#0f172a' : '#f0f6ff',
+                borderRadius: 16,
+                padding: '18px',
+                marginBottom: 20,
+                border: '1px solid rgba(37, 99, 235, 0.15)',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Your Estimated Score
+              </div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#1e293b', margin: '4px 0' }}>
+                {guestScoreData.score} <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>/ {guestScoreData.totalScore}</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>
+                Accuracy: {guestScoreData.accuracy}%
+              </div>
+            </div>
+
+            {/* Metrics Breakdown Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>CORRECT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{guestScoreData.correctCount}</div>
+              </div>
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>WRONG</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{guestScoreData.wrongCount}</div>
+              </div>
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>UNATTEMPTED</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#64748b' }}>{guestScoreData.unattemptedCount}</div>
+              </div>
+            </div>
+
+            {/* CTA Box */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 20,
+                border: '1px solid rgba(37,99,235,0.2)',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={15} /> Save Score & Track Performance
+              </div>
+              <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
+                Create a free account to store test attempts, identify weak areas with IRT psychometrics, and generate adaptive study plans.
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => navigate('/signup')}
+                style={{
+                  flex: 1,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  border: 'none',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <UserPlus size={16} /> Create Free Account
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'transparent',
+                  color: isDark ? '#cbd5e1' : '#475569',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Back Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Submitting & Evaluating Overlay */}
       {isSubmitting && (
