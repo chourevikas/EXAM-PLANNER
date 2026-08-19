@@ -177,9 +177,8 @@ export function GuestExamPage() {
         questionsList.push({
           question_id: `guest-q-${qNum}`,
           question_number: qNum,
-          text: `Which of the following statements regarding ${
-            gSubtopic !== 'All Subtopics' ? gSubtopic : gTopic
-          } under the Indian Constitution / Syllabus is correct?`,
+          text: `Which of the following statements regarding ${gSubtopic !== 'All Subtopics' ? gSubtopic : gTopic
+            } under the Indian Constitution / Syllabus is correct?`,
           options: [
             { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `Statement I: It is guaranteed under Part III of the Constitution and enforceable by law.`, is_correct: true },
             { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `Statement II: It requires explicit legislative enactment for enforcement in all scenarios.`, is_correct: false },

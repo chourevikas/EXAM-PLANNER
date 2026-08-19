@@ -54,7 +54,7 @@ export function ExamQuestionPalette({
     <aside
       style={{
         width: 280,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F4F6F9',
         borderLeft: '1px solid #E2E8F0',
         display: 'flex',
         flexDirection: 'column',

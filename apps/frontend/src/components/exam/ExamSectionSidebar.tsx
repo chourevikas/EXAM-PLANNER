@@ -57,15 +57,15 @@ export function ExamSectionSidebar({
   const answeredCount =
     palette.length > 0
       ? palette.filter(
-          (p) => p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED'
-        ).length
+        (p) => p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED'
+      ).length
       : (responseSummary?.answered_count ?? Object.keys(selectedOptions).length);
 
   const markedCount =
     palette.length > 0
       ? palette.filter(
-          (p) => p.question_status === 'MARKED_FOR_REVIEW' || p.question_status === 'ANSWERED_AND_MARKED'
-        ).length
+        (p) => p.question_status === 'MARKED_FOR_REVIEW' || p.question_status === 'ANSWERED_AND_MARKED'
+      ).length
       : (responseSummary?.marked_for_review_count ?? Object.values(markedForReview).filter(Boolean).length);
 
   const unattemptedCount = Math.max(0, total - answeredCount);

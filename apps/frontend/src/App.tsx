@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
 
@@ -32,6 +32,9 @@ const MonthlyReportPage = lazy(() =>
 );
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+const GuestExamPage = lazy(() =>
+  import('./pages/GuestExamPage').then((m) => ({ default: m.GuestExamPage }))
 );
 const ExamEnginePage = lazy(() =>
   import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage }))
@@ -81,10 +84,12 @@ export default function App() {
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/signin" element={<LandingPage initialAuthMode="login" />} />
+          <Route path="/login" element={<LandingPage initialAuthMode="login" />} />
+          <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
+          <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/signout" element={<SignOutPage />} />
-          <Route path="/guest-exam" element={<ExamEnginePage isGuest={true} />} />
+          <Route path="/guest-exam" element={<GuestExamPage />} />
 
           {/* Exam Engine - Protected Route */}
           <Route
@@ -183,6 +188,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

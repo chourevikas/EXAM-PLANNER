@@ -148,53 +148,8 @@ export function ExamHeader({
         </div>
       </div>
 
-      {/* Right: Language Switch & Submit Test CTA */}
+      {/* Right: Submit Test CTA */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* English / Hindi Switcher */}
-        <div
-          style={{
-            display: 'flex',
-            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            borderRadius: 6,
-            padding: 2,
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => onLanguageChange('en')}
-            style={{
-              padding: '4px 11px',
-              borderRadius: 4,
-              border: 'none',
-              backgroundColor: language === 'en' ? '#2563EB' : 'transparent',
-              color: language === 'en' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            English
-          </button>
-          <button
-            type="button"
-            onClick={() => onLanguageChange('hi')}
-            style={{
-              padding: '4px 11px',
-              borderRadius: 4,
-              border: 'none',
-              backgroundColor: language === 'hi' ? '#2563EB' : 'transparent',
-              color: language === 'hi' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            हिंदी
-          </button>
-        </div>
 
         {/* Submit Test Button */}
         <button
