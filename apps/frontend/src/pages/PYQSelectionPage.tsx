@@ -135,19 +135,38 @@ export function PYQSelectionPage() {
                 onMouseEnter={() => setHoveredExam(exam.id)}
                 onMouseLeave={() => setHoveredExam(null)}
                 style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderRadius: 20,
-                  border: `1px solid ${hoveredExam === exam.id ? 'var(--accent-primary)' : hasCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
-                  padding: '24px',
-                  boxShadow: hoveredExam === exam.id ? '0 12px 30px var(--shadow-color-accent)' : '0 8px 24px var(--shadow-color-base)',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  transform: hoveredExam === exam.id ? 'translateY(-4px)' : 'translateY(0)',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 14,
+                  border: `1px solid ${hoveredExam === exam.id ? '#2563EB' : hasCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  padding: '22px 24px',
+                  boxShadow: hoveredExam === exam.id
+                    ? '0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03)'
+                    : '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+                  transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  transform: hoveredExam === exam.id ? 'translateY(-3px)' : 'translateY(0)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   gap: 16,
+                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
                 }}
               >
+                {/* Top Edge Accent Line */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    backgroundColor: '#2563EB',
+                    transform: hoveredExam === exam.id ? 'scaleX(1)' : 'scaleX(0)',
+                    transformOrigin: 'left center',
+                    transition: 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                />
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{

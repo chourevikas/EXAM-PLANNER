@@ -8,6 +8,7 @@ import { fetchCurrentUser } from '../services/authService';
 import { listExams } from '../services/examService';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
+import { StudentMetricCard } from '../components/student/StudentMetricCard';
 
 const subjectData = [
   { subject: 'History', accuracy: 85 },
@@ -144,116 +145,132 @@ export function DashboardPage() {
         </button>
       </section>
 
-      {/* 2. Key Metrics Grid */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 40 }}>
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Questions Attempted</span>
-            <div style={{ color: 'var(--accent-primary)' }}><Ico.Target /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
-            {user.free_questions_attempted ?? 0} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>/ 100</span>
-          </div>
-          <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(((user.free_questions_attempted ?? 0) / 100) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 3 }} />
-          </div>
-        </div>
+      {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
+        <StudentMetricCard
+          title="Questions Attempted"
+          value={
+            <span>
+              {user.free_questions_attempted ?? 0}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>/ 100</span>
+            </span>
+          }
+          supportingText="Daily practice progress"
+          icon={<Ico.Target size={18} />}
+          showProgress={true}
+          progressPercent={Math.min(((user.free_questions_attempted ?? 0) / 100) * 100, 100)}
+          accentColor="#2563EB"
+        />
 
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Study Streak</span>
-            <div style={{ color: 'var(--warning-primary)' }}><Ico.Trend /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            {user.current_streak ?? 0} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 500 }}>
-            Keep it up!
-          </div>
-        </div>
+        <StudentMetricCard
+          title="Study Streak"
+          value={
+            <span>
+              {user.current_streak ?? 0}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Days</span>
+            </span>
+          }
+          supportingText="Active daily streak"
+          icon={<Ico.Trend size={18} />}
+          accentColor="#D97706"
+        />
 
-        <div
+        <StudentMetricCard
+          title="Total XP / Badges"
+          value={
+            <span>
+              {(user.total_xp ?? 0).toLocaleString()}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>XP</span>
+            </span>
+          }
+          supportingText={
+            <span style={{ color: '#2563EB', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              View Achievements <Ico.ArrowRight size={13} />
+            </span>
+          }
+          icon={<Ico.Star filled />}
           onClick={() => setShowBadgesModal(true)}
-          style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)', cursor: 'pointer', transition: 'transform 0.2s' }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Total XP / Badges</span>
-            <div style={{ color: 'var(--emerald, #10B981)' }}><Ico.Star filled /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            {(user.total_xp ?? 0).toLocaleString()} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-            View Achievements <Ico.ArrowRight size={14} />
-          </div>
-        </div>
+          accentColor="#10B981"
+        />
 
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Predicted Rank</span>
-            <div style={{ color: 'var(--info-primary)' }}><Ico.Chart /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            Top 8%
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-            92nd Percentile
-          </div>
-        </div>
+        <StudentMetricCard
+          title="Predicted Rank"
+          value="Top 8%"
+          supportingText="92nd Percentile"
+          icon={<Ico.Chart size={18} />}
+          accentColor="#3B82F6"
+        />
       </section>
 
       {/* 3. Performance Analytics */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 40 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 32 }}>
         {/* Subject Accuracy */}
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            padding: '22px 24px',
+            borderRadius: 14,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-disabled)" opacity={0.5} />
-                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                 <Tooltip
-                  cursor={{ fill: 'var(--bg-hover)' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)', borderRadius: 12, boxShadow: 'var(--shadow-color-base)', color: 'var(--text-primary)' }}
+                  cursor={{ fill: '#F8FAFC' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#0F172A' }}
                 />
-                <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={38}>
                   {subjectData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? 'var(--success-primary)' : entry.accuracy >= 60 ? 'var(--accent-primary)' : 'var(--warning-primary)'} />
+                    <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? '#10B981' : entry.accuracy >= 60 ? '#2563EB' : '#D97706'} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
+
         {/* Time Management */}
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Time Management</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Study hours logged this week.</p>
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            padding: '22px 24px',
+            borderRadius: 14,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Time Management</h3>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Study hours logged this week.</p>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={studyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary-main)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--primary-main)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-disabled)" opacity={0.5} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                 <Tooltip
-                  cursor={{ stroke: 'var(--border-hover)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)', borderRadius: 12, boxShadow: 'var(--shadow-color-base)', color: 'var(--text-primary)' }}
+                  cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#0F172A' }}
                 />
-                <Area type="monotone" dataKey="hours" stroke="var(--primary-main)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                <Area type="monotone" dataKey="hours" stroke="#2563EB" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
