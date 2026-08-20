@@ -261,6 +261,48 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
   return await res.json();
 }
 
+export async function syncExamToS3(examId: string, syncAll: boolean = false): Promise<any> {
+  const url = `${API_BASE_URL}/exams/${examId}/sync?sync_all=${syncAll}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to sync exam to S3' }));
+    throw new Error(errorData.detail || 'Exam S3 sync failed.');
+  }
+  return await res.json();
+}
+
+export interface ExamSyncStatusResponse {
+  exam_id: string;
+  exam_code: string;
+  is_published: boolean;
+  is_syncing: boolean;
+  sync_status: string;
+  current_step?: string | null;
+  progress_percent?: number;
+  error_log?: string | null;
+  last_synced_at?: string | null;
+  updated_at?: string | null;
+  is_s3_out_of_sync?: boolean;
+  questions_json_path?: string | null;
+  solutions_json_path?: string | null;
+  questions_json_folder_path?: string | null;
+  solutions_json_folder_path?: string | null;
+}
+
+export async function fetchExamSyncStatus(examId: string): Promise<ExamSyncStatusResponse> {
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/sync-status`, {
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam sync status' }));
+    throw new Error(errorData.detail || 'Could not fetch exam sync status.');
+  }
+  return await res.json();
+}
+
 export interface ExamReviewQuestionsResponse {
   exam_id: string;
   exam_name?: string;
@@ -283,6 +325,10 @@ export interface ExamReviewQuestionsResponse {
   solutions_json_path?: string;
   questions_json_folder_path?: string;
   solutions_json_folder_path?: string;
+  last_synced_at?: string | null;
+  updated_at?: string | null;
+  is_s3_out_of_sync?: boolean;
+  is_syncing?: boolean;
   items: any[];
   page: number;
   limit: number;

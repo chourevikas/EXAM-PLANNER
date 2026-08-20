@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from app.db.models.enums import (
@@ -202,7 +203,12 @@ class ExamReviewQuestionsResponse(BaseModel):
     solutions_json_path: Optional[str] = None
     questions_json_folder_path: Optional[str] = None
     solutions_json_folder_path: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    is_s3_out_of_sync: bool = False
+    is_syncing: bool = False
     items: List[QuestionDetailResponse]
     page: int
     limit: int
     pages: int
+

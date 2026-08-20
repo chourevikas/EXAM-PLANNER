@@ -51,6 +51,11 @@ class BaseStorageProvider(ABC):
         """Asynchronously generates a secure presigned URL for the storage asset."""
         pass
 
+    @abstractmethod
+    async def delete_file(self, relative_path: str) -> bool:
+        """Asynchronously deletes a file from storage. Returns True if deleted successfully."""
+        pass
+
 
 
 

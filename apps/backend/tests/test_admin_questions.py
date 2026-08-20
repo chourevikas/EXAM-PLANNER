@@ -172,6 +172,62 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Polity", subj_names)
             self.assertIn("History", subj_names)
 
+    async def test_realtime_s3_sync_on_create_update_delete(self):
+        from app.storage.factory import get_storage_provider
+        storage = get_storage_provider()
+
+        async with self.session_factory() as session:
+            exam_id = uuid.uuid4()
+            exam = Exam(
+                id=exam_id,
+                code="upsc-s3-test-2024",
+                name="UPSC S3 Test 2024",
+                stage="prelims",
+                total_questions=2,
+                paper_set_code="SET_A",
+            )
+            session.add(exam)
+            await session.commit()
+
+            service = QuestionService(session)
+
+            # 1. Create Question -> Real-time S3 upload
+            payload = QuestionCreatePayload(
+                exam_id=exam_id,
+                question_number_in_paper=1,
+                question_text="What is Article 21 of the Indian Constitution?",
+                options=[
+                    QuestionOptionPayload(option_label="A", option_text="Right to Life", is_correct=True),
+                    QuestionOptionPayload(option_label="B", option_text="Right to Equality", is_correct=False),
+                ],
+                core_concept="Fundamental Rights",
+                detailed_solution="Article 21 guarantees protection of life and personal liberty.",
+            )
+
+            created_res = await service.create_question(payload)
+            q_id = uuid.UUID(created_res.question_id)
+
+            q_file = "artifacts/upsc-s3-test-2024/set-a/json/questions/Q001.json"
+            s_file = "artifacts/upsc-s3-test-2024/set-a/json/solutions/Q001.json"
+
+            self.assertTrue(await storage.exists(q_file))
+            self.assertTrue(await storage.exists(s_file))
+
+            # 2. Update Question -> Real-time S3 update
+            update_payload = QuestionUpdatePayload(
+                question_text="Updated: What is Article 21 of the Constitution?",
+            )
+            await service.update_question_detail(question_id=q_id, payload=update_payload)
+
+            q_data = await storage.download_json(q_file)
+            self.assertIn("Updated: What is Article 21", q_data["text"])
+
+            # 3. Delete Question -> Real-time S3 deletion
+            await service.delete_question(question_id=q_id)
+            self.assertFalse(await storage.exists(q_file))
+            self.assertFalse(await storage.exists(s_file))
+
 
 if __name__ == "__main__":
     unittest.main()
+

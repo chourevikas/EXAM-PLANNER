@@ -116,6 +116,11 @@ class Exam(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+    last_synced_at: Optional[datetime] = Field(
+        default=None,
+        sa_type=DateTimeTZ,
+        description="Timestamp when exam questions & solutions were last synced to S3",
+    )
 
     # Relationships
     syllabus_versions: List["SyllabusVersion"] = Relationship(

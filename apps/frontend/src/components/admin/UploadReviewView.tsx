@@ -661,14 +661,22 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     loadStuckPipelines();
   }, []);
 
-  // Polling for exam pipeline status updates using GET /exams/pipeline-status every 10 seconds
+  // Adaptive polling for pipeline queue updates (20s when active pipelines run, 35s when idle) to reduce server load
   useEffect(() => {
+    const hasActivePipeline = pipelineExams.some(
+      (e) =>
+        (e.status || '').toUpperCase().includes('PROCESSING') ||
+        (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
+        (e.overall_status || '').toUpperCase().includes('PROCESSING')
+    );
+    const pollInterval = hasActivePipeline ? 20000 : 35000;
+
     const intervalId = setInterval(() => {
       loadRealTimeQueue(true);
-    }, 10000);
+    }, pollInterval);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [pipelineExams]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);

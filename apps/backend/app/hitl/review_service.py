@@ -17,6 +17,7 @@ from app.db.models import (
     QuestionStatus,
 )
 from app.storage.factory import get_storage_provider
+from app.services.exam_json_builder import ExamJsonBuilder
 from app.pipeline.vision_extractor import (
     load_pdf_page_image_lazily,
     ainvoke_extraction_llm,
@@ -362,6 +363,17 @@ class HumanReviewService:
 
         await self.session.commit()
         await self.session.refresh(question)
+
+        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        if question.exam_id:
+            exam = await self.session.get(Exam, question.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(question.id)
+
         return question
 
     async def trigger_llm_reextraction_for_question(
@@ -481,6 +493,12 @@ class HumanReviewService:
 
         await self.session.commit()
         await self.session.refresh(question)
+        if question.exam_id:
+            exam = await self.session.get(Exam, question.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
         return question
 
     async def update_question_explanation(
@@ -529,4 +547,16 @@ class HumanReviewService:
         self.session.add(expl)
         await self.session.commit()
         await self.session.refresh(expl)
+
+        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        q = await self.session.get(Question, question_id)
+        if q and q.exam_id:
+            exam = await self.session.get(Exam, q.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
+            builder = ExamJsonBuilder(self.session)
+            await builder.sync_single_question_artifacts(question_id)
+
         return expl

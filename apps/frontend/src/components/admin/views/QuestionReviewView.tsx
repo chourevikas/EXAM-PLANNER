@@ -41,9 +41,11 @@ import {
 import {
   fetchExamPipelineStatuses,
   fetchExamQuestionsForReview,
+  fetchExamSyncStatus,
   updateAdminQuestionDetail,
   updateAdminQuestionStatus,
   approveAndPublishExam,
+  syncExamToS3,
   ExamPipelineStatusItem,
 } from '../../../services/adminService';
 
@@ -174,6 +176,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     solutions_json_path: string | null;
     questions_json_folder_path: string | null;
     solutions_json_folder_path: string | null;
+    last_synced_at: string | null;
+    updated_at: string | null;
+    is_s3_out_of_sync: boolean;
+    is_syncing: boolean;
+    sync_step: string | null;
+    sync_progress: number;
   }>({
     is_published: false,
     publish_status: 'PENDING_REVIEW',
@@ -185,12 +193,100 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     solutions_json_path: null,
     questions_json_folder_path: null,
     solutions_json_folder_path: null,
+    last_synced_at: null,
+    updated_at: null,
+    is_s3_out_of_sync: false,
+    is_syncing: false,
+    sync_step: null,
+    sync_progress: 0,
   });
 
   // Action & Toast States
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [publishingExam, setPublishingExam] = useState<boolean>(false);
+  const [syncingExam, setSyncingExam] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
+
+  const syncPollTimerRef = useRef<any>(null);
+
+  const checkSyncStatusOnce = async (examId: string) => {
+    try {
+      const syncData = await fetchExamSyncStatus(examId);
+      if (syncData) {
+        const stillSyncing = Boolean(syncData.is_syncing);
+        setS3PublishStatus((prev) => ({
+          ...prev,
+          is_syncing: stillSyncing,
+          sync_step: syncData.current_step || null,
+          sync_progress: syncData.progress_percent || 0,
+          is_published: Boolean(syncData.is_published),
+          is_s3_out_of_sync: Boolean(syncData.is_s3_out_of_sync),
+          last_synced_at: syncData.last_synced_at || prev.last_synced_at,
+          updated_at: syncData.updated_at || prev.updated_at,
+          questions_json_path: syncData.questions_json_path || prev.questions_json_path,
+          solutions_json_path: syncData.solutions_json_path || prev.solutions_json_path,
+          questions_json_folder_path: syncData.questions_json_folder_path || prev.questions_json_folder_path,
+          solutions_json_folder_path: syncData.solutions_json_folder_path || prev.solutions_json_folder_path,
+        }));
+
+        if (!stillSyncing) {
+          if (syncPollTimerRef.current) {
+            clearTimeout(syncPollTimerRef.current);
+            syncPollTimerRef.current = null;
+          }
+          setSyncingExam(false);
+          if (syncData.sync_status === 'COMPLETED') {
+            showToast('success', 'Exam S3 Sync completed successfully! All artifacts updated.');
+            await loadExamQuestions(examId, questionStatusFilter, currentPage, selectedQuestionIndex);
+          } else if (syncData.sync_status === 'FAILED') {
+            showToast('error', `S3 Sync failed: ${syncData.error_log || 'Unknown error'}`);
+            setS3PublishStatus((prev) => ({
+              ...prev,
+              publish_status: 'PUBLISH_FAILED',
+              publish_error: syncData.error_log || 'S3 sync task failed.',
+            }));
+          }
+        }
+        return stillSyncing;
+      }
+    } catch (err: any) {
+      console.error('Error checking sync status:', err);
+    }
+    return false;
+  };
+
+  const startSyncPolling = (examId: string, isFullSync: boolean = false) => {
+    if (syncPollTimerRef.current) {
+      clearTimeout(syncPollTimerRef.current);
+      syncPollTimerRef.current = null;
+    }
+
+    // Adaptive timing based on task scope to minimize server load:
+    // Fast Master Sync (~1-3s duration) -> checks at 4s, 6s, 8s, 10s max
+    // Full S3 Sync (~10-25s duration) -> checks at 6s, 9s, 12s, 15s max
+    let currentDelay = isFullSync ? 6000 : 4000;
+    const maxDelay = isFullSync ? 15000 : 10000;
+    const backoffMultiplier = 1.35;
+
+    const poll = async () => {
+      const isStillSyncing = await checkSyncStatusOnce(examId);
+      if (isStillSyncing) {
+        currentDelay = Math.min(maxDelay, Math.round(currentDelay * backoffMultiplier));
+        syncPollTimerRef.current = setTimeout(poll, currentDelay);
+      }
+    };
+
+    syncPollTimerRef.current = setTimeout(poll, currentDelay);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (syncPollTimerRef.current) {
+        clearInterval(syncPollTimerRef.current);
+        syncPollTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Unsaved Changes Navigation Guard
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
@@ -368,6 +464,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       });
 
       const isExamPublished = Boolean(data.is_published || (selectedExam?.status || '').toUpperCase().includes('PUBLISHED'));
+      const isCurrentlySyncing = Boolean(data.is_syncing);
       setS3PublishStatus({
         is_published: isExamPublished,
         publish_status: data.publish_status || (isExamPublished ? 'PUBLISHED' : 'PENDING_REVIEW'),
@@ -379,7 +476,18 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         solutions_json_path: data.solutions_json_path || selectedExam?.solutions_json_path || null,
         questions_json_folder_path: data.questions_json_folder_path || selectedExam?.questions_json_folder_path || null,
         solutions_json_folder_path: data.solutions_json_folder_path || selectedExam?.solutions_json_folder_path || null,
+        last_synced_at: data.last_synced_at || null,
+        updated_at: data.updated_at || null,
+        is_s3_out_of_sync: Boolean(data.is_s3_out_of_sync),
+        is_syncing: isCurrentlySyncing,
+        sync_step: isCurrentlySyncing ? 'S3 Synchronization In Progress' : null,
+        sync_progress: isCurrentlySyncing ? 30 : 0,
       });
+
+      if (isCurrentlySyncing) {
+        setSyncingExam(true);
+        startSyncPolling(examId);
+      }
 
       const safeIdx = Math.max(0, Math.min(items.length - 1, targetSelectIdx));
       setSelectedQuestionIndex(safeIdx);
@@ -694,6 +802,26 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       showToast('error', `Publish failed: ${msg}`);
     } finally {
       setPublishingExam(false);
+    }
+  };
+
+  const handleSyncExamToS3 = async (syncAll: boolean = false) => {
+    if (!selectedExam) return;
+    setSyncingExam(true);
+    const scopeLabel = syncAll ? 'Full S3 Sync (Master + All Questions)' : 'Master Exam JSON Sync (Fast)';
+    try {
+      const res = await syncExamToS3(selectedExam.id, syncAll);
+      showToast('success', `${scopeLabel} started in the background for '${selectedExam.name}'.`);
+      setS3PublishStatus((prev) => ({
+        ...prev,
+        is_syncing: true,
+        sync_step: syncAll ? 'INITIALIZING_FULL_S3_SYNC' : 'INITIALIZING_MASTER_S3_SYNC',
+        sync_progress: 15,
+      }));
+      startSyncPolling(selectedExam.id);
+    } catch (err: any) {
+      showToast('error', `S3 Sync failed to start: ${err.message}`);
+      setSyncingExam(false);
     }
   };
 
@@ -1176,23 +1304,194 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           </div>
         </div>
 
-        {/* Dedicated S3 Pipeline Status Banner (3 Scenarios) */}
-        {s3PublishStatus.is_published && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        {/* Dedicated S3 Pipeline Status Banner (In-Progress vs Out-of-Sync vs In-Sync vs Failed) */}
+        {s3PublishStatus.is_syncing && (
+          <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 8, backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RefreshCw size={22} color="#2563EB" className="animate-spin" />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  ⚡ S3 Synchronization In Progress
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+                    {s3PublishStatus.sync_progress ? `${Math.round(s3PublishStatus.sync_progress)}%` : 'RUNNING'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: '#1E40AF', marginTop: 2 }}>
+                  {s3PublishStatus.sync_step || 'Building questions and solutions JSON files and syncing to AWS S3...'}. You can safely continue working or navigate away.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => selectedExam && checkSyncStatusOnce(selectedExam.id)}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#1D4ED8',
+                  border: '1px solid #BFDBFE',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+                title="Check sync status immediately without waiting for the next polling cycle"
+              >
+                <RefreshCw size={12} />
+                Check Status
+              </button>
+              <button
+                disabled={true}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#93C5FD',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: 'not-allowed',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Loader2 size={14} className="animate-spin" />
+                Syncing in Background...
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!s3PublishStatus.is_syncing && s3PublishStatus.is_published && s3PublishStatus.is_s3_out_of_sync && (
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertTriangle size={20} color="#D97706" />
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B45309' }}>
+                  Changes Pending S3 Sync
+                </div>
+                <div style={{ fontSize: 12, color: '#92400E', marginTop: 2 }}>
+                  Questions/solutions were modified after the last S3 deployment {s3PublishStatus.last_synced_at ? `(${new Date(s3PublishStatus.last_synced_at).toLocaleString()})` : ''}. Sync master files to update consolidated JSON in S3.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleSyncExamToS3(false)}
+                disabled={syncingExam}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  backgroundColor: '#D97706',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(217, 119, 6, 0.3)',
+                }}
+                title="Updates only the 2 consolidated master JSON files (Fast)"
+              >
+                <RefreshCw size={13} className={syncingExam ? 'animate-spin' : ''} />
+                {syncingExam ? 'Syncing...' : '⚡ Sync Master JSON (Fast)'}
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3(true)}
+                disabled={syncingExam}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#B45309',
+                  border: '1px solid #FCD34D',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+                title="Re-uploads all individual question files along with master JSON"
+              >
+                <Layers size={13} />
+                Full S3 Sync
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!s3PublishStatus.is_syncing && s3PublishStatus.is_published && !s3PublishStatus.is_s3_out_of_sync && (
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={20} color="#16A34A" />
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: '#15803D' }}>
-                  Exam Published & Graded in S3
+                  Exam Artifacts In Sync with S3
                 </div>
                 <div style={{ fontSize: 12, color: '#166534', marginTop: 2 }}>
-                  All questions verified. JSON artifacts deployed to S3: <code style={{ backgroundColor: '#DCFCE7', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>{s3PublishStatus.questions_json_folder_path || `artifacts/${selectedExam.code}/json`}</code>
+                  All questions verified & deployed. Last synced: {s3PublishStatus.last_synced_at ? new Date(s3PublishStatus.last_synced_at).toLocaleString() : 'Recently'}
                 </div>
               </div>
             </div>
-            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
-              LIVE IN CATALOG
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => handleSyncExamToS3(false)}
+                disabled={syncingExam}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#15803D',
+                  border: '1px solid #86EFAC',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+                title="Force re-sync master files to S3"
+              >
+                <RefreshCw size={12} className={syncingExam ? 'animate-spin' : ''} />
+                {syncingExam ? 'Syncing...' : 'Re-Sync Master'}
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3(true)}
+                disabled={syncingExam}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#166534',
+                  border: '1px solid #BBF7D0',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+                title="Full sync of all individual questions + master JSON"
+              >
+                <Layers size={12} />
+                Full Sync
+              </button>
+
+              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+                LIVE IN CATALOG
+              </span>
+            </div>
           </div>
         )}
 

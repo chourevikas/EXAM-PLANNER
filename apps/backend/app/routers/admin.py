@@ -762,7 +762,7 @@ async def approve_and_publish_exam(
     # 1 & 2. Generate JSON files and upload to S3 folder paths with Retryable Error Handling
     builder = ExamJsonBuilder(session)
     try:
-        json_paths = await builder.generate_and_upload(exam_uuid)
+        json_paths = await builder.generate_and_upload(exam_uuid, sync_all=True)
     except Exception as s3_err:
         logger.error(f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True)
         # Record retryable failed pipeline run
@@ -811,7 +811,192 @@ async def approve_and_publish_exam(
         "solutions_json_path": exam.solutions_json_path,
         "questions_json_folder_path": exam.questions_json_folder_path,
         "solutions_json_folder_path": exam.solutions_json_folder_path,
+        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
+        "is_s3_out_of_sync": False,
         "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
+    }
+
+
+@router.post("/exams/{exam_id}/sync", status_code=202, summary="Sync Exam Questions & Solutions to S3 (Background Task)")
+async def sync_exam_s3_artifacts(
+    exam_id: str,
+    background_tasks: BackgroundTasks,
+    sync_all: bool = Query(default=False, description="If True, re-syncs all individual questions + master JSON. If False (default), re-syncs only master exam JSONs."),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Launches a background task to regenerate and upload consolidated exam_questions.json
+    and exam_solutions.json (and optionally all individual Q files if sync_all=True) to S3,
+    updating last_synced_at upon completion.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+    from app.db.models import Exam, Question
+    from app.db.models.pipeline_run import PipelineRun
+    from sqlmodel import select
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    q_res = await session.exec(select(Question).where(Question.exam_id == exam_uuid))
+    questions = q_res.all()
+    if not questions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"EXAM_CANNOT_BE_SYNCED: Exam '{exam.code}' has no questions in database."
+        )
+
+    # Check if a sync or publish pipeline is already running
+    existing_run_stmt = (
+        select(PipelineRun)
+        .where(
+            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
+            PipelineRun.status.in_(["RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"]),
+        )
+        .order_by(PipelineRun.started_at.desc())
+    )
+    existing_run = (await session.exec(existing_run_stmt)).first()
+    if existing_run:
+        return {
+            "status": "SYNC_ALREADY_IN_PROGRESS",
+            "pipeline_run_id": str(existing_run.id),
+            "exam_id": str(exam.id),
+            "exam_code": exam.code,
+            "is_syncing": True,
+            "message": f"S3 synchronization is already running in background for exam '{exam.code}'.",
+        }
+
+    # Create new PipelineRun for S3_PUBLISH
+    run = PipelineRun(
+        exam_id=exam_uuid,
+        pipeline_type="S3_PUBLISH",
+        status="RUNNING",
+        current_step=f"INITIALIZING_S3_SYNC_({'FULL' if sync_all else 'MASTER_ONLY'})",
+        progress_percent=10.0,
+        started_at=datetime.now(timezone.utc),
+    )
+    session.add(run)
+    await session.commit()
+    await session.refresh(run)
+
+    run_id = run.id
+
+    from app.tasks.celery_app import has_active_celery_workers
+    from app.tasks.sync_tasks import async_sync_exam_s3, sync_exam_s3_task
+    from app.services.task_registry import task_registry
+
+    use_celery = has_active_celery_workers()
+    task_id = f"s3_sync_{uuid.uuid4().hex[:8]}"
+
+    if use_celery:
+        celery_res = sync_exam_s3_task.delay(
+            str(exam_uuid),
+            str(run_id),
+            sync_all=sync_all,
+            task_id=task_id,
+            execution_engine="Celery Worker",
+        )
+        task_registry.register_celery_task(str(exam_uuid), getattr(celery_res, "id", task_id))
+        task_registry.register_celery_task(f"sync_{exam_uuid}", getattr(celery_res, "id", task_id))
+        execution_engine = "Celery Worker"
+    else:
+        background_tasks.add_task(
+            async_sync_exam_s3,
+            exam_id_str=str(exam_uuid),
+            run_id_str=str(run_id),
+            sync_all=sync_all,
+            task_id=task_id,
+            execution_engine="FastAPI BackgroundTasks",
+        )
+        execution_engine = "FastAPI BackgroundTasks"
+
+    scope_name = "Full S3 Sync (Master + All Questions)" if sync_all else "Master Exam JSON Sync"
+
+    return {
+        "status": "SYNC_STARTED",
+        "pipeline_run_id": str(run_id),
+        "exam_id": str(exam.id),
+        "exam_code": exam.code,
+        "sync_all": sync_all,
+        "is_syncing": True,
+        "execution_engine": execution_engine,
+        "message": f"{scope_name} started ({execution_engine}) for exam '{exam.code}'.",
+    }
+
+
+@router.get("/exams/{exam_id}/sync-status", summary="Get S3 Sync Status of Exam")
+async def get_exam_sync_status(
+    exam_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns the current S3 sync status, whether a background sync task is currently running,
+    progress info, error logs if failed, and sync timestamps.
+    """
+    import uuid
+    from fastapi import HTTPException
+    from app.db.models import Exam, ExamStatus
+    from app.db.models.pipeline_run import PipelineRun
+    from sqlmodel import select
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    publish_run_stmt = (
+        select(PipelineRun)
+        .where(
+            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
+        )
+        .order_by(PipelineRun.started_at.desc())
+    )
+    publish_run = (await session.exec(publish_run_stmt)).first()
+
+    is_syncing = bool(publish_run and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"))
+
+    exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+    is_published = (exam_status_str == "PUBLISHED") and bool(exam.questions_json_path or exam.questions_json_folder_path)
+
+    is_s3_out_of_sync = False
+    if is_published:
+        is_s3_out_of_sync = bool(
+            exam.last_synced_at is None
+            or (exam.updated_at and exam.updated_at > exam.last_synced_at)
+        )
+
+    return {
+        "exam_id": str(exam.id),
+        "exam_code": exam.code,
+        "is_published": is_published,
+        "is_syncing": is_syncing,
+        "sync_status": publish_run.status if publish_run else "IDLE",
+        "current_step": publish_run.current_step if publish_run else None,
+        "progress_percent": publish_run.progress_percent if publish_run else 0.0,
+        "error_log": publish_run.error_log if publish_run else None,
+        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
+        "is_s3_out_of_sync": is_s3_out_of_sync,
+        "questions_json_path": exam.questions_json_path,
+        "solutions_json_path": exam.solutions_json_path,
+        "questions_json_folder_path": exam.questions_json_folder_path,
+        "solutions_json_folder_path": exam.solutions_json_folder_path,
     }
 
 

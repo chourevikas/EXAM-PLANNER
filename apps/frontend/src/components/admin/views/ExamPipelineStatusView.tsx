@@ -58,14 +58,22 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     loadData(false);
   }, []);
 
-  // Polling for exam pipeline statuses using GET /exams/pipeline-status every 10 seconds
+  // Adaptive polling for exam pipeline statuses (20s when active pipelines run, 35s when idle) to reduce server load
   useEffect(() => {
+    const hasActivePipeline = exams.some(
+      (e) =>
+        (e.status || '').toUpperCase().includes('PROCESSING') ||
+        (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
+        (e.overall_status || '').toUpperCase().includes('PROCESSING')
+    );
+    const pollInterval = hasActivePipeline ? 20000 : 35000;
+
     const intervalId = setInterval(() => {
       loadData(true);
-    }, 10000);
+    }, pollInterval);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [exams]);
 
   const handleApprove = async (examId: string, examName: string) => {
     setApprovingId(examId);

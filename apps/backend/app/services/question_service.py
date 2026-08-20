@@ -40,6 +40,8 @@ from app.schemas.question import (
     HierarchyLinkDetail,
     ExamReviewQuestionsResponse,
 )
+from datetime import datetime, timezone
+from app.services.exam_json_builder import ExamJsonBuilder
 from app.repositories.question_repository import QuestionRepository
 from app.storage.factory import get_storage_provider
 from app.formatters.yaml_exporter import async_export_question_to_yaml_string
@@ -228,6 +230,15 @@ class QuestionService:
 
         pages = math.ceil(len(filtered_qs) / limit) if limit > 0 else 1
 
+        is_syncing = bool(publish_run and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"))
+
+        is_s3_out_of_sync = False
+        if is_s3_published:
+            is_s3_out_of_sync = bool(
+                exam.last_synced_at is None
+                or (exam.updated_at and exam.updated_at > exam.last_synced_at)
+            )
+
         return ExamReviewQuestionsResponse(
             exam_id=str(exam.id),
             exam_name=exam.name,
@@ -250,6 +261,10 @@ class QuestionService:
             solutions_json_path=exam.solutions_json_path,
             questions_json_folder_path=exam.questions_json_folder_path,
             solutions_json_folder_path=exam.solutions_json_folder_path,
+            last_synced_at=exam.last_synced_at,
+            updated_at=exam.updated_at,
+            is_s3_out_of_sync=is_s3_out_of_sync,
+            is_syncing=is_syncing,
             items=items,
             page=page,
             limit=limit,
@@ -505,8 +520,20 @@ class QuestionService:
 
         await self.session.commit()
         await self.session.refresh(q)
+        await self._touch_exam_updated_at(q.exam_id)
         await self._recalculate_exam_metrics(q.exam_id)
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
+
+    async def _touch_exam_updated_at(self, exam_id: Optional[uuid.UUID]):
+        if not exam_id:
+            return
+        exam = await self.session.get(Exam, exam_id)
+        if exam:
+            exam.updated_at = datetime.now(timezone.utc)
+            self.session.add(exam)
+            await self.session.commit()
 
     async def _recalculate_exam_metrics(self, exam_id: Optional[uuid.UUID]):
         if not exam_id:
@@ -628,7 +655,10 @@ class QuestionService:
 
         await self.session.commit()
         await self.session.refresh(q)
+        await self._touch_exam_updated_at(payload.exam_id)
         await self._recalculate_exam_metrics(payload.exam_id)
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _save_hierarchy_links(
@@ -790,8 +820,21 @@ class QuestionService:
         q = await self.repo.get_by_id(question_id)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+        exam_id = q.exam_id
+        q_num = q.question_number_in_paper
+        exam = await self.session.get(Exam, exam_id) if exam_id else None
+        exam_code = exam.code if exam else None
+        paper_set = exam.paper_set_code if exam else "SET_A"
+
         await self.session.delete(q)
         await self.session.commit()
+
+        if exam_id:
+            await self._touch_exam_updated_at(exam_id)
+            await self._recalculate_exam_metrics(exam_id)
+        if exam_code:
+            builder = ExamJsonBuilder(self.session)
+            await builder.delete_single_question_artifacts(exam_code, paper_set, q_num)
         return True
 
     async def get_question_yaml_file(self, question_id: uuid.UUID) -> str:

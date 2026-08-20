@@ -88,4 +88,15 @@ class LocalStorageProvider(BaseStorageProvider):
         # In local storage, return public asset URL or path
         return self.get_public_url(relative_path)
 
+    async def delete_file(self, relative_path: str) -> bool:
+        target = self.base_dir / relative_path
+        if await aiofiles.os.path.exists(target):
+            try:
+                await aiofiles.os.remove(target)
+                return True
+            except Exception:
+                return False
+        return False
+
+
 
