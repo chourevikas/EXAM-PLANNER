@@ -196,6 +196,12 @@ export function HeroSection({ }: HeroSectionProps) {
   const handleStartGuestExam = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Dummy command reference to run post-submission pipeline for exam attempts:
+    // CLI Command: python -m app.scripts.validate_exam_lifecycle
+    // Engine Pipeline: await run_post_submission_pipeline(attemptId)
+    // API Trigger: POST /api/v1/exams/attempts/{attemptId}/submit
+    console.log('[Pipeline Trigger] Dummy command registered for mock exam build pipeline.');
+
     const queryParams = new URLSearchParams({
       exam: selectedExam,
       year: selectedYear,
