@@ -299,11 +299,18 @@ class AnalyticsService:
 
     async def get_attempt_user_progression_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 3: Cumulative User Skill Progression Delta Report."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:attempt_delta", str(attempt_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         stmt = select(UserSkillProgressionReport).where(UserSkillProgressionReport.attempt_id == attempt_id)
         res = await self.session.exec(stmt)
         prog_db = res.first()
         if prog_db:
-            return {
+            res_data = {
                 "attempt_id": str(attempt_id),
                 "user_id": str(prog_db.user_id),
                 "previous_metrics": prog_db.previous_metrics_json,
@@ -313,6 +320,8 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db.spaced_repetition_schedule_json,
                 "created_at": prog_db.created_at.isoformat() if prog_db.created_at else None,
             }
+            await cache.set(cache_key, res_data, ttl_seconds=600)
+            return res_data
 
         # Fallback query from UserSkillProfile
         attempt = await self.session.get(ExamAttempt, attempt_id)
@@ -323,7 +332,7 @@ class AnalyticsService:
             raise HTTPException(status_code=409, detail="EVALUATION_IN_PROGRESS: The report is currently being generated. Please wait.")
 
         profile = (await self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == attempt.user_id))).first()
-        return {
+        res_data = {
             "attempt_id": str(attempt_id),
             "user_id": str(attempt.user_id),
             "current_metrics": {
@@ -335,9 +344,18 @@ class AnalyticsService:
                 "total_tests_given": profile.total_tests_given if profile else 0,
             },
         }
+        await cache.set(cache_key, res_data, ttl_seconds=600)
+        return res_data
 
     async def get_user_skill_profile(self, user_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches the user's cumulative psychometric profile and taxonomy mastery grid."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:skill_profile", str(user_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         prof_res = await self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == user_id))
         profile = prof_res.first()
 
@@ -348,7 +366,7 @@ class AnalyticsService:
         )
         tax_rows = tax_res.all()
 
-        return {
+        res_data = {
             "user_id": str(user_id),
             "profile": {
                 "cumulative_icrs": profile.cumulative_icrs if profile else 65.0,
@@ -371,6 +389,8 @@ class AnalyticsService:
                 for t in tax_rows
             ],
         }
+        await cache.set(cache_key, res_data, ttl_seconds=300)
+        return res_data
 
     async def get_attempt_evaluation_status(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Checks if the psychometric post-submission pipeline evaluation has completed for an attempt."""
@@ -417,12 +437,24 @@ class AnalyticsService:
         self, user_id: uuid.UUID, force_recompute: bool = False
     ) -> Dict[str, Any]:
         """Synthesizes or retrieves the multi-exam cumulative psychometric report with cross-exam progression charts."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:cumulative", str(user_id))
+
+        if not force_recompute:
+            cached_data = await cache.get(cache_key)
+            if cached_data is not None:
+                return cached_data
+
         from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
-        return await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
+        report = await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
             session=self.session,
             user_id=user_id,
             force_recompute=force_recompute,
         )
+        if report:
+            await cache.set(cache_key, report, ttl_seconds=300)
+        return report
 
     async def get_user_cumulative_aggregate_markdown(
         self, user_id: uuid.UUID

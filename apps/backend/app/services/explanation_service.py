@@ -105,9 +105,17 @@ class ExplanationService:
         except ValueError:
             lang_enum = LanguageCode.ENGLISH
 
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("explanations:detail", str(question_id), lang=lang_enum.value)
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         kb = await self.repo.get_full_question_knowledge_base(question_id, lang_enum)
         if not kb:
             raise HTTPException(status_code=404, detail="Question knowledge base not found.")
+        await cache.set(cache_key, kb, ttl_seconds=300)
         return kb
 
     async def set_canonical_question_link(
@@ -116,6 +124,12 @@ class ExplanationService:
         success = await self.repo.set_canonical_question(question_id, canonical_question_id)
         if not success:
             raise HTTPException(status_code=404, detail="Target question not found.")
+
+        from app.cache import get_cache, invalidate_question_cache
+        cache = get_cache()
+        await cache.delete_pattern(f"ep:explanations:detail:{question_id}*")
+        await invalidate_question_cache(str(question_id))
+
         return {
             "message": "Canonical question link updated successfully.",
             "question_id": str(question_id),
