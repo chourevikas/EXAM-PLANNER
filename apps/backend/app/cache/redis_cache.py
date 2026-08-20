@@ -62,7 +62,10 @@ class RedisCache(BaseCache):
     async def get(self, key: str) -> Optional[Any]:
         try:
             raw = await self._client.get(key)
-            return self._deserialize(raw)
+            data = self._deserialize(raw)
+            if data is not None:
+                logger.info(f"⚡ [CACHE:HIT] (Redis) Fetched data for key: '{key}'")
+            return data
         except Exception as e:
             logger.warning(f"[REDIS_CACHE_ERROR] get('{key}') failed: {e}")
             return None

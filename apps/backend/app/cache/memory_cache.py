@@ -49,6 +49,7 @@ class InMemoryCache(BaseCache):
 
             # Move accessed key to end (MRU)
             self._store.move_to_end(key)
+            logger.info(f"⚡ [CACHE:HIT] (In-Memory) Fetched data for key: '{key}'")
             return val
 
     async def set(

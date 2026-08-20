@@ -56,10 +56,10 @@ def cached(
             # 2. Check Cache
             cached_val = await cache.get(cache_key)
             if cached_val is not None:
-                logger.debug(f"⚡ [CACHE:HIT] '{cache_key}'")
+                logger.info(f"⚡ [CACHE:HIT] Fetched from cache for key: '{cache_key}'")
                 return cached_val
 
-            logger.debug(f"🔍 [CACHE:MISS] '{cache_key}' -> fetching from database...")
+            logger.info(f"🔍 [CACHE:MISS] Key '{cache_key}' not in cache -> fetching from database...")
 
             # 3. Execute DB operation
             result = await func(*args, **kwargs)
