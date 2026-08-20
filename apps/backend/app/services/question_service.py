@@ -443,6 +443,24 @@ class QuestionService:
                             distractor_analysis=opt_payload.distractor_analysis,
                         )
                         self.session.add(new_ot)
+                else:
+                    new_opt = QuestionOption(
+                        question_id=q.id,
+                        option_label=opt_payload.option_label,
+                        display_order=opt_payload.display_order,
+                        is_correct=opt_payload.is_correct,
+                        closeness_score=opt_payload.closeness_score,
+                    )
+                    self.session.add(new_opt)
+                    await self.session.flush()
+
+                    new_ot = OptionTranslation(
+                        option_id=new_opt.id,
+                        language=target_lang,
+                        option_text=opt_payload.option_text,
+                        distractor_analysis=opt_payload.distractor_analysis,
+                    )
+                    self.session.add(new_ot)
 
         # Update Explanation (All 4 Parameters: core_concept, detailed_solution, common_traps, key_takeaways)
         if any([payload.core_concept, payload.detailed_solution, payload.common_traps is not None, payload.key_takeaways is not None]):
@@ -727,7 +745,8 @@ class QuestionService:
         subtopic_ids: Optional[List[uuid.UUID]] = None,
         hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None,
     ):
-        links_to_create = []
+        # 1. Collect and deduplicate target hierarchy link definitions keyed by subtopic_id (UUID)
+        target_links: Dict[uuid.UUID, Dict[str, Any]] = {}
 
         if hierarchy_links:
             for idx, link_p in enumerate(hierarchy_links):
@@ -812,28 +831,48 @@ class QuestionService:
                             if top:
                                 subj_id = top.subject_id
 
-                is_prim = link_p.is_primary or (idx == 0)
-                links_to_create.append(
-                    (s_id, t_id, subj_id, is_prim, link_p.relevance_weight, link_p.concept_name)
-                )
+                if s_id:
+                    is_prim = link_p.is_primary or (len(target_links) == 0 and idx == 0)
+                    if s_id in target_links:
+                        # Safely merge duplicate subtopic references
+                        target_links[s_id]["is_primary"] = target_links[s_id]["is_primary"] or is_prim
+                        target_links[s_id]["relevance_weight"] = max(
+                            target_links[s_id]["relevance_weight"],
+                            link_p.relevance_weight if link_p.relevance_weight is not None else 1.0,
+                        )
+                        if link_p.concept_name:
+                            target_links[s_id]["concept_name"] = link_p.concept_name
+                    else:
+                        target_links[s_id] = {
+                            "topic_id": t_id,
+                            "subject_id": subj_id,
+                            "is_primary": is_prim,
+                            "relevance_weight": link_p.relevance_weight if link_p.relevance_weight is not None else 1.0,
+                            "concept_name": link_p.concept_name,
+                        }
 
         if subtopic_ids:
             for idx, s_id in enumerate(subtopic_ids):
-                if any(item[0] == s_id for item in links_to_create):
-                    continue
-                t_id = None
-                subj_id = None
-                subtop = await self.session.get(Subtopic, s_id)
-                if subtop:
-                    t_id = subtop.topic_id
-                    if t_id:
-                        top = await self.session.get(Topic, t_id)
-                        if top:
-                            subj_id = top.subject_id
-                is_prim = (len(links_to_create) == 0 and idx == 0)
-                links_to_create.append((s_id, t_id, subj_id, is_prim, 1.0, None))
+                if s_id and s_id not in target_links:
+                    t_id = None
+                    subj_id = None
+                    subtop = await self.session.get(Subtopic, s_id)
+                    if subtop:
+                        t_id = subtop.topic_id
+                        if t_id:
+                            top = await self.session.get(Topic, t_id)
+                            if top:
+                                subj_id = top.subject_id
+                    is_prim = (len(target_links) == 0 and idx == 0)
+                    target_links[s_id] = {
+                        "topic_id": t_id,
+                        "subject_id": subj_id,
+                        "is_primary": is_prim,
+                        "relevance_weight": 1.0,
+                        "concept_name": None,
+                    }
 
-        if subtopic_id and not any(item[0] == subtopic_id for item in links_to_create):
+        if subtopic_id and subtopic_id not in target_links:
             t_id = None
             subj_id = None
             subtop = await self.session.get(Subtopic, subtopic_id)
@@ -843,36 +882,76 @@ class QuestionService:
                     top = await self.session.get(Topic, t_id)
                     if top:
                         subj_id = top.subject_id
-            is_prim = (len(links_to_create) == 0)
-            links_to_create.append((subtopic_id, t_id, subj_id, is_prim, 1.0, None))
+            is_prim = (len(target_links) == 0)
+            target_links[subtopic_id] = {
+                "topic_id": t_id,
+                "subject_id": subj_id,
+                "is_primary": is_prim,
+                "relevance_weight": 1.0,
+                "concept_name": None,
+            }
 
-        if not links_to_create:
+        if not target_links:
             return
 
-        existing_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
+        # Ensure at least one primary hierarchy link exists
+        if not any(item["is_primary"] for item in target_links.values()):
+            first_key = next(iter(target_links))
+            target_links[first_key]["is_primary"] = True
+
+        # 2. Fetch existing QuestionHierarchyLink records for this question
+        existing_stmt = select(QuestionHierarchyLink).where(
+            QuestionHierarchyLink.question_id == question_id
+        )
         existing_links = (await self.session.exec(existing_stmt)).all()
-        for el in existing_links:
-            await self.session.delete(el)
+        existing_by_subtopic: Dict[uuid.UUID, QuestionHierarchyLink] = {
+            link.subtopic_id: link for link in existing_links
+        }
 
+        # 3. Clean up obsolete links not present in target_links
+        for existing_subtopic_id, existing_link in existing_by_subtopic.items():
+            if existing_subtopic_id not in target_links:
+                await self.session.delete(existing_link)
+
+        # Flush pending deletes first to ensure clean state in DB unique index
+        await self.session.flush()
+
+        # 4. Upsert target hierarchy links in-place (updating existing, adding new)
         primary_subtopic_id = None
-        for s_id, t_id, subj_id, is_prim, weight, c_name in links_to_create:
-            if is_prim and not primary_subtopic_id:
+        for s_id, data in target_links.items():
+            if data["is_primary"] and not primary_subtopic_id:
                 primary_subtopic_id = s_id
-            link = QuestionHierarchyLink(
-                question_id=question_id,
-                subtopic_id=s_id,
-                topic_id=t_id,
-                subject_id=subj_id,
-                is_primary=is_prim,
-                relevance_weight=weight,
-                concept_name=c_name,
-            )
-            self.session.add(link)
 
-        if primary_subtopic_id or (links_to_create and links_to_create[0][0]):
+            if s_id in existing_by_subtopic:
+                # In-place update of existing link
+                link = existing_by_subtopic[s_id]
+                link.topic_id = data["topic_id"]
+                link.subject_id = data["subject_id"]
+                link.is_primary = data["is_primary"]
+                link.relevance_weight = data["relevance_weight"]
+                if data["concept_name"] is not None:
+                    link.concept_name = data["concept_name"]
+                self.session.add(link)
+            else:
+                # Add new link
+                link = QuestionHierarchyLink(
+                    question_id=question_id,
+                    subtopic_id=s_id,
+                    topic_id=data["topic_id"],
+                    subject_id=data["subject_id"],
+                    is_primary=data["is_primary"],
+                    relevance_weight=data["relevance_weight"],
+                    concept_name=data["concept_name"],
+                )
+                self.session.add(link)
+
+        await self.session.flush()
+
+        # 5. Synchronize primary subtopic_id on Question
+        if primary_subtopic_id or target_links:
             q_obj = await self.session.get(Question, question_id)
             if q_obj:
-                q_obj.subtopic_id = primary_subtopic_id or links_to_create[0][0]
+                q_obj.subtopic_id = primary_subtopic_id or next(iter(target_links))
                 self.session.add(q_obj)
 
     async def delete_question(self, question_id: uuid.UUID | str) -> bool:
