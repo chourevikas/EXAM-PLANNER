@@ -21,8 +21,9 @@ class QuestionRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_id(self, question_id: uuid.UUID) -> Optional[Question]:
-        return await self.session.get(Question, question_id)
+    async def get_by_id(self, question_id: uuid.UUID | str) -> Optional[Question]:
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        return await self.session.get(Question, q_uuid)
 
     async def list_questions_filtered(
         self,

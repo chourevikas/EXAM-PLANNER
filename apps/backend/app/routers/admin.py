@@ -659,14 +659,32 @@ async def get_exam_review_questions_admin(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "admin:review",
+        str(exam_id),
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     q_service = QuestionService(session)
-    return await q_service.get_exam_questions_for_review(
+    review_res = await q_service.get_exam_questions_for_review(
         exam_id=exam_id,
         page=page,
         limit=limit,
         language=language,
         status=status,
     )
+    if review_res is not None:
+        serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=120)
+    return review_res
 
 
 @router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
@@ -799,6 +817,9 @@ async def approve_and_publish_exam(
     await session.commit()
     await session.refresh(exam)
 
+    from app.cache import invalidate_exam_cache
+    await invalidate_exam_cache(str(exam.id))
+
     return {
         "status": "APPROVED_AND_PUBLISHED",
         "publish_status": "PUBLISHED",
@@ -917,6 +938,7 @@ async def sync_exam_s3_artifacts(
             sync_all=sync_all,
             task_id=task_id,
             execution_engine="FastAPI BackgroundTasks",
+            session=session,
         )
         execution_engine = "FastAPI BackgroundTasks"
 
@@ -976,10 +998,12 @@ async def get_exam_sync_status(
 
     is_s3_out_of_sync = False
     if is_published:
-        is_s3_out_of_sync = bool(
-            exam.last_synced_at is None
-            or (exam.updated_at and exam.updated_at > exam.last_synced_at)
-        )
+        if exam.last_synced_at is None:
+            is_s3_out_of_sync = True
+        elif exam.updated_at:
+            upd = exam.updated_at if exam.updated_at.tzinfo else exam.updated_at.replace(tzinfo=timezone.utc)
+            sync = exam.last_synced_at if exam.last_synced_at.tzinfo else exam.last_synced_at.replace(tzinfo=timezone.utc)
+            is_s3_out_of_sync = upd > sync
 
     return {
         "exam_id": str(exam.id),

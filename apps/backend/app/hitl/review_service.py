@@ -49,6 +49,17 @@ class HumanReviewService:
         self, exam_id: Optional[uuid.UUID] = None, only_flagged: bool = False
     ) -> List[HumanReviewTask]:
         """Asynchronously fetches pending human review tasks for Admin review."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "review:tasks",
+            str(exam_id) if exam_id else "all",
+            only_flagged=only_flagged,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return [HumanReviewTask(**t) for t in cached_data]
+
         query = select(HumanReviewTask).where(
             HumanReviewTask.review_status == "PENDING_REVIEW"
         )
@@ -58,7 +69,11 @@ class HumanReviewService:
             query = query.where(HumanReviewTask.is_flagged_by_validator == True)
 
         result = await self.session.exec(query.order_by(col(HumanReviewTask.created_at)))
-        return list(result.all())
+        tasks = list(result.all())
+        if tasks:
+            serialized = [t.dict() if hasattr(t, "dict") else t.model_dump(mode="json") for t in tasks]
+            await cache.set(cache_key, serialized, ttl_seconds=60)
+        return tasks
 
     async def get_question_review_detail(
         self, question_id: uuid.UUID
@@ -363,6 +378,9 @@ class HumanReviewService:
 
         await self.session.commit()
         await self.session.refresh(question)
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
 
         # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
         if question.exam_id:

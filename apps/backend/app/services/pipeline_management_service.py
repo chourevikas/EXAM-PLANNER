@@ -63,6 +63,10 @@ class PipelineManagementService:
         self.session.add(run)
         await self.session.commit()
         await self.session.refresh(run)
+
+        from app.cache import invalidate_pipeline_status_cache
+        await invalidate_pipeline_status_cache()
+
         return run
 
     async def on_pipeline_1_completed(self, exam_id: uuid.UUID) -> PipelineRun:
@@ -115,6 +119,9 @@ class PipelineManagementService:
             select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id)
         )
         ak_batches = ak_batch_res.all()
+        from app.cache import invalidate_exam_cache
+        await invalidate_exam_cache(str(exam_id))
+
         if ak_batches:
             logger.info(
                 f"🔄 [AUTO-MAP FROM DB] Found existing AnswerKeyBatch for Exam {exam_id}. Mapping stored DB answer keys to newly extracted questions..."
@@ -139,9 +146,25 @@ class PipelineManagementService:
             progress_percent=100.0,
         )
 
+        from app.cache import invalidate_exam_cache
+        await invalidate_exam_cache(str(exam_id))
+
         if auto_trigger_pipeline_3:
             await self.check_and_trigger_pipeline_3_if_ready(exam_id)
 
+        return run
+
+    async def on_pipeline_3_completed(self, exam_id: uuid.UUID) -> PipelineRun:
+        """Called when Pipeline 3 (Explanation & Knowledge Base) finishes."""
+        run = await self.update_pipeline_status(
+            exam_id=exam_id,
+            pipeline_type="EXPLANATION_INDEXING",
+            status="COMPLETED",
+            current_step="EXPLANATION_INDEXING_COMPLETE",
+            progress_percent=100.0,
+        )
+        from app.cache import invalidate_exam_cache
+        await invalidate_exam_cache(str(exam_id))
         return run
 
     async def check_and_trigger_pipeline_3_if_ready(self, exam_id: uuid.UUID) -> bool:

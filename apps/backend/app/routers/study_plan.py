@@ -38,6 +38,10 @@ async def complete_study_task(
     task.completed_at = datetime.now(timezone.utc)
     await session.commit()
     
+    from app.cache import get_cache
+    cache = get_cache()
+    await cache.delete_pattern(f"ep:users:badges:{current_user.id}*")
+
     # Trigger the Gamification Hook
     gamification_service = GamificationService(session)
     gamification_result = await gamification_service.check_and_update_daily_goal(current_user.id)
@@ -72,6 +76,13 @@ async def get_user_badges(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("users:badges", str(current_user.id))
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     # Fetch all badges
     stmt_all = select(Badge)
     badges = (await session.execute(stmt_all)).scalars().all()
@@ -97,8 +108,10 @@ async def get_user_badges(
         else:
             locked.append(badge_data)
             
-    return {
+    res_dict = {
         "unlocked": unlocked,
         "locked": locked
     }
+    await cache.set(cache_key, res_dict, ttl_seconds=300)
+    return res_dict
 

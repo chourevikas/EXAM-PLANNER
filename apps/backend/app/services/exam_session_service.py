@@ -1224,6 +1224,9 @@ class ExamSessionService:
 
         await self.session.commit()
 
+        from app.cache import invalidate_user_cache
+        await invalidate_user_cache(str(user_id))
+
         # Enqueue async post-submission pipeline
         if background_tasks:
             from app.engine.post_submission_pipeline import run_post_submission_pipeline
@@ -1258,6 +1261,20 @@ class ExamSessionService:
         status_filter: Optional[AttemptStatus] = None,
     ) -> Dict[str, Any]:
         """Parameter 13: List candidate's exam attempts history."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "attempts:user",
+            str(user_id),
+            skip=skip,
+            limit=limit,
+            exam_id=str(exam_id) if exam_id else None,
+            status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
         if exam_id:
             stmt = stmt.where(ExamAttempt.exam_id == exam_id)
@@ -1275,16 +1292,18 @@ class ExamSessionService:
                 "attempt_id": str(att.id),
                 "exam_id": str(att.exam_id),
                 "exam_name": exam.name if exam else "Exam",
-                "mode": att.mode,
-                "status": att.status,
+                "mode": att.mode.value if hasattr(att.mode, "value") else str(att.mode),
+                "status": att.status.value if hasattr(att.status, "value") else str(att.status),
                 "total_score": att.total_score,
                 "max_possible_score": att.max_possible_score,
                 "total_questions": att.total_questions,
-                "started_at": att.started_at,
-                "submitted_at": att.submitted_at,
+                "started_at": att.started_at.isoformat() if att.started_at else None,
+                "submitted_at": att.submitted_at.isoformat() if att.submitted_at else None,
             })
 
-        return {"items": items, "skip": skip, "limit": limit}
+        result_dict = {"items": items, "skip": skip, "limit": limit}
+        await cache.set(cache_key, result_dict, ttl_seconds=120)
+        return result_dict
 
     async def get_attempt_result(self, attempt_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, Any]:
         """Parameter 14: Dedicated result view for a submitted/evaluated attempt."""

@@ -65,8 +65,19 @@ async def list_exams(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Lists all registered competitive exams, optionally filtered by status and is_active."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:list", status=status, is_active=is_active)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     service = ExamService(session)
-    return await service.list_exams(status=status, is_active=is_active)
+    exams = await service.list_exams(status=status, is_active=is_active)
+    if exams is not None:
+        serialized = [e.dict() if hasattr(e, "dict") else e for e in exams]
+        await cache.set(cache_key, serialized, ttl_seconds=300)
+    return exams
 
 
 @router.get(
@@ -93,14 +104,32 @@ async def get_exam_questions_for_review(
     core concepts, option distractor analyses (option explanations),
     key takeaways, and points to remember/common traps, with real-time review progress counters.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "exams:review",
+        str(exam_id),
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     q_service = QuestionService(session)
-    return await q_service.get_exam_questions_for_review(
+    review_res = await q_service.get_exam_questions_for_review(
         exam_id=exam_id,
         page=page,
         limit=limit,
         language=language,
         status=status,
     )
+    if review_res is not None:
+        serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=120)
+    return review_res
 
 
 @router.get("/{exam_id}/question-artifact/{question_number}")

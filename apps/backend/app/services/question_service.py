@@ -78,6 +78,35 @@ class QuestionService:
         page: int = 1,
         limit: int = 20,
     ) -> QuestionPaginatedResponse:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "questions:list",
+            subject_id=str(subject_id) if subject_id else None,
+            subject_name=subject_name,
+            subject_code=subject_code,
+            topic_id=str(topic_id) if topic_id else None,
+            topic_name=topic_name,
+            topic_code=topic_code,
+            subtopic_id=str(subtopic_id) if subtopic_id else None,
+            subtopic_name=subtopic_name,
+            subtopic_code=subtopic_code,
+            exam_id=str(exam_id) if exam_id else None,
+            exam_name=exam_name,
+            exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
+            exam_year=exam_year,
+            paper_set_code=paper_set_code,
+            stage=stage,
+            status=str(status.value if hasattr(status, "value") else status) if status else None,
+            language=str(language.value if hasattr(language, "value") else language),
+            include_solutions=include_solutions,
+            page=page,
+            limit=limit,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return QuestionPaginatedResponse(**cached_data)
+
         page = max(1, page)
         limit = max(1, min(100, limit))
         skip = (page - 1) * limit
@@ -109,13 +138,16 @@ class QuestionService:
 
         pages = math.ceil(total / limit) if limit > 0 else 1
 
-        return QuestionPaginatedResponse(
+        response = QuestionPaginatedResponse(
             items=items,
             total=total,
             page=page,
             limit=limit,
             pages=pages,
         )
+        if response is not None:
+            await cache.set(cache_key, response.model_dump(mode="json"), ttl_seconds=180)
+        return response
 
     async def get_exam_questions_for_review(
         self,
@@ -234,10 +266,12 @@ class QuestionService:
 
         is_s3_out_of_sync = False
         if is_s3_published:
-            is_s3_out_of_sync = bool(
-                exam.last_synced_at is None
-                or (exam.updated_at and exam.updated_at > exam.last_synced_at)
-            )
+            if exam.last_synced_at is None:
+                is_s3_out_of_sync = True
+            elif exam.updated_at:
+                upd = exam.updated_at if exam.updated_at.tzinfo else exam.updated_at.replace(tzinfo=timezone.utc)
+                sync = exam.last_synced_at if exam.last_synced_at.tzinfo else exam.last_synced_at.replace(tzinfo=timezone.utc)
+                is_s3_out_of_sync = upd > sync
 
         return ExamReviewQuestionsResponse(
             exam_id=str(exam.id),
@@ -272,17 +306,34 @@ class QuestionService:
         )
 
     async def get_question_detail(
-        self, question_id: uuid.UUID, language: LanguageCode = LanguageCode.ENGLISH
+        self, question_id: uuid.UUID | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> QuestionDetailResponse:
-        q = await self.repo.get_by_id(question_id)
+        from app.cache import get_cache, build_cache_key
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "questions:detail",
+            str(q_uuid),
+            lang=str(language.value if hasattr(language, "value") else language),
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return QuestionDetailResponse(**cached_data)
+
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
-        return await self._build_question_detail_response(q, target_lang=language)
+        detail_res = await self._build_question_detail_response(q, target_lang=language)
+        if detail_res is not None:
+            await cache.set(cache_key, detail_res.model_dump(mode="json"), ttl_seconds=300)
+        return detail_res
 
     async def update_question_detail(
-        self, question_id: uuid.UUID, payload: QuestionUpdatePayload
+        self, question_id: uuid.UUID | str, payload: QuestionUpdatePayload
     ) -> QuestionDetailResponse:
-        q = await self.repo.get_by_id(question_id)
+        from app.cache import invalidate_question_cache
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
@@ -522,6 +573,10 @@ class QuestionService:
         await self.session.refresh(q)
         await self._touch_exam_updated_at(q.exam_id)
         await self._recalculate_exam_metrics(q.exam_id)
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(q.id), str(q.exam_id) if q.exam_id else None)
+
         builder = ExamJsonBuilder(self.session)
         await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
@@ -657,6 +712,10 @@ class QuestionService:
         await self.session.refresh(q)
         await self._touch_exam_updated_at(payload.exam_id)
         await self._recalculate_exam_metrics(payload.exam_id)
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(q.id), str(payload.exam_id))
+
         builder = ExamJsonBuilder(self.session)
         await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
@@ -816,8 +875,9 @@ class QuestionService:
                 q_obj.subtopic_id = primary_subtopic_id or links_to_create[0][0]
                 self.session.add(q_obj)
 
-    async def delete_question(self, question_id: uuid.UUID) -> bool:
-        q = await self.repo.get_by_id(question_id)
+    async def delete_question(self, question_id: uuid.UUID | str) -> bool:
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         exam_id = q.exam_id
@@ -828,6 +888,9 @@ class QuestionService:
 
         await self.session.delete(q)
         await self.session.commit()
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(question_id), str(exam_id) if exam_id else None)
 
         if exam_id:
             await self._touch_exam_updated_at(exam_id)

@@ -83,6 +83,9 @@ class ExamService:
 
         exam = await self.repo.save(exam)
 
+        from app.cache import invalidate_exam_cache
+        await invalidate_exam_cache(str(exam.id))
+
         # 5. Determine whether to use Celery Worker or FastAPI BackgroundTasks
         task_id = str(uuid.uuid4())
         mode = (run_mode or "auto").lower()

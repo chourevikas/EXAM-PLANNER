@@ -80,6 +80,13 @@ async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_sessio
     Fetches all available Topics and Subtopics dynamically from the Database hierarchy.
     Uses 2 batch queries for maximum efficiency.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("questions:taxonomy")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     from app.db.models import Topic, Subtopic
     from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
     from sqlmodel import select
@@ -131,10 +138,12 @@ async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_sessio
 
     sorted_topics = sorted(list(unique_topics))
 
-    return {
+    result = {
         "topics": ["All Topics"] + sorted_topics,
         "hierarchy": hierarchy_map,
     }
+    await cache.set(cache_key, result, ttl_seconds=600)
+    return result
 
 
 @router.post("", response_model=QuestionDetailResponse, status_code=status.HTTP_201_CREATED, summary="Create New or Missing Question & Publish")

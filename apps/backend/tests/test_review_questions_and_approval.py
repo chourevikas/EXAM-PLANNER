@@ -252,6 +252,7 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
                 run_id_str=str(sync_res["pipeline_run_id"]),
                 task_id="celery_test_task",
                 execution_engine="Celery Worker",
+                session=session,
             )
             self.assertEqual(celery_run_res["status"], "COMPLETED")
 

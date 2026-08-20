@@ -165,6 +165,13 @@ class AnalyticsService:
             raise HTTPException(status_code=500, detail=str(exc))
     async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:attempt_q", str(attempt_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
@@ -176,11 +183,13 @@ class AnalyticsService:
         if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
             part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
             if part_1 and len(part_1) > 0:
-                return {
+                res_data = {
                     "attempt_id": str(attempt_id),
                     "total_questions": len(part_1),
                     "questions": part_1,
                 }
+                await cache.set(cache_key, res_data, ttl_seconds=600)
+                return res_data
 
         # 2. Database ExamQuestionReport Rows
         stmt = (
@@ -191,7 +200,7 @@ class AnalyticsService:
         res = await self.session.exec(stmt)
         rows = res.all()
         if rows:
-            return {
+            res_data = {
                 "attempt_id": str(attempt_id),
                 "total_questions": len(rows),
                 "questions": [
@@ -213,29 +222,41 @@ class AnalyticsService:
                     for r in rows
                 ],
             }
+            await cache.set(cache_key, res_data, ttl_seconds=600)
+            return res_data
 
         # 3. Fallback to comprehensive psychometric report compiler
         rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
         if rep and rep.get("part_1_per_question_analysis"):
-            return {
+            res_data = {
                 "attempt_id": str(attempt_id),
                 "total_questions": len(rep.get("part_1_per_question_analysis", [])),
                 "questions": rep.get("part_1_per_question_analysis", []),
             }
+            await cache.set(cache_key, res_data, ttl_seconds=600)
+            return res_data
 
-        return {
+        empty_res = {
             "attempt_id": str(attempt_id),
             "total_questions": 0,
             "questions": [],
         }
+        return empty_res
 
     async def get_attempt_exam_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 2: Exam-Level 12-Matrix Aggregated Performance Report."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:attempt_exam", str(attempt_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
         res = await self.session.exec(stmt)
         rep_db = res.first()
         if rep_db:
-            return {
+            res_data = {
                 "attempt_id": str(attempt_id),
                 "user_id": str(rep_db.user_id),
                 "exam_id": str(rep_db.exam_id),
@@ -244,6 +265,8 @@ class AnalyticsService:
                 "llm_insight": rep_db.llm_insight_json,
                 "created_at": rep_db.created_at.isoformat() if rep_db.created_at else None,
             }
+            await cache.set(cache_key, res_data, ttl_seconds=600)
+            return res_data
 
         # 2. Instant DB Cache: attempt.report_metadata_json
         attempt = await self.session.get(ExamAttempt, attempt_id)
@@ -252,23 +275,27 @@ class AnalyticsService:
             
         if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
             meta = attempt.report_metadata_json
-            return {
+            res_data = {
                 "attempt_id": str(attempt_id),
                 "matrices_summary": meta.get("part_3_aggregated_user_report", {}),
                 "taxonomy_breakdown": meta.get("part_2_taxonomy_analysis", {}),
                 "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
                 "metadata": meta.get("metadata", {}),
             }
+            await cache.set(cache_key, res_data, ttl_seconds=600)
+            return res_data
 
         # 3. Fallback to compiled report
         full_rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
-        return {
+        res_data = {
             "attempt_id": str(attempt_id),
             "matrices_summary": full_rep.get("part_3_aggregated_user_report", {}),
             "taxonomy_breakdown": full_rep.get("part_2_taxonomy_analysis", {}),
             "llm_insight": full_rep.get("part_3_aggregated_user_report", {}).get("llm_insight"),
             "metadata": full_rep.get("metadata", {}),
         }
+        await cache.set(cache_key, res_data, ttl_seconds=600)
+        return res_data
 
     async def get_attempt_user_progression_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 3: Cumulative User Skill Progression Delta Report."""
