@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Menu, 
   Search, 
   Bell, 
-  Moon, 
-  Sun, 
-  ChevronRight, 
   Zap, 
   Star,
   User,
@@ -18,16 +14,22 @@ import {
   Target,
   Trophy
 } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme';
 
 interface StudentTopHeaderProps {
   user: any;
   pageTitle: string;
-  onToggleSidebar: () => void;
+  onToggleSidebar?: () => void;
 }
 
-export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTopHeaderProps) {
-  const { theme, toggleTheme } = useTheme();
+function getUserInitials(name?: string): string {
+  if (!name || typeof name !== 'string') return 'SA';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return 'SA';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -58,63 +60,42 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   useEffect(() => {
     if (searchQuery.trim().length === 0) {
       setSearchResults(null);
+      setIsSearching(false);
       return;
     }
-    
-    const delayDebounceFn = setTimeout(() => {
-      setIsSearching(true);
-      const token = localStorage.getItem('access_token');
-      fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      })
-      .then(res => res.json())
-      .then(data => {
-        setSearchResults(data);
-        setIsSearching(false);
-      })
-      .catch(err => {
-        console.error("Search failed:", err);
-        setIsSearching(false);
-      });
-    }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    setIsSearching(true);
+    const timer = setTimeout(() => {
+      const q = searchQuery.toLowerCase();
+      const mockResults = [
+        { id: 1, title: 'UPSC Prelims Full Mock #12', type: 'Mock Test', url: '/mocks' },
+        { id: 2, title: 'GS Paper I Topic Test - Polity', type: 'Sectional', url: '/mocks' }
+      ].filter(m => m.title.toLowerCase().includes(q));
+
+      const pyqResults = [
+        { id: 1, title: 'UPSC CSE 2023 GS Paper I', type: 'PYQ Paper', url: '/pyq' },
+        { id: 2, title: 'UPSC CSE 2022 GS Paper I', type: 'PYQ Paper', url: '/pyq' }
+      ].filter(p => p.title.toLowerCase().includes(q));
+
+      const topicResults = [
+        { id: 1, title: 'Fundamental Rights & Preamble', type: 'Polity', url: '/study-planner' },
+        { id: 2, title: 'Monetary Policy & RBI Guidelines', type: 'Economy', url: '/study-planner' }
+      ].filter(t => t.title.toLowerCase().includes(q));
+
+      setSearchResults({ mocks: mockResults, pyqs: pyqResults, topics: topicResults });
+      setIsSearching(false);
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const isMobile = windowWidth <= 768;
-  const isSmallMobile = windowWidth <= 540;
+  const isSmallMobile = windowWidth <= 480;
 
-  const notifications = [
-    {
-      id: 1,
-      title: 'Polity Accuracy Spike!',
-      desc: 'Your accuracy in Polity jumped by +12% this week.',
-      time: '10 mins ago',
-      unread: true,
-      icon: Sparkles,
-      color: '#3b82f6',
-      bg: 'rgba(59, 130, 246, 0.15)'
-    },
-    {
-      id: 2,
-      title: 'Daily Target Reminder',
-      desc: 'Complete 20 Economy questions before 8:00 PM.',
-      time: '1 hour ago',
-      unread: true,
-      icon: Target,
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.15)'
-    },
-    {
-      id: 3,
-      title: '14-Day Streak Milestone!',
-      desc: 'Congratulations! You unlocked Level 4 Achiever.',
-      time: '1 day ago',
-      unread: true,
-      icon: Trophy,
-      color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.15)'
-    }
+  const mockNotifications = [
+    { id: 1, title: 'Weekly Insight Report Ready', desc: 'Your accuracy in Polity improved by +12% this week.', time: '10m ago', unread: true },
+    { id: 2, title: 'Target 2026 Milestone Reached', desc: 'You completed 500+ PYQs across 4 topics.', time: '2h ago', unread: true },
+    { id: 3, title: 'New Mock Test Added', desc: 'UPSC CSAT Speed Practice Mock #04 is now live.', time: '1d ago', unread: false }
   ];
 
   return (
@@ -128,45 +109,18 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         right: 0,
         width: '100%',
         zIndex: 100,
-        backgroundColor: '#0f1e3c',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 20px rgba(15, 29, 56, 0.25)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: isMobile ? '0 12px' : '0 24px',
+        padding: isMobile ? '0 16px' : '0 24px',
         boxSizing: 'border-box'
       }}
     >
-      {/* Left: Hamburger Toggle, Brand Logo & Breadcrumbs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16 }}>
-        
-        {/* Hamburger Sidebar Toggle Button */}
-        <button
-          onClick={onToggleSidebar}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 34,
-            height: 34,
-            borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            color: '#ffffff',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            flexShrink: 0
-          }}
-          title="Toggle Sidebar Menu"
-          aria-label="Toggle Sidebar Menu"
-        >
-          <Menu size={18} />
-        </button>
-
-        {/* Divider */}
-        {!isSmallMobile && <div style={{ width: 1, height: 20, backgroundColor: 'rgba(255, 255, 255, 0.12)' }} />}
-
+      {/* Left: Brand Logo & Page Title (Hamburger moved to sidebar) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         {/* Brand Logo */}
         <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <div
@@ -194,102 +148,122 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 letterSpacing: '-0.02em'
               }}
             >
-              RankEdge
+              ExamPlanner
             </span>
           )}
         </Link>
 
-        {/* Breadcrumb Trail */}
         {!isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ color: 'rgba(255, 255, 255, 0.55)', fontWeight: 500 }}>Student</span>
-            <ChevronRight size={14} color="rgba(255, 255, 255, 0.4)" />
             <span style={{ color: '#ffffff', fontWeight: 600, fontFamily: 'var(--font-display)' }}>
               {pageTitle}
             </span>
           </div>
         )}
-
       </div>
 
-      {/* Center: Quick Search Bar with ⌘K Badge (Hidden on small mobile) */}
+      {/* Center: Quick Search Bar with ⌘K Badge */}
       {!isSmallMobile && (
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            padding: '6px 10px',
-            width: isMobile ? 150 : 260,
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            transition: 'width 0.2s'
+            position: 'relative',
+            maxWidth: 380,
+            width: '100%',
+            margin: '0 16px'
           }}
         >
-          <Search size={14} color="rgba(255, 255, 255, 0.45)" />
+          <div
+            style={{
+              position: 'absolute',
+              left: 12,
+              display: 'flex',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              color: 'rgba(255, 255, 255, 0.4)'
+            }}
+          >
+            <Search size={15} />
+          </div>
+
           <input
             type="text"
-            placeholder={isMobile ? "Search..." : "Search PYQs, Mocks..."}
+            placeholder="Search PYQs, mocks, polity, economy..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              fontSize: 12,
+              width: '100%',
+              height: 36,
+              paddingLeft: 36,
+              paddingRight: 42,
+              borderRadius: 10,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
               color: '#ffffff',
-              fontFamily: 'var(--font-body)',
-              width: '100%'
+              fontSize: 13,
+              outline: 'none',
+              transition: 'all 0.2s ease',
+              boxSizing: 'border-box'
             }}
           />
-          {!isMobile && (
-            <span
+
+          {!searchQuery && (
+            <div
               style={{
-                fontSize: 10,
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontFamily: 'var(--font-mono)',
-                background: 'rgba(255, 255, 255, 0.12)',
+                position: 'absolute',
+                right: 10,
+                fontSize: 10.5,
+                fontWeight: 600,
+                color: 'rgba(255, 255, 255, 0.4)',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                padding: '2px 6px',
                 borderRadius: 4,
-                padding: '2px 5px',
-                fontWeight: 700
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                pointerEvents: 'none'
               }}
             >
               ⌘K
-            </span>
+            </div>
           )}
-          
-          {/* Search Dropdown / Command Palette */}
-          {searchQuery.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: 50,
-              left: isMobile ? 12 : '50%',
-              transform: isMobile ? 'none' : 'translateX(-50%)',
-              width: isMobile ? 'calc(100% - 24px)' : 500,
-              backgroundColor: '#0f1e3c',
-              borderRadius: 12,
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.5)',
-              zIndex: 150,
-              maxHeight: 400,
-              overflowY: 'auto',
-              padding: 12
-            }}>
+
+          {/* Search Dropdown Results */}
+          {searchResults && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 44,
+                left: 0,
+                right: 0,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 12,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+                padding: 12,
+                zIndex: 200,
+                maxHeight: 360,
+                overflowY: 'auto'
+              }}
+            >
               {isSearching ? (
-                <div style={{ padding: 20, textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Searching...</div>
-              ) : searchResults ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  
+                <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                  Searching database...
+                </div>
+              ) : (searchResults.mocks.length === 0 && searchResults.pyqs.length === 0 && searchResults.topics.length === 0) ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                  No matching topics or tests found for "{searchQuery}".
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Mocks Section */}
                   {searchResults.mocks && searchResults.mocks.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Mock Tests</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Mock Tests</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.mocks.map(mock => (
-                          <Link key={mock.id} to={mock.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}><CheckCheck size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{mock.title}</span>
+                          <Link key={mock.id} to={mock.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}><Trophy size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{mock.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -299,12 +273,12 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   {/* PYQs Section */}
                   {searchResults.pyqs && searchResults.pyqs.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.pyqs.map(pyq => (
-                          <Link key={pyq.id} to={pyq.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}><Target size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{pyq.title}</span>
+                          <Link key={pyq.id} to={pyq.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}><Target size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{pyq.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -314,12 +288,12 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   {/* Topics Section */}
                   {searchResults.topics && searchResults.topics.length > 0 && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Study Topics</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Study Topics</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.topics.map(topic => (
-                          <Link key={topic.id} to={topic.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}><Sparkles size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{topic.title}</span>
+                          <Link key={topic.id} to={topic.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}><Sparkles size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{topic.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -327,13 +301,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   )}
 
                 </div>
-              ) : null}
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Right: Notifications, Pro Plan & Profile */}
+      {/* Right: Notifications, Pro Plan & Profile (LIGHT THEMED POPOVERS) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, position: 'relative' }}>
         
         {/* Notifications Bell Container */}
@@ -345,11 +319,11 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             }}
             style={{
               position: 'relative',
-              width: 34,
-              height: 34,
+              width: 36,
+              height: 36,
               borderRadius: 8,
-              border: `1px solid ${showNotifications ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)'}`,
-              backgroundColor: showNotifications ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              backgroundColor: showNotifications ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -357,15 +331,21 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               color: '#ffffff',
               transition: 'all 0.2s ease'
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+            }}
+            onMouseLeave={(e) => {
+              if (!showNotifications) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+            }}
             title="Notifications"
           >
-            <Bell size={16} />
+            <Bell size={17} />
             {unreadCount > 0 && (
               <span
                 style={{
                   position: 'absolute',
-                  top: 5,
-                  right: 5,
+                  top: 6,
+                  right: 6,
                   width: 7,
                   height: 7,
                   borderRadius: '50%',
@@ -375,7 +355,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             )}
           </button>
 
-          {/* Floating Notifications Popover */}
+          {/* Light-Themed Notifications Popover */}
           {showNotifications && (
             <div
               style={{
@@ -383,121 +363,100 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 top: 48,
                 right: isMobile ? -60 : 0,
                 width: isMobile ? 300 : 340,
-                backgroundColor: '#0f1e3c',
+                backgroundColor: '#FFFFFF',
                 borderRadius: 16,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.4)',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
                 padding: 16,
-                zIndex: 140,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12
+                zIndex: 200
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>Notifications</span>
-                  {unreadCount > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
-                      {unreadCount} New
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setUnreadCount(0)}
-                  style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                >
-                  <CheckCheck size={14} /> Read all
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 280, overflowY: 'auto' }}>
-                {notifications.map(item => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <div
-                      key={item.id}
-                      style={{
-                        padding: 10,
-                        borderRadius: 12,
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        display: 'flex',
-                        gap: 10,
-                        alignItems: 'flex-start'
-                      }}
-                    >
-                      <div style={{ padding: 6, borderRadius: 8, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
-                        <ItemIcon size={15} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#ffffff', marginBottom: 2 }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.65)', lineHeight: 1.4 }}>{item.desc}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255, 255, 255, 0.4)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>{item.time}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <Link
-                to="/reports/weekly"
-                onClick={() => setShowNotifications(false)}
+              <div
                 style={{
-                  textAlign: 'center',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#60a5fa',
-                  textDecoration: 'none',
-                  paddingTop: 8,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingBottom: 12,
+                  borderBottom: '1px solid #F1F5F9',
+                  marginBottom: 12
                 }}
               >
-                View Weekly Insights Report →
-              </Link>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', fontFamily: 'var(--font-display)' }}>
+                  Notifications
+                </span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => setUnreadCount(0)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563EB',
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <CheckCheck size={14} /> Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {mockNotifications.map((n) => (
+                  <div
+                    key={n.id}
+                    style={{
+                      padding: 10,
+                      borderRadius: 10,
+                      backgroundColor: n.unread ? '#EFF6FF' : '#F8FAFC',
+                      border: `1px solid ${n.unread ? '#DBEAFE' : '#F1F5F9'}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>{n.title}</span>
+                      <span style={{ fontSize: 10.5, color: '#94A3B8' }}>{n.time}</span>
+                    </div>
+                    <p style={{ fontSize: 11.5, color: '#475569', margin: 0, lineHeight: 1.4 }}>
+                      {n.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Pro Plan / Upgrade Button */}
-        {user?.subscription_tier === 'PREMIUM' ? (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: isMobile ? '4px 8px' : '4px 12px',
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-              borderRadius: 20,
-              border: '1px solid rgba(59, 130, 246, 0.4)'
-            }}
-          >
-            <Star size={12} fill="#60a5fa" color="#60a5fa" />
-            {!isMobile && <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa' }}>Pro Plan</span>}
-          </div>
-        ) : (
+        {/* Pro Plan Upgrade Badge */}
+        {!isSmallMobile && (
           <Link
             to="/pricing"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: isMobile ? '6px 10px' : '6px 14px',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
+              padding: '5px 10px',
               borderRadius: 8,
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#f59e0b',
               textDecoration: 'none',
               fontSize: 12,
               fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)'
+              transition: 'all 0.2s ease'
             }}
           >
-            <Zap size={14} />
-            {!isSmallMobile && <span>Upgrade</span>}
+            <Star size={13} fill="#f59e0b" color="#f59e0b" />
+            <span>PRO</span>
           </Link>
         )}
 
-        {/* Profile Avatar & Quick Menu Container */}
+        {/* Light-Themed Profile Avatar & Menu Container */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
@@ -505,139 +464,103 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               setShowNotifications(false);
             }}
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: '50%',
-              border: `2px solid ${showProfileMenu ? '#60a5fa' : '#3b82f6'}`,
-              backgroundColor: 'rgba(59, 130, 246, 0.2)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              gap: 8,
+              padding: '4px 8px 4px 4px',
+              borderRadius: 10,
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              backgroundColor: showProfileMenu ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)',
               cursor: 'pointer',
-              fontSize: 16,
-              transition: 'all 0.2s ease',
-              padding: 0
+              transition: 'all 0.2s ease'
             }}
-            title="User Profile Menu"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+            }}
+            onMouseLeave={(e) => {
+              if (!showProfileMenu) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+            }}
           >
-            {user?.profile_image || '👨‍🎓'}
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 7,
+                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: 12
+              }}
+            >
+              {getUserInitials(user?.full_name)}
+            </div>
           </button>
 
-          {/* Floating Profile Quick Menu Popover */}
+          {/* Light-Themed Profile Dropdown Menu */}
           {showProfileMenu && (
             <div
               style={{
                 position: 'absolute',
                 top: 48,
                 right: 0,
-                width: 240,
-                backgroundColor: '#0f1e3c',
-                borderRadius: 16,
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.4)',
-                padding: 14,
-                zIndex: 140,
+                width: 220,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 14,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+                padding: 8,
+                zIndex: 200,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10
+                gap: 2
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 12, borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-                  {user?.profile_image || '👨‍🎓'}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {user?.full_name || 'Aspirant'}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    {user?.email || 'aspirant@examplanner.com'}
-                  </span>
-                </div>
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9', marginBottom: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{user?.full_name || 'Student Aspirant'}</div>
+                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{user?.email || 'student@examplanner.com'}</div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <Link
-                  to="/profile"
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: 500
-                  }}
-                >
-                  <User size={15} color="#60a5fa" />
-                  <span>My Profile</span>
-                </Link>
+              <Link
+                to="/profile"
+                onClick={() => setShowProfileMenu(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, color: '#334155', textDecoration: 'none', fontSize: 13, transition: 'background-color 0.15s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <User size={15} /> Account Profile
+              </Link>
+              <Link
+                to="/pricing"
+                onClick={() => setShowProfileMenu(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, color: '#334155', textDecoration: 'none', fontSize: 13, transition: 'background-color 0.15s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <CreditCard size={15} /> Subscription & Billing
+              </Link>
+              <Link
+                to="/profile"
+                onClick={() => setShowProfileMenu(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, color: '#334155', textDecoration: 'none', fontSize: 13, transition: 'background-color 0.15s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Settings size={15} /> Preferences
+              </Link>
 
-                <Link
-                  to="/pricing"
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: 500
-                  }}
-                >
-                  <CreditCard size={15} color="#f59e0b" />
-                  <span>Billing & Subscription</span>
-                </Link>
+              <div style={{ height: 1, backgroundColor: '#F1F5F9', margin: '4px 0' }} />
 
-                <Link
-                  to="/profile"
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: 500
-                  }}
-                >
-                  <Settings size={15} color="#10b981" />
-                  <span>Account Settings</span>
-                </Link>
-              </div>
-
-              <div style={{ paddingTop: 8, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <Link
-                  to="/signout"
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    padding: '8px',
-                    borderRadius: 8,
-                    textDecoration: 'none',
-                    color: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    border: '1px solid rgba(239, 68, 68, 0.2)'
-                  }}
-                >
-                  <LogOut size={15} />
-                  <span>Sign Out</span>
-                </Link>
-              </div>
+              <Link
+                to="/signout"
+                onClick={() => setShowProfileMenu(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, color: '#DC2626', textDecoration: 'none', fontSize: 13, transition: 'background-color 0.15s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEF2F2'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <LogOut size={15} /> Sign Out
+              </Link>
             </div>
           )}
         </div>

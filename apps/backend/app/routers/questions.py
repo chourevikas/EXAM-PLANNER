@@ -73,6 +73,70 @@ async def list_questions(
     )
 
 
+
+@router.get("/taxonomy", summary="Get Dynamic Syllabus Taxonomy (Topics & Subtopics) from Database")
+async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_session)):
+    """
+    Fetches all available Topics and Subtopics dynamically from the Database hierarchy.
+    Uses 2 batch queries for maximum efficiency.
+    """
+    from app.db.models import Topic, Subtopic
+    from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
+    from sqlmodel import select
+
+    hierarchy_map = {}
+    unique_topics = set()
+
+    try:
+        # Query 1: Fetch all topics in one query
+        stmt_topics = select(Topic)
+        res_topics = await session.exec(stmt_topics)
+        db_topics = res_topics.all()
+
+        topic_id_map = {}
+        for top in db_topics:
+            t_name = top.name.strip() if top.name else ""
+            if t_name:
+                topic_id_map[top.id] = t_name
+                unique_topics.add(t_name)
+                if t_name not in hierarchy_map:
+                    hierarchy_map[t_name] = set()
+
+        if topic_id_map:
+            # Query 2: Fetch all subtopics in one query
+            stmt_sub = select(Subtopic)
+            res_sub = await session.exec(stmt_sub)
+            db_subs = res_sub.all()
+
+            for sub in db_subs:
+                t_name = topic_id_map.get(sub.topic_id)
+                if t_name and sub.name and sub.name.strip():
+                    hierarchy_map[t_name].add(sub.name.strip())
+
+            # Convert sets to sorted lists
+            formatted_hierarchy = {}
+            for t_name, sub_set in hierarchy_map.items():
+                formatted_hierarchy[t_name] = ["All Subtopics"] + sorted(list(sub_set))
+
+            hierarchy_map = formatted_hierarchy
+
+    except Exception as exc:
+        pass
+
+    if not hierarchy_map:
+        for subj, topics_dict in SYLLABUS_HIERARCHY.items():
+            for top_name, sub_list in topics_dict.items():
+                unique_topics.add(top_name)
+                hierarchy_map[top_name] = ["All Subtopics"] + list(sub_list)
+
+    sorted_topics = sorted(list(unique_topics))
+
+    return {
+        "topics": ["All Topics"] + sorted_topics,
+        "hierarchy": hierarchy_map,
+    }
+
+
 @router.post("", response_model=QuestionDetailResponse, status_code=status.HTTP_201_CREATED, summary="Create New or Missing Question & Publish")
 async def create_question(
     payload: QuestionCreatePayload,

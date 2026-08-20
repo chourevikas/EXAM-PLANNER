@@ -49,7 +49,7 @@ export function HeroIllustration() {
             ))}
             <div style={{ flex: 1, textAlign: 'center' }}>
               <span style={{ fontSize: 11, color: C.muted, fontWeight: 500 }}>
-                RankEdge · Dashboard
+                ExamPlanner · Dashboard
               </span>
             </div>
           </div>

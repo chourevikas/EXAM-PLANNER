@@ -1,7 +1,6 @@
 import React from 'react';
-import { useTheme } from '../../hooks/useTheme';
+import { X, Layers } from 'lucide-react';
 import { QuestionPaletteItem, ResponseSummary } from '../../types/exam';
-import { CheckCircle2, Bookmark, HelpCircle, Layers, BarChart2 } from 'lucide-react';
 
 export interface Section {
   id: string;
@@ -22,6 +21,8 @@ export interface Question {
 }
 
 interface ExamSectionSidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
   sections?: Section[];
   activeSectionId?: string;
   palette?: QuestionPaletteItem[];
@@ -30,17 +31,18 @@ interface ExamSectionSidebarProps {
   responseSummary?: ResponseSummary;
   onSelectSection?: (sectionId: string, startQNum?: number) => void;
   onSelectQuestion?: (questionIndex: number) => void;
-  // Deprecated props kept for safety
   questions?: Question[];
   selectedOptions?: Record<number, string>;
   markedForReview?: Record<number, boolean>;
 }
 
 export function ExamSectionSidebar({
+  isOpen = false,
+  onClose,
   sections = [],
   activeSectionId,
   palette = [],
-  totalQuestions = 100,
+  totalQuestions = 10,
   currentQIndex = 0,
   responseSummary,
   onSelectSection,
@@ -49,223 +51,245 @@ export function ExamSectionSidebar({
   selectedOptions = {},
   markedForReview = {},
 }: ExamSectionSidebarProps) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  // Compute Live Counts from Palette
+  const total = palette.length > 0 ? palette.length : (responseSummary?.total || totalQuestions || 10);
 
-  // 1. Compute Live Counts from Palette
-  const total = palette.length > 0 ? palette.length : (responseSummary?.total || totalQuestions || 100);
-  
-  const answeredCount = palette.length > 0
-    ? palette.filter((p) => p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED').length
-    : (responseSummary?.answered_count ?? Object.keys(selectedOptions).length);
+  const answeredCount =
+    palette.length > 0
+      ? palette.filter(
+        (p) => p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED'
+      ).length
+      : (responseSummary?.answered_count ?? Object.keys(selectedOptions).length);
 
-  const markedCount = palette.length > 0
-    ? palette.filter((p) => p.question_status === 'MARKED_FOR_REVIEW' || p.question_status === 'ANSWERED_AND_MARKED').length
-    : (responseSummary?.marked_for_review_count ?? Object.values(markedForReview).filter(Boolean).length);
+  const markedCount =
+    palette.length > 0
+      ? palette.filter(
+        (p) => p.question_status === 'MARKED_FOR_REVIEW' || p.question_status === 'ANSWERED_AND_MARKED'
+      ).length
+      : (responseSummary?.marked_for_review_count ?? Object.values(markedForReview).filter(Boolean).length);
 
   const unattemptedCount = Math.max(0, total - answeredCount);
-  const completionPct = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
 
-  // 2. Default sections if not customized
-  const effectiveSections: Section[] = sections.length > 0 ? sections : [
-    { id: 'all', label: 'All Questions', total, startQuestionNumber: 1, endQuestionNumber: total },
-  ];
+  // Default sections if not customized
+  const effectiveSections: Section[] =
+    sections.length > 0
+      ? sections
+      : [{ id: 'all', label: 'All Subjects', total, startQuestionNumber: 1, endQuestionNumber: total }];
+
+  if (!isOpen) return null;
 
   return (
-    <aside
-      style={{
-        width: 240,
-        backgroundColor: isDark ? '#0f1e3c' : '#ffffff',
-        borderRight: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: 16,
-        boxSizing: 'border-box',
-        flexShrink: 0,
-        height: '100%',
-        transition: 'background-color 0.2s, border-color 0.2s',
-      }}
-    >
-      {/* Header */}
+    <>
+      {/* Dimmed Overlay Backdrop */}
       <div
+        onClick={onClose}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          color: isDark ? 'rgba(255, 255, 255, 0.5)' : '#64748b',
-          letterSpacing: '0.08em',
-          marginBottom: 14,
-          fontFamily: 'var(--font-mono, monospace)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 200,
+          backgroundColor: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'blur(3px)',
+          transition: 'opacity 0.2s ease-out',
         }}
-      >
-        <Layers size={14} color="#3b82f6" />
-        <span>Sections & Overview</span>
-      </div>
+      />
 
-      {/* Sections List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto' }}>
-        {effectiveSections.map((sec, idx) => {
-          const isSecActive = activeSectionId === sec.id || (!activeSectionId && idx === 0);
-          
-          // Compute per-section stats if range is defined
-          const secTotal = sec.total || total;
-          let secAnswered = answeredCount;
-          
-          if (sec.startQuestionNumber && sec.endQuestionNumber && palette.length > 0) {
-            secAnswered = palette.filter((p) => {
-              const inRange = p.question_number >= sec.startQuestionNumber! && p.question_number <= sec.endQuestionNumber!;
-              const isAns = p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED';
-              return inRange && isAns;
-            }).length;
-          }
-
-          const secPct = secTotal > 0 ? Math.round((secAnswered / secTotal) * 100) : 0;
-
-          return (
-            <button
-              key={sec.id}
-              onClick={() => {
-                if (onSelectSection) {
-                  onSelectSection(sec.id, sec.startQuestionNumber);
-                } else if (onSelectQuestion && sec.startQuestionNumber) {
-                  onSelectQuestion(sec.startQuestionNumber - 1);
-                }
-              }}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                padding: '12px 14px',
-                borderRadius: 12,
-                border: isSecActive
-                  ? '1px solid #3b82f6'
-                  : `1px solid ${isDark ? 'rgba(255, 255, 255, 0.06)' : '#e2e8f0'}`,
-                backgroundColor: isSecActive
-                  ? (isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff')
-                  : (isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc'),
-                color: isDark ? '#ffffff' : '#0f172a',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: isSecActive ? 700 : 600 }}>{sec.label}</span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: isDark ? 'rgba(255, 255, 255, 0.6)' : '#64748b',
-                    fontFamily: 'var(--font-mono, monospace)',
-                    fontWeight: 700,
-                  }}
-                >
-                  {secAnswered}/{secTotal}
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div
-                style={{
-                  height: 4,
-                  width: '100%',
-                  borderRadius: 2,
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${secPct}%`,
-                    backgroundColor: '#2563eb',
-                    transition: 'width 0.3s ease',
-                  }}
-                />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Progress Summary Box (Live Counts) */}
-      <div
+      {/* Full-Height Slide-out Drawer Panel */}
+      <aside
         style={{
-          marginTop: 'auto',
-          padding: 14,
-          borderRadius: 12,
-          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
-          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          height: '100vh',
+          zIndex: 210,
+          width: 280,
+          backgroundColor: '#FFFFFF',
+          borderRight: '1px solid #E2E8F0',
+          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.18)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 10,
+          padding: '20px 16px',
+          boxSizing: 'border-box',
+          animation: 'slideInLeft 0.22s ease-out forwards',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: isDark ? '#ffffff' : '#0f172a' }}>
-            <BarChart2 size={14} color="#3b82f6" />
-            <span>Overall Progress</span>
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', fontFamily: 'var(--font-mono, monospace)' }}>
-            {completionPct}%
-          </span>
-        </div>
-
-        {/* Global Progress Bar */}
+        {/* Drawer Header & Close Trigger */}
         <div
           style={{
-            height: 6,
-            width: '100%',
-            borderRadius: 3,
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+            paddingBottom: 10,
+            borderBottom: '1px solid #E2E8F0',
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              width: `${completionPct}%`,
-              backgroundColor: '#10b981',
-              transition: 'width 0.3s ease',
-            }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Layers size={16} color="#2563EB" />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                color: '#0F172A',
+                letterSpacing: '0.08em',
+              }}
+            >
+              EXAM SECTIONS
+            </span>
+          </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748B',
+                cursor: 'pointer',
+                padding: 4,
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F1F5F9';
+                e.currentTarget.style.color = '#0F172A';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#64748B';
+              }}
+              title="Close Drawer"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
-        {/* Answered */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b' }}>
-            <CheckCircle2 size={13} color="#10b981" />
-            <span>Answered:</span>
-          </div>
-          <span style={{ color: '#10b981', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>
-            {answeredCount}
-          </span>
+        {/* Sections List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
+          {effectiveSections.map((sec, idx) => {
+            const isSecActive = activeSectionId === sec.id || (!activeSectionId && idx === 0);
+            const secTotal = sec.total || total;
+            let secAnswered = answeredCount;
+
+            if (sec.startQuestionNumber && sec.endQuestionNumber && palette.length > 0) {
+              secAnswered = palette.filter((p) => {
+                const inRange =
+                  p.question_number >= sec.startQuestionNumber! &&
+                  p.question_number <= sec.endQuestionNumber!;
+                const isAns =
+                  p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED';
+                return inRange && isAns;
+              }).length;
+            }
+
+            return (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => {
+                  if (onSelectSection) {
+                    onSelectSection(sec.id, sec.startQuestionNumber);
+                  } else if (onSelectQuestion && sec.startQuestionNumber) {
+                    onSelectQuestion(sec.startQuestionNumber - 1);
+                  }
+                  if (onClose) onClose();
+                }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  borderLeft: isSecActive ? '3px solid #2563EB' : '3px solid transparent',
+                  backgroundColor: isSecActive ? '#EFF6FF' : 'transparent',
+                  color: isSecActive ? '#2563EB' : '#0F172A',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSecActive) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSecActive) e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: isSecActive ? 700 : 500, lineHeight: 1.3 }}>
+                  {sec.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    color: isSecActive ? '#2563EB' : '#64748B',
+                    fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {secAnswered} / {secTotal}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Marked for Review */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b' }}>
-            <Bookmark size={13} color="#f59e0b" />
-            <span>Review Marked:</span>
-          </div>
-          <span style={{ color: '#f59e0b', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>
-            {markedCount}
-          </span>
+        <div style={{ height: 1, backgroundColor: '#E2E8F0', marginBottom: 20 }} />
+
+        {/* YOUR PROGRESS Header */}
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            color: '#64748B',
+            letterSpacing: '0.08em',
+            marginBottom: 14,
+            paddingBottom: 6,
+            borderBottom: '1px solid #E2E8F0',
+          }}
+        >
+          YOUR PROGRESS
         </div>
 
-        {/* Unanswered */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b' }}>
-            <HelpCircle size={13} color={isDark ? 'rgba(255, 255, 255, 0.4)' : '#94a3b8'} />
-            <span>Unanswered:</span>
+        {/* Metric Rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#059669' }} />
+              <span style={{ color: '#475569', fontWeight: 500 }}>ANSWERED</span>
+            </div>
+            <span style={{ color: '#059669', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {answeredCount}
+            </span>
           </div>
-          <span style={{ color: isDark ? 'rgba(255, 255, 255, 0.8)' : '#334155', fontWeight: 800, fontFamily: 'var(--font-mono, monospace)' }}>
-            {unattemptedCount}
-          </span>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#D97706' }} />
+              <span style={{ color: '#475569', fontWeight: 500 }}>REVIEW</span>
+            </div>
+            <span style={{ color: '#D97706', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {markedCount}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#94A3B8' }} />
+              <span style={{ color: '#475569', fontWeight: 500 }}>UNANSWERED</span>
+            </div>
+            <span style={{ color: '#64748B', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+              {unattemptedCount}
+            </span>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

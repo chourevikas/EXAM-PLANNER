@@ -15,7 +15,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    document.title = `${pageTitle} - RankEdge Exam Planner`;
+    document.title = `${pageTitle} - ExamPlanner`;
     fetchCurrentUser().then(data => {
       setUser(data);
     }).catch(err => {
@@ -41,7 +41,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-page, #f8fafc)', fontFamily: 'var(--font-sans)', color: 'var(--text-primary)', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top 0, left 0, right 0) */}
       <StudentTopHeader 

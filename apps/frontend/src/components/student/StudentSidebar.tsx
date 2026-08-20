@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
+  Menu,
   LayoutDashboard,
   Calendar,
   BookOpen,
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react';
 
 interface StudentSidebarProps {
-  user: any;
+  user?: any;
   collapsed: boolean;
   mobileOpen: boolean;
   onToggleCollapse: () => void;
@@ -65,20 +66,32 @@ export function StudentSidebar({
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: (collapsed && !isMobile) ? '12px 0' : '12px 16px',
+          padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 10,
+          borderRadius: 6,
           textDecoration: 'none',
-          fontSize: 14,
-          fontWeight: isActive ? 600 : 500,
-          color: isActive ? '#60a5fa' : 'var(--text-secondary)',
-          backgroundColor: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #3b82f6' : '3px solid transparent',
-          transition: 'all 0.2s ease',
+          fontSize: 13.5,
+          fontWeight: isActive ? 600 : 400,
+          color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+          backgroundColor: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #2563eb' : '3px solid transparent',
+          transition: 'all 0.15s ease',
           position: 'relative'
         }}
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.color = '#ffffff';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)';
+          }
+        }}
       >
-        <Icon size={18} color={isActive ? '#60a5fa' : 'var(--text-secondary)'} />
+        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </Link>
     );
@@ -94,19 +107,19 @@ export function StudentSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'var(--shadow-color-base)',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(16, 33, 61, 0.65)',
+            backdropFilter: 'blur(2px)',
             zIndex: 110
           }}
         />
       )}
 
-      {/* Clean Streamlined Sidebar Drawer Positioned Below Top Header */}
+      {/* Admin-Fading Gradient Sidebar Positioned Below Top Header */}
       <aside
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          backgroundColor: 'var(--bg-card)',
+          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -116,51 +129,90 @@ export function StudentSidebar({
           bottom: 0,
           zIndex: 120,
           transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
-          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease, min-width 0.25s ease',
-          borderRight: '1px solid var(--border-default)',
-          boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
+          transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease, min-width 0.2s ease',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
           overflow: 'hidden'
         }}
       >
-        {/* Navigation Section Header */}
+        {/* Top Header Row with Borderless Hamburger Icon Button (No Bubble/Box) */}
         <div
           style={{
-            padding: (collapsed && !isMobile) ? '16px 0' : '20px 20px 8px 20px',
+            padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: (collapsed && !isMobile) ? 'center' : 'space-between',
           }}
         >
           {(!collapsed || isMobile) ? (
-            <span
-              style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                fontFamily: 'var(--font-mono)'
-              }}
-            >
-              Main Navigation
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={onToggleCollapse}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 4,
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
+                title="Toggle Sidebar"
+                aria-label="Toggle Sidebar"
+              >
+                <Menu size={18} />
+              </button>
+
+              <span
+                style={{
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  letterSpacing: '0.08em',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+                }}
+              >
+                Main Navigation
+              </span>
+            </div>
           ) : (
-            <span style={{ fontSize: 10, color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)' }}>•••</span>
+            <button
+              onClick={onToggleCollapse}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255, 255, 255, 0.75)',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 4,
+                transition: 'color 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
+            >
+              <Menu size={18} />
+            </button>
           )}
 
-          {/* Mobile close button */}
           {isMobile && (
             <button
               onClick={onCloseMobile}
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--text-secondary)',
+                color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
-                padding: 4,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                padding: 4
               }}
             >
               <X size={18} />
@@ -168,26 +220,46 @@ export function StudentSidebar({
           )}
         </div>
 
-        {/* Navigation Items List */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 12px', flex: 1, overflowY: 'auto' }}>
+        {/* Primary Nav Links */}
+        <nav
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            padding: (collapsed && !isMobile) ? '8px' : '0 12px',
+            flex: 1
+          }}
+        >
           {navItems.map(renderNavItem)}
 
-          {(!collapsed || isMobile) && (
-            <div
-              style={{
-                margin: '20px 12px 8px 12px',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                fontWeight: 700,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                fontFamily: 'var(--font-mono)'
-              }}
-            >
-              Reports & Insights
+          <div
+            style={{
+              margin: '16px 0 8px 0',
+              padding: (collapsed && !isMobile) ? '0' : '0 8px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              paddingTop: 16
+            }}
+          >
+            {(!collapsed || isMobile) && (
+              <span
+                style={{
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  letterSpacing: '0.08em',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  display: 'block',
+                  marginBottom: 8
+                }}
+              >
+                Performance Reports
+              </span>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {reportItems.map(renderNavItem)}
             </div>
-          )}
-          {reportItems.map(renderNavItem)}
+          </div>
         </nav>
       </aside>
     </>
