@@ -398,6 +398,7 @@ async def compile_comprehensive_psychometric_report(
                 }
             )
 
+    await session.flush()
     await session.commit()
 
     # 5. Compile Descriptive Multi-Dimensional Report Payload

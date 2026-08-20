@@ -810,6 +810,7 @@ class ExamSessionService:
                     )
                     self.session.add(switch_log)
 
+            await self.session.flush()
             await self.session.commit()
 
             BATCH_TRACKER[batch_key]["status"] = "PROCESSED"

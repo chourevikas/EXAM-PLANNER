@@ -364,8 +364,25 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     all_tax_items = [("SUBJECT", x) for x in tax_by_subj] + [("TOPIC", x) for x in tax_by_top] + [("SUBTOPIC", x) for x in tax_by_sub]
 
+    # Deduplicate and aggregate incoming taxonomy items by (taxonomy_type, taxonomy_id_code)
+    aggregated_tax: Dict[tuple, Dict[str, Any]] = {}
     for tax_type, item in all_tax_items:
-        code_name = item["taxonomy_name"]
+        code_name = item.get("taxonomy_name") or "General"
+        t_key = (tax_type, code_name)
+        if t_key in aggregated_tax:
+            aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
+            aggregated_tax[t_key]["correct"] += item.get("correct", 0)
+        else:
+            aggregated_tax[t_key] = {
+                "taxonomy_type": tax_type,
+                "taxonomy_id_code": code_name,
+                "total_questions": item.get("total_questions", 0),
+                "correct": item.get("correct", 0),
+                "accuracy_percentage": item.get("accuracy_percentage", 0.0),
+                "strength_status": item.get("strength_status", "MODERATE"),
+            }
+
+    for (tax_type, code_name), item in aggregated_tax.items():
         existing_m = await session.exec(
             select(UserTaxonomyMastery).where(
                 UserTaxonomyMastery.user_id == user.id,
@@ -385,12 +402,16 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 mastery_percentage=item["accuracy_percentage"],
                 strength_status=item["strength_status"],
             )
+            session.add(m_obj)
         else:
             m_obj.total_attempts += item["total_questions"]
             m_obj.correct_attempts += item["correct"]
             m_obj.mastery_percentage = round((m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100.0, 1)
             m_obj.strength_status = "STRONG" if m_obj.mastery_percentage >= 75.0 else ("MODERATE" if m_obj.mastery_percentage >= 50.0 else "WEAK_REVISION_REQUIRED")
             m_obj.updated_at = datetime.now(timezone.utc)
+            session.add(m_obj)
+
+    await session.flush()
     await session.commit()
 
     # 7b. Upsert FSRS UserMemoryState & UserConceptRetention
@@ -505,6 +526,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 )
                 session.add(task)
 
+    await session.flush()
     await session.commit()
 
     # 8. Save Full Report JSON (Report 2) to storage
@@ -647,6 +669,13 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             spaced_repetition_schedule_json={"evaluated_at": now_t.isoformat()},
         )
         session.add(user_prog)
+    else:
+        existing_user_prog.previous_metrics_json = profile_dict
+        existing_user_prog.updated_metrics_json = updated_profile_dict
+        existing_user_prog.deltas_json = deltas
+        existing_user_prog.taxonomy_promotions_json = report["part_2_taxonomy_analysis"]
+        existing_user_prog.spaced_repetition_schedule_json = {"evaluated_at": now_t.isoformat()}
+        session.add(existing_user_prog)
 
     user_prog_s3_key = f"users/{user.id}/reports/progression_{attempt.id}.json"
     try:
@@ -664,6 +693,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     attempt.report_metadata_json = report
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)
+    await session.flush()
     await session.commit()
 
     # 14. Trigger instant recomputation of multi-exam cumulative aggregate profile

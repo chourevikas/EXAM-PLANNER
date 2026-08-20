@@ -376,6 +376,7 @@ class HumanReviewService:
             review_task.reviewed_at = datetime.now(timezone.utc)
             self.session.add(review_task)
 
+        await self.session.flush()
         await self.session.commit()
         await self.session.refresh(question)
 
