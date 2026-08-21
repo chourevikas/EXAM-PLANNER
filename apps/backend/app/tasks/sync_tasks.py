@@ -2,7 +2,7 @@ import uuid
 import time
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from app.tasks.celery_app import celery_app
 from app.config.logger import setup_logger, TaskLoggerAdapter
 from app.db.session import managed_async_session

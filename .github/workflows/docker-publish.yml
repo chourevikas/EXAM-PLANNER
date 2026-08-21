@@ -124,4 +124,4 @@ jobs:
             cd ~/examplanner
             git pull origin release/0.0.1 || true
             docker compose up -d --build || (docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --force-recreate)
-            docker compose ps
+            docker compose -f docker-compose.prod.yml ps || docker compose ps
