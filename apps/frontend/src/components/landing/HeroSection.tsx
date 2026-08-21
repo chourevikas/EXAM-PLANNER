@@ -219,7 +219,7 @@ export function HeroSection({ }: HeroSectionProps) {
         position: 'relative',
         overflow: 'hidden',
         background: '#F8FAFC',
-        paddingTop: '88px',
+        paddingTop: '96px',
         paddingBottom: '48px',
         transition: 'background-color 0.3s ease',
       }}
@@ -277,16 +277,21 @@ export function HeroSection({ }: HeroSectionProps) {
             {/* Main Heading */}
             <h1
               style={{
-                fontSize: 'clamp(2rem, 3.2vw, 2.7rem)',
-                fontWeight: 700,
+                fontSize: 'clamp(2rem, 3.5vw, 2.8rem)',
+                fontWeight: 800,
                 color: '#0F172A',
-                lineHeight: 1.12,
+                lineHeight: 1.15,
                 letterSpacing: '-0.02em',
                 marginBottom: 20,
+                position: 'relative',
+                zIndex: 2,
+                opacity: 1,
+                visibility: 'visible',
+                display: 'block',
               }}
             >
               Test your exam readiness. <br />
-              <span style={{ color: '#2563EB' }}>Start in 60 seconds.</span>
+              <span style={{ color: '#2563EB', fontWeight: 800 }}>Start in 60 seconds.</span>
             </h1>
 
             {/* Premium Mock Builder Form Card */}
