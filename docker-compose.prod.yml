@@ -3,12 +3,19 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-backend:latest
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    networks:
+      - app-network
     restart: unless-stopped
 
   web:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-frontend:latest
     ports:
+      - "3000:80"
       - "3005:80"
+    networks:
+      - app-network
     restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
