@@ -12,5 +12,5 @@ services:
   web:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-frontend:latest
     ports:
-      - "3000:80"
+      - "3005:80"
     restart: unless-stopped

@@ -122,5 +122,6 @@ jobs:
           script: |
             export GITHUB_REPOSITORY_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             cd ~/examplanner
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            git pull origin release/0.0.1 || true
+            docker compose up -d --build || (docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --force-recreate)
+            docker compose ps
