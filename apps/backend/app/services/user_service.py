@@ -27,7 +27,7 @@ class UserService:
         user = await self.user_repo.get_by_id(user_id)
         if user is not None:
             user_dict = user.dict() if hasattr(user, "dict") else user.model_dump(mode="json")
-            await cache.set(cache_key, user_dict, ttl_seconds=300)
+            await cache.set(cache_key, user_dict, ttl_seconds=1800)
         return user
 
     async def list_users(self, current_user: Optional[User] = None, skip: int = 0, limit: int = 100) -> List[User]:
@@ -57,7 +57,7 @@ class UserService:
         users = list(res.all())
         if users:
             serialized = [u.dict() if hasattr(u, "dict") else u.model_dump(mode="json") for u in users]
-            await cache.set(cache_key, serialized, ttl_seconds=120)
+            await cache.set(cache_key, serialized, ttl_seconds=600)
         return users
 
     async def create_user(self, user_in: UserCreate) -> User:

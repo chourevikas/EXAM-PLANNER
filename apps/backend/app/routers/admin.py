@@ -1,6 +1,8 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, Query
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import cast, String
 
@@ -37,8 +39,20 @@ async def get_admin_overview_stats(
     Returns real-time dashboard statistics: total uploaded papers, extracted question counts,
     AI parsing accuracy, supported exam types, recent uploads feed, and subject distribution.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("admin:overview_stats")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.get_admin_overview_stats()
+    stats = await service.get_admin_overview_stats()
+    if stats is not None:
+        serialized = jsonable_encoder(stats)
+        await cache.set(cache_key, serialized, ttl_seconds=300)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 
@@ -66,10 +80,14 @@ async def approve_admin_request(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.approve_admin_request(
+    res = await service.approve_admin_request(
         user_id=user_id, current_super_admin=current_user
     )
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/reject/{user_id}", response_model=UserOut)
@@ -79,10 +97,14 @@ async def reject_admin_request(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.reject_admin_request(
+    res = await service.reject_admin_request(
         user_id=user_id, payload=payload, current_super_admin=current_user
     )
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/suspend/{user_id}", response_model=UserOut)
@@ -91,8 +113,12 @@ async def suspend_admin_user(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.suspend_admin_user(user_id=user_id)
+    res = await service.suspend_admin_user(user_id=user_id)
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/reactivate/{user_id}", response_model=UserOut)
@@ -101,8 +127,12 @@ async def reactivate_admin_user(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.reactivate_admin_user(user_id=user_id)
+    res = await service.reactivate_admin_user(user_id=user_id)
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.get("/audit-logs", response_model=List[AdminApprovalLogOut])
@@ -119,8 +149,20 @@ async def get_system_diagnostics(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("admin:system_stats")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.get_system_diagnostics()
+    stats = await service.get_system_diagnostics()
+    if stats is not None:
+        serialized = jsonable_encoder(stats)
+        await cache.set(cache_key, serialized, ttl_seconds=300)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 
@@ -133,6 +175,13 @@ async def list_exam_pipeline_statuses(
     Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
     answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
     """
+    from app.cache import get_cache
+    cache = get_cache()
+    cache_key = "ep:admin:pipeline_status"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     from sqlmodel import select, func, case
     from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, QuestionStatus
     from app.db.models.pipeline_run import PipelineRun
@@ -357,7 +406,9 @@ async def list_exam_pipeline_statuses(
             "solutions_json_folder_path": exam.solutions_json_folder_path,
         })
 
-    return pipeline_list
+    encoded = jsonable_encoder(pipeline_list)
+    await cache.set(cache_key, encoded, ttl_seconds=10)
+    return JSONResponse(content=encoded)
 
 
 @router.get("/exams/stuck-pipelines", summary="List Interrupted / Stuck Pipelines Requiring Admin Action")
@@ -369,6 +420,13 @@ async def list_stuck_pipelines(
     Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
     so the admin UI can display an action prompt to resume with skipped pre-extracted items.
     """
+    from app.cache import get_cache
+    cache = get_cache()
+    cache_key = "ep:admin:stuck_pipelines"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     from sqlmodel import select, func
     from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, ExamStatus
     from app.db.models.pipeline_run import PipelineRun
@@ -488,7 +546,9 @@ async def list_stuck_pipelines(
                 "can_resume": True,
             })
 
-    return stuck_list
+    encoded = jsonable_encoder(stuck_list)
+    await cache.set(cache_key, encoded, ttl_seconds=10)
+    return JSONResponse(content=encoded)
 
 
 @router.post("/exams/{exam_id}/resume-pipeline", summary="Resume Interrupted Pipeline Skipping Completed Parts")
@@ -671,7 +731,7 @@ async def get_exam_review_questions_admin(
     )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return cached_data
+        return JSONResponse(content=jsonable_encoder(cached_data))
 
     q_service = QuestionService(session)
     review_res = await q_service.get_exam_questions_for_review(
@@ -682,9 +742,10 @@ async def get_exam_review_questions_admin(
         status=status,
     )
     if review_res is not None:
-        serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
-        await cache.set(cache_key, serialized, ttl_seconds=120)
-    return review_res
+        serialized = jsonable_encoder(review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
@@ -1141,6 +1202,10 @@ async def admin_upload_question_paper(
     await session.commit()
     await session.refresh(exam)
 
+    from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+    await invalidate_exam_cache(str(exam.id))
+    await invalidate_pipeline_status_cache()
+
     return {
         "status": "ACCEPTED",
         "message": f"Question Paper uploaded successfully for exam '{canonical_exam_code}'.",
@@ -1231,6 +1296,10 @@ async def admin_upload_answer_key(
 
     await session.commit()
     await session.refresh(exam)
+
+    from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+    await invalidate_exam_cache(str(exam.id))
+    await invalidate_pipeline_status_cache()
 
     return {
         "status": "ACCEPTED",

@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -40,14 +41,34 @@ async def list_candidate_attempts(
     """
     Parameter 13: Lists candidate's exam attempts history with optional filtering by exam_id or status.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "attempts:user",
+        str(current_user.id),
+        skip=skip,
+        limit=limit,
+        exam_id=str(exam_id) if exam_id else None,
+        status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    from fastapi.encoders import jsonable_encoder
     service = ExamSessionService(session)
-    return await service.list_user_attempts(
+    res = await service.list_user_attempts(
         user_id=current_user.id,
         skip=skip,
         limit=limit,
         exam_id=exam_id,
         status_filter=status_filter,
     )
+    if res is not None:
+        serialized = jsonable_encoder(res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content=[])
 
 
 @router.post("/start", response_model=StartExamResponse, status_code=status.HTTP_201_CREATED)
@@ -203,12 +224,15 @@ async def submit_exam_attempt(
     Synchronously calculates raw scores and enqueues the async post-submission psychometric analysis pipeline.
     """
     service = ExamSessionService(session)
-    return await service.submit_exam(
+    res = await service.submit_exam(
         attempt_id=attempt_id,
         user_id=current_user.id,
         req=req,
         background_tasks=background_tasks,
     )
+    from app.cache import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
+    return res
 
 
 @router.get("/{attempt_id}/result", summary="Dedicated Result View for Submitted/Evaluated Attempt")

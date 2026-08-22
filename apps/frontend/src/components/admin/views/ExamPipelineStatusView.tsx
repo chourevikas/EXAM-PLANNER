@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   fetchExamPipelineStatuses,
   approveAndPublishExam,
   ExamPipelineStatusItem,
 } from '../../../services/adminService';
+import { createAdaptivePoller, AdaptivePollerController } from '../../../utils/adaptivePolling';
 import {
   RefreshCw,
   Search,
@@ -54,26 +55,64 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     }
   };
 
+  const pollerRef = useRef<AdaptivePollerController | null>(null);
+
+  // Initial load and Adaptive Non-Linear Polling
   useEffect(() => {
     loadData(false);
-  }, []);
 
-  // Adaptive polling for exam pipeline statuses (20s when active pipelines run, 35s when idle) to reduce server load
-  useEffect(() => {
-    const hasActivePipeline = exams.some(
-      (e) =>
-        (e.status || '').toUpperCase().includes('PROCESSING') ||
-        (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
-        (e.overall_status || '').toUpperCase().includes('PROCESSING')
+    const poller = createAdaptivePoller(
+      async () => {
+        try {
+          const data = await fetchExamPipelineStatuses();
+          setExams(data);
+          if (selectedExam) {
+            const updated = data.find((item) => item.id === selectedExam.id);
+            if (updated) setSelectedExam(updated);
+          }
+
+          const hasActive = data.some(
+            (e: ExamPipelineStatusItem) =>
+              (e.status || '').toUpperCase().includes('PROCESSING') ||
+              (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
+              (e.overall_status || '').toUpperCase().includes('PROCESSING')
+          );
+
+          const activeTasks = data.filter((e: ExamPipelineStatusItem) =>
+            (e.status || '').toUpperCase().includes('PROCESSING') ||
+            (e.status || '').toUpperCase().includes('IN_PROGRESS')
+          );
+          const maxProgress = activeTasks.length > 0
+            ? Math.max(...activeTasks.map((t: ExamPipelineStatusItem) => (t.stage3_status === 'COMPLETED' ? 95 : t.stage2_status === 'COMPLETED' ? 66 : 33)))
+            : 0;
+
+          return {
+            hasActiveTask: hasActive,
+            progressPercent: maxProgress,
+            isCompleted: !hasActive,
+          };
+        } catch (err) {
+          console.error('Error in ExamPipelineStatusView adaptive poller:', err);
+          return { hasActiveTask: false };
+        }
+      },
+      {
+        initialDelayMs: 8000,
+        minDelayMs: 3000,
+        maxDelayMs: 30000,
+        idleDelayMs: 35000,
+        activeDecayStepMs: 2000,
+      }
     );
-    const pollInterval = hasActivePipeline ? 20000 : 35000;
 
-    const intervalId = setInterval(() => {
-      loadData(true);
-    }, pollInterval);
+    pollerRef.current = poller;
+    poller.start();
 
-    return () => clearInterval(intervalId);
-  }, [exams]);
+    return () => {
+      poller.stop();
+      pollerRef.current = null;
+    };
+  }, []);
 
   const handleApprove = async (examId: string, examName: string) => {
     setApprovingId(examId);

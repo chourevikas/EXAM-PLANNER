@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -48,8 +48,30 @@ async def list_questions(
     with pagination ordered by question number in paper.
     By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "questions:list",
+        subject_id=str(subject_id) if subject_id else None,
+        topic_id=str(topic_id) if topic_id else None,
+        subtopic_id=str(subtopic_id) if subtopic_id else None,
+        exam_id=str(exam_id) if exam_id else None,
+        exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
+        year=exam_year,
+        set=paper_set_code,
+        stage=stage,
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+        lang=str(language.value if hasattr(language, "value") else language),
+        sols=include_solutions,
+        page=page,
+        limit=limit,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     service = QuestionService(session)
-    return await service.list_questions_paginated(
+    res = await service.list_questions_paginated(
         subject_id=subject_id,
         subject_name=subject_name,
         subject_code=subject_code,
@@ -71,6 +93,11 @@ async def list_questions(
         page=page,
         limit=limit,
     )
+    if res is not None:
+        serialized = res.model_dump(mode="json") if hasattr(res, "model_dump") else (res.dict() if hasattr(res, "dict") else res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 
@@ -85,7 +112,7 @@ async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_sessio
     cache_key = build_cache_key("questions:taxonomy")
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return cached_data
+        return JSONResponse(content=cached_data)
 
     from app.db.models import Topic, Subtopic
     from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
@@ -110,22 +137,25 @@ async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_sessio
                     hierarchy_map[t_name] = set()
 
         if topic_id_map:
-            # Query 2: Fetch all subtopics in one query
-            stmt_sub = select(Subtopic)
-            res_sub = await session.exec(stmt_sub)
-            db_subs = res_sub.all()
+            # Query 2: Fetch all subtopics with their topic_id
+            stmt_subs = select(Subtopic)
+            res_subs = await session.exec(stmt_subs)
+            db_subs = res_subs.all()
 
             for sub in db_subs:
                 t_name = topic_id_map.get(sub.topic_id)
-                if t_name and sub.name and sub.name.strip():
-                    hierarchy_map[t_name].add(sub.name.strip())
+                if t_name and sub.name:
+                    sub_name = sub.name.strip()
+                    if sub_name:
+                        hierarchy_map[t_name].add(sub_name)
 
-            # Convert sets to sorted lists
-            formatted_hierarchy = {}
-            for t_name, sub_set in hierarchy_map.items():
-                formatted_hierarchy[t_name] = ["All Subtopics"] + sorted(list(sub_set))
+            # Format output dictionary with sorted lists
+            if hierarchy_map:
+                formatted_hierarchy = {}
+                for t_name, sub_set in hierarchy_map.items():
+                    formatted_hierarchy[t_name] = ["All Subtopics"] + sorted(list(sub_set))
 
-            hierarchy_map = formatted_hierarchy
+                hierarchy_map = formatted_hierarchy
 
     except Exception as exc:
         pass
@@ -142,8 +172,8 @@ async def get_syllabus_taxonomy(session: AsyncSession = Depends(get_async_sessio
         "topics": ["All Topics"] + sorted_topics,
         "hierarchy": hierarchy_map,
     }
-    await cache.set(cache_key, result, ttl_seconds=600)
-    return result
+    await cache.set(cache_key, result, ttl_seconds=7200)
+    return JSONResponse(content=result)
 
 
 @router.post("", response_model=QuestionDetailResponse, status_code=status.HTTP_201_CREATED, summary="Create New or Missing Question & Publish")
@@ -155,8 +185,14 @@ async def create_question(
     Creates a new question (or fills in a missing question) for an exam paper.
     Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
     """
+    from app.cache import invalidate_question_cache, invalidate_exam_cache
     service = QuestionService(session)
-    return await service.create_question(payload=payload)
+    res = await service.create_question(payload=payload)
+    if res and res.id:
+        await invalidate_question_cache(str(res.id), str(payload.exam_id) if payload.exam_id else None)
+    if payload.exam_id:
+        await invalidate_exam_cache(str(payload.exam_id))
+    return res
 
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
@@ -169,8 +205,24 @@ async def get_question(
     Requirement 8: Takes question ID and language, returning complete information across all tables
     (question text, passage text, options, paper set, difficulty, marks, explanation, metadata, hierarchy links).
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "questions:detail",
+        str(question_id),
+        lang=str(language.value if hasattr(language, "value") else language),
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     service = QuestionService(session)
-    return await service.get_question_detail(question_id=question_id, language=language)
+    detail = await service.get_question_detail(question_id=question_id, language=language)
+    if detail is not None:
+        serialized = detail.model_dump(mode="json") if hasattr(detail, "model_dump") else (detail.dict() if hasattr(detail, "dict") else detail)
+        await cache.set(cache_key, serialized, ttl_seconds=3600)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.put("/{question_id}", response_model=QuestionDetailResponse, summary="Update Question & Publish")
@@ -183,8 +235,11 @@ async def update_question(
     Requirement 8: Updates question text, options, translations, passage, explanation, metadata in DB
     and automatically sets Question status to PUBLISHED upon saving.
     """
+    from app.cache import invalidate_question_cache
     service = QuestionService(session)
-    return await service.update_question_detail(question_id=question_id, payload=payload)
+    res = await service.update_question_detail(question_id=question_id, payload=payload)
+    await invalidate_question_cache(str(question_id))
+    return res
 
 
 @router.patch("/{question_id}", response_model=QuestionDetailResponse, summary="Partial Update Question & Publish")
@@ -197,8 +252,11 @@ async def patch_question(
     Partially updates question text, options, translations, explanation, or metadata in DB
     and automatically sets Question status to PUBLISHED upon saving.
     """
+    from app.cache import invalidate_question_cache
     service = QuestionService(session)
-    return await service.update_question_detail(question_id=question_id, payload=payload)
+    res = await service.update_question_detail(question_id=question_id, payload=payload)
+    await invalidate_question_cache(str(question_id))
+    return res
 
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete Question")
@@ -207,8 +265,10 @@ async def delete_question(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Deletes a question entity by ID."""
+    from app.cache import invalidate_question_cache
     service = QuestionService(session)
     await service.delete_question(question_id=question_id)
+    await invalidate_question_cache(str(question_id))
     return None
 
 

@@ -159,7 +159,7 @@ class AnswerKeyService:
         batches = await self.repo.list_batches()
         if batches:
             serialized = [b.dict() if hasattr(b, "dict") else b.model_dump(mode="json") for b in batches]
-            await cache.set(cache_key, serialized, ttl_seconds=120)
+            await cache.set(cache_key, serialized, ttl_seconds=1800)
         return batches
 
     async def get_batch_detail(self, batch_id: uuid.UUID) -> Dict[str, Any]:
@@ -198,7 +198,7 @@ class AnswerKeyService:
                 for m in mappings
             ],
         }
-        await cache.set(cache_key, res_data, ttl_seconds=300)
+        await cache.set(cache_key, res_data, ttl_seconds=3600)
         return res_data
 
     async def map_stored_answers_from_db(self, exam_id: uuid.UUID) -> int:

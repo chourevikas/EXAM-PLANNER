@@ -72,7 +72,7 @@ class HumanReviewService:
         tasks = list(result.all())
         if tasks:
             serialized = [t.dict() if hasattr(t, "dict") else t.model_dump(mode="json") for t in tasks]
-            await cache.set(cache_key, serialized, ttl_seconds=60)
+            await cache.set(cache_key, serialized, ttl_seconds=1800)
         return tasks
 
     async def get_question_review_detail(

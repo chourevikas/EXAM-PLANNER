@@ -188,7 +188,7 @@ class AnalyticsService:
                     "total_questions": len(part_1),
                     "questions": part_1,
                 }
-                await cache.set(cache_key, res_data, ttl_seconds=600)
+                await cache.set(cache_key, res_data, ttl_seconds=86400)
                 return res_data
 
         # 2. Database ExamQuestionReport Rows
@@ -222,7 +222,7 @@ class AnalyticsService:
                     for r in rows
                 ],
             }
-            await cache.set(cache_key, res_data, ttl_seconds=600)
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
         # 3. Fallback to comprehensive psychometric report compiler
@@ -233,7 +233,7 @@ class AnalyticsService:
                 "total_questions": len(rep.get("part_1_per_question_analysis", [])),
                 "questions": rep.get("part_1_per_question_analysis", []),
             }
-            await cache.set(cache_key, res_data, ttl_seconds=600)
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
         empty_res = {
@@ -265,7 +265,7 @@ class AnalyticsService:
                 "llm_insight": rep_db.llm_insight_json,
                 "created_at": rep_db.created_at.isoformat() if rep_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=600)
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
         # 2. Instant DB Cache: attempt.report_metadata_json
@@ -282,7 +282,7 @@ class AnalyticsService:
                 "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
                 "metadata": meta.get("metadata", {}),
             }
-            await cache.set(cache_key, res_data, ttl_seconds=600)
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
         # 3. Fallback to compiled report
@@ -294,7 +294,7 @@ class AnalyticsService:
             "llm_insight": full_rep.get("part_3_aggregated_user_report", {}).get("llm_insight"),
             "metadata": full_rep.get("metadata", {}),
         }
-        await cache.set(cache_key, res_data, ttl_seconds=600)
+        await cache.set(cache_key, res_data, ttl_seconds=86400)
         return res_data
 
     async def get_attempt_user_progression_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
@@ -320,7 +320,7 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db.spaced_repetition_schedule_json,
                 "created_at": prog_db.created_at.isoformat() if prog_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=600)
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
         # Fallback query from UserSkillProfile
@@ -344,7 +344,7 @@ class AnalyticsService:
                 "total_tests_given": profile.total_tests_given if profile else 0,
             },
         }
-        await cache.set(cache_key, res_data, ttl_seconds=600)
+        await cache.set(cache_key, res_data, ttl_seconds=86400)
         return res_data
 
     async def get_user_skill_profile(self, user_id: uuid.UUID) -> Dict[str, Any]:
@@ -389,7 +389,7 @@ class AnalyticsService:
                 for t in tax_rows
             ],
         }
-        await cache.set(cache_key, res_data, ttl_seconds=300)
+        await cache.set(cache_key, res_data, ttl_seconds=1800)
         return res_data
 
     async def get_attempt_evaluation_status(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
@@ -453,7 +453,7 @@ class AnalyticsService:
             force_recompute=force_recompute,
         )
         if report:
-            await cache.set(cache_key, report, ttl_seconds=300)
+            await cache.set(cache_key, report, ttl_seconds=1800)
         return report
 
     async def get_user_cumulative_aggregate_markdown(

@@ -115,7 +115,7 @@ class ExplanationService:
         kb = await self.repo.get_full_question_knowledge_base(question_id, lang_enum)
         if not kb:
             raise HTTPException(status_code=404, detail="Question knowledge base not found.")
-        await cache.set(cache_key, kb, ttl_seconds=300)
+        await cache.set(cache_key, kb, ttl_seconds=3600)
         return kb
 
     async def set_canonical_question_link(

@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
@@ -43,14 +44,33 @@ async def get_exam_questions_review(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "admin:review",
+        str(exam_id),
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     q_service = QuestionService(session)
-    return await q_service.get_exam_questions_for_review(
+    review_res = await q_service.get_exam_questions_for_review(
         exam_id=exam_id,
         page=page,
         limit=limit,
         language=language,
         status=status,
     )
+    if review_res is not None:
+        serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.get("/tasks")
@@ -59,19 +79,43 @@ async def get_pending_tasks(
     only_flagged: bool = Query(default=False),
     session: AsyncSession = Depends(get_async_session),
 ):
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("hitl:tasks", exam_id=str(exam_id) if exam_id else None, flagged=only_flagged)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    from fastapi.encoders import jsonable_encoder
     service = HumanReviewService(session)
-    return await service.get_pending_review_tasks(
+    tasks = await service.get_pending_review_tasks(
         exam_id=exam_id, only_flagged=only_flagged
     )
+    if tasks is not None:
+        serialized = jsonable_encoder(tasks)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content=[])
 
 
 @router.get("/tasks/{question_id}")
 async def get_question_detail(
     question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
 ):
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("hitl:task_detail", str(question_id))
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     service = HumanReviewService(session)
     try:
-        return await service.get_question_review_detail(question_id)
+        detail = await service.get_question_review_detail(question_id)
+        if detail is not None:
+            await cache.set(cache_key, detail, ttl_seconds=1800)
+            return JSONResponse(content=detail)
+        return JSONResponse(content={})
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -82,6 +126,7 @@ async def approve_question(
     req: ApproveQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
+    from app.cache import invalidate_question_cache, invalidate_exam_cache
     service = HumanReviewService(session)
     try:
         options_dicts = (
@@ -97,6 +142,9 @@ async def approve_question(
             correct_option_label=req.correct_option_label,
             reviewer_notes=req.reviewer_notes,
         )
+        await invalidate_question_cache(str(question_id), str(question.exam_id) if question.exam_id else None)
+        if question.exam_id:
+            await invalidate_exam_cache(str(question.exam_id))
         return {
             "message": f"Question {question.question_number_in_paper} approved and published.",
             "question_id": str(question.id),
@@ -124,9 +172,12 @@ async def trigger_reextraction(
     question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
 ):
     """Triggers sequential LLM re-extraction retry targeting the specific pages of the flawed question/passage."""
+    from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
-        return await service.trigger_llm_reextraction_for_question(question_id)
+        res = await service.trigger_llm_reextraction_for_question(question_id)
+        await invalidate_question_cache(str(question_id))
+        return res
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -138,6 +189,7 @@ async def reject_question(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Rejects/flags a question during QA review with a specific rejection reason."""
+    from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
         q = await service.reject_question(
@@ -145,6 +197,7 @@ async def reject_question(
             rejection_reason=req.rejection_reason,
             reviewer_notes=req.reviewer_notes,
         )
+        await invalidate_question_cache(str(question_id))
         return {
             "message": f"Question #{q.question_number_in_paper} rejected.",
             "question_id": str(q.id),
@@ -161,6 +214,7 @@ async def update_explanation(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Allows QA reviewers to manually edit and save question explanations."""
+    from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
         expl = await service.update_question_explanation(
@@ -171,6 +225,7 @@ async def update_explanation(
             key_takeaways=req.key_takeaways,
             language=req.language,
         )
+        await invalidate_question_cache(str(question_id))
         return {
             "message": "Question explanation updated successfully by QA reviewer.",
             "question_id": str(question_id),

@@ -3,7 +3,8 @@ import uuid
 import logging
 from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
@@ -70,14 +71,15 @@ async def list_exams(
     cache_key = build_cache_key("exams:list", status=status, is_active=is_active)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return cached_data
+        return JSONResponse(content=cached_data)
 
     service = ExamService(session)
     exams = await service.list_exams(status=status, is_active=is_active)
     if exams is not None:
-        serialized = [e.dict() if hasattr(e, "dict") else e for e in exams]
-        await cache.set(cache_key, serialized, ttl_seconds=300)
-    return exams
+        serialized = jsonable_encoder(exams)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content=[])
 
 
 @router.get(
@@ -116,7 +118,7 @@ async def get_exam_questions_for_review(
     )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return cached_data
+        return JSONResponse(content=cached_data)
 
     q_service = QuestionService(session)
     review_res = await q_service.get_exam_questions_for_review(
@@ -128,8 +130,9 @@ async def get_exam_questions_for_review(
     )
     if review_res is not None:
         serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
-        await cache.set(cache_key, serialized, ttl_seconds=120)
-    return review_res
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.get("/{exam_id}/question-artifact/{question_number}")
@@ -192,6 +195,13 @@ async def get_question_from_db_fallback(
     Dedicated Database Fallback endpoint: Directly queries PostgreSQL for question,
     options, translations, and metadata when direct S3 download fails.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:q_fallback", str(exam_id), question_number)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     from app.db.models import Exam, Question, QuestionOption, QuestionTranslation, OptionTranslation
     from sqlmodel import select
     from fastapi import HTTPException
@@ -254,7 +264,7 @@ async def get_question_from_db_fallback(
     default_q_txt = db_q_trans[0].question_text if db_q_trans else f"Question #{q.question_number_in_paper}"
     logger.info(f"[DB_FALLBACK:QUESTION_SUCCESS] Successfully retrieved Question #{question_number} from DB (options_count={len(opts_list)}) for Exam '{exam.code}'")
 
-    return {
+    res_data = {
         "question_number": question_number,
         "exam_id": str(exam.id),
         "exam_code": exam.code,
@@ -271,6 +281,8 @@ async def get_question_from_db_fallback(
         },
         "source": "DATABASE_FALLBACK",
     }
+    await cache.set(cache_key, res_data, ttl_seconds=3600)
+    return JSONResponse(content=res_data)
 
 
 @router.get("/{exam_id}/solution-artifact/{question_number}")
@@ -331,6 +343,13 @@ async def get_solution_from_db_fallback(
     Dedicated Database Fallback endpoint: Directly queries PostgreSQL for solution explanation,
     correct option, and distractor closeness when S3 is unavailable.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:sol_fallback", str(exam_id), question_number)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     from app.db.models import Exam, Question, QuestionOption, QuestionExplanation
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
     from sqlmodel import select
@@ -382,7 +401,7 @@ async def get_solution_from_db_fallback(
 
     logger.info(f"[DB_FALLBACK:SOLUTION_SUCCESS] Successfully retrieved Solution #{question_number} from DB for Exam '{exam.code}' (correct_opt={correct_opt.option_label})")
 
-    return {
+    res_data = {
         "question_number": question_number,
         "exam_id": str(exam.id),
         "exam_code": exam.code,
@@ -401,6 +420,8 @@ async def get_solution_from_db_fallback(
         },
         "source": "DATABASE_FALLBACK",
     }
+    await cache.set(cache_key, res_data, ttl_seconds=3600)
+    return JSONResponse(content=res_data)
 
 
 

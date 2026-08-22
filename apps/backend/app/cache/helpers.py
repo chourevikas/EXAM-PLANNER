@@ -105,11 +105,13 @@ async def invalidate_user_cache(user_id: str) -> None:
 
 
 async def invalidate_pipeline_status_cache() -> None:
-    """Invalidates active pipeline queue status cache."""
+    """Invalidates active pipeline queue status and stuck pipelines cache."""
     cache = get_cache()
     settings = get_settings()
     prefix = settings.CACHE_KEY_PREFIX or "ep"
     await cache.delete(f"{prefix}:exams:pipeline_status")
+    await cache.delete(f"{prefix}:admin:pipeline_status")
+    await cache.delete(f"{prefix}:admin:stuck_pipelines")
 
 
 async def invalidate_taxonomy_cache() -> None:

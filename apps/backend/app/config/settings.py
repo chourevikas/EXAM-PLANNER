@@ -121,8 +121,8 @@ class Settings(BaseSettings):
         description="Maximum number of items stored in bounded in-memory LRU cache to prevent RAM exhaustion.",
     )
     CACHE_DEFAULT_TTL_SECONDS: int = Field(
-        default=300,
-        description="Default time-to-live (TTL) for cached items in seconds (5 minutes).",
+        default=1800,
+        description="Default time-to-live (TTL) for cached items in seconds (30 minutes).",
     )
     REDIS_CACHE_URL: str = Field(
         default="redis://localhost:6379/1",

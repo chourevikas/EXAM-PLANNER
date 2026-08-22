@@ -261,17 +261,27 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       syncPollTimerRef.current = null;
     }
 
-    // Adaptive timing based on task scope to minimize server load:
-    // Fast Master Sync (~1-3s duration) -> checks at 4s, 6s, 8s, 10s max
-    // Full S3 Sync (~10-25s duration) -> checks at 6s, 9s, 12s, 15s max
+    // Non-linear adaptive timing:
+    // 1. Initial warm-up (longer delay while server starts S3 sync): 6000ms (or 4000ms for fast sync)
+    // 2. Active phase (decreasing delay): 6s -> 4s -> 3s for fast detection
+    // 3. Backoff phase (increasing delay): 3s -> 5s -> 8s -> 12s if sync takes longer
     let currentDelay = isFullSync ? 6000 : 4000;
-    const maxDelay = isFullSync ? 15000 : 10000;
-    const backoffMultiplier = 1.35;
+    const minDelay = 2500;
+    const maxDelay = isFullSync ? 18000 : 12000;
+    const backoffMultiplier = 1.4;
+    let iteration = 0;
 
     const poll = async () => {
+      iteration += 1;
       const isStillSyncing = await checkSyncStatusOnce(examId);
       if (isStillSyncing) {
-        currentDelay = Math.min(maxDelay, Math.round(currentDelay * backoffMultiplier));
+        if (iteration <= 3) {
+          // Decreasing interval during initial active execution
+          currentDelay = Math.max(minDelay, currentDelay - 1200);
+        } else {
+          // Increasing interval during extended execution
+          currentDelay = Math.min(maxDelay, Math.round(currentDelay * backoffMultiplier));
+        }
         syncPollTimerRef.current = setTimeout(poll, currentDelay);
       }
     };

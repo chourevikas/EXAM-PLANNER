@@ -34,6 +34,7 @@ import {
   ExamPipelineStatusItem,
   StuckPipelineItem,
 } from '../../services/adminService';
+import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
@@ -655,32 +656,70 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
-  // Initial load when visiting the page: load queue and check stuck pipelines once
+  const pollerRef = useRef<AdaptivePollerController | null>(null);
+
+  // Initial load and Adaptive Non-Linear Polling for pipeline queue updates
   useEffect(() => {
     loadRealTimeQueue(false);
     loadStuckPipelines();
-  }, []);
 
-  // Adaptive polling for pipeline queue updates (20s when active pipelines run, 35s when idle) to reduce server load
-  useEffect(() => {
-    const hasActivePipeline = pipelineExams.some(
-      (e) =>
-        (e.status || '').toUpperCase().includes('PROCESSING') ||
-        (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
-        (e.overall_status || '').toUpperCase().includes('PROCESSING')
+    const poller = createAdaptivePoller(
+      async () => {
+        try {
+          const data = await fetchExamPipelineStatuses();
+          setPipelineExams(data);
+          if (selectedExam) {
+            const updated = data.find((item) => item.id === selectedExam.id);
+            if (updated) setSelectedExam(updated);
+          }
+
+          const hasActive = data.some(
+            (e) =>
+              (e.status || '').toUpperCase().includes('PROCESSING') ||
+              (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
+              (e.overall_status || '').toUpperCase().includes('PROCESSING')
+          );
+
+          const activeTasks = data.filter((e) =>
+            (e.status || '').toUpperCase().includes('PROCESSING') ||
+            (e.status || '').toUpperCase().includes('IN_PROGRESS')
+          );
+          const maxProgress = activeTasks.length > 0
+            ? Math.max(...activeTasks.map((t) => (t.stage3_status === 'COMPLETED' ? 95 : t.stage2_status === 'COMPLETED' ? 66 : 33)))
+            : 0;
+
+          return {
+            hasActiveTask: hasActive,
+            progressPercent: maxProgress,
+            isCompleted: !hasActive,
+          };
+        } catch (err) {
+          console.error('Adaptive poller error fetching queue:', err);
+          return { hasActiveTask: false };
+        }
+      },
+      {
+        initialDelayMs: 8000,
+        minDelayMs: 3000,
+        maxDelayMs: 30000,
+        idleDelayMs: 35000,
+        activeDecayStepMs: 2000,
+      }
     );
-    const pollInterval = hasActivePipeline ? 20000 : 35000;
 
-    const intervalId = setInterval(() => {
-      loadRealTimeQueue(true);
-    }, pollInterval);
+    pollerRef.current = poller;
+    poller.start();
 
-    return () => clearInterval(intervalId);
-  }, [pipelineExams]);
+    return () => {
+      poller.stop();
+      pollerRef.current = null;
+    };
+  }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);
     setTimeout(() => {
+      pollerRef.current?.resetCurve();
       loadRealTimeQueue(true);
     }, 1200);
   };

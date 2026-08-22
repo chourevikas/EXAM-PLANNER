@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -81,7 +83,7 @@ async def get_user_badges(
     cache_key = build_cache_key("users:badges", str(current_user.id))
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return cached_data
+        return JSONResponse(content=jsonable_encoder(cached_data))
 
     # Fetch all badges
     stmt_all = select(Badge)
@@ -112,6 +114,6 @@ async def get_user_badges(
         "unlocked": unlocked,
         "locked": locked
     }
-    await cache.set(cache_key, res_dict, ttl_seconds=300)
-    return res_dict
+    await cache.set(cache_key, res_dict, ttl_seconds=1800)
+    return JSONResponse(content=jsonable_encoder(res_dict))
 

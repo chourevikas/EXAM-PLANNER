@@ -146,7 +146,7 @@ class QuestionService:
             pages=pages,
         )
         if response is not None:
-            await cache.set(cache_key, response.model_dump(mode="json"), ttl_seconds=180)
+            await cache.set(cache_key, response.model_dump(mode="json"), ttl_seconds=1800)
         return response
 
     async def get_exam_questions_for_review(
@@ -325,7 +325,7 @@ class QuestionService:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         detail_res = await self._build_question_detail_response(q, target_lang=language)
         if detail_res is not None:
-            await cache.set(cache_key, detail_res.model_dump(mode="json"), ttl_seconds=300)
+            await cache.set(cache_key, detail_res.model_dump(mode="json"), ttl_seconds=3600)
         return detail_res
 
     async def update_question_detail(
