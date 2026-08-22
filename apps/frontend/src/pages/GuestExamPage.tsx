@@ -142,9 +142,14 @@ export function GuestExamPage() {
 
       let fetchedList = Array.from(fetchedMap.values());
       
+      // Cap at user-selected question count if more are returned from DB
+      if (fetchedList.length > gCount) {
+        fetchedList = fetchedList.slice(0, gCount);
+      }
+      
       // Fallback generator if DB returns 0 items for the selected topic/subtopic
       if (fetchedList.length === 0) {
-        fetchedList = Array.from({ length: Math.min(gCount, 10) }, (_, idx) => {
+        fetchedList = Array.from({ length: gCount }, (_, idx) => {
           const qNum = idx + 1;
           return {
             question_id: `g-fallback-${idx + 1}`,
@@ -192,6 +197,9 @@ export function GuestExamPage() {
               setMarkedForReview(savedData.markedForReview);
             }
             if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
+            if (typeof savedData.timeLeft === 'number' && savedData.timeLeft > 0) {
+              setTimeLeft(savedData.timeLeft);
+            }
             if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
               setCurrentQIndex(savedData.currentQIndex);
               setActiveQuestion(questionsList[savedData.currentQIndex]);
@@ -238,12 +246,13 @@ export function GuestExamPage() {
         markedForReview,
         bookmarkedQs,
         currentQIndex,
+        timeLeft,
       };
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn('Failed to write guest sessionStorage:', err);
     }
-  }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, isLoading, allQuestions]);
+  }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, timeLeft, isLoading, allQuestions]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -520,6 +529,7 @@ export function GuestExamPage() {
         showSubmitButton={false}
         topicName={gTopic}
         subtopicName={gSubtopic}
+        parentBreadcrumb="Home"
         onBack={() => setShowLeaveModal(true)}
         onLanguageChange={(lang) => setLanguage(lang)}
       />
@@ -778,7 +788,7 @@ export function GuestExamPage() {
                 type="button"
                 onClick={() => {
                   setShowLeaveModal(false);
-                  navigate('/pyqs');
+                  navigate('/');
                 }}
                 style={{
                   flex: 1,

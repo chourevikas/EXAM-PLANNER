@@ -10,6 +10,7 @@ interface ExamHeaderProps {
   showSubmitButton?: boolean;
   topicName?: string;
   subtopicName?: string;
+  parentBreadcrumb?: string;
   onBack?: () => void;
   onLanguageChange: (lang: 'en' | 'hi') => void;
   onSubmitClick?: () => void;
@@ -24,10 +25,14 @@ export function ExamHeader({
   showSubmitButton = true,
   topicName,
   subtopicName,
+  parentBreadcrumb,
   onBack,
   onLanguageChange,
   onSubmitClick,
 }: ExamHeaderProps) {
+  const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
+  const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Student Dashboard' : 'Home');
+
   const isCriticalTime = timeLeft < 120; // < 2 mins
   const isLowTime = timeLeft < 600; // < 10 mins
 
@@ -96,7 +101,7 @@ export function ExamHeader({
                 color: 'rgba(255, 255, 255, 0.95)',
                 fontWeight: 600,
                 cursor: 'pointer',
-                fontSize: 14.5,
+                fontSize: 14,
                 fontFamily: "'IBM Plex Sans', sans-serif",
                 textDecoration: 'none',
                 transition: 'opacity 0.2s ease',
@@ -107,18 +112,18 @@ export function ExamHeader({
               onMouseLeave={(e) => {
                 e.currentTarget.style.opacity = '1';
               }}
-              title="Return to Home / Mocks"
+              title={`Return to ${rootBreadcrumb}`}
             >
-              Home
+              {rootBreadcrumb}
             </button>
-            <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-            <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>{examTitle}</span>
+
             {topicName && (
               <>
                 <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{topicName}</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>{topicName}</span>
               </>
             )}
+
             {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
               <>
                 <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />

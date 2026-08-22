@@ -41,7 +41,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top 0, left 0, right 0) */}
       <StudentTopHeader 
@@ -58,7 +58,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
           user={user} 
           collapsed={collapsed}
           mobileOpen={mobileOpen}
-          onToggleCollapse={() => setCollapsed(!collapsed)}
+          onToggleCollapse={handleToggleSidebar}
           onCloseMobile={() => setMobileOpen(false)}
         />
 
@@ -76,8 +76,8 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
         >
           {/* Page Content Viewport */}
           <main style={{ 
-            padding: isMobile ? '16px' : '32px', 
-            maxWidth: '1280px', 
+            padding: isMobile ? '16px' : '28px 36px', 
+            maxWidth: '1360px', 
             margin: '0 auto', 
             width: '100%', 
             boxSizing: 'border-box' 

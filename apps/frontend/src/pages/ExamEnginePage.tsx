@@ -295,7 +295,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (res.ok) {
         const data = await res.json();
         if (data.items && data.items.length > 0) {
-          const questionsList: QuestionOut[] = data.items.map((q: any, idx: number) => ({
+          const itemsToUse = data.items.length > gCount ? data.items.slice(0, gCount) : data.items;
+          const questionsList: QuestionOut[] = itemsToUse.map((q: any, idx: number) => ({
             question_id: q.question_id || `q-guest-${idx + 1}`,
             question_number: idx + 1,
             text: q.question_text || `Question #${idx + 1}`,
@@ -745,9 +746,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         timeLeft={timeLeft}
         language={language}
         isSubmitting={isSubmitting}
+        topicName={searchParams.get('topic') || 'General Studies'}
+        subtopicName={searchParams.get('subtopic') || ''}
+        parentBreadcrumb="Student Dashboard"
         onBack={() => {
           if (window.confirm('Are you sure you want to leave the examination? Your progress is saved automatically.')) {
-            navigate('/mocks');
+            navigate('/dashboard');
           }
         }}
         onLanguageChange={setLanguage}
