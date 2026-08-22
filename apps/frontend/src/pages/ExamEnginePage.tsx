@@ -740,7 +740,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     >
       {/* Top Header */}
       <ExamHeader
-        examTitle="ExamPlanner PYQ Engine"
+        examTitle={searchParams.get('exam') || "UPSC CSE"}
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}

@@ -8,113 +8,9 @@ interface HeroSectionProps {
   onLogin?: () => void;
 }
 
-// Initial canonical topics from DB hierarchy
-const CANONICAL_TOPICS = [
-  'Indian Polity & Governance',
-  'Ancient History',
-  'Modern History',
-  'Indian Geography',
-  'Oceanography',
-  'Indian Economy',
-  'Ecology & Environment',
-  'Science & Technology',
-  'Indian Culture',
-  'General Science',
-];
-
-const CANONICAL_HIERARCHY: Record<string, string[]> = {
-  'Indian Polity & Governance': [
-    'Fundamental Rights',
-    'Evolution of the Constitution',
-    'Salient Features of Indian Constitution',
-    'Directive Principles of State Policy (DPSP)',
-    'Union Executive',
-    'Union Legislature',
-    'State Legislature',
-    'The Judiciary',
-    'Constitutional and Non Constitutional Bodies',
-    'Governance',
-  ],
-  'Ancient History': [
-    'Indus Valley Civilization',
-    'Pre Historic Times',
-    'Rig Vedic Period',
-    'Later Vedic Period',
-    'Jainism',
-    'Buddhism',
-    'Mauryan Empire',
-    'Gupta Period',
-  ],
-  'Modern History': [
-    'The Revolt Of 1857',
-    'Advent of Europeans',
-    'Indian National Movement',
-    'Freedom Struggle 1919-1947',
-  ],
-  'Indian Geography': [
-    'Physiography of India',
-    'General Geography',
-    'Geomorphology',
-    'Oceanography',
-    'Climatology',
-    'Drainage System',
-    'Climate',
-  ],
-  'Oceanography': [
-    'Ocean Relief & Currents',
-    'Salinity & Temperature',
-    'Tides & Waves',
-    'Marine Resources',
-  ],
-  'Indian Economy': [
-    'Public Finance in India',
-    'Basic Concepts',
-    'Economic Measurements',
-    'Money and Banking',
-    'Planning',
-    'Open Economy',
-    'Economic Sectors',
-  ],
-  'Ecology & Environment': [
-    'Biodiversity & Climate',
-    'Environmental Ecology',
-    'Resource Degradation and Management',
-    'Environmental Pollution',
-    'Climate Change',
-    'Environmental Governance',
-  ],
-  'Science & Technology': [
-    'Space',
-    'IT and Communication',
-    'Materials, Nano Technology and Robotics',
-    'Defence',
-    'Nuclear Technology',
-    'Biotechnology',
-  ],
-  'Indian Culture': [
-    'Visual Arts',
-    'Performing Arts',
-    'Religion, Language and Literature',
-    'Miscellaneous Culture',
-  ],
-  'General Science': [
-    'Biology',
-    'Genetics',
-    'Human Body & Systems',
-    'Diseases & Nutrition',
-  ],
-};
-
 // Supported Target Exams list
 const TARGET_EXAM_OPTIONS = [
   'UPSC CSE',
-  'State PSC',
-  'SSC CGL',
-  'Banking PO',
-  'CAT / MBA',
-  'Railways',
-  'NDA',
-  'CDS',
 ];
 
 // Target exam year options
@@ -130,21 +26,23 @@ const QUESTION_COUNTS = [5, 10, 15, 20];
 export function HeroSection({ }: HeroSectionProps) {
   const navigate = useNavigate();
 
-  // Dynamic taxonomy state fetched directly from DB
-  const [topicsList, setTopicsList] = useState<string[]>(CANONICAL_TOPICS);
-  const [hierarchyMap, setHierarchyMap] = useState<Record<string, string[]>>(CANONICAL_HIERARCHY);
+  // Dynamic taxonomy state fetched directly from DB in real time
+  const [topicsList, setTopicsList] = useState<string[]>([]);
+  const [hierarchyMap, setHierarchyMap] = useState<Record<string, string[]>>({});
   const [examsList] = useState<string[]>(TARGET_EXAM_OPTIONS);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
-  // Form selections - default to actual topic and subtopic
+  // Form selections - default to placeholder prompt
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
   const [selectedYear, setSelectedYear] = useState<string>('Target 2026');
-  const [selectedTopic, setSelectedTopic] = useState<string>('Indian Polity & Governance');
-  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('Fundamental Rights');
+  const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
   // Fetch Taxonomy (Topics & Subtopics) directly from DB / API
   useEffect(() => {
     async function loadDynamicTaxonomy() {
+      setIsTaxonomyLoading(true);
       try {
         const taxRes = await fetch('/api/v1/questions/taxonomy');
 
@@ -162,6 +60,8 @@ export function HeroSection({ }: HeroSectionProps) {
         }
       } catch (err) {
         console.warn('Taxonomy DB fetch warning:', err);
+      } finally {
+        setIsTaxonomyLoading(false);
       }
     }
 
@@ -170,27 +70,44 @@ export function HeroSection({ }: HeroSectionProps) {
 
   // Compute available subtopics dynamically from fetched DB hierarchy
   const availableSubtopics = useMemo(() => {
+    if (!selectedTopic) {
+      const allSubs = new Set<string>();
+      Object.values(hierarchyMap).forEach((subs) => {
+        if (Array.isArray(subs)) {
+          subs.forEach((s) => {
+            if (s !== 'All Subtopics' && s.trim() !== '') {
+              allSubs.add(s);
+            }
+          });
+        }
+      });
+      return Array.from(allSubs).sort();
+    }
+
     const rawSubs = hierarchyMap[selectedTopic];
     if (Array.isArray(rawSubs) && rawSubs.length > 0) {
       const cleanSubs = rawSubs.filter((s) => s !== 'All Subtopics' && s.trim() !== '');
-      if (cleanSubs.length > 0) {
-        return cleanSubs;
-      }
+      return cleanSubs;
     }
-    return ['Fundamental Rights', 'Indus Valley Civilization', 'Union Legislature', 'Public Finance in India'];
+    return [];
   }, [selectedTopic, hierarchyMap]);
 
   const handleTopicChange = (newTopic: string) => {
     setSelectedTopic(newTopic);
-    const rawSubs = hierarchyMap[newTopic];
-    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
-      const cleanSubs = rawSubs.filter((s) => s !== 'All Subtopics' && s.trim() !== '');
-      if (cleanSubs.length > 0) {
-        setSelectedSubtopic(cleanSubs[0]);
-        return;
+    setSelectedSubtopic('');
+  };
+
+  const handleSubtopicChange = (newSubtopic: string) => {
+    setSelectedSubtopic(newSubtopic);
+    if (!selectedTopic && newSubtopic) {
+      const parentTopic = Object.keys(hierarchyMap).find((topKey) => {
+        const subs = hierarchyMap[topKey];
+        return Array.isArray(subs) && subs.includes(newSubtopic);
+      });
+      if (parentTopic) {
+        setSelectedTopic(parentTopic);
       }
     }
-    setSelectedSubtopic('Fundamental Rights');
   };
 
   const handleStartGuestExam = (e: React.FormEvent) => {
@@ -202,11 +119,14 @@ export function HeroSection({ }: HeroSectionProps) {
     // API Trigger: POST /api/v1/exams/attempts/{attemptId}/submit
     console.log('[Pipeline Trigger] Dummy command registered for mock exam build pipeline.');
 
+    const finalTopic = selectedTopic || 'Indian Polity & Governance';
+    const finalSubtopic = selectedSubtopic || (availableSubtopics.length > 0 ? availableSubtopics[0] : 'Fundamental Rights');
+
     const queryParams = new URLSearchParams({
       exam: selectedExam,
       year: selectedYear,
-      topic: selectedTopic,
-      subtopic: selectedSubtopic,
+      topic: finalTopic,
+      subtopic: finalSubtopic,
       count: questionCount.toString(),
     });
 
@@ -471,6 +391,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       e.target.style.boxShadow = 'none';
                     }}
                   >
+                    <option value="">{isTaxonomyLoading ? 'Loading Topics from DB...' : 'Choose Topic'}</option>
                     {topicsList.map((top) => (
                       <option key={top} value={top}>
                         {top}
@@ -496,7 +417,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   </label>
                   <select
                     value={selectedSubtopic}
-                    onChange={(e) => setSelectedSubtopic(e.target.value)}
+                    onChange={(e) => handleSubtopicChange(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '9px 12px',
@@ -519,6 +440,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       e.target.style.boxShadow = 'none';
                     }}
                   >
+                    <option value="">{isTaxonomyLoading ? 'Loading Subtopics from DB...' : 'Choose Subtopic'}</option>
                     {availableSubtopics.map((sub) => (
                       <option key={sub} value={sub}>
                         {sub}
@@ -545,7 +467,7 @@ export function HeroSection({ }: HeroSectionProps) {
               >
                 <span style={{ fontWeight: 600, color: '#0F172A' }}>Your mock:</span>
                 <span style={{ color: '#0F172A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedExam} · {selectedYear} · {selectedSubtopic}
+                  {selectedExam} · {selectedYear} · {selectedSubtopic || selectedTopic || 'Custom Mock'}
                 </span>
               </div>
 
@@ -607,11 +529,6 @@ export function HeroSection({ }: HeroSectionProps) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#64748B', display: 'inline-block' }} /> No login required
                 </span>
-              </div>
-
-              {/* Subtle Identity Footer */}
-              <div style={{ marginTop: 10, textAlign: 'center', fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>
-                ExamPlanner PYQ Engine
               </div>
             </form>
           </div>

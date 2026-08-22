@@ -1,4 +1,4 @@
-export type ExamName = 'upsc' | 'mppsc' | 'mpsc';
+export type ExamName = 'upsc';
 
 export type PaperType = 'previous_year_question' | 'mock_test';
 

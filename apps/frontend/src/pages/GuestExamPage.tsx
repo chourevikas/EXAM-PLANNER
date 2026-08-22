@@ -432,7 +432,7 @@ export function GuestExamPage() {
     >
       {/* Top Admin Theme Header */}
       <ExamHeader
-        examTitle="ExamPlanner PYQ Engine"
+        examTitle={gExam}
         paperSubtitle={`${gExam} · ${gYear} · ${gSubtopic}`}
         timeLeft={timeLeft}
         language={language}
