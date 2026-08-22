@@ -214,7 +214,7 @@ export function MockSelectionPage() {
       count: questionCount.toString(),
     });
 
-    navigate(`/guest-exam?${queryParams.toString()}`);
+    navigate(`/practice-exam?${queryParams.toString()}`);
   };
 
   return (

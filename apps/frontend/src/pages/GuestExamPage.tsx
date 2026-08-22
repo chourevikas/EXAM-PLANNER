@@ -92,7 +92,7 @@ export function GuestExamPage() {
           is_correct: Boolean(o.is_correct),
         }));
 
-        const expText = q.explanation || q.explanation_text || q.description || '';
+        const expText = q.explanation || q.explanation_text || q.description || q.solution || q.solution_text || '';
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
@@ -142,30 +142,10 @@ export function GuestExamPage() {
 
       let fetchedList = Array.from(fetchedMap.values());
       
-      // Cap at user-selected question count if more are returned from DB
-      if (fetchedList.length > gCount) {
-        fetchedList = fetchedList.slice(0, gCount);
-      }
-      
-      // Fallback generator if DB returns 0 items for the selected topic/subtopic
-      if (fetchedList.length === 0) {
-        fetchedList = Array.from({ length: gCount }, (_, idx) => {
-          const qNum = idx + 1;
-          return {
-            question_id: `g-fallback-${idx + 1}`,
-            question_text: `With reference to ${gSubtopic || gTopic || 'Indian Polity'}, consider the following statements:\n\n1. It is a fundamental mechanism established under the constitutional framework of India.\n2. It operates subject to reasonable restrictions imposed by statutory law.\n\nWhich of the statements given above is/are correct?`,
-            options: [
-              { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `1 only`, is_correct: true },
-              { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `2 only`, is_correct: false },
-              { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both 1 and 2`, is_correct: false },
-              { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither 1 nor 2`, is_correct: false },
-            ],
-            topic_name: gTopic,
-            subtopic_name: gSubtopic,
-            difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
-            explanation: `Statement 1 is correct based on statutory provisions. Statement 2 is incorrect as it is governed directly by constitutional mandate.`,
-          };
-        });
+      // Cap at max 10 questions for guest mode (or gCount if less than 10)
+      const maxCount = Math.min(gCount, 10);
+      if (fetchedList.length > maxCount) {
+        fetchedList = fetchedList.slice(0, maxCount);
       }
 
       const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
@@ -318,6 +298,8 @@ export function GuestExamPage() {
     const expText = (targetQuestion as any).explanation ||
       (targetQuestion as any).description ||
       (targetQuestion as any).explanation_text ||
+      (targetQuestion as any).solution ||
+      (targetQuestion as any).solution_text ||
       '';
 
     const revealObj: RevealAnswerResponse = {

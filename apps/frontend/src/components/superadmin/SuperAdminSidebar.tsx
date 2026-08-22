@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logoutUser } from '../../services/authService';
 import {
   ShieldAlert,
   Users,
@@ -164,7 +165,10 @@ export function SuperAdminSidebar({
       {/* Bottom section */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 0' }}>
         <button
-          onClick={() => navigate('/signout')}
+          onClick={() => {
+            logoutUser();
+            navigate('/');
+          }}
           style={{
             width: '100%',
             display: 'flex',

@@ -19,9 +19,10 @@ interface GuestScoreModalProps {
   };
   onClose: () => void;
   onRetake: () => void;
+  isGuest?: boolean;
 }
 
-export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestScoreModalProps) {
+export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest = true }: GuestScoreModalProps) {
   const navigate = useNavigate();
 
   if (!isOpen || !scoreData) return null;
@@ -122,7 +123,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestS
           </span>
           <span style={{ color: '#93C5FD' }}>•</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#1E40AF' }}>
-            Guest Test
+            {isGuest ? 'Guest Test' : 'Practice Test'}
           </span>
         </div>
 
@@ -143,7 +144,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestS
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-            Your Estimated Score
+            Your Score
           </div>
 
           <div style={{ fontSize: 46, fontWeight: 900, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.04em' }}>
@@ -245,10 +246,12 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestS
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 800, color: '#3730A3', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Sparkles size={16} style={{ color: '#4F46E5' }} /> Save your test results
+            <Sparkles size={16} style={{ color: '#4F46E5' }} /> {isGuest ? 'Save your test results' : 'Practice Completed!'}
           </div>
           <div style={{ fontSize: 11.5, color: '#4338CA', lineHeight: 1.45, fontWeight: 600 }}>
-            Create a free student profile to record historical scores, view detailed solution analyses, and receive tailored study plans.
+            {isGuest
+              ? 'Create a free student profile to record historical scores, view detailed solution analyses, and receive tailored study plans.'
+              : 'Great practice session! Your responses and accuracy metrics have been recorded in your student dashboard.'}
           </div>
         </div>
 
@@ -257,7 +260,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestS
           {/* Primary Button */}
           <button
             type="button"
-            onClick={() => navigate('/signup')}
+            onClick={() => navigate(isGuest ? '/signup' : '/dashboard')}
             style={{
               flex: 1,
               height: 48,
@@ -284,7 +287,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake }: GuestS
               e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            <span>Create Free Account</span>
+            <span>{isGuest ? 'Create Free Account' : 'Back to Dashboard'}</span>
             <ArrowRight size={16} strokeWidth={2.5} />
           </button>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { logoutUser } from '../../services/authService';
 import {
   Search,
   Bell,
@@ -30,6 +31,7 @@ function getUserInitials(name?: string): string {
 }
 
 export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTopHeaderProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -257,7 +259,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Practice Tests</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {searchResults.mocks.map(mock => (
+                        {searchResults.mocks.map((mock: any) => (
                           <Link key={mock.id} to={mock.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
                             <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}><Trophy size={14} /></div>
                             <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{mock.title}</span>
@@ -412,9 +414,30 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 <CreditCard size={15} /> Subscription Plan
               </Link>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
-                <Link to="/signout" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#EF4444', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    logoutUser();
+                    navigate('/');
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 16px',
+                    color: '#EF4444',
+                    background: 'none',
+                    border: 'none',
+                    width: '100%',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: 'left',
+                  }}
+                >
                   <LogOut size={15} /> Sign Out
-                </Link>
+                </button>
               </div>
             </div>
           )}

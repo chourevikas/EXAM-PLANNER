@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { logoutUser } from '../../services/authService';
 import {
   Menu,
   Search,
@@ -40,6 +41,7 @@ const breadcrumbMap: Record<string, string> = {
 };
 
 export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: TopNavProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -518,28 +520,33 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               </div>
 
               <div style={{ paddingTop: 6, borderTop: '1px solid #E2E8F0' }}>
-                <Link
-                  to="/signout"
-                  onClick={() => setShowProfileMenu(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    logoutUser();
+                    navigate('/');
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
+                    width: '100%',
                     padding: '7px 10px',
                     borderRadius: 6,
-                    textDecoration: 'none',
                     color: '#DC2626',
                     backgroundColor: '#FEF2F2',
                     fontSize: 12.5,
                     fontWeight: 600,
                     border: '1px solid #FECDCA',
+                    cursor: 'pointer',
                     transition: 'background-color 150ms ease-out',
                   }}
                 >
                   <LogOut size={14} />
                   <span>Sign Out</span>
-                </Link>
+                </button>
               </div>
             </div>
           )}
