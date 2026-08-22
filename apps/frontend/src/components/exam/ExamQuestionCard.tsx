@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bookmark, Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
+import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 
 interface ExamQuestionCardProps {
   question: QuestionOut | {
@@ -231,25 +232,26 @@ export function ExamQuestionCard({
     <main
       style={{
         flex: 1,
-        padding: '24px',
+        padding: '24px 24px 60px 24px',
         overflowY: 'auto',
         boxSizing: 'border-box',
         backgroundColor: '#F4F6F8',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
       <div
         style={{
-          maxWidth: 780,
+          maxWidth: 800,
           width: '100%',
-          margin: 'auto auto',
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
+          paddingBottom: 40,
         }}
       >
         {/* Reading Passage (If Present) */}
@@ -553,41 +555,34 @@ export function ExamQuestionCard({
             })}
           </div>
 
-          {/* Reveal Result Box (Practice / Revision Mode) */}
+          {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
           {mode !== 'EXAM' && revealResult && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: '12px 16px',
-                borderRadius: 8,
-                backgroundColor: revealResult.is_user_correct ? '#ECFDF5' : '#FEF2F2',
-                border: `1px solid ${revealResult.is_user_correct ? '#A7F3D0' : '#FECACA'}`,
-                color: '#0F172A',
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+            <QuestionSolutionMarkdownCard
+              isUserCorrect={revealResult.is_user_correct}
+              selectedOptionLabel={revealResult.user_selected_label || selectedOptionLabel || undefined}
+              solution={{
+                question_id: revealResult.question_id,
+                question_number: revealResult.question_number || questionIndex + 1,
+                correct_option_id: revealResult.correct_option_id,
+                correct_option_label: revealResult.correct_option_label,
+                blooms_level: (question as any).blooms_taxonomy_level || (question as any).blooms_level || 'ANALYZE',
+                difficulty: (question as any).difficulty || 'MEDIUM',
+                topic: (question as any).topic_name || (question as any).topic || (question as any).section_code,
+                subtopic: (question as any).subtopic_name || (question as any).subtopic,
+                presigned_url: (revealResult as any).presigned_url,
+                explanation: typeof revealResult.explanation === 'object' && revealResult.explanation !== null
+                  ? {
+                      core_concept: (revealResult.explanation as any).core_concept,
+                      detailed_solution: (revealResult.explanation as any).detailed_solution || (revealResult.explanation as any).detailed_text || (revealResult.explanation as any).text || (typeof revealResult.explanation === 'string' ? revealResult.explanation : ''),
+                      common_traps: (revealResult.explanation as any).common_traps || (revealResult.explanation as any).traps || [],
+                      key_takeaways: (revealResult.explanation as any).key_takeaways || (revealResult.explanation as any).points_to_remember || ((revealResult.explanation as any).key_takeaway ? [(revealResult.explanation as any).key_takeaway] : []),
+                    }
+                  : {
+                      detailed_solution: typeof revealResult.explanation === 'string' ? revealResult.explanation : 'Detailed solution is available.',
+                    },
+                distractor_scores: revealResult.distractor_scores || {},
               }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-                {revealResult.is_user_correct ? (
-                  <>
-                    <CheckCircle2 size={15} style={{ color: '#059669' }} />
-                    <span style={{ color: '#059669' }}>Correct Answer</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle size={15} style={{ color: '#DC2626' }} />
-                    <span style={{ color: '#DC2626' }}>Incorrect Answer</span>
-                  </>
-                )}
-              </div>
-              {revealResult.explanation && (
-                <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
-                  <strong style={{ color: '#0F172A' }}>Explanation:</strong>{' '}
-                  {typeof revealResult.explanation === 'string'
-                    ? revealResult.explanation
-                    : JSON.stringify(revealResult.explanation)}
-                </div>
-              )}
-            </div>
+            />
           )}
           </div>
         </div>

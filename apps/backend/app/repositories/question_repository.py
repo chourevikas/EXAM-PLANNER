@@ -85,22 +85,35 @@ class QuestionRepository:
         # Hierarchy Filters
         if subject_id:
             stmt = stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
-        if subject_name:
-            stmt = stmt.where(func.lower(Subject.name).contains(subject_name.lower()))
+        if subject_name and subject_name != "All Subjects" and subject_name.strip():
+            clean_s = subject_name.strip().lower()
+            stmt = stmt.where(or_(
+                func.lower(Subject.name).contains(clean_s),
+                func.lower(Question.section_code).contains(clean_s)
+            ))
         if subject_code:
             stmt = stmt.where(func.lower(Subject.code) == subject_code.lower())
 
         if topic_id:
             stmt = stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
-        if topic_name:
-            stmt = stmt.where(func.lower(Topic.name).contains(topic_name.lower()))
+        if topic_name and topic_name != "All Topics" and topic_name.strip():
+            clean_t = topic_name.strip().lower()
+            stmt = stmt.where(or_(
+                func.lower(Topic.name).contains(clean_t),
+                func.lower(Question.section_code).contains(clean_t),
+                func.lower(QuestionHierarchyLink.concept_name).contains(clean_t)
+            ))
         if topic_code:
             stmt = stmt.where(func.lower(Topic.code) == topic_code.lower())
 
         if subtopic_id:
             stmt = stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
-        if subtopic_name:
-            stmt = stmt.where(func.lower(Subtopic.name).contains(subtopic_name.lower()))
+        if subtopic_name and subtopic_name != "All Subtopics" and subtopic_name.strip():
+            clean_st = subtopic_name.strip().lower()
+            stmt = stmt.where(or_(
+                func.lower(Subtopic.name).contains(clean_st),
+                func.lower(QuestionHierarchyLink.concept_name).contains(clean_st)
+            ))
         if subtopic_code:
             stmt = stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 

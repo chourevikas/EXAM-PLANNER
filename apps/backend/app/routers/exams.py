@@ -350,9 +350,9 @@ async def get_solution_from_db_fallback(
     if cached_data is not None:
         return JSONResponse(content=cached_data)
 
-    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation
+    from app.db.models import Exam, Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionMetadata
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
-    from sqlmodel import select
+    from sqlmodel import select, col
     from fastapi import HTTPException
 
     logger.info(f"[DB_FALLBACK:SOLUTION] Invoked DB fallback for Solution #{question_number}, Exam ID={exam_id}")
@@ -376,7 +376,7 @@ async def get_solution_from_db_fallback(
         )
 
     opts_res = await session.exec(
-        select(QuestionOption).where(QuestionOption.question_id == q.id)
+        select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order).asc())
     )
     db_opts = opts_res.all()
     correct_opt = next((o for o in db_opts if o.is_correct), None)
@@ -384,44 +384,95 @@ async def get_solution_from_db_fallback(
         logger.error(f"[DB_FALLBACK:SOLUTION] No correct option configured in DB for question #{question_number}")
         raise HTTPException(status_code=404, detail="Correct option not configured in database.")
 
+    opt_ids = [o.id for o in db_opts]
+    opt_trans_map = {}
+    if opt_ids:
+        for t in (await session.exec(select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)))).all():
+            opt_trans_map[t.option_id] = t
+
     expl_res = await session.exec(
         select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
     )
     expl_model = expl_res.first()
 
+    meta_res = await session.exec(
+        select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
+    )
+    q_meta = meta_res.first()
+
     distractor_map = {}
     for o in db_opts:
-        closeness = getattr(o, "distractor_closeness_score", 0.0) or 0.0
+        trans = opt_trans_map.get(o.id)
+        closeness = getattr(o, "distractor_closeness_score", 0.0) or (1.0 if o.is_correct else 0.0)
         cls_tier = ClosenessEvaluator.classify_option(closeness)
         distractor_map[str(o.id)] = {
+            "option_id": str(o.id),
             "label": o.option_label,
+            "text": trans.option_text if trans else f"Option {o.option_label}",
             "closeness_score": closeness,
+            "is_correct": o.is_correct,
             "classification": cls_tier,
+            "distractor_analysis": trans.distractor_analysis if trans else None,
         }
+
+    detailed_solution = (expl_model.detailed_solution or expl_model.explanation_text) if expl_model else (
+        f"**Option ({correct_opt.option_label}) is correct.**\n\nStandard constitutional and syllabus reasoning."
+    )
+
+    core_concept = expl_model.core_concept if expl_model and expl_model.core_concept else "Core conceptual analysis"
+    common_traps = expl_model.common_traps_json if (expl_model and expl_model.common_traps_json) else []
+    key_takeaways = expl_model.key_takeaways_json if (expl_model and expl_model.key_takeaways_json) else ([expl_model.key_takeaway] if expl_model and expl_model.key_takeaway else [])
+
+    blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
+    cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
+    primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
 
     logger.info(f"[DB_FALLBACK:SOLUTION_SUCCESS] Successfully retrieved Solution #{question_number} from DB for Exam '{exam.code}' (correct_opt={correct_opt.option_label})")
 
     res_data = {
+        "question_id": str(q.id),
         "question_number": question_number,
         "exam_id": str(exam.id),
         "exam_code": exam.code,
+        "correct_option_id": str(correct_opt.id),
+        "correct_option_label": correct_opt.option_label,
+        "difficulty": q.difficulty.value if hasattr(q.difficulty, 'value') else str(q.difficulty),
+        "blooms_level": blooms_level,
+        "cognitive_skill": cognitive_skill,
+        "primary_concept_tag": primary_concept_tag,
+        "irt_params": {
+            "a": q_meta.irt_discrimination_a if q_meta and q_meta.irt_discrimination_a is not None else 1.50,
+            "b": q_meta.irt_difficulty_b if q_meta and q_meta.irt_difficulty_b is not None else 0.00,
+            "c": q_meta.irt_pseudo_guessing_c if q_meta and q_meta.irt_pseudo_guessing_c is not None else 0.25,
+        },
+        "subject": "General Studies",
+        "topic": "Syllabus Topic",
+        "subtopic": "Micro Topic",
+        "explanation": {
+            "core_concept": core_concept,
+            "detailed_solution": detailed_solution,
+            "common_traps": common_traps,
+            "key_takeaways": key_takeaways,
+        },
+        "distractor_scores": distractor_map,
         "data": {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
             "correct_option_id": str(correct_opt.id),
             "correct_option_label": correct_opt.option_label,
             "explanation": {
-                "text": expl_model.detailed_solution if expl_model else "Comprehensive explanation available in study mode.",
-                "core_concept": expl_model.core_concept if expl_model else None,
-                "key_takeaways": expl_model.key_takeaways_json if expl_model else [],
-                "common_traps": expl_model.common_traps_json if expl_model else [],
+                "text": detailed_solution,
+                "detailed_solution": detailed_solution,
+                "core_concept": core_concept,
+                "key_takeaways": key_takeaways,
+                "common_traps": common_traps,
             },
             "distractor_scores": distractor_map,
         },
         "source": "DATABASE_FALLBACK",
     }
     await cache.set(cache_key, res_data, ttl_seconds=3600)
-    return JSONResponse(content=res_data)
+    return JSONResponse(content=jsonable_encoder(res_data))
 
 
 

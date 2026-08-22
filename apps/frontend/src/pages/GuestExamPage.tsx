@@ -7,7 +7,7 @@ import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 
 export function GuestExamPage() {
@@ -16,9 +16,10 @@ export function GuestExamPage() {
 
   // URL Params
   const gExam = searchParams.get('exam') || 'UPSC CSE';
-  const gYear = searchParams.get('year') || 'Target 2026';
-  const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
-  const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+  const gYear = searchParams.get('year') || '';
+  const gSubject = searchParams.get('subject') || 'Polity';
+  const gTopic = searchParams.get('topic') || '';
+  const gSubtopic = searchParams.get('subtopic') || '';
   const gCount = parseInt(searchParams.get('count') || '10', 10);
 
   // Session State
@@ -44,7 +45,7 @@ export function GuestExamPage() {
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -98,118 +99,48 @@ export function GuestExamPage() {
         } as any;
       };
 
-      // Pass 1: Strict filters
-      const p1 = new URLSearchParams({ limit: targetCount.toString() });
-      if (gTopic && gTopic !== 'All Topics') p1.append('topic_name', gTopic);
-      if (gSubtopic && gSubtopic !== 'All Subtopics') p1.append('subtopic_name', gSubtopic);
-      if (gYear && gYear !== 'All Years (2018 - 2024)' && !isNaN(Number(gYear))) p1.append('exam_year', gYear);
-      if (gExam && gExam.toLowerCase().includes('upsc')) p1.append('exam_name', 'upsc');
+      // Single-call filter API invocation
+      const queryParams = new URLSearchParams({ limit: targetCount.toString() });
+      if (gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
+        queryParams.append('subject_name', gSubject.trim());
+      }
+      if (gTopic && !gTopic.startsWith('All Topics') && gTopic.trim()) {
+        queryParams.append('topic_name', gTopic.trim());
+      }
+      if (gSubtopic && !gSubtopic.startsWith('All Subtopics') && gSubtopic.trim()) {
+        queryParams.append('subtopic_name', gSubtopic.trim());
+      }
+      const rawYearDigits = gYear.replace(/\D/g, '');
+      if (rawYearDigits && !isNaN(Number(rawYearDigits)) && Number(rawYearDigits) >= 2000 && Number(rawYearDigits) <= 2024) {
+        queryParams.append('exam_year', rawYearDigits);
+      }
+      if (gExam && gExam.toLowerCase().includes('upsc')) {
+        queryParams.append('exam_name', 'upsc');
+      }
 
       try {
-        const res1 = await fetch(`/api/v1/questions?${p1.toString()}`);
-        if (res1.ok) {
-          const data1 = await res1.json();
-          (data1.items || []).forEach((item: any) => {
+        const res = await fetch(`/api/v1/questions?${queryParams.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          (data.items || []).forEach((item: any) => {
             if (item.question_id && !fetchedMap.has(item.question_id)) {
               fetchedMap.set(item.question_id, item);
             }
           });
         }
       } catch (err) {
-        console.warn('P1 questions fetch warning:', err);
-      }
-
-      // Pass 2: Relax year filter if needed
-      if (fetchedMap.size < targetCount) {
-        const p2 = new URLSearchParams({ limit: targetCount.toString() });
-        if (gTopic && gTopic !== 'All Topics') p2.append('topic_name', gTopic);
-        if (gSubtopic && gSubtopic !== 'All Subtopics') p2.append('subtopic_name', gSubtopic);
-        if (gExam && gExam.toLowerCase().includes('upsc')) p2.append('exam_name', 'upsc');
-
-        try {
-          const res2 = await fetch(`/api/v1/questions?${p2.toString()}`);
-          if (res2.ok) {
-            const data2 = await res2.json();
-            (data2.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P2 questions fetch warning:', err);
-        }
-      }
-
-      // Pass 3: Relax subtopic filter if needed
-      if (fetchedMap.size < targetCount) {
-        const p3 = new URLSearchParams({ limit: targetCount.toString() });
-        if (gTopic && gTopic !== 'All Topics') p3.append('topic_name', gTopic);
-        if (gExam && gExam.toLowerCase().includes('upsc')) p3.append('exam_name', 'upsc');
-
-        try {
-          const res3 = await fetch(`/api/v1/questions?${p3.toString()}`);
-          if (res3.ok) {
-            const data3 = await res3.json();
-            (data3.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P3 questions fetch warning:', err);
-        }
-      }
-
-      // Pass 4: General pool if still needed
-      if (fetchedMap.size < targetCount) {
-        try {
-          const res4 = await fetch(`/api/v1/questions?limit=${targetCount}`);
-          if (res4.ok) {
-            const data4 = await res4.json();
-            (data4.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P4 questions fetch warning:', err);
-        }
+        console.warn('Questions fetch error:', err);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
       const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
 
-      // Pass 5: Fallback padding if DB items total < targetCount
-      while (questionsList.length < targetCount) {
-        const qNum = questionsList.length + 1;
-        questionsList.push({
-          question_id: `guest-q-${qNum}`,
-          question_number: qNum,
-          text: `Which of the following statements regarding ${gSubtopic !== 'All Subtopics' ? gSubtopic : gTopic
-            } under the Indian Constitution / Syllabus is correct?`,
-          options: [
-            { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `Statement I: It is guaranteed under Part III of the Constitution and enforceable by law.`, is_correct: true },
-            { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `Statement II: It requires explicit legislative enactment for enforcement in all scenarios.`, is_correct: false },
-            { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both Statement I and Statement II are incorrect.`, is_correct: false },
-            { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither Statement I nor Statement II applies to this subtopic.`, is_correct: false },
-          ],
-          section_code: gTopic,
-          topic_name: gTopic,
-          subtopic_name: gSubtopic,
-          difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
-          marks: 2.0,
-          negative_marks: 0.66,
-          expected_time_seconds: 60,
-          explanation: `Option (A) is correct. Fundamental Rights are codified under Part III (Articles 12-35) of the Indian Constitution and are directly enforceable through writ petitions under Article 32 & Article 226.`,
-        } as any);
-      }
-
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
-      setActiveQuestion(questionsList[0]);
+      setTimeLeft(Math.max(60, questionsList.length * 120));
+      if (questionsList.length > 0) {
+        setActiveQuestion(questionsList[0]);
+      }
 
       // Restore session state from sessionStorage
       try {
@@ -239,7 +170,7 @@ export function GuestExamPage() {
     }
 
     loadGuestQuestions();
-  }, [gExam, gYear, gTopic, gSubtopic, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gCount]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -260,7 +191,7 @@ export function GuestExamPage() {
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
-    if (idx < 0 || idx >= allQuestions.length) return;
+    if (idx < 0 || idx >= totalQuestions || idx >= allQuestions.length) return;
     setCurrentQIndex(idx);
     setActiveQuestion(allQuestions[idx]);
 
@@ -298,8 +229,8 @@ export function GuestExamPage() {
     );
   };
 
-  // Reveal Instant Per-Question Answer & Description
-  const handleRevealAnswer = (qId?: string) => {
+  // Reveal Instant Per-Question Answer & Description with Full Markdown Solution
+  const handleRevealAnswer = async (qId?: string) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return;
 
@@ -311,24 +242,34 @@ export function GuestExamPage() {
     const correctLabel = correctOpt?.option_label || 'A';
     const isUserCorrect = userResp ? (userResp.optionId === correctOpt?.option_id || userResp.optionLabel === correctLabel) : false;
 
-    const expText = (targetQuestion as any).explanation ||
-      (targetQuestion as any).description ||
-      (targetQuestion as any).explanation_text ||
-      `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+    // Fetch rich solution metadata & distractor analyses
+    let solPayload: any = null;
+    try {
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      if (solRes.ok) {
+        solPayload = await solRes.json();
+      }
+    } catch (err) {
+      console.warn('Failed to fetch full solution artifact:', err);
+    }
 
-    const revealObj: RevealAnswerResponse = {
+    const expContent = solPayload?.explanation || (targetQuestion as any).explanation || `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+    const distScores = solPayload?.distractor_scores || {};
+
+    const revealObj: RevealAnswerResponse & { presigned_url?: string } = {
       question_id: targetId,
       question_number: targetQuestion.question_number,
-      correct_option_id: correctOpt?.option_id || '',
-      correct_option_label: correctLabel,
+      correct_option_id: solPayload?.correct_option_id || correctOpt?.option_id || '',
+      correct_option_label: solPayload?.correct_option_label || correctLabel,
       is_user_correct: isUserCorrect,
       user_selected_option_id: userResp?.optionId || null,
       user_selected_label: userResp?.optionLabel || null,
       marks_awarded: isUserCorrect ? (targetQuestion.marks || 2.0) : -(targetQuestion.negative_marks || 0.66),
-      closeness_score: isUserCorrect ? 100 : 0,
-      closeness_classification: isUserCorrect ? 'EXACT' : 'INCORRECT',
-      explanation: expText,
-      distractor_scores: {},
+      closeness_score: isUserCorrect ? 1.0 : 0.0,
+      closeness_classification: isUserCorrect ? 'Correct Response' : 'Incorrect Response',
+      explanation: expContent,
+      distractor_scores: distScores,
+      presigned_url: solPayload?.presigned_url,
     };
 
     setRevealedMap((prev) => ({
@@ -387,12 +328,107 @@ export function GuestExamPage() {
     );
   };
 
-  if (isLoading || !activeQuestion) {
+  if (isLoading) {
     return (
       <ExamLoaderOverlay
         title="Preparing Mock Examination"
         subtitle="Structuring authentic PYQs and setting up your workspace..."
       />
+    );
+  }
+
+  if (!activeQuestion || allQuestions.length === 0) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: '#F8FAFC',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 520,
+            width: '100%',
+            backgroundColor: '#FFFFFF',
+            borderRadius: 16,
+            padding: '36px 32px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.08)',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              backgroundColor: '#FEF3C7',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#D97706',
+              marginBottom: 16,
+            }}
+          >
+            <AlertCircle size={28} />
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>
+            No Questions Found
+          </h2>
+          <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
+            No questions match your current selection (Subject: <strong>{gSubject}</strong>{gTopic ? `, Topic: ${gTopic}` : ''}{gSubtopic ? `, Subtopic: ${gSubtopic}` : ''}).
+          </p>
+
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => navigate(`/guest-exam?subject=${encodeURIComponent(gSubject)}&count=10`)}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 10,
+                backgroundColor: '#2563EB',
+                color: '#FFFFFF',
+                fontSize: 13.5,
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <RotateCcw size={15} />
+              Practice All {gSubject} Questions
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 10,
+                backgroundColor: '#F1F5F9',
+                color: '#475569',
+                fontSize: 13.5,
+                fontWeight: 600,
+                border: '1px solid #E2E8F0',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <ArrowLeft size={15} />
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
