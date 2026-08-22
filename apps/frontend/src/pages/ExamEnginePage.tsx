@@ -745,6 +745,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         timeLeft={timeLeft}
         language={language}
         isSubmitting={isSubmitting}
+        onBack={() => {
+          if (window.confirm('Are you sure you want to leave the examination? Your progress is saved automatically.')) {
+            navigate('/mocks');
+          }
+        }}
         onLanguageChange={setLanguage}
         onSubmitClick={handleOpenSubmitModal}
       />

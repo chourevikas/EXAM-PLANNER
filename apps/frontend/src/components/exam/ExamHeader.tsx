@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Shield } from 'lucide-react';
+import { Clock, Shield, ArrowLeft, ChevronRight } from 'lucide-react';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -8,6 +8,9 @@ interface ExamHeaderProps {
   language: 'en' | 'hi';
   isSubmitting?: boolean;
   showSubmitButton?: boolean;
+  topicName?: string;
+  subtopicName?: string;
+  onBack?: () => void;
   onLanguageChange: (lang: 'en' | 'hi') => void;
   onSubmitClick?: () => void;
 }
@@ -19,6 +22,9 @@ export function ExamHeader({
   language,
   isSubmitting = false,
   showSubmitButton = true,
+  topicName,
+  subtopicName,
+  onBack,
   onLanguageChange,
   onSubmitClick,
 }: ExamHeaderProps) {
@@ -45,12 +51,15 @@ export function ExamHeader({
         zIndex: 100,
         background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(15, 29, 56, 0.25)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        boxShadow: '0 4px 20px rgba(15, 29, 56, 0.35)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '0 24px',
         boxSizing: 'border-box',
+        fontFamily: "'IBM Plex Sans', -apple-system, system-ui, sans-serif",
       }}
     >
       {/* Left: Admin Theme ExamPlanner Logo & Paper Metadata */}
@@ -65,7 +74,7 @@ export function ExamHeader({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontWeight: 800,
+            fontWeight: 700,
             fontSize: 15,
             flexShrink: 0,
             boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
@@ -73,61 +82,79 @@ export function ExamHeader({
         >
           <Shield size={18} color="#FFFFFF" />
         </div>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* Neat Fading Breadcrumb Trail (IBM Plex Sans 600 Page title / 500 Subtitle) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'rgba(255, 255, 255, 0.75)', fontWeight: 500, fontFamily: "'IBM Plex Sans', sans-serif" }}>
+            <button
+              type="button"
+              onClick={onBack}
               style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: '#FFFFFF',
-                lineHeight: 1.2,
-                letterSpacing: '-0.01em',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                color: 'rgba(255, 255, 255, 0.95)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: 14.5,
+                fontFamily: "'IBM Plex Sans', sans-serif",
+                textDecoration: 'none',
+                transition: 'opacity 0.2s ease',
               }}
-            >
-              {examTitle}
-            </span>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '2px 7px',
-                borderRadius: 4,
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                color: 'rgba(255, 255, 255, 0.85)',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7';
               }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
+              title="Return to Home / Mocks"
             >
-              CONSOLE
-            </span>
-          </div>
-          <div style={{ fontSize: 11.5, color: 'rgba(255, 255, 255, 0.65)', fontWeight: 500, lineHeight: 1.2, marginTop: 2 }}>
-            {paperSubtitle}
+              Home
+            </button>
+            <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+            <span style={{ color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>{examTitle}</span>
+            {topicName && (
+              <>
+                <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+                <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{topicName}</span>
+              </>
+            )}
+            {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
+              <>
+                <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+                <span style={{ color: '#93C5FD', fontWeight: 600 }}>{subtopicName}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Center: Monospaced Precision Clock Module */}
+      {/* Center: Monospaced Precision Clock Module with Admin Theme Fading Ring */}
       <div
         style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
           display: 'flex',
           alignItems: 'center',
           gap: 10,
-          padding: '4px 18px',
-          borderRadius: 6,
-          backgroundColor: 'rgba(255, 255, 255, 0.06)',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.15)',
+          padding: '5px 22px',
+          borderRadius: 8,
+          backgroundColor: 'rgba(255, 255, 255, 0.07)',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
+          boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(15, 29, 56, 0.3)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
         }}
       >
-        <Clock size={15} color={timerColor} />
+        <Clock size={16} color={timerColor} />
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span
             style={{
-              fontSize: 9,
+              fontSize: 8.5,
               color: 'rgba(255, 255, 255, 0.55)',
               textTransform: 'uppercase',
-              letterSpacing: '0.08em',
+              letterSpacing: '0.1em',
               fontWeight: 700,
               lineHeight: 1,
             }}
@@ -136,12 +163,12 @@ export function ExamHeader({
           </span>
           <span
             style={{
-              fontSize: 17,
+              fontSize: 16.5,
               fontWeight: 800,
               color: timerColor,
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
               fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.05em',
               marginTop: 2,
             }}
           >

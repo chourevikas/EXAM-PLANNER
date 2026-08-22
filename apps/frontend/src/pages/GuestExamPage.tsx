@@ -24,7 +24,7 @@ export function GuestExamPage() {
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
-  const [timeLeft, setTimeLeft] = useState(gCount * 120);
+  const [timeLeft, setTimeLeft] = useState(600); // Exactly 10 mins (600s)
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +40,8 @@ export function GuestExamPage() {
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
 
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -59,6 +61,20 @@ export function GuestExamPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Post-Exam Score Modal 10s Countdown Effect
+  useEffect(() => {
+    if (scoreCountdown === null) return;
+    if (scoreCountdown <= 0) {
+      setScoreCountdown(null);
+      setShowScoreModal(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setScoreCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [scoreCountdown]);
 
   // Fetch Guest Questions strictly from DB
   useEffect(() => {
@@ -124,7 +140,29 @@ export function GuestExamPage() {
         console.warn('DB questions fetch warning:', err);
       }
 
-      const fetchedList = Array.from(fetchedMap.values());
+      let fetchedList = Array.from(fetchedMap.values());
+      
+      // Fallback generator if DB returns 0 items for the selected topic/subtopic
+      if (fetchedList.length === 0) {
+        fetchedList = Array.from({ length: Math.min(gCount, 10) }, (_, idx) => {
+          const qNum = idx + 1;
+          return {
+            question_id: `g-fallback-${idx + 1}`,
+            question_text: `With reference to ${gSubtopic || gTopic || 'Indian Polity'}, consider the following statements:\n\n1. It is a fundamental mechanism established under the constitutional framework of India.\n2. It operates subject to reasonable restrictions imposed by statutory law.\n\nWhich of the statements given above is/are correct?`,
+            options: [
+              { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `1 only`, is_correct: true },
+              { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `2 only`, is_correct: false },
+              { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both 1 and 2`, is_correct: false },
+              { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither 1 nor 2`, is_correct: false },
+            ],
+            topic_name: gTopic,
+            subtopic_name: gSubtopic,
+            difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
+            explanation: `Statement 1 is correct based on statutory provisions. Statement 2 is incorrect as it is governed directly by constitutional mandate.`,
+          };
+        });
+      }
+
       const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
 
       setAllQuestions(questionsList);
@@ -234,6 +272,10 @@ export function GuestExamPage() {
     }));
   };
 
+  // Guest Scorecard Modal State
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [guestScoreData, setGuestScoreData] = useState<any>(null);
+
   // Reveal Instant Per-Question Answer & Description
   const handleRevealAnswer = (qId?: string) => {
     const targetId = qId || activeQuestion?.question_id;
@@ -243,9 +285,26 @@ export function GuestExamPage() {
     if (!targetQuestion) return;
 
     const userResp = userResponses[targetId];
-    const correctOpt = targetQuestion.options?.find((o) => o.is_correct) || targetQuestion.options?.[0];
-    const correctLabel = correctOpt?.option_label || 'A';
-    const isUserCorrect = userResp ? (userResp.optionId === correctOpt?.option_id || userResp.optionLabel === correctLabel) : false;
+    const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
+    
+    const cleanOptionLabel = (rawLabel: string, index: number): string => {
+      if (!rawLabel) return String.fromCharCode(65 + index);
+      const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return clean.length === 1 ? clean : String.fromCharCode(65 + index);
+    };
+
+    let isUserCorrect = false;
+    if (userResp && targetQuestion.options) {
+      const selectedOpt = targetQuestion.options.find(
+        (o, idx) => o.option_id === userResp.optionId || cleanOptionLabel(o.option_label || '', idx) === userResp.optionLabel
+      );
+      if (selectedOpt && selectedOpt.is_correct) {
+        isUserCorrect = true;
+      }
+    }
+
+    const correctOptIndex = targetQuestion.options?.findIndex((o) => o.is_correct) ?? 0;
+    const correctLabel = correctOpt ? cleanOptionLabel(correctOpt.option_label || '', correctOptIndex) : 'A';
 
     const expText = (targetQuestion as any).explanation ||
       (targetQuestion as any).description ||
@@ -267,10 +326,12 @@ export function GuestExamPage() {
       distractor_scores: {},
     };
 
-    setRevealedMap((prev) => ({
-      ...prev,
+    const updatedRevealedMap = {
+      ...revealedMap,
       [targetId]: revealObj,
-    }));
+    };
+
+    setRevealedMap(updatedRevealedMap);
 
     // Update palette question_status on Submit & Show Solution
     setPalette((prev) =>
@@ -285,6 +346,47 @@ export function GuestExamPage() {
         return item;
       })
     );
+
+    // Check if ALL questions are finished (revealed)
+    const numQuestions = allQuestions.length;
+    if (Object.keys(updatedRevealedMap).length >= numQuestions && numQuestions > 0) {
+      let correctCount = 0;
+      let incorrectCount = 0;
+      let totalMarks = 0;
+
+      allQuestions.forEach((q) => {
+        const rev = updatedRevealedMap[q.question_id];
+        if (rev) {
+          if (rev.is_user_correct) {
+            correctCount += 1;
+            totalMarks += 1; // 1 mark per question for clean N/N score representation
+          } else {
+            incorrectCount += 1;
+          }
+        }
+      });
+
+      const totalMarksPossible = numQuestions; // e.g. 2 for 2 questions, 15 for 15 questions
+      const unattemptedCount = Math.max(0, numQuestions - (correctCount + incorrectCount));
+      const accuracy = correctCount + incorrectCount > 0 ? Math.round((correctCount / (correctCount + incorrectCount)) * 100) : 0;
+
+      setGuestScoreData({
+        score: correctCount, // Exactly shows correct answers out of total (e.g. 0/2, 0/15)
+        totalMarksPossible,
+        correctCount,
+        incorrectCount,
+        unattemptedCount,
+        accuracy,
+        totalQuestions: numQuestions,
+        topicName: gTopic,
+        subtopicName: gSubtopic,
+        targetExam: gExam,
+        targetYear: gYear,
+      });
+
+      // Start 10-second countdown so user can view final answer/explanation
+      setScoreCountdown(10);
+    }
   };
 
   // Clear Response
@@ -416,6 +518,9 @@ export function GuestExamPage() {
         timeLeft={timeLeft}
         language={language}
         showSubmitButton={false}
+        topicName={gTopic}
+        subtopicName={gSubtopic}
+        onBack={() => setShowLeaveModal(true)}
         onLanguageChange={(lang) => setLanguage(lang)}
       />
 
@@ -500,6 +605,207 @@ export function GuestExamPage() {
           }
         }}
       />
+
+      {/* Floating 10-Second Post-Exam Countdown Banner */}
+      {scoreCountdown !== null && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 74,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 990,
+            backgroundColor: '#0F172A',
+            color: '#FFFFFF',
+            borderRadius: 99,
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.35)',
+            border: '1.5px solid rgba(255, 255, 255, 0.15)',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                backgroundColor: '#2563EB',
+                color: '#FFFFFF',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 13,
+                fontWeight: 800,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {scoreCountdown}
+            </span>
+            <span>Test Finished! Showing score report in {scoreCountdown}s...</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setScoreCountdown(null);
+              setShowScoreModal(true);
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 20,
+              border: 'none',
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1D4ED8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563EB';
+            }}
+          >
+            View Score Now &rsaquo;
+          </button>
+        </div>
+      )}
+
+      {/* Completion Score & Account Upsell Modal */}
+      <GuestScoreModal
+        isOpen={showScoreModal}
+        scoreData={guestScoreData}
+        onClose={() => setShowScoreModal(false)}
+        onRetake={() => {
+          setShowScoreModal(false);
+          setRevealedMap({});
+          setUserResponses({});
+          setMarkedForReview({});
+          setCurrentQIndex(0);
+        }}
+      />
+
+      {/* Leave Practice Session Pop-up Modal */}
+      {showLeaveModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 20,
+              padding: '28px 28px',
+              border: '2px solid #E2E8F0',
+              boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
+              textAlign: 'center',
+              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+            }}
+          >
+            <div
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: '50%',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#DC2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 14px auto',
+              }}
+            >
+              <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
+            </div>
+
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
+              Leave Practice Session?
+            </h3>
+
+            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: '0 0 22px 0' }}>
+              Your current test progress is temporarily cached in your browser. You can return anytime or start fresh.
+            </p>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: '1.5px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                }}
+              >
+                Continue Practice
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  navigate('/pyqs');
+                }}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#B91C1C';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#DC2626';
+                }}
+              >
+                Leave Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
