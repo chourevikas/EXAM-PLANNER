@@ -5,6 +5,7 @@ interface ExamFooterBarProps {
   isAnswered: boolean;
   isMarkedForReview: boolean;
   isFirstQuestion: boolean;
+  isLastQuestion?: boolean;
   onClearResponse: () => void;
   onToggleMarkReview: () => void;
   onPrev: () => void;
@@ -17,6 +18,7 @@ export function ExamFooterBar({
   isAnswered,
   isMarkedForReview,
   isFirstQuestion,
+  isLastQuestion = false,
   onClearResponse,
   onToggleMarkReview,
   onPrev,
@@ -158,34 +160,38 @@ export function ExamFooterBar({
         </button>
 
         {/* Save & Next Button (Primary Action) */}
-        <button
-          type="button"
-          onClick={onNext}
-          style={{
-            padding: isMobile ? '7px 14px' : '9px 22px',
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: '#2563EB',
-            color: '#FFFFFF',
-            fontSize: 13.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#1D4ED8';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#2563EB';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-        </button>
+        {!isLastQuestion && (
+          <button
+            type="button"
+            onClick={onNext}
+            style={{
+              padding: isMobile ? '7px 14px' : '9px 22px',
+              borderRadius: 6,
+              border: 'none',
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span>Next</span>
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     </footer>
   );

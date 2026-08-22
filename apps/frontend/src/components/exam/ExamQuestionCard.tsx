@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bookmark, Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
+import { Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 
 interface ExamQuestionCardProps {
@@ -34,13 +34,13 @@ interface ExamQuestionCardProps {
   totalQuestions: number;
   selectedOptionId?: string | null;
   selectedOptionLabel?: string | null;
-  isBookmarked: boolean;
+  isBookmarked?: boolean;
   language: 'en' | 'hi';
   mode?: 'EXAM' | 'PRACTICE' | 'REVISION';
   revealResult?: RevealAnswerResponse | null;
   isRevealing?: boolean;
   onSelectOption: (optionId: string, optionLabel: string) => void;
-  onToggleBookmark: () => void;
+  onToggleBookmark?: () => void;
   onRevealAnswer?: () => void;
   onToggleSidebar?: () => void;
 }
@@ -382,37 +382,6 @@ export function ExamQuestionCard({
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Bookmark Button */}
-              <button
-                type="button"
-                onClick={onToggleBookmark}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: 5,
-                  padding: '4px 6px',
-                  color: isBookmarked ? '#D97706' : '#64748B',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  transition: 'all 0.18s ease-out',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F1F5F9';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <Bookmark size={14} fill={isBookmarked ? '#D97706' : 'none'} />
-                <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-              </button>
-            </div>
           </div>
 
           {/* Internally Scrollable Question Content Body */}

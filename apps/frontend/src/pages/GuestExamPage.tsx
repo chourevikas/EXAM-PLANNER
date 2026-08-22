@@ -60,12 +60,11 @@ export function GuestExamPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Guest Questions
+  // Fetch Guest Questions strictly from DB
   useEffect(() => {
     async function loadGuestQuestions() {
       setIsLoading(true);
 
-      const targetCount = Math.max(1, gCount);
       const fetchedMap = new Map<string, any>();
 
       const formatQuestion = (q: any, idx: number): QuestionOut => {
@@ -77,15 +76,12 @@ export function GuestExamPage() {
           is_correct: Boolean(o.is_correct),
         }));
 
-        const expText = q.explanation ||
-          q.explanation_text ||
-          q.description ||
-          `Option (${optionsList.find((o: any) => o.is_correct)?.option_label || 'A'}) is correct. Under constitutional provisions & standard syllabus references, this question tests key principles of ${q.topic_name || gTopic}.`;
+        const expText = q.explanation || q.explanation_text || q.description || '';
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
           question_number: idx + 1,
-          text: q.question_text || q.text || `Question #${idx + 1}`,
+          text: q.question_text || q.text || '',
           options: optionsList,
           section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
           topic_name: q.topic_name || gTopic,
@@ -98,143 +94,96 @@ export function GuestExamPage() {
         } as any;
       };
 
-      // Pass 1: Strict filters
-      const p1 = new URLSearchParams({ limit: targetCount.toString() });
-      if (gTopic && gTopic !== 'All Topics') p1.append('topic_name', gTopic);
-      if (gSubtopic && gSubtopic !== 'All Subtopics') p1.append('subtopic_name', gSubtopic);
-      if (gYear && gYear !== 'All Years (2018 - 2024)' && !isNaN(Number(gYear))) p1.append('exam_year', gYear);
-      if (gExam && gExam.toLowerCase().includes('upsc')) p1.append('exam_name', 'upsc');
+      // Query DB directly for questions mapped to the subtopic/topic without artificial limit
+      const params = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+      
+      const cleanSub = gSubtopic && gSubtopic !== 'All Subtopics' && gSubtopic !== 'Choose Subtopic' ? gSubtopic.trim() : '';
+      const cleanTop = gTopic && gTopic !== 'All Topics' && gTopic !== 'Choose Topic' ? gTopic.trim() : '';
+
+      if (cleanSub) {
+        params.append('subtopic_name', cleanSub);
+      } else if (cleanTop) {
+        params.append('topic_name', cleanTop);
+      }
+
+      if (gExam && gExam.toLowerCase().includes('upsc')) {
+        params.append('exam_name', 'upsc');
+      }
 
       try {
-        const res1 = await fetch(`/api/v1/questions?${p1.toString()}`);
-        if (res1.ok) {
-          const data1 = await res1.json();
-          (data1.items || []).forEach((item: any) => {
+        const res = await fetch(`/api/v1/questions?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          (data.items || []).forEach((item: any) => {
             if (item.question_id && !fetchedMap.has(item.question_id)) {
               fetchedMap.set(item.question_id, item);
             }
           });
         }
       } catch (err) {
-        console.warn('P1 questions fetch warning:', err);
-      }
-
-      // Pass 2: Relax year filter if needed
-      if (fetchedMap.size < targetCount) {
-        const p2 = new URLSearchParams({ limit: targetCount.toString() });
-        if (gTopic && gTopic !== 'All Topics') p2.append('topic_name', gTopic);
-        if (gSubtopic && gSubtopic !== 'All Subtopics') p2.append('subtopic_name', gSubtopic);
-        if (gExam && gExam.toLowerCase().includes('upsc')) p2.append('exam_name', 'upsc');
-
-        try {
-          const res2 = await fetch(`/api/v1/questions?${p2.toString()}`);
-          if (res2.ok) {
-            const data2 = await res2.json();
-            (data2.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P2 questions fetch warning:', err);
-        }
-      }
-
-      // Pass 3: Relax subtopic filter if needed
-      if (fetchedMap.size < targetCount) {
-        const p3 = new URLSearchParams({ limit: targetCount.toString() });
-        if (gTopic && gTopic !== 'All Topics') p3.append('topic_name', gTopic);
-        if (gExam && gExam.toLowerCase().includes('upsc')) p3.append('exam_name', 'upsc');
-
-        try {
-          const res3 = await fetch(`/api/v1/questions?${p3.toString()}`);
-          if (res3.ok) {
-            const data3 = await res3.json();
-            (data3.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P3 questions fetch warning:', err);
-        }
-      }
-
-      // Pass 4: General pool if still needed
-      if (fetchedMap.size < targetCount) {
-        try {
-          const res4 = await fetch(`/api/v1/questions?limit=${targetCount}`);
-          if (res4.ok) {
-            const data4 = await res4.json();
-            (data4.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('P4 questions fetch warning:', err);
-        }
+        console.warn('DB questions fetch warning:', err);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
       const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
 
-      // Pass 5: Fallback padding if DB items total < targetCount
-      while (questionsList.length < targetCount) {
-        const qNum = questionsList.length + 1;
-        questionsList.push({
-          question_id: `guest-q-${qNum}`,
-          question_number: qNum,
-          text: `Which of the following statements regarding ${gSubtopic !== 'All Subtopics' ? gSubtopic : gTopic
-            } under the Indian Constitution / Syllabus is correct?`,
-          options: [
-            { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `Statement I: It is guaranteed under Part III of the Constitution and enforceable by law.`, is_correct: true },
-            { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `Statement II: It requires explicit legislative enactment for enforcement in all scenarios.`, is_correct: false },
-            { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both Statement I and Statement II are incorrect.`, is_correct: false },
-            { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither Statement I nor Statement II applies to this subtopic.`, is_correct: false },
-          ],
-          section_code: gTopic,
-          topic_name: gTopic,
-          subtopic_name: gSubtopic,
-          difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
-          marks: 2.0,
-          negative_marks: 0.66,
-          expected_time_seconds: 60,
-          explanation: `Option (A) is correct. Fundamental Rights are codified under Part III (Articles 12-35) of the Indian Constitution and are directly enforceable through writ petitions under Article 32 & Article 226.`,
-        } as any);
-      }
-
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
-      setActiveQuestion(questionsList[0]);
+      setActiveQuestion(questionsList.length > 0 ? questionsList[0] : null);
 
       // Restore session state from sessionStorage
-      try {
-        const savedRaw = sessionStorage.getItem(SESSION_KEY);
-        if (savedRaw) {
-          const savedData = JSON.parse(savedRaw);
-          if (savedData.userResponses) setUserResponses(savedData.userResponses);
-          if (savedData.revealedMap) setRevealedMap(savedData.revealedMap);
-          if (savedData.markedForReview) setMarkedForReview(savedData.markedForReview);
-          if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
-          if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
-            setCurrentQIndex(savedData.currentQIndex);
-            setActiveQuestion(questionsList[savedData.currentQIndex]);
+      let restoredResponses: Record<string, any> = {};
+      let restoredRevealed: Record<string, any> = {};
+      let restoredMarked: Record<string, boolean> = {};
+
+      if (questionsList.length > 0) {
+        try {
+          const savedRaw = sessionStorage.getItem(SESSION_KEY);
+          if (savedRaw) {
+            const savedData = JSON.parse(savedRaw);
+            if (savedData.userResponses) {
+              restoredResponses = savedData.userResponses;
+              setUserResponses(savedData.userResponses);
+            }
+            if (savedData.revealedMap) {
+              restoredRevealed = savedData.revealedMap;
+              setRevealedMap(savedData.revealedMap);
+            }
+            if (savedData.markedForReview) {
+              restoredMarked = savedData.markedForReview;
+              setMarkedForReview(savedData.markedForReview);
+            }
+            if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
+            if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
+              setCurrentQIndex(savedData.currentQIndex);
+              setActiveQuestion(questionsList[savedData.currentQIndex]);
+            }
           }
+        } catch (err) {
+          console.warn('Failed to restore guest sessionStorage:', err);
         }
-      } catch (err) {
-        console.warn('Failed to restore guest sessionStorage:', err);
+
+        const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => {
+          const qId = q.question_id;
+          const isRevealed = !!restoredRevealed[qId];
+          const isMarked = !!restoredMarked[qId];
+          let status: any = i === 0 ? 'VISITED' : 'UNVISITED';
+          if (isRevealed) {
+            status = isMarked ? 'ANSWERED_AND_MARKED' : 'ANSWERED';
+          } else if (isMarked) {
+            status = 'MARKED_FOR_REVIEW';
+          }
+          return {
+            question_number: i + 1,
+            question_id: qId,
+            question_status: status,
+          };
+        });
+        setPalette(initialPalette);
+      } else {
+        setPalette([]);
       }
 
-      const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => ({
-        question_number: i + 1,
-        question_id: q.question_id,
-        question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
-      }));
-      setPalette(initialPalette);
       setIsLoading(false);
     }
 
@@ -283,19 +232,6 @@ export function GuestExamPage() {
       ...prev,
       [qId]: { optionId: optId, optionLabel: optLabel },
     }));
-
-    setPalette((prev) =>
-      prev.map((item) => {
-        if (item.question_id === qId) {
-          const isMarked = markedForReview[qId];
-          return {
-            ...item,
-            question_status: isMarked ? ('ANSWERED_AND_MARKED' as any) : ('ANSWERED' as any),
-          };
-        }
-        return item;
-      })
-    );
   };
 
   // Reveal Instant Per-Question Answer & Description
@@ -314,7 +250,7 @@ export function GuestExamPage() {
     const expText = (targetQuestion as any).explanation ||
       (targetQuestion as any).description ||
       (targetQuestion as any).explanation_text ||
-      `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+      '';
 
     const revealObj: RevealAnswerResponse = {
       question_id: targetId,
@@ -335,6 +271,20 @@ export function GuestExamPage() {
       ...prev,
       [targetId]: revealObj,
     }));
+
+    // Update palette question_status on Submit & Show Solution
+    setPalette((prev) =>
+      prev.map((item) => {
+        if (item.question_id === targetId) {
+          const isMarked = markedForReview[targetId];
+          return {
+            ...item,
+            question_status: isMarked ? ('ANSWERED_AND_MARKED' as any) : ('ANSWERED' as any),
+          };
+        }
+        return item;
+      })
+    );
   };
 
   // Clear Response
@@ -376,23 +326,52 @@ export function GuestExamPage() {
     setPalette((prev) =>
       prev.map((item) => {
         if (item.question_id === qId) {
-          const isAns = !!userResponses[qId];
+          const isSubmitted = !!revealedMap[qId];
           if (nextMarked) {
-            return { ...item, question_status: isAns ? ('ANSWERED_AND_MARKED' as any) : ('MARKED_FOR_REVIEW' as any) };
+            return { ...item, question_status: isSubmitted ? ('ANSWERED_AND_MARKED' as any) : ('MARKED_FOR_REVIEW' as any) };
           }
-          return { ...item, question_status: isAns ? ('ANSWERED' as any) : ('VISITED' as any) };
+          return { ...item, question_status: isSubmitted ? ('ANSWERED' as any) : ('VISITED' as any) };
         }
         return item;
       })
     );
   };
 
-  if (isLoading || !activeQuestion) {
+  if (isLoading) {
     return (
       <ExamLoaderOverlay
         title="Preparing Mock Examination"
         subtitle="Structuring authentic PYQs and setting up your workspace..."
       />
+    );
+  }
+
+  if (allQuestions.length === 0 || !activeQuestion) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100vw', backgroundColor: '#F8FAFC', padding: 24, textAlign: 'center' }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, padding: '40px 32px', maxWidth: 480, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>No Real Questions Found</h2>
+          <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
+            No real questions mapped to <strong>{gSubtopic && gSubtopic !== 'Choose Subtopic' ? gSubtopic : gTopic}</strong> were found in the database.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: 9,
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              fontWeight: 600,
+              fontSize: 14,
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+            }}
+          >
+            Choose Another Topic / Subtopic
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -415,7 +394,7 @@ export function GuestExamPage() {
     }
   });
 
-  const answeredCount = Object.keys(userResponses).length;
+  const answeredCount = Object.keys(revealedMap).length;
   const markedCount = Object.values(markedForReview).filter(Boolean).length;
   const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
 
@@ -509,6 +488,7 @@ export function GuestExamPage() {
         isAnswered={isCurrentAnswered}
         isMarkedForReview={isCurrentMarked}
         isFirstQuestion={currentQIndex === 0}
+        isLastQuestion={currentQIndex >= totalQuestions - 1}
         isRevealed={!!currentRevealedResult}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}

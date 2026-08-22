@@ -879,6 +879,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         isAnswered={selectedOptionId !== null}
         isMarkedForReview={isMarkedForReview}
         isFirstQuestion={currentQIndex === 0}
+        isLastQuestion={currentQIndex >= totalQuestions - 1}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
         onPrev={handlePrev}

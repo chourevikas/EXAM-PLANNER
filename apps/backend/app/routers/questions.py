@@ -53,9 +53,13 @@ async def list_questions(
     cache_key = build_cache_key(
         "questions:list",
         subject_id=str(subject_id) if subject_id else None,
+        subject_name=subject_name,
         topic_id=str(topic_id) if topic_id else None,
+        topic_name=topic_name,
         subtopic_id=str(subtopic_id) if subtopic_id else None,
+        subtopic_name=subtopic_name,
         exam_id=str(exam_id) if exam_id else None,
+        exam_name=exam_name,
         exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
         year=exam_year,
         set=paper_set_code,
