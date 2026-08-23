@@ -528,7 +528,16 @@ class AnalyticsService:
         """
         Calculates the candidate's All India Rank (AIR) and Percentile prediction
         for UPSC CSE Prelims using Weighted Moving Average (WMA) and UPSC historical cutoffs.
+        Caches payload in Redis for 15 minutes.
         """
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:rank", str(user_id))
+
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
         # Fetch user's completed or evaluated exam attempts ordered by submitted_at desc
         stmt = (
             select(ExamAttempt)
@@ -598,7 +607,7 @@ class AnalyticsService:
         top_percentage = round(max(0.01, 100.0 - predicted_percentile), 1)
         predicted_rank = max(1, int(total_candidates * (top_percentage / 100.0)))
 
-        return {
+        result = {
             "exam_code": "UPSC_CSE",
             "exam_name": "UPSC CSE Prelims",
             "moving_average_score": wma_score,
@@ -609,13 +618,24 @@ class AnalyticsService:
             "total_candidates": total_candidates,
             "attempts_analyzed": len(attempts),
         }
+        await cache.set(cache_key, result, ttl_seconds=900)
+        return result
 
     async def get_monthly_benchmark(self, user_id: uuid.UUID) -> Dict[str, Any]:
         """
         Synthesizes the National Benchmarking & Monthly Performance Report.
         Calculates dynamic predicted AIR, overall percentile, percentile growth delta,
         Exam Readiness Index (0-100), and subject accuracy vs national averages.
+        Caches payload in Redis for 15 minutes.
         """
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:monthly_benchmark", str(user_id))
+
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
         # 1. Base predicted rank & percentile
         rank_data = await self.get_predicted_rank(user_id)
         overall_percentile = rank_data["predicted_percentile"]
@@ -686,7 +706,7 @@ class AnalyticsService:
                 "total_attempted": s['total_attempted']
             })
 
-        return {
+        result = {
             "period": "August 2026",
             "predicted_rank": predicted_rank,
             "top_percentage": top_percentage,
@@ -702,6 +722,8 @@ class AnalyticsService:
             "monthly_growth_curve": monthly_growth_curve,
             "subject_benchmark": subject_benchmark,
         }
+        await cache.set(cache_key, result, ttl_seconds=900)
+        return result
 
 
 
