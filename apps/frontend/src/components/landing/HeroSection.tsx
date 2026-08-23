@@ -110,6 +110,10 @@ export function HeroSection({ }: HeroSectionProps) {
     setSelectedSubtopic('All Subtopics (Entire Topic)');
   };
 
+  const handleSubtopicChange = (newSubtopic: string) => {
+    setSelectedSubtopic(newSubtopic);
+  };
+
   const handleStartGuestExam = (e: React.FormEvent) => {
     e.preventDefault();
 
