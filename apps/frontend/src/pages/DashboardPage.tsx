@@ -166,7 +166,7 @@ export function DashboardPage() {
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
         <StudentMetricCard
-          title="Questions Attempted"
+          title="Questions Attempted Today"
           value={
             <span>
               {user.today_questions_attempted ?? user.free_questions_attempted ?? user.total_questions_attempted ?? 0}{' '}

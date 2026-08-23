@@ -12,9 +12,12 @@ import {
   CheckCheck,
   Sparkles,
   Target,
-  Trophy
+  Trophy,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
+import { useTheme } from '../../hooks/useTheme';
 
 interface StudentTopHeaderProps {
   user: any;
@@ -23,6 +26,7 @@ interface StudentTopHeaderProps {
 }
 
 export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
+  const { theme, toggleTheme } = useTheme();
   const [currentUser, setCurrentUser] = useState(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -322,9 +326,36 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
         </div>
       )}
 
-      {/* Right: Notifications, Pro Plan & Profile (LIGHT THEMED POPOVERS) */}
+      {/* Right: Notifications, Theme Toggle, Pro Plan & Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, position: 'relative' }}>
         
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#ffffff',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+          }}
+          title={theme === 'light' ? "Switch to Dark Mode" : "Switch to Light Mode"}
+        >
+          {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+        </button>
+
         {/* Notifications Bell Container */}
         <div style={{ position: 'relative' }}>
           <button
@@ -447,28 +478,51 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
           )}
         </div>
 
-        {/* Pro Plan Upgrade Badge */}
+        {/* Pro / Upgrade Status Badge */}
         {!isSmallMobile && (
-          <Link
-            to="/pricing"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '5px 10px',
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              color: '#f59e0b',
-              textDecoration: 'none',
-              fontSize: 12,
-              fontWeight: 700,
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <Star size={13} fill="#f59e0b" color="#f59e0b" />
-            <span>PRO</span>
-          </Link>
+          currentUser?.subscription_tier === 'PREMIUM' ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 10px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                color: '#f59e0b',
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+              title="You are currently on the Pro Plan"
+            >
+              <Star size={13} fill="#f59e0b" color="#f59e0b" />
+              <span>PRO MEMBER</span>
+            </div>
+          ) : (
+            <Link
+              to="/pricing"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 10px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.4)',
+                color: '#ffffff',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.2s ease'
+              }}
+              title="Click to upgrade to Pro Plan"
+            >
+              <Zap size={13} fill="#ffffff" color="#ffffff" />
+              <span>Upgrade to PRO</span>
+            </Link>
+          )
         )}
 
         {/* Light-Themed Profile Avatar & Menu Container */}
@@ -523,6 +577,18 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.full_name || 'Student Aspirant'}</div>
                   <div style={{ fontSize: 11, color: '#64748B', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.email || 'student@examplanner.com'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      backgroundColor: currentUser?.subscription_tier === 'PREMIUM' ? 'rgba(245, 158, 11, 0.15)' : '#F1F5F9',
+                      color: currentUser?.subscription_tier === 'PREMIUM' ? '#D97706' : '#64748B'
+                    }}>
+                      {currentUser?.subscription_tier === 'PREMIUM' ? 'PRO MEMBER' : 'FREE TIER'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -544,15 +610,32 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
               >
                 <CreditCard size={15} /> Subscription & Billing
               </Link>
-              <Link
-                to="/profile"
-                onClick={() => setShowProfileMenu(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, color: '#334155', textDecoration: 'none', fontSize: 13, transition: 'background-color 0.15s ease' }}
+              <button
+                onClick={() => {
+                  toggleTheme();
+                  setShowProfileMenu(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  color: '#334155',
+                  background: 'none',
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'left',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease'
+                }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F8FAFC'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <Settings size={15} /> Preferences
-              </Link>
+                {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+                <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+              </button>
 
               <div style={{ height: 1, backgroundColor: '#F1F5F9', margin: '4px 0' }} />
 
