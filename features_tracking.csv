@@ -1,0 +1,40 @@
+Module,Feature Name,Owner / Assigned To,Priority,Start Date,Target Date,% Complete,Dev Status,Blockers / Dependencies,Last Updated,Notes
+Authentication,Clerk Integration,,High,,,100%,Done,,,Handled via Clerk React SDK and backend validation
+Authentication,Clerk Webhooks,,High,,,100%,Done,,,Webhooks process user.created and user.updated events
+Authentication,Sign In / Sign Up Pages,,High,,,100%,Done,,,Uses Clerk components wrapped in custom UI
+User Profile,Profile Management UI,,High,,,100%,Done,,,ProfilePage.tsx connected to FastAPI backend
+User Profile,Profile Data Schema,,High,,,100%,Done,,,Includes streak/study hours/timezone tracking
+Exam Pipeline,PDF Upload Form,,High,,,100%,Done,,,Supports drag-and-drop file uploading
+Exam Pipeline,Celery Task Integration,,High,,,100%,Done,,,Used for PDF processing without blocking API
+Exam Pipeline,AI Vision Extraction,,High,,,100%,Done,,,Includes page splitting/parallel processing/retries
+Exam Pipeline,Pipeline Status Dashboard,,Medium,,,100%,Done,,,Shows extracted count/missing questions
+Admin Panel,Admin Overview Dashboard,,High,,,100%,Done,,,AdminOverviewView.tsx handles summary cards
+Admin Panel,Question Review View,,High,,,100%,Done,,,Includes side-by-side PDF viewer and JSON editor
+Admin Panel,User Management View,,Medium,,,100%,Done,,,UsersView.tsx connected to admin backend routes
+Admin Panel,Mock Tests Manager,,High,,,100%,Done,,,MockTestsView.tsx handles exam definitions
+Exam Engine,Live Exam Engine UI,,High,,,100%,Done,,,ExamEnginePage.tsx fully built out
+Exam Engine,Mock Selection,,High,,,100%,Done,,,MockSelectionPage.tsx implements filtering
+Exam Engine,PYQ Selection,,High,,,100%,Done,,,PYQSelectionPage.tsx implements exam grids
+Exam Engine,Session Tracking,,High,,,100%,Done,,,Backend schemas (attempts.py) and frontend state handled
+Analytics,Student Dashboard,,High,,,100%,Done,,,DashboardPage.tsx integrates Recharts
+Analytics,Detailed Analytics Page,,High,,,100%,Done,,,AnalyticsPage.tsx and backend routers
+Gamification,Study Streak & XP Tracking,,Medium,,,100%,Done,,,Integrated into User schema and dashboard
+Gamification,Badges & Achievements,,Medium,,,100%,Done,,,Badges modal on Dashboard fetches data
+Search,Global Quick Search,,Medium,,,100%,Done,,,search.py backend route and StudentTopHeader UI
+Marketing,Landing & Pricing Pages,,Low,,,100%,Done,,,Includes LandingPage.tsx and PricingPage.tsx
+Study Planner,Study Planner UI,,High,,,50%,In Progress,Backend AI Logic,,StudyPlannerPage.tsx exists
+Analytics,Psychometric Analysis UI,,Medium,,,50%,In Progress,AI Model Tuning,,PsychometricReportView UI exists
+Notifications,Email Service Integration,,High,,,50%,In Progress,Celery Tasks,,FastAPI-Mail setup done; triggers pending
+Study Planner,AI Study Plan Generation,,High,,,0%,Not Started,Google GenAI Integration,,Needs integration with Google GenAI / LangChain
+Study Planner,Dynamic Plan Adjustments,,Medium,,,0%,Not Started,AI Study Plan Generation,,Automatically adjust if user misses tasks
+Previous Year Questions,PYQ Bookmarking & Practice,,High,,,0%,Not Started,,,Filter/Bookmark/Review missing
+Mock Tests,AI Generated Tests,,Medium,,,0%,Not Started,AI Model Tuning,,Dynamic mock tests based on weak topics
+Revision Planner,Revision Scheduling Logic,,High,,,0%,Not Started,,,Smart reminders and priority-based revision
+Analytics,Predicted Exam Score & Rank,,Low,,,0%,Not Started,ML Model,,Predict score and rank
+AI Analysis,Post-Mock AI Insights,,Medium,,,0%,Not Started,Mock Tests,,AI provides Strengths/Weaknesses
+Gamification,Global Leaderboard,,Low,,,0%,Not Started,,,Global or friends leaderboard
+Notifications,Daily & Missed Reminders,,High,,,0%,Not Started,Email Service Integration,,Daily / Revision / Mock Reminders
+Notifications,Achievement Notifications,,Low,,,0%,Not Started,Email Service Integration,,In-app alerts or emails
+Resources,Subject-wise Resources Library,,Medium,,,0%,Not Started,,,Store PDFs/Books/Links
+AI Assistant,Doubt Solver Chatbot,,Low,,,0%,Not Started,LLM Integration,,Explain topic/generate questions via AI
+AI Assistant,Note Generation,,Low,,,0%,Not Started,LLM Integration,,Create revision notes/summarize chapters

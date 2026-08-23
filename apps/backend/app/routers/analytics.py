@@ -191,6 +191,27 @@ async def get_todays_activities(
     result = await session.exec(statement)
     return result.all()
 
+
+@router.get("/predicted-rank", summary="Get User's Estimated All India Rank (AIR) & Percentile")
+async def get_user_predicted_rank(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates user's estimated All India Rank (AIR) and percentile for UPSC CSE Prelims."""
+    service = AnalyticsService(session)
+    return await service.get_predicted_rank(current_user.id)
+
+
+@router.get("/subject-performance", summary="Get Subject-Wise Accuracy & Performance Metrics")
+async def get_user_subject_performance(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates subject accuracy percentages based on user study activities and exam responses."""
+    service = AnalyticsService(session)
+    return await service.get_user_subject_performance(current_user.id)
+
+
 @router.get("/reports/user/{user_id}/exam/{exam_id}/json")
 async def get_exam_psychometric_report_json(
     user_id: uuid.UUID,

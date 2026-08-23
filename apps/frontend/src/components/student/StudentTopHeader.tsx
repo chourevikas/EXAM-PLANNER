@@ -14,6 +14,7 @@ import {
   Target,
   Trophy
 } from 'lucide-react';
+import { UserAvatar } from '../common/UserAvatar';
 
 interface StudentTopHeaderProps {
   user: any;
@@ -21,15 +22,8 @@ interface StudentTopHeaderProps {
   onToggleSidebar?: () => void;
 }
 
-function getUserInitials(name?: string): string {
-  if (!name || typeof name !== 'string') return 'SA';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0 || !parts[0]) return 'SA';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
-
 export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
+  const [currentUser, setCurrentUser] = useState(user);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -39,6 +33,27 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
   const [isSearching, setIsSearching] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        setCurrentUser(stored);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    window.addEventListener('user_profile_updated', handleProfileUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
+    return () => {
+      window.removeEventListener('user_profile_updated', handleProfileUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -481,21 +496,7 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
               if (!showProfileMenu) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
             }}
           >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 7,
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: 12
-              }}
-            >
-              {getUserInitials(user?.full_name)}
-            </div>
+            <UserAvatar userOrImage={currentUser} size={28} />
           </button>
 
           {/* Light-Themed Profile Dropdown Menu */}
@@ -505,7 +506,7 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
                 position: 'absolute',
                 top: 48,
                 right: 0,
-                width: 220,
+                width: 230,
                 backgroundColor: '#FFFFFF',
                 borderRadius: 14,
                 border: '1px solid #E2E8F0',
@@ -517,9 +518,12 @@ export function StudentTopHeader({ user, pageTitle }: StudentTopHeaderProps) {
                 gap: 2
               }}
             >
-              <div style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9', marginBottom: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{user?.full_name || 'Student Aspirant'}</div>
-                <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{user?.email || 'student@examplanner.com'}</div>
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid #F1F5F9', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <UserAvatar userOrImage={currentUser} size={36} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.full_name || 'Student Aspirant'}</div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.email || 'student@examplanner.com'}</div>
+                </div>
               </div>
 
               <Link

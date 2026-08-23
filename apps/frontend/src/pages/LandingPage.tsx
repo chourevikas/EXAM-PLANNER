@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { Navbar } from '../components/common/Navbar';
 import { HeroSection } from '../components/landing/HeroSection';
 import { WorkflowSection } from '../components/landing/WorkflowSection';
@@ -18,6 +19,14 @@ interface LandingPageProps {
 export function LandingPage({ initialAuthMode }: LandingPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isSignedIn, isLoaded } = useAuth();
+
+  useEffect(() => {
+    const hasCustomToken = !!localStorage.getItem('access_token');
+    if (isLoaded && (isSignedIn || hasCustomToken)) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isLoaded, isSignedIn, navigate]);
 
   const getInitialOpen = () => {
     if (initialAuthMode) return true;

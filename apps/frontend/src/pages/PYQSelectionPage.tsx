@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
@@ -22,14 +23,19 @@ export function PYQSelectionPage() {
   const [hoveredExam, setHoveredExam] = useState<string | null>(null);
   const [examsList, setExamsList] = useState<DisplayExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
 
   useEffect(() => {
     async function fetchLiveExamsAndAttempts() {
       setIsLoading(true);
       try {
+        const token = await getToken();
+        if (token) {
+          localStorage.setItem('access_token', token);
+        }
         const [liveExams, userAttempts] = await Promise.all([
-          listExams('PUBLISHED', true),
-          listCandidateAttempts(),
+          listExams('PUBLISHED', true, token || undefined),
+          listCandidateAttempts(token || undefined),
         ]);
 
         // Only display exams that have been Approved & Published by Admin with is_active = True
