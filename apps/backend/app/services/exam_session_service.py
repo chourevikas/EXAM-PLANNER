@@ -1376,3 +1376,125 @@ class ExamSessionService:
             unattempted_count=unatt,
             total=len(responses),
         )
+
+    async def sync_guest_sessions(self, user_id: uuid.UUID, sessions_list: Any) -> Dict[str, Any]:
+        """
+        Synchronizes guest exam attempts saved in frontend localStorage into backend ExamAttempt database rows.
+        """
+        if isinstance(sessions_list, dict):
+            sessions_list = sessions_list.get("sessions_payload") or sessions_list.get("sessions") or []
+
+        if not isinstance(sessions_list, list) or not sessions_list:
+            return {"status": "success", "synced_count": 0}
+
+        # Fetch or default an active Exam
+        exam_res = await self.session.exec(select(Exam).where(Exam.is_active == True))
+        active_exam = exam_res.first()
+
+        if not active_exam:
+            exam_res_any = await self.session.exec(select(Exam))
+            active_exam = exam_res_any.first()
+
+        synced_count = 0
+        for item in sessions_list:
+            t_exam = item.get("targetExam", "UPSC CSE")
+            t_year = item.get("targetYear", "Target 2026")
+            topic = item.get("topicName", "General Studies")
+            subtopic = item.get("subtopicName", "")
+            score = float(item.get("score", 0))
+            max_score = float(item.get("totalMarksPossible", 10))
+            correct = int(item.get("correctCount", 0))
+            incorrect = int(item.get("incorrectCount", 0))
+            unattempted = int(item.get("unattemptedCount", 0))
+            accuracy = float(item.get("accuracy", 0))
+            tot_q = int(item.get("totalQuestions", correct + incorrect + unattempted))
+            time_spent = float(item.get("timeSpentSeconds", 0))
+
+            created_dt = datetime.now(timezone.utc)
+            if item.get("completedAt"):
+                try:
+                    created_dt = datetime.fromisoformat(str(item["completedAt"]).replace("Z", "+00:00"))
+                except Exception:
+                    pass
+
+            meta = {
+                "is_guest_synced": True,
+                "topic_name": topic,
+                "subtopic_name": subtopic,
+                "target_exam": t_exam,
+                "target_year": t_year,
+                "accuracy": accuracy,
+                "guest_session_id": item.get("id", "")
+            }
+
+            attempt = ExamAttempt(
+                user_id=user_id,
+                exam_id=active_exam.id if active_exam else uuid.uuid4(),
+                status=AttemptStatus.SUBMITTED,
+                mode=AttemptMode.EXAM,
+                total_score=score,
+                max_possible_score=max_score,
+                time_spent_seconds=time_spent,
+                total_questions_attempted=correct + incorrect,
+                total_questions=tot_q,
+                total_correct=correct,
+                total_incorrect=incorrect,
+                total_unattempted=unattempted,
+                report_metadata_json=meta,
+                created_at=created_dt,
+                submitted_at=created_dt,
+            )
+            self.session.add(attempt)
+            synced_count += 1
+
+        await self.session.commit()
+        return {"status": "success", "synced_count": synced_count}
+
+    async def get_student_dashboard_stats(self, user_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Retrieves aggregate statistics and recent exam attempts for the student dashboard.
+        """
+        attempts_res = await self.session.exec(
+            select(ExamAttempt).where(ExamAttempt.user_id == user_id).order_by(col(ExamAttempt.created_at).desc())
+        )
+        attempts = attempts_res.all()
+
+        total_exams = len(attempts)
+        total_questions_attempted = sum(a.total_questions_attempted for a in attempts)
+        total_correct = sum(a.total_correct for a in attempts)
+        total_questions = sum(a.total_questions for a in attempts)
+        total_time_seconds = sum(int(a.time_spent_seconds or 0) for a in attempts)
+
+        overall_accuracy = round((total_correct / total_questions_attempted) * 100, 1) if total_questions_attempted > 0 else 0.0
+
+        recent_attempts = []
+        for a in attempts[:15]:
+            meta = a.report_metadata_json or {}
+            recent_attempts.append({
+                "id": str(a.id),
+                "targetExam": meta.get("target_exam", "UPSC CSE"),
+                "targetYear": meta.get("target_year", "Target 2026"),
+                "topicName": meta.get("topic_name", "General Studies"),
+                "subtopicName": meta.get("subtopic_name", ""),
+                "score": a.total_score,
+                "totalMarksPossible": a.max_possible_score,
+                "correctCount": a.total_correct,
+                "incorrectCount": a.total_incorrect,
+                "unattemptedCount": a.total_unattempted,
+                "accuracy": meta.get("accuracy", round((a.total_correct / (a.total_questions_attempted or 1)) * 100, 1)),
+                "totalQuestions": a.total_questions,
+                "timeSpentSeconds": int(a.time_spent_seconds or 0),
+                "isGuestSynced": bool(meta.get("is_guest_synced", False)),
+                "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
+            })
+
+        return {
+            "totalExams": total_exams,
+            "totalQuestionsAttempted": total_questions_attempted,
+            "totalCorrect": total_correct,
+            "totalQuestions": total_questions,
+            "overallAccuracy": overall_accuracy,
+            "totalTimeSeconds": total_time_seconds,
+            "recentAttempts": recent_attempts,
+        }
+

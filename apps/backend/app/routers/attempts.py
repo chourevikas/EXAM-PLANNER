@@ -1,8 +1,9 @@
 import uuid
-from typing import Optional
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from typing import Optional, Any
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Body
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
+
 
 from app.db.session import get_async_session
 from app.core.deps import get_current_user
@@ -246,3 +247,30 @@ async def get_attempt_result(
     """
     service = ExamSessionService(session)
     return await service.get_attempt_result(attempt_id=attempt_id, user_id=current_user.id)
+
+
+@router.post("/sync-guest-sessions", summary="Sync guest exam attempts to candidate user account")
+async def sync_guest_sessions(
+    sessions_payload: Any = Body(default=[]),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Migrates guest test sessions from browser localStorage into candidate's user account database.
+    """
+    service = ExamSessionService(session)
+    return await service.sync_guest_sessions(user_id=current_user.id, sessions_list=sessions_payload)
+
+
+
+@router.get("/student-dashboard-stats", summary="Get merged student dashboard statistics")
+async def get_student_dashboard_stats(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns aggregated stats and recent test attempt history for the student dashboard.
+    """
+    service = ExamSessionService(session)
+    return await service.get_student_dashboard_stats(user_id=current_user.id)
+

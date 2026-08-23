@@ -4,7 +4,7 @@ import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { useTheme } from '../hooks/useTheme';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
-import { fetchCurrentUser } from '../services/authService';
+import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
 import { listExams } from '../services/examService';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
@@ -53,6 +53,8 @@ export function DashboardPage() {
   });
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
 
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+
   const fetchActivities = async () => {
     const token = await getToken();
     if (token) {
@@ -66,6 +68,29 @@ export function DashboardPage() {
         .catch(err => console.error("Failed to fetch activities:", err));
     }
   };
+
+  const fetchDashboardStats = async () => {
+    const token = (await getToken()) || localStorage.getItem('access_token');
+    if (token) {
+      // Auto-sync any guest attempts stored in localStorage to backend DB first
+      await syncGuestSessionsOnAuth(token);
+
+      try {
+        const res = await fetch('/api/v1/attempts/student-dashboard-stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.totalExams !== undefined) {
+            setDashboardStats(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch student dashboard stats:", err);
+      }
+    }
+  };
+
 
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
@@ -84,6 +109,7 @@ export function DashboardPage() {
     });
 
     fetchActivities();
+    fetchDashboardStats();
 
     // Fetch user badges
     getToken().then((token: string | null) => {
@@ -103,6 +129,7 @@ export function DashboardPage() {
       }
     });
   }, []);
+
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
 
@@ -151,28 +178,40 @@ export function DashboardPage() {
           title="Questions Attempted"
           value={
             <span>
-              {user.free_questions_attempted ?? 0}{' '}
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>/ 100</span>
+              {dashboardStats?.totalQuestionsAttempted ?? user.free_questions_attempted ?? 0}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
             </span>
           }
-          supportingText="Daily practice progress"
+          supportingText="Total questions solved"
           icon={<Ico.Target size={18} />}
           showProgress={true}
-          progressPercent={Math.min(((user.free_questions_attempted ?? 0) / 100) * 100, 100)}
+          progressPercent={Math.min(((dashboardStats?.totalQuestionsAttempted ?? 0) / 500) * 100, 100)}
           accentColor="#2563EB"
         />
 
         <StudentMetricCard
-          title="Study Streak"
+          title="Tests Completed"
           value={
             <span>
-              {user.current_streak ?? 0}{' '}
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Days</span>
+              {dashboardStats?.totalExams ?? 0}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Exams</span>
             </span>
           }
-          supportingText="Active daily streak"
-          icon={<Ico.Trend size={18} />}
+          supportingText="Completed practice tests"
+          icon={<Ico.Trophy size={18} />}
           accentColor="#D97706"
+        />
+
+        <StudentMetricCard
+          title="Overall Accuracy"
+          value={
+            <span>
+              {dashboardStats?.overallAccuracy ?? 0}%
+            </span>
+          }
+          supportingText="Average correctness score"
+          icon={<Ico.Chart size={18} />}
+          accentColor="#10B981"
         />
 
         <StudentMetricCard
@@ -190,17 +229,10 @@ export function DashboardPage() {
           }
           icon={<Ico.Star filled />}
           onClick={() => setShowBadgesModal(true)}
-          accentColor="#10B981"
-        />
-
-        <StudentMetricCard
-          title="Predicted Rank"
-          value="Top 8%"
-          supportingText="92nd Percentile"
-          icon={<Ico.Chart size={18} />}
           accentColor="#3B82F6"
         />
       </section>
+
 
       {/* 3. Performance Analytics */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 32 }}>
@@ -495,6 +527,119 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* 5. Exam Attempts History & Synced Guest Sessions Feed */}
+      <section style={{ marginBottom: 40 }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
+                Recent Exam Attempts & Synced Guest Sessions
+              </h3>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+                Tracked sessions including pre-login guest tests automatically synced to your student profile.
+              </p>
+            </div>
+            <div style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', borderRadius: 20, border: '1px solid #BFDBFE' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#2563EB' }}>
+                {dashboardStats?.recentAttempts?.length || 0} Total Sessions Recorded
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!dashboardStats?.recentAttempts || dashboardStats.recentAttempts.length === 0 ? (
+              <div style={{ padding: '32px 20px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                <Ico.Trophy size={32} />
+                <p style={{ fontSize: 14, marginTop: 12 }}>No test sessions recorded yet. Take a practice exam or guest mock to get started!</p>
+              </div>
+            ) : (
+              dashboardStats.recentAttempts.map((attempt: any) => (
+                <div
+                  key={attempt.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 16,
+                    padding: '16px 20px',
+                    backgroundColor: 'var(--bg-subtle)',
+                    borderRadius: 16,
+                    border: '1px solid var(--border-default)',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        backgroundColor: attempt.isGuestSynced ? '#EFF6FF' : '#ECFDF5',
+                        border: attempt.isGuestSynced ? '1px solid #BFDBFE' : '1px solid #A7F3D0',
+                        color: attempt.isGuestSynced ? '#2563EB' : '#10B981',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: 16,
+                      }}
+                    >
+                      {attempt.isGuestSynced ? 'G' : 'P'}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {attempt.topicName}
+                        </span>
+                        {attempt.subtopicName && (
+                          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                            • {attempt.subtopicName}
+                          </span>
+                        )}
+                        {attempt.isGuestSynced && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              backgroundColor: '#EFF6FF',
+                              color: '#2563EB',
+                              border: '1px solid #BFDBFE',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
+                            Guest Synced
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                        {attempt.targetExam} ({attempt.targetYear}) • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
+                        Score: {attempt.score} / {attempt.totalMarksPossible}
+                      </div>
+                      <div style={{ fontSize: 12, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
+                        {attempt.accuracy}% Accuracy ({attempt.correctCount} Correct, {attempt.incorrectCount} Incorrect)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Badges Modal */}
       {showBadgesModal && (
         <div style={{

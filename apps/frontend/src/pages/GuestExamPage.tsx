@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
+
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
@@ -26,7 +26,6 @@ export function GuestExamPage() {
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
-  const [timeLeft, setTimeLeft] = useState(600); // Exactly 10 mins (600s)
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +42,8 @@ export function GuestExamPage() {
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [guestScoreData, setGuestScoreData] = useState<any>(null);
   const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
 
   // Mobile Responsiveness
@@ -56,13 +57,7 @@ export function GuestExamPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Timer countdown
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+
 
   // Post-Exam Score Modal 10s Countdown Effect
   useEffect(() => {
@@ -119,6 +114,9 @@ export function GuestExamPage() {
         try {
           const params = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           params.append(filterKey, filterVal);
+          if (gExam && gExam.toLowerCase().includes('upsc')) {
+            params.append('exam_name', 'upsc');
+          }
           const res = await fetch(`/api/v1/questions?${params.toString()}`);
           if (res.ok) {
             const data = await res.json();
@@ -158,7 +156,7 @@ export function GuestExamPage() {
 
 
       let fetchedList = Array.from(fetchedMap.values());
-      
+
       // Cap at max 10 questions for guest mode (or gCount if less than 10)
       const maxCount = Math.min(gCount, 10);
       if (fetchedList.length > maxCount) {
@@ -192,10 +190,6 @@ export function GuestExamPage() {
             if (savedData.markedForReview) {
               restoredMarked = savedData.markedForReview;
               setMarkedForReview(savedData.markedForReview);
-            }
-            if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
-            if (typeof savedData.timeLeft === 'number' && savedData.timeLeft > 0) {
-              setTimeLeft(savedData.timeLeft);
             }
             if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
               setCurrentQIndex(savedData.currentQIndex);
@@ -243,13 +237,13 @@ export function GuestExamPage() {
         markedForReview,
         bookmarkedQs,
         currentQIndex,
-        timeLeft,
       };
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (err) {
       console.warn('Failed to write guest sessionStorage:', err);
     }
-  }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, timeLeft, isLoading, allQuestions]);
+  }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, isLoading, allQuestions]);
+
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -278,10 +272,6 @@ export function GuestExamPage() {
     }));
   };
 
-  // Guest Scorecard Modal State
-  const [showScoreModal, setShowScoreModal] = useState(false);
-  const [guestScoreData, setGuestScoreData] = useState<any>(null);
-
   // Reveal Instant Per-Question Answer & Description
   const handleRevealAnswer = (qId?: string) => {
     const targetId = qId || activeQuestion?.question_id;
@@ -292,7 +282,7 @@ export function GuestExamPage() {
 
     const userResp = userResponses[targetId];
     const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
-    
+
     const cleanOptionLabel = (rawLabel: string, index: number): string => {
       if (!rawLabel) return String.fromCharCode(65 + index);
       const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
@@ -390,8 +380,9 @@ export function GuestExamPage() {
         subtopicName: gSubtopic,
         targetExam: gExam,
         targetYear: gYear,
-        timeSpentSeconds: 600 - timeLeft,
+        timeSpentSeconds: 600,
       };
+
 
       setGuestScoreData(scorePayload);
       saveGuestAttempt(scorePayload);
@@ -524,20 +515,6 @@ export function GuestExamPage() {
         backgroundColor: '#F8FAFC',
       }}
     >
-      {/* Top Admin Theme Header */}
-      <ExamHeader
-        examTitle={gExam}
-        paperSubtitle={`${gExam} · ${gYear} · ${gSubtopic}`}
-        timeLeft={timeLeft}
-        language={language}
-        showSubmitButton={false}
-        topicName={gTopic}
-        subtopicName={gSubtopic}
-        parentBreadcrumb="Home"
-        onBack={() => setShowLeaveModal(true)}
-        onLanguageChange={(lang) => setLanguage(lang)}
-      />
-
       {/* Slide-out Drawer Left Sidebar */}
       <ExamSectionSidebar
         isOpen={isSidebarOpen}
@@ -563,13 +540,14 @@ export function GuestExamPage() {
         style={{
           display: 'flex',
           flex: 1,
-          marginTop: 60,
+          marginTop: 0,
           marginBottom: 64,
           overflow: 'hidden',
           position: 'relative',
           backgroundColor: '#F8FAFC',
         }}
       >
+
         {/* Center Reading Canvas */}
         <ExamQuestionCard
           question={activeQuestion}
@@ -609,16 +587,21 @@ export function GuestExamPage() {
         isFirstQuestion={currentQIndex === 0}
         isLastQuestion={currentQIndex >= totalQuestions - 1}
         isRevealed={!!currentRevealedResult}
+        showClearResponse={false}
+        showMarkReview={false}
+        backgroundColor="#F8FAFC"
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
         onSubmitAnswer={() => handleRevealAnswer()}
         onPrev={() => handleSelectQuestion(currentQIndex - 1)}
+
         onNext={() => {
           if (currentQIndex < totalQuestions - 1) {
             handleSelectQuestion(currentQIndex + 1);
           }
         }}
       />
+
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
       {scoreCountdown !== null && (

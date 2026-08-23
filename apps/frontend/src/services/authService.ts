@@ -14,13 +14,17 @@ export async function syncGuestSessionsOnAuth(token: string): Promise<void> {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(attempts),
+      body: JSON.stringify({ sessions_payload: attempts }),
     });
 
     if (res.ok) {
       clearGuestAttempts();
       console.log('Successfully synced guest exam attempts to candidate account');
+    } else {
+      const errText = await res.text();
+      console.warn('Sync guest sessions API returned error status:', res.status, errText);
     }
+
   } catch (err) {
     console.warn('Failed to sync guest exam attempts during authentication:', err);
   }
