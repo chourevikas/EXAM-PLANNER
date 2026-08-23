@@ -98,7 +98,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
             <button
               className="btn btn-primary anim-glow"
               style={{ padding: '10px 24px', fontSize: 14 }}
-              onClick={onSignup}
+              onClick={onLogin}
             >
               Get Started
             </button>
@@ -151,7 +151,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                 <button
                   className="btn btn-primary anim-glow"
                   style={{ width: '100%', padding: '12px', fontSize: 15 }}
-                  onClick={handleSignupClick}
+                  onClick={handleLoginClick}
                 >
                   Get Started
                 </button>

@@ -82,7 +82,7 @@ async def _get_user_question_stats(session: AsyncSession, user_id: str | uuid.UU
         select(UserTestAttempt).where(UserTestAttempt.user_id == u_id)
     )
     for ua in u_att_res.all():
-        sub_at = ua.submitted_at or ua.created_at
+        sub_at = getattr(ua, "submitted_at", None) or getattr(ua, "started_at", None)
         if sub_at and hasattr(sub_at, "date"):
             activity_dates.add(sub_at.date())
 

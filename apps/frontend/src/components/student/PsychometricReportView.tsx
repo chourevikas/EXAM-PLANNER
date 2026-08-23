@@ -138,66 +138,73 @@ export function PsychometricReportView({
     report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
 
   const macroAnalytics: Record<string, any> =
-    exam_macro_analytics || (report as any)?.part_3_aggregated_user_report || {};
+    (report as any)?.part_2_exam_macro_scorecard ||
+    (report as any)?.part_3_aggregated_user_report ||
+    exam_macro_analytics ||
+    {};
 
   // Extract individual metrics for Place 1 (Exam Level)
   const icrs =
-    macroAnalytics['1_integrated_cognitive_readiness']?.value ||
+    macroAnalytics['overall_exam_readiness'] ||
     macroAnalytics['icrs'] ||
-    { icrs_score: 82, classification: 'HIGH_COMPETENCE_READY', interpretation: 'Strong tactical elimination discipline with balanced pacing.' };
+    macroAnalytics['1_integrated_cognitive_readiness']?.value ||
+    { icrs_score: 0, classification: 'EVALUATING', interpretation: 'Metrics being compiled from attempt telemetry.' };
 
   const irt =
-    macroAnalytics['2_irt_3pl_latent_ability']?.value ||
+    macroAnalytics['concept_mastery_level'] ||
     macroAnalytics['irt_3pl'] ||
-    { latent_ability_theta: 0.92, percentile_estimate: 84.5, standard_error: 0.21 };
+    macroAnalytics['2_irt_3pl_latent_ability']?.value ||
+    { latent_ability_theta: 0.0, percentile_estimate: 0.0, standard_error: 0.0 };
 
   const gti =
-    macroAnalytics['3_guessing_tendency_index']?.value ||
+    macroAnalytics['guessing_instinct_risk'] ||
     macroAnalytics['gti'] ||
-    { aggregate: 0.15, aggregate_gti: 0.15, category: 'CONTROLLED_CALCULATED_RISK', label: 'Disciplined Risk', recommendation: 'Calculated and controlled attempts.' };
+    macroAnalytics['3_guessing_tendency_index']?.value ||
+    { aggregate: 0.0, aggregate_gti: 0.0, category: 'EVALUATING', label: 'Pending Calculation', recommendation: '' };
 
   const pacing =
-    macroAnalytics['4_macro_pacing_and_fatigue']?.value ||
+    macroAnalytics['pacing_efficiency'] ||
     macroAnalytics['pacing'] ||
-    { time_utilization_pct: 92, skew_ratio: 1.05, pacing_classification: 'BALANCED_PACING', pacing_status: 'BALANCED' };
+    macroAnalytics['4_macro_pacing_and_fatigue']?.value ||
+    { time_utilization_pct: 0, skew_ratio: 1.0, pacing_classification: 'EVALUATING', pacing_status: 'EVALUATING' };
 
   const oeei =
-    macroAnalytics['5_option_elimination_efficiency']?.value ||
+    macroAnalytics['option_elimination_precision'] ||
     macroAnalytics['oeei'] ||
-    { oeei_score: 76, elimination_efficiency_rating: 'HIGH_ELIMINATION_CONVERSION' };
+    macroAnalytics['5_option_elimination_efficiency']?.value ||
+    { oeei_score: 0, elimination_efficiency_rating: 'EVALUATING' };
 
   const satoi =
-    macroAnalytics['6_speed_accuracy_tradeoff_satoi']?.value ||
+    macroAnalytics['cognitive_stamina'] ||
     macroAnalytics['satoi'] ||
-    { satoi_score: 84, burnout_risk: 'OPTIMAL_SPEED_ACCURACY_BALANCE', cognitive_stamina_status: 'HEALTHY_STAMINA' };
+    macroAnalytics['6_speed_accuracy_tradeoff_satoi']?.value ||
+    { satoi_score: 0, burnout_risk: 'EVALUATING', cognitive_stamina_status: 'EVALUATING' };
 
   const switchRegret =
-    macroAnalytics['7_option_switch_regret']?.value ||
+    macroAnalytics['second_guessing_discipline'] ||
     macroAnalytics['switch_regret'] ||
-    { switch_frequency: 3, total_switches: 3, regret_ratio: 0.25, recommendation: 'CONSTRUCTIVE_REVISION' };
+    macroAnalytics['7_option_switch_regret']?.value ||
+    { switch_frequency: 0, total_switches: 0, regret_ratio: 0.0, recommendation: 'NO_SWITCHES' };
 
   const blooms =
-    macroAnalytics['8_blooms_taxonomy_mastery']?.value ||
+    macroAnalytics['thinking_cognitive_levels'] ||
     macroAnalytics['blooms_mastery'] ||
-    { REMEMBER: 85, ANALYZE: 74, EVALUATE: 68 };
+    macroAnalytics['8_blooms_taxonomy_mastery']?.value ||
+    {};
 
   const topicDecay =
+    (report as any)?.part_4_aggregate_profile?.topic_memory_retention_overview ||
+    (report as any)?.part_4_aggregate_profile?.topic_fsrs_decay ||
     macroAnalytics['9_topic_fsrs_memory_decay']?.value ||
     macroAnalytics['topic_fsrs_decay'] ||
-    {
-      topic_decay_records: [
-        { topic_name: 'Indian Polity & Constitution', retrievability: 0.88, recommended_revision_date: '3 Days' },
-        { topic_name: 'Macroeconomics & Monetary Policy', retrievability: 0.82, recommended_revision_date: '5 Days' },
-        { topic_name: 'Environment & Biodiversity', retrievability: 0.79, recommended_revision_date: '4 Days' },
-        { topic_name: 'Modern Indian History', retrievability: 0.71, recommended_revision_date: '2 Days' },
-      ],
-    };
+    { topic_decay_records: [] };
 
   const distractor =
+    macroAnalytics['distractor_trap_distribution'] ||
+    macroAnalytics['closeness_distribution'] ||
     macroAnalytics['10_option_closeness_classification']?.value ||
     macroAnalytics['10_distractor_closeness_analysis']?.value ||
-    macroAnalytics['closeness_distribution'] ||
-    { 'High-Closeness Distractor': 2, 'Neutral Distractor': 5, 'Correct Response': 18 };
+    {};
 
   const llmInsight =
     (report as any)?.llm_insight ||
@@ -208,35 +215,29 @@ export function PsychometricReportView({
   const userProfile =
     user_overall_skill_profile ||
     (report as any)?.part_3_aggregated_user_report?.cumulative_skill_profile || {
-      cumulative_icrs_score: 80.0,
-      cumulative_irt_theta: 0.88,
-      cumulative_gti: 0.16,
-      cumulative_oeei: 0.75,
-      cumulative_satoi: 83.0,
-      total_tests_given: 1,
-      total_questions_answered: 100,
+      cumulative_icrs_score: 0.0,
+      cumulative_irt_theta: 0.0,
+      cumulative_gti: 0.0,
+      cumulative_oeei: 0.0,
+      cumulative_satoi: 0.0,
+      total_tests_given: 0,
+      total_questions_answered: 0,
     };
 
   const deltas = userProgressionData?.deltas || {
-    icrs_delta: 2.5,
-    irt_theta_delta: 0.12,
-    gti_delta: -0.04,
-    oeei_delta: 0.05,
-    satoi_delta: 3.0,
+    icrs_delta: 0.0,
+    irt_theta_delta: 0.0,
+    gti_delta: 0.0,
+    oeei_delta: 0.0,
+    satoi_delta: 0.0,
   };
 
   // Taxonomy breakdown items
   const taxonomyData: any[] =
     (report as any)?.part_2_taxonomy_analysis?.by_subject ||
     (report as any)?.part_2_taxonomy_analysis?.by_topic ||
-    userProfile.taxonomy_mastery_breakdown || [
-      { taxonomy_name: 'Indian Polity & Governance', total_questions: 18, correct: 15, accuracy_percentage: 83.3, strength_status: 'STRONG', fsrs_retention_pct: 88 },
-      { taxonomy_name: 'Environment & Biodiversity', total_questions: 20, correct: 16, accuracy_percentage: 80.0, strength_status: 'STRONG', fsrs_retention_pct: 85 },
-      { taxonomy_name: 'Indian Economy & Budget', total_questions: 16, correct: 12, accuracy_percentage: 75.0, strength_status: 'COMPETENT', fsrs_retention_pct: 79 },
-      { taxonomy_name: 'Modern Indian History', total_questions: 22, correct: 14, accuracy_percentage: 63.6, strength_status: 'MODERATE', fsrs_retention_pct: 70 },
-      { taxonomy_name: 'Science & Technology', total_questions: 14, correct: 8, accuracy_percentage: 57.1, strength_status: 'WEAK_REVISION_REQUIRED', fsrs_retention_pct: 58 },
-      { taxonomy_name: 'Physical & Indian Geography', total_questions: 10, correct: 7, accuracy_percentage: 70.0, strength_status: 'COMPETENT', fsrs_retention_pct: 76 },
-    ];
+    userProfile.taxonomy_mastery_breakdown ||
+    [];
 
   const cardStyle: React.CSSProperties = {
     backgroundColor: isDark ? '#131f37' : '#ffffff',
@@ -695,18 +696,20 @@ export function PsychometricReportView({
       ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'exam-matrices' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Executive UPSC Prelims Performance & Benchmark Card */}
+          {/* Executive Prelims / Practice Performance & Benchmark Card */}
           {(() => {
             const upscBench = (report as any)?.part_2_exam_macro_scorecard?.upsc_prelims_benchmark || {};
+            const totalCount = questionsList.length || (metadata?.exam_attempt as any)?.total_questions || 10;
+            const maxPossibleScore = Number(metadata?.exam_attempt?.max_possible_score || (metadata?.exam_attempt as any)?.total_marks_possible || upscBench.total_marks_possible || (totalCount * 2.0));
             const netMarks = Number(metadata?.exam_attempt?.total_score_awarded ?? (metadata?.exam_attempt as any)?.total_score ?? upscBench.candidate_net_score ?? 0);
-            const cutoffTarget = upscBench.expected_cutoff_marks || 92.0;
+            const isPractice = Boolean(upscBench.is_practice_mode || (maxPossibleScore < 100) || (totalCount < 50));
+            const cutoffTarget = Number(upscBench.expected_cutoff_marks || (isPractice ? Math.round(maxPossibleScore * 0.46 * 100) / 100 : 92.0));
             const cutoffMargin = Math.round((netMarks - cutoffTarget) * 10) / 10;
             const isAboveCutoff = netMarks >= cutoffTarget;
             const corrCount = questionsList.filter((q) => getQuestionState(q).isCorr).length;
             const incCount = questionsList.filter((q) => getQuestionState(q).isInc).length;
             const unattCount = questionsList.filter((q) => getQuestionState(q).isUnatt).length;
             const attemptedCount = corrCount + incCount;
-            const totalCount = questionsList.length || 100;
             const posMarks = upscBench.positive_marks_earned || Math.round(corrCount * 2.0 * 100) / 100;
             const negMarks = upscBench.negative_marks_lost || Math.round(incCount * 0.66 * 100) / 100;
             const attemptAccPct = attemptedCount > 0 ? Math.round((corrCount / attemptedCount) * 1000) / 10 : 0.0;
@@ -727,10 +730,10 @@ export function PsychometricReportView({
                   <div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 20, backgroundColor: isAboveCutoff ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: isAboveCutoff ? '#10b981' : '#f59e0b', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>
                       <Award size={14} />
-                      {upscBench.benchmark_status || (isAboveCutoff ? 'Clearing Qualifying Cutoff (Competitive Trajectory)' : 'Near Cutoff Benchmark')}
+                      {upscBench.benchmark_status || (isAboveCutoff ? (isPractice ? 'Qualifying Practice Standard' : 'Clearing Qualifying Cutoff') : (isPractice ? 'Practice Revision Recommended' : 'Near Cutoff Benchmark'))}
                     </div>
                     <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
-                      Executive UPSC Prelims Diagnostic Summary
+                      {isPractice ? 'Practice Session Diagnostic Summary' : 'Executive UPSC Prelims Diagnostic Summary'}
                     </h2>
                     <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', margin: 0 }}>
                       Comprehensive marks accounting, qualifying benchmark margin, and error breakdown.
@@ -738,10 +741,12 @@ export function PsychometricReportView({
                   </div>
 
                   <div style={{ padding: '10px 18px', borderRadius: 14, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#ffffff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`, textAlign: 'right' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>UPSC Cutoff Benchmark</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      {isPractice ? 'Practice Mastery Benchmark' : 'UPSC Cutoff Benchmark'}
+                    </div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: isAboveCutoff ? '#10b981' : '#f59e0b' }}>
                       {cutoffMargin >= 0 ? `+${cutoffMargin}` : cutoffMargin} Marks
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}> vs 92.0 Cutoff</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}> vs {cutoffTarget.toFixed(1)} {isPractice ? 'Target' : 'Cutoff'}</span>
                     </div>
                   </div>
                 </div>
@@ -768,7 +773,7 @@ export function PsychometricReportView({
                       <Zap size={16} /> Net Final Score
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: '#2563eb', marginTop: 4 }}>{netMarks.toFixed(2)}</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Out of 200.00 Marks</div>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Out of {maxPossibleScore.toFixed(2)} Marks</div>
                   </div>
 
                   <div style={{ padding: 14, borderRadius: 14, backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : '#faf5ff', border: '1px solid rgba(139,92,246,0.25)' }}>
@@ -776,9 +781,7 @@ export function PsychometricReportView({
                       <Target size={16} /> Accuracy & Coverage
                     </div>
                     <div style={{ fontSize: 24, fontWeight: 900, color: '#8b5cf6', marginTop: 4 }}>{attemptAccPct}%</div>
-                    <div style={{ fontSize: 11.5, color: '#64748b' }}>
-                      {attemptedCount} of {totalCount} attempted ({unattCount} unattempted)
-                    </div>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>{attemptedCount}/{totalCount} questions attempted ({coveragePct}%)</div>
                   </div>
                 </div>
 
@@ -1114,10 +1117,30 @@ export function PsychometricReportView({
                   <div style={{ fontSize: 11, color: '#64748b' }}>Urgent Syllabus Focus Areas</div>
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div>Urgent Revision: <strong style={{ color: '#ef4444' }}>Science & Tech, Modern History</strong></div>
-                <div>Automated Study Tasks: <strong>Tasks generated below</strong></div>
-              </div>
+              {(() => {
+                const weakSpotsList: string[] =
+                  (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.high_yield_weak_spots?.topics ||
+                  (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.high_yield_weak_spots?.topics ||
+                  (report as any)?.part_2_taxonomy_analysis?.weakest_topics ||
+                  taxonomyData.filter((t) => (t.accuracy_percentage ?? 100) < 65).map((t) => t.taxonomy_name) ||
+                  [];
+                const urgentLabel =
+                  weakSpotsList.length > 0
+                    ? weakSpotsList.slice(0, 3).join(', ')
+                    : 'All evaluated topics above qualifying threshold';
+
+                return (
+                  <div style={{ fontSize: 13, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div>
+                      Urgent Revision:{' '}
+                      <strong style={{ color: weakSpotsList.length > 0 ? '#ef4444' : '#10b981' }}>
+                        {urgentLabel}
+                      </strong>
+                    </div>
+                    <div>Automated Study Tasks: <strong>Tasks generated below</strong></div>
+                  </div>
+                );
+              })()}
               {renderInfoToggle('urgency_info', 'Identifies weak syllabus nodes falling below 60% accuracy.', 'Generates targeted practice items to fix conceptual gaps.', 'Reviewing flagged areas within 3 days restores retention.')}
             </div>
 
@@ -1126,35 +1149,10 @@ export function PsychometricReportView({
               const tasksList =
                 (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
                 (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
-                [
-                  {
-                    task_id: 'task_1',
-                    title: 'Targeted Concept Revision: Indian Polity & Governance',
-                    topic: 'Fundamental Rights & Constitutional Remedies',
-                    accuracy_achieved: '45%',
-                    priority: 'HIGH',
-                    due_in_days: 2,
-                    reason: 'Scored 45% accuracy with 2 incorrect distractor trap selections in this attempt.',
-                    action_checklist: [
-                      'Review core textbook notes & syllabus chapter for Fundamental Rights',
-                      'Review step-by-step solution breakdowns for missed questions in this test',
-                      'Practice 15 high-yield MCQs focusing on option elimination in Fundamental Rights',
-                    ],
-                  },
-                  {
-                    task_id: 'task_2',
-                    title: 'Concept Clarification: Environment & Ecology',
-                    topic: 'Biodiversity Treaties & Conventions',
-                    accuracy_achieved: '50%',
-                    priority: 'MEDIUM',
-                    due_in_days: 3,
-                    reason: 'Near-miss trap selections observed on statement-based elimination questions.',
-                    action_checklist: [
-                      'Summarize key COP declarations and Ramsar wetland criteria in concise notes',
-                      'Practice eliminating 50:50 options with precision',
-                    ],
-                  },
-                ];
+                (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.study_plan_recommendations ||
+                [];
+
+              if (!tasksList || tasksList.length === 0) return null;
 
               return (
                 <div

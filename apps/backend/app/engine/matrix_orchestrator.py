@@ -609,27 +609,45 @@ class MatrixOrchestrator:
                 "completed": False,
             })
 
-        # UPSC Prelims Benchmark Analysis
+        # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
         corr_marks = round(tot_corr_count * 2.0, 2)
         inc_count = sum(1 for r in response_payloads if not r["is_correct"] and r.get("selected_option_id") is not None)
         neg_marks = round(inc_count * 0.66, 2)
         net_marks = round(tot_score, 2)
-        cutoff_target = 92.0
+        is_practice_test = (max_score < 100.0) or (total_q < 50) or (mode == AttemptMode.PRACTICE)
 
-        if net_marks >= 105.0:
-            bench_status = "Well Above Prelims Cutoff (Exceptional Standard)"
-            bench_badge_color = "#10b981"
-        elif net_marks >= cutoff_target:
-            bench_status = "Clearing Qualifying Cutoff (Competitive Trajectory)"
-            bench_badge_color = "#2563eb"
-        elif net_marks >= 78.0:
-            bench_status = "Near Cutoff Margin (Target +10–15 Marks in Weak Topics)"
-            bench_badge_color = "#f59e0b"
+        if is_practice_test:
+            # Scaled 46% qualifying target based on test max score
+            cutoff_target = round(max_score * 0.46, 2)
+            if net_marks >= max_score * 0.70:
+                bench_status = "High Mastery (≥70% Precision Standard)"
+                bench_badge_color = "#10b981"
+            elif net_marks >= cutoff_target:
+                bench_status = "Qualifying Practice Standard (Passed Topic Benchmark)"
+                bench_badge_color = "#2563eb"
+            elif net_marks >= max_score * 0.30:
+                bench_status = "Near Practice Benchmark (Revision Recommended)"
+                bench_badge_color = "#f59e0b"
+            else:
+                bench_status = "Foundational Remediation (Focus on Weak Concepts)"
+                bench_badge_color = "#ef4444"
         else:
-            bench_status = "Below Cutoff (Focus on High-Weightage Core Subjects)"
-            bench_badge_color = "#ef4444"
+            cutoff_target = 92.0
+            if net_marks >= 105.0:
+                bench_status = "Well Above Prelims Cutoff (Exceptional Standard)"
+                bench_badge_color = "#10b981"
+            elif net_marks >= cutoff_target:
+                bench_status = "Clearing Qualifying Cutoff (Competitive Trajectory)"
+                bench_badge_color = "#2563eb"
+            elif net_marks >= 78.0:
+                bench_status = "Near Cutoff Margin (Target +10–15 Marks in Weak Topics)"
+                bench_badge_color = "#f59e0b"
+            else:
+                bench_status = "Below Cutoff (Focus on High-Weightage Core Subjects)"
+                bench_badge_color = "#ef4444"
 
         upsc_benchmark = {
+            "is_practice_mode": is_practice_test,
             "expected_cutoff_marks": cutoff_target,
             "candidate_net_score": net_marks,
             "cutoff_margin": round(net_marks - cutoff_target, 2),

@@ -1,6 +1,41 @@
 import { UserRole, AuthResponse } from '../types/auth';
+import { getGuestAttempts, clearGuestAttempts } from '../utils/guestStorage';
 
 const API_BASE_URL = '/api/v1/auth';
+
+export async function syncGuestSessionsOnAuth(token: string): Promise<string | null> {
+  const attempts = getGuestAttempts();
+  if (!attempts || attempts.length === 0) return null;
+
+  try {
+    const res = await fetch('/api/v1/attempts/sync-guest-sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ sessions_payload: attempts }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      clearGuestAttempts();
+      const latestId = data?.latest_attempt_id || null;
+      if (latestId) {
+        sessionStorage.setItem('latest_synced_attempt_id', latestId);
+      }
+      console.log('Successfully synced guest exam attempts to candidate account:', latestId);
+      return latestId;
+    } else {
+      const errText = await res.text();
+      console.warn('Sync guest sessions API returned error status:', res.status, errText);
+    }
+
+  } catch (err) {
+    console.warn('Failed to sync guest exam attempts during authentication:', err);
+  }
+  return null;
+}
 
 export async function loginUser(email: string, password: string, role?: UserRole): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/login`, {
@@ -25,6 +60,7 @@ export async function loginUser(email: string, password: string, role?: UserRole
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
 }
@@ -59,9 +95,11 @@ export async function registerUser(
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
 }
+
 
 export function logoutUser(): void {
   localStorage.removeItem('access_token');

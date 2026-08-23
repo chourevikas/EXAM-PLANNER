@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bookmark, Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
+import { Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 
@@ -35,13 +35,13 @@ interface ExamQuestionCardProps {
   totalQuestions: number;
   selectedOptionId?: string | null;
   selectedOptionLabel?: string | null;
-  isBookmarked: boolean;
+  isBookmarked?: boolean;
   language: 'en' | 'hi';
   mode?: 'EXAM' | 'PRACTICE' | 'REVISION';
   revealResult?: RevealAnswerResponse | null;
   isRevealing?: boolean;
   onSelectOption: (optionId: string, optionLabel: string) => void;
-  onToggleBookmark: () => void;
+  onToggleBookmark?: () => void;
   onRevealAnswer?: () => void;
   onToggleSidebar?: () => void;
 }
@@ -297,14 +297,15 @@ export function ExamQuestionCard({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 14,
-              paddingBottom: 10,
-              borderBottom: '1px solid #E2E8F0',
+              position: 'relative',
+              marginBottom: 20,
+              paddingBottom: 14,
+              borderBottom: '1.5px solid #F1F5F9',
               flexShrink: 0,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {/* Sections Trigger Button */}
+            {/* Left: Sections Drawer Trigger */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               {onToggleSidebar && (
                 <button
                   type="button"
@@ -312,17 +313,16 @@ export function ExamQuestionCard({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '4px 8px',
-                    borderRadius: 5,
+                    gap: 6,
+                    padding: '6px 12px',
+                    borderRadius: 7,
                     border: '1px solid #CBD5E1',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: '#F8FAFC',
                     color: '#0F172A',
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.18s ease-out',
-                    marginRight: 2,
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                   onMouseEnter={(e) => {
@@ -331,89 +331,65 @@ export function ExamQuestionCard({
                     e.currentTarget.style.color = '#2563EB';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.backgroundColor = '#F8FAFC';
                     e.currentTarget.style.borderColor = '#CBD5E1';
                     e.currentTarget.style.color = '#0F172A';
                   }}
                   title="Open Sections Drawer"
                 >
-                  <Menu size={13} />
+                  <Menu size={14} />
                   <span>Sections</span>
                 </button>
               )}
+            </div>
 
+            {/* Center: Question Counter Pill */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+              }}
+            >
               <span
                 style={{
-                  fontSize: 12.5,
-                  fontWeight: 700,
+                  fontSize: 13,
+                  fontWeight: 800,
                   color: '#0F172A',
-                  letterSpacing: '0.03em',
+                  letterSpacing: '0.04em',
                   fontVariantNumeric: 'tabular-nums',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  backgroundColor: '#F1F5F9',
+                  padding: '5px 14px',
+                  borderRadius: 8,
+                  border: '1px solid #E2E8F0',
                 }}
               >
                 QUESTION {String(questionIndex + 1).padStart(2, '0')} / {String(totalQuestions).padStart(2, '0')}
               </span>
-              <span style={{ color: '#CBD5E1' }}>•</span>
+            </div>
+
+            {/* Right: Difficulty Badge */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <span
                 style={{
                   fontSize: 11.5,
-                  color: '#475569',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-              >
-                {sectionLabel} {subtopicLabel ? `· ${subtopicLabel}` : ''}
-              </span>
-              <span style={{ color: '#CBD5E1' }}>•</span>
-              <span
-                style={{
-                  fontSize: 11,
                   color: '#D97706',
                   fontWeight: 700,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 6,
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                  padding: '4px 12px',
+                  borderRadius: 99,
+                  letterSpacing: '0.04em',
                 }}
               >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#D97706', display: 'inline-block' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706', display: 'inline-block' }} />
                 {difficultyLabel}
               </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Bookmark Button */}
-              <button
-                type="button"
-                onClick={onToggleBookmark}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: 5,
-                  padding: '4px 6px',
-                  color: isBookmarked ? '#D97706' : '#64748B',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  transition: 'all 0.18s ease-out',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F1F5F9';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <Bookmark size={14} fill={isBookmarked ? '#D97706' : 'none'} />
-                <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-              </button>
             </div>
           </div>
 

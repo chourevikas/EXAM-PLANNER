@@ -22,6 +22,8 @@ import {
   sendExamHeartbeat,
   submitExamAttempt,
 } from '../services/examService';
+import { saveGuestAttempt } from '../utils/guestStorage';
+import { AuthModal, AuthMode } from '../components/auth/AuthModal';
 
 import {
   AttemptMode,
@@ -61,6 +63,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   // Guest Scorecard Modal State
   const [showGuestScoreModal, setShowGuestScoreModal] = useState(false);
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signup');
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
@@ -322,7 +326,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (res.ok) {
         const data = await res.json();
         if (data.items && data.items.length > 0) {
-          const questionsList: QuestionOut[] = data.items.map((q: any, idx: number) => ({
+          const itemsToUse = data.items.length > gCount ? data.items.slice(0, gCount) : data.items;
+          const questionsList: QuestionOut[] = itemsToUse.map((q: any, idx: number) => ({
             question_id: q.question_id || `q-guest-${idx + 1}`,
             question_number: idx + 1,
             text: q.question_text || `Question #${idx + 1}`,
@@ -666,18 +671,38 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
       const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
 
-      setGuestScoreData({
+      const responsesPayload = (allQuestions || []).map((q) => {
+        const qId = q.question_id;
+        const selOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
+        const rev = revealResults[qId];
+        return {
+          question_id: qId,
+          selected_option_id: selOpt || null,
+          is_correct: Boolean(rev?.is_user_correct),
+          time_taken_seconds: accumulatedTimePerQuestionRef.current.get(qId) || 60.0,
+          expected_time_seconds: 60.0,
+          is_switched: false,
+        };
+      });
+
+      const guestPayload = {
         score,
-        totalScore,
+        totalMarksPossible: totalScore,
         correctCount,
-        wrongCount,
+        incorrectCount: wrongCount,
         unattemptedCount,
         accuracy,
         totalQuestions: allQuestions.length,
-        exam: gExam,
-        topic: gTopic,
-        subtopic: gSubtopic,
-      });
+        topicName: gTopic,
+        subtopicName: gSubtopic,
+        targetExam: gExam,
+        targetYear: 'Target 2026',
+        timeSpentSeconds: Math.max(0, 7200 - timeLeft),
+        responses: responsesPayload,
+      };
+
+      setGuestScoreData(guestPayload);
+      saveGuestAttempt(guestPayload);
       setShowGuestScoreModal(true);
       setIsSubmitting(false);
       setShowSubmitModal(false);
@@ -805,11 +830,19 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     >
       {/* Top Header */}
       <ExamHeader
-        examTitle="ExamPlanner PYQ Engine"
+        examTitle={searchParams.get('exam') || "UPSC CSE"}
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}
         isSubmitting={isSubmitting}
+        topicName={searchParams.get('topic') || 'General Studies'}
+        subtopicName={searchParams.get('subtopic') || ''}
+        parentBreadcrumb="Student Dashboard"
+        onBack={() => {
+          if (window.confirm('Are you sure you want to leave the examination? Your progress is saved automatically.')) {
+            navigate('/dashboard');
+          }
+        }}
         onLanguageChange={setLanguage}
         onSubmitClick={handleOpenSubmitModal}
       />
@@ -944,6 +977,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         isAnswered={selectedOptionId !== null}
         isMarkedForReview={isMarkedForReview}
         isFirstQuestion={currentQIndex === 0}
+        isLastQuestion={currentQIndex >= totalQuestions - 1}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
         onPrev={handlePrev}
@@ -1068,51 +1102,88 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={15} /> Save Score & Track Performance
+                <Sparkles size={15} /> Unlock Full 12-Matrix Psychometric Analysis
               </div>
               <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
-                Create a free account to store test attempts, identify weak areas with IRT psychometrics, and generate adaptive study plans.
+                Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.
               </div>
             </div>
 
             {/* Buttons */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => navigate('/signup')}
-                style={{
-                  flex: 1,
-                  padding: '12px 16px',
-                  borderRadius: 12,
-                  border: 'none',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <UserPlus size={16} /> Create Free Account
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: 12,
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'transparent',
-                  color: isDark ? '#cbd5e1' : '#475569',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Back Home
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setAuthModalOpen(true);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: 'none',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <UserPlus size={16} /> Sign Up / Sign In to Analyze
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'transparent',
+                    color: isDark ? '#cbd5e1' : '#475569',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Back Home
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>Already registered?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthModalOpen(true);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Log In
+                </button>
+              </div>
             </div>
+
+            <AuthModal
+              isOpen={authModalOpen}
+              mode={authMode}
+              onClose={() => setAuthModalOpen(false)}
+              onSwitchMode={(m) => setAuthMode(m)}
+            />
           </div>
         </div>
       )}

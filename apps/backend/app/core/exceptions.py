@@ -42,8 +42,9 @@ class AdminPendingApprovalException(BaseAppException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your admin account registration is pending Super Admin approval.",
+            detail="Your account registration is pending Super Admin approval. Please wait for approval before logging in.",
         )
+
 
 
 class AdminRejectedException(BaseAppException):

@@ -9,6 +9,8 @@ import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2, AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
+import { saveGuestAttempt } from '../utils/guestStorage';
+
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -41,6 +43,10 @@ export function GuestExamPage() {
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [guestScoreData, setGuestScoreData] = useState<any>(null);
+  const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
 
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -61,12 +67,27 @@ export function GuestExamPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Guest Questions
+
+
+  // Post-Exam Score Modal 10s Countdown Effect
+  useEffect(() => {
+    if (scoreCountdown === null) return;
+    if (scoreCountdown <= 0) {
+      setScoreCountdown(null);
+      setShowScoreModal(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setScoreCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [scoreCountdown]);
+
+  // Fetch Guest Questions strictly from DB
   useEffect(() => {
     async function loadGuestQuestions() {
       setIsLoading(true);
 
-      const targetCount = Math.max(1, gCount);
       const fetchedMap = new Map<string, any>();
 
       const formatQuestion = (q: any, idx: number): QuestionOut => {
@@ -78,15 +99,12 @@ export function GuestExamPage() {
           is_correct: Boolean(o.is_correct),
         }));
 
-        const expText = q.explanation ||
-          q.explanation_text ||
-          q.description ||
-          `Option (${optionsList.find((o: any) => o.is_correct)?.option_label || 'A'}) is correct. Under constitutional provisions & standard syllabus references, this question tests key principles of ${q.topic_name || gTopic}.`;
+        const expText = q.explanation || q.explanation_text || q.description || q.solution || q.solution_text || '';
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
           question_number: idx + 1,
-          text: q.question_text || q.text || `Question #${idx + 1}`,
+          text: q.question_text || q.text || '',
           options: optionsList,
           section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
           topic_name: q.topic_name || gTopic,
@@ -99,37 +117,65 @@ export function GuestExamPage() {
         } as any;
       };
 
-      // Single-call filter API invocation
-      const queryParams = new URLSearchParams({ limit: targetCount.toString() });
+      const fetchWithParams = async (params: URLSearchParams) => {
+        try {
+          const res = await fetch(`/api/v1/questions?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            (data.items || []).forEach((item: any) => {
+              if (item.question_id && !fetchedMap.has(item.question_id)) {
+                fetchedMap.set(item.question_id, item);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Questions fetch error:', err);
+        }
+      };
+
+      // 1. Try with full specificity (subject + topic + subtopic + year)
+      const p1 = new URLSearchParams({ limit: gCount.toString() });
       if (gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
-        queryParams.append('subject_name', gSubject.trim());
+        p1.append('subject_name', gSubject.trim());
       }
       if (gTopic && !gTopic.startsWith('All Topics') && gTopic.trim()) {
-        queryParams.append('topic_name', gTopic.trim());
+        p1.append('topic_name', gTopic.trim());
       }
       if (gSubtopic && !gSubtopic.startsWith('All Subtopics') && gSubtopic.trim()) {
-        queryParams.append('subtopic_name', gSubtopic.trim());
+        p1.append('subtopic_name', gSubtopic.trim());
       }
       const rawYearDigits = gYear.replace(/\D/g, '');
       if (rawYearDigits && !isNaN(Number(rawYearDigits)) && Number(rawYearDigits) >= 2000 && Number(rawYearDigits) <= 2024) {
-        queryParams.append('exam_year', rawYearDigits);
+        p1.append('exam_year', rawYearDigits);
       }
       if (gExam && gExam.toLowerCase().includes('upsc')) {
-        queryParams.append('exam_name', 'upsc');
+        p1.append('exam_name', 'upsc');
+      }
+      await fetchWithParams(p1);
+
+      // 2. Fallback: Relax subtopic & year if 0 questions found
+      if (fetchedMap.size === 0 && gTopic && !gTopic.startsWith('All Topics') && gTopic.trim()) {
+        const p2 = new URLSearchParams({ limit: gCount.toString() });
+        if (gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
+          p2.append('subject_name', gSubject.trim());
+        }
+        p2.append('topic_name', gTopic.trim());
+        p2.append('exam_name', 'upsc');
+        await fetchWithParams(p2);
       }
 
-      try {
-        const res = await fetch(`/api/v1/questions?${queryParams.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          (data.items || []).forEach((item: any) => {
-            if (item.question_id && !fetchedMap.has(item.question_id)) {
-              fetchedMap.set(item.question_id, item);
-            }
-          });
-        }
-      } catch (err) {
-        console.warn('Questions fetch error:', err);
+      // 3. Fallback: Relax topic if still 0 questions found
+      if (fetchedMap.size === 0 && gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
+        const p3 = new URLSearchParams({ limit: gCount.toString() });
+        p3.append('subject_name', gSubject.trim());
+        p3.append('exam_name', 'upsc');
+        await fetchWithParams(p3);
+      }
+
+      // 4. Fallback: General authentic UPSC questions pool
+      if (fetchedMap.size === 0) {
+        const p4 = new URLSearchParams({ limit: gCount.toString(), exam_name: 'upsc' });
+        await fetchWithParams(p4);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
@@ -137,35 +183,60 @@ export function GuestExamPage() {
 
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
-      setTimeLeft(Math.max(60, questionsList.length * 120));
-      if (questionsList.length > 0) {
-        setActiveQuestion(questionsList[0]);
-      }
+      setActiveQuestion(questionsList.length > 0 ? questionsList[0] : null);
 
       // Restore session state from sessionStorage
-      try {
-        const savedRaw = sessionStorage.getItem(SESSION_KEY);
-        if (savedRaw) {
-          const savedData = JSON.parse(savedRaw);
-          if (savedData.userResponses) setUserResponses(savedData.userResponses);
-          if (savedData.revealedMap) setRevealedMap(savedData.revealedMap);
-          if (savedData.markedForReview) setMarkedForReview(savedData.markedForReview);
-          if (savedData.bookmarkedQs) setBookmarkedQs(savedData.bookmarkedQs);
-          if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
-            setCurrentQIndex(savedData.currentQIndex);
-            setActiveQuestion(questionsList[savedData.currentQIndex]);
+      let restoredResponses: Record<string, any> = {};
+      let restoredRevealed: Record<string, any> = {};
+      let restoredMarked: Record<string, boolean> = {};
+
+      if (questionsList.length > 0) {
+        try {
+          const savedRaw = sessionStorage.getItem(SESSION_KEY);
+          if (savedRaw) {
+            const savedData = JSON.parse(savedRaw);
+            if (savedData.userResponses) {
+              restoredResponses = savedData.userResponses;
+              setUserResponses(savedData.userResponses);
+            }
+            if (savedData.revealedMap) {
+              restoredRevealed = savedData.revealedMap;
+              setRevealedMap(savedData.revealedMap);
+            }
+            if (savedData.markedForReview) {
+              restoredMarked = savedData.markedForReview;
+              setMarkedForReview(savedData.markedForReview);
+            }
+            if (typeof savedData.currentQIndex === 'number' && savedData.currentQIndex >= 0 && savedData.currentQIndex < questionsList.length) {
+              setCurrentQIndex(savedData.currentQIndex);
+              setActiveQuestion(questionsList[savedData.currentQIndex]);
+            }
           }
+        } catch (err) {
+          console.warn('Failed to restore guest sessionStorage:', err);
         }
-      } catch (err) {
-        console.warn('Failed to restore guest sessionStorage:', err);
+
+        const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => {
+          const qId = q.question_id;
+          const isRevealed = !!restoredRevealed[qId];
+          const isMarked = !!restoredMarked[qId];
+          let status: any = i === 0 ? 'VISITED' : 'UNVISITED';
+          if (isRevealed) {
+            status = isMarked ? 'ANSWERED_AND_MARKED' : 'ANSWERED';
+          } else if (isMarked) {
+            status = 'MARKED_FOR_REVIEW';
+          }
+          return {
+            question_number: i + 1,
+            question_id: qId,
+            question_status: status,
+          };
+        });
+        setPalette(initialPalette);
+      } else {
+        setPalette([]);
       }
 
-      const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => ({
-        question_number: i + 1,
-        question_id: q.question_id,
-        question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
-      }));
-      setPalette(initialPalette);
       setIsLoading(false);
     }
 
@@ -188,6 +259,7 @@ export function GuestExamPage() {
       console.warn('Failed to write guest sessionStorage:', err);
     }
   }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, isLoading, allQuestions]);
+
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -214,19 +286,6 @@ export function GuestExamPage() {
       ...prev,
       [qId]: { optionId: optId, optionLabel: optLabel },
     }));
-
-    setPalette((prev) =>
-      prev.map((item) => {
-        if (item.question_id === qId) {
-          const isMarked = markedForReview[qId];
-          return {
-            ...item,
-            question_status: isMarked ? ('ANSWERED_AND_MARKED' as any) : ('ANSWERED' as any),
-          };
-        }
-        return item;
-      })
-    );
   };
 
   // Reveal Instant Per-Question Answer & Description with Full Markdown Solution
@@ -238,9 +297,26 @@ export function GuestExamPage() {
     if (!targetQuestion) return;
 
     const userResp = userResponses[targetId];
-    const correctOpt = targetQuestion.options?.find((o) => o.is_correct) || targetQuestion.options?.[0];
-    const correctLabel = correctOpt?.option_label || 'A';
-    const isUserCorrect = userResp ? (userResp.optionId === correctOpt?.option_id || userResp.optionLabel === correctLabel) : false;
+    const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
+
+    const cleanOptionLabel = (rawLabel: string, index: number): string => {
+      if (!rawLabel) return String.fromCharCode(65 + index);
+      const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return clean.length === 1 ? clean : String.fromCharCode(65 + index);
+    };
+
+    let isUserCorrect = false;
+    if (userResp && targetQuestion.options) {
+      const selectedOpt = targetQuestion.options.find(
+        (o, idx) => o.option_id === userResp.optionId || cleanOptionLabel(o.option_label || '', idx) === userResp.optionLabel
+      );
+      if (selectedOpt && selectedOpt.is_correct) {
+        isUserCorrect = true;
+      }
+    }
+
+    const correctOptIndex = targetQuestion.options?.findIndex((o) => o.is_correct) ?? 0;
+    const correctLabel = correctOpt ? cleanOptionLabel(correctOpt.option_label || '', correctOptIndex) : 'A';
 
     // Fetch rich solution metadata & distractor analyses
     let solPayload: any = null;
@@ -272,10 +348,106 @@ export function GuestExamPage() {
       presigned_url: solPayload?.presigned_url,
     };
 
-    setRevealedMap((prev) => ({
-      ...prev,
+    const updatedRevealedMap = {
+      ...revealedMap,
       [targetId]: revealObj,
-    }));
+    };
+
+    setRevealedMap(updatedRevealedMap);
+
+    // Update palette question_status on Submit & Show Solution
+    setPalette((prev) =>
+      prev.map((item) => {
+        if (item.question_id === targetId) {
+          const isMarked = markedForReview[targetId];
+          return {
+            ...item,
+            question_status: isMarked ? ('ANSWERED_AND_MARKED' as any) : ('ANSWERED' as any),
+          };
+        }
+        return item;
+      })
+    );
+
+    // Check if ALL questions are finished (revealed)
+    const numQuestions = allQuestions.length;
+    if (Object.keys(updatedRevealedMap).length >= numQuestions && numQuestions > 0) {
+      handleFinishGuestExam(updatedRevealedMap);
+    }
+  };
+
+  const handleFinishGuestExam = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+    const rMap = passedRevealedMap || revealedMap;
+    const numQuestions = allQuestions.length;
+    let correctCount = 0;
+    let incorrectCount = 0;
+    let attemptedCount = 0;
+
+    const cleanOptionLabel = (rawLabel: string, index: number): string => {
+      if (!rawLabel) return String.fromCharCode(65 + index);
+      const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return clean.length === 1 ? clean : String.fromCharCode(65 + index);
+    };
+
+    const responsesPayload = allQuestions.map((q, idx) => {
+      const userResp = userResponses[q.question_id];
+      const rev = rMap[q.question_id];
+      let isCorr = false;
+
+      if (rev) {
+        isCorr = Boolean(rev.is_user_correct);
+      } else if (userResp && q.options) {
+        const selectedOpt = q.options.find(
+          (o, oIdx) => o.option_id === userResp.optionId || cleanOptionLabel(o.option_label || '', oIdx) === userResp.optionLabel
+        );
+        if (selectedOpt && selectedOpt.is_correct) {
+          isCorr = true;
+        }
+      }
+
+      if (userResp || rev) {
+        attemptedCount += 1;
+        if (isCorr) {
+          correctCount += 1;
+        } else {
+          incorrectCount += 1;
+        }
+      }
+
+      return {
+        question_id: q.question_id,
+        selected_option_id: userResp?.optionId || rev?.user_selected_option_id || null,
+        is_correct: isCorr,
+        time_taken_seconds: 60.0,
+        expected_time_seconds: q.expected_time_seconds || 60.0,
+        is_switched: false,
+      };
+    });
+
+    const totalMarksPossible = numQuestions;
+    const unattemptedCount = Math.max(0, numQuestions - attemptedCount);
+    const accuracy = attemptedCount > 0 ? Math.round((correctCount / attemptedCount) * 100) : 0;
+
+    const scorePayload = {
+      score: correctCount,
+      totalMarksPossible,
+      correctCount,
+      incorrectCount,
+      unattemptedCount,
+      accuracy,
+      totalQuestions: numQuestions,
+      topicName: gTopic || gSubject,
+      subtopicName: gSubtopic,
+      targetExam: gExam,
+      targetYear: gYear,
+      timeSpentSeconds: Math.max(30, (gCount * 120) - timeLeft),
+      responses: responsesPayload,
+    };
+
+    setGuestScoreData(scorePayload);
+    saveGuestAttempt(scorePayload);
+    setScoreCountdown(null);
+    setShowScoreModal(true);
   };
 
   // Clear Response
@@ -317,11 +489,11 @@ export function GuestExamPage() {
     setPalette((prev) =>
       prev.map((item) => {
         if (item.question_id === qId) {
-          const isAns = !!userResponses[qId];
+          const isSubmitted = !!revealedMap[qId];
           if (nextMarked) {
-            return { ...item, question_status: isAns ? ('ANSWERED_AND_MARKED' as any) : ('MARKED_FOR_REVIEW' as any) };
+            return { ...item, question_status: isSubmitted ? ('ANSWERED_AND_MARKED' as any) : ('MARKED_FOR_REVIEW' as any) };
           }
-          return { ...item, question_status: isAns ? ('ANSWERED' as any) : ('VISITED' as any) };
+          return { ...item, question_status: isSubmitted ? ('ANSWERED' as any) : ('VISITED' as any) };
         }
         return item;
       })
@@ -451,7 +623,7 @@ export function GuestExamPage() {
     }
   });
 
-  const answeredCount = Object.keys(userResponses).length;
+  const answeredCount = Object.keys(revealedMap).length;
   const markedCount = Object.values(markedForReview).filter(Boolean).length;
   const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
 
@@ -466,16 +638,6 @@ export function GuestExamPage() {
         backgroundColor: '#F8FAFC',
       }}
     >
-      {/* Top Admin Theme Header */}
-      <ExamHeader
-        examTitle="ExamPlanner PYQ Engine"
-        paperSubtitle={`${gExam} · ${gYear} · ${gSubtopic}`}
-        timeLeft={timeLeft}
-        language={language}
-        showSubmitButton={false}
-        onLanguageChange={(lang) => setLanguage(lang)}
-      />
-
       {/* Slide-out Drawer Left Sidebar */}
       <ExamSectionSidebar
         isOpen={isSidebarOpen}
@@ -496,6 +658,22 @@ export function GuestExamPage() {
         onSelectSection={() => handleSelectQuestion(0)}
       />
 
+      {/* Top Header Console with Submit Test Trigger */}
+      <ExamHeader
+        examTitle={gExam}
+        paperSubtitle={gTopic ? `${gSubject} • ${gTopic}` : gSubject}
+        timeLeft={timeLeft}
+        language={language}
+        showSubmitButton={true}
+        showTimer={false}
+        topicName={gTopic || gSubject}
+        subtopicName={gSubtopic}
+        parentBreadcrumb="Practice Mock"
+        onBack={() => setShowLeaveModal(true)}
+        onLanguageChange={(l) => setLanguage(l)}
+        onSubmitClick={() => handleFinishGuestExam()}
+      />
+
       {/* Main Console Workspace */}
       <div
         style={{
@@ -508,6 +686,7 @@ export function GuestExamPage() {
           backgroundColor: '#F8FAFC',
         }}
       >
+
         {/* Center Reading Canvas */}
         <ExamQuestionCard
           question={activeQuestion}
@@ -545,10 +724,15 @@ export function GuestExamPage() {
         isAnswered={isCurrentAnswered}
         isMarkedForReview={isCurrentMarked}
         isFirstQuestion={currentQIndex === 0}
+        isLastQuestion={currentQIndex >= totalQuestions - 1}
         isRevealed={!!currentRevealedResult}
+        showClearResponse={false}
+        showMarkReview={false}
+        backgroundColor="#F8FAFC"
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
         onSubmitAnswer={() => handleRevealAnswer()}
+        onSubmitTest={() => handleFinishGuestExam()}
         onPrev={() => handleSelectQuestion(currentQIndex - 1)}
         onNext={() => {
           if (currentQIndex < totalQuestions - 1) {
@@ -556,6 +740,208 @@ export function GuestExamPage() {
           }
         }}
       />
+
+
+      {/* Floating 10-Second Post-Exam Countdown Banner */}
+      {scoreCountdown !== null && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 74,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 990,
+            backgroundColor: '#0F172A',
+            color: '#FFFFFF',
+            borderRadius: 99,
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 12px 30px rgba(15, 23, 42, 0.35)',
+            border: '1.5px solid rgba(255, 255, 255, 0.15)',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                backgroundColor: '#2563EB',
+                color: '#FFFFFF',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 13,
+                fontWeight: 800,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {scoreCountdown}
+            </span>
+            <span>Test Finished! Showing score report in {scoreCountdown}s...</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setScoreCountdown(null);
+              setShowScoreModal(true);
+            }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 20,
+              border: 'none',
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1D4ED8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563EB';
+            }}
+          >
+            View Score Now &rsaquo;
+          </button>
+        </div>
+      )}
+
+      {/* Completion Score & Account Upsell Modal */}
+      <GuestScoreModal
+        isOpen={showScoreModal}
+        scoreData={guestScoreData}
+        onClose={() => setShowScoreModal(false)}
+        onRetake={() => {
+          setShowScoreModal(false);
+          setRevealedMap({});
+          setUserResponses({});
+          setMarkedForReview({});
+          setCurrentQIndex(0);
+        }}
+      />
+
+      {/* Leave Practice Session Pop-up Modal */}
+      {showLeaveModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 20,
+              padding: '28px 28px',
+              border: '2px solid #E2E8F0',
+              boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
+              textAlign: 'center',
+              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+            }}
+          >
+            <div
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: '50%',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#DC2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 14px auto',
+              }}
+            >
+              <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
+            </div>
+
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
+              Leave Practice Session?
+            </h3>
+
+            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: '0 0 22px 0' }}>
+              Your current test progress is temporarily cached in your browser. You can return anytime or start fresh.
+            </p>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: '1.5px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                }}
+              >
+                Continue Practice
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  navigate('/');
+                }}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: 'none',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#B91C1C';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#DC2626';
+                }}
+              >
+                Leave Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

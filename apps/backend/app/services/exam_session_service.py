@@ -1459,10 +1459,25 @@ class ExamSessionService:
         items = []
         for att in attempts:
             exam = await self.session.get(Exam, att.exam_id)
+            meta = att.report_metadata_json or {}
+            is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
+            is_practice = (att.mode == AttemptMode.PRACTICE) or is_guest or bool(meta.get("topic_name"))
+
+            topic_desc = meta.get("subtopic_name") or meta.get("topic_name")
+            q_cnt = att.total_questions or (att.total_questions_attempted or 0)
+            if is_guest:
+                name_str = f"Guest Practice: {topic_desc or 'Topic Practice'} ({q_cnt} Qs)"
+            elif is_practice:
+                name_str = f"Practice Test: {topic_desc or 'Topic Practice'} ({q_cnt} Qs)"
+            else:
+                name_str = exam.name if exam else "Full Paper Mock"
+
+            resolved_title = meta.get("traceable_exam_name") or meta.get("metadata", {}).get("exam_attempt", {}).get("exam_name") or name_str
+
             items.append({
                 "attempt_id": str(att.id),
                 "exam_id": str(att.exam_id),
-                "exam_name": exam.name if exam else "Exam",
+                "exam_name": resolved_title,
                 "mode": att.mode.value if hasattr(att.mode, "value") else str(att.mode),
                 "status": att.status.value if hasattr(att.status, "value") else str(att.status),
                 "total_score": att.total_score,
@@ -1546,3 +1561,184 @@ class ExamSessionService:
             unattempted_count=unatt,
             total=len(responses),
         )
+
+    async def sync_guest_sessions(self, user_id: uuid.UUID, sessions_list: Any) -> Dict[str, Any]:
+        """
+        Synchronizes guest exam attempts saved in frontend localStorage into backend ExamAttempt database rows,
+        records individual question responses, and triggers the full 12-matrix psychometric diagnostic analysis.
+        """
+        import asyncio
+        from app.engine.post_submission_pipeline import run_post_submission_pipeline
+
+        if isinstance(sessions_list, dict):
+            sessions_list = sessions_list.get("sessions_payload") or sessions_list.get("sessions") or []
+
+        if not isinstance(sessions_list, list) or not sessions_list:
+            return {"status": "success", "synced_count": 0, "latest_attempt_id": None}
+
+        # Fetch or default an active Exam
+        exam_res = await self.session.exec(select(Exam).where(Exam.is_active == True))
+        active_exam = exam_res.first()
+
+        if not active_exam:
+            exam_res_any = await self.session.exec(select(Exam))
+            active_exam = exam_res_any.first()
+
+        synced_count = 0
+        latest_attempt = None
+
+        for item in sessions_list:
+            t_exam = item.get("targetExam", "UPSC CSE")
+            t_year = item.get("targetYear", "Target 2026")
+            topic = item.get("topicName", "General Studies")
+            subtopic = item.get("subtopicName", "")
+            score = float(item.get("score", 0))
+            max_score = float(item.get("totalMarksPossible", 10))
+            correct = int(item.get("correctCount", 0))
+            incorrect = int(item.get("incorrectCount", 0))
+            unattempted = int(item.get("unattemptedCount", 0))
+            accuracy = float(item.get("accuracy", 0))
+            tot_q = int(item.get("totalQuestions", correct + incorrect + unattempted))
+            time_spent = float(item.get("timeSpentSeconds", 0))
+
+            created_dt = datetime.now(timezone.utc)
+            if item.get("completedAt"):
+                try:
+                    created_dt = datetime.fromisoformat(str(item["completedAt"]).replace("Z", "+00:00"))
+                except Exception:
+                    pass
+
+            meta = {
+                "is_guest_synced": True,
+                "topic_name": topic,
+                "subtopic_name": subtopic,
+                "target_exam": t_exam,
+                "target_year": t_year,
+                "accuracy": accuracy,
+                "guest_session_id": item.get("id", "")
+            }
+
+            attempt = ExamAttempt(
+                user_id=user_id,
+                exam_id=active_exam.id if active_exam else uuid.uuid4(),
+                status=AttemptStatus.SUBMITTED,
+                mode=AttemptMode.EXAM,
+                total_score=score,
+                max_possible_score=max_score,
+                time_spent_seconds=time_spent,
+                total_questions_attempted=correct + incorrect,
+                total_questions=tot_q,
+                total_correct=correct,
+                total_incorrect=incorrect,
+                total_unattempted=unattempted,
+                report_metadata_json=meta,
+                created_at=created_dt,
+                submitted_at=created_dt,
+            )
+            self.session.add(attempt)
+            await self.session.flush()
+
+            # Ingest question responses if available
+            raw_resps = item.get("responses") or []
+            for r_item in raw_resps:
+                try:
+                    q_id_raw = r_item.get("question_id")
+                    if not q_id_raw:
+                        continue
+                    q_uuid = uuid.UUID(str(q_id_raw)) if not str(q_id_raw).startswith("q-") else uuid.uuid4()
+                    opt_raw = r_item.get("selected_option_id")
+                    opt_uuid = uuid.UUID(str(opt_raw)) if opt_raw and not str(opt_raw).startswith("opt-") else None
+                    is_corr = bool(r_item.get("is_correct", False))
+
+                    resp_row = ExamQuestionResponse(
+                        attempt_id=attempt.id,
+                        question_id=q_uuid,
+                        selected_option_id=opt_uuid,
+                        question_status=QuestionResponseStatus.ANSWERED if opt_uuid else QuestionResponseStatus.UNVISITED,
+                        is_correct=is_corr,
+                        final_score=2.0 if is_corr else (-0.66 if opt_uuid else 0.0),
+                        time_taken_seconds=float(r_item.get("time_taken_seconds") or 60.0),
+                        expected_time_seconds=float(r_item.get("expected_time_seconds") or 60.0),
+                        is_switched=bool(r_item.get("is_switched", False)),
+                        closeness_score_awarded=1.0 if is_corr else 0.0,
+                    )
+                    self.session.add(resp_row)
+                except Exception as r_err:
+                    logger.warning(f"Error persisting synced guest question response: {r_err}")
+
+            synced_count += 1
+            latest_attempt = attempt
+
+        await self.session.commit()
+
+        # Trigger background 12-matrix pipeline evaluation for the synced attempt
+        if latest_attempt:
+            asyncio.create_task(run_post_submission_pipeline(latest_attempt.id))
+
+        return {
+            "status": "success",
+            "synced_count": synced_count,
+            "latest_attempt_id": str(latest_attempt.id) if latest_attempt else None,
+        }
+
+    async def get_student_dashboard_stats(self, user_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Retrieves aggregate statistics and recent exam attempts for the student dashboard.
+        """
+        attempts_res = await self.session.exec(
+            select(ExamAttempt).where(ExamAttempt.user_id == user_id).order_by(col(ExamAttempt.created_at).desc())
+        )
+        attempts = attempts_res.all()
+
+        total_exams = len(attempts)
+        total_questions_attempted = sum(a.total_questions_attempted for a in attempts)
+        total_correct = sum(a.total_correct for a in attempts)
+        total_questions = sum(a.total_questions for a in attempts)
+        total_time_seconds = sum(int(a.time_spent_seconds or 0) for a in attempts)
+
+        overall_accuracy = round((total_correct / total_questions_attempted) * 100, 1) if total_questions_attempted > 0 else 0.0
+
+        recent_attempts = []
+        for a in attempts[:15]:
+            meta = a.report_metadata_json or {}
+            is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
+            is_practice = (a.mode == AttemptMode.PRACTICE) or is_guest or bool(meta.get("topic_name"))
+            topic_desc = meta.get("subtopic_name") or meta.get("topic_name") or "General Studies"
+            q_cnt = a.total_questions or (a.total_questions_attempted or 0)
+            
+            if is_guest:
+                exam_display = f"Guest Practice: {topic_desc} ({q_cnt} Qs)"
+            elif is_practice:
+                exam_display = f"Practice Test: {topic_desc} ({q_cnt} Qs)"
+            else:
+                exam_display = meta.get("target_exam", "UPSC CSE Prelims")
+
+            recent_attempts.append({
+                "id": str(a.id),
+                "examName": meta.get("traceable_exam_name") or exam_display,
+                "targetExam": meta.get("target_exam", "UPSC CSE"),
+                "targetYear": meta.get("target_year", "Target 2026"),
+                "topicName": topic_desc,
+                "subtopicName": meta.get("subtopic_name", ""),
+                "score": a.total_score,
+                "totalMarksPossible": a.max_possible_score,
+                "correctCount": a.total_correct,
+                "incorrectCount": a.total_incorrect,
+                "unattemptedCount": a.total_unattempted,
+                "accuracy": meta.get("accuracy", round((a.total_correct / (a.total_questions_attempted or 1)) * 100, 1)),
+                "totalQuestions": a.total_questions,
+                "timeSpentSeconds": int(a.time_spent_seconds or 0),
+                "isGuestSynced": bool(meta.get("is_guest_synced", False)),
+                "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
+            })
+
+        return {
+            "totalExams": total_exams,
+            "totalQuestionsAttempted": total_questions_attempted,
+            "totalCorrect": total_correct,
+            "totalQuestions": total_questions,
+            "overallAccuracy": overall_accuracy,
+            "totalTimeSeconds": total_time_seconds,
+            "recentAttempts": recent_attempts,
+        }
+

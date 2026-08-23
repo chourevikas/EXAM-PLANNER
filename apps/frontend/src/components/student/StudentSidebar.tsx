@@ -9,6 +9,7 @@ import {
   BarChart2,
   Sparkles,
   Trophy,
+  Crown,
   X
 } from 'lucide-react';
 
@@ -43,7 +44,7 @@ export function StudentSidebar({
     { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
     { icon: Calendar, label: 'Study Planner', to: '/study-planner' },
     { icon: BookOpen, label: 'Previous Year Qs', to: '/pyq' },
-    { icon: Brain, label: 'Mock Tests', to: '/mocks' },
+    { icon: Brain, label: 'Practice Tests', to: '/mocks' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
   ];
 
@@ -134,7 +135,7 @@ export function StudentSidebar({
           overflow: 'hidden'
         }}
       >
-        {/* Top Header Row with Borderless Hamburger Icon Button (No Bubble/Box) */}
+        {/* Top Header Row with Borderless Hamburger Icon Button */}
         <div
           style={{
             padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
@@ -227,7 +228,8 @@ export function StudentSidebar({
             flexDirection: 'column',
             gap: 4,
             padding: (collapsed && !isMobile) ? '8px' : '0 12px',
-            flex: 1
+            flex: 1,
+            overflowY: 'auto'
           }}
         >
           {navItems.map(renderNavItem)}
@@ -261,6 +263,47 @@ export function StudentSidebar({
             </div>
           </div>
         </nav>
+
+        {/* Upgrade to PRO Box preserved at bottom */}
+        {(!collapsed || isMobile) && (
+          <div style={{ padding: 12 }}>
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FACC15', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                <Crown size={16} /> Upgrade to PRO
+              </div>
+              <p style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.7)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                Unlock AI insights, detailed analytics and unlimited test attempts.
+              </p>
+              <Link
+                to="/pricing"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #FACC15',
+                  backgroundColor: 'transparent',
+                  color: '#FACC15',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Explore PRO &rarr;
+              </Link>
+            </div>
+          </div>
+        )}
       </aside>
     </>
   );

@@ -5,24 +5,34 @@ interface ExamFooterBarProps {
   isAnswered: boolean;
   isMarkedForReview: boolean;
   isFirstQuestion: boolean;
+  isLastQuestion?: boolean;
   onClearResponse: () => void;
   onToggleMarkReview: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onSubmitTest?: () => void;
   isRevealed?: boolean;
   onSubmitAnswer?: () => void;
+  showClearResponse?: boolean;
+  showMarkReview?: boolean;
+  backgroundColor?: string;
 }
 
 export function ExamFooterBar({
   isAnswered,
   isMarkedForReview,
   isFirstQuestion,
+  isLastQuestion = false,
   onClearResponse,
   onToggleMarkReview,
   onPrev,
   onNext,
+  onSubmitTest,
   isRevealed = false,
   onSubmitAnswer,
+  showClearResponse = true,
+  showMarkReview = true,
+  backgroundColor = '#FFFFFF',
 }: ExamFooterBarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
 
@@ -41,8 +51,9 @@ export function ExamFooterBar({
         left: 0,
         right: 0,
         zIndex: 100,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: backgroundColor,
         borderTop: '1px solid #E2E8F0',
+
         boxShadow: '0 -2px 10px rgba(15, 23, 42, 0.04)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -54,54 +65,59 @@ export function ExamFooterBar({
       {/* Left Actions: Clear Response & Mark for Review */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10 }}>
         {/* Clear Response Button */}
-        <button
-          type="button"
-          onClick={onClearResponse}
-          disabled={!isAnswered}
-          style={{
-            padding: isMobile ? '7px 10px' : '8px 16px',
-            borderRadius: 6,
-            border: `1px solid ${isAnswered ? '#FECACA' : '#E2E8F0'}`,
-            backgroundColor: isAnswered ? '#FEF2F2' : '#FFFFFF',
-            color: isAnswered ? '#DC2626' : '#94A3B8',
-            fontSize: 12.5,
-            fontWeight: 600,
-            cursor: isAnswered ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: 'all 0.15s ease',
-          }}
-          title="Clear Response"
-        >
-          <RotateCcw size={14} />
-          <span>Clear Response</span>
-        </button>
+        {showClearResponse && (
+          <button
+            type="button"
+            onClick={onClearResponse}
+            disabled={!isAnswered}
+            style={{
+              padding: isMobile ? '7px 10px' : '8px 16px',
+              borderRadius: 6,
+              border: `1px solid ${isAnswered ? '#FECACA' : '#E2E8F0'}`,
+              backgroundColor: isAnswered ? '#FEF2F2' : '#FFFFFF',
+              color: isAnswered ? '#DC2626' : '#94A3B8',
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: isAnswered ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
+            }}
+            title="Clear Response"
+          >
+            <RotateCcw size={14} />
+            <span>Clear Response</span>
+          </button>
+        )}
 
         {/* Mark for Review Button */}
-        <button
-          type="button"
-          onClick={onToggleMarkReview}
-          style={{
-            padding: isMobile ? '7px 10px' : '8px 16px',
-            borderRadius: 6,
-            border: `1px solid ${isMarkedForReview ? '#FCD34D' : '#E2E8F0'}`,
-            backgroundColor: isMarkedForReview ? '#FEF3C7' : '#FFFFFF',
-            color: isMarkedForReview ? '#D97706' : '#475569',
-            fontSize: 12.5,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: 'all 0.15s ease',
-          }}
-          title="Mark for Review"
-        >
-          <Flag size={14} fill={isMarkedForReview ? '#D97706' : 'none'} color={isMarkedForReview ? '#D97706' : '#64748B'} />
-          <span>{isMarkedForReview ? 'Marked for Review' : 'Mark for Review'}</span>
-        </button>
+        {showMarkReview && (
+          <button
+            type="button"
+            onClick={onToggleMarkReview}
+            style={{
+              padding: isMobile ? '7px 10px' : '8px 16px',
+              borderRadius: 6,
+              border: `1px solid ${isMarkedForReview ? '#FCD34D' : '#E2E8F0'}`,
+              backgroundColor: isMarkedForReview ? '#FEF3C7' : '#FFFFFF',
+              color: isMarkedForReview ? '#D97706' : '#475569',
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
+            }}
+            title="Mark for Review"
+          >
+            <Flag size={14} fill={isMarkedForReview ? '#D97706' : 'none'} color={isMarkedForReview ? '#D97706' : '#64748B'} />
+            <span>{isMarkedForReview ? 'Marked for Review' : 'Mark for Review'}</span>
+          </button>
+        )}
       </div>
+
 
       {/* Right Actions: Previous, Submit Answer, & Save Next */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10 }}>
@@ -157,35 +173,70 @@ export function ExamFooterBar({
           <span>Previous</span>
         </button>
 
-        {/* Save & Next Button (Primary Action) */}
-        <button
-          type="button"
-          onClick={onNext}
-          style={{
-            padding: isMobile ? '7px 14px' : '9px 22px',
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: '#2563EB',
-            color: '#FFFFFF',
-            fontSize: 13.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#1D4ED8';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#2563EB';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-        </button>
+        {/* Save & Next Button (Primary Action) or Submit Test on Last Question */}
+        {!isLastQuestion ? (
+          <button
+            type="button"
+            onClick={onNext}
+            style={{
+              padding: isMobile ? '7px 14px' : '9px 22px',
+              borderRadius: 6,
+              border: 'none',
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span>Next</span>
+            <ChevronRight size={16} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onSubmitTest || onNext}
+            style={{
+              padding: isMobile ? '7px 14px' : '9px 22px',
+              borderRadius: 6,
+              border: 'none',
+              backgroundColor: '#10B981',
+              color: '#FFFFFF',
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#10B981';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span>Finish & View Analysis</span>
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     </footer>
   );

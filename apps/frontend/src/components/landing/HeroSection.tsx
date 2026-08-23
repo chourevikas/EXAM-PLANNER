@@ -11,13 +11,6 @@ interface HeroSectionProps {
 // Supported Target Exams list
 const TARGET_EXAM_OPTIONS = [
   'UPSC CSE',
-  'State PSC',
-  'SSC CGL',
-  'Banking PO',
-  'CAT / MBA',
-  'Railways',
-  'NDA',
-  'CDS',
 ];
 
 // Target exam year options
@@ -41,6 +34,7 @@ export function HeroSection({ }: HeroSectionProps) {
   const [subjectsList, setSubjectsList] = useState<string[]>(['Polity', 'History', 'Economy', 'Geography', 'Environment', 'Science & Technology']);
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
   const [examsList] = useState<string[]>(TARGET_EXAM_OPTIONS);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
   // Form selections (Subject is required, Topic & Subtopic are optional)
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
@@ -53,6 +47,7 @@ export function HeroSection({ }: HeroSectionProps) {
   // Fetch Dynamic 3-level Taxonomy from Backend API
   useEffect(() => {
     async function loadDynamicTaxonomy() {
+      setIsTaxonomyLoading(true);
       try {
         const taxRes = await fetch('/api/v1/questions/taxonomy');
         if (taxRes.ok) {
@@ -71,6 +66,8 @@ export function HeroSection({ }: HeroSectionProps) {
         }
       } catch (err) {
         console.warn('Taxonomy DB fetch warning:', err);
+      } finally {
+        setIsTaxonomyLoading(false);
       }
     }
 
@@ -447,7 +444,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   </label>
                   <select
                     value={selectedSubtopic}
-                    onChange={(e) => setSelectedSubtopic(e.target.value)}
+                    onChange={(e) => handleSubtopicChange(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '9px 12px',
@@ -550,11 +547,6 @@ export function HeroSection({ }: HeroSectionProps) {
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#64748B', display: 'inline-block' }} /> No login required
                 </span>
-              </div>
-
-              {/* Subtle Identity Footer */}
-              <div style={{ marginTop: 10, textAlign: 'center', fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>
-                ExamPlanner PYQ Engine
               </div>
             </form>
           </div>

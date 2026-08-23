@@ -60,88 +60,46 @@ export function SignInPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-body)' }}>
-      <header style={{ padding: '20px 52px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#F5F7FB', fontFamily: "'Manrope', -apple-system, system-ui, sans-serif" }}>
+      <header style={{ padding: '20px 48px', borderBottom: '1px solid #E2E8F0', background: '#FFFFFF' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Logo />
         </Link>
       </header>
 
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
         <div
           style={{
-            background: 'var(--bg-card)',
+            background: '#FFFFFF',
             borderRadius: 24,
-            padding: 40,
+            padding: '36px 32px 32px 32px',
             width: '100%',
-            maxWidth: 440,
-            boxShadow: 'var(--shadow-lg)',
-            border: '1px solid var(--border-color)',
+            maxWidth: 420,
+            boxShadow: '0 20px 40px -15px rgba(23, 37, 84, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+            border: '1px solid #E2E8F0',
+            boxSizing: 'border-box',
           }}
         >
-          <div style={{ marginBottom: 24, textAlign: 'center' }}>
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>Welcome Back</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Sign in to access your dashboard</p>
-          </div>
-
-          {/* Role Selector */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8, textAlign: 'center' }}>
-              Select Role
-            </label>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 6,
-                background: 'var(--bg-secondary)',
-                padding: 4,
-                borderRadius: 12,
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              {[
-                { role: UserRole.STUDENT, label: 'Student', emoji: '🎓' },
-                { role: UserRole.ADMIN, label: 'Admin', emoji: '⚙️' },
-                { role: UserRole.SUPER_ADMIN, label: 'Super Admin', emoji: '👑' },
-              ].map((item) => (
-                <button
-                  key={item.role}
-                  type="button"
-                  onClick={() => handleRoleChange(item.role)}
-                  style={{
-                    padding: '8px 4px',
-                    fontSize: 12,
-                    fontWeight: selectedRole === item.role ? 700 : 500,
-                    color: selectedRole === item.role ? '#ffffff' : 'var(--text-muted)',
-                    background: selectedRole === item.role ? 'var(--royal)' : 'transparent',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <span>{item.emoji}</span> {item.label}
-                </button>
-              ))}
-            </div>
+          <div style={{ marginBottom: 26, textAlign: 'left' }}>
+            <h1 style={{ fontSize: 30, fontWeight: 700, color: '#172033', marginBottom: 6, letterSpacing: '-0.025em', fontFamily: "'Manrope', sans-serif" }}>
+              Welcome back
+            </h1>
+            <p style={{ fontSize: 15, color: '#64748B', margin: 0, fontWeight: 400, lineHeight: '1.45' }}>
+              Sign in to access your student dashboard
+            </p>
           </div>
 
           {errorMsg && (
             <div
               style={{
                 padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.35)',
-                color: '#ef4444',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                borderRadius: 10,
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                color: '#DC2626',
+                fontSize: 13.5,
+                fontWeight: 500,
+                marginBottom: 20,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
@@ -155,13 +113,13 @@ export function SignInPage() {
             <div
               style={{
                 padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(16, 185, 129, 0.12)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                color: 'var(--emerald)',
-                fontSize: 13,
-                fontWeight: 600,
-                marginBottom: 16,
+                borderRadius: 10,
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#059669',
+                fontSize: 13.5,
+                fontWeight: 500,
+                marginBottom: 20,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
@@ -173,8 +131,8 @@ export function SignInPage() {
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-main)', marginBottom: 6 }}>
-                Email Address
+              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: '#172033', marginBottom: 6 }}>
+                Email address
               </label>
               <input
                 type="email"
@@ -184,24 +142,36 @@ export function SignInPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-body)',
-                  color: 'var(--text-main)',
-                  fontSize: 14,
+                  height: 52,
+                  borderRadius: 12,
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  padding: '0 16px',
+                  fontSize: 14.5,
+                  fontWeight: 400,
+                  color: '#172033',
                   outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'all 0.15s ease',
+                  fontFamily: "'Manrope', sans-serif",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#334EAC';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
                 }}
               />
             </div>
 
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>Password</label>
-                <a href="#" style={{ fontSize: 12, color: 'var(--royal)', textDecoration: 'none', fontWeight: 600 }}>
-                  Forgot Password?
-                </a>
-              </div>
+              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 500, color: '#172033', marginBottom: 6 }}>
+                Password
+              </label>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -211,13 +181,28 @@ export function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '12px 40px 12px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-body)',
-                    color: 'var(--text-main)',
-                    fontSize: 14,
+                    height: 52,
+                    borderRadius: 12,
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    padding: '0 44px 0 16px',
+                    fontSize: 14.5,
+                    fontWeight: 400,
+                    color: '#172033',
                     outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s ease',
+                    fontFamily: "'Manrope', sans-serif",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#334EAC';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#E2E8F0';
+                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.backgroundColor = '#F8FAFC';
                   }}
                 />
                 <button
@@ -225,15 +210,19 @@ export function SignInPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: 12,
+                    right: 14,
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: 'var(--text-muted)',
+                    color: '#64748B',
                     display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 2,
                   }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <Ico.Eye show={showPassword} />
                 </button>
@@ -243,55 +232,111 @@ export function SignInPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '13px', fontSize: 15, marginTop: 6 }}
+              style={{
+                width: '100%',
+                height: 52,
+                borderRadius: 12,
+                backgroundColor: '#334EAC',
+                color: '#FFFFFF',
+                fontSize: 15,
+                fontWeight: 600,
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.8 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: 6,
+                transition: 'all 0.15s ease',
+                fontFamily: "'Manrope', sans-serif",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#273C87';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = '#334EAC';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }
+              }}
             >
-              {loading ? 'Signing In...' : `Sign In as ${selectedRole.replace('_', ' ')}`}
+              {loading ? (
+                <>
+                  <span className="spinner" /> Processing...
+                </>
+              ) : (
+                'Sign in'
+              )}
             </button>
           </form>
 
-          {/* Social Sign In (Only for non Super Admin) */}
-          {selectedRole !== UserRole.SUPER_ADMIN && (
-            <>
-              <div style={{ margin: '24px 0', textAlign: 'center', position: 'relative' }}>
-                <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)' }} />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'var(--bg-card)',
-                    padding: '0 12px',
-                    fontSize: 12,
-                    color: 'var(--text-subtle)',
-                    fontWeight: 500,
-                  }}
-                >
-                  OR
-                </span>
-              </div>
+          <div style={{ margin: '22px 0', textAlign: 'center', position: 'relative' }}>
+            <div style={{ borderTop: '1px solid #E2E8F0' }} />
+            <span
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                background: '#FFFFFF',
+                padding: '0 12px',
+                fontSize: 12,
+                color: '#64748B',
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Or
+            </span>
+          </div>
 
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ width: '100%', padding: '12px', fontSize: 14, gap: 10 }}
-                onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
-              >
-                <Ico.Google /> Continue with Clerk
-              </button>
-            </>
-          )}
+          <button
+            type="button"
+            style={{
+              width: '100%',
+              height: 52,
+              borderRadius: 12,
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#172033',
+              fontSize: 14.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.15s ease',
+              fontFamily: "'Manrope', sans-serif",
+            }}
+            onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F8FAFC';
+              e.currentTarget.style.borderColor = '#CBD5E1';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#E2E8F0';
+            }}
+          >
+            <Ico.Google />
+            <span>Continue with Google</span>
+          </button>
 
-          {/* Sign Up Link - Hidden for Super Admin */}
-          {selectedRole !== UserRole.SUPER_ADMIN && (
-            <div style={{ marginTop: 28, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
-              Don't have an account?{' '}
-              <Link to="/signup" style={{ color: 'var(--royal)', fontWeight: 700, textDecoration: 'none' }}>
-                Sign Up
-              </Link>
-            </div>
-          )}
+          <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: '#64748B', fontWeight: 400 }}>
+            Don't have an account?{' '}
+            <Link
+              to="/signup"
+              style={{ color: '#334EAC', fontWeight: 600, textDecoration: 'none' }}
+            >
+              Sign up
+            </Link>
+          </div>
         </div>
       </main>
     </div>

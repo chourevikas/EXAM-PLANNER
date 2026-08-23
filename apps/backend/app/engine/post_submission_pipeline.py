@@ -17,6 +17,7 @@ from app.db.models import (
     QuestionOption,
     OptionTranslation,
     QuestionExplanation,
+    QuestionMetadata,
     ExamAttempt,
     ExamQuestionResponse,
     UserMemoryState,
@@ -28,7 +29,7 @@ from app.db.models import (
     UserSkillProgressionReport,
     StudyTask,
 )
-from app.db.models.enums import AttemptStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
 from app.engine.matrix_orchestrator import MatrixOrchestrator
 from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.storage.factory import get_storage_provider
@@ -231,10 +232,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     storage = get_storage_provider()
 
-    # 2. Load Solutions JSON via robust multi-tier resolver
-    solutions_data = await load_exam_solutions_data(exam, session, storage)
-
-    # Fetch responses
+    # Fetch attempt question responses
     resp_res = await session.exec(
         select(ExamQuestionResponse)
         .where(ExamQuestionResponse.attempt_id == attempt_id)
@@ -242,7 +240,18 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     )
     responses_db = resp_res.all()
 
-    # If responses_db is empty, auto-seed all questions from DB or solutions_data as unattempted
+    # Determine if this is a Practice / Guest Exam / Question Subset
+    is_practice_or_guest = (
+        attempt.mode == AttemptMode.PRACTICE
+        or bool(attempt.report_metadata_json and (
+            attempt.report_metadata_json.get("is_guest_synced")
+            or attempt.report_metadata_json.get("topic_name")
+            or attempt.report_metadata_json.get("subtopic_name")
+            or attempt.report_metadata_json.get("target_exam")
+        ))
+    )
+
+    # If responses_db is empty, auto-seed all questions from DB as unattempted
     if not responses_db:
         logger.info(f"Attempt '{attempt_id}' has 0 response records. Auto-seeding question responses for exam '{exam.name}'.")
         seeded_resps = []
@@ -263,20 +272,6 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                         final_score=0.0,
                     )
                 )
-        elif solutions_data.get("questions"):
-            for index, s_item in enumerate(solutions_data["questions"], 1):
-                if s_item.get("question_id"):
-                    seeded_resps.append(
-                        ExamQuestionResponse(
-                            attempt_id=attempt.id,
-                            question_id=uuid.UUID(str(s_item["question_id"])),
-                            question_status=QuestionResponseStatus.UNVISITED,
-                            expected_time_seconds=float(s_item.get("expected_time_seconds") or 60.0),
-                            time_taken_seconds=0.0,
-                            is_correct=False,
-                            final_score=0.0,
-                        )
-                    )
         if seeded_resps:
             session.add_all(seeded_resps)
             await session.commit()
@@ -285,7 +280,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             logger.warning(f"No questions found to seed for exam '{exam.name}'.")
             return
 
-    # 3. Load User Memories & User Profile
+    # Load User Memories & User Profile
     mem_res = await session.exec(
         select(UserMemoryState).where(UserMemoryState.user_id == user.id)
     )
@@ -315,91 +310,265 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         "total_questions_answered": profile.total_questions_answered if profile else 0,
     }
 
-    # Transform DB responses to dicts for orchestrator
-    responses_payload = []
-    sol_by_id = {}
-    sol_by_num = {}
-    for item in solutions_data.get("questions", []):
-        if item.get("question_id"):
-            sol_by_id[str(item["question_id"])] = item
-        if item.get("question_number") is not None:
-            try:
-                sol_by_num[int(item["question_number"])] = item
-            except (ValueError, TypeError):
-                pass
-
-    # Bulk preload options and questions if needed for DB fallback
+    # 3. High-Precision Question & Solution Resolution from DB & Individual JSONs
     q_ids = [r.question_id for r in responses_db if r.question_id]
-    opt_ids = [r.selected_option_id for r in responses_db if r.selected_option_id]
-    
     q_map = {}
     opt_map = {}
-    if q_ids and (not sol_by_id or len(sol_by_id) < len(q_ids)):
+    opts_by_qid: Dict[Any, List[QuestionOption]] = {}
+    expl_map = {}
+    meta_map = {}
+    q_trans_map = {}
+    opt_trans_map = {}
+    subtopic_map = {}
+    topic_map = {}
+    subject_map = {}
+
+    if q_ids:
+        # Batch fetch questions
         q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
-        q_map = {q.id: q for q in q_res.all()}
-    if opt_ids:
-        opt_res = await session.exec(select(QuestionOption).where(col(QuestionOption.id).in_(opt_ids)))
-        opt_map = {opt.id: opt for opt in opt_res.all()}
+        q_rows = q_res.all()
+        q_map = {q.id: q for q in q_rows}
+
+        # Batch fetch options
+        opt_res = await session.exec(
+            select(QuestionOption)
+            .where(col(QuestionOption.question_id).in_(q_ids))
+            .order_by(col(QuestionOption.display_order).asc())
+        )
+        opt_rows = opt_res.all()
+        for o in opt_rows:
+            opt_map[o.id] = o
+            opts_by_qid.setdefault(o.question_id, []).append(o)
+
+        # Batch fetch option translations
+        all_opt_ids = [o.id for o in opt_rows]
+        if all_opt_ids:
+            opt_trans_res = await session.exec(
+                select(OptionTranslation).where(col(OptionTranslation.option_id).in_(all_opt_ids))
+            )
+            for ot in opt_trans_res.all():
+                opt_trans_map[ot.option_id] = ot
+
+        # Batch fetch question translations
+        q_trans_res = await session.exec(
+            select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
+        )
+        for qt in q_trans_res.all():
+            q_trans_map[qt.question_id] = qt.question_text
+
+        # Batch fetch explanations
+        expl_res = await session.exec(
+            select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
+        )
+        for ex in expl_res.all():
+            expl_map[ex.question_id] = ex
+
+        # Batch fetch metadata (Blooms, IRT params, cognitive skill)
+        meta_res = await session.exec(
+            select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
+        )
+        for qm in meta_res.all():
+            meta_map[qm.question_id] = qm
+
+        # Batch fetch taxonomy hierarchy (Subtopic -> Topic -> Subject)
+        subtopic_ids = [q.subtopic_id for q in q_rows if q.subtopic_id]
+        if subtopic_ids:
+            sub_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids)))
+            sub_rows = sub_res.all()
+            subtopic_map = {s.id: s for s in sub_rows}
+
+            topic_ids = [s.topic_id for s in sub_rows if s.topic_id]
+            if topic_ids:
+                top_res = await session.exec(select(Topic).where(col(Topic.id).in_(topic_ids)))
+                top_rows = top_res.all()
+                topic_map = {t.id: t for t in top_rows}
+
+                subject_ids = [t.subject_id for t in top_rows if t.subject_id]
+                if subject_ids:
+                    subj_res = await session.exec(select(Subject).where(col(Subject.id).in_(subject_ids)))
+                    subject_map = {sb.id: sb for sb in subj_res.all()}
+
+    meta_subtopic_override = (attempt.report_metadata_json or {}).get("subtopic_name")
+    meta_topic_override = (attempt.report_metadata_json or {}).get("topic_name")
+    meta_subject_override = (attempt.report_metadata_json or {}).get("subject_name") or (attempt.report_metadata_json or {}).get("target_exam") or "General Studies"
+
+    responses_payload = []
+    resolved_sol_questions = []
 
     for index, r in enumerate(responses_db, 1):
         q_model = q_map.get(r.question_id)
-        opt_model = opt_map.get(r.selected_option_id) if r.selected_option_id else None
+        selected_opt = opt_map.get(r.selected_option_id) if r.selected_option_id else None
         
-        sol_item = sol_by_id.get(str(r.question_id))
-        if not sol_item and q_model and q_model.question_number_in_paper:
-            sol_item = sol_by_num.get(int(q_model.question_number_in_paper))
-        if not sol_item:
-            sol_item = sol_by_num.get(index, {})
-        
-        # Fast resolution from in-memory sol_item
-        q_text = sol_item.get("question_text") or sol_item.get("text") or (getattr(q_model, "text", "") if q_model else "")
-        options_payload = sol_item.get("options", [])
-        expl_dict = sol_item.get("explanation")
-        
-        user_sel_label = opt_model.option_label if opt_model else "Unattempted"
-        if user_sel_label == "Unattempted" and r.selected_option_id and options_payload:
-            for opt in options_payload:
-                if str(opt.get("option_id")) == str(r.selected_option_id):
-                    user_sel_label = opt.get("option_label", "A")
-                    break
+        # Taxonomy resolution
+        sub_obj = subtopic_map.get(q_model.subtopic_id) if (q_model and q_model.subtopic_id) else None
+        top_obj = topic_map.get(sub_obj.topic_id) if (sub_obj and sub_obj.topic_id) else None
+        sbj_obj = subject_map.get(top_obj.subject_id) if (top_obj and top_obj.subject_id) else None
 
-        responses_payload.append({
+        subtopic_name = (sub_obj.name if sub_obj else None) or meta_subtopic_override or "Core Concepts"
+        topic_name = (top_obj.name if top_obj else None) or meta_topic_override or (subtopic_name if not sub_obj else "General Knowledge")
+        subject_name = (sbj_obj.name if sbj_obj else None) or meta_subject_override or "General Studies"
+
+        # Question text
+        q_text = q_trans_map.get(r.question_id) or (q_model.text if q_model else "")
+        if not q_text and q_model:
+            q_text = f"Question {q_model.question_number_in_paper or index}"
+
+        # Options resolution
+        q_opts = opts_by_qid.get(r.question_id, [])
+        options_payload = []
+        correct_option_id = None
+        correct_option_label = "A"
+
+        for o in q_opts:
+            o_trans = opt_trans_map.get(o.id)
+            o_text = o_trans.option_text if o_trans else f"Option {o.option_label}"
+            o_dist_analysis = o_trans.distractor_analysis if o_trans else None
+            
+            if o.is_correct:
+                correct_option_id = str(o.id)
+                correct_option_label = o.option_label
+
+            options_payload.append({
+                "option_id": str(o.id),
+                "option_label": o.option_label,
+                "text": o_text,
+                "is_correct": o.is_correct,
+                "closeness_score": float(o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.25)),
+                "distractor_analysis": o_dist_analysis,
+            })
+
+        # Explanations
+        expl_record = expl_map.get(r.question_id)
+        if expl_record:
+            detailed_sol = expl_record.detailed_solution or expl_record.explanation_text or f"**Option ({correct_option_label}) is correct.**"
+            expl_dict = {
+                "core_concept": expl_record.core_concept or f"{topic_name} - {subtopic_name}",
+                "detailed_solution": detailed_sol,
+                "common_traps": expl_record.common_traps_json or [],
+                "key_takeaways": expl_record.key_takeaways_json or ([expl_record.key_takeaway] if expl_record.key_takeaway else []),
+            }
+        else:
+            expl_dict = {
+                "core_concept": f"{topic_name} - {subtopic_name}",
+                "detailed_solution": f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates mastery of {subtopic_name}.",
+                "common_traps": [],
+                "key_takeaways": [f"Key focus area: {subtopic_name}"],
+            }
+
+        # Metadata (Blooms, Cognitive Skill, IRT)
+        qm_record = meta_map.get(r.question_id)
+        blooms_val = (qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE"
+        cognitive_skill = qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning"
+        irt_params = {
+            "a": qm_record.irt_discrimination_a if qm_record and qm_record.irt_discrimination_a is not None else 1.50,
+            "b": qm_record.irt_difficulty_b if qm_record and qm_record.irt_difficulty_b is not None else 0.00,
+            "c": qm_record.irt_pseudo_guessing_c if qm_record and qm_record.irt_pseudo_guessing_c is not None else 0.25,
+        }
+
+        diff_val = (q_model.difficulty.value if hasattr(q_model.difficulty, "value") else str(q_model.difficulty)) if q_model else "MEDIUM"
+
+        # User Selected Label
+        user_sel_label = selected_opt.option_label if selected_opt else "Unattempted"
+
+        resp_item = {
             "question_id": str(r.question_id),
-            "question_number": q_model.question_number_in_paper if q_model and q_model.question_number_in_paper else (sol_item.get("question_number") or index),
+            "question_number": index,
             "question_text": q_text,
             "options": options_payload,
-            "subject": sol_item.get("subject", "General Studies"),
-            "topic": sol_item.get("topic", "General Knowledge"),
-            "subtopic": sol_item.get("subtopic", "Core Concepts"),
-            "difficulty": sol_item.get("difficulty", "MEDIUM"),
+            "subject": subject_name,
+            "topic": topic_name,
+            "subtopic": subtopic_name,
+            "difficulty": diff_val,
             "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
             "user_selected_label": user_sel_label,
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
-            "time_taken_seconds": r.time_taken_seconds,
-            "expected_time_seconds": r.expected_time_seconds,
+            "time_taken_seconds": r.time_taken_seconds if r.time_taken_seconds > 0 else 60.0,
+            "expected_time_seconds": r.expected_time_seconds if r.expected_time_seconds > 0 else 60.0,
             "is_switched": r.is_switched,
             "initial_correct": False,
             "gti_item_score": r.gti_item_score,
             "answer_revealed": r.answer_revealed,
             "explanation": expl_dict,
+        }
+        responses_payload.append(resp_item)
+
+        resolved_sol_questions.append({
+            "question_id": str(r.question_id),
+            "question_number": index,
+            "question_text": q_text,
+            "options": options_payload,
+            "correct_option_id": correct_option_id,
+            "correct_option_label": correct_option_label,
+            "subject": subject_name,
+            "topic": topic_name,
+            "subtopic": subtopic_name,
+            "difficulty": diff_val,
+            "blooms_level": blooms_val,
+            "cognitive_skill": cognitive_skill,
+            "irt_params": irt_params,
+            "explanation": expl_dict,
         })
 
+    if is_practice_or_guest or not q_ids:
+        solutions_data = {
+            "exam_id": str(exam.id),
+            "exam_code": exam.code,
+            "questions": resolved_sol_questions,
+        }
+    else:
+        # Standard full exam attempt: load master solutions JSON with DB overlay
+        master_sol = await load_exam_solutions_data(exam, session, storage)
+        if master_sol and master_sol.get("questions"):
+            solutions_data = master_sol
+        else:
+            solutions_data = {
+                "exam_id": str(exam.id),
+                "exam_code": exam.code,
+                "questions": resolved_sol_questions,
+            }
+
     t_start = datetime.now(timezone.utc)
-    logger.info(f"🚀 [PIPELINE_START] Beginning submission analysis for Attempt '{attempt.id}' | Exam: '{exam.name}' ({exam.code}) | User: '{user.full_name}' ({user.email})")
+
+    # Resolve traceable exam name for practice/guest tests
+    meta = attempt.report_metadata_json or {}
+    is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
+    topic_desc = meta.get("subtopic_name") or meta.get("topic_name")
+    if not topic_desc and responses_payload:
+        topics_in_resps = [r.get("topic") or r.get("subject") for r in responses_payload if r.get("topic") or r.get("subject")]
+        if topics_in_resps:
+            from collections import Counter
+            topic_desc = Counter(topics_in_resps).most_common(1)[0][0]
+
+    if not topic_desc:
+        topic_desc = "Topic Practice"
+
+    q_count = len(responses_payload) or attempt.total_questions or 10
+    if is_guest:
+        traceable_exam_name = f"Guest Practice: {topic_desc} ({q_count} Questions)"
+    elif is_practice_or_guest:
+        traceable_exam_name = f"Practice Test: {topic_desc} ({q_count} Questions)"
+    else:
+        traceable_exam_name = exam.name
+
+    logger.info(f"🚀 [PIPELINE_START] Beginning submission analysis for Attempt '{attempt.id}' | Title: '{traceable_exam_name}' | User: '{user.full_name}' ({user.email})")
 
     # 4. Execute Mode-Aware Matrix Orchestrator
+    allocated_duration = float(exam.total_duration_minutes or 120)
+    if is_practice_or_guest:
+        allocated_duration = max(5.0, len(responses_payload) * 2.0)
+
     t_mat_start = datetime.now(timezone.utc)
     report = MatrixOrchestrator.compute_full_report(
         attempt_id=attempt.id,
         mode=attempt.mode,
         responses=responses_payload,
         solutions_data=solutions_data,
-        allocated_duration_minutes=float(exam.total_duration_minutes or 120),
+        allocated_duration_minutes=allocated_duration,
         user_memory_records=topic_mem_records,
         candidate_info={"user_id": str(user.id), "full_name": user.full_name, "email": user.email},
-        exam_info={"exam_id": str(exam.id), "exam_name": exam.name, "exam_code": exam.code},
+        exam_info={"exam_id": str(exam.id), "exam_name": traceable_exam_name, "exam_code": exam.code},
         profile_data=profile_dict,
     )
     t_mat_end = datetime.now(timezone.utc)
@@ -572,7 +741,6 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     existing_ret_map = {r.subtopic_id: r for r in existing_ret_res.all() if r.subtopic_id}
 
     for resp in responses_db:
-        q_sol_info = sol_by_id.get(str(resp.question_id)) or {}
         q_subtopic_id = None
         if resp.question_id in q_map:
             q_subtopic_id = q_map[resp.question_id].subtopic_id

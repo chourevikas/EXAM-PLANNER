@@ -12,9 +12,6 @@ const SignInPage = lazy(() =>
 const SignUpPage = lazy(() =>
   import('./pages/SignUpPage').then((m) => ({ default: m.SignUpPage }))
 );
-const SignOutPage = lazy(() =>
-  import('./pages/SignOutPage').then((m) => ({ default: m.SignOutPage }))
-);
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
 );
@@ -35,6 +32,9 @@ const ProfilePage = lazy(() =>
 );
 const GuestExamPage = lazy(() =>
   import('./pages/GuestExamPage').then((m) => ({ default: m.GuestExamPage }))
+);
+const StudentPracticeExamPage = lazy(() =>
+  import('./pages/StudentPracticeExamPage').then((m) => ({ default: m.StudentPracticeExamPage }))
 );
 const ExamEnginePage = lazy(() =>
   import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage }))
@@ -88,8 +88,17 @@ export default function App() {
           <Route path="/login" element={<LandingPage initialAuthMode="login" />} />
           <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
-          <Route path="/signout" element={<SignOutPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
+
+          {/* Student Practice Exam - Protected Route */}
+          <Route
+            path="/practice-exam"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <StudentPracticeExamPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Exam Engine - Protected Route */}
           <Route

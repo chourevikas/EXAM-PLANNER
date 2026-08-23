@@ -93,7 +93,7 @@ export function ExamSectionSidebar({
         }}
       />
 
-      {/* Full-Height Slide-out Drawer Panel */}
+      {/* Full-Height Slide-out Drawer Panel (Admin Sidebar Theme) */}
       <aside
         style={{
           position: 'fixed',
@@ -102,41 +102,64 @@ export function ExamSectionSidebar({
           left: 0,
           height: '100vh',
           zIndex: 210,
-          width: 280,
-          backgroundColor: '#FFFFFF',
-          borderRight: '1px solid #E2E8F0',
-          boxShadow: '4px 0 24px rgba(15, 23, 42, 0.18)',
+          width: 300,
+          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          color: '#FFFFFF',
+          boxShadow: '8px 0 32px rgba(15, 23, 42, 0.45)',
           display: 'flex',
           flexDirection: 'column',
-          padding: '20px 16px',
           boxSizing: 'border-box',
-          animation: 'slideInLeft 0.22s ease-out forwards',
+          animation: 'slideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          fontFamily: "'IBM Plex Sans', -apple-system, system-ui, sans-serif",
+          overflow: 'hidden',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        {/* Drawer Header & Close Trigger */}
+        {/* Drawer Header & Close Trigger (Admin Dark Blue Theme) */}
         <div
           style={{
+            padding: '22px 20px 18px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: 16,
-            paddingBottom: 10,
-            borderBottom: '1px solid #E2E8F0',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Layers size={16} color="#2563EB" />
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                color: '#0F172A',
-                letterSpacing: '0.08em',
+                width: 32,
+                height: 32,
+                borderRadius: 6,
+                backgroundColor: '#2563EB',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
               }}
             >
-              EXAM SECTIONS
-            </span>
+              <Layers size={18} />
+            </div>
+            <div>
+              {/* Sidebar Section Label: IBM Plex Sans 12px / 500, letter spacing */}
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  color: '#FFFFFF',
+                  letterSpacing: '0.08em',
+                  display: 'block',
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                }}
+              >
+                EXAM SECTIONS
+              </span>
+              <span style={{ fontSize: 11.5, color: 'rgba(255, 255, 255, 0.65)', fontWeight: 400, fontFamily: "'IBM Plex Sans', sans-serif" }}>
+                {total} Questions Loaded
+              </span>
+            </div>
           </div>
 
           {onClose && (
@@ -144,149 +167,193 @@ export function ExamSectionSidebar({
               type="button"
               onClick={onClose}
               style={{
-                background: 'none',
+                background: 'transparent',
                 border: 'none',
-                color: '#64748B',
+                color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
-                padding: 4,
-                borderRadius: 4,
+                padding: 6,
+                borderRadius: 6,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#F1F5F9';
-                e.currentTarget.style.color = '#0F172A';
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.color = '#FFFFFF';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#64748B';
+                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)';
               }}
               title="Close Drawer"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
         </div>
 
-        {/* Sections List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
-          {effectiveSections.map((sec, idx) => {
-            const isSecActive = activeSectionId === sec.id || (!activeSectionId && idx === 0);
-            const secTotal = sec.total || total;
-            let secAnswered = answeredCount;
+        {/* Scrollable Main Content */}
+        <div style={{ flex: 1, padding: '20px 16px', overflowY: 'auto' }}>
+          {/* Sections List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
+            {effectiveSections.map((sec, idx) => {
+              const isSecActive = activeSectionId === sec.id || (!activeSectionId && idx === 0);
+              const secTotal = sec.total || total;
+              let secAnswered = answeredCount;
 
-            if (sec.startQuestionNumber && sec.endQuestionNumber && palette.length > 0) {
-              secAnswered = palette.filter((p) => {
-                const inRange =
-                  p.question_number >= sec.startQuestionNumber! &&
-                  p.question_number <= sec.endQuestionNumber!;
-                const isAns =
-                  p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED';
-                return inRange && isAns;
-              }).length;
-            }
+              if (sec.startQuestionNumber && sec.endQuestionNumber && palette.length > 0) {
+                secAnswered = palette.filter((p) => {
+                  const inRange =
+                    p.question_number >= sec.startQuestionNumber! &&
+                    p.question_number <= sec.endQuestionNumber!;
+                  const isAns =
+                    p.question_status === 'ANSWERED' || p.question_status === 'ANSWERED_AND_MARKED';
+                  return inRange && isAns;
+                }).length;
+              }
 
-            return (
-              <button
-                key={sec.id}
-                type="button"
-                onClick={() => {
-                  if (onSelectSection) {
-                    onSelectSection(sec.id, sec.startQuestionNumber);
-                  } else if (onSelectQuestion && sec.startQuestionNumber) {
-                    onSelectQuestion(sec.startQuestionNumber - 1);
-                  }
-                  if (onClose) onClose();
-                }}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '10px 12px',
-                  borderRadius: 6,
-                  border: 'none',
-                  borderLeft: isSecActive ? '3px solid #2563EB' : '3px solid transparent',
-                  backgroundColor: isSecActive ? '#EFF6FF' : 'transparent',
-                  color: isSecActive ? '#2563EB' : '#0F172A',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSecActive) e.currentTarget.style.backgroundColor = '#F8FAFC';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSecActive) e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <span style={{ fontSize: 13, fontWeight: isSecActive ? 700 : 500, lineHeight: 1.3 }}>
-                  {sec.label}
-                </span>
-                <span
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => {
+                    if (onSelectSection) {
+                      onSelectSection(sec.id, sec.startQuestionNumber);
+                    } else if (onSelectQuestion && sec.startQuestionNumber) {
+                      onSelectQuestion(sec.startQuestionNumber - 1);
+                    }
+                    if (onClose) onClose();
+                  }}
                   style={{
-                    fontSize: 11.5,
-                    color: isSecActive ? '#2563EB' : '#64748B',
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 14px',
+                    borderRadius: 6,
+                    border: 'none',
+                    borderLeft: isSecActive ? '3px solid #2563EB' : '3px solid transparent',
+                    background: isSecActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                    color: isSecActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                    fontFamily: "'IBM Plex Sans', sans-serif",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSecActive) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                      e.currentTarget.style.color = '#ffffff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSecActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'rgba(255, 255, 255, 0.65)';
+                    }
                   }}
                 >
-                  {secAnswered} / {secTotal}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ height: 1, backgroundColor: '#E2E8F0', marginBottom: 20 }} />
-
-        {/* YOUR PROGRESS Header */}
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            color: '#64748B',
-            letterSpacing: '0.08em',
-            marginBottom: 14,
-            paddingBottom: 6,
-            borderBottom: '1px solid #E2E8F0',
-          }}
-        >
-          YOUR PROGRESS
-        </div>
-
-        {/* Metric Rows */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#059669' }} />
-              <span style={{ color: '#475569', fontWeight: 500 }}>ANSWERED</span>
-            </div>
-            <span style={{ color: '#059669', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-              {answeredCount}
-            </span>
+                  {/* Navigation item: IBM Plex Sans 14.5px / 500; Active navigation item: 14.5px / 600 */}
+                  <span style={{ fontSize: 14.5, fontWeight: isSecActive ? 600 : 500, lineHeight: 1.35, fontFamily: "'IBM Plex Sans', sans-serif" }}>
+                    {sec.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: isSecActive ? '#93C5FD' : 'rgba(255, 255, 255, 0.5)',
+                      fontWeight: isSecActive ? 600 : 400,
+                      fontVariantNumeric: 'tabular-nums',
+                      backgroundColor: isSecActive ? 'rgba(37, 99, 235, 0.3)' : 'rgba(255, 255, 255, 0.06)',
+                      padding: '2px 8px',
+                      borderRadius: 99,
+                      fontFamily: "'IBM Plex Sans', sans-serif",
+                    }}
+                  >
+                    {secAnswered} / {secTotal}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#D97706' }} />
-              <span style={{ color: '#475569', fontWeight: 500 }}>REVIEW</span>
-            </div>
-            <span style={{ color: '#D97706', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-              {markedCount}
-            </span>
+          <div style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.1)', marginBottom: 20 }} />
+
+          {/* Section label: IBM Plex Sans 11.5px / 500, subtle letter spacing */}
+          <div
+            style={{
+              fontSize: 11.5,
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              color: 'rgba(255, 255, 255, 0.55)',
+              letterSpacing: '0.08em',
+              marginBottom: 14,
+              fontFamily: "'IBM Plex Sans', sans-serif",
+            }}
+          >
+            LIVE PROGRESS OVERVIEW
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#94A3B8' }} />
-              <span style={{ color: '#475569', fontWeight: 500 }}>UNANSWERED</span>
+          {/* Metric Pill Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 14px',
+                borderRadius: 10,
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981' }} />
+                <span style={{ color: '#A7F3D0', fontWeight: 600 }}>ANSWERED</span>
+              </div>
+              <span style={{ color: '#34D399', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
+                {answeredCount}
+              </span>
             </div>
-            <span style={{ color: '#64748B', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-              {unattemptedCount}
-            </span>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 14px',
+                borderRadius: 10,
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B' }} />
+                <span style={{ color: '#FDE68A', fontWeight: 600 }}>REVIEW</span>
+              </div>
+              <span style={{ color: '#FBBF24', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
+                {markedCount}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 14px',
+                borderRadius: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#94A3B8' }} />
+                <span style={{ color: '#CBD5E1', fontWeight: 600 }}>UNANSWERED</span>
+              </div>
+              <span style={{ color: '#94A3B8', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
+                {unattemptedCount}
+              </span>
+            </div>
           </div>
         </div>
       </aside>

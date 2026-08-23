@@ -63,8 +63,8 @@ class QuestionRepository:
         if needs_hierarchy:
             stmt = stmt.outerjoin(QuestionHierarchyLink, Question.id == QuestionHierarchyLink.question_id)
             stmt = stmt.outerjoin(Subtopic, or_(Question.subtopic_id == Subtopic.id, QuestionHierarchyLink.subtopic_id == Subtopic.id))
-            stmt = stmt.outerjoin(Topic, Subtopic.topic_id == Topic.id)
-            stmt = stmt.outerjoin(Subject, Topic.subject_id == Subject.id)
+            stmt = stmt.outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
+            stmt = stmt.outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
 
         # Filters
         if exam_id:
@@ -82,7 +82,7 @@ class QuestionRepository:
         if exam_name:
             stmt = stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
 
-        # Hierarchy Filters
+        # Hierarchy Filters with cross-level taxonomy matching
         if subject_id:
             stmt = stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name and subject_name != "All Subjects" and subject_name.strip():
@@ -116,6 +116,7 @@ class QuestionRepository:
             ))
         if subtopic_code:
             stmt = stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
+
 
         # Unique questions only
         stmt = stmt.distinct()

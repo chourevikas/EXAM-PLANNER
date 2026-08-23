@@ -1,5 +1,6 @@
 import uuid
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
 from fastapi.responses import Response
 from sqlmodel import select, col
@@ -38,38 +39,10 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
-            # 1. Instant Cache from ExamAttempt or ExamAttemptReport
-            if attempt_id:
-                attempt = await self.session.get(ExamAttempt, attempt_id)
-                
-                if attempt and attempt.report_metadata_json:
-                    json_content = format_report_to_json(attempt.report_metadata_json)
-                    return Response(content=json_content, media_type="application/json")
-
-                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-                rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db and rep_db.full_report_json is not None:
-                    json_content = format_report_to_json(rep_db.full_report_json)
-                    return Response(content=json_content, media_type="application/json")
-
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
             json_content = format_report_to_json(report_data)
-
-            # Background persist to DB if attempt_id is present
-            if attempt_id:
-                attempt = await self.session.get(ExamAttempt, attempt_id)
-                if attempt and not attempt.report_metadata_json:
-                    attempt.report_metadata_json = report_data
-                    self.session.add(attempt)
-                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-                rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db:
-                    rep_db.full_report_json = report_data
-                    self.session.add(rep_db)
-                await self.session.commit()
-
             return Response(content=json_content, media_type="application/json")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
@@ -89,12 +62,6 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
-            if attempt_id:
-                attempt = await self.session.get(ExamAttempt, attempt_id)
-                if attempt and attempt.report_metadata_json:
-                    yaml_content = format_report_to_yaml(attempt.report_metadata_json)
-                    return Response(content=yaml_content, media_type="text/yaml")
-
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -118,13 +85,7 @@ class AnalyticsService:
         attempt_id: Optional[uuid.UUID] = None,
     ) -> Response:
         try:
-            # 1. Instant Cache from ExamAttempt or ExamAttemptReport
             if attempt_id:
-                attempt = await self.session.get(ExamAttempt, attempt_id)
-                if attempt and attempt.report_metadata_json:
-                    markdown_content = format_report_to_markdown(attempt.report_metadata_json)
-                    return Response(content=markdown_content, media_type="text/markdown")
-
                 rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
                 rep_db = (await self.session.exec(rep_stmt)).first()
                 if rep_db and rep_db.markdown_audit_text is not None:
@@ -134,16 +95,6 @@ class AnalyticsService:
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
             markdown_content = format_report_to_markdown(report_data)
-
-            # Persist markdown cache to DB
-            if attempt_id:
-                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-                rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db:
-                    rep_db.markdown_audit_text = markdown_content
-                    self.session.add(rep_db)
-                    await self.session.commit()
-
             return Response(content=markdown_content, media_type="text/markdown")
         except ValueError as val_err:
             raise HTTPException(status_code=404, detail=str(val_err))
@@ -155,6 +106,7 @@ class AnalyticsService:
                 exc_info=True,
             )
             raise HTTPException(status_code=500, detail=str(exc))
+
     async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
         from app.cache import get_cache, build_cache_key
@@ -214,28 +166,19 @@ class AnalyticsService:
             await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
-        # 3. Fallback to comprehensive psychometric report compiler
+        # 3. Synchronously evaluate report
         rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
-        if rep:
-            if not attempt.report_metadata_json:
-                attempt.report_metadata_json = rep
-                self.session.add(attempt)
-                await self.session.commit()
-            if rep.get("part_1_per_question_analysis"):
-                res_data = {
-                    "attempt_id": str(attempt_id),
-                    "total_questions": len(rep.get("part_1_per_question_analysis", [])),
-                    "questions": rep.get("part_1_per_question_analysis", []),
-                }
-                await cache.set(cache_key, res_data, ttl_seconds=86400)
-                return res_data
+        if rep and rep.get("part_1_per_question_analysis"):
+            part_1 = rep["part_1_per_question_analysis"]
+            res_data = {
+                "attempt_id": str(attempt_id),
+                "total_questions": len(part_1),
+                "questions": part_1,
+            }
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            return res_data
 
-        empty_res = {
-            "attempt_id": str(attempt_id),
-            "total_questions": 0,
-            "questions": [],
-        }
-        return empty_res
+        raise HTTPException(status_code=404, detail="Question-level diagnostic report not available.")
 
     async def get_attempt_exam_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 2: Exam-Level 12-Matrix Aggregated Performance Report."""
@@ -319,60 +262,25 @@ class AnalyticsService:
             await cache.set(cache_key, res_data, ttl_seconds=86400)
             return res_data
 
-        # Fallback query from UserSkillProfile and Attempt report metadata
-        attempt = await self.session.get(ExamAttempt, attempt_id)
-        if not attempt:
-            raise HTTPException(status_code=404, detail="Attempt not found.")
+        # Synchronously evaluate report to generate true progression delta
+        await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
+        prog_stmt_after = select(UserSkillProgressionReport).where(UserSkillProgressionReport.attempt_id == attempt_id)
+        prog_db_after = (await self.session.exec(prog_stmt_after)).first()
+        if prog_db_after:
+            res_data = {
+                "attempt_id": str(prog_db_after.attempt_id),
+                "user_id": str(prog_db_after.user_id),
+                "previous_metrics": prog_db_after.previous_metrics_json,
+                "updated_metrics": prog_db_after.updated_metrics_json,
+                "deltas": prog_db_after.deltas_json,
+                "taxonomy_promotions": prog_db_after.taxonomy_promotions_json,
+                "spaced_repetition_schedule": prog_db_after.spaced_repetition_schedule_json,
+                "created_at": prog_db_after.created_at.isoformat() if prog_db_after.created_at else None,
+            }
+            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            return res_data
 
-        profile = (await self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == attempt.user_id))).first()
-        curr_icrs = profile.cumulative_icrs if profile else 75.0
-        curr_theta = profile.cumulative_irt_theta if profile else 0.5
-        curr_gti = profile.cumulative_gti if profile else 0.16
-        curr_oeei = profile.cumulative_oeei if profile else 0.75
-        curr_satoi = profile.cumulative_satoi if profile else 82.0
-
-        rep_meta = attempt.report_metadata_json or {}
-        part_2 = rep_meta.get("part_2_exam_macro_scorecard") or rep_meta.get("part_3_aggregated_user_report") or {}
-        att_icrs = float(part_2.get("overall_exam_readiness", {}).get("icrs_score") or part_2.get("icrs", {}).get("icrs_score") or 78.0)
-        att_theta = float(part_2.get("concept_mastery_level", {}).get("latent_ability_theta") or part_2.get("irt_3pl", {}).get("latent_ability_theta") or 0.65)
-        att_gti = float(part_2.get("guessing_instinct_risk", {}).get("aggregate") or part_2.get("gti", {}).get("aggregate") or 0.15)
-        att_oeei = float(part_2.get("option_elimination_precision", {}).get("oeei_score") or part_2.get("oeei", {}).get("oeei_score") or 76.0) / 100.0
-        att_satoi = float(part_2.get("cognitive_stamina", {}).get("satoi_score") or part_2.get("satoi", {}).get("satoi_score") or 84.0)
-
-        deltas = {
-            "icrs_delta": round(att_icrs - curr_icrs, 1),
-            "irt_theta_delta": round(att_theta - curr_theta, 2),
-            "gti_delta": round(att_gti - curr_gti, 4),
-            "oeei_delta": round(att_oeei - curr_oeei, 2),
-            "satoi_delta": round(att_satoi - curr_satoi, 1),
-        }
-
-        res_data = {
-            "attempt_id": str(attempt_id),
-            "user_id": str(attempt.user_id),
-            "previous_metrics": {
-                "cumulative_icrs": curr_icrs,
-                "cumulative_irt_theta": curr_theta,
-                "cumulative_gti": curr_gti,
-                "cumulative_oeei": curr_oeei,
-                "cumulative_satoi": curr_satoi,
-                "total_tests_given": profile.total_tests_given if profile else 1,
-            },
-            "updated_metrics": {
-                "cumulative_icrs": round((curr_icrs + att_icrs) / 2.0, 1),
-                "cumulative_irt_theta": round((curr_theta + att_theta) / 2.0, 2),
-                "cumulative_gti": round((curr_gti + att_gti) / 2.0, 4),
-                "cumulative_oeei": round((curr_oeei + att_oeei) / 2.0, 2),
-                "cumulative_satoi": round((curr_satoi + att_satoi) / 2.0, 1),
-                "total_tests_given": (profile.total_tests_given if profile else 0) + 1,
-            },
-            "deltas": deltas,
-            "taxonomy_promotions": rep_meta.get("part_3_taxonomy_hierarchy_retention") or rep_meta.get("part_2_taxonomy_analysis") or {},
-            "spaced_repetition_schedule": {"evaluated_at": datetime.now(timezone.utc).isoformat()},
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        await cache.set(cache_key, res_data, ttl_seconds=86400)
-        return res_data
+        raise HTTPException(status_code=404, detail="User skill progression report not available.")
 
     async def get_user_skill_profile(self, user_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches the user's cumulative psychometric profile and taxonomy mastery grid."""
@@ -429,20 +337,30 @@ class AnalyticsService:
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
 
-        is_evaluated = attempt.status == AttemptStatus.EVALUATED
-        has_report_json = bool(attempt.report_metadata_json)
-        is_ready = is_evaluated or has_report_json
+        # Check if actual full 12-matrix evaluated report exists
+        has_evaluated_report = False
+        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+            if "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
+                has_evaluated_report = True
+
+        if not has_evaluated_report:
+            rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+            rep_db = (await self.session.exec(rep_stmt)).first()
+            if rep_db and rep_db.full_report_json is not None:
+                has_evaluated_report = True
+
+        is_ready = (attempt.status == AttemptStatus.EVALUATED) and has_evaluated_report
 
         # Auto-recovery for stuck attempts
-        if not is_ready and attempt.status == AttemptStatus.SUBMITTED:
+        if not is_ready:
             time_since = (datetime.now(timezone.utc) - (attempt.submitted_at.replace(tzinfo=timezone.utc) if attempt.submitted_at else datetime.now(timezone.utc))).total_seconds()
-            if time_since >= 5 and attempt_id not in _RETRIGGERED_ATTEMPTS:
+            if time_since >= 2 and attempt_id not in _RETRIGGERED_ATTEMPTS:
                 _RETRIGGERED_ATTEMPTS.add(attempt_id)
-                logger.warning(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-retriggering pipeline.")
+                logger.info(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-triggering pipeline.")
                 asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
         status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
-        progress = 100 if is_ready else (75 if attempt.status == AttemptStatus.SUBMITTED else 25)
+        progress = 100 if is_ready else (70 if attempt.status == AttemptStatus.SUBMITTED else 30)
         message = (
             "Psychometric and cognitive evaluation completed successfully."
             if is_ready

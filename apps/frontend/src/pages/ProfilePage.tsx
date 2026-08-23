@@ -498,9 +498,6 @@ export function ProfilePage() {
                 }}
               >
                 <option value="UPSC CSE">UPSC Civil Services Examination (CSE)</option>
-                <option value="State PCS">State Public Service Commission (UPPSC / BPSC)</option>
-                <option value="SSC CGL">SSC Combined Graduate Level (CGL)</option>
-                <option value="RBI Grade B">RBI Grade B Officer</option>
               </select>
             </div>
 

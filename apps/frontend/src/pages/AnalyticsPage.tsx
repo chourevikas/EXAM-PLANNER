@@ -367,53 +367,86 @@ export function AnalyticsPage() {
         />
       ) : (
         !isLoading && !isEvaluating && (
-          <>
-            {/* Main Charts Overview */}
-            <PerformanceAnalyticsCharts />
+          <div
+            style={{
+              padding: 48,
+              textAlign: 'center',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 24,
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-color-base)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+              maxWidth: 680,
+              margin: '32px auto',
+            }}
+          >
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef4444',
+                fontSize: 28,
+              }}
+            >
+              ⚠️
+            </div>
 
-            {/* Additional Analytics Breakdown */}
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32 }}>
-              {/* Speed vs Accuracy */}
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
-                  Speed vs. Accuracy Matrix
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Fast & Accurate</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--success-primary)' }}>54% of Questions</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Slow & Accurate</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-primary)' }}>28% of Questions</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Rushed & Incorrect</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>18% of Questions</span>
-                  </div>
-                </div>
-              </div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Unable to Generate Report
+            </h2>
 
-              {/* Mistake Pattern */}
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>Mistake Analysis</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Silly / Misread Errors</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--warning-primary)' }}>12 Errors</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Conceptual Gaps</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--danger-primary)' }}>24 Errors</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: 14, backgroundColor: 'var(--bg-subtle)', borderRadius: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Time Crunch Pressure</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--info-primary)' }}>6 Errors</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </>
+            <p style={{ fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 520, margin: 0 }}>
+              No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
+            </p>
+
+            <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 12,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: 'var(--bg-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                ↻ Refresh Analysis
+              </button>
+
+              <button
+                type="button"
+                onClick={() => (window.location.href = '/practice')}
+                style={{
+                  padding: '10px 22px',
+                  borderRadius: 12,
+                  border: 'none',
+                  backgroundColor: 'var(--accent-primary, #2563eb)',
+                  color: '#ffffff',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Take a Practice Exam &rarr;
+              </button>
+            </div>
+          </div>
         )
       )}
     </StudentLayout>
