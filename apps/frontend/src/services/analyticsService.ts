@@ -57,8 +57,8 @@ export interface MonthlyBenchmarkResponse {
   subject_benchmark: SubjectBenchmark[];
 }
 
-export async function fetchMonthlyBenchmark(): Promise<MonthlyBenchmarkResponse> {
-  const token = localStorage.getItem('access_token');
+export async function fetchMonthlyBenchmark(overrideToken?: string): Promise<MonthlyBenchmarkResponse> {
+  const token = overrideToken || localStorage.getItem('access_token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -66,7 +66,7 @@ export async function fetchMonthlyBenchmark(): Promise<MonthlyBenchmarkResponse>
 
   const res = await fetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, { headers });
   if (!res.ok) {
-    throw new Error('Failed to fetch monthly benchmarking analytics');
+    throw new Error(`Failed to fetch monthly benchmarking analytics (Status ${res.status})`);
   }
 
   return await res.json();

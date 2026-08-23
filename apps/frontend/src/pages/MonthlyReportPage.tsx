@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { fetchMonthlyBenchmark, MonthlyBenchmarkResponse } from '../services/analyticsService';
@@ -6,6 +7,7 @@ import { TrendingUp, Award, Target, BarChart2, ShieldCheck, RefreshCw } from 'lu
 import StudentMetricCard from '../components/student/StudentMetricCard';
 
 export function MonthlyReportPage() {
+  const { getToken } = useAuth();
   const [data, setData] = useState<MonthlyBenchmarkResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +16,17 @@ export function MonthlyReportPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchMonthlyBenchmark();
+      let token = localStorage.getItem('access_token');
+      try {
+        const clerkToken = await getToken();
+        if (clerkToken) {
+          token = clerkToken;
+          localStorage.setItem('access_token', clerkToken);
+        }
+      } catch (e) {
+        console.warn("Could not retrieve fresh Clerk token:", e);
+      }
+      const res = await fetchMonthlyBenchmark(token || undefined);
       setData(res);
     } catch (err: any) {
       console.error(err);
