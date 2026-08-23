@@ -63,8 +63,8 @@ class QuestionRepository:
         if needs_hierarchy:
             stmt = stmt.outerjoin(QuestionHierarchyLink, Question.id == QuestionHierarchyLink.question_id)
             stmt = stmt.outerjoin(Subtopic, or_(Question.subtopic_id == Subtopic.id, QuestionHierarchyLink.subtopic_id == Subtopic.id))
-            stmt = stmt.outerjoin(Topic, Subtopic.topic_id == Topic.id)
-            stmt = stmt.outerjoin(Subject, Topic.subject_id == Subject.id)
+            stmt = stmt.outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
+            stmt = stmt.outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
 
         # Filters
         if exam_id:
@@ -82,27 +82,43 @@ class QuestionRepository:
         if exam_name:
             stmt = stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
 
-        # Hierarchy Filters
+        # Hierarchy Filters with cross-level taxonomy matching
         if subject_id:
             stmt = stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name:
-            stmt = stmt.where(func.lower(Subject.name).contains(subject_name.lower()))
+            sn = subject_name.lower().strip()
+            stmt = stmt.where(or_(
+                func.lower(Subject.name).contains(sn),
+                func.lower(Topic.name).contains(sn),
+                func.lower(Subtopic.name).contains(sn)
+            ))
         if subject_code:
             stmt = stmt.where(func.lower(Subject.code) == subject_code.lower())
 
         if topic_id:
             stmt = stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
         if topic_name:
-            stmt = stmt.where(func.lower(Topic.name).contains(topic_name.lower()))
+            tn = topic_name.lower().strip()
+            stmt = stmt.where(or_(
+                func.lower(Topic.name).contains(tn),
+                func.lower(Subject.name).contains(tn),
+                func.lower(Subtopic.name).contains(tn)
+            ))
         if topic_code:
             stmt = stmt.where(func.lower(Topic.code) == topic_code.lower())
 
         if subtopic_id:
             stmt = stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
         if subtopic_name:
-            stmt = stmt.where(func.lower(Subtopic.name).contains(subtopic_name.lower()))
+            stn = subtopic_name.lower().strip()
+            stmt = stmt.where(or_(
+                func.lower(Subtopic.name).contains(stn),
+                func.lower(Topic.name).contains(stn),
+                func.lower(Subject.name).contains(stn)
+            ))
         if subtopic_code:
             stmt = stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
+
 
         # Unique questions only
         stmt = stmt.distinct()

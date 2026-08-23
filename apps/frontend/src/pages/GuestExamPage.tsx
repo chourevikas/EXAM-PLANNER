@@ -9,6 +9,8 @@ import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2 } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
+import { saveGuestAttempt } from '../utils/guestStorage';
+
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -110,35 +112,50 @@ export function GuestExamPage() {
         } as any;
       };
 
-      // Query DB directly for questions mapped to the subtopic/topic without artificial limit
-      const params = new URLSearchParams({ limit: '100', include_solutions: 'true' });
-      
       const cleanSub = gSubtopic && gSubtopic !== 'All Subtopics' && gSubtopic !== 'Choose Subtopic' ? gSubtopic.trim() : '';
       const cleanTop = gTopic && gTopic !== 'All Topics' && gTopic !== 'Choose Topic' ? gTopic.trim() : '';
 
-      if (cleanSub) {
-        params.append('subtopic_name', cleanSub);
-      } else if (cleanTop) {
-        params.append('topic_name', cleanTop);
-      }
-
-      if (gExam && gExam.toLowerCase().includes('upsc')) {
-        params.append('exam_name', 'upsc');
-      }
-
-      try {
-        const res = await fetch(`/api/v1/questions?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          (data.items || []).forEach((item: any) => {
-            if (item.question_id && !fetchedMap.has(item.question_id)) {
-              fetchedMap.set(item.question_id, item);
-            }
-          });
+      const fetchQuestionsWithFilter = async (filterKey: string, filterVal: string) => {
+        try {
+          const params = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          params.append(filterKey, filterVal);
+          const res = await fetch(`/api/v1/questions?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            (data.items || []).forEach((item: any) => {
+              if (item.question_id && !fetchedMap.has(item.question_id)) {
+                fetchedMap.set(item.question_id, item);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn(`DB questions fetch warning for ${filterKey}=${filterVal}:`, err);
         }
-      } catch (err) {
-        console.warn('DB questions fetch warning:', err);
+      };
+
+      // 1. Fetch by subtopic if specified
+      if (cleanSub) {
+        await fetchQuestionsWithFilter('subtopic_name', cleanSub);
       }
+
+      // 2. Fetch by topic & subject to catch all taxonomy levels (e.g. Biology subject vs topic)
+      if (cleanTop) {
+        if (fetchedMap.size === 0) {
+          await fetchQuestionsWithFilter('topic_name', cleanTop);
+        }
+        if (fetchedMap.size === 0) {
+          await fetchQuestionsWithFilter('subject_name', cleanTop);
+        }
+        if (fetchedMap.size === 0) {
+          await fetchQuestionsWithFilter('subtopic_name', cleanTop);
+        }
+      }
+
+      // 3. Fallback to generic fetch if taxonomy exact match didn't yield questions
+      if (fetchedMap.size === 0) {
+        await fetchQuestionsWithFilter('limit', '50');
+      }
+
 
       let fetchedList = Array.from(fetchedMap.values());
       
@@ -361,7 +378,7 @@ export function GuestExamPage() {
       const unattemptedCount = Math.max(0, numQuestions - (correctCount + incorrectCount));
       const accuracy = correctCount + incorrectCount > 0 ? Math.round((correctCount / (correctCount + incorrectCount)) * 100) : 0;
 
-      setGuestScoreData({
+      const scorePayload = {
         score: correctCount, // Exactly shows correct answers out of total (e.g. 0/2, 0/15)
         totalMarksPossible,
         correctCount,
@@ -373,10 +390,15 @@ export function GuestExamPage() {
         subtopicName: gSubtopic,
         targetExam: gExam,
         targetYear: gYear,
-      });
+        timeSpentSeconds: 600 - timeLeft,
+      };
+
+      setGuestScoreData(scorePayload);
+      saveGuestAttempt(scorePayload);
 
       // Start 10-second countdown so user can view final answer/explanation
       setScoreCountdown(10);
+
     }
   };
 

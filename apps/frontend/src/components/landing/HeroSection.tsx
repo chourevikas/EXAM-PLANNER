@@ -120,7 +120,7 @@ export function HeroSection({ }: HeroSectionProps) {
     console.log('[Pipeline Trigger] Dummy command registered for mock exam build pipeline.');
 
     const finalTopic = selectedTopic || 'Indian Polity & Governance';
-    const finalSubtopic = selectedSubtopic || (availableSubtopics.length > 0 ? availableSubtopics[0] : 'Fundamental Rights');
+    const finalSubtopic = selectedSubtopic || '';
 
     const queryParams = new URLSearchParams({
       exam: selectedExam,
