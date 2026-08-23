@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
@@ -21,14 +22,19 @@ export function MockSelectionPage() {
   const [hoveredMock, setHoveredMock] = useState<string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
 
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
       setIsLoading(true);
       try {
+        const token = await getToken();
+        if (token) {
+          localStorage.setItem('access_token', token);
+        }
         const [liveExams, userAttempts] = await Promise.all([
-          listExams(undefined, true),
-          listCandidateAttempts(),
+          listExams(undefined, true, token || undefined),
+          listCandidateAttempts(token || undefined),
         ]);
 
         const mocks = liveExams.filter(

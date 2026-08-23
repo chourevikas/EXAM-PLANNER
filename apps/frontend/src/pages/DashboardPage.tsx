@@ -10,13 +10,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 
-const subjectData = [
-  { subject: 'History', accuracy: 85 },
-  { subject: 'Polity', accuracy: 72 },
-  { subject: 'Geography', accuracy: 90 },
-  { subject: 'Economy', accuracy: 55 },
-  { subject: 'Science', accuracy: 65 },
-];
+import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -40,6 +34,9 @@ export function DashboardPage() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [badges, setBadges] = useState<{ unlocked: any[], locked: any[] }>({ unlocked: [], locked: [] });
   const [todayActivities, setTodayActivities] = useState<any[]>([]);
+  const [subjectData, setSubjectData] = useState<any[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(true);
+  const [predictedRank, setPredictedRank] = useState<PredictedRankResponse | null>(null);
   const [studyLog, setStudyLog] = useState<any>({
     activity_type: 'REVISION',
     activity_source: 'UNPLANNED',
@@ -67,6 +64,23 @@ export function DashboardPage() {
     }
   };
 
+  const fetchSubjectPerformance = async () => {
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/v1/analytics/subject-performance', { headers });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSubjectData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch subject performance:", err);
+    } finally {
+      setIsLoadingSubjects(false);
+    }
+  };
+
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
 
@@ -77,13 +91,17 @@ export function DashboardPage() {
       }
     }).catch(err => console.error("Failed to fetch live exams:", err));
 
-    fetchCurrentUser().then(data => {
-      setUser(data);
-    }).catch(err => {
-      console.error("Failed to fetch fresh user data:", err);
+    getToken().then((token) => {
+      fetchCurrentUser(token || undefined).then(data => {
+        setUser(data);
+      }).catch(err => {
+        console.error("Failed to fetch fresh user data:", err);
+      });
     });
 
     fetchActivities();
+    fetchSubjectPerformance();
+    fetchPredictedRank().then(data => setPredictedRank(data)).catch(err => console.error("Failed to fetch predicted rank:", err));
 
     // Fetch user badges
     getToken().then((token: string | null) => {
@@ -151,14 +169,14 @@ export function DashboardPage() {
           title="Questions Attempted"
           value={
             <span>
-              {user.free_questions_attempted ?? 0}{' '}
+              {user.today_questions_attempted ?? user.free_questions_attempted ?? user.total_questions_attempted ?? 0}{' '}
               <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>/ 100</span>
             </span>
           }
           supportingText="Daily practice progress"
           icon={<Ico.Target size={18} />}
           showProgress={true}
-          progressPercent={Math.min(((user.free_questions_attempted ?? 0) / 100) * 100, 100)}
+          progressPercent={Math.min((((user.today_questions_attempted ?? user.free_questions_attempted ?? user.total_questions_attempted ?? 0) / 100) * 100), 100)}
           accentColor="#2563EB"
         />
 
@@ -195,8 +213,12 @@ export function DashboardPage() {
 
         <StudentMetricCard
           title="Predicted Rank"
-          value="Top 8%"
-          supportingText="92nd Percentile"
+          value={predictedRank ? `Top ${predictedRank.top_percentage}%` : "Top 8%"}
+          supportingText={
+            predictedRank 
+              ? `AIR #${predictedRank.predicted_rank.toLocaleString()} (${predictedRank.predicted_percentile}th Pct)`
+              : "92nd Percentile"
+          }
           icon={<Ico.Chart size={18} />}
           accentColor="#3B82F6"
         />
@@ -215,27 +237,57 @@ export function DashboardPage() {
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           }}
         >
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
-            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
+              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+            </div>
+            {subjectData.length > 0 && subjectData.every(s => s.total_attempted === 0) && (
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, backgroundColor: '#FEF3C7', color: '#B45309' }}>
+                No Activity Recorded
+              </span>
+            )}
           </div>
           <div style={{ height: 250, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
-                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-                <Tooltip
-                  cursor={{ fill: '#F8FAFC' }}
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#0F172A' }}
-                />
-                <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={38}>
-                  {subjectData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? '#10B981' : entry.accuracy >= 60 ? '#2563EB' : '#D97706'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingSubjects ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: 13 }}>
+                Loading subject performance...
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} domain={[0, 100]} unit="%" />
+                  <Tooltip
+                    cursor={{ fill: '#F8FAFC' }}
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 4 }}>{data.subject}</div>
+                            <div style={{ fontSize: 12, color: '#2563EB', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
+                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                              Attempted: {data.total_attempted} | Correct: {data.total_correct}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={38}>
+                    {subjectData.map((entry: any, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#10B981' : entry.accuracy >= 60 ? '#2563EB' : '#D97706'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 

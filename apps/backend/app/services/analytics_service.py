@@ -468,4 +468,203 @@ class AnalyticsService:
         md_content = rep.get("markdown_audit") or "# Cumulative Psychometric Audit Report"
         return Response(content=md_content, media_type="text/markdown")
 
+    async def get_user_subject_performance(self, user_id: uuid.UUID) -> list[dict]:
+        """Calculates subject accuracy percentages for a user from study activities and exam responses."""
+        from app.db.models.study_plan import StudyActivity
+        from app.db.models.analytics import ExamAttempt, ExamQuestionResponse
+        from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic
+        from app.db.models.question import Question
+        from app.db.models.hierarchy_link import QuestionHierarchyLink
+
+        standard_subjects = ['History', 'Polity', 'Geography', 'Economy', 'Science & Tech', 'Environment', 'CSAT']
+        stats: dict[str, dict] = {}
+        for s in standard_subjects:
+            stats[s.lower()] = {'subject': s, 'total_attempted': 0, 'total_correct': 0}
+
+        # 1. Aggregate from StudyActivities
+        acts_stmt = select(StudyActivity).where(StudyActivity.user_id == user_id)
+        acts = (await self.session.exec(acts_stmt)).all()
+        for act in acts:
+            if act.subject:
+                raw_subj = act.subject.strip()
+                sub_key = raw_subj.lower()
+                matched = None
+                for std in standard_subjects:
+                    if std.lower() in sub_key or sub_key in std.lower():
+                        matched = std.lower()
+                        break
+                if not matched:
+                    title_subj = raw_subj.title()
+                    matched = title_subj.lower()
+                    if matched not in stats:
+                        stats[matched] = {'subject': title_subj, 'total_attempted': 0, 'total_correct': 0}
+
+                stats[matched]['total_attempted'] += (act.questions_attempted or 0)
+                stats[matched]['total_correct'] += (act.questions_correct or 0)
+
+        # 2. Aggregate from ExamQuestionResponses
+        eq_stmt = (
+            select(ExamQuestionResponse, Question, Exam.subject_code)
+            .join(ExamAttempt, ExamQuestionResponse.attempt_id == ExamAttempt.id)
+            .join(Question, ExamQuestionResponse.question_id == Question.id)
+            .join(Exam, ExamAttempt.exam_id == Exam.id)
+            .where(ExamAttempt.user_id == user_id)
+            .where(ExamQuestionResponse.selected_option_id.is_not(None))
+        )
+        eq_results = (await self.session.exec(eq_stmt)).all()
+
+        for eq_resp, question, exam_subject in eq_results:
+            resolved_subject = None
+
+            # a) Try QuestionHierarchyLink
+            links_stmt = (
+                select(Subject.name)
+                .join(QuestionHierarchyLink, QuestionHierarchyLink.subject_id == Subject.id)
+                .where(QuestionHierarchyLink.question_id == question.id)
+                .order_by(QuestionHierarchyLink.is_primary.desc())
+            )
+            link_subj = (await self.session.exec(links_stmt)).first()
+            if link_subj:
+                resolved_subject = link_subj
+
+            # b) Try Question -> Subtopic -> Topic -> Subject
+            if not resolved_subject and question.subtopic_id:
+                subt_stmt = (
+                    select(Subject.name)
+                    .join(Topic, Topic.subject_id == Subject.id)
+                    .join(Subtopic, Subtopic.topic_id == Topic.id)
+                    .where(Subtopic.id == question.subtopic_id)
+                )
+                sub_subj = (await self.session.exec(subt_stmt)).first()
+                if sub_subj:
+                    resolved_subject = sub_subj
+
+            # c) Try Section Code on Question
+            if not resolved_subject and question.section_code and question.section_code not in ("DEFAULT", "GS-I", "GS1"):
+                resolved_subject = question.section_code
+
+            # d) Fallback to Exam.subject_code
+            if not resolved_subject:
+                resolved_subject = exam_subject or "General Studies"
+
+            sub_key = resolved_subject.lower().strip()
+            matched_key = None
+            for std in standard_subjects:
+                std_k = std.lower()
+                if std_k in sub_key or sub_key in std_k or ('science' in std_k and 'science' in sub_key):
+                    matched_key = std_k
+                    break
+
+            if not matched_key:
+                formatted_name = resolved_subject.replace('_', ' ').replace('-', ' ').title()
+                matched_key = formatted_name.lower()
+                if matched_key not in stats:
+                    stats[matched_key] = {'subject': formatted_name, 'total_attempted': 0, 'total_correct': 0}
+
+            stats[matched_key]['total_attempted'] += 1
+            if eq_resp.is_correct:
+                stats[matched_key]['total_correct'] += 1
+
+        result = []
+        for key, val in stats.items():
+            att = val['total_attempted']
+            corr = val['total_correct']
+            acc = round((corr / att) * 100) if att > 0 else 0
+            result.append({
+                'subject': val['subject'],
+                'accuracy': acc,
+                'total_attempted': att,
+                'total_correct': corr
+            })
+
+        return result
+
+    async def get_predicted_rank(self, user_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Calculates the candidate's All India Rank (AIR) and Percentile prediction
+        for UPSC CSE Prelims using Weighted Moving Average (WMA) and UPSC historical cutoffs.
+        """
+        # Fetch user's completed or evaluated exam attempts ordered by submitted_at desc
+        stmt = (
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id)
+            .where(ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
+            .order_by(col(ExamAttempt.submitted_at).desc())
+            .limit(5)
+        )
+        attempts = (await self.session.exec(stmt)).all()
+
+        total_candidates = 500000
+        max_marks = 200.0
+
+        if attempts:
+            recent_attempts = list(reversed(attempts))
+            n = len(recent_attempts)
+            
+            weighted_sum = 0.0
+            weight_total = 0
+            for i, att in enumerate(recent_attempts, start=1):
+                score = att.total_score or 0.0
+                max_p = att.max_possible_score or 200.0
+                normalized_score = (score / max_p) * max_marks if max_p > 0 else 0.0
+                
+                weighted_sum += normalized_score * i
+                weight_total += i
+            
+            wma_score = round(weighted_sum / weight_total, 2)
+            confidence = "HIGH" if n >= 3 else "MEDIUM"
+        else:
+            subj_perf = await self.get_user_subject_performance(user_id)
+            tot_att = sum(s["total_attempted"] for s in subj_perf)
+            tot_corr = sum(s["total_correct"] for s in subj_perf)
+            if tot_att > 0:
+                acc_pct = tot_corr / tot_att
+                wma_score = round(acc_pct * 160.0, 2)
+                confidence = "MEDIUM"
+            else:
+                wma_score = 75.0
+                confidence = "PROVISIONAL"
+
+        # Linear Piecewise Interpolation for UPSC GS Paper 1 Curve
+        brackets = [
+            (0.0, 0.0),
+            (60.0, 40.0),
+            (80.0, 75.0),
+            (95.0, 95.0),
+            (110.0, 99.0),
+            (200.0, 99.99),
+        ]
+
+        predicted_percentile = 0.0
+        if wma_score <= brackets[0][0]:
+            predicted_percentile = brackets[0][1]
+        elif wma_score >= brackets[-1][0]:
+            predicted_percentile = brackets[-1][1]
+        else:
+            for idx in range(len(brackets) - 1):
+                s_low, p_low = brackets[idx]
+                s_high, p_high = brackets[idx + 1]
+                if s_low <= wma_score <= s_high:
+                    ratio = (wma_score - s_low) / (s_high - s_low) if s_high > s_low else 0
+                    predicted_percentile = p_low + ratio * (p_high - p_low)
+                    break
+
+        predicted_percentile = round(predicted_percentile, 2)
+        top_percentage = round(max(0.01, 100.0 - predicted_percentile), 1)
+        predicted_rank = max(1, int(total_candidates * (top_percentage / 100.0)))
+
+        return {
+            "exam_code": "UPSC_CSE",
+            "exam_name": "UPSC CSE Prelims",
+            "moving_average_score": wma_score,
+            "predicted_percentile": predicted_percentile,
+            "top_percentage": top_percentage,
+            "predicted_rank": predicted_rank,
+            "confidence_level": confidence,
+            "total_candidates": total_candidates,
+            "attempts_analyzed": len(attempts),
+        }
+
+
+
 

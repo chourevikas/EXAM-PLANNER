@@ -47,13 +47,27 @@ class UserOut(BaseModel):
     role: UserRole
     status: UserStatus
     subscription_tier: SubscriptionTier
+    profile_image: Optional[str] = None
     free_questions_attempted: Optional[int] = 0
+    total_questions_attempted: Optional[int] = 0
+    today_questions_attempted: Optional[int] = 0
     current_streak: Optional[int] = 0
     total_xp: Optional[int] = 0
     level: Optional[int] = 1
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    profile_image: Optional[str] = None
+    phone: Optional[str] = None
+    bio: Optional[str] = None
+    target_exam: Optional[str] = None
+    target_year: Optional[str] = None
+    optional_subject: Optional[str] = None
+    weekly_hours: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

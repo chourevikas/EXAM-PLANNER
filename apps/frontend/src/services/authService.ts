@@ -68,8 +68,8 @@ export function logoutUser(): void {
   localStorage.removeItem('user');
 }
 
-export async function fetchCurrentUser(): Promise<any> {
-  const token = localStorage.getItem('access_token');
+export async function fetchCurrentUser(customToken?: string): Promise<any> {
+  const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 
   const res = await fetch(`${API_BASE_URL}/me`, {
@@ -84,5 +84,28 @@ export async function fetchCurrentUser(): Promise<any> {
 
   const data = await res.json();
   localStorage.setItem('user', JSON.stringify(data));
+  return data;
+}
+
+export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string }, customToken?: string): Promise<any> {
+  const token = customToken || localStorage.getItem('access_token');
+  if (!token) throw new Error('No access token found');
+
+  const res = await fetch(`${API_BASE_URL}/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(updateData)
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update user profile');
+  }
+
+  const data = await res.json();
+  localStorage.setItem('user', JSON.stringify(data));
+  window.dispatchEvent(new Event('user_profile_updated'));
   return data;
 }

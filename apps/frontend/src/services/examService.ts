@@ -17,8 +17,11 @@ import {
 
 const API_BASE_URL = '/api/v1';
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token');
+function getAuthHeaders(customToken?: string): Record<string, string> {
+  let token = customToken || localStorage.getItem('access_token');
+  if (!token && (window as any).Clerk?.session) {
+    token = (window as any).Clerk.session.lastActiveToken?.jwt;
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -282,7 +285,7 @@ export interface ExamItem {
 }
 
 /** 11. Fetch All Available Registered Exams */
-export async function listExams(status?: string, includeInactive: boolean = false): Promise<ExamItem[]> {
+export async function listExams(status?: string, includeInactive: boolean = false, customToken?: string): Promise<ExamItem[]> {
   try {
     let url = `${API_BASE_URL}/exams`;
     if (status) {
@@ -290,7 +293,7 @@ export async function listExams(status?: string, includeInactive: boolean = fals
     }
     const response = await fetch(url, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(customToken),
     });
     if (!response.ok) {
       return [];
@@ -320,11 +323,11 @@ export interface AttemptHistoryItem {
 }
 
 /** 12. Fetch Candidate Attempts History */
-export async function listCandidateAttempts(): Promise<AttemptHistoryItem[]> {
+export async function listCandidateAttempts(customToken?: string): Promise<AttemptHistoryItem[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/attempts`, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(customToken),
     });
     if (!response.ok) {
       return [];
@@ -385,16 +388,35 @@ export async function prefetchQuestion(attemptId: string, qNum: number, lang: st
     fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
-    }).catch(() => {});
-  } catch (_) {}
+    }).catch(() => { });
+  } catch (_) { }
 }
 
 export async function saveQuestionResponsesBatch(attemptId: string, payload: any): Promise<any> {
-  return { status: 'ACCEPTED' };
+  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to save batch responses.');
+  }
+  return data;
 }
 
 export async function getResponseBatchStatus(attemptId: string, batchId: string): Promise<any> {
-  return { status: 'PROCESSED' };
+  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch/${batchId}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to fetch batch response status.');
+  }
+  return data;
 }
 
 export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> {
