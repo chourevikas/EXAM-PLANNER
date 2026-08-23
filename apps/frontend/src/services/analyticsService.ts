@@ -26,3 +26,48 @@ export async function fetchPredictedRank(): Promise<PredictedRankResponse> {
 
   return await res.json();
 }
+
+export interface GrowthCurvePoint {
+  month: string;
+  percentile: number;
+  readiness_index: number;
+}
+
+export interface SubjectBenchmark {
+  subject: string;
+  user_accuracy: number;
+  national_avg_accuracy: number;
+  total_attempted: number;
+}
+
+export interface MonthlyBenchmarkResponse {
+  period: string;
+  predicted_rank: number;
+  top_percentage: number;
+  active_aspirants: number;
+  overall_percentile: number;
+  previous_month_percentile: number;
+  percentile_delta: number;
+  readiness_index: number;
+  readiness_status: string;
+  confidence_level: 'HIGH' | 'MEDIUM' | 'PROVISIONAL';
+  attempts_analyzed: number;
+  overall_accuracy: number;
+  monthly_growth_curve: GrowthCurvePoint[];
+  subject_benchmark: SubjectBenchmark[];
+}
+
+export async function fetchMonthlyBenchmark(): Promise<MonthlyBenchmarkResponse> {
+  const token = localStorage.getItem('access_token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, { headers });
+  if (!res.ok) {
+    throw new Error('Failed to fetch monthly benchmarking analytics');
+  }
+
+  return await res.json();
+}

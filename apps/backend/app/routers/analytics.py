@@ -202,6 +202,16 @@ async def get_user_predicted_rank(
     return await service.get_predicted_rank(current_user.id)
 
 
+@router.get("/monthly-benchmark", summary="Get User's National Benchmarking & Monthly Performance Metrics")
+async def get_user_monthly_benchmark(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates candidate's national benchmarking, percentile growth, readiness index, and subject comparisons."""
+    service = AnalyticsService(session)
+    return await service.get_monthly_benchmark(current_user.id)
+
+
 @router.get("/subject-performance", summary="Get Subject-Wise Accuracy & Performance Metrics")
 async def get_user_subject_performance(
     current_user: User = Depends(get_current_user),
