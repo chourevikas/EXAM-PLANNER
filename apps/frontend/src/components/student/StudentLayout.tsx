@@ -35,6 +35,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
           email: email || prev?.email || '',
           full_name: name || prev?.full_name || 'Aspirant',
           phone: phone || prev?.phone || '',
+          avatar_url: clerkUser.imageUrl || prev?.avatar_url || prev?.profile_image || '',
           clerk_id: clerkUser.id,
         };
         localStorage.setItem('user', JSON.stringify(updated));

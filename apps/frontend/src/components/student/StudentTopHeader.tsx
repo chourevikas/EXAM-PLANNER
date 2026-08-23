@@ -396,22 +396,18 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               setShowNotifications(false);
             }}
             style={{
-              width: 36,
-              height: 36,
+              padding: 0,
               borderRadius: '50%',
-              backgroundColor: '#2563EB',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              fontSize: 13,
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+              backgroundColor: 'transparent'
             }}
           >
-            {getUserInitials(user?.full_name || user?.name || user?.email)}
+            <UserAvatar userOrImage={user} size={36} fullName={user?.full_name || user?.name} />
           </button>
 
           {/* Profile Dropdown Menu */}

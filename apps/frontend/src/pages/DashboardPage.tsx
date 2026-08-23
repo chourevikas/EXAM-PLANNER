@@ -11,6 +11,7 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
+import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -51,6 +52,9 @@ export function DashboardPage() {
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [attemptsPage, setAttemptsPage] = useState<number>(0);
+  const [guestSessionsPage, setGuestSessionsPage] = useState<number>(0);
+  const SESSIONS_PER_PAGE = 3;
 
   const fetchActivities = async () => {
     const token = await getToken();
@@ -578,116 +582,261 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {/* 5. Exam Attempts History & Synced Guest Sessions Feed */}
+      {/* 5. Exam Attempts History & Synced Guest Sessions Feed - Symmetrical Cards */}
       <section style={{ marginBottom: 40 }}>
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
-                Recent Exam Attempts & Synced Guest Sessions
-              </h3>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
-                Tracked sessions including pre-login guest tests automatically synced to your student profile.
-              </p>
-            </div>
-            <div style={{ padding: '6px 14px', backgroundColor: '#EFF6FF', borderRadius: 20, border: '1px solid #BFDBFE' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#2563EB' }}>
-                {dashboardStats?.recentAttempts?.length || 0} Total Sessions Recorded
-              </span>
-            </div>
-          </div>
+        {(() => {
+          const registeredAttempts = dashboardStats?.recentAttempts?.filter((a: any) => !a.isGuestSynced) || [];
+          const syncedGuestAttempts = dashboardStats?.recentAttempts?.filter((a: any) => a.isGuestSynced) || [];
+          
+          const attemptsTotalPages = Math.max(1, Math.ceil(registeredAttempts.length / SESSIONS_PER_PAGE));
+          const visibleRegisteredAttempts = registeredAttempts.slice(attemptsPage * SESSIONS_PER_PAGE, (attemptsPage + 1) * SESSIONS_PER_PAGE);
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {!dashboardStats?.recentAttempts || dashboardStats.recentAttempts.length === 0 ? (
-              <div style={{ padding: '32px 20px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
-                <Ico.Trophy size={32} />
-                <p style={{ fontSize: 14, marginTop: 12 }}>No test sessions recorded yet. Take a practice exam or guest mock to get started!</p>
-              </div>
-            ) : (
-              dashboardStats.recentAttempts.map((attempt: any) => (
-                <div
-                  key={attempt.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 16,
-                    padding: '16px 20px',
-                    backgroundColor: 'var(--bg-subtle)',
-                    borderRadius: 16,
-                    border: '1px solid var(--border-default)',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 12,
-                        backgroundColor: attempt.isGuestSynced ? '#EFF6FF' : '#ECFDF5',
-                        border: attempt.isGuestSynced ? '1px solid #BFDBFE' : '1px solid #A7F3D0',
-                        color: attempt.isGuestSynced ? '#2563EB' : '#10B981',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontSize: 16,
-                      }}
-                    >
-                      {attempt.isGuestSynced ? 'G' : 'P'}
-                    </div>
+          const guestTotalPages = Math.max(1, Math.ceil(syncedGuestAttempts.length / SESSIONS_PER_PAGE));
+          const visibleSyncedGuestAttempts = syncedGuestAttempts.slice(guestSessionsPage * SESSIONS_PER_PAGE, (guestSessionsPage + 1) * SESSIONS_PER_PAGE);
 
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
+              
+              {/* Card 1: Recent Exam Attempts */}
+              <div style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 24,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: 420,
+                boxSizing: 'border-box'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {attempt.topicName}
-                        </span>
-                        {attempt.subtopicName && (
-                          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                            • {attempt.subtopicName}
-                          </span>
-                        )}
-                        {attempt.isGuestSynced && (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 800,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              backgroundColor: '#EFF6FF',
-                              color: '#2563EB',
-                              border: '1px solid #BFDBFE',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                            }}
-                          >
-                            Guest Synced
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                        {attempt.targetExam} ({attempt.targetYear}) • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Trophy size={18} color="#2563EB" /> Recent Exam Attempts
+                      </h3>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Registered exam history</p>
                     </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                      {registeredAttempts.length} Recorded
+                    </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>
-                        Score: {attempt.score} / {attempt.totalMarksPossible}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {visibleRegisteredAttempts.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                        <Trophy size={28} />
+                        <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No main exam attempts recorded yet.</p>
                       </div>
-                      <div style={{ fontSize: 12, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
-                        {attempt.accuracy}% Accuracy ({attempt.correctCount} Correct, {attempt.incorrectCount} Incorrect)
-                      </div>
-                    </div>
+                    ) : (
+                      visibleRegisteredAttempts.map((attempt: any) => (
+                        <div
+                          key={attempt.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--bg-subtle)',
+                            borderRadius: 14,
+                            border: '1px solid var(--border-default)',
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#10B981',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 800, fontSize: 14
+                            }}>
+                              P
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {attempt.topicName}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {attempt.targetExam} • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                              Score: {attempt.score} / {attempt.totalMarksPossible}
+                            </div>
+                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
+                              {attempt.accuracy}% Acc
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+
+                {/* Pagination Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Page {attemptsPage + 1} of {attemptsTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setAttemptsPage(p => Math.max(0, p - 1))}
+                      disabled={attemptsPage === 0}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: attemptsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: attemptsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: attemptsPage === 0 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setAttemptsPage(p => Math.min(attemptsTotalPages - 1, p + 1))}
+                      disabled={attemptsPage >= attemptsTotalPages - 1}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: attemptsPage >= attemptsTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: attemptsPage >= attemptsTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: attemptsPage >= attemptsTotalPages - 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Synced Guest Sessions */}
+              <div style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 24,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: 420,
+                boxSizing: 'border-box'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <RefreshCw size={18} color="#059669" /> Synced Guest Sessions
+                      </h3>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Auto-synced guest tests</p>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                      {syncedGuestAttempts.length} Synced
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {visibleSyncedGuestAttempts.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                        <RefreshCw size={28} />
+                        <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No guest sessions synced yet.</p>
+                      </div>
+                    ) : (
+                      visibleSyncedGuestAttempts.map((attempt: any) => (
+                        <div
+                          key={attempt.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--bg-subtle)',
+                            borderRadius: 14,
+                            border: '1px solid var(--border-default)',
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 800, fontSize: 14
+                            }}>
+                              G
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {attempt.topicName}
+                                </span>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                                  SYNCED
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {attempt.targetExam} • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                              Score: {attempt.score} / {attempt.totalMarksPossible}
+                            </div>
+                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
+                              {attempt.accuracy}% Acc
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Pagination Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Page {guestSessionsPage + 1} of {guestTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setGuestSessionsPage(p => Math.max(0, p - 1))}
+                      disabled={guestSessionsPage === 0}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: guestSessionsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: guestSessionsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: guestSessionsPage === 0 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setGuestSessionsPage(p => Math.min(guestTotalPages - 1, p + 1))}
+                      disabled={guestSessionsPage >= guestTotalPages - 1}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: guestSessionsPage >= guestTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: guestSessionsPage >= guestTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: guestSessionsPage >= guestTotalPages - 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
       </section>
 
       {/* Badges Modal */}

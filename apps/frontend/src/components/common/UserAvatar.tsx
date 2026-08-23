@@ -25,7 +25,9 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
 
-  const rawImg = typeof userOrImage === 'string' ? userOrImage : userOrImage?.profile_image;
+  const rawImg = typeof userOrImage === 'string' 
+    ? userOrImage 
+    : (userOrImage?.avatar_url || userOrImage?.imageUrl || userOrImage?.profile_image_url || userOrImage?.profile_image);
   const name = fullName || (typeof userOrImage === 'object' ? userOrImage?.full_name : '');
   const initials = getUserInitials(name);
 

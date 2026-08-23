@@ -1368,6 +1368,7 @@ class ExamSessionService:
         attempt.total_correct = tot_correct
         attempt.total_incorrect = tot_incorrect
         attempt.total_unattempted = tot_unattempted
+        attempt.total_questions_attempted = tot_correct + tot_incorrect
         attempt.total_score = round(tot_raw_score, 2)
         attempt.max_possible_score = max_possible
 
@@ -1691,9 +1692,12 @@ class ExamSessionService:
         attempts = attempts_res.all()
 
         total_exams = len(attempts)
-        total_questions_attempted = sum(a.total_questions_attempted for a in attempts)
-        total_correct = sum(a.total_correct for a in attempts)
-        total_questions = sum(a.total_questions for a in attempts)
+        total_questions_attempted = sum(
+            (a.total_questions_attempted if (a.total_questions_attempted is not None and a.total_questions_attempted > 0) else ((a.total_correct or 0) + (a.total_incorrect or 0)))
+            for a in attempts
+        )
+        total_correct = sum((a.total_correct or 0) for a in attempts)
+        total_questions = sum((a.total_questions or 0) for a in attempts)
         total_time_seconds = sum(int(a.time_spent_seconds or 0) for a in attempts)
 
         overall_accuracy = round((total_correct / total_questions_attempted) * 100, 1) if total_questions_attempted > 0 else 0.0
