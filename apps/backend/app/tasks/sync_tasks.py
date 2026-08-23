@@ -15,13 +15,14 @@ def sync_exam_s3_task(
     exam_id_str: str,
     run_id_str: str,
     sync_all: bool = False,
+    sync_target: str = "MASTERS_ONLY",
     task_id: Optional[str] = None,
     execution_engine: str = "Celery Worker",
 ):
     """Celery background task to sync an exam's questions and solutions to S3."""
     t_id = task_id or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
-    scope_str = "Full (Master + All Questions)" if sync_all else "Master Only (Fast)"
+    scope_str = sync_target if sync_target != "MASTERS_ONLY" else ("Full (Master + All Questions)" if sync_all else "Master Only (Fast)")
     log.info(
         f"⚡ [CELERY WORKER DISPATCH] Syncing Exam '{exam_id_str}' to S3 [{scope_str}] (Run ID: '{run_id_str}', Task ID: '{t_id}')"
     )
@@ -30,6 +31,7 @@ def sync_exam_s3_task(
             exam_id_str=exam_id_str,
             run_id_str=run_id_str,
             sync_all=sync_all,
+            sync_target=sync_target,
             task_id=t_id,
             execution_engine="Celery Worker",
         )
@@ -40,6 +42,7 @@ async def async_sync_exam_s3(
     exam_id_str: str,
     run_id_str: str,
     sync_all: bool = False,
+    sync_target: str = "MASTERS_ONLY",
     task_id: Optional[str] = None,
     execution_engine: str = "FastAPI BackgroundTasks",
     session: Optional[Any] = None,
@@ -47,7 +50,9 @@ async def async_sync_exam_s3(
     """Core async runner to generate consolidated & individual JSON artifacts and sync to AWS S3."""
     t_id = task_id or str(uuid.uuid4())
     log = TaskLoggerAdapter(logger, task_id=t_id)
-    scope_str = "Full (Master + All Questions)" if sync_all else "Master Only (Fast)"
+    if sync_all:
+        sync_target = "FULL_ALL"
+    scope_str = sync_target
     start_time = time.perf_counter()
 
     log.info("=" * 75)
@@ -80,7 +85,7 @@ async def async_sync_exam_s3(
 
         # Step 2: Run JSON build & S3 uploads
         builder = ExamJsonBuilder(sess)
-        sync_res = await builder.generate_and_upload(exam_uuid, sync_all=sync_all)
+        sync_res = await builder.generate_and_upload(exam_uuid, sync_all=sync_all, sync_target=sync_target)
 
         # Step 3: Record completion in PipelineRun
         run = await sess.get(PipelineRun, run_uuid)

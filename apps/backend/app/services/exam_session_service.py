@@ -48,6 +48,8 @@ from app.schemas.exam_attempt import (
 from app.services.exam_json_builder import ExamJsonBuilder
 from app.engine.matrices.time_tiered_scoring import TimeTieredScoringStrategy
 from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
+from app.engine.matrices.guessing_tendency import GuessingTendencyStrategy
+from app.engine.post_submission_pipeline import load_exam_solutions_data
 from app.storage.factory import get_storage_provider
 from app.config.logger import setup_logger
 
@@ -678,6 +680,51 @@ class ExamSessionService:
                 else QuestionResponseStatus.VISITED
             )
 
+        # Real-time scoring and closeness evaluation for visited question
+        try:
+            exam_obj = await self.session.get(Exam, attempt.exam_id)
+            if exam_obj and resp.selected_option_id:
+                sol_doc = await load_exam_solutions_data(exam_obj, self.session, self.storage)
+                sol_list = sol_doc.get("questions", [])
+                sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
+                sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
+                
+                q_sol = sol_map.get(str(resp.question_id))
+                if not q_sol and resp.question_id:
+                    q_model = await self.session.get(Question, resp.question_id)
+                    if q_model and q_model.question_number_in_paper:
+                        q_sol = sol_num_map.get(int(q_model.question_number_in_paper))
+
+                if q_sol:
+                    correct_opt_id = q_sol.get("correct_option_id")
+                    is_corr = str(resp.selected_option_id) == str(correct_opt_id) if correct_opt_id else False
+                    distractors = q_sol.get("distractor_scores", {})
+                    user_dist = distractors.get(str(resp.selected_option_id), {})
+                    c_score = float(user_dist.get("closeness_score", 1.0 if is_corr else 0.0))
+
+                    resp.is_correct = is_corr
+                    resp.closeness_score_awarded = c_score
+
+                    irt_p = q_sol.get("irt_params", {"a": 1.5, "b": 0.0, "c": 0.25})
+                    resp.gti_item_score = GuessingTendencyStrategy.compute_item_guessing(
+                        time_taken_sec=resp.time_taken_seconds,
+                        expected_time_sec=resp.expected_time_seconds or 60.0,
+                        option_closeness=c_score,
+                        is_correct=is_corr,
+                        irt_difficulty_b=float(irt_p.get("b", 0.0)),
+                        irt_pseudo_guessing_c=float(irt_p.get("c", 0.25)),
+                    )
+
+                    scoring_eval = TimeTieredScoringStrategy.calculate_score(
+                        is_correct=is_corr,
+                        time_taken_sec=resp.time_taken_seconds,
+                        expected_time_sec=resp.expected_time_seconds or 60.0,
+                        closeness_score=c_score,
+                    )
+                    resp.final_score = scoring_eval["final_score"]
+        except Exception as eval_err:
+            logger.debug(f"Real-time evaluation pass skipped: {eval_err}")
+
         self.session.add(resp)
 
         # Sync UserQuestionResponse & Log QuestionSwitchLog
@@ -784,6 +831,51 @@ class ExamSessionService:
                         if item.is_marked_for_review
                         else QuestionResponseStatus.VISITED
                     )
+
+                # Real-time scoring and closeness evaluation for visited question in batch
+                try:
+                    exam_obj = await self.session.get(Exam, attempt.exam_id)
+                    if exam_obj and resp.selected_option_id:
+                        sol_doc = await load_exam_solutions_data(exam_obj, self.session, self.storage)
+                        sol_list = sol_doc.get("questions", [])
+                        sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
+                        sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
+                        
+                        q_sol = sol_map.get(str(resp.question_id))
+                        if not q_sol and resp.question_id:
+                            q_model = await self.session.get(Question, resp.question_id)
+                            if q_model and q_model.question_number_in_paper:
+                                q_sol = sol_num_map.get(int(q_model.question_number_in_paper))
+
+                        if q_sol:
+                            correct_opt_id = q_sol.get("correct_option_id")
+                            is_corr = str(resp.selected_option_id) == str(correct_opt_id) if correct_opt_id else False
+                            distractors = q_sol.get("distractor_scores", {})
+                            user_dist = distractors.get(str(resp.selected_option_id), {})
+                            c_score = float(user_dist.get("closeness_score", 1.0 if is_corr else 0.0))
+
+                            resp.is_correct = is_corr
+                            resp.closeness_score_awarded = c_score
+
+                            irt_p = q_sol.get("irt_params", {"a": 1.5, "b": 0.0, "c": 0.25})
+                            resp.gti_item_score = GuessingTendencyStrategy.compute_item_guessing(
+                                time_taken_sec=resp.time_taken_seconds,
+                                expected_time_sec=resp.expected_time_seconds or 60.0,
+                                option_closeness=c_score,
+                                is_correct=is_corr,
+                                irt_difficulty_b=float(irt_p.get("b", 0.0)),
+                                irt_pseudo_guessing_c=float(irt_p.get("c", 0.25)),
+                            )
+
+                            scoring_eval = TimeTieredScoringStrategy.calculate_score(
+                                is_correct=is_corr,
+                                time_taken_sec=resp.time_taken_seconds,
+                                expected_time_sec=resp.expected_time_seconds or 60.0,
+                                closeness_score=c_score,
+                            )
+                            resp.final_score = scoring_eval["final_score"]
+                except Exception as eval_err:
+                    logger.debug(f"Batch real-time evaluation skipped: {eval_err}")
 
                 self.session.add(resp)
 
@@ -1149,15 +1241,91 @@ class ExamSessionService:
 
         from app.engine.post_submission_pipeline import load_exam_solutions_data
 
+        # Ingest final batch responses if provided in submit payload
+        if req.responses and len(req.responses) > 0:
+            for item in req.responses:
+                try:
+                    q_uuid = uuid.UUID(str(item.question_id)) if item.question_id else None
+                    if not q_uuid:
+                        continue
+                    opt_uuid = uuid.UUID(str(item.selected_option_id)) if item.selected_option_id else None
+                    r_stmt = select(ExamQuestionResponse).where(
+                        ExamQuestionResponse.attempt_id == attempt.id,
+                        ExamQuestionResponse.question_id == q_uuid,
+                    )
+                    r_res = await self.session.exec(r_stmt)
+                    resp = r_res.first()
+                    if not resp:
+                        resp = ExamQuestionResponse(
+                            attempt_id=attempt.id,
+                            question_id=q_uuid,
+                            question_status=QuestionResponseStatus.VISITED if opt_uuid else QuestionResponseStatus.UNVISITED,
+                            expected_time_seconds=60.0,
+                        )
+                    if opt_uuid:
+                        resp.selected_option_id = opt_uuid
+                        resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
+                    resp.is_marked_for_review = item.is_marked_for_review
+                    resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
+                    if getattr(item, "is_switched", False):
+                        resp.is_switched = True
+                    if getattr(item, "option_switch_count", 0) > resp.option_switch_count:
+                        resp.option_switch_count = item.option_switch_count
+                        resp.is_switched = True
+                    self.session.add(resp)
+                except Exception as resp_err:
+                    logger.warning(f"Error persisting submit response item: {resp_err}")
+            await self.session.commit()
+
         solutions_doc = await load_exam_solutions_data(exam, self.session, self.storage)
         sol_list = solutions_doc.get("questions", [])
-        sol_map = {s["question_id"]: s for s in sol_list}
+        sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
+        sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
 
         # Synchronous scoring pass
         resp_res = await self.session.exec(
             select(ExamQuestionResponse).where(ExamQuestionResponse.attempt_id == attempt.id)
         )
         responses = resp_res.all()
+
+        # If responses is empty, auto-seed from exam questions in DB or solutions_doc
+        if not responses:
+            seeded_resps = []
+            q_res = await self.session.exec(
+                select(Question).where(Question.exam_id == exam.id).order_by(col(Question.question_number_in_paper))
+            )
+            q_rows = q_res.all()
+            if q_rows:
+                for index, q_obj in enumerate(q_rows, 1):
+                    seeded_resps.append(
+                        ExamQuestionResponse(
+                            attempt_id=attempt.id,
+                            question_id=q_obj.id,
+                            question_status=QuestionResponseStatus.UNVISITED,
+                            expected_time_seconds=float(q_obj.expected_time_seconds or 60.0),
+                            time_taken_seconds=0.0,
+                            is_correct=False,
+                            final_score=0.0,
+                        )
+                    )
+            elif sol_list:
+                for index, s_item in enumerate(sol_list, 1):
+                    if s_item.get("question_id"):
+                        seeded_resps.append(
+                            ExamQuestionResponse(
+                                attempt_id=attempt.id,
+                                question_id=uuid.UUID(str(s_item["question_id"])),
+                                question_status=QuestionResponseStatus.UNVISITED,
+                                expected_time_seconds=float(s_item.get("expected_time_seconds") or 60.0),
+                                time_taken_seconds=0.0,
+                                is_correct=False,
+                                final_score=0.0,
+                            )
+                        )
+            if seeded_resps:
+                self.session.add_all(seeded_resps)
+                await self.session.commit()
+                responses = seeded_resps
 
         tot_correct = 0
         tot_incorrect = 0
@@ -1182,13 +1350,8 @@ class ExamSessionService:
                 r.is_correct = is_corr
                 r.closeness_score_awarded = c_score
 
-                scoring_eval = TimeTieredScoringStrategy.calculate_score(
-                    is_correct=is_corr,
-                    time_taken_sec=r.time_taken_seconds,
-                    expected_time_sec=r.expected_time_seconds,
-                    closeness_score=c_score,
-                )
-                r.final_score = scoring_eval["final_score"]
+                # Standard UPSC Prelims Scoring: +2.00 marks for correct, -0.6667 (-2/3) marks for incorrect
+                r.final_score = 2.0 if is_corr else -0.6667
 
                 if is_corr:
                     tot_correct += 1
@@ -1207,7 +1370,14 @@ class ExamSessionService:
         attempt.total_unattempted = tot_unattempted
         attempt.total_score = round(tot_raw_score, 2)
         attempt.max_possible_score = max_possible
-        attempt.time_spent_seconds = round(total_time_spent, 1)
+
+        # Accurate telemetry time computation: sum of per-question elapsed times without compiler overhead
+        sum_question_time = sum(float(r.time_taken_seconds or 0.0) for r in responses)
+        if sum_question_time > 0:
+            final_time_spent = min(float(attempt.max_duration_seconds), sum_question_time)
+        else:
+            final_time_spent = min(float(attempt.max_duration_seconds), total_time_spent)
+        attempt.time_spent_seconds = round(final_time_spent, 1)
 
         self.session.add(attempt)
 

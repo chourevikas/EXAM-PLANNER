@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
-from sqlmodel import select
+from sqlmodel import select, col, SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -54,24 +55,58 @@ async def complete_study_task(
         "gamification": gamification_result
     }
 
-@router.post("/tasks/dummy-create")
-async def create_dummy_task(
-    title: str,
+class CreateTaskRequest(SQLModel):
+    title: str
+    description: Optional[str] = None
+    target_type: Optional[str] = "DAILY"  # DAILY, WEEKLY, REVISION_MILESTONE
+    topic: Optional[str] = None
+    due_in_days: Optional[int] = 1
+
+@router.post("/tasks")
+async def create_study_task(
+    req: CreateTaskRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    # Just for testing the streak hook before we have LLM integration
-    today = datetime.now(timezone.utc).date()
+    import datetime as dt_mod
+    task_date = datetime.now(timezone.utc).date() + dt_mod.timedelta(days=max(0, req.due_in_days or 0))
+    desc = req.description or f"[{req.target_type or 'DAILY'}] Topic: {req.topic or 'Core Revision'}"
     new_task = StudyTask(
         user_id=current_user.id,
-        title=title,
-        scheduled_date=today,
+        title=req.title,
+        description=desc,
+        scheduled_date=task_date,
         is_completed=False
     )
     session.add(new_task)
     await session.commit()
     await session.refresh(new_task)
-    return {"message": "Dummy task created", "task_id": str(new_task.id)}
+    return {
+        "message": "Task added to study plan successfully",
+        "task_id": str(new_task.id),
+        "title": new_task.title,
+        "target_type": req.target_type or "DAILY",
+        "scheduled_date": str(new_task.scheduled_date)
+    }
+
+@router.get("/tasks")
+async def list_study_tasks(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    stmt = select(StudyTask).where(StudyTask.user_id == current_user.id).order_by(col(StudyTask.created_at).desc())
+    tasks = (await session.exec(stmt)).all()
+    return JSONResponse(content=jsonable_encoder([
+        {
+            "id": str(t.id),
+            "title": t.title,
+            "description": t.description,
+            "scheduled_date": str(t.scheduled_date),
+            "is_completed": t.is_completed,
+            "created_at": t.created_at.isoformat() if t.created_at else None
+        }
+        for t in tasks
+    ]))
 
 @router.get("/badges")
 async def get_user_badges(

@@ -905,12 +905,13 @@ async def sync_exam_s3_artifacts(
     exam_id: str,
     background_tasks: BackgroundTasks,
     sync_all: bool = Query(default=False, description="If True, re-syncs all individual questions + master JSON. If False (default), re-syncs only master exam JSONs."),
+    sync_target: str = Query(default="MASTERS_ONLY", description="Sync target scope: 'MASTERS_ONLY' (both masters), 'QUESTIONS_MASTER', 'SOLUTIONS_MASTER', 'FULL_ALL'"),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Launches a background task to regenerate and upload consolidated exam_questions.json
-    and exam_solutions.json (and optionally all individual Q files if sync_all=True) to S3,
+    and exam_solutions.json (and optionally all individual Q files if sync_all=True or sync_target='FULL_ALL') to S3,
     updating last_synced_at upon completion.
     """
     import uuid
@@ -936,6 +937,9 @@ async def sync_exam_s3_artifacts(
             status_code=422,
             detail=f"EXAM_CANNOT_BE_SYNCED: Exam '{exam.code}' has no questions in database."
         )
+
+    if sync_all:
+        sync_target = "FULL_ALL"
 
     # Check if a sync or publish pipeline is already running
     existing_run_stmt = (
@@ -963,7 +967,7 @@ async def sync_exam_s3_artifacts(
         exam_id=exam_uuid,
         pipeline_type="S3_PUBLISH",
         status="RUNNING",
-        current_step=f"INITIALIZING_S3_SYNC_({'FULL' if sync_all else 'MASTER_ONLY'})",
+        current_step=f"INITIALIZING_S3_SYNC_({sync_target.upper()})",
         progress_percent=10.0,
         started_at=datetime.now(timezone.utc),
     )
@@ -985,6 +989,7 @@ async def sync_exam_s3_artifacts(
             str(exam_uuid),
             str(run_id),
             sync_all=sync_all,
+            sync_target=sync_target,
             task_id=task_id,
             execution_engine="Celery Worker",
         )
@@ -997,13 +1002,22 @@ async def sync_exam_s3_artifacts(
             exam_id_str=str(exam_uuid),
             run_id_str=str(run_id),
             sync_all=sync_all,
+            sync_target=sync_target,
             task_id=task_id,
             execution_engine="FastAPI BackgroundTasks",
             session=session,
         )
         execution_engine = "FastAPI BackgroundTasks"
 
-    scope_name = "Full S3 Sync (Master + All Questions)" if sync_all else "Master Exam JSON Sync"
+    scope_name = (
+        "Full S3 Sync (Master + All Individual Q Files)"
+        if sync_target == "FULL_ALL"
+        else "Master Solutions JSON Sync"
+        if sync_target == "SOLUTIONS_MASTER"
+        else "Master Questions JSON Sync"
+        if sync_target == "QUESTIONS_MASTER"
+        else "Master Questions & Solutions Sync"
+    )
 
     return {
         "status": "SYNC_STARTED",
@@ -1011,6 +1025,7 @@ async def sync_exam_s3_artifacts(
         "exam_id": str(exam.id),
         "exam_code": exam.code,
         "sync_all": sync_all,
+        "sync_target": sync_target,
         "is_syncing": True,
         "execution_engine": execution_engine,
         "message": f"{scope_name} started ({execution_engine}) for exam '{exam.code}'.",

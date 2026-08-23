@@ -63,6 +63,7 @@ export interface BatchSaveItem {
   selected_option_id?: string | null;
   is_marked_for_review?: boolean;
   time_spent_seconds?: number;
+  is_switched?: boolean;
   option_switch_count?: number;
   client_timestamp?: string;
 }
@@ -89,6 +90,7 @@ export interface BatchStatusResponse {
 
 export interface SubmitExamRequest {
   submission_reason?: string;
+  responses?: BatchSaveItem[];
 }
 
 export interface HeartbeatRequest {

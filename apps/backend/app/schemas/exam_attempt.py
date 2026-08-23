@@ -26,6 +26,7 @@ class BatchSaveItem(BaseModel):
     selected_option_id: Optional[uuid.UUID | str] = None
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
+    is_switched: bool = False
     option_switch_count: int = 0
     client_timestamp: Optional[datetime] = None
 
@@ -59,6 +60,7 @@ class BatchStatusResponse(BaseModel):
 
 class SubmitExamRequest(BaseModel):
     submission_reason: str = "USER_CLICKED_SUBMIT"
+    responses: Optional[List[BatchSaveItem]] = None
 
 
 class HeartbeatRequest(BaseModel):

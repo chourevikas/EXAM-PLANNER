@@ -10,7 +10,13 @@ class IntegratedCognitiveReadinessEngine:
         oeei_score: float,
         pacing_skew: float,
         satoi_score: float,
+        net_score: float = 0.0,
+        max_score: float = 200.0,
+        attempted_count: int = 0,
+        total_questions: int = 100,
+        qualifying_cutoff: float = 92.0,
     ) -> Dict[str, Any]:
+        # 1. Base Cognitive Components (0 - 100)
         irt_component = max(0.0, min(100.0, ((irt_theta + 3.5) / 7.0) * 100.0))
         oeei_component = max(0.0, min(100.0, oeei_score * 100.0))
         gti_component = max(0.0, min(100.0, (1.0 - gti_value) * 100.0))
@@ -18,42 +24,55 @@ class IntegratedCognitiveReadinessEngine:
         skew_penalty = abs(1.0 - pacing_skew) * 25.0
         pacing_component = max(0.0, min(100.0, 100.0 - skew_penalty))
 
-        icrs = (
-            (0.40 * irt_component)
+        raw_composite = (
+            (0.35 * irt_component)
             + (0.25 * oeei_component)
             + (0.15 * gti_component)
-            + (0.10 * stamina_component)
+            + (0.15 * stamina_component)
             + (0.10 * pacing_component)
         )
-        icrs = round(icrs, 1)
 
-        # 7-Tier Finer Diagnostic Scale
-        if icrs >= 90.0:
+        # 2. Realistic Grounding Multiplier against UPSC Prelims Cutoff & Coverage
+        tot_q = max(1, total_questions)
+        att_cnt = max(0, min(tot_q, attempted_count))
+        coverage_ratio = att_cnt / float(tot_q)
+        
+        cutoff_target = max(1.0, qualifying_cutoff)
+        cutoff_ratio = max(0.0, min(1.2, float(net_score) / cutoff_target))
+
+        # Weighting: 40% base mastery + 35% net score achievement + 25% test coverage
+        coverage_factor = 0.20 + (0.80 * (0.60 * cutoff_ratio + 0.40 * coverage_ratio))
+        coverage_factor = max(0.12, min(1.0, coverage_factor))
+
+        icrs = round(raw_composite * coverage_factor, 1)
+
+        # 3. Direct, Clear UPSC Prelims Preparedness Scale
+        if icrs >= 85.0:
             tier = "EXCEPTIONAL_PRELIMS_READY"
-            interpretation = "Outstanding mastery. High IRT ability, flawless option elimination, and peak stamina."
-        elif icrs >= 80.0:
-            tier = "HIGH_COMPETENCE_READY"
-            interpretation = "Comfortably above historical cutoff thresholds with robust pacing discipline."
+            tier_label = "Prelims Ready - Top Rank Contender"
+            interpretation = "Outstanding mastery. Consistently clearing historical UPSC cutoffs with high elimination discipline."
         elif icrs >= 70.0:
             tier = "COMPETITIVE_BENCHMARK_READY"
-            interpretation = "Meets competitive benchmark. Targeted revision in weak topics will secure qualification."
-        elif icrs >= 55.0:
+            tier_label = "Prelims Ready Benchmark"
+            interpretation = "Comfortably within competitive qualification range. Targeted revision in weak topics will secure your seat."
+        elif icrs >= 50.0:
             tier = "MODERATE_DEVELOPING_READINESS"
-            interpretation = "Developing readiness. Moderate risk of falling short due to unforced distractor errors."
-        elif icrs >= 40.0:
+            tier_label = "Developing Readiness - Target Revision Needed"
+            interpretation = "Moderate readiness. Solid foundation, but unforced errors and negative marking are holding back the qualifying score."
+        elif icrs >= 30.0:
             tier = "FOUNDATIONAL_VULNERABILITY"
-            interpretation = "Foundational gaps detected. Needs systematic revision of high-yield core concepts."
-        elif icrs >= 25.0:
-            tier = "SIGNIFICANT_CONCEPTUAL_DEFICIT"
-            interpretation = "Substantial conceptual confusion with high negative marking from rushed attempts."
+            tier_label = "Foundation Building Needed"
+            interpretation = "Foundational gaps detected. Low syllabus coverage or excessive negative penalties require focused chapter revisions."
         else:
             tier = "CRITICAL_INTERVENTION_REQUIRED"
-            interpretation = "Critical intervention needed. Focus exclusively on syllabus fundamentals and reading discipline."
+            tier_label = "Critical Foundation & Practice Required"
+            interpretation = "Very low attempt coverage or conceptual gaps. Complete the full syllabus and practice 15-20 questions daily."
 
         return {
             "icrs_score": icrs,
             "readiness_tier": tier,
-            "classification": tier,
+            "readiness_label": tier_label,
+            "classification": tier_label,
             "interpretation": interpretation,
             "breakdown": {
                 "concept_mastery_irt_pct": round(irt_component, 1),

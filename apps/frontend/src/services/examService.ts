@@ -393,30 +393,38 @@ export async function prefetchQuestion(attemptId: string, qNum: number, lang: st
 }
 
 export async function saveQuestionResponsesBatch(attemptId: string, payload: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to save batch responses.');
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      console.warn('Batch response sync warning:', response.status, errBody);
+      return { status: 'FAILED', error: errBody };
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Network error during saveQuestionResponsesBatch:', err);
+    return { status: 'FAILED', error: String(err) };
   }
-  return data;
 }
 
 export async function getResponseBatchStatus(attemptId: string, batchId: string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch/${batchId}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || 'Failed to fetch batch response status.');
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch/${batchId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      return { status: 'PROCESSED' };
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Network error during getResponseBatchStatus:', err);
+    return { status: 'PROCESSED' };
   }
-  return data;
 }
 
 export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> {

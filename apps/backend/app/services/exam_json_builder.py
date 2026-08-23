@@ -329,17 +329,33 @@ class ExamJsonBuilder:
             return False
 
     async def generate_and_upload(
-        self, exam_id: uuid.UUID, sync_all: bool = False
-    ) -> Dict[str, str]:
+        self,
+        exam_id: uuid.UUID,
+        sync_all: bool = False,
+        sync_target: str = "MASTERS_ONLY",
+    ) -> Dict[str, Any]:
         """
         Consolidated generation & upload:
-        1. Always generates in-memory question & solution cards and uploads master exam_questions.json and exam_solutions.json.
-        2. If sync_all=True, also uploads all individual Q{num}.json files to questions & solutions folders in S3.
-        3. Updates exam.last_synced_at timestamp on the database record.
+        - sync_target == "QUESTIONS_MASTER": Generates and uploads only master exam_questions.json.
+        - sync_target == "SOLUTIONS_MASTER": Generates and uploads only master exam_solutions.json.
+        - sync_target == "MASTERS_ONLY": Generates and uploads both master exam_questions.json and exam_solutions.json (default).
+        - sync_target == "FULL_ALL" or sync_all=True: Generates and uploads both master JSONs + all individual Q{num}.json files.
         """
         import time
         start_time = time.perf_counter()
-        scope_name = "Full S3 Sync (Master + All Questions)" if sync_all else "Master Exam JSON Sync (Fast)"
+
+        if sync_all:
+            sync_target = "FULL_ALL"
+
+        scope_name = (
+            "Full S3 Sync (Master + All Individual Q Files)"
+            if sync_target == "FULL_ALL"
+            else "Master Solutions JSON Sync"
+            if sync_target == "SOLUTIONS_MASTER"
+            else "Master Questions JSON Sync"
+            if sync_target == "QUESTIONS_MASTER"
+            else "Master Questions & Solutions Sync"
+        )
 
         exam = await self.session.get(Exam, exam_id)
         if not exam:
@@ -382,7 +398,7 @@ class ExamJsonBuilder:
             questions_payload.append(q_card)
             solutions_payload.append(sol_card)
 
-            if sync_all:
+            if sync_target == "FULL_ALL":
                 # Upload individual Question JSON & Solution JSON to dedicated folder
                 q_filename = f"Q{q.question_number_in_paper:03d}.json"
                 q_indiv_rel = f"{questions_folder_rel}/{q_filename}"
@@ -403,63 +419,65 @@ class ExamJsonBuilder:
         )
 
         now_utc = datetime.now(timezone.utc)
-
-        # Master JSON structures
-        questions_doc = {
+        result_payload: Dict[str, Any] = {
             "exam_id": str(exam.id),
             "exam_code": exam.code,
-            "exam_name": exam.name,
-            "stage": exam.stage,
-            "subject_code": exam.subject_code,
-            "source_year": exam.source_year,
-            "paper_set_code": exam.paper_set_code,
-            "total_questions": len(questions_payload),
-            "total_duration_minutes": exam.total_duration_minutes or 120,
-            "total_marks": exam.total_marks or 200.0,
-            "generated_at": now_utc.isoformat(),
-            "questions": questions_payload,
+            "sync_target": sync_target,
+            "last_synced_at": now_utc.isoformat(),
+            "total_questions": total_q,
         }
 
-        solutions_doc = {
-            "exam_id": str(exam.id),
-            "exam_code": exam.code,
-            "generated_at": now_utc.isoformat(),
-            "questions": solutions_payload,
-        }
+        # 1. Master Questions JSON
+        if sync_target in ("MASTERS_ONLY", "QUESTIONS_MASTER", "FULL_ALL", "ALL"):
+            questions_doc = {
+                "exam_id": str(exam.id),
+                "exam_code": exam.code,
+                "exam_name": exam.name,
+                "stage": exam.stage,
+                "subject_code": exam.subject_code,
+                "source_year": exam.source_year,
+                "paper_set_code": exam.paper_set_code,
+                "total_questions": len(questions_payload),
+                "total_duration_minutes": exam.total_duration_minutes or 120,
+                "total_marks": exam.total_marks or 200.0,
+                "generated_at": now_utc.isoformat(),
+                "questions": questions_payload,
+            }
+            q_rel_path = f"exams/{exam.code}/exam_questions.json"
+            saved_q_path = await self.storage.upload_json(questions_doc, q_rel_path)
+            exam.questions_json_path = saved_q_path
+            exam.questions_json_folder_path = questions_folder_rel
+            result_payload["questions_json_path"] = saved_q_path
+            result_payload["questions_json_folder_path"] = questions_folder_rel
+            logger.info(f"   - Questions Master: '{saved_q_path}'")
 
-        q_rel_path = f"exams/{exam.code}/exam_questions.json"
-        s_rel_path = f"exams/{exam.code}/exam_solutions.json"
+        # 2. Master Solutions JSON
+        if sync_target in ("MASTERS_ONLY", "SOLUTIONS_MASTER", "FULL_ALL", "ALL"):
+            solutions_doc = {
+                "exam_id": str(exam.id),
+                "exam_code": exam.code,
+                "generated_at": now_utc.isoformat(),
+                "questions": solutions_payload,
+            }
+            s_rel_path = f"exams/{exam.code}/exam_solutions.json"
+            saved_s_path = await self.storage.upload_json(solutions_doc, s_rel_path)
+            exam.solutions_json_path = saved_s_path
+            exam.solutions_json_folder_path = solutions_folder_rel
+            result_payload["solutions_json_path"] = saved_s_path
+            result_payload["solutions_json_folder_path"] = solutions_folder_rel
 
-        upload_master_start = time.perf_counter()
-        saved_q_path = await self.storage.upload_json(questions_doc, q_rel_path)
-        saved_s_path = await self.storage.upload_json(solutions_doc, s_rel_path)
-        upload_master_duration = time.perf_counter() - upload_master_start
+            # Also prime sliding cache in memory
+            from app.engine.post_submission_pipeline import set_cached_solutions_data
+            set_cached_solutions_data(exam.code, solutions_doc)
+            logger.info(f"   - Solutions Master: '{saved_s_path}' (Sliding Cache Primed)")
 
-        logger.info(
-            f"🚀 [S3_SYNC] Master JSON files uploaded in {upload_master_duration:.2f}s:\n"
-            f"   - Questions: '{saved_q_path}'\n"
-            f"   - Solutions: '{saved_s_path}'"
-        )
-
-        exam.questions_json_path = saved_q_path
-        exam.solutions_json_path = saved_s_path
-        exam.questions_json_folder_path = questions_folder_rel
-        exam.solutions_json_folder_path = solutions_folder_rel
         exam.last_synced_at = now_utc
         self.session.add(exam)
         await self.session.commit()
 
         total_duration = time.perf_counter() - start_time
+        result_payload["duration_seconds"] = round(total_duration, 2)
         logger.info(
-            f"✅ [S3_SYNC_COMPLETE] Successfully synced exam '{exam.code}' to S3 in {total_duration:.2f}s! "
-            f"Last Synced At: {now_utc.isoformat()}"
+            f"✅ [S3_SYNC_COMPLETE] Successfully executed '{scope_name}' for exam '{exam.code}' in {total_duration:.2f}s!"
         )
-        return {
-            "questions_json_path": saved_q_path,
-            "solutions_json_path": saved_s_path,
-            "questions_json_folder_path": questions_folder_rel,
-            "solutions_json_folder_path": solutions_folder_rel,
-            "last_synced_at": now_utc.isoformat(),
-            "duration_seconds": round(total_duration, 2),
-            "total_questions": total_q,
-        }
+        return result_payload

@@ -815,17 +815,33 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     }
   };
 
-  const handleSyncExamToS3 = async (syncAll: boolean = false) => {
+  const handleSyncExamToS3 = async (
+    targetOrSyncAll: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' | boolean = 'MASTERS_ONLY'
+  ) => {
     if (!selectedExam) return;
     setSyncingExam(true);
-    const scopeLabel = syncAll ? 'Full S3 Sync (Master + All Questions)' : 'Master Exam JSON Sync (Fast)';
+    const syncTarget: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' =
+      typeof targetOrSyncAll === 'boolean'
+        ? targetOrSyncAll
+          ? 'FULL_ALL'
+          : 'MASTERS_ONLY'
+        : targetOrSyncAll;
+    const syncAll = syncTarget === 'FULL_ALL';
+    const scopeLabel =
+      syncTarget === 'FULL_ALL'
+        ? 'Full S3 Sync (Master + All Individual Questions)'
+        : syncTarget === 'SOLUTIONS_MASTER'
+        ? 'Master Solutions JSON Sync'
+        : syncTarget === 'QUESTIONS_MASTER'
+        ? 'Master Questions JSON Sync'
+        : 'Master Questions & Solutions Sync (Fast)';
     try {
-      const res = await syncExamToS3(selectedExam.id, syncAll);
+      await syncExamToS3(selectedExam.id, syncAll, syncTarget);
       showToast('success', `${scopeLabel} started in the background for '${selectedExam.name}'.`);
       setS3PublishStatus((prev) => ({
         ...prev,
         is_syncing: true,
-        sync_step: syncAll ? 'INITIALIZING_FULL_S3_SYNC' : 'INITIALIZING_MASTER_S3_SYNC',
+        sync_step: `INITIALIZING_${syncTarget}`,
         sync_progress: 15,
       }));
       startSyncPolling(selectedExam.id);
@@ -1393,7 +1409,51 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <button
-                onClick={() => handleSyncExamToS3(false)}
+                onClick={() => handleSyncExamToS3('QUESTIONS_MASTER')}
+                disabled={syncingExam}
+                style={{
+                  padding: '7px 11px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#2563eb',
+                  border: '1px solid #93c5fd',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+                title="Generates and uploads only exam_questions.json master"
+              >
+                <RefreshCw size={12} className={syncingExam ? 'animate-spin' : ''} />
+                Questions Master
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3('SOLUTIONS_MASTER')}
+                disabled={syncingExam}
+                style={{
+                  padding: '7px 11px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#7c3aed',
+                  border: '1px solid #c4b5fd',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+                title="Generates and uploads only exam_solutions.json master"
+              >
+                <RefreshCw size={12} className={syncingExam ? 'animate-spin' : ''} />
+                Solutions Master
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3('MASTERS_ONLY')}
                 disabled={syncingExam}
                 style={{
                   padding: '7px 14px',
@@ -1409,14 +1469,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   gap: 6,
                   boxShadow: '0 1px 3px rgba(217, 119, 6, 0.3)',
                 }}
-                title="Updates only the 2 consolidated master JSON files (Fast)"
+                title="Updates both master JSON files (Fast)"
               >
                 <RefreshCw size={13} className={syncingExam ? 'animate-spin' : ''} />
-                {syncingExam ? 'Syncing...' : '⚡ Sync Master JSON (Fast)'}
+                {syncingExam ? 'Syncing...' : '⚡ Sync Both Masters (Fast)'}
               </button>
 
               <button
-                onClick={() => handleSyncExamToS3(true)}
+                onClick={() => handleSyncExamToS3('FULL_ALL')}
                 disabled={syncingExam}
                 style={{
                   padding: '7px 12px',
@@ -1431,7 +1491,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   alignItems: 'center',
                   gap: 5,
                 }}
-                title="Re-uploads all individual question files along with master JSON"
+                title="Re-uploads all individual question files along with master JSONs"
               >
                 <Layers size={13} />
                 Full S3 Sync
@@ -1455,7 +1515,51 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <button
-                onClick={() => handleSyncExamToS3(false)}
+                onClick={() => handleSyncExamToS3('QUESTIONS_MASTER')}
+                disabled={syncingExam}
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#2563eb',
+                  border: '1px solid #bfdbfe',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title="Re-sync Questions Master JSON"
+              >
+                <RefreshCw size={11} className={syncingExam ? 'animate-spin' : ''} />
+                Questions Master
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3('SOLUTIONS_MASTER')}
+                disabled={syncingExam}
+                style={{
+                  padding: '5px 9px',
+                  borderRadius: 6,
+                  backgroundColor: '#FFFFFF',
+                  color: '#7c3aed',
+                  border: '1px solid #ddd6fe',
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: syncingExam ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title="Re-sync Solutions Master JSON"
+              >
+                <RefreshCw size={11} className={syncingExam ? 'animate-spin' : ''} />
+                Solutions Master
+              </button>
+
+              <button
+                onClick={() => handleSyncExamToS3('MASTERS_ONLY')}
                 disabled={syncingExam}
                 style={{
                   padding: '5px 10px',
@@ -1470,14 +1574,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   alignItems: 'center',
                   gap: 5,
                 }}
-                title="Force re-sync master files to S3"
+                title="Force re-sync both master files to S3"
               >
                 <RefreshCw size={12} className={syncingExam ? 'animate-spin' : ''} />
-                {syncingExam ? 'Syncing...' : 'Re-Sync Master'}
+                {syncingExam ? 'Syncing...' : 'Re-Sync Masters'}
               </button>
 
               <button
-                onClick={() => handleSyncExamToS3(true)}
+                onClick={() => handleSyncExamToS3('FULL_ALL')}
                 disabled={syncingExam}
                 style={{
                   padding: '5px 10px',

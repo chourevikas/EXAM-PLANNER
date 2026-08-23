@@ -261,8 +261,12 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function syncExamToS3(examId: string, syncAll: boolean = false): Promise<any> {
-  const url = `${API_BASE_URL}/exams/${examId}/sync?sync_all=${syncAll}`;
+export async function syncExamToS3(
+  examId: string,
+  syncAll: boolean = false,
+  syncTarget: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' = 'MASTERS_ONLY'
+): Promise<any> {
+  const url = `${API_BASE_URL}/exams/${examId}/sync?sync_all=${syncAll}&sync_target=${syncTarget}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: getAuthHeader(),

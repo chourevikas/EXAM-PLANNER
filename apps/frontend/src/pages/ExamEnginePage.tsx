@@ -85,44 +85,64 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [mobileTab, setMobileTab] = useState<'question' | 'sections' | 'palette'>('question');
 
-  // Question Time Telemetry tracking
+  // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
+  const accumulatedTimePerQuestionRef = useRef<Map<string, number>>(new Map());
+
+  const getActiveQuestionTotalTime = (qId?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return 0;
+    const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
+    const isActive = !qId || qId === activeQuestion?.question_id;
+    const currentVisit = isActive ? Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0) : 0;
+    return Math.max(0, prevAcc + currentVisit);
+  };
+
+  const saveQuestionVisitTime = (qId?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return;
+    const elapsed = Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0);
+    const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
+    const newAcc = prevAcc + elapsed;
+    accumulatedTimePerQuestionRef.current.set(targetId, newAcc);
+    questionStartTimeRef.current = Date.now();
+  };
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
   const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
   const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
 
   // Queue a modified response if it passes dirty-check verification
   const queueResponseUpdate = (
     questionId: string,
     optId: string | null,
-    markedForRev: boolean
+    markedForRev: boolean,
+    forcedTimeSpent?: number
   ) => {
     if (!questionId) return;
-    const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
+    const timeSpent = forcedTimeSpent !== undefined ? forcedTimeSpent : getActiveQuestionTotalTime(questionId);
     const last = lastSyncedSnapshotRef.current.get(questionId);
 
     // Dirty-check verification: verify if genuinely modified to avoid false flags
     const isOptionModified = !last ? optId !== null : last.selected_option_id !== optId;
     const isReviewModified = !last ? markedForRev : last.is_marked_for_review !== markedForRev;
-    const isTimeModified = !last ? timeSpent > 1.0 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 2.0;
+    const isTimeModified = !last ? timeSpent > 0.2 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 1.0;
+
+    const switchCount = optionSwitchesCountRef.current.get(questionId) || 0;
 
     if (isOptionModified || isReviewModified || isTimeModified) {
       const item: BatchSaveItem = {
         question_id: questionId,
         selected_option_id: optId,
         is_marked_for_review: markedForRev,
-        time_spent_seconds: timeSpent,
+        time_spent_seconds: Math.round(timeSpent * 10) / 10,
+        is_switched: switchCount > 0,
+        option_switch_count: switchCount,
         client_timestamp: new Date().toISOString(),
       };
-      console.info(`%c[ExamEngine:DIRTY_DETECTED] Queued modified response for Question ${questionId}`, 'color: #ec4899; font-weight: bold;', {
-        item,
-        reason: { isOptionModified, isReviewModified, isTimeModified }
-      });
       pendingBatchQueueRef.current.set(questionId, item);
-    } else {
-      console.debug(`[ExamEngine:CLEAN] Question ${questionId} is clean/unmodified against snapshot, queueing omitted.`);
     }
   };
 
@@ -135,7 +155,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     isSyncingBatchRef.current = true;
     const itemsToSend = Array.from(pendingBatchQueueRef.current.values());
     const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    console.info(`%c[ExamEngine:FLUSH_START] Dispatching batch '${batchId}' (${itemsToSend.length} items) to backend...`, 'color: #06b6d4; font-weight: bold;', itemsToSend);
 
     try {
       const ack = await saveQuestionResponsesBatch(attemptId, {
@@ -144,7 +163,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       });
 
       if (ack.status === 'ACCEPTED' || ack.status === 'PROCESSED') {
-        console.info(`%c[ExamEngine:FLUSH_SUCCESS] Batch '${batchId}' acknowledged as ${ack.status}`, 'color: #10b981; font-weight: bold;', ack);
         // Record successfully synced snapshot for dirty-checking
         for (const item of itemsToSend) {
           lastSyncedSnapshotRef.current.set(item.question_id, {
@@ -161,21 +179,30 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         }
       }
     } catch (err) {
-      console.warn(`%c[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, 'color: #ef4444; font-weight: bold;', err);
+      console.warn(`[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, err);
       // Items remain in pendingBatchQueueRef for automatic retry on next flush
     } finally {
       isSyncingBatchRef.current = false;
     }
   };
 
-  // Periodic background flush every 2.5 seconds
+  // Active Real-Time 3s Telemetry & Background Sync Interval
   useEffect(() => {
     if (!attemptId) return;
     const interval = setInterval(() => {
+      if (activeQuestion) {
+        const currentTotalTime = getActiveQuestionTotalTime(activeQuestion.question_id);
+        queueResponseUpdate(
+          activeQuestion.question_id,
+          selectedOptionId,
+          isMarkedForReview,
+          currentTotalTime
+        );
+      }
       flushPendingBatches();
-    }, 2500);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [attemptId]);
+  }, [attemptId, activeQuestion, selectedOptionId, isMarkedForReview]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -380,6 +407,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: string, qNum: number) => {
+    // Record elapsed time on the outgoing question before switching
+    if (activeQuestion) {
+      saveQuestionVisitTime(activeQuestion.question_id);
+    }
+
     if (allQuestions.length >= qNum && allQuestions[qNum - 1]) {
       // Instant Client-Side Zero-Lag Question Flipping
       questionStartTimeRef.current = Date.now();
@@ -460,6 +492,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
   const handleSelectOption = (optionId: string, optionLabel: string) => {
+    if (activeQuestion) {
+      const qId = activeQuestion.question_id;
+      const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
+      if (prevOpt && prevOpt !== optionId) {
+        const curCount = (optionSwitchesCountRef.current.get(qId) || 0) + 1;
+        optionSwitchesCountRef.current.set(qId, curCount);
+      }
+    }
+
     setSelectedOptionId(optionId);
     setSelectedOptionLabel(optionLabel);
 
@@ -529,7 +570,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   const saveCurrentResponse = () => {
     if (activeQuestion) {
-      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview);
+      const currentTotalTime = getActiveQuestionTotalTime(activeQuestion.question_id);
+      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview, currentTotalTime);
       // Trigger non-blocking background flush
       flushPendingBatches();
     }
@@ -644,11 +686,34 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
     try {
       if (attemptId) {
-        // Zero-Data-Loss Guarantee: Flush all pending batches before final submission
-        saveCurrentResponse();
+        // Zero-Data-Loss Guarantee: Lock in active question dwell time and flush pending batches
+        saveQuestionVisitTime();
         await flushPendingBatches();
 
-        await submitExamAttempt(attemptId, { submission_reason: 'USER_CLICKED_SUBMIT' });
+        const allFinalResponses = (allQuestions || []).map((q) => {
+          const qId = q.question_id;
+          const isCurrentActive = activeQuestion?.question_id === qId;
+          const saved = lastSyncedSnapshotRef.current.get(qId) || pendingBatchQueueRef.current.get(qId);
+          const selOpt = isCurrentActive ? selectedOptionId : (saved?.selected_option_id ?? null);
+          const isMarked = isCurrentActive ? isMarkedForReview : Boolean(saved?.is_marked_for_review);
+          const tSpent = accumulatedTimePerQuestionRef.current.get(qId) || saved?.time_spent_seconds || 0;
+
+          const switchCount = optionSwitchesCountRef.current.get(qId) || 0;
+
+          return {
+            question_id: qId,
+            selected_option_id: selOpt,
+            is_marked_for_review: isMarked,
+            time_spent_seconds: Math.round(tSpent * 10) / 10,
+            is_switched: switchCount > 0,
+            option_switch_count: switchCount,
+          };
+        });
+
+        await submitExamAttempt(attemptId, {
+          submission_reason: 'USER_CLICKED_SUBMIT',
+          responses: allFinalResponses.length > 0 ? allFinalResponses : undefined,
+        });
         navigate(`/analytics?attemptId=${attemptId}`);
       } else {
         navigate('/analytics');

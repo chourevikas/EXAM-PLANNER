@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any, TypedDict, Optional, Tuple
 from sqlmodel import select, col, func
 from langgraph.graph import StateGraph, END, START
-
+import asyncio
 from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
