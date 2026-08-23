@@ -5,6 +5,7 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
 import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 interface DisplayExam {
   id: string;
@@ -187,17 +188,11 @@ export function PYQSelectionPage() {
                       gap: 6,
                     }}>
                       {hasInProgress ? (
-                        <>
-                          <PlayCircle size={14} /> In Progress
-                        </>
+                        <StatusBadge status="in-progress" label="In Progress" size="sm" />
                       ) : hasCompleted ? (
-                        <>
-                          <CheckCircle2 size={14} /> Exam Completed
-                        </>
+                        <StatusBadge status="completed" label="Exam Completed" size="sm" />
                       ) : (
-                        <>
-                          {exam.year} Paper
-                        </>
+                        <StatusBadge status="pyq" label={`${exam.year} Paper`} size="sm" />
                       )}
                     </div>
                     <div style={{ color: 'var(--text-muted)' }}>

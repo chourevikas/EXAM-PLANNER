@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useUser } from '@clerk/clerk-react';
 
 export function getUserInitials(name?: string): string {
   if (!name || typeof name !== 'string') return 'SA';
@@ -25,26 +26,68 @@ export function UserAvatar({
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
 
-  const rawImg = typeof userOrImage === 'string' 
-    ? userOrImage 
-    : (userOrImage?.avatar_url || userOrImage?.imageUrl || userOrImage?.profile_image_url || userOrImage?.profile_image);
-  const name = fullName || (typeof userOrImage === 'object' ? userOrImage?.full_name : '');
+  // Hook into Clerk user if available
+  let clerkImageUrl = '';
+  let clerkFullName = '';
+  try {
+    const { user: clerkUser } = useUser();
+    if (clerkUser) {
+      clerkImageUrl = clerkUser.imageUrl || '';
+      clerkFullName = clerkUser.fullName || clerkUser.firstName || '';
+    }
+  } catch (err) {
+    // Ignore if outside ClerkProvider
+  }
+
+  let resolvedUrl = '';
+  let resolvedEmoji = '';
+
+  // Order of candidate properties to inspect
+  const candidateSources = [
+    typeof userOrImage === 'string' ? userOrImage : '',
+    clerkImageUrl,
+    userOrImage?.imageUrl,
+    userOrImage?.profileImageUrl,
+    userOrImage?.avatar_url,
+    userOrImage?.profile_image_url,
+    userOrImage?.profile_image,
+    userOrImage?.avatar,
+    userOrImage?.picture,
+    userOrImage?.image
+  ];
+
+  for (const candidate of candidateSources) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      const trimmed = candidate.trim();
+      const isHttpOrData =
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('data:') ||
+        trimmed.startsWith('/');
+
+      if (isHttpOrData) {
+        if (!resolvedUrl) resolvedUrl = trimmed;
+      } else {
+        if (!resolvedEmoji) resolvedEmoji = trimmed;
+      }
+    }
+  }
+
+  const name =
+    fullName ||
+    (typeof userOrImage === 'object' ? userOrImage?.full_name || userOrImage?.name : '') ||
+    clerkFullName;
+
   const initials = getUserInitials(name);
+  const borderRadius = '50%';
 
-  const isUrl = typeof rawImg === 'string' && (
-    rawImg.startsWith('http://') || 
-    rawImg.startsWith('https://') || 
-    rawImg.startsWith('data:') || 
-    rawImg.startsWith('/')
-  );
-
-  const borderRadius = Math.round(size * 0.25);
-
-  if (isUrl && !imgError) {
+  // Render photo image if valid URL is resolved and hasn't errored out
+  if (resolvedUrl && !imgError) {
     return (
       <img
-        src={rawImg}
+        src={resolvedUrl}
         alt={name || 'User Avatar'}
+        referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
         className={className}
         style={{
@@ -53,14 +96,15 @@ export function UserAvatar({
           borderRadius,
           objectFit: 'cover',
           flexShrink: 0,
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
           ...style
         }}
       />
     );
   }
 
-  // Emoji or text icon
-  if (rawImg && typeof rawImg === 'string' && rawImg.trim().length > 0 && !isUrl) {
+  // Render custom emoji/avatar if no photo URL found
+  if (resolvedEmoji) {
     return (
       <div
         className={className}
@@ -76,15 +120,16 @@ export function UserAvatar({
           lineHeight: 1,
           flexShrink: 0,
           userSelect: 'none',
+          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
           ...style
         }}
       >
-        {rawImg}
+        {resolvedEmoji}
       </div>
     );
   }
 
-  // Fallback to initials
+  // Fallback to user initials
   return (
     <div
       className={className}
@@ -92,7 +137,7 @@ export function UserAvatar({
         width: size,
         height: size,
         borderRadius,
-        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -101,6 +146,7 @@ export function UserAvatar({
         color: '#ffffff',
         flexShrink: 0,
         userSelect: 'none',
+        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
         ...style
       }}
     >

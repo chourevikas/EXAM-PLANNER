@@ -12,6 +12,7 @@ import StudentMetricCard from '../components/student/StudentMetricCard';
 
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -157,6 +158,11 @@ export function DashboardPage() {
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
 
+  const todayQuestionsAttempted = todayActivities.reduce((acc: number, curr: any) => acc + (curr.questions_attempted || 0), 0);
+  const totalQuestionsSolved = dashboardStats && dashboardStats.totalQuestionsAttempted !== undefined
+    ? dashboardStats.totalQuestionsAttempted
+    : (user?.free_questions_attempted || 0);
+
   return (
     <StudentLayout pageTitle="Dashboard">
 
@@ -199,17 +205,17 @@ export function DashboardPage() {
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
         <StudentMetricCard
-          title="Questions Attempted Today"
+          title="Total Questions Solved"
           value={
             <span>
-              {dashboardStats?.totalQuestionsAttempted ?? user.free_questions_attempted ?? 0}{' '}
+              {totalQuestionsSolved.toLocaleString()}{' '}
               <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
             </span>
           }
-          supportingText="Total questions solved"
+          supportingText={todayQuestionsAttempted > 0 ? `${todayQuestionsAttempted} Qs attempted today` : "Across all practice exams"}
           icon={<Ico.Target size={18} />}
           showProgress={true}
-          progressPercent={Math.min(((dashboardStats?.totalQuestionsAttempted ?? 0) / 500) * 100, 100)}
+          progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
           accentColor="#2563EB"
         />
 
@@ -667,9 +673,11 @@ export function DashboardPage() {
                             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                               Score: {attempt.score} / {attempt.totalMarksPossible}
                             </div>
-                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
-                              {attempt.accuracy}% Acc
-                            </div>
+                            <StatusBadge
+                              status={attempt.accuracy >= 70 ? 'high-accuracy' : attempt.accuracy >= 40 ? 'moderate-accuracy' : 'low-accuracy'}
+                              label={`${attempt.accuracy}% Acc`}
+                              size="sm"
+                            />
                           </div>
                         </div>
                       ))

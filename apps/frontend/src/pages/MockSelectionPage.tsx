@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { listExams, listCandidateAttempts, formatCanonicalExamTitle } from '../services/examService';
+import { StatusBadge } from '../components/common/StatusBadge';
 import {
   CheckCircle2,
   PlayCircle,
@@ -581,15 +582,11 @@ export function MockSelectionPage() {
                     </span>
 
                     {isCompleted ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#059669' }}>
-                        <CheckCircle2 size={14} /> Completed
-                      </span>
+                      <StatusBadge status="completed" label="Completed" size="sm" />
                     ) : isInProgress ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#EA580C' }}>
-                        <RotateCcw size={14} /> In Progress
-                      </span>
+                      <StatusBadge status="in-progress" label="In Progress" size="sm" />
                     ) : (
-                      <span style={{ fontSize: 12, color: '#64748B' }}>Ready</span>
+                      <StatusBadge status="active" label="Ready" size="sm" />
                     )}
                   </div>
 

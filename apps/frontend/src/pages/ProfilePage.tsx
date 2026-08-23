@@ -145,7 +145,7 @@ export function ProfilePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           {/* Avatar Display */}
           <UserAvatar
-            userOrImage={profileImage}
+            userOrImage={clerkUser?.imageUrl || profileImage || user}
             size={84}
             fullName={fullName}
             style={{

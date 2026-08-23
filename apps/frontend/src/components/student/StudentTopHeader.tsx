@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
   Search,
@@ -45,8 +45,17 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [isSearching, setIsSearching] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const clerk = useClerk();
+  const { user: clerkUser } = useUser();
+
+  const avatarUser = {
+    ...currentUser,
+    imageUrl: clerkUser?.imageUrl || currentUser?.imageUrl || currentUser?.avatar_url,
+    profile_image: clerkUser?.imageUrl || currentUser?.profile_image,
+    full_name: currentUser?.full_name || clerkUser?.fullName || currentUser?.name || 'Student'
+  };
 
   useEffect(() => {
     setCurrentUser(user);
@@ -74,15 +83,25 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setShowNotifications(false);
         setShowProfileMenu(false);
+        setSearchResults(null);
       }
     }
     const handleResize = () => setWindowWidth(window.innerWidth);
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('resize', handleResize);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -94,26 +113,45 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     }
 
     setIsSearching(true);
-    const timer = setTimeout(() => {
-      const q = searchQuery.toLowerCase();
-      const mockResults = [
-        { id: 1, title: 'UPSC Prelims Practice Test #12', type: 'Practice Test', url: '/mocks' },
-        { id: 2, title: 'GS Paper I Topic Test - Polity', type: 'Sectional', url: '/mocks' }
-      ].filter(m => m.title.toLowerCase().includes(q));
+    const timer = setTimeout(async () => {
+      try {
+        const token = (await clerk.session?.getToken()) || localStorage.getItem('access_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const pyqResults = [
-        { id: 1, title: 'UPSC CSE 2023 GS Paper I', type: 'PYQ Paper', url: '/pyq' },
-        { id: 2, title: 'UPSC CSE 2022 GS Paper I', type: 'PYQ Paper', url: '/pyq' }
-      ].filter(p => p.title.toLowerCase().includes(q));
+        const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults({
+            mocks: data.mocks || [],
+            pyqs: data.pyqs || [],
+            topics: data.topics || []
+          });
+        } else {
+          throw new Error('Fallback search');
+        }
+      } catch (err) {
+        const q = searchQuery.toLowerCase();
+        const mockResults = [
+          { id: 'm1', title: 'UPSC Prelims Practice Test #12', type: 'Practice Test', url: '/mocks' },
+          { id: 'm2', title: 'GS Paper I Topic Test - Polity', type: 'Sectional', url: '/mocks' }
+        ].filter(m => m.title.toLowerCase().includes(q));
 
-      const topicResults = [
-        { id: 1, title: 'Fundamental Rights & Preamble', type: 'Polity', url: '/study-planner' },
-        { id: 2, title: 'Monetary Policy & RBI Guidelines', type: 'Economy', url: '/study-planner' }
-      ].filter(t => t.title.toLowerCase().includes(q));
+        const pyqResults = [
+          { id: 'p1', title: 'UPSC CSE 2023 GS Paper I', type: 'PYQ Paper', url: '/pyq' },
+          { id: 'p2', title: 'UPSC CSE 2022 GS Paper I', type: 'PYQ Paper', url: '/pyq' }
+        ].filter(p => p.title.toLowerCase().includes(q));
 
-      setSearchResults({ mocks: mockResults, pyqs: pyqResults, topics: topicResults });
-      setIsSearching(false);
-    }, 200);
+        const topicResults = [
+          { id: 't1', title: 'Fundamental Rights & Preamble', type: 'Polity', url: '/study-planner' },
+          { id: 't2', title: 'Monetary Policy & RBI Guidelines', type: 'Economy', url: '/study-planner' }
+        ].filter(t => t.title.toLowerCase().includes(q));
+
+        setSearchResults({ mocks: mockResults, pyqs: pyqResults, topics: topicResults });
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -215,6 +253,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           </div>
 
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search PYQs, mocks, polity, economy..."
             value={searchQuery}
@@ -287,9 +326,37 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Practice Tests</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.mocks.map((mock: any) => (
-                          <Link key={mock.id} to={mock.url} onClick={() => setSearchQuery('')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                          <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
                             <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}><Trophy size={14} /></div>
                             <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{mock.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {searchResults.pyqs && searchResults.pyqs.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {searchResults.pyqs.map((pyq: any) => (
+                          <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}><Target size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{pyq.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {searchResults.topics && searchResults.topics.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Syllabus & Topics</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {searchResults.topics.map((topic: any) => (
+                          <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><Sparkles size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{topic.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -407,7 +474,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               backgroundColor: 'transparent'
             }}
           >
-            <UserAvatar userOrImage={user} size={36} fullName={user?.full_name || user?.name} />
+            <UserAvatar userOrImage={avatarUser} size={36} fullName={avatarUser.full_name} />
           </button>
 
           {/* Profile Dropdown Menu */}
