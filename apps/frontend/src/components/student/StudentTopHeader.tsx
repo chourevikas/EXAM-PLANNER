@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
   Search,
@@ -44,6 +45,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [isSearching, setIsSearching] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
+
+  const clerk = useClerk();
 
   useEffect(() => {
     setCurrentUser(user);
@@ -440,10 +443,17 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setShowProfileMenu(false);
                     logoutUser();
-                    navigate('/');
+                    if (clerk && clerk.signOut) {
+                      try {
+                        await clerk.signOut();
+                      } catch (e) {
+                        console.warn('Clerk signout error:', e);
+                      }
+                    }
+                    window.location.href = '/';
                   }}
                   style={{
                     display: 'flex',

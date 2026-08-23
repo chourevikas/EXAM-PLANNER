@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
   ShieldAlert,
@@ -30,6 +31,7 @@ export function SuperAdminSidebar({
   pendingCount,
 }: SuperAdminSidebarProps) {
   const navigate = useNavigate();
+  const clerk = useClerk();
 
   const navItems: { id: SuperAdminTab; label: string; icon: any; badge?: number }[] = [
     { id: 'pending', label: 'Pending Approvals', icon: ShieldAlert, badge: pendingCount },
@@ -165,9 +167,16 @@ export function SuperAdminSidebar({
       {/* Bottom section */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '8px 0' }}>
         <button
-          onClick={() => {
+          onClick={async () => {
             logoutUser();
-            navigate('/');
+            if (clerk && clerk.signOut) {
+              try {
+                await clerk.signOut();
+              } catch (e) {
+                console.warn('Clerk signout error:', e);
+              }
+            }
+            window.location.href = '/';
           }}
           style={{
             width: '100%',

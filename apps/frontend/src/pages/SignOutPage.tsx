@@ -1,14 +1,24 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../services/authService';
 
 export function SignOutPage() {
-  const navigate = useNavigate();
+  const clerk = useClerk();
 
   useEffect(() => {
-    logoutUser();
-    navigate('/', { replace: true });
-  }, [navigate]);
+    async function doLogout() {
+      logoutUser();
+      if (clerk && clerk.signOut) {
+        try {
+          await clerk.signOut();
+        } catch (e) {
+          console.warn('Clerk signout error:', e);
+        }
+      }
+      window.location.href = '/';
+    }
+    doLogout();
+  }, [clerk]);
 
   return null;
 }

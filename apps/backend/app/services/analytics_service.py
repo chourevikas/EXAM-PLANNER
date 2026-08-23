@@ -415,6 +415,14 @@ class AnalyticsService:
 
     async def get_user_subject_performance(self, user_id: uuid.UUID) -> list[dict]:
         """Calculates subject accuracy percentages for a user from study activities and exam responses."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:subj_perf", str(user_id))
+
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
         from app.db.models.study_plan import StudyActivity
         from app.db.models.analytics import ExamAttempt, ExamQuestionResponse
         from app.db.models.hierarchy import Exam, Subject, Topic, Subtopic
@@ -458,31 +466,45 @@ class AnalyticsService:
         )
         eq_results = (await self.session.exec(eq_stmt)).all()
 
+        # Batch pre-fetch all hierarchy links and subtopics to eliminate N+1 DB queries in loop
+        question_ids = list({q.id for _, q, _ in eq_results if q and q.id})
+        subtopic_ids = list({q.subtopic_id for _, q, _ in eq_results if q and q.subtopic_id})
+
+        q_to_subject: dict[uuid.UUID, str] = {}
+        if question_ids:
+            links_stmt = (
+                select(QuestionHierarchyLink.question_id, Subject.name)
+                .join(Subject, QuestionHierarchyLink.subject_id == Subject.id)
+                .where(QuestionHierarchyLink.question_id.in_(question_ids))
+                .order_by(QuestionHierarchyLink.is_primary.desc())
+            )
+            link_rows = (await self.session.exec(links_stmt)).all()
+            for q_id, subj_name in link_rows:
+                if q_id not in q_to_subject:
+                    q_to_subject[q_id] = subj_name
+
+        subt_to_subject: dict[uuid.UUID, str] = {}
+        if subtopic_ids:
+            subt_stmt = (
+                select(Subtopic.id, Subject.name)
+                .join(Topic, Subtopic.topic_id == Topic.id)
+                .join(Subject, Topic.subject_id == Subject.id)
+                .where(Subtopic.id.in_(subtopic_ids))
+            )
+            subt_rows = (await self.session.exec(subt_stmt)).all()
+            for s_id, subj_name in subt_rows:
+                subt_to_subject[s_id] = subj_name
+
         for eq_resp, question, exam_subject in eq_results:
             resolved_subject = None
 
-            # a) Try QuestionHierarchyLink
-            links_stmt = (
-                select(Subject.name)
-                .join(QuestionHierarchyLink, QuestionHierarchyLink.subject_id == Subject.id)
-                .where(QuestionHierarchyLink.question_id == question.id)
-                .order_by(QuestionHierarchyLink.is_primary.desc())
-            )
-            link_subj = (await self.session.exec(links_stmt)).first()
-            if link_subj:
-                resolved_subject = link_subj
+            # a) Try QuestionHierarchyLink pre-fetched map
+            if question.id in q_to_subject:
+                resolved_subject = q_to_subject[question.id]
 
-            # b) Try Question -> Subtopic -> Topic -> Subject
-            if not resolved_subject and question.subtopic_id:
-                subt_stmt = (
-                    select(Subject.name)
-                    .join(Topic, Topic.subject_id == Subject.id)
-                    .join(Subtopic, Subtopic.topic_id == Topic.id)
-                    .where(Subtopic.id == question.subtopic_id)
-                )
-                sub_subj = (await self.session.exec(subt_stmt)).first()
-                if sub_subj:
-                    resolved_subject = sub_subj
+            # b) Try Question -> Subtopic -> Topic -> Subject pre-fetched map
+            if not resolved_subject and question.subtopic_id and question.subtopic_id in subt_to_subject:
+                resolved_subject = subt_to_subject[question.subtopic_id]
 
             # c) Try Section Code on Question
             if not resolved_subject and question.section_code and question.section_code not in ("DEFAULT", "GS-I", "GS1"):
@@ -522,6 +544,7 @@ class AnalyticsService:
                 'total_correct': corr
             })
 
+        await cache.set(cache_key, result, ttl_seconds=900)
         return result
 
     async def get_predicted_rank(self, user_id: uuid.UUID) -> Dict[str, Any]:

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
   Menu,
@@ -42,6 +43,7 @@ const breadcrumbMap: Record<string, string> = {
 
 export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: TopNavProps) {
   const navigate = useNavigate();
+  const clerk = useClerk();
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -522,10 +524,17 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               <div style={{ paddingTop: 6, borderTop: '1px solid #E2E8F0' }}>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setShowProfileMenu(false);
                     logoutUser();
-                    navigate('/');
+                    if (clerk && clerk.signOut) {
+                      try {
+                        await clerk.signOut();
+                      } catch (e) {
+                        console.warn('Clerk signout error:', e);
+                      }
+                    }
+                    window.location.href = '/';
                   }}
                   style={{
                     display: 'flex',

@@ -104,6 +104,12 @@ export async function registerUser(
 export function logoutUser(): void {
   localStorage.removeItem('access_token');
   localStorage.removeItem('user');
+  localStorage.removeItem('latest_synced_attempt_id');
+  try {
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn("Error clearing sessionStorage during logout:", e);
+  }
 }
 
 export async function fetchCurrentUser(customToken?: string): Promise<any> {
