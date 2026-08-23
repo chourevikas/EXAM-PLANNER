@@ -415,13 +415,13 @@ async def get_solution_from_db_fallback(
             "distractor_analysis": trans.distractor_analysis if trans else None,
         }
 
-    detailed_solution = (expl_model.detailed_solution or expl_model.explanation_text) if expl_model else (
+    detailed_solution = (expl_model.detailed_solution if (expl_model and expl_model.detailed_solution) else (
         f"**Option ({correct_opt.option_label}) is correct.**\n\nStandard constitutional and syllabus reasoning."
-    )
+    ))
 
     core_concept = expl_model.core_concept if expl_model and expl_model.core_concept else "Core conceptual analysis"
     common_traps = expl_model.common_traps_json if (expl_model and expl_model.common_traps_json) else []
-    key_takeaways = expl_model.key_takeaways_json if (expl_model and expl_model.key_takeaways_json) else ([expl_model.key_takeaway] if expl_model and expl_model.key_takeaway else [])
+    key_takeaways = expl_model.key_takeaways_json if (expl_model and expl_model.key_takeaways_json) else []
 
     blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
     cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"

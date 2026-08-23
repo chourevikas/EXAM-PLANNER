@@ -1,7 +1,7 @@
 import asyncio
 import json
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -310,142 +310,291 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         "total_questions_answered": profile.total_questions_answered if profile else 0,
     }
 
-    # 3. High-Precision Question & Solution Resolution from DB & Individual JSONs
-    q_ids = [r.question_id for r in responses_db if r.question_id]
-    q_map = {}
-    opt_map = {}
-    opts_by_qid: Dict[Any, List[QuestionOption]] = {}
-    expl_map = {}
-    meta_map = {}
-    q_trans_map = {}
-    opt_trans_map = {}
-    subtopic_map = {}
-    topic_map = {}
-    subject_map = {}
-
-    if q_ids:
-        # Batch fetch questions
-        q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
-        q_rows = q_res.all()
-        q_map = {q.id: q for q in q_rows}
-
-        # Batch fetch options
-        opt_res = await session.exec(
-            select(QuestionOption)
-            .where(col(QuestionOption.question_id).in_(q_ids))
-            .order_by(col(QuestionOption.display_order).asc())
-        )
-        opt_rows = opt_res.all()
-        for o in opt_rows:
-            opt_map[o.id] = o
-            opts_by_qid.setdefault(o.question_id, []).append(o)
-
-        # Batch fetch option translations
-        all_opt_ids = [o.id for o in opt_rows]
-        if all_opt_ids:
-            opt_trans_res = await session.exec(
-                select(OptionTranslation).where(col(OptionTranslation.option_id).in_(all_opt_ids))
-            )
-            for ot in opt_trans_res.all():
-                opt_trans_map[ot.option_id] = ot
-
-        # Batch fetch question translations
-        q_trans_res = await session.exec(
-            select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
-        )
-        for qt in q_trans_res.all():
-            q_trans_map[qt.question_id] = qt.question_text
-
-        # Batch fetch explanations
-        expl_res = await session.exec(
-            select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
-        )
-        for ex in expl_res.all():
-            expl_map[ex.question_id] = ex
-
-        # Batch fetch metadata (Blooms, IRT params, cognitive skill)
-        meta_res = await session.exec(
-            select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
-        )
-        for qm in meta_res.all():
-            meta_map[qm.question_id] = qm
-
-        # Batch fetch taxonomy hierarchy (Subtopic -> Topic -> Subject)
-        subtopic_ids = [q.subtopic_id for q in q_rows if q.subtopic_id]
-        if subtopic_ids:
-            sub_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids)))
-            sub_rows = sub_res.all()
-            subtopic_map = {s.id: s for s in sub_rows}
-
-            topic_ids = [s.topic_id for s in sub_rows if s.topic_id]
-            if topic_ids:
-                top_res = await session.exec(select(Topic).where(col(Topic.id).in_(topic_ids)))
-                top_rows = top_res.all()
-                topic_map = {t.id: t for t in top_rows}
-
-                subject_ids = [t.subject_id for t in top_rows if t.subject_id]
-                if subject_ids:
-                    subj_res = await session.exec(select(Subject).where(col(Subject.id).in_(subject_ids)))
-                    subject_map = {sb.id: sb for sb in subj_res.all()}
+    # 3. High-Precision Question & Solution Resolution: S3-First with Lazy Database Fallback
+    paper_set = exam.paper_set_code or "SET_A"
+    clean_set = str(paper_set).strip().lower().replace("_", "-")
+    q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+    s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
+    alt_q_folder = f"exams/{exam.code}/questions"
+    alt_s_folder = f"exams/{exam.code}/solutions"
+    q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+    s_json_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
 
     meta_subtopic_override = (attempt.report_metadata_json or {}).get("subtopic_name")
     meta_topic_override = (attempt.report_metadata_json or {}).get("topic_name")
     meta_subject_override = (attempt.report_metadata_json or {}).get("subject_name") or (attempt.report_metadata_json or {}).get("target_exam") or "General Studies"
 
+    # Branch 1: FULL EXAMS -> Primary: Master JSONs (exam_questions.json & exam_solutions.json)
+    # Branch 2: PRACTICE / GUEST EXAMS -> Primary: Individual S3 JSONs (artifacts/{exam.code}/{clean_set}/json/.../Q{num}.json)
+
+    master_q_by_num: Dict[int, Dict[str, Any]] = {}
+    master_q_by_id: Dict[str, Dict[str, Any]] = {}
+    master_sol_by_num: Dict[int, Dict[str, Any]] = {}
+    master_sol_by_id: Dict[str, Dict[str, Any]] = {}
+    master_sol_doc: Optional[Dict[str, Any]] = None
+
+    if not is_practice_or_guest:
+        # Load master questions & solutions from S3 for full exams
+        try:
+            for q_path in [q_json_path, f"artifacts/{exam.code}/exam_questions.json"]:
+                if await storage.exists(q_path):
+                    q_doc = await storage.download_json(q_path)
+                    if q_doc and q_doc.get("questions"):
+                        for q_item in q_doc["questions"]:
+                            if "question_number" in q_item:
+                                master_q_by_num[int(q_item["question_number"])] = q_item
+                            if "question_id" in q_item:
+                                master_q_by_id[str(q_item["question_id"])] = q_item
+                        logger.info(f"Loaded master questions JSON '{q_path}' ({len(q_doc['questions'])} questions).")
+                        break
+        except Exception as q_err:
+            logger.debug(f"Master questions JSON load failed: {q_err}")
+
+        try:
+            master_sol_doc = await load_exam_solutions_data(exam, session, storage)
+            if master_sol_doc and master_sol_doc.get("questions"):
+                for s_item in master_sol_doc["questions"]:
+                    if "question_number" in s_item:
+                        master_sol_by_num[int(s_item["question_number"])] = s_item
+                    if "question_id" in s_item:
+                        master_sol_by_id[str(s_item["question_id"])] = s_item
+                logger.info(f"Loaded master solutions JSON ({len(master_sol_doc['questions'])} questions).")
+        except Exception as sol_err:
+            logger.debug(f"Master solutions JSON load failed: {sol_err}")
+
+    # Helper function to fetch individual S3 question and solution JSON
+    async def _fetch_individual_s3_pair(q_num: int):
+        q_data = None
+        for q_prefix in [q_folder, alt_q_folder]:
+            for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
+                q_file = f"{q_prefix.rstrip('/')}/{pattern}"
+                try:
+                    if await storage.exists(q_file):
+                        q_data = await storage.download_json(q_file)
+                        if q_data:
+                            break
+                except Exception:
+                    pass
+            if q_data:
+                break
+
+        sol_data = None
+        for s_prefix in [s_folder, alt_folder]:
+            for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"]:
+                s_file = f"{s_prefix.rstrip('/')}/{pattern}"
+                try:
+                    if await storage.exists(s_file):
+                        sol_data = await storage.download_json(s_file)
+                        if sol_data:
+                            break
+                except Exception:
+                    pass
+            if sol_data:
+                break
+
+        return q_num, q_data, sol_data
+
+    # For practice/guest exams, batch fetch individual S3 question/solution JSONs in parallel
+    indiv_s3_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
+    if is_practice_or_guest:
+        q_nums_to_fetch = list(range(1, len(responses_db) + 1))
+        fetch_tasks = [_fetch_individual_s3_pair(num) for num in q_nums_to_fetch]
+        fetch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
+        for res in fetch_results:
+            if isinstance(res, tuple) and len(res) == 3:
+                num, q_d, s_d = res
+                indiv_s3_map[num] = (q_d, s_d)
+
+    # Lazy Database Fallback Cache (only populated if S3 is missing data for any question)
+    db_loaded = False
+    q_map: Dict[Any, Question] = {}
+    opt_map: Dict[Any, QuestionOption] = {}
+    opts_by_qid: Dict[Any, List[QuestionOption]] = {}
+    expl_map: Dict[Any, QuestionExplanation] = {}
+    meta_map: Dict[Any, QuestionMetadata] = {}
+    q_trans_map: Dict[Any, str] = {}
+    opt_trans_map: Dict[Any, OptionTranslation] = {}
+    subtopic_map: Dict[Any, Subtopic] = {}
+    topic_map: Dict[Any, Topic] = {}
+    subject_map: Dict[Any, Subject] = {}
+
+    async def _ensure_db_fallback_loaded():
+        nonlocal db_loaded, q_map, opt_map, opts_by_qid, expl_map, meta_map, q_trans_map, opt_trans_map, subtopic_map, topic_map, subject_map
+        if db_loaded:
+            return
+        db_loaded = True
+        logger.info(f"Triggering lazy database fallback lookup for attempt '{attempt.id}'...")
+        q_ids = [r.question_id for r in responses_db if r.question_id]
+        if q_ids:
+            q_res = await session.exec(select(Question).where(col(Question.id).in_(q_ids)))
+            q_rows = q_res.all()
+            q_map = {q.id: q for q in q_rows}
+
+            opt_res = await session.exec(
+                select(QuestionOption)
+                .where(col(QuestionOption.question_id).in_(q_ids))
+                .order_by(col(QuestionOption.display_order).asc())
+            )
+            opt_rows = opt_res.all()
+            for o in opt_rows:
+                opt_map[o.id] = o
+                opts_by_qid.setdefault(o.question_id, []).append(o)
+
+            all_opt_ids = [o.id for o in opt_rows]
+            if all_opt_ids:
+                opt_trans_res = await session.exec(
+                    select(OptionTranslation).where(col(OptionTranslation.option_id).in_(all_opt_ids))
+                )
+                for ot in opt_trans_res.all():
+                    opt_trans_map[ot.option_id] = ot
+
+            q_trans_res = await session.exec(
+                select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
+            )
+            for qt in q_trans_res.all():
+                q_trans_map[qt.question_id] = qt.question_text
+
+            expl_res = await session.exec(
+                select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
+            )
+            for ex in expl_res.all():
+                expl_map[ex.question_id] = ex
+
+            meta_res = await session.exec(
+                select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
+            )
+            for qm in meta_res.all():
+                meta_map[qm.question_id] = qm
+
+            subtopic_ids = [q.subtopic_id for q in q_rows if q.subtopic_id]
+            if subtopic_ids:
+                sub_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids)))
+                sub_rows = sub_res.all()
+                subtopic_map = {s.id: s for s in sub_rows}
+
+                topic_ids = [s.topic_id for s in sub_rows if s.topic_id]
+                if topic_ids:
+                    top_res = await session.exec(select(Topic).where(col(Topic.id).in_(topic_ids)))
+                    top_rows = top_res.all()
+                    topic_map = {t.id: t for t in top_rows}
+
+                    subject_ids = [t.subject_id for t in top_rows if t.subject_id]
+                    if subject_ids:
+                        subj_res = await session.exec(select(Subject).where(col(Subject.id).in_(subject_ids)))
+                        subject_map = {sb.id: sb for sb in subj_res.all()}
+
     responses_payload = []
     resolved_sol_questions = []
 
     for index, r in enumerate(responses_db, 1):
-        q_model = q_map.get(r.question_id)
-        selected_opt = opt_map.get(r.selected_option_id) if r.selected_option_id else None
-        
-        # Taxonomy resolution
+        q_num = index
+
+        # S3 Data Resolution
+        s3_q: Optional[Dict[str, Any]] = None
+        s3_sol: Optional[Dict[str, Any]] = None
+
+        if is_practice_or_guest:
+            s3_q, s3_sol = indiv_s3_map.get(q_num, (None, None))
+        else:
+            s3_q = master_q_by_id.get(str(r.question_id)) or master_q_by_num.get(q_num)
+            s3_sol = master_sol_by_id.get(str(r.question_id)) or master_sol_by_num.get(q_num)
+            if not s3_q and not s3_sol:
+                _, s3_q, s3_sol = await _fetch_individual_s3_pair(q_num)
+
+        # Trigger DB fallback only if S3 did not provide complete question/option/solution data
+        if not s3_q or not s3_sol or not s3_q.get("options") or not s3_sol.get("explanation"):
+            await _ensure_db_fallback_loaded()
+
+        q_model = q_map.get(r.question_id) if db_loaded else None
+        selected_opt = opt_map.get(r.selected_option_id) if (db_loaded and r.selected_option_id) else None
+
+        # Taxonomy resolution (S3 -> DB -> Metadata Override -> Default)
         sub_obj = subtopic_map.get(q_model.subtopic_id) if (q_model and q_model.subtopic_id) else None
         top_obj = topic_map.get(sub_obj.topic_id) if (sub_obj and sub_obj.topic_id) else None
         sbj_obj = subject_map.get(top_obj.subject_id) if (top_obj and top_obj.subject_id) else None
 
-        subtopic_name = (sub_obj.name if sub_obj else None) or meta_subtopic_override or "Core Concepts"
-        topic_name = (top_obj.name if top_obj else None) or meta_topic_override or (subtopic_name if not sub_obj else "General Knowledge")
-        subject_name = (sbj_obj.name if sbj_obj else None) or meta_subject_override or "General Studies"
+        s3_subtopic = (s3_sol.get("subtopic") if s3_sol else None) or (s3_q.get("subtopic") if s3_q else None)
+        s3_topic = (s3_sol.get("topic") if s3_sol else None) or (s3_q.get("topic") if s3_q else None)
+        s3_subject = (s3_sol.get("subject") if s3_sol else None) or (s3_q.get("subject") if s3_q else None)
 
-        # Question text
-        q_text = q_trans_map.get(r.question_id) or (q_model.text if q_model else "")
-        if not q_text and q_model:
-            q_text = f"Question {q_model.question_number_in_paper or index}"
+        subtopic_name = s3_subtopic or (sub_obj.name if sub_obj else None) or meta_subtopic_override or "Core Concepts"
+        topic_name = s3_topic or (top_obj.name if top_obj else None) or meta_topic_override or (subtopic_name if not sub_obj else "General Knowledge")
+        subject_name = s3_subject or (sbj_obj.name if sbj_obj else None) or meta_subject_override or "General Studies"
 
-        # Options resolution
-        q_opts = opts_by_qid.get(r.question_id, [])
+        # Question text (S3 -> DB translation -> Default)
+        s3_q_text = (s3_q.get("text") or s3_q.get("question_text") if s3_q else None) or (s3_sol.get("question_text") if s3_sol else None)
+        q_text = s3_q_text or q_trans_map.get(r.question_id) or f"Question {q_num}"
+
+        # Options resolution (S3 -> DB fallback)
         options_payload = []
         correct_option_id = None
         correct_option_label = "A"
 
-        for o in q_opts:
-            o_trans = opt_trans_map.get(o.id)
-            o_text = o_trans.option_text if o_trans else f"Option {o.option_label}"
-            o_dist_analysis = o_trans.distractor_analysis if o_trans else None
-            
-            if o.is_correct:
-                correct_option_id = str(o.id)
-                correct_option_label = o.option_label
+        s3_options = (s3_q.get("options") if s3_q else None) or (s3_sol.get("options") if s3_sol else None)
+        if s3_options and isinstance(s3_options, list) and len(s3_options) > 0:
+            for opt_idx, opt_raw in enumerate(s3_options):
+                lbl = str(opt_raw.get("option_label") or opt_raw.get("label") or chr(65 + opt_idx))
+                opt_id_str = str(opt_raw.get("option_id") or opt_raw.get("id") or f"opt-{q_num}-{lbl}")
+                is_corr = bool(opt_raw.get("is_correct", False))
+                c_score = float(opt_raw.get("closeness_score", 1.0 if is_corr else 0.25))
+                dist_ana = opt_raw.get("distractor_analysis")
+                opt_txt = str(opt_raw.get("text") or opt_raw.get("option_text") or f"Option {lbl}")
 
-            options_payload.append({
-                "option_id": str(o.id),
-                "option_label": o.option_label,
-                "text": o_text,
-                "is_correct": o.is_correct,
-                "closeness_score": float(o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.25)),
-                "distractor_analysis": o_dist_analysis,
-            })
+                if is_corr:
+                    correct_option_id = opt_id_str
+                    correct_option_label = lbl
 
-        # Explanations
+                options_payload.append({
+                    "option_id": opt_id_str,
+                    "option_label": lbl,
+                    "text": opt_txt,
+                    "is_correct": is_corr,
+                    "closeness_score": c_score,
+                    "distractor_analysis": dist_ana,
+                })
+        else:
+            q_opts = opts_by_qid.get(r.question_id, [])
+            for o in q_opts:
+                o_trans = opt_trans_map.get(o.id)
+                o_text = o_trans.option_text if o_trans else f"Option {o.option_label}"
+                o_dist_analysis = o_trans.distractor_analysis if o_trans else None
+                
+                if o.is_correct:
+                    correct_option_id = str(o.id)
+                    correct_option_label = o.option_label
+
+                options_payload.append({
+                    "option_id": str(o.id),
+                    "option_label": o.option_label,
+                    "text": o_text,
+                    "is_correct": o.is_correct,
+                    "closeness_score": float(o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.25)),
+                    "distractor_analysis": o_dist_analysis,
+                })
+
+        if not correct_option_id and s3_sol:
+            correct_option_id = str(s3_sol.get("correct_option_id") or "")
+            correct_option_label = str(s3_sol.get("correct_option_label") or "A")
+
+        # Explanations (S3 -> DB -> Default)
+        s3_expl = s3_sol.get("explanation") if (s3_sol and isinstance(s3_sol.get("explanation"), dict)) else None
         expl_record = expl_map.get(r.question_id)
-        if expl_record:
-            detailed_sol = expl_record.detailed_solution or expl_record.explanation_text or f"**Option ({correct_option_label}) is correct.**"
+
+        if s3_expl:
+            detailed_sol = s3_expl.get("detailed_solution") or s3_expl.get("detailed_text") or f"**Option ({correct_option_label}) is correct.**"
+            expl_dict = {
+                "core_concept": s3_expl.get("core_concept") or f"{topic_name} - {subtopic_name}",
+                "detailed_solution": detailed_sol,
+                "common_traps": s3_expl.get("common_traps") or [],
+                "key_takeaways": s3_expl.get("key_takeaways") or ([s3_expl.get("key_takeaway")] if s3_expl.get("key_takeaway") else [f"Key focus area: {subtopic_name}"]),
+            }
+        elif expl_record:
+            detailed_sol = expl_record.detailed_solution or f"**Option ({correct_option_label}) is correct.**"
             expl_dict = {
                 "core_concept": expl_record.core_concept or f"{topic_name} - {subtopic_name}",
                 "detailed_solution": detailed_sol,
                 "common_traps": expl_record.common_traps_json or [],
-                "key_takeaways": expl_record.key_takeaways_json or ([expl_record.key_takeaway] if expl_record.key_takeaway else []),
+                "key_takeaways": expl_record.key_takeaways_json or [f"Key focus area: {subtopic_name}"],
             }
         else:
             expl_dict = {
@@ -457,18 +606,40 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
         # Metadata (Blooms, Cognitive Skill, IRT)
         qm_record = meta_map.get(r.question_id)
-        blooms_val = (qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE"
-        cognitive_skill = qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning"
-        irt_params = {
-            "a": qm_record.irt_discrimination_a if qm_record and qm_record.irt_discrimination_a is not None else 1.50,
-            "b": qm_record.irt_difficulty_b if qm_record and qm_record.irt_difficulty_b is not None else 0.00,
-            "c": qm_record.irt_pseudo_guessing_c if qm_record and qm_record.irt_pseudo_guessing_c is not None else 0.25,
-        }
+        s3_blooms = s3_sol.get("blooms_level") if s3_sol else None
+        s3_cognitive = s3_sol.get("cognitive_skill") if s3_sol else None
+        s3_irt = s3_sol.get("irt_params") if (s3_sol and isinstance(s3_sol.get("irt_params"), dict)) else None
+        s3_diff = (s3_sol.get("difficulty") if s3_sol else None) or (s3_q.get("difficulty") if s3_q else None)
 
-        diff_val = (q_model.difficulty.value if hasattr(q_model.difficulty, "value") else str(q_model.difficulty)) if q_model else "MEDIUM"
+        blooms_val = s3_blooms or ((qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE")
+        cognitive_skill = s3_cognitive or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
 
-        # User Selected Label
-        user_sel_label = selected_opt.option_label if selected_opt else "Unattempted"
+        if s3_irt:
+            irt_params = {
+                "a": float(s3_irt.get("a", 1.50)),
+                "b": float(s3_irt.get("b", 0.00)),
+                "c": float(s3_irt.get("c", 0.25)),
+            }
+        else:
+            irt_params = {
+                "a": qm_record.irt_discrimination_a if qm_record and qm_record.irt_discrimination_a is not None else 1.50,
+                "b": qm_record.irt_difficulty_b if qm_record and qm_record.irt_difficulty_b is not None else 0.00,
+                "c": qm_record.irt_pseudo_guessing_c if qm_record and qm_record.irt_pseudo_guessing_c is not None else 0.25,
+            }
+
+        diff_val = s3_diff or ((q_model.difficulty.value if hasattr(q_model.difficulty, "value") else str(q_model.difficulty)) if q_model else "MEDIUM")
+
+        # Match User Selected Label
+        user_sel_label = "Unattempted"
+        if r.selected_option_id:
+            sel_str = str(r.selected_option_id)
+            matched_opt = next((o for o in options_payload if str(o.get("option_id")) == sel_str), None)
+            if matched_opt:
+                user_sel_label = matched_opt.get("option_label", "A")
+            elif selected_opt:
+                user_sel_label = selected_opt.option_label
+            else:
+                user_sel_label = "A"
 
         resp_item = {
             "question_id": str(r.question_id),
@@ -511,23 +682,14 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             "explanation": expl_dict,
         })
 
-    if is_practice_or_guest or not q_ids:
+    if is_practice_or_guest or not master_sol_doc or not master_sol_doc.get("questions"):
         solutions_data = {
             "exam_id": str(exam.id),
             "exam_code": exam.code,
             "questions": resolved_sol_questions,
         }
     else:
-        # Standard full exam attempt: load master solutions JSON with DB overlay
-        master_sol = await load_exam_solutions_data(exam, session, storage)
-        if master_sol and master_sol.get("questions"):
-            solutions_data = master_sol
-        else:
-            solutions_data = {
-                "exam_id": str(exam.id),
-                "exam_code": exam.code,
-                "questions": resolved_sol_questions,
-            }
+        solutions_data = master_sol_doc
 
     t_start = datetime.now(timezone.utc)
 

@@ -1022,9 +1022,9 @@ class ExamSessionService:
             )
             db_expl = expl_res.first()
             expl_dict = {
-                "detailed_text": db_expl.explanation_text if db_expl else "Standard solution explanation.",
-                "core_concept": db_expl.core_concept if db_expl else "",
-                "key_takeaway": db_expl.key_takeaway if db_expl else "",
+                "detailed_text": (db_expl.detailed_solution if (db_expl and db_expl.detailed_solution) else "Standard solution explanation."),
+                "core_concept": (db_expl.core_concept if (db_expl and db_expl.core_concept) else ""),
+                "key_takeaway": (db_expl.key_takeaways_json[0] if (db_expl and db_expl.key_takeaways_json) else ""),
             }
 
             distractor_map = {}

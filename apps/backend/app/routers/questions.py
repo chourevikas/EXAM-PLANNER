@@ -426,9 +426,9 @@ async def get_question_solution(
     cognitive_skill = q_meta.cognitive_skill if (q_meta and q_meta.cognitive_skill) else "Conceptual Reasoning"
     primary_concept_tag = q_meta.primary_concept_tag if (q_meta and q_meta.primary_concept_tag) else None
 
-    detailed_solution = (target_expl.detailed_solution or target_expl.explanation_text) if target_expl else (
+    detailed_solution = (target_expl.detailed_solution if (target_expl and target_expl.detailed_solution) else (
         f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates core conceptual mastery under standard syllabus guidelines."
-    )
+    ))
 
     sol_card = {
         "question_id": str(q.id),
@@ -451,7 +451,7 @@ async def get_question_solution(
             "core_concept": target_expl.core_concept if target_expl and target_expl.core_concept else "Core conceptual foundation",
             "detailed_solution": detailed_solution,
             "common_traps": target_expl.common_traps_json if (target_expl and target_expl.common_traps_json) else [],
-            "key_takeaways": target_expl.key_takeaways_json if (target_expl and target_expl.key_takeaways_json) else ([target_expl.key_takeaway] if target_expl and target_expl.key_takeaway else []),
+            "key_takeaways": target_expl.key_takeaways_json if (target_expl and target_expl.key_takeaways_json) else [],
         },
         "distractor_scores": distractor_scores,
         "source": "DATABASE_FAST_BATCH",
