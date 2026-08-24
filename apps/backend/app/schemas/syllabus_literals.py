@@ -935,7 +935,7 @@ def verify_syllabus_node(
     return c_subj, c_top, c_subtop, False, issue_msg
 
 
-def get_complete_master_syllabus() -> Dict[str, Any]:
+def get_complete_master_syllabus() -> Dict[str, any]:
     """Builds and returns the complete structured syllabus hierarchy with metadata and counts."""
     subjects_list = []
     topics_list = []
