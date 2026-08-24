@@ -382,7 +382,10 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
       <AuthModal
         isOpen={authModalOpen}
         mode={authMode}
-        onClose={() => setAuthModalOpen(false)}
+        onClose={() => {
+          setAuthModalOpen(false);
+          onClose();
+        }}
         onSwitchMode={(m) => setAuthMode(m)}
       />
     </>
