@@ -114,7 +114,7 @@ export function AuthModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        zIndex: 1000000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
