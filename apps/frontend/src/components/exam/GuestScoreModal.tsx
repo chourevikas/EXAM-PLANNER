@@ -42,12 +42,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
   const handlePrimaryAction = () => {
     if (isLoggedIn) {
-      const targetAttemptId = scoreData.attemptId || sessionStorage.getItem('latest_synced_attempt_id');
-      if (targetAttemptId) {
-        navigate(`/analytics?attemptId=${targetAttemptId}`);
-      } else {
-        navigate('/analytics');
-      }
+      navigate('/dashboard');
     } else {
       handleOpenAuth('signup');
     }

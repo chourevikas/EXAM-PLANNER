@@ -37,13 +37,7 @@ export function AuthModal({
   React.useEffect(() => {
     if (isSignedIn && isOpen) {
       onClose();
-      const syncedId = sessionStorage.getItem('latest_synced_attempt_id');
-      if (syncedId) {
-        sessionStorage.removeItem('latest_synced_attempt_id');
-        navigate(`/analytics?attemptId=${syncedId}`);
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     }
   }, [isSignedIn, isOpen, navigate, onClose]);
 
@@ -59,16 +53,10 @@ export function AuthModal({
     try {
       if (mode === 'login') {
         const res = await loginUser(email, password);
-        setSuccessMsg('Signed in successfully! Loading diagnostic analysis...');
+        setSuccessMsg('Signed in successfully! Loading your dashboard...');
         setTimeout(() => {
           onClose();
-          const syncedId = sessionStorage.getItem('latest_synced_attempt_id');
-          if (syncedId) {
-            sessionStorage.removeItem('latest_synced_attempt_id');
-            navigate(`/analytics?attemptId=${syncedId}`);
-          } else {
-            navigate(res.redirect_url || '/dashboard');
-          }
+          navigate('/dashboard');
         }, 800);
       } else {
         const res = await registerUser(
@@ -81,16 +69,10 @@ export function AuthModal({
         if (res.is_pending_approval) {
           setShowApprovalPending(true);
         } else {
-          setSuccessMsg('🎉 Account created! Generating your psychometric report...');
+          setSuccessMsg('🎉 Account created! Opening your dashboard...');
           setTimeout(() => {
             onClose();
-            const syncedId = sessionStorage.getItem('latest_synced_attempt_id');
-            if (syncedId) {
-              sessionStorage.removeItem('latest_synced_attempt_id');
-              navigate(`/analytics?attemptId=${syncedId}`);
-            } else {
-              navigate(res.redirect_url || '/dashboard');
-            }
+            navigate('/dashboard');
           }, 1000);
         }
       }
