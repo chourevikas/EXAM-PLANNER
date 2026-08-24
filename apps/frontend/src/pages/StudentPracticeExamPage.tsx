@@ -9,17 +9,22 @@ import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
+import { fetchMasterSyllabus, verifySyllabusNode } from '../services/examService';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // URL Params
-  const gExam = searchParams.get('exam') || 'UPSC CSE';
-  const gYear = searchParams.get('year') || 'Target 2026';
-  const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
-  const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+  const gExam = searchParams.get('exam') || '';
+  const gYear = searchParams.get('year') || '';
+  const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
+  const gTopic = searchParams.get('topic') || '';
+  const gSubtopic = searchParams.get('subtopic') || '';
   const gCount = parseInt(searchParams.get('count') || '10', 10);
+
+  // Master Syllabus Taxonomy state fetched directly from /api/v1/syllabus
+  const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -50,7 +55,7 @@ export function StudentPracticeExamPage() {
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -87,11 +92,19 @@ export function StudentPracticeExamPage() {
     return map[idx] || `OPT${idx + 1}`;
   };
 
-  // Load Real Practice Questions from Database
+  // Load Real Practice Questions from Database using Live Syllabus APIs
   useEffect(() => {
     async function loadPracticeQuestions() {
       setIsLoading(true);
       const fetchedMap = new Map<string, any>();
+
+      // 1. Fetch Master Syllabus Tree (/api/v1/syllabus)
+      try {
+        const sData = await fetchMasterSyllabus();
+        if (sData) setMasterSyllabus(sData);
+      } catch (err) {
+        console.warn('Practice exam fetchMasterSyllabus warning:', err);
+      }
 
       const formatQuestion = (q: any, idx: number): QuestionOut => {
         const rawOpts = q.options || [];
@@ -109,7 +122,7 @@ export function StudentPracticeExamPage() {
           question_number: idx + 1,
           text: q.question_text || q.text || '',
           options: optionsList,
-          section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
+          section_code: q.subtopic_name || q.topic_name || q.subject_name || gSubject || '',
           topic_name: q.topic_name || gTopic,
           subtopic_name: q.subtopic_name || gSubtopic,
           difficulty: q.difficulty || 'MEDIUM',
@@ -120,22 +133,44 @@ export function StudentPracticeExamPage() {
         } as any;
       };
 
-      const params = new URLSearchParams({ limit: '100', include_solutions: 'true' });
-      const cleanSub = gSubtopic && gSubtopic !== 'All Subtopics' && gSubtopic !== 'Choose Subtopic' ? gSubtopic.trim() : '';
-      const cleanTop = gTopic && gTopic !== 'All Topics' && gTopic !== 'Choose Topic' ? gTopic.trim() : '';
-
-      if (cleanSub) {
-        params.append('subtopic_name', cleanSub);
-      } else if (cleanTop) {
-        params.append('topic_name', cleanTop);
-      }
-
-      if (gExam && gExam.toLowerCase().includes('upsc')) {
-        params.append('exam_name', 'upsc');
-      }
+      // 2. Validate / Normalize taxonomy node via backend syllabus verification (/api/v1/syllabus/verify)
+      let reqSubject = gSubject !== 'All Subjects' ? gSubject : '';
+      let reqTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic : '';
+      let reqSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '';
 
       try {
-        const res = await fetch(`/api/v1/questions?${params.toString()}`);
+        const verified = await verifySyllabusNode({
+          subject: reqSubject,
+          topic: reqTopic,
+          subtopic: reqSubtopic,
+        });
+        if (verified && verified.is_valid) {
+          if (verified.resolved_node?.subject) reqSubject = verified.resolved_node.subject;
+          if (verified.resolved_node?.topic) reqTopic = verified.resolved_node.topic;
+          if (verified.resolved_node?.subtopic) reqSubtopic = verified.resolved_node.subtopic;
+        }
+      } catch (err) {
+        console.warn('Practice exam verifySyllabusNode warning:', err);
+      }
+
+
+      // Extract numeric exam year if present
+      let numericYear: string | null = null;
+      if (gYear) {
+        const match = gYear.match(/\b(19\d\d|20\d\d)\b/);
+        if (match) numericYear = match[1];
+      }
+
+      // Fetch questions helper
+      const fetchQuestionsByFilter = async (filterParams: Record<string, string>) => {
+        const query = new URLSearchParams({ limit: '100', include_solutions: 'true', ...filterParams });
+        if (gExam && gExam.toLowerCase().includes('upsc')) {
+          query.append('exam_name', 'upsc');
+        }
+        if (numericYear) {
+          query.append('exam_year', numericYear);
+        }
+        const res = await fetch(`/api/v1/questions?${query.toString()}`);
         if (res.ok) {
           const data = await res.json();
           (data.items || []).forEach((item: any) => {
@@ -144,13 +179,34 @@ export function StudentPracticeExamPage() {
             }
           });
         }
+      };
+
+      try {
+        // Step A: Primary query with narrowest selection (Subtopic -> Topic -> Subject)
+        const primaryFilters: Record<string, string> = {};
+        if (reqSubtopic) primaryFilters.subtopic_name = reqSubtopic;
+        else if (reqTopic) primaryFilters.topic_name = reqTopic;
+        else if (reqSubject) primaryFilters.subject_name = reqSubject;
+
+        await fetchQuestionsByFilter(primaryFilters);
+
+        // Step B: Fallback to Topic or Subject if primary query yielded fewer questions than gCount
+        if (fetchedMap.size < gCount && reqSubtopic && reqTopic) {
+          await fetchQuestionsByFilter({ topic_name: reqTopic });
+        }
+        if (fetchedMap.size < gCount && reqSubject) {
+          await fetchQuestionsByFilter({ subject_name: reqSubject });
+        }
+        if (fetchedMap.size < gCount) {
+          await fetchQuestionsByFilter({});
+        }
       } catch (err) {
-        console.warn('DB practice questions fetch warning:', err);
+        console.warn('Practice questions fetch warning:', err);
       }
 
       let fetchedList = Array.from(fetchedMap.values());
       
-      // Cap at user-selected question count if more are returned from DB
+      // Cap at user-selected question count
       if (fetchedList.length > gCount) {
         fetchedList = fetchedList.slice(0, gCount);
       }
@@ -160,6 +216,7 @@ export function StudentPracticeExamPage() {
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
       setActiveQuestion(questionsList.length > 0 ? questionsList[0] : null);
+
 
       // Restore session state from sessionStorage
       let restoredResponses: Record<string, any> = {};

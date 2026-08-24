@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AdminApprovalRequest, UserStatus } from '../../types/auth';
+import { Search, RefreshCw, UserCheck, UserX, Building, Mail, Clock } from 'lucide-react';
 
 interface ActiveAdminsTabProps {
   admins: AdminApprovalRequest[];
@@ -32,9 +33,10 @@ export function ActiveAdminsTab({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 20,
+        borderRadius: 22,
         padding: 32,
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
       <div
@@ -42,122 +44,205 @@ export function ActiveAdminsTab({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 24,
+          marginBottom: 28,
           flexWrap: 'wrap',
           gap: 16,
         }}
       >
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-            Active & Approved Admins
-          </h2>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
+              Active & Approved Admins
+            </h2>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                padding: '3px 10px',
+                borderRadius: 99,
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              {admins.length} Total
+            </span>
+          </div>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4, margin: '4px 0 0 0' }}>
             Overview of approved organization leaders and content administrators.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="Search by name, email, or coaching..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Search Box */}
+          <div
             style={{
-              padding: '10px 16px',
-              borderRadius: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'var(--bg-body)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 10,
+              padding: '8px 14px',
+              width: 260,
+            }}
+          >
+            <Search size={14} color="var(--text-muted)" />
+            <input
+              type="text"
+              placeholder="Search name, email, org..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontSize: 13,
+                color: 'var(--text-main)',
+                fontFamily: 'Inter, sans-serif',
+                width: '100%',
+              }}
+            />
+          </div>
+
+          <button
+            onClick={onRefresh}
+            style={{
+              padding: '9px 18px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 10,
               border: '1px solid var(--border-color)',
               background: 'var(--bg-body)',
               color: 'var(--text-main)',
-              fontSize: 13,
-              outline: 'none',
-              width: 260,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s ease',
             }}
-          />
-          <button onClick={onRefresh} className="btn btn-ghost" style={{ padding: '9px 16px', fontSize: 13 }}>
-            🔄 Refresh
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
           Loading active admins...
         </div>
       ) : filteredAdmins.length === 0 ? (
         <div
           style={{
-            padding: 40,
+            padding: '48px 24px',
             textAlign: 'center',
-            background: 'var(--bg-secondary)',
-            borderRadius: 16,
+            background: 'var(--bg-body)',
+            borderRadius: 18,
             border: '1px solid var(--border-color)',
           }}
         >
           <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-            No admin users found matching your search.
+            No admin accounts found matching your search term.
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 14, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 16, border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
-              <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <th style={{ padding: '14px 18px' }}>Admin Name</th>
-                <th style={{ padding: '14px 18px' }}>Organization / Dept</th>
-                <th style={{ padding: '14px 18px' }}>Status</th>
-                <th style={{ padding: '14px 18px' }}>Joined Date</th>
-                <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
+              <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <th style={{ padding: '16px 20px' }}>Administrator</th>
+                <th style={{ padding: '16px 20px' }}>Organization / Department</th>
+                <th style={{ padding: '16px 20px' }}>Account Status</th>
+                <th style={{ padding: '16px 20px' }}>Joined Date</th>
+                <th style={{ padding: '16px 20px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredAdmins.map((admin) => {
                 const isSuspended = admin.status === UserStatus.SUSPENDED;
                 return (
-                  <tr key={admin.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '16px 18px' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{admin.full_name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--royal)', fontWeight: 600 }}>{admin.email}</div>
+                  <tr key={admin.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
+                    <td style={{ padding: '18px 20px' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 15 }}>{admin.full_name}</div>
+                      <div style={{ fontSize: 12.5, color: '#2563eb', fontWeight: 600, marginTop: 2 }}>{admin.email}</div>
                     </td>
-                    <td style={{ padding: '16px 18px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{admin.organization_name || 'Individual'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{admin.department || 'N/A'}</div>
+                    <td style={{ padding: '18px 20px' }}>
+                      {admin.organization_name ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 13.5 }}>{admin.organization_name}</div>
+                          {admin.department && (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{admin.department}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12.5, color: 'var(--text-subtle)' }}>Individual Admin</span>
+                      )}
                     </td>
-                    <td style={{ padding: '16px 18px' }}>
+                    <td style={{ padding: '18px 20px' }}>
                       <span
                         style={{
                           fontSize: 11,
                           fontWeight: 700,
-                          padding: '3px 10px',
+                          padding: '4px 12px',
                           borderRadius: 99,
-                          color: isSuspended ? '#EF4444' : 'var(--emerald)',
-                          background: isSuspended ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                          border: `1px solid ${isSuspended ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+                          color: isSuspended ? '#ef4444' : '#10b981',
+                          background: isSuspended ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          border: `1px solid ${isSuspended ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        {admin.status}
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: isSuspended ? '#ef4444' : '#10b981' }} />
+                        {isSuspended ? 'SUSPENDED' : 'ACTIVE'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 18px', color: 'var(--text-muted)', fontSize: 13 }}>
+                    <td style={{ padding: '18px 20px', fontSize: 13, color: 'var(--text-muted)' }}>
                       {new Date(admin.created_at).toLocaleDateString()}
                     </td>
-                    <td style={{ padding: '16px 18px', textAlign: 'right' }}>
+                    <td style={{ padding: '18px 20px', textAlign: 'right' }}>
                       {isSuspended ? (
                         <button
                           onClick={() => onReactivate(admin.id, admin.full_name)}
                           disabled={processingId === admin.id}
-                          className="btn btn-ghost"
-                          style={{ padding: '6px 14px', fontSize: 12, color: 'var(--emerald)', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            color: '#10b981',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
                         >
-                          Reactivate
+                          <UserCheck size={14} />
+                          <span>Reactivate</span>
                         </button>
                       ) : (
                         <button
                           onClick={() => onSuspend(admin.id, admin.full_name)}
                           disabled={processingId === admin.id}
-                          className="btn btn-ghost"
-                          style={{ padding: '6px 14px', fontSize: 12, color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                          style={{
+                            padding: '7px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            color: '#ef4444',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
                         >
-                          Suspend
+                          <UserX size={14} />
+                          <span>Suspend</span>
                         </button>
                       )}
                     </td>

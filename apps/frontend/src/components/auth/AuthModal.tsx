@@ -56,7 +56,7 @@ export function AuthModal({
         setSuccessMsg('Signed in successfully! Loading your dashboard...');
         setTimeout(() => {
           onClose();
-          navigate('/dashboard');
+          navigate(res.redirect_url || '/dashboard');
         }, 800);
       } else {
         const res = await registerUser(
@@ -72,7 +72,7 @@ export function AuthModal({
           setSuccessMsg('🎉 Account created! Opening your dashboard...');
           setTimeout(() => {
             onClose();
-            navigate('/dashboard');
+            navigate(res.redirect_url || '/dashboard');
           }, 1000);
         }
       }

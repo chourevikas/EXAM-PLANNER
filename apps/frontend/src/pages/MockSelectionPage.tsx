@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listExams, listCandidateAttempts, formatCanonicalExamTitle, fetchMasterSyllabus } from '../services/examService';
+import { listExams, listCandidateAttempts, formatCanonicalExamTitle, fetchMasterSyllabus, fetchExamsByYear } from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   CheckCircle2,
@@ -35,45 +35,54 @@ export function MockSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
 
-  // Dynamic taxonomy state fetched directly from DB in real time
-  const [topicsList, setTopicsList] = useState<string[]>([]);
-  const [hierarchyMap, setHierarchyMap] = useState<Record<string, string[]>>({});
+  // Dynamic 3-level taxonomy state fetched directly from DB / Syllabus API (/api/v1/syllabus)
+  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
+  const [subjectsList, setSubjectsList] = useState<string[]>([]);
+  const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
   // Form selections
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
-  const [selectedTopic, setSelectedTopic] = useState<string>('');
-  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
+  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('All Subtopics (Entire Topic)');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
-  // Fetch Taxonomy (Topics & Subtopics) directly from Master Syllabus API (/api/v1/syllabus)
+  // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
   useEffect(() => {
     async function loadDynamicTaxonomy() {
       setIsTaxonomyLoading(true);
       try {
         const taxData = await fetchMasterSyllabus();
         if (taxData) {
-          if (taxData.topics_list && taxData.topics_list.length > 0) {
-            const cleanTopics = taxData.topics_list.filter((t: string) => t !== 'All Topics' && t.trim() !== '');
-            if (cleanTopics.length > 0) {
-              setTopicsList(cleanTopics);
+          if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
+            setMasterSubjects(taxData.subjects);
+          }
+          if (taxData.subjects_list && Array.isArray(taxData.subjects_list) && taxData.subjects_list.length > 0) {
+            const cleanSubs = taxData.subjects_list.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+            if (cleanSubs.length > 0) {
+              setSubjectsList(cleanSubs);
+              setSelectedSubject((prev) => (prev && cleanSubs.includes(prev) ? prev : cleanSubs[0]));
             }
           }
-          if (taxData.flat_hierarchy) {
-            setHierarchyMap(taxData.flat_hierarchy);
-          } else if (taxData.hierarchy) {
-            // Flatten Subject -> Topic -> Subtopics map into Topic -> Subtopics map
-            const flatMap: Record<string, string[]> = {};
-            Object.values(taxData.hierarchy).forEach((topicObj: any) => {
-              if (topicObj && typeof topicObj === 'object') {
-                Object.assign(flatMap, topicObj);
-              }
-            });
-            setHierarchyMap(flatMap);
+          if (taxData.hierarchy && typeof taxData.hierarchy === 'object') {
+            setThreeLevelHierarchy(taxData.hierarchy);
           }
         }
+
+        const yearsData = await fetchExamsByYear();
+        if (yearsData && Array.isArray(yearsData.years) && yearsData.years.length > 0) {
+          const fetchedYears = yearsData.years.map((y: number) => `${y} PYQs`);
+          const minYear = Math.min(...yearsData.years);
+          const maxYear = Math.max(...yearsData.years);
+          const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+          setYearOptions(yearsArray);
+          setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
+        }
       } catch (err) {
-        console.warn('Taxonomy master syllabus fetch warning:', err);
+        console.warn('Taxonomy / Exam years fetch warning:', err);
       } finally {
         setIsTaxonomyLoading(false);
       }
@@ -82,29 +91,59 @@ export function MockSelectionPage() {
     loadDynamicTaxonomy();
   }, []);
 
-  // Compute available subtopics dynamically from fetched DB hierarchy
-  const availableSubtopics = useMemo(() => {
-    if (!selectedTopic) {
-      const allSubs = new Set<string>();
-      Object.values(hierarchyMap).forEach((subs) => {
-        if (Array.isArray(subs)) {
-          subs.forEach((s) => {
-            if (s !== 'All Subtopics' && s.trim() !== '') {
-              allSubs.add(s);
-            }
-          });
-        }
-      });
-      return Array.from(allSubs).sort();
+  // Compute available topics for the chosen subject directly from DB taxonomy API
+  const availableTopics = useMemo(() => {
+    const defaultList = ['All Topics (Entire Subject)'];
+    if (!selectedSubject) return defaultList;
+
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics) && currentSubj.topics.length > 0) {
+      const topicNames = currentSubj.topics.map((t: any) => t.name).filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
+      if (topicNames.length > 0) return [...defaultList, ...topicNames];
     }
 
-    const rawSubs = hierarchyMap[selectedTopic];
-    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
-      const cleanSubs = rawSubs.filter((s) => s !== 'All Subtopics' && s.trim() !== '');
-      return cleanSubs;
+    const topicMap = threeLevelHierarchy[selectedSubject];
+    if (topicMap && typeof topicMap === 'object') {
+      const keys = Object.keys(topicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
+      if (keys.length > 0) return [...defaultList, ...keys];
     }
-    return [];
-  }, [selectedTopic, hierarchyMap]);
+
+    return defaultList;
+  }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
+
+  // Compute available subtopics for the chosen subject & topic directly from DB taxonomy API
+  const availableSubtopics = useMemo(() => {
+    const defaultList = ['All Subtopics (Entire Topic)'];
+    if (!selectedSubject || !selectedTopic || selectedTopic.startsWith('All Topics')) {
+      return defaultList;
+    }
+
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics)) {
+      const currentTopic = currentSubj.topics.find(
+        (t: any) => t.name === selectedTopic || t.name.toLowerCase().includes(selectedTopic.toLowerCase())
+      );
+      if (currentTopic && currentTopic.subtopics && Array.isArray(currentTopic.subtopics) && currentTopic.subtopics.length > 0) {
+        const subtopicNames = currentTopic.subtopics
+          .map((st: any) => (typeof st === 'string' ? st : st.name))
+          .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Subtopics'));
+        if (subtopicNames.length > 0) return [...defaultList, ...subtopicNames];
+      }
+    }
+
+    const rawSubs = threeLevelHierarchy[selectedSubject]?.[selectedTopic];
+    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
+      const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
+      if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
+    }
+
+    return defaultList;
+  }, [selectedSubject, selectedTopic, masterSubjects, threeLevelHierarchy]);
+
 
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
@@ -149,15 +188,6 @@ export function MockSelectionPage() {
               scoreText = `${completedAttempt.total_score || 0} / ${completedAttempt.max_possible_score || 200}`;
             }
 
-            // Fallback status assignment for demo visual alignment if no attempts exist
-            if (!inProgressAttempt && !completedAttempt && index === 0) {
-              status = 'IN_PROGRESS';
-              progressPercent = 65;
-            } else if (!inProgressAttempt && !completedAttempt && index === 2) {
-              status = 'COMPLETED';
-              scoreText = '0 / 200';
-            }
-
             return {
               id: e.id,
               title: formatCanonicalExamTitle(e),
@@ -165,45 +195,15 @@ export function MockSelectionPage() {
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
-              completedAttemptId: completedAttempt?.attempt_id || (index === 2 ? 'demo-attempt-2' : undefined),
-              inProgressAttemptId: inProgressAttempt?.attempt_id || (index === 0 ? 'demo-attempt-0' : undefined),
+              completedAttemptId: completedAttempt?.attempt_id,
+              inProgressAttemptId: inProgressAttempt?.attempt_id,
               scoreText,
               progressPercent,
             };
           });
           setMocksList(mapped);
         } else {
-          // Default fallback list to match screenshot exactly if backend returns empty list
-          setMocksList([
-            {
-              id: 'mock-2023-b',
-              title: 'UPSC (2023) - Set B',
-              category: 'PRELIMS',
-              totalQuestions: 100,
-              duration: '120 mins',
-              status: 'IN_PROGRESS',
-              inProgressAttemptId: 'attempt-2023-b',
-              progressPercent: 65,
-            },
-            {
-              id: 'mock-2020-c',
-              title: 'UPSC (2020) - Set C',
-              category: 'PRELIMS',
-              totalQuestions: 100,
-              duration: '120 mins',
-              status: 'NOT_STARTED',
-            },
-            {
-              id: 'mock-2019-a',
-              title: 'UPSC (2019) - Set A',
-              category: 'PRELIMS',
-              totalQuestions: 100,
-              duration: '120 mins',
-              status: 'COMPLETED',
-              completedAttemptId: 'attempt-2019-a',
-              scoreText: '0 / 200',
-            },
-          ]);
+          setMocksList([]);
         }
       } catch (err) {
         console.warn('Failed to load real-time mocks & attempts:', err);
@@ -217,12 +217,15 @@ export function MockSelectionPage() {
 
   const handleStartPracticeTest = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalTopic = selectedTopic || (topicsList.length > 0 ? topicsList[0] : 'Indian Polity & Governance');
-    const finalSubtopic = selectedSubtopic || (availableSubtopics.length > 0 ? availableSubtopics[0] : 'Fundamental Rights');
+    const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : '');
+    const finalTopic = selectedTopic || 'All Topics (Entire Subject)';
+    const finalSubtopic = selectedSubtopic || 'All Subtopics (Entire Topic)';
+    const finalYear = selectedYear || (yearOptions.length > 0 ? yearOptions[0] : '');
 
     const queryParams = new URLSearchParams({
       exam: selectedExam,
-      year: 'Target 2026',
+      year: finalYear,
+      subject: finalSubject,
       topic: finalTopic,
       subtopic: finalSubtopic,
       count: questionCount.toString(),
@@ -230,6 +233,7 @@ export function MockSelectionPage() {
 
     navigate(`/practice-exam?${queryParams.toString()}`);
   };
+
 
   return (
     <StudentLayout pageTitle="Practice Tests">
@@ -357,13 +361,13 @@ export function MockSelectionPage() {
               Instant Practice Test Generator
             </h2>
             <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
-              Select your target subject and topics to launch a custom practice test.
+              Select your target subject, topic, and subtopic to launch a custom practice test.
             </p>
           </div>
         </div>
 
         <form onSubmit={handleStartPracticeTest}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Target Exam */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
@@ -389,16 +393,44 @@ export function MockSelectionPage() {
               </select>
             </div>
 
-            {/* Topic / Subject */}
+            {/* Target / PYQ Year */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
-                Topic / Subject
+                Target / PYQ Year
               </label>
               <select
-                value={selectedTopic}
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Subject
+              </label>
+              <select
+                value={selectedSubject}
                 onChange={(e) => {
-                  setSelectedTopic(e.target.value);
-                  setSelectedSubtopic('');
+                  setSelectedSubject(e.target.value);
+                  setSelectedTopic('All Topics (Entire Subject)');
+                  setSelectedSubtopic('All Subtopics (Entire Topic)');
                 }}
                 style={{
                   width: '100%',
@@ -413,8 +445,37 @@ export function MockSelectionPage() {
                   outline: 'none',
                 }}
               >
-                <option value="">{isTaxonomyLoading ? 'Loading Topics...' : 'Choose Topic / Subject'}</option>
-                {topicsList.map((t) => (
+                {subjectsList.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Topic */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Topic
+              </label>
+              <select
+                value={selectedTopic}
+                onChange={(e) => {
+                  setSelectedTopic(e.target.value);
+                  setSelectedSubtopic('All Subtopics (Entire Topic)');
+                }}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {availableTopics.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -441,13 +502,13 @@ export function MockSelectionPage() {
                   outline: 'none',
                 }}
               >
-                <option value="">{isTaxonomyLoading ? 'Loading Subtopics...' : 'Choose Subtopic'}</option>
                 {availableSubtopics.map((sub) => (
                   <option key={sub} value={sub}>{sub}</option>
                 ))}
               </select>
             </div>
           </div>
+
 
           {/* Question Count and CTA Button Row */}
           <div style={{

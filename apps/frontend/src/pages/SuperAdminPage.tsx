@@ -23,6 +23,8 @@ import { RejectionModal } from '../components/superadmin/RejectionModal';
 export function SuperAdminPage() {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('pending');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -39,6 +41,24 @@ export function SuperAdminPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [rejectionTarget, setRejectionTarget] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleToggleSidebar = () => {
+    if (isMobile) {
+      setMobileOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => !prev);
+    }
+  };
 
   const loadAllData = async () => {
     loadStats();
@@ -99,70 +119,65 @@ export function SuperAdminPage() {
     loadAllData();
   }, []);
 
-  const showToast = (text: string, isError: boolean = false) => {
+  const showToast = (text: string, isError = false) => {
     setToastMessage({ text, isError });
-    setTimeout(() => {
-      setToastMessage((prev) => (prev?.text === text ? null : prev));
-    }, 4000);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleApprove = async (userId: string, name: string) => {
-    setProcessingId(userId);
+  const handleApprove = async (id: string, name: string) => {
+    setProcessingId(id);
     try {
-      await approveAdminRequest(userId);
-      showToast(`Success! Approved Admin account for ${name}.`);
-      setPendingRequests((prev) => prev.filter((r) => r.id !== userId));
+      await approveAdminRequest(id);
+      showToast(`Successfully approved admin access for ${name}`);
       loadAllData();
     } catch (err: any) {
-      showToast(err.message || 'Approval failed.', true);
+      showToast(err.message || 'Failed to approve admin', true);
     } finally {
       setProcessingId(null);
     }
   };
 
-  const openRejectionModal = (userId: string, name: string) => {
-    setRejectionTarget({ id: userId, name });
+  const handleOpenRejection = (id: string, name: string) => {
+    setRejectionTarget({ id, name });
   };
 
   const handleConfirmRejection = async (reason: string) => {
     if (!rejectionTarget) return;
     const { id, name } = rejectionTarget;
-    setRejectionTarget(null);
     setProcessingId(id);
-
     try {
       await rejectAdminRequest(id, reason);
-      showToast(`Admin request for ${name} rejected.`);
-      setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+      showToast(`Rejected request for ${name}`);
+      setRejectionTarget(null);
       loadAllData();
     } catch (err: any) {
-      showToast(err.message || 'Rejection failed.', true);
+      showToast(err.message || 'Failed to reject request', true);
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleSuspend = async (userId: string, name: string) => {
-    setProcessingId(userId);
+  const handleSuspend = async (id: string, name: string) => {
+    setProcessingId(id);
     try {
-      await suspendAdmin(userId);
-      showToast(`Suspended Admin access for ${name}.`, true);
-      loadActive();
+      await suspendAdmin(id);
+      showToast(`Suspended admin account: ${name}`);
+      loadAllData();
     } catch (err: any) {
-      showToast(err.message || 'Suspend failed.', true);
+      showToast(err.message || 'Failed to suspend admin', true);
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReactivate = async (userId: string, name: string) => {
-    setProcessingId(userId);
+  const handleReactivate = async (id: string, name: string) => {
+    setProcessingId(id);
     try {
-      await reactivateAdmin(userId);
-      showToast(`Reactivated Admin access for ${name}.`);
-      loadActive();
+      await reactivateAdmin(id);
+      showToast(`Reactivated admin account: ${name}`);
+      loadAllData();
     } catch (err: any) {
-      showToast(err.message || 'Reactivation failed.', true);
+      showToast(err.message || 'Failed to reactivate admin', true);
     } finally {
       setProcessingId(null);
     }
@@ -177,7 +192,7 @@ export function SuperAdminPage() {
             loading={pendingLoading}
             processingId={processingId}
             onApprove={handleApprove}
-            onReject={openRejectionModal}
+            onReject={handleOpenRejection}
             onRefresh={loadPending}
           />
         );
@@ -206,84 +221,139 @@ export function SuperAdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-body)' }}>
-      {/* Figma Collapsible Super Admin Sidebar */}
-      <SuperAdminSidebar
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
+      {/* Full-Width Top Header (fixed at top: 0) */}
+      <SuperAdminTopNav
         activeTab={activeTab}
         onNavigate={setActiveTab}
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((p) => !p)}
-        pendingCount={pendingRequests.length}
+        onToggleSidebar={handleToggleSidebar}
       />
 
-      {/* Main Area with TopNav */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <SuperAdminTopNav activeTab={activeTab} onNavigate={setActiveTab} />
-        
-        <main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg-body)' }}>
-          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-            {/* Executive Header Banner */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #0f1e3c 0%, #1e293b 100%)',
-                borderRadius: 20,
-                padding: 32,
-                color: '#fff',
-                marginBottom: 28,
-                boxShadow: 'var(--shadow-md)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 20,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#f97316', textTransform: 'uppercase', letterSpacing: '0.8px', fontFamily: 'var(--font-mono)' }}>
-                  👑 EXECUTIVE CONTROL CENTER
-                </div>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, margin: '6px 0 0 0', letterSpacing: '-0.5px' }}>
-                  Super Admin Control Center
-                </h1>
-                <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 6, maxWidth: 650 }}>
-                  Top-level organization management, pending admin approvals, user status controls, and security audit logs.
-                </p>
-              </div>
-            </div>
+      {/* Main Container below Top Header (marginTop: 60px) */}
+      <div style={{ display: 'flex', flex: 1, marginTop: 60 }}>
+        {/* Sidebar Navigation (fixed at top: 60px joining header) */}
+        <SuperAdminSidebar
+          activeTab={activeTab}
+          onNavigate={(tab) => {
+            setActiveTab(tab);
+            if (isMobile) setMobileOpen(false);
+          }}
+          collapsed={sidebarCollapsed}
+          onToggle={handleToggleSidebar}
+          pendingCount={pendingRequests.length}
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
 
-            {/* Toast Banner */}
-            {toastMessage && (
+        {/* Main Content Area */}
+        <div
+          style={{
+            flex: 1,
+            marginLeft: isMobile ? 0 : (sidebarCollapsed ? 68 : 240),
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+            transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            width: '100%',
+          }}
+        >
+          <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '18px 20px' : '28px 36px', boxSizing: 'border-box' }}>
+            <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+              {/* Executive Header Banner */}
               <div
                 style={{
-                  padding: '14px 18px',
-                  borderRadius: 14,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  marginBottom: 24,
-                  background: toastMessage.isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                  color: toastMessage.isError ? '#ef4444' : '#10b981',
-                  border: `1px solid ${toastMessage.isError ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+                  background: 'linear-gradient(135deg, #0A1128 0%, #0F1D38 40%, #162B4E 75%, #1F3D6E 100%)',
+                  borderRadius: 24,
+                  padding: '36px 40px',
+                  color: '#ffffff',
+                  marginBottom: 32,
+                  boxShadow: '0 20px 45px -15px rgba(10, 17, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
                   display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: 10,
-                  boxShadow: 'var(--shadow-sm)',
+                  flexWrap: 'wrap',
+                  gap: 20,
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <span>{toastMessage.isError ? '⚠️' : '✅'}</span>
-                <span>{toastMessage.text}</span>
+                {/* Decorative Background Lighting */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -60,
+                    right: -60,
+                    width: 300,
+                    height: 300,
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0) 70%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: '#fdba74',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.12em',
+                      padding: '4px 12px',
+                      borderRadius: 99,
+                      background: 'rgba(249, 115, 22, 0.15)',
+                      border: '1px solid rgba(249, 115, 22, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      marginBottom: 12,
+                    }}
+                  >
+                    👑 EXECUTIVE CONTROL CENTER
+                  </div>
+                  <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+                    Super Admin Portal
+                  </h1>
+                  <p style={{ fontSize: 14.5, color: 'rgba(255, 255, 255, 0.75)', marginTop: 8, maxWidth: 680, lineHeight: 1.5, margin: '8px 0 0 0' }}>
+                    Central executive console for managing institutional admin access, monitoring platform health, and reviewing security audit records.
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* KPI Executive Metric Cards */}
-            <SuperAdminStats stats={stats} loading={statsLoading} />
+              {/* Toast Banner */}
+              {toastMessage && (
+                <div
+                  style={{
+                    padding: '14px 20px',
+                    borderRadius: 14,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    marginBottom: 24,
+                    background: toastMessage.isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    color: toastMessage.isError ? '#ef4444' : '#10b981',
+                    border: `1px solid ${toastMessage.isError ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <span>{toastMessage.isError ? '⚠️' : '✅'}</span>
+                  <span>{toastMessage.text}</span>
+                </div>
+              )}
 
-            {/* Horizontal Navigation Tabs */}
-            <SuperAdminTabNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pendingRequests.length} />
+              {/* KPI Executive Metric Cards */}
+              <SuperAdminStats stats={stats} loading={statsLoading} />
 
-            {/* Active Tab View */}
-            {renderActiveTabContent()}
-          </div>
-        </main>
+              {/* Horizontal Navigation Tabs */}
+              <SuperAdminTabNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pendingRequests.length} />
+
+              {/* Active Tab View */}
+              {renderActiveTabContent()}
+            </div>
+          </main>
+        </div>
       </div>
 
       {/* Rejection Modal Popup */}

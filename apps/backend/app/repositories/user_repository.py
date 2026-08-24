@@ -54,7 +54,8 @@ class UserRepository:
         organization_name: Optional[str] = None,
         department: Optional[str] = None,
     ) -> User:
-        status = UserStatus.ACTIVE if role == UserRole.SUPER_ADMIN else UserStatus.PENDING
+        # Students and Super Admins are directly ACTIVE on registration; institutional ADMINs require pending approval
+        status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
         new_user = User(
             email=email.lower(),
