@@ -9,9 +9,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
 from app.schemas.question import ExamReviewQuestionsResponse
+from app.schemas.syllabus import CompleteSyllabusResponse
+from app.schemas.question_integrity import ExamIntegrityQuestionsResponse
+from app.schemas.exam_year import ExamsByYearResponse
 from app.services.exam_service import ExamService
 from app.services.exam_export_service import ExamExportService
 from app.services.question_service import QuestionService
+from app.services.syllabus_service import SyllabusService
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -521,6 +527,37 @@ async def download_exam_export_zip_path(
     )
 
 
+@router.get(
+    "/by-year",
+    response_model=ExamsByYearResponse,
+    summary="Get Exams Grouped by Year",
+)
+@router.get(
+    "/years",
+    response_model=ExamsByYearResponse,
+    summary="Get Exams Grouped by Year (Alias)",
+)
+async def get_exams_by_year(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Returns all available exams grouped chronologically by exam year (e.g. 2024, 2023, 2019)
+    along with question counts, pipeline status, and publication flags.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:by_year")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_exams_by_year()
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=300)
+    return JSONResponse(content=serialized)
+
+
 @router.get("/{exam_id}", response_model=Exam)
 async def get_exam_detail(
     exam_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
@@ -528,4 +565,80 @@ async def get_exam_detail(
     """Fetches details of a specific exam by ID."""
     service = ExamService(session)
     return await service.get_exam_detail(exam_id)
+
+
+
+@router.get(
+    "/{exam_id}/syllabus",
+    response_model=CompleteSyllabusResponse,
+    summary="Get Complete Syllabus for Specific Exam",
+)
+async def get_exam_syllabus(
+    exam_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Returns the complete 3-level syllabus tree mapped to this exam's active SyllabusVersion.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:syllabus", str(exam_id))
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_complete_syllabus(exam_id=exam_id)
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=72000)
+    return JSONResponse(content=serialized)
+
+
+@router.get(
+    "/{exam_id}/integrity-questions",
+    response_model=ExamIntegrityQuestionsResponse,
+    summary="Get Paginated Question Integrity & Issue Breakdown for Exam Review",
+)
+async def get_exam_integrity_questions(
+    exam_id: uuid.UUID,
+    issue_type: Optional[str] = Query(
+        default=None,
+        description="Filter by issue type: 'ALL_ISSUES', 'CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID'",
+    ),
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Language"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Inspects database integrity across all questions in an exam.
+    Returns categorized questions ('CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID')
+    with precise diagnostic issue descriptions, options/statement status, and pagination.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "exams:integrity",
+        str(exam_id),
+        issue_type or "ALL",
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_exam_question_integrity(
+        exam_id=exam_id,
+        issue_type=issue_type,
+        page=page,
+        limit=limit,
+        language=language,
+    )
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=300)
+    return JSONResponse(content=serialized)
+
 

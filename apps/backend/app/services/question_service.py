@@ -589,8 +589,14 @@ class QuestionService:
 
         await self.session.commit()
         await self.session.refresh(q)
+
+        # Re-evaluate & persist question integrity directly to Question columns
+        from app.services.syllabus_service import SyllabusService
+        await SyllabusService(self.session).evaluate_and_persist_question_integrity(q)
+
         await self._touch_exam_updated_at(q.exam_id)
         await self._recalculate_exam_metrics(q.exam_id)
+
 
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(q.id), str(q.exam_id) if q.exam_id else None)

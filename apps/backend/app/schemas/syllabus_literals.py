@@ -859,3 +859,159 @@ def get_canonical_parents(
     final_top = clean_top if clean_top else "General Concepts"
     return final_subj, final_top, clean_subtop
 
+
+def is_valid_subject(name: Optional[str]) -> bool:
+    """Checks if subject name exists in canonical SYLLABUS_HIERARCHY."""
+    if not name or not isinstance(name, str):
+        return False
+    clean = name.strip().lower()
+    return any(subj.lower() == clean for subj in SYLLABUS_HIERARCHY.keys())
+
+
+def is_valid_topic(name: Optional[str], subject_name: Optional[str] = None) -> bool:
+    """Checks if topic name exists in canonical SYLLABUS_HIERARCHY, optionally under subject_name."""
+    if not name or not isinstance(name, str):
+        return False
+    clean_topic = name.strip().lower()
+    if subject_name and subject_name.strip():
+        clean_subj = subject_name.strip().lower()
+        for subj, topics in SYLLABUS_HIERARCHY.items():
+            if subj.lower() == clean_subj:
+                return any(t.lower() == clean_topic for t in topics.keys())
+        return False
+    return clean_topic in TOPIC_TO_PARENT_MAP
+
+
+def is_valid_subtopic(
+    name: Optional[str], topic_name: Optional[str] = None, subject_name: Optional[str] = None
+) -> bool:
+    """Checks if subtopic name exists in canonical SYLLABUS_HIERARCHY, optionally under topic/subject."""
+    if not name or not isinstance(name, str):
+        return False
+    clean_subtop = name.strip().lower()
+    if topic_name and topic_name.strip():
+        clean_top = topic_name.strip().lower()
+        for subj, topics in SYLLABUS_HIERARCHY.items():
+            if subject_name and subj.lower() != subject_name.strip().lower():
+                continue
+            for top, subtopics in topics.items():
+                if top.lower() == clean_top:
+                    return any(st.lower() == clean_subtop for st in subtopics)
+        return False
+    return clean_subtop in SUBTOPIC_TO_PARENT_MAP
+
+
+def verify_syllabus_node(
+    subject: Optional[str], topic: Optional[str], subtopic: Optional[str] = None
+) -> Tuple[str, str, Optional[str], bool, Optional[str]]:
+    """
+    Strictly verifies and auto-repairs Subject -> Topic -> Subtopic against SYLLABUS_HIERARCHY.
+    Returns (canonical_subject, canonical_topic, canonical_subtopic, is_canonical_exact_match, issue_reason).
+    """
+    clean_subj = (subject or "").strip()
+    clean_top = (topic or "").strip()
+    clean_subtop = (subtopic or "").strip() if subtopic else None
+
+    # Check exact match
+    subj_exact = is_valid_subject(clean_subj)
+    top_exact = is_valid_topic(clean_top, clean_subj) if subj_exact else is_valid_topic(clean_top)
+    subtop_exact = is_valid_subtopic(clean_subtop, clean_top, clean_subj) if clean_subtop else True
+
+    if subj_exact and top_exact and subtop_exact:
+        c_subj, c_top, c_subtop = get_canonical_parents(clean_subj, clean_top, clean_subtop)
+        return c_subj, c_top, c_subtop, True, None
+
+    # If mismatch, auto-repair to canonical parents
+    c_subj, c_top, c_subtop = get_canonical_parents(clean_subj, clean_top, clean_subtop)
+    reasons = []
+    if not subj_exact:
+        reasons.append(f"Subject '{clean_subj}' is non-canonical (repaired to '{c_subj}')")
+    if not top_exact:
+        reasons.append(f"Topic '{clean_top}' is non-canonical (repaired to '{c_top}')")
+    if clean_subtop and not subtop_exact:
+        reasons.append(f"Subtopic '{clean_subtop}' is non-canonical (repaired to '{c_subtop}')")
+
+    issue_msg = "; ".join(reasons) if reasons else "Syllabus node required auto-repair"
+    return c_subj, c_top, c_subtop, False, issue_msg
+
+
+def get_complete_master_syllabus() -> Dict[str, Any]:
+    """Builds and returns the complete structured syllabus hierarchy with metadata and counts."""
+    subjects_list = []
+    topics_list = []
+    subtopics_list = []
+    flat_hierarchy: Dict[str, List[str]] = {}
+
+    subjects_items = []
+    subj_idx = 1
+    total_subtopics_count = 0
+    total_topics_count = 0
+
+    for subject_name, topics_dict in SYLLABUS_HIERARCHY.items():
+        subjects_list.append(subject_name)
+        topic_items = []
+        top_idx = 1
+        subj_subtopics_count = 0
+
+        for topic_name, subtopics_arr in topics_dict.items():
+            topics_list.append(topic_name)
+            flat_hierarchy[topic_name] = list(subtopics_arr)
+            subtop_items = []
+            st_idx = 1
+
+            for st_name in subtopics_arr:
+                subtopics_list.append(st_name)
+                code_st = st_name.strip().upper().replace(" ", "_").replace("&", "AND")[:50]
+                subtop_items.append({
+                    "id": None,
+                    "name": st_name,
+                    "code": code_st,
+                    "display_order": st_idx,
+                    "pyq_frequency": 0,
+                })
+                st_idx += 1
+
+            subj_subtopics_count += len(subtopics_arr)
+            total_subtopics_count += len(subtopics_arr)
+            total_topics_count += 1
+
+            code_top = topic_name.strip().upper().replace(" ", "_").replace("&", "AND")[:50]
+            topic_items.append({
+                "id": None,
+                "name": topic_name,
+                "code": code_top,
+                "display_order": top_idx,
+                "subtopics_count": len(subtopics_arr),
+                "subtopics": subtop_items,
+            })
+            top_idx += 1
+
+        code_subj = subject_name.strip().upper().replace(" ", "_").replace("&", "AND")[:50]
+        subjects_items.append({
+            "id": None,
+            "name": subject_name,
+            "code": code_subj,
+            "display_order": subj_idx,
+            "topics_count": len(topics_dict),
+            "subtopics_count": subj_subtopics_count,
+            "topics": topic_items,
+        })
+        subj_idx += 1
+
+    return {
+        "version_code": "UPSC_PRELIMS_MASTER_V1",
+        "title": "UPSC Prelims Master Syllabus (GS Micro-Topics)",
+        "syllabus_version_id": None,
+        "exam_id": None,
+        "total_subjects": len(SYLLABUS_HIERARCHY),
+        "total_topics": total_topics_count,
+        "total_subtopics": total_subtopics_count,
+        "subjects": subjects_items,
+        "hierarchy": {k: {tk: list(tv) for tk, tv in v.items()} for k, v in SYLLABUS_HIERARCHY.items()},
+        "flat_hierarchy": flat_hierarchy,
+        "subjects_list": subjects_list,
+        "topics_list": sorted(list(set(topics_list))),
+        "subtopics_list": sorted(list(set(subtopics_list))),
+    }
+
+
