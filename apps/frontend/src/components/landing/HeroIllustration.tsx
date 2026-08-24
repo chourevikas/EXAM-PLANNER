@@ -15,8 +15,8 @@ export function HeroIllustration() {
           style={{
             position: 'absolute',
             top: 40,
-            left: 40,
-            right: 0,
+            left: 10,
+            right: 30,
             bottom: 40,
             background: '#fff',
             borderRadius: 20,
@@ -209,7 +209,7 @@ export function HeroIllustration() {
           style={{
             position: 'absolute',
             top: 16,
-            left: 0,
+            left: -10,
             background: `linear-gradient(135deg,${C.royal},${C.elec})`,
             color: '#fff',
             padding: '10px 16px',
@@ -245,13 +245,60 @@ export function HeroIllustration() {
           Smart Mentor Active
         </div>
 
+        {/* Smart Recommendation chip */}
+        <div
+          style={{
+            position: 'absolute',
+            top: -10,
+            right: -50,
+            background: '#fff',
+            borderRadius: 12,
+            padding: '10px 14px',
+            border: `1px solid ${C.blue100}`,
+            boxShadow: '0 8px 24px rgba(37,99,235,0.10)',
+            maxWidth: 190,
+            zIndex: 10,
+          }}
+          className="anim-float-b"
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 6,
+            }}
+          >
+            <div
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 6,
+                background: C.blue50,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: C.royal,
+              }}
+            >
+              <Ico.Brain />
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.royal }}>
+              Smart Insight
+            </span>
+          </div>
+          <p style={{ fontSize: 11, color: C.grey, lineHeight: 1.5 }}>
+            Focus on Modern History today — 42% accuracy needs work.
+          </p>
+        </div>
+
         {/* Weekly progress floating card */}
         <div
           style={{
             position: 'absolute',
-            bottom: 60,
-            left: -20,
-            width: 200,
+            bottom: -30,
+            right: -50,
+            width: 195,
             background: '#fff',
             borderRadius: 14,
             padding: '14px 16px',
@@ -312,52 +359,6 @@ export function HeroIllustration() {
               <div style={{ fontSize: 11, color: C.muted }}>Questions done</div>
             </div>
           </div>
-        </div>
-
-        {/* Smart Recommendation chip */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '40%',
-            left: -30,
-            background: '#fff',
-            borderRadius: 12,
-            padding: '10px 14px',
-            border: `1px solid ${C.blue100}`,
-            boxShadow: '0 8px 24px rgba(37,99,235,0.10)',
-            maxWidth: 190,
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginBottom: 6,
-            }}
-          >
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 6,
-                background: C.blue50,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: C.royal,
-              }}
-            >
-              <Ico.Brain />
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.royal }}>
-              Smart Insight
-            </span>
-          </div>
-          <p style={{ fontSize: 11, color: C.grey, lineHeight: 1.5 }}>
-            Focus on Modern History today — 42% accuracy needs work.
-          </p>
         </div>
       </div>
 

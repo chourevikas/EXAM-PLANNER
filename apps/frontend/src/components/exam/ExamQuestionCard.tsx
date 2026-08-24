@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Eye, CheckCircle2, XCircle, Menu } from 'lucide-react';
+import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 
@@ -44,6 +44,8 @@ interface ExamQuestionCardProps {
   onToggleBookmark?: () => void;
   onRevealAnswer?: () => void;
   onToggleSidebar?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 function cleanQuestionTextBody(rawText: string): string {
@@ -124,6 +126,8 @@ export function ExamQuestionCard({
   onToggleBookmark,
   onRevealAnswer,
   onToggleSidebar,
+  onPrev,
+  onNext,
 }: ExamQuestionCardProps) {
   const sectionLabel =
     ('subject' in question && (question as any).subject) ||
@@ -232,15 +236,17 @@ export function ExamQuestionCard({
     <main
       style={{
         flex: 1,
-        padding: '24px 24px 60px 24px',
-        overflowY: 'auto',
+        padding: '12px 24px 28px 24px',
+        overflow: 'hidden',
         boxSizing: 'border-box',
-        backgroundColor: '#F4F6F8',
+        backgroundColor: '#F8FAF8',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
+        height: '100%',
+        maxHeight: '100%',
       }}
     >
       <div
@@ -251,7 +257,9 @@ export function ExamQuestionCard({
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
-          paddingBottom: 40,
+          height: '100%',
+          maxHeight: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {/* Reading Passage (If Present) */}
@@ -275,20 +283,22 @@ export function ExamQuestionCard({
           </div>
         )}
 
-        {/* Compact Examination Canvas Card with Internal Scrollbar */}
+        {/* Compact Examination Canvas Floating Card with Internal Scrollbar */}
         <div
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderTop: '3px solid #2563EB',
-            borderRadius: 10,
-            boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)',
+            borderTop: '4px solid #1E3A8A',
+            borderRadius: 18,
+            boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             padding: '20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: 'calc(100vh - 170px)',
+            flex: 1,
+            maxHeight: '100%',
             boxSizing: 'border-box',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
+            overflow: 'hidden',
           }}
         >
           {/* UPSC Exam Header Metadata Bar */}
@@ -297,92 +307,134 @@ export function ExamQuestionCard({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              position: 'relative',
-              marginBottom: 20,
-              paddingBottom: 14,
+              marginBottom: 16,
+              paddingBottom: 12,
               borderBottom: '1.5px solid #F1F5F9',
               flexShrink: 0,
+              gap: 12,
             }}
           >
-            {/* Left: Sections Drawer Trigger */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              {onToggleSidebar && (
+            {/* Left: Previous Question Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Prominent Previous Question Button */}
+              {onPrev && (
                 <button
                   type="button"
-                  onClick={onToggleSidebar}
+                  onClick={onPrev}
+                  disabled={questionIndex === 0}
                   style={{
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     padding: '6px 12px',
-                    borderRadius: 7,
+                    borderRadius: 8,
                     border: '1px solid #CBD5E1',
-                    backgroundColor: '#F8FAFC',
-                    color: '#0F172A',
+                    backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                    color: questionIndex === 0 ? '#94A3B8' : '#1E293B',
                     fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.18s ease-out',
+                    fontWeight: 700,
+                    cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#EFF6FF';
-                    e.currentTarget.style.borderColor = '#2563EB';
-                    e.currentTarget.style.color = '#2563EB';
+                    if (questionIndex > 0) {
+                      e.currentTarget.style.backgroundColor = '#EFF6FF';
+                      e.currentTarget.style.borderColor = '#2563EB';
+                      e.currentTarget.style.color = '#2563EB';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                    e.currentTarget.style.borderColor = '#CBD5E1';
-                    e.currentTarget.style.color = '#0F172A';
+                    if (questionIndex > 0) {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.color = '#1E293B';
+                    }
                   }}
-                  title="Open Sections Drawer"
                 >
-                  <Menu size={14} />
-                  <span>Sections</span>
+                  <ChevronLeft size={15} />
+                  <span>Prev</span>
                 </button>
               )}
             </div>
 
             {/* Center: Question Counter Pill */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)',
-              }}
-            >
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: 800,
-                  color: '#0F172A',
+                  color: '#1E3A8A',
                   letterSpacing: '0.04em',
                   fontVariantNumeric: 'tabular-nums',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#F1F5F9',
+                  backgroundColor: '#EFF6FF',
                   padding: '5px 14px',
                   borderRadius: 8,
-                  border: '1px solid #E2E8F0',
+                  border: '1px solid #DBEAFE',
                 }}
               >
                 QUESTION {String(questionIndex + 1).padStart(2, '0')} / {String(totalQuestions).padStart(2, '0')}
               </span>
             </div>
 
-            {/* Right: Difficulty Badge */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* Right: Next Question Button & Difficulty Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Prominent Next Question Button */}
+              {onNext && (
+                <button
+                  type="button"
+                  onClick={onNext}
+                  disabled={questionIndex >= totalQuestions - 1}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#1E293B',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (questionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.backgroundColor = '#EFF6FF';
+                      e.currentTarget.style.borderColor = '#2563EB';
+                      e.currentTarget.style.color = '#2563EB';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (questionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.color = '#1E293B';
+                    }
+                  }}
+                >
+                  <span>Next</span>
+                  <ChevronRight size={15} />
+                </button>
+              )}
+
               <span
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 11,
                   color: '#D97706',
                   fontWeight: 700,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 5,
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                   backgroundColor: '#FEF3C7',
                   border: '1px solid #FDE68A',
-                  padding: '4px 12px',
+                  padding: '4px 10px',
                   borderRadius: 99,
                   letterSpacing: '0.04em',
                 }}

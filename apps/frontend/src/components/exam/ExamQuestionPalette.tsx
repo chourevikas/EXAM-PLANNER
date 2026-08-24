@@ -1,5 +1,4 @@
 import React from 'react';
-import { LayoutGrid } from 'lucide-react';
 import { QuestionPaletteItem } from '../../types/exam';
 
 interface ExamQuestionPaletteProps {
@@ -11,6 +10,9 @@ interface ExamQuestionPaletteProps {
   paletteFilter: 'all' | 'answered' | 'marked' | 'unanswered';
   onSelectQuestion: (idx: number) => void;
   onFilterChange: (filter: 'all' | 'answered' | 'marked' | 'unanswered') => void;
+  onSubmitTest?: () => void;
+  onRevealAnswer?: () => void;
+  isRevealed?: boolean;
 }
 
 export function ExamQuestionPalette({
@@ -22,6 +24,9 @@ export function ExamQuestionPalette({
   paletteFilter,
   onSelectQuestion,
   onFilterChange,
+  onSubmitTest,
+  onRevealAnswer,
+  isRevealed = false,
 }: ExamQuestionPaletteProps) {
   const totalCount = palette ? palette.length : questions.length || 10;
 
@@ -38,37 +43,40 @@ export function ExamQuestionPalette({
     return 'UNVISITED';
   };
 
-  // Compute stats for Progress Summary
+  // Compute metrics
   let answeredCount = 0;
-  let reviewCount = 0;
+  let markedCount = 0;
 
   for (let i = 0; i < totalCount; i++) {
     const st = getQStatus(i);
     if (st === 'ANSWERED' || st === 'ANSWERED_AND_MARKED') answeredCount++;
-    if (st === 'MARKED_FOR_REVIEW' || st === 'ANSWERED_AND_MARKED') reviewCount++;
+    if (st === 'MARKED_FOR_REVIEW' || st === 'ANSWERED_AND_MARKED') markedCount++;
   }
-
-  const remainingCount = Math.max(0, totalCount - answeredCount);
 
   return (
     <aside
       style={{
-        width: 280,
-        backgroundColor: '#F4F6F9',
-        borderLeft: '1px solid #E2E8F0',
+        width: 270,
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 18,
         display: 'flex',
         flexDirection: 'column',
-        padding: '24px 20px',
+        padding: '16px 14px',
         boxSizing: 'border-box',
         flexShrink: 0,
-        height: 'calc(100vh - 124px)',
-        maxHeight: 'calc(100vh - 124px)',
+        height: 'fit-content',
+        maxHeight: 'calc(100vh - 160px)',
         position: 'sticky',
-        top: 60,
+        top: 20,
+        marginRight: 24,
+        marginTop: 12,
         overflow: 'hidden',
+        boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+        fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
       }}
     >
-      {/* Header */}
+      {/* 1. Header */}
       <div
         style={{
           display: 'flex',
@@ -76,134 +84,143 @@ export function ExamQuestionPalette({
           justifyContent: 'space-between',
           marginBottom: 14,
           paddingBottom: 10,
-          borderBottom: '1px solid #E2E8F0',
+          borderBottom: '1px solid #F1F5F9',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <LayoutGrid size={16} color="#2563EB" />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              color: '#0F172A',
-              letterSpacing: '0.08em',
-            }}
-          >
-            QUESTION PALETTE
-          </span>
-        </div>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            color: '#1E3A8A',
+            letterSpacing: '0.08em',
+          }}
+        >
+          QUESTION PALETTE
+        </span>
         <span
           style={{
             fontSize: 11,
             fontWeight: 700,
-            color: '#2563EB',
-            backgroundColor: '#EFF6FF',
+            color: '#475569',
+            backgroundColor: '#F8FAFC',
             padding: '2px 8px',
-            borderRadius: 4,
-            border: '1px solid #DBEAFE',
+            borderRadius: 6,
+            border: '1px solid #E2E8F0',
           }}
         >
-          {totalCount} Qs
+          {totalCount} Questions
         </span>
       </div>
 
-      {/* Structured Metric Summary */}
+      {/* 2. Answer Status Summary Panels */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: 8,
-          backgroundColor: '#F8FAFC',
-          border: '1px solid #E2E8F0',
-          borderRadius: 8,
-          padding: '12px 14px',
-          marginBottom: 16,
-          fontSize: 11,
-          fontWeight: 600,
-          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.03)',
+          marginBottom: 14,
         }}
       >
-        <div style={{ color: '#475569' }}>
-          TOTAL: <span style={{ color: '#0F172A', fontWeight: 700 }}>{totalCount}</span>
+        {/* Answered Panel */}
+        <div
+          style={{
+            backgroundColor: '#F0FDF4',
+            border: '1px solid #DCFCE7',
+            borderRadius: 10,
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Answered
+          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: '#15803D', fontVariantNumeric: 'tabular-nums' }}>
+              {answeredCount}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#166534' }}>
+              / {totalCount}
+            </span>
+          </div>
         </div>
-        <div style={{ color: '#475569' }}>
-          ANSWERED: <span style={{ color: '#059669', fontWeight: 700 }}>{answeredCount}</span>
-        </div>
-        <div style={{ color: '#475569' }}>
-          REVIEW: <span style={{ color: '#D97706', fontWeight: 700 }}>{reviewCount}</span>
-        </div>
-        <div style={{ color: '#475569' }}>
-          REMAINING: <span style={{ color: '#64748B', fontWeight: 700 }}>{remainingCount}</span>
+
+        {/* Marked Panel */}
+        <div
+          style={{
+            backgroundColor: '#FFFBEB',
+            border: '1px solid #FEF3C7',
+            borderRadius: 10,
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+        >
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Marked
+          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
+              {markedCount}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Legend Dots */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16, fontSize: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#059669' }} />
-          <span style={{ color: '#475569', fontWeight: 500 }}>Answered</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#D97706' }} />
-          <span style={{ color: '#475569', fontWeight: 500 }}>Review</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2563EB' }} />
-          <span style={{ color: '#475569', fontWeight: 500 }}>Ans + Review</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#CBD5E1' }} />
-          <span style={{ color: '#475569', fontWeight: 500 }}>Unvisited</span>
-        </div>
-      </div>
-
-      {/* Segmented Filter Control */}
+      {/* 3. Segmented Filter Tabs */}
       <div
         style={{
           display: 'flex',
-          gap: 2,
-          marginBottom: 18,
-          backgroundColor: '#F1F5F9',
-          borderRadius: 6,
+          gap: 3,
+          marginBottom: 14,
+          backgroundColor: '#F8FAFC',
+          border: '1px solid #E2E8F0',
+          borderRadius: 8,
           padding: 3,
         }}
       >
-        {(['all', 'answered', 'marked', 'unanswered'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => onFilterChange(tab)}
-            style={{
-              flex: 1,
-              padding: '6px 0',
-              borderRadius: 4,
-              border: 'none',
-              backgroundColor: paletteFilter === tab ? '#2563EB' : 'transparent',
-              color: paletteFilter === tab ? '#FFFFFF' : '#64748B',
-              fontSize: 11.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              textTransform: 'capitalize',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+        {(['all', 'answered', 'marked', 'unanswered'] as const).map((tab) => {
+          const isActive = paletteFilter === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onFilterChange(tab)}
+              style={{
+                flex: 1,
+                padding: '4px 0',
+                borderRadius: 6,
+                border: 'none',
+                backgroundColor: isActive ? '#FFFFFF' : 'transparent',
+                color: isActive ? '#1E3A8A' : '#64748B',
+                fontSize: 10.5,
+                fontWeight: isActive ? 700 : 600,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+                boxShadow: isActive ? '0 1px 3px rgba(15, 23, 42, 0.06)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {tab}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Elevated Numbered Grid (40px x 40px, 8px radius) with dedicated scrollbar */}
+      {/* 4. Question Number Grid (5-column layout, rounded circular buttons) */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 10,
-          flex: 1,
+          gap: 8,
           overflowY: 'auto',
           alignContent: 'start',
-          paddingRight: 4,
-          maxHeight: '100%',
+          paddingRight: 2,
+          marginBottom: 14,
+          maxHeight: 220,
         }}
       >
         {Array.from({ length: totalCount }).map((_, idx) => {
@@ -214,26 +231,30 @@ export function ExamQuestionPalette({
           if (paletteFilter === 'marked' && status !== 'MARKED_FOR_REVIEW' && status !== 'ANSWERED_AND_MARKED') return null;
           if (paletteFilter === 'unanswered' && (status === 'ANSWERED' || status === 'ANSWERED_AND_MARKED')) return null;
 
-          let bgColor = '#FFFFFF';
-          let textColor = '#475569';
+          // Default styling variables
+          let bgColor = '#F8FAFC';
+          let textColor = '#334155';
           let borderColor = '#E2E8F0';
 
           if (status === 'ANSWERED') {
-            bgColor = '#059669';
-            textColor = '#FFFFFF';
-            borderColor = '#047857';
+            bgColor = '#DCFCE7';
+            textColor = '#15803D';
+            borderColor = '#86EFAC';
           } else if (status === 'MARKED_FOR_REVIEW') {
-            bgColor = '#D97706';
-            textColor = '#FFFFFF';
-            borderColor = '#B45309';
+            bgColor = '#FEF3C7';
+            textColor = '#B45309';
+            borderColor = '#FDE68A';
           } else if (status === 'ANSWERED_AND_MARKED') {
-            bgColor = '#2563EB';
+            bgColor = '#DBEAFE';
+            textColor = '#1E40AF';
+            borderColor = '#93C5FD';
+          }
+
+          // Active / Current question styling override
+          if (isCurrent) {
+            bgColor = '#1E3A8A';
             textColor = '#FFFFFF';
-            borderColor = '#1D4ED8';
-          } else if (status === 'VISITED') {
-            bgColor = '#EFF6FF';
-            textColor = '#2563EB';
-            borderColor = '#DBEAFE';
+            borderColor = '#1E3A8A';
           }
 
           return (
@@ -242,33 +263,35 @@ export function ExamQuestionPalette({
               type="button"
               onClick={() => onSelectQuestion(idx)}
               style={{
-                height: 40,
-                borderRadius: 8,
-                border: isCurrent ? '2px solid #2563EB' : `1px solid ${borderColor}`,
-                backgroundColor: isCurrent && status !== 'ANSWERED' && status !== 'MARKED_FOR_REVIEW' && status !== 'ANSWERED_AND_MARKED' ? '#EFF6FF' : bgColor,
-                color: isCurrent && status !== 'ANSWERED' && status !== 'MARKED_FOR_REVIEW' && status !== 'ANSWERED_AND_MARKED' ? '#2563EB' : textColor,
-                fontSize: 13,
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                border: `1px solid ${borderColor}`,
+                backgroundColor: bgColor,
+                color: textColor,
+                fontSize: 12.5,
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                margin: '0 auto',
                 transition: 'all 0.15s ease',
                 fontVariantNumeric: 'tabular-nums',
-                boxShadow: isCurrent ? '0 0 0 3px rgba(37,99,235,0.2)' : '0 1px 2px rgba(15, 23, 42, 0.04)',
+                boxShadow: isCurrent
+                  ? '0 2px 8px rgba(30, 58, 138, 0.3)'
+                  : '0 1px 2px rgba(15, 23, 42, 0.02)',
               }}
               onMouseEnter={(e) => {
                 if (!isCurrent) {
+                  e.currentTarget.style.borderColor = '#94A3B8';
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 3px 8px rgba(15,23,42,0.08)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isCurrent) {
-                  e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.borderColor = borderColor;
-                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(15, 23, 42, 0.04)';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
             >
@@ -277,6 +300,77 @@ export function ExamQuestionPalette({
           );
         })}
       </div>
+
+      {/* 5. Action Buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+        {onRevealAnswer && (
+          <button
+            type="button"
+            onClick={onRevealAnswer}
+            disabled={isRevealed}
+            style={{
+              width: '100%',
+              padding: '9px 0',
+              borderRadius: 8,
+              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #2563EB',
+              backgroundColor: isRevealed ? '#F1F5F9' : '#2563EB',
+              color: isRevealed ? '#64748B' : '#FFFFFF',
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: isRevealed ? 'default' : 'pointer',
+              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(37, 99, 235, 0.2)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!isRevealed) {
+                e.currentTarget.style.backgroundColor = '#1D4ED8';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isRevealed) {
+                e.currentTarget.style.backgroundColor = '#2563EB';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }
+            }}
+          >
+            {isRevealed ? '✓ Solution Revealed' : 'Submit & Show Solution'}
+          </button>
+        )}
+
+        {onSubmitTest && (
+          <button
+            type="button"
+            onClick={onSubmitTest}
+            style={{
+              width: '100%',
+              padding: '9px 0',
+              borderRadius: 8,
+              border: '1px solid #CBD5E1',
+              backgroundColor: '#FFFFFF',
+              color: '#1E293B',
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F8FAFC';
+              e.currentTarget.style.borderColor = '#94A3B8';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#CBD5E1';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            Finish & View Diagnosis
+          </button>
+        )}
+      </div>
     </aside>
   );
 }
+

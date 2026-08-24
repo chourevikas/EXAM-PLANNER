@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
-import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
-import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2, AlertCircle, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GradCap } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 
@@ -16,13 +14,14 @@ export function GuestExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // URL Params
+  // URL Params (Max 10 questions allowed)
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
   const gSubject = searchParams.get('subject') || 'Polity';
   const gTopic = searchParams.get('topic') || '';
   const gSubtopic = searchParams.get('subtopic') || '';
-  const gCount = parseInt(searchParams.get('count') || '10', 10);
+  const rawCount = parseInt(searchParams.get('count') || '10', 10);
+  const gCount = Math.min(10, Math.max(1, rawCount));
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -48,8 +47,10 @@ export function GuestExamPage() {
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
   const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
 
-  // Mobile Responsiveness
+  // Mobile Responsiveness & Custom Dropdown Search State
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [filterSearchQuery, setFilterSearchQuery] = useState('');
 
   const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
@@ -296,14 +297,24 @@ export function GuestExamPage() {
     const targetQuestion = allQuestions.find((q) => q.question_id === targetId) || activeQuestion;
     if (!targetQuestion) return;
 
-    const userResp = userResponses[targetId];
-    const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
-
     const cleanOptionLabel = (rawLabel: string, index: number): string => {
       if (!rawLabel) return String.fromCharCode(65 + index);
       const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
       return clean.length === 1 ? clean : String.fromCharCode(65 + index);
     };
+
+    // If user hasn't selected an option yet, default to the first option so they can view the solution
+    let userResp = userResponses[targetId];
+    if (!userResp && targetQuestion.options && targetQuestion.options.length > 0) {
+      const defaultOpt = targetQuestion.options[0];
+      const defaultLabel = cleanOptionLabel(defaultOpt.option_label || '', 0);
+      userResp = { optionId: defaultOpt.option_id, optionLabel: defaultLabel };
+      setUserResponses((prev) => ({
+        ...prev,
+        [targetId]: userResp,
+      }));
+    }
+    const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
 
     let isUserCorrect = false;
     if (userResp && targetQuestion.options) {
@@ -635,57 +646,807 @@ export function GuestExamPage() {
         height: '100vh',
         width: '100vw',
         overflow: 'hidden',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F8FAF8',
+        color: '#0F172A',
+        fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
       }}
     >
-      {/* Slide-out Drawer Left Sidebar */}
-      <ExamSectionSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        sections={[{ id: 'guest-sec-1', label: gTopic, total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length }]}
-        activeSectionId="guest-sec-1"
-        palette={palette}
-        totalQuestions={totalQuestions}
-        currentQIndex={currentQIndex}
-        responseSummary={{
-          answered_count: answeredCount,
-          marked_for_review_count: markedCount,
-          unattempted_count: unattemptedCount,
-          total: totalQuestions,
+      {/* 1. Top Application Header */}
+      <header
+        style={{
+          height: 64,
+          background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          boxShadow: '0 4px 20px rgba(15, 29, 56, 0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 24px',
+          zIndex: 30,
+          flexShrink: 0,
         }}
-        selectedOptions={selectedOptionsMap}
-        markedForReview={markedForReviewMap}
-        onSelectSection={() => handleSelectQuestion(0)}
-      />
+      >
+        {/* Left: Brand Icon, ExamPlanner Title & Clickable Home > Test Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {/* Logo Badge Icon */}
+          <div
+            onClick={() => navigate('/')}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 9,
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: 16,
+              boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+              cursor: 'pointer',
+            }}
+            title="Go to Home"
+          >
+            EP
+          </div>
 
-      {/* Top Header Console with Submit Test Trigger */}
-      <ExamHeader
-        examTitle={gExam}
-        paperSubtitle={gTopic ? `${gSubject} • ${gTopic}` : gSubject}
-        timeLeft={timeLeft}
-        language={language}
-        showSubmitButton={true}
-        showTimer={false}
-        topicName={gTopic || gSubject}
-        subtopicName={gSubtopic}
-        parentBreadcrumb="Practice Mock"
-        onBack={() => setShowLeaveModal(true)}
-        onLanguageChange={(l) => setLanguage(l)}
-        onSubmitClick={() => handleFinishGuestExam()}
-      />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span 
+                onClick={() => navigate('/')}
+                style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em', cursor: 'pointer' }}
+              >
+                ExamPlanner
+              </span>
+              <span style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.4)' }}>|</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>
+                PYQs Practice Engine
+              </span>
+            </div>
 
-      {/* Main Console Workspace */}
+            {/* Breadcrumb: Home (Link) > Test (Current Page) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600 }}>
+              <span
+                onClick={() => navigate('/')}
+                style={{
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s ease',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
+              >
+                Home
+              </span>
+              <ChevronRight size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
+              <span style={{ color: '#93C5FD', cursor: 'default' }}>
+                Test
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: End & View Feedback action button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => handleFinishGuestExam()}
+            style={{
+              padding: '7px 18px',
+              borderRadius: 6,
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(255, 255, 255, 0.09)',
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              backdropFilter: 'blur(4px)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
+            }}
+          >
+            End & View Feedback
+          </button>
+        </div>
+      </header>
+      {/* 2. Premium Floating Exam Filter Window (Below Navbar with generous spacing) */}
+      <div
+        style={{
+          padding: '24px 28px 12px 28px',
+          backgroundColor: 'transparent',
+          zIndex: 40,
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 16,
+            padding: '14px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 20,
+            boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+            position: 'relative',
+          }}
+        >
+          {/* Filter Bar Badge */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingRight: 16,
+              borderRight: '1px solid #F1F5F9',
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                backgroundColor: '#EFF6FF',
+                color: '#1E3A8A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <SlidersHorizontal size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                FILTERS
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                Practice Engine
+              </span>
+            </div>
+          </div>
+
+          {/* Filter 1: Exam */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Exam Target
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gExam}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {/* Exam Popover */}
+            {activeDropdown === 'exam' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 220,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 8,
+                  zIndex: 100,
+                }}
+              >
+                {['UPSC CSE', 'State PSC'].map((opt) => (
+                  <div
+                    key={opt}
+                    onClick={() => {
+                      navigate(`/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&subtopic=${encodeURIComponent(gSubtopic)}&count=${gCount}`);
+                      setActiveDropdown(null);
+                    }}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: gExam === opt ? 700 : 500,
+                      color: gExam === opt ? '#1E3A8A' : '#334155',
+                      backgroundColor: gExam === opt ? '#EFF6FF' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      transition: 'backgroundColor 0.1s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (gExam !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (gExam !== opt) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span>{opt}</span>
+                    {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filter 2: Subject */}
+          <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Subject Focus
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gSubject}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {/* Subject Popover with Premium Search */}
+            {activeDropdown === 'subject' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 250,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 10,
+                  zIndex: 100,
+                }}
+              >
+                {/* Internal Search Bar */}
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search subject..."
+                    value={filterSearchQuery}
+                    onChange={(e) => setFilterSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px 7px 30px',
+                      borderRadius: 7,
+                      border: '1px solid #E2E8F0',
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#F8FAFC',
+                    }}
+                  />
+                </div>
+
+                <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {['Polity', 'History', 'Economy', 'Geography', 'Environment', 'Science & Technology']
+                    .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                    .map((opt) => (
+                      <div
+                        key={opt}
+                        onClick={() => {
+                          navigate(`/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(opt)}&count=${gCount}`);
+                          setActiveDropdown(null);
+                        }}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 7,
+                          fontSize: 12.5,
+                          fontWeight: gSubject === opt ? 700 : 500,
+                          color: gSubject === opt ? '#1E3A8A' : '#334155',
+                          backgroundColor: gSubject === opt ? '#EFF6FF' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (gSubject !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (gSubject !== opt) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <span>{opt}</span>
+                        {gSubject === opt && <Check size={14} color="#1E3A8A" />}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter 3: Topic */}
+          <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Specific Topic
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gTopic || 'All Topics'}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {/* Topic Popover with Premium Search */}
+            {activeDropdown === 'topic' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 270,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 10,
+                  zIndex: 100,
+                }}
+              >
+                {/* Search Field */}
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search topics..."
+                    value={filterSearchQuery}
+                    onChange={(e) => setFilterSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px 7px 30px',
+                      borderRadius: 7,
+                      border: '1px solid #E2E8F0',
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#F8FAFC',
+                    }}
+                  />
+                </div>
+
+                <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {['All Topics', 'Fundamental Rights', 'Preamble', 'Directive Principles', 'Union Legislature', 'Modern History', 'Monetary Policy']
+                    .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                    .map((opt) => {
+                      const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                      return (
+                        <div
+                          key={opt}
+                          onClick={() => {
+                            const val = opt === 'All Topics' ? '' : opt;
+                            navigate(`/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(val)}&count=${gCount}`);
+                            setActiveDropdown(null);
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 7,
+                            fontSize: 12.5,
+                            fontWeight: isSelected ? 700 : 500,
+                            color: isSelected ? '#1E3A8A' : '#334155',
+                            backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <span>{opt}</span>
+                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter 4: Count */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 120 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Question Count
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'count' ? null : 'count');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'count' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'count' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'count' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>{gCount} Questions</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'count' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {/* Count Popover */}
+            {activeDropdown === 'count' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 170,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 8,
+                  zIndex: 100,
+                }}
+              >
+                {['3', '5', '8', '10'].map((opt) => (
+                  <div
+                    key={opt}
+                    onClick={() => {
+                      navigate(`/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&subtopic=${encodeURIComponent(gSubtopic)}&count=${opt}`);
+                      setActiveDropdown(null);
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 7,
+                      fontSize: 12.5,
+                      fontWeight: gCount.toString() === opt ? 700 : 500,
+                      color: gCount.toString() === opt ? '#1E3A8A' : '#334155',
+                      backgroundColor: gCount.toString() === opt ? '#EFF6FF' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (gCount.toString() !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (gCount.toString() !== opt) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span>{opt} Questions</span>
+                    {gCount.toString() === opt && <Check size={14} color="#1E3A8A" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filter 5: Difficulty */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Difficulty
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'difficulty' ? null : 'difficulty');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>All Levels</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {/* Difficulty Popover */}
+            {activeDropdown === 'difficulty' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 170,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 8,
+                  zIndex: 100,
+                }}
+              >
+                {['All Levels', 'Moderate', 'High Yield', 'Advanced'].map((opt) => (
+                  <div
+                    key={opt}
+                    onClick={() => {
+                      setActiveDropdown(null);
+                    }}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: 7,
+                      fontSize: 12.5,
+                      fontWeight: opt === 'All Levels' ? 700 : 500,
+                      color: opt === 'All Levels' ? '#1E3A8A' : '#334155',
+                      backgroundColor: opt === 'All Levels' ? '#EFF6FF' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (opt !== 'All Levels') e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (opt !== 'All Levels') e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span>{opt}</span>
+                    {opt === 'All Levels' && <Check size={14} color="#1E3A8A" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Main Workspace Container */}
       <div
         style={{
           display: 'flex',
           flex: 1,
-          marginTop: 60,
-          marginBottom: 64,
+          paddingBottom: 28,
           overflow: 'hidden',
           position: 'relative',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#F8FAF8',
+          boxSizing: 'border-box',
         }}
       >
+        {/* Left Recommended Floating Panel */}
+        {!isMobile && (
+          <aside
+            style={{
+              width: 270,
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 18,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '16px 14px',
+              gap: 14,
+              overflowY: 'auto',
+              flexShrink: 0,
+              height: 'fit-content',
+              maxHeight: 'calc(100vh - 160px)',
+              position: 'sticky',
+              top: 20,
+              marginLeft: 24,
+              marginTop: 12,
+              boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+            }}
+          >
+            {/* Header */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#1E3A8A' }} />
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    RECOMMENDED FOR YOU
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
+                  3 Sets
+                </span>
+              </div>
+              <p style={{ fontSize: 11.5, color: '#64748B', margin: 0, lineHeight: 1.35 }}>
+                Targeted PYQ sets matched with your focus area.
+              </p>
+            </div>
+
+            {/* Stacked Recommendation Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Card 1 */}
+              <div
+                onClick={() => navigate(`/guest-exam?subject=Polity&topic=Fundamental%20Rights&count=10`)}
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2020 - 2024 • Polity</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#1E3A8A', backgroundColor: '#EFF6FF', padding: '1px 5px', borderRadius: 4, border: '1px solid #DBEAFE' }}>
+                    CROSS YEAR
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                  Fundamental Rights & Writs
+                </div>
+                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> 5 high-frequency questions.
+                </div>
+              </div>
+
+              {/* Card 2 */}
+              <div
+                onClick={() => navigate(`/guest-exam?subject=History&topic=Modern%20History&count=10`)}
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2021 - 2023 • History</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 5px', borderRadius: 4, border: '1px solid #FDE68A' }}>
+                    CHALLENGE
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                  Governor General Acts
+                </div>
+                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> 42% accuracy topic.
+                </div>
+              </div>
+
+              {/* Card 3 */}
+              <div
+                onClick={() => navigate(`/guest-exam?subject=Economy&count=10`)}
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2019 - 2024 • Economy</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#047857', backgroundColor: '#ECFDF5', padding: '1px 5px', borderRadius: 4, border: '1px solid #A7F3D0' }}>
+                    HIGH YIELD
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                  Monetary Policy & Banking
+                </div>
+                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> High frequency conceptual tests.
+                </div>
+              </div>
+            </div>
+          </aside>
+        )}
 
         {/* Center Reading Canvas */}
         <ExamQuestionCard
@@ -701,7 +1462,8 @@ export function GuestExamPage() {
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
           onRevealAnswer={() => handleRevealAnswer()}
-          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
+          onNext={() => currentQIndex < totalQuestions - 1 && handleSelectQuestion(currentQIndex + 1)}
         />
 
         {/* Right Question Palette */}
@@ -715,32 +1477,12 @@ export function GuestExamPage() {
             paletteFilter={paletteFilter}
             onSelectQuestion={(idx) => handleSelectQuestion(idx)}
             onFilterChange={(f) => setPaletteFilter(f)}
+            onSubmitTest={() => handleFinishGuestExam()}
+            onRevealAnswer={() => handleRevealAnswer()}
+            isRevealed={!!currentRevealedResult}
           />
         )}
       </div>
-
-      {/* Fixed Bottom Exam Control Bar */}
-      <ExamFooterBar
-        isAnswered={isCurrentAnswered}
-        isMarkedForReview={isCurrentMarked}
-        isFirstQuestion={currentQIndex === 0}
-        isLastQuestion={currentQIndex >= totalQuestions - 1}
-        isRevealed={!!currentRevealedResult}
-        showClearResponse={false}
-        showMarkReview={false}
-        backgroundColor="#F8FAFC"
-        onClearResponse={handleClearResponse}
-        onToggleMarkReview={handleToggleMarkReview}
-        onSubmitAnswer={() => handleRevealAnswer()}
-        onSubmitTest={() => handleFinishGuestExam()}
-        onPrev={() => handleSelectQuestion(currentQIndex - 1)}
-        onNext={() => {
-          if (currentQIndex < totalQuestions - 1) {
-            handleSelectQuestion(currentQIndex + 1);
-          }
-        }}
-      />
-
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
       {scoreCountdown !== null && (

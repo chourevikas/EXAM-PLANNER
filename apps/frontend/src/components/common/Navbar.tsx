@@ -50,9 +50,8 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const navItems = [
     { label: 'Platform', href: '#features' },
     { label: 'Methodology', href: '#how-it-works' },
-    { label: 'Target Exams', href: '#exams' },
     { label: 'Plans', href: '#pricing' },
-    { label: 'About Us', href: '#about' },
+    { label: 'About Us', href: '#footer' },
   ];
 
   return (
