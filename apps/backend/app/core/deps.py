@@ -82,22 +82,46 @@ async def get_current_user(
             if not clerk_id:
                 raise HTTPException(status_code=401, detail="Clerk token missing subject")
 
+            clerk_email = (
+                payload.get("email")
+                or payload.get("email_address")
+                or payload.get("primary_email_address")
+            )
+
             query = select(User).where(User.clerk_id == clerk_id)
             result = await session.exec(query)
             user = result.one_or_none()
 
+            if not user and clerk_email:
+                query_email = select(User).where(User.email == clerk_email)
+                res_email = await session.exec(query_email)
+                user = res_email.one_or_none()
+                if user:
+                    user.clerk_id = clerk_id
+                    session.add(user)
+                    await session.commit()
+                    await session.refresh(user)
+
             if not user:
-                # Auto-create user if webhook hasn't fired yet
-                user = User(
-                    clerk_id=clerk_id,
-                    email=f"{clerk_id}@clerk.local",
-                    full_name="Clerk Sync User",
-                    status=UserStatus.ACTIVE,
-                    role=UserRole.STUDENT,
-                )
-                session.add(user)
-                await session.commit()
-                await session.refresh(user)
+                target_email = clerk_email or f"{clerk_id}@clerk.local"
+                existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
+                if existing_email_user:
+                    existing_email_user.clerk_id = clerk_id
+                    session.add(existing_email_user)
+                    await session.commit()
+                    await session.refresh(existing_email_user)
+                    user = existing_email_user
+                else:
+                    user = User(
+                        clerk_id=clerk_id,
+                        email=target_email,
+                        full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
+                        status=UserStatus.ACTIVE,
+                        role=UserRole.STUDENT,
+                    )
+                    session.add(user)
+                    await session.commit()
+                    await session.refresh(user)
 
             if user.status != UserStatus.ACTIVE:
                 raise HTTPException(status_code=400, detail="Inactive user account")

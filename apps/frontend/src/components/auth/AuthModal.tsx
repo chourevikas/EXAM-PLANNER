@@ -554,7 +554,11 @@ export function AuthModal({
               onClick={() => {
                 sessionStorage.setItem('pending_guest_sync', 'true');
                 onClose();
-                clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' });
+                const redirectTarget = `${window.location.origin}/dashboard`;
+                clerk.openSignIn({
+                  fallbackRedirectUrl: redirectTarget,
+                  signUpFallbackRedirectUrl: redirectTarget,
+                });
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#F8FAFC';

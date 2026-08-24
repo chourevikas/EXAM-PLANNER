@@ -316,7 +316,11 @@ export function SignInPage() {
             }}
             onClick={() => {
               sessionStorage.setItem('pending_guest_sync', 'true');
-              clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' });
+              const redirectTarget = `${window.location.origin}/dashboard`;
+              clerk.openSignIn({
+                fallbackRedirectUrl: redirectTarget,
+                signUpFallbackRedirectUrl: redirectTarget,
+              });
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#F8FAFC';
