@@ -51,7 +51,8 @@ class QuestionRepository:
         Supports filtering by IDs, names, codes, year, stage, and fuzzy exam name match.
         Returns tuple of (questions_list, total_count).
         """
-        stmt = select(Question).outerjoin(Exam, Question.exam_id == Exam.id)
+        # Base ID query to avoid PostgreSQL DISTINCT on JSON columns while supporting ORDER BY question_number_in_paper
+        id_stmt = select(Question.id, Question.question_number_in_paper).outerjoin(Exam, Question.exam_id == Exam.id)
 
         # Needs hierarchy join if subject/topic/subtopic filters are applied
         needs_hierarchy = any([
@@ -61,74 +62,86 @@ class QuestionRepository:
         ])
 
         if needs_hierarchy:
-            stmt = stmt.outerjoin(QuestionHierarchyLink, Question.id == QuestionHierarchyLink.question_id)
-            stmt = stmt.outerjoin(Subtopic, or_(Question.subtopic_id == Subtopic.id, QuestionHierarchyLink.subtopic_id == Subtopic.id))
-            stmt = stmt.outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
-            stmt = stmt.outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
+            id_stmt = id_stmt.outerjoin(QuestionHierarchyLink, Question.id == QuestionHierarchyLink.question_id)
+            id_stmt = id_stmt.outerjoin(Subtopic, or_(Question.subtopic_id == Subtopic.id, QuestionHierarchyLink.subtopic_id == Subtopic.id))
+            id_stmt = id_stmt.outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
+            id_stmt = id_stmt.outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
 
         # Filters
         if exam_id:
-            stmt = stmt.where(or_(Question.exam_id == exam_id, Exam.id == exam_id))
+            id_stmt = id_stmt.where(or_(Question.exam_id == exam_id, Exam.id == exam_id))
         if status:
-            stmt = stmt.where(Question.status == status)
+            id_stmt = id_stmt.where(Question.status == status)
         if paper_set_code:
-            stmt = stmt.where(func.lower(Question.paper_set_code) == paper_set_code.lower())
+            id_stmt = id_stmt.where(func.lower(Question.paper_set_code) == paper_set_code.lower())
         if exam_year:
-            stmt = stmt.where(or_(Question.source_year == exam_year, Exam.source_year == exam_year))
+            id_stmt = id_stmt.where(or_(Question.source_year == exam_year, Exam.source_year == exam_year))
         if exam_type:
-            stmt = stmt.where(Exam.exam_type == exam_type)
+            id_stmt = id_stmt.where(Exam.exam_type == exam_type)
         if stage:
-            stmt = stmt.where(func.lower(Exam.stage) == stage.lower())
+            id_stmt = id_stmt.where(func.lower(Exam.stage) == stage.lower())
         if exam_name:
-            stmt = stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
+            id_stmt = id_stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
 
         # Hierarchy Filters with cross-level taxonomy matching
         if subject_id:
-            stmt = stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
+            id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name and subject_name != "All Subjects" and subject_name.strip():
             clean_s = subject_name.strip().lower()
-            stmt = stmt.where(or_(
+            id_stmt = id_stmt.where(or_(
                 func.lower(Subject.name).contains(clean_s),
                 func.lower(Question.section_code).contains(clean_s)
             ))
         if subject_code:
-            stmt = stmt.where(func.lower(Subject.code) == subject_code.lower())
+            id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
 
         if topic_id:
-            stmt = stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
+            id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
         if topic_name and topic_name != "All Topics" and topic_name.strip():
             clean_t = topic_name.strip().lower()
-            stmt = stmt.where(or_(
+            id_stmt = id_stmt.where(or_(
                 func.lower(Topic.name).contains(clean_t),
                 func.lower(Question.section_code).contains(clean_t),
                 func.lower(QuestionHierarchyLink.concept_name).contains(clean_t)
             ))
         if topic_code:
-            stmt = stmt.where(func.lower(Topic.code) == topic_code.lower())
+            id_stmt = id_stmt.where(func.lower(Topic.code) == topic_code.lower())
 
         if subtopic_id:
-            stmt = stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
+            id_stmt = id_stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
         if subtopic_name and subtopic_name != "All Subtopics" and subtopic_name.strip():
             clean_st = subtopic_name.strip().lower()
-            stmt = stmt.where(or_(
+            id_stmt = id_stmt.where(or_(
                 func.lower(Subtopic.name).contains(clean_st),
                 func.lower(QuestionHierarchyLink.concept_name).contains(clean_st)
             ))
         if subtopic_code:
-            stmt = stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
+            id_stmt = id_stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 
-
-        # Unique questions only
-        stmt = stmt.distinct()
+        # Unique question IDs and question_number_in_paper for ordering
+        id_stmt = id_stmt.distinct()
 
         # Count total matches
-        count_stmt = select(func.count()).select_from(stmt.subquery())
+        count_stmt = select(func.count()).select_from(id_stmt.subquery())
         total_res = await self.session.exec(count_stmt)
         total = total_res.one() or 0
 
-        # Pagination & Ordering based on question_number_in_paper
-        stmt = stmt.order_by(Question.question_number_in_paper).offset(skip).limit(limit)
-        res = await self.session.exec(stmt)
+        if total == 0:
+            return [], 0
+
+        # Pagination & Ordering based on question_number_in_paper for ID list
+        id_page_stmt = id_stmt.order_by(Question.question_number_in_paper).offset(skip).limit(limit)
+        id_res = await self.session.exec(id_page_stmt)
+        raw_rows = id_res.all()
+        q_ids = [r[0] for r in raw_rows] if raw_rows else []
+
+        if not q_ids:
+            return [], total
+
+        # Fetch full Question objects by IDs
+        q_stmt = select(Question).where(Question.id.in_(q_ids)).order_by(Question.question_number_in_paper)
+        res = await self.session.exec(q_stmt)
         questions = res.all()
 
         return questions, total
+

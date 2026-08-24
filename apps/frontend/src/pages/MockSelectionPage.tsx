@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listExams, listCandidateAttempts, formatCanonicalExamTitle } from '../services/examService';
+import { listExams, listCandidateAttempts, formatCanonicalExamTitle, fetchMasterSyllabus } from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   CheckCircle2,
@@ -46,27 +46,34 @@ export function MockSelectionPage() {
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
-  // Fetch Taxonomy (Topics & Subtopics) directly from DB / API
+  // Fetch Taxonomy (Topics & Subtopics) directly from Master Syllabus API (/api/v1/syllabus)
   useEffect(() => {
     async function loadDynamicTaxonomy() {
       setIsTaxonomyLoading(true);
       try {
-        const taxRes = await fetch('/api/v1/questions/taxonomy');
-
-        if (taxRes.ok) {
-          const taxData = await taxRes.json();
-          if (taxData.topics && taxData.topics.length > 0) {
-            const cleanTopics = taxData.topics.filter((t: string) => t !== 'All Topics' && t.trim() !== '');
+        const taxData = await fetchMasterSyllabus();
+        if (taxData) {
+          if (taxData.topics_list && taxData.topics_list.length > 0) {
+            const cleanTopics = taxData.topics_list.filter((t: string) => t !== 'All Topics' && t.trim() !== '');
             if (cleanTopics.length > 0) {
               setTopicsList(cleanTopics);
             }
           }
-          if (taxData.hierarchy) {
-            setHierarchyMap(taxData.hierarchy);
+          if (taxData.flat_hierarchy) {
+            setHierarchyMap(taxData.flat_hierarchy);
+          } else if (taxData.hierarchy) {
+            // Flatten Subject -> Topic -> Subtopics map into Topic -> Subtopics map
+            const flatMap: Record<string, string[]> = {};
+            Object.values(taxData.hierarchy).forEach((topicObj: any) => {
+              if (topicObj && typeof topicObj === 'object') {
+                Object.assign(flatMap, topicObj);
+              }
+            });
+            setHierarchyMap(flatMap);
           }
         }
       } catch (err) {
-        console.warn('Taxonomy DB fetch warning:', err);
+        console.warn('Taxonomy master syllabus fetch warning:', err);
       } finally {
         setIsTaxonomyLoading(false);
       }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Calendar, Layers, Target, Check, Zap, CheckCircle2, ArrowRight } from 'lucide-react';
 import { HeroIllustration } from './HeroIllustration';
+import { fetchMasterSyllabus, fetchExamsByYear } from '../../services/examService';
 
 interface HeroSectionProps {
   onSignup?: () => void;
@@ -13,91 +14,127 @@ const TARGET_EXAM_OPTIONS = [
   'UPSC CSE',
 ];
 
-// Target exam year options
-const TARGET_YEAR_OPTIONS = [
-  'All Years (2018 - 2024)',
-  '2024 PYQs',
-  '2023 PYQs',
-  '2022 PYQs',
-  '2021 PYQs',
-  '2020 PYQs',
-  '2019 PYQs',
-  '2018 PYQs',
-];
-
 const QUESTION_COUNTS = [5, 10, 15, 20];
 
 export function HeroSection({ }: HeroSectionProps) {
   const navigate = useNavigate();
 
-  // Dynamic 3-level taxonomy state fetched directly from DB / API
+  // Dynamic 3-level taxonomy state fetched directly from Syllabus API (/api/v1/syllabus)
+  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
   const [subjectsList, setSubjectsList] = useState<string[]>([]);
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
   const [examsList] = useState<string[]>(TARGET_EXAM_OPTIONS);
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
   // Form selections (Subject is required, Topic & Subtopic are optional)
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
-  const [selectedYear, setSelectedYear] = useState<string>('All Years (2018 - 2024)');
-  const [selectedSubject, setSelectedSubject] = useState<string>('Polity');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('All Subtopics (Entire Topic)');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
-  // Fetch Dynamic 3-level Taxonomy from Backend API
+  // Fetch Dynamic 3-level Taxonomy from Backend API (/api/v1/syllabus) and Exams By Year (/api/v1/exams/by-year)
   useEffect(() => {
-    async function loadDynamicTaxonomy() {
+    async function loadDynamicData() {
       setIsTaxonomyLoading(true);
       try {
-        const taxRes = await fetch('/api/v1/questions/taxonomy');
-        if (taxRes.ok) {
-          const taxData = await taxRes.json();
-          if (taxData.subjects && Array.isArray(taxData.subjects)) {
-            const cleanSubs = taxData.subjects.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+        const taxData = await fetchMasterSyllabus();
+        if (taxData) {
+          if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
+            setMasterSubjects(taxData.subjects);
+          }
+          if (taxData.subjects_list && Array.isArray(taxData.subjects_list) && taxData.subjects_list.length > 0) {
+            const cleanSubs = taxData.subjects_list.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
             if (cleanSubs.length > 0) {
               setSubjectsList(cleanSubs);
-              const initialSubject = cleanSubs.includes('Polity') ? 'Polity' : cleanSubs[0];
-              setSelectedSubject(initialSubject);
+              setSelectedSubject((prev) => (prev && cleanSubs.includes(prev) ? prev : cleanSubs[0]));
             }
           }
-          if (taxData.hierarchy) {
+          if (taxData.hierarchy && typeof taxData.hierarchy === 'object') {
             setThreeLevelHierarchy(taxData.hierarchy);
           }
         }
+
+        const yearsData = await fetchExamsByYear();
+        if (yearsData && Array.isArray(yearsData.years) && yearsData.years.length > 0) {
+          const fetchedYears = yearsData.years.map((y: number) => `${y} PYQs`);
+          const minYear = Math.min(...yearsData.years);
+          const maxYear = Math.max(...yearsData.years);
+          const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+          setYearOptions(yearsArray);
+          setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
+        }
       } catch (err) {
-        console.warn('Taxonomy DB fetch warning:', err);
+        console.warn('Taxonomy / Exam years fetch warning:', err);
       } finally {
         setIsTaxonomyLoading(false);
       }
     }
 
-    loadDynamicTaxonomy();
+    loadDynamicData();
   }, []);
 
-  // Compute available topics for the chosen subject directly from DB taxonomy
+  // Compute available topics for the chosen subject directly from DB taxonomy API
   const availableTopics = useMemo(() => {
     const defaultList = ['All Topics (Entire Subject)'];
+    if (!selectedSubject) return defaultList;
+
+    // 1. Check nested masterSubjects array
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics) && currentSubj.topics.length > 0) {
+      const topicNames = currentSubj.topics.map((t: any) => t.name).filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
+      if (topicNames.length > 0) return [...defaultList, ...topicNames];
+    }
+
+    // 2. Check threeLevelHierarchy object dictionary
     const topicMap = threeLevelHierarchy[selectedSubject];
     if (topicMap && typeof topicMap === 'object') {
       const keys = Object.keys(topicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
       if (keys.length > 0) return [...defaultList, ...keys];
     }
-    return defaultList;
-  }, [selectedSubject, threeLevelHierarchy]);
 
-  // Compute available subtopics for the chosen subject and topic directly from DB taxonomy
+    return defaultList;
+  }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
+
+  // Compute available subtopics for the chosen subject and topic directly from DB taxonomy API
   const availableSubtopics = useMemo(() => {
     const defaultList = ['All Subtopics (Entire Topic)'];
-    if (!selectedTopic || selectedTopic.startsWith('All Topics')) {
+    if (!selectedSubject || !selectedTopic || selectedTopic.startsWith('All Topics')) {
       return defaultList;
     }
+
+    // 1. Check nested masterSubjects array
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics)) {
+      const currentTopic = currentSubj.topics.find(
+        (t: any) => t.name === selectedTopic || t.name.toLowerCase().includes(selectedTopic.toLowerCase())
+      );
+      if (currentTopic && currentTopic.subtopics && Array.isArray(currentTopic.subtopics) && currentTopic.subtopics.length > 0) {
+        const subtopicNames = currentTopic.subtopics
+          .map((st: any) => (typeof st === 'string' ? st : st.name))
+          .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Subtopics'));
+        if (subtopicNames.length > 0) return [...defaultList, ...subtopicNames];
+      }
+    }
+
+    // 2. Check threeLevelHierarchy object dictionary
     const rawSubs = threeLevelHierarchy[selectedSubject]?.[selectedTopic];
     if (Array.isArray(rawSubs) && rawSubs.length > 0) {
       const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
       if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
     }
+
     return defaultList;
-  }, [selectedSubject, selectedTopic, threeLevelHierarchy]);
+  }, [selectedSubject, selectedTopic, masterSubjects, threeLevelHierarchy]);
+
+
+
 
   const handleSubjectChange = (newSubject: string) => {
     setSelectedSubject(newSubject);
@@ -333,7 +370,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       e.target.style.boxShadow = 'none';
                     }}
                   >
-                    {TARGET_YEAR_OPTIONS.map((yr) => (
+                    {yearOptions.map((yr) => (
                       <option key={yr} value={yr}>
                         {yr}
                       </option>

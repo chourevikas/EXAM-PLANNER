@@ -7,6 +7,7 @@ import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GradCap } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
+import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -22,37 +23,56 @@ export function GuestExamPage() {
   const rawCount = parseInt(searchParams.get('count') || '10', 10);
   const gCount = Math.min(10, Math.max(1, rawCount));
 
-  // Dynamic 3-level taxonomy fetched directly from DB / API
+  // Dynamic 3-level taxonomy fetched directly from Syllabus API (/api/v1/syllabus)
+  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
   const [subjectsList, setSubjectsList] = useState<string[]>([]);
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
+  const [availableYearsList, setAvailableYearsList] = useState<number[]>([]);
 
-  // Fetch dynamic taxonomy from DB endpoint (/api/v1/questions/taxonomy)
+  // Fetch dynamic master syllabus taxonomy (/api/v1/syllabus) & exams by year (/api/v1/exams/by-year)
   useEffect(() => {
-    async function fetchDBTaxonomy() {
+    async function loadTaxonomyAndYears() {
       try {
-        const res = await fetch('/api/v1/questions/taxonomy');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.subjects && Array.isArray(data.subjects)) {
-            const cleanSubs = data.subjects.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+        const syllabusData = await fetchMasterSyllabus();
+        if (syllabusData) {
+          if (syllabusData.subjects && Array.isArray(syllabusData.subjects) && syllabusData.subjects.length > 0) {
+            setMasterSubjects(syllabusData.subjects);
+          }
+          if (syllabusData.subjects_list && Array.isArray(syllabusData.subjects_list)) {
+            const cleanSubs = syllabusData.subjects_list.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
             if (cleanSubs.length > 0) {
               setSubjectsList(cleanSubs);
             }
           }
-          if (data.hierarchy && typeof data.hierarchy === 'object') {
-            setThreeLevelHierarchy(data.hierarchy);
+          if (syllabusData.hierarchy && typeof syllabusData.hierarchy === 'object') {
+            setThreeLevelHierarchy(syllabusData.hierarchy);
           }
         }
+
+        const yearsData = await fetchExamsByYear();
+        if (yearsData && Array.isArray(yearsData.years)) {
+          setAvailableYearsList(yearsData.years);
+        }
       } catch (err) {
-        console.warn('Failed to fetch DB taxonomy:', err);
+        console.warn('Failed to fetch syllabus taxonomy or exam years:', err);
       }
     }
-    fetchDBTaxonomy();
+    loadTaxonomyAndYears();
   }, []);
 
-  // Dynamically mapped topics for selected subject (derived 100% from DB taxonomy)
+  // Dynamically mapped topics for selected subject (derived 100% from DB taxonomy API)
   const availableTopics = useMemo(() => {
     const defaultList = ['All Topics'];
+    if (!gSubject) return defaultList;
+
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === gSubject || s.name.toLowerCase().includes(gSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics) && currentSubj.topics.length > 0) {
+      const topicNames = currentSubj.topics.map((t: any) => t.name).filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
+      if (topicNames.length > 0) return [...defaultList, ...topicNames];
+    }
+
     const dbTopicMap = threeLevelHierarchy[gSubject];
     if (dbTopicMap && typeof dbTopicMap === 'object') {
       const dbTopics = Object.keys(dbTopicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
@@ -61,7 +81,10 @@ export function GuestExamPage() {
       }
     }
     return defaultList;
-  }, [gSubject, threeLevelHierarchy]);
+  }, [gSubject, masterSubjects, threeLevelHierarchy]);
+
+
+
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -174,16 +197,34 @@ export function GuestExamPage() {
         }
       };
 
+      // Optional pre-query canonical alignment via POST /api/v1/syllabus/verify
+      let querySubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      let querySubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+
+      if (querySubject || queryTopic || querySubtopic) {
+        try {
+          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic, subtopic: querySubtopic });
+          if (verifyRes && verifyRes.is_valid) {
+            if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
+            if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
+            if (verifyRes.canonical_subtopic) querySubtopic = verifyRes.canonical_subtopic;
+          }
+        } catch (err) {
+          console.warn('Syllabus node verification check failed, using raw query params:', err);
+        }
+      }
+
       // 1. Try with full specificity (subject + topic + subtopic + year)
       const p1 = new URLSearchParams({ limit: gCount.toString() });
-      if (gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
-        p1.append('subject_name', gSubject.trim());
+      if (querySubject) {
+        p1.append('subject_name', querySubject);
       }
-      if (gTopic && !gTopic.startsWith('All Topics') && gTopic.trim()) {
-        p1.append('topic_name', gTopic.trim());
+      if (queryTopic) {
+        p1.append('topic_name', queryTopic);
       }
-      if (gSubtopic && !gSubtopic.startsWith('All Subtopics') && gSubtopic.trim()) {
-        p1.append('subtopic_name', gSubtopic.trim());
+      if (querySubtopic) {
+        p1.append('subtopic_name', querySubtopic);
       }
       const rawYearDigits = gYear.replace(/\D/g, '');
       if (rawYearDigits && !isNaN(Number(rawYearDigits)) && Number(rawYearDigits) >= 2000 && Number(rawYearDigits) <= 2024) {
@@ -195,23 +236,24 @@ export function GuestExamPage() {
       await fetchWithParams(p1);
 
       // 2. Fallback: Relax subtopic & year if 0 questions found
-      if (fetchedMap.size === 0 && gTopic && !gTopic.startsWith('All Topics') && gTopic.trim()) {
+      if (fetchedMap.size === 0 && queryTopic) {
         const p2 = new URLSearchParams({ limit: gCount.toString() });
-        if (gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
-          p2.append('subject_name', gSubject.trim());
+        if (querySubject) {
+          p2.append('subject_name', querySubject);
         }
-        p2.append('topic_name', gTopic.trim());
+        p2.append('topic_name', queryTopic);
         p2.append('exam_name', 'upsc');
         await fetchWithParams(p2);
       }
 
       // 3. Fallback: Relax topic if still 0 questions found
-      if (fetchedMap.size === 0 && gSubject && !gSubject.startsWith('All Subjects') && gSubject.trim()) {
+      if (fetchedMap.size === 0 && querySubject) {
         const p3 = new URLSearchParams({ limit: gCount.toString() });
-        p3.append('subject_name', gSubject.trim());
+        p3.append('subject_name', querySubject);
         p3.append('exam_name', 'upsc');
         await fetchWithParams(p3);
       }
+
 
       // 4. Fallback: General authentic UPSC questions pool
       if (fetchedMap.size === 0) {

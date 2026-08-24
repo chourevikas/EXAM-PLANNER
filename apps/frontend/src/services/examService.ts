@@ -523,3 +523,80 @@ export async function getUserCumulativeAggregateMarkdown(userId?: string): Promi
     return '';
   }
 }
+
+export async function fetchMasterSyllabus(examId?: string): Promise<any> {
+  try {
+    const url = examId ? `${API_BASE_URL}/syllabus?exam_id=${encodeURIComponent(examId)}` : `${API_BASE_URL}/syllabus`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch master syllabus hierarchy:', err);
+    return null;
+  }
+}
+
+export async function fetchExamsByYear(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exams/by-year`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exams grouped by year:', err);
+    return null;
+  }
+}
+
+export async function verifySyllabusNode(payload: { subject?: string; topic?: string; subtopic?: string }): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/syllabus/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to verify syllabus node:', err);
+    return null;
+  }
+}
+
+export async function fetchExamSyllabusTree(examId: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exams/${encodeURIComponent(examId)}/syllabus`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exam syllabus tree:', err);
+    return null;
+  }
+}
+
+export async function fetchExamIntegrityQuestions(examId: string, status?: string): Promise<any> {
+  try {
+    const url = status
+      ? `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?status=${encodeURIComponent(status)}`
+      : `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exam integrity diagnostics:', err);
+    return null;
+  }
+}
+
+
