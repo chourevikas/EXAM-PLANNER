@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -43,6 +43,7 @@ interface ExamQuestionCardProps {
   onSelectOption: (optionId: string, optionLabel: string) => void;
   onToggleBookmark?: () => void;
   onRevealAnswer?: () => void;
+  onShowSolution?: () => void;
   onToggleSidebar?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -125,10 +126,17 @@ export function ExamQuestionCard({
   onSelectOption,
   onToggleBookmark,
   onRevealAnswer,
+  onShowSolution,
   onToggleSidebar,
   onPrev,
   onNext,
 }: ExamQuestionCardProps) {
+  const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
+
+  useEffect(() => {
+    setShowDetailedSolution(false);
+  }, [questionIndex]);
+
   const sectionLabel =
     ('subject' in question && (question as any).subject) ||
     ('topic_name' in question && (question as any).topic_name) ||
@@ -160,9 +168,9 @@ export function ExamQuestionCard({
     p: ({ node, ...props }: any) => (
       <p
         style={{
-          margin: '8px 0',
-          lineHeight: 1.55,
-          fontSize: 17.5,
+          margin: '6px 0',
+          lineHeight: 1.5,
+          fontSize: 15,
           fontWeight: 600,
           color: '#0F172A',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -172,12 +180,12 @@ export function ExamQuestionCard({
     ),
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
     table: ({ node, ...props }: any) => (
-      <div style={{ overflowX: 'auto', margin: '12px 0' }}>
+      <div style={{ overflowX: 'auto', margin: '10px 0' }}>
         <table
           style={{
             width: '100%',
             borderCollapse: 'collapse',
-            fontSize: 13.5,
+            fontSize: 12.5,
             border: '1px solid #E2E8F0',
             borderRadius: 6,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -189,7 +197,7 @@ export function ExamQuestionCard({
     th: ({ node, ...props }: any) => (
       <th
         style={{
-          padding: '8px 12px',
+          padding: '6px 10px',
           fontWeight: 700,
           textAlign: 'left',
           backgroundColor: '#F1F5F9',
@@ -202,22 +210,22 @@ export function ExamQuestionCard({
     td: ({ node, ...props }: any) => (
       <td
         style={{
-          padding: '8px 12px',
+          padding: '6px 10px',
           borderBottom: '1px solid #F1F5F9',
           color: '#0F172A',
         }}
         {...props}
       />
     ),
-    ul: ({ node, ...props }: any) => <ul style={{ paddingLeft: 20, margin: '8px 0' }} {...props} />,
-    ol: ({ node, ...props }: any) => <ol style={{ paddingLeft: 20, margin: '8px 0' }} {...props} />,
+    ul: ({ node, ...props }: any) => <ul style={{ paddingLeft: 18, margin: '6px 0' }} {...props} />,
+    ol: ({ node, ...props }: any) => <ol style={{ paddingLeft: 18, margin: '6px 0' }} {...props} />,
     li: ({ node, ...props }: any) => (
       <li
         style={{
-          margin: '4px 0',
-          fontSize: 16.5,
+          margin: '3px 0',
+          fontSize: 14,
           color: '#0F172A',
-          lineHeight: 1.5,
+          lineHeight: 1.45,
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         {...props}
@@ -236,6 +244,7 @@ export function ExamQuestionCard({
     <main
       style={{
         flex: 1,
+        width: '100%',
         padding: '12px 24px 28px 24px',
         overflow: 'hidden',
         boxSizing: 'border-box',
@@ -251,7 +260,7 @@ export function ExamQuestionCard({
     >
       <div
         style={{
-          maxWidth: 800,
+          maxWidth: '100%',
           width: '100%',
           margin: '0 auto',
           display: 'flex',
@@ -455,14 +464,14 @@ export function ExamQuestionCard({
               flexDirection: 'column',
             }}
           >
-            {/* Question Body (Compact 17.5px font, 600 weight) */}
+            {/* Question Body (Compact 15px font, 600 weight) */}
             <div
               style={{
-                marginBottom: 16,
-                fontSize: 17.5,
+                marginBottom: 14,
+                fontSize: 15,
                 color: '#0F172A',
                 fontWeight: 600,
-                lineHeight: 1.55,
+                lineHeight: 1.5,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
               }}
             >
@@ -471,7 +480,7 @@ export function ExamQuestionCard({
               </ReactMarkdown>
             </div>
 
-          {/* Answer Choice Cards (Compact 14.5px font, 10px 14px padding) */}
+          {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
             {options.map((opt) => {
               const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
@@ -510,7 +519,7 @@ export function ExamQuestionCard({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    padding: '10px 14px',
+                    padding: '9px 12px',
                     borderRadius: 8,
                     border: borderStyle,
                     backgroundColor: bgStyle,
@@ -524,14 +533,14 @@ export function ExamQuestionCard({
                   {/* Option Label Badge ([A], [B], [C], [D]) */}
                   <div
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 26,
+                      height: 26,
                       borderRadius: 6,
                       backgroundColor: badgeBg,
                       color: badgeColor,
                       border: badgeBorder,
                       fontWeight: 700,
-                      fontSize: 12.5,
+                      fontSize: 12,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -546,7 +555,7 @@ export function ExamQuestionCard({
                   {/* Option Text */}
                   <div
                     style={{
-                      fontSize: 14.5,
+                      fontSize: 13.5,
                       color: '#0F172A',
                       fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
                       lineHeight: 1.45,
@@ -584,7 +593,7 @@ export function ExamQuestionCard({
           </div>
 
           {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
-          {mode !== 'EXAM' && revealResult && (
+          {mode !== 'EXAM' && revealResult && showDetailedSolution && (
             <QuestionSolutionMarkdownCard
               isUserCorrect={revealResult.is_user_correct}
               selectedOptionLabel={revealResult.user_selected_label || selectedOptionLabel || undefined}
@@ -611,6 +620,91 @@ export function ExamQuestionCard({
                 distractor_scores: revealResult.distractor_scores || {},
               }}
             />
+          )}
+
+          {/* Action Buttons: Submit & Show Solution aligned to the right side */}
+          {onRevealAnswer && (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              {/* Button 1: Submit */}
+              <button
+                type="button"
+                onClick={onRevealAnswer}
+                disabled={!!revealResult}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: revealResult ? '1px solid #CBD5E1' : '1px solid #2563EB',
+                  backgroundColor: revealResult ? '#F1F5F9' : '#2563EB',
+                  color: revealResult ? '#64748B' : '#FFFFFF',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: revealResult ? 'default' : 'pointer',
+                  boxShadow: revealResult ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.22)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+                onMouseEnter={(e) => {
+                  if (!revealResult) {
+                    e.currentTarget.style.backgroundColor = '#1D4ED8';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!revealResult) {
+                    e.currentTarget.style.backgroundColor = '#2563EB';
+                  }
+                }}
+              >
+                {revealResult ? '✓ Submitted' : 'Submit'}
+              </button>
+
+              {/* Button 2: Show Solution */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!revealResult) {
+                    onRevealAnswer();
+                  }
+                  const nextState = !showDetailedSolution;
+                  setShowDetailedSolution(nextState);
+                  if (nextState && onShowSolution) {
+                    onShowSolution();
+                  }
+                }}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: showDetailedSolution ? '1px solid #2563EB' : '1px solid #CBD5E1',
+                  backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
+                  color: showDetailedSolution ? '#2563EB' : '#1E293B',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'all 0.15s ease',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+                onMouseEnter={(e) => {
+                  if (!showDetailedSolution) {
+                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                    e.currentTarget.style.borderColor = '#94A3B8';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showDetailedSolution) {
+                    e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    e.currentTarget.style.borderColor = '#CBD5E1';
+                  }
+                }}
+              >
+                {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
+              </button>
+            </div>
           )}
           </div>
         </div>

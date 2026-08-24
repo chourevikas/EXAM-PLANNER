@@ -207,6 +207,7 @@ export function HeroIllustration() {
         <div
           className="anim-float-b"
           style={{
+            display: 'none',
             position: 'absolute',
             top: 16,
             left: -10,
@@ -216,7 +217,6 @@ export function HeroIllustration() {
             borderRadius: 14,
             fontSize: 12,
             fontWeight: 700,
-            display: 'flex',
             alignItems: 'center',
             gap: 8,
             boxShadow: '0 8px 24px rgba(37,99,235,0.4)',
@@ -295,6 +295,7 @@ export function HeroIllustration() {
         {/* Weekly progress floating card */}
         <div
           style={{
+            display: 'none',
             position: 'absolute',
             bottom: -30,
             right: -50,

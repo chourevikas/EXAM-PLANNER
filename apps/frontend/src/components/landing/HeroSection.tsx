@@ -31,7 +31,7 @@ export function HeroSection({ }: HeroSectionProps) {
   const navigate = useNavigate();
 
   // Dynamic 3-level taxonomy state fetched directly from DB / API
-  const [subjectsList, setSubjectsList] = useState<string[]>(['Polity', 'History', 'Economy', 'Geography', 'Environment', 'Science & Technology']);
+  const [subjectsList, setSubjectsList] = useState<string[]>([]);
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
   const [examsList] = useState<string[]>(TARGET_EXAM_OPTIONS);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
@@ -74,7 +74,7 @@ export function HeroSection({ }: HeroSectionProps) {
     loadDynamicTaxonomy();
   }, []);
 
-  // Compute available topics for the chosen subject
+  // Compute available topics for the chosen subject directly from DB taxonomy
   const availableTopics = useMemo(() => {
     const defaultList = ['All Topics (Entire Subject)'];
     const topicMap = threeLevelHierarchy[selectedSubject];
@@ -82,10 +82,10 @@ export function HeroSection({ }: HeroSectionProps) {
       const keys = Object.keys(topicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
       if (keys.length > 0) return [...defaultList, ...keys];
     }
-    return [...defaultList, 'Fundamental Rights', 'Preamble', 'Directive Principles', 'Union Legislature'];
+    return defaultList;
   }, [selectedSubject, threeLevelHierarchy]);
 
-  // Compute available subtopics for the chosen subject and topic
+  // Compute available subtopics for the chosen subject and topic directly from DB taxonomy
   const availableSubtopics = useMemo(() => {
     const defaultList = ['All Subtopics (Entire Topic)'];
     if (!selectedTopic || selectedTopic.startsWith('All Topics')) {
@@ -96,7 +96,7 @@ export function HeroSection({ }: HeroSectionProps) {
       const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
       if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
     }
-    return [...defaultList, 'Right to Equality', 'Right to Freedom', 'Constitutional Remedies'];
+    return defaultList;
   }, [selectedSubject, selectedTopic, threeLevelHierarchy]);
 
   const handleSubjectChange = (newSubject: string) => {
@@ -342,13 +342,13 @@ export function HeroSection({ }: HeroSectionProps) {
                 </div>
               </div>
 
-              {/* Form Row 2: Subject, Topic & Subtopic 3-Tier Selector */}
+              {/* Form Row 2: Subject & Topic */}
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                  gap: 12,
-                  marginBottom: 16,
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 14,
+                  marginBottom: 14,
                 }}
               >
                 {/* Subject Select */}
@@ -430,7 +430,17 @@ export function HeroSection({ }: HeroSectionProps) {
                     ))}
                   </select>
                 </div>
+              </div>
 
+              {/* Form Row 3: Subtopic & Primary CTA Button */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 14,
+                  marginBottom: 14,
+                }}
+              >
                 {/* Subtopic Select */}
                 <div>
                   <label
@@ -470,6 +480,43 @@ export function HeroSection({ }: HeroSectionProps) {
                     ))}
                   </select>
                 </div>
+
+                {/* Start Free Mock CTA Button in empty right column beside Subtopic */}
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    style={{
+                      width: '100%',
+                      height: 38,
+                      borderRadius: 9,
+                      border: 'none',
+                      backgroundColor: '#2563EB',
+                      color: '#FFFFFF',
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 7,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1D4ED8';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.32)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#2563EB';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.22)';
+                    }}
+                  >
+                    Start Free Mock
+                    <ArrowRight size={16} strokeWidth={2.2} />
+                  </button>
+                </div>
               </div>
 
               {/* Contextual Mock Summary Bar */}
@@ -492,41 +539,6 @@ export function HeroSection({ }: HeroSectionProps) {
                   {selectedSubject} · {selectedTopic} · {selectedSubtopic} ({questionCount} Qs)
                 </span>
               </div>
-
-              {/* Primary CTA Button */}
-              <button
-                type="submit"
-                style={{
-                  width: '100%',
-                  padding: '12px 20px',
-                  borderRadius: 9,
-                  border: 'none',
-                  backgroundColor: '#2563EB',
-                  color: '#FFFFFF',
-                  fontSize: 14.5,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 7,
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1D4ED8';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.32)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563EB';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.22)';
-                }}
-              >
-                Start Free Mock
-                <ArrowRight size={16} strokeWidth={2.2} />
-              </button>
 
               {/* Compact Trust / Benefit Row */}
               <div

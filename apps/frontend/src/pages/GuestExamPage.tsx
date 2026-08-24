@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
-import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GradCap } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
-
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -20,8 +18,50 @@ export function GuestExamPage() {
   const gSubject = searchParams.get('subject') || 'Polity';
   const gTopic = searchParams.get('topic') || '';
   const gSubtopic = searchParams.get('subtopic') || '';
+  const gDifficulty = searchParams.get('difficulty') || '';
   const rawCount = parseInt(searchParams.get('count') || '10', 10);
   const gCount = Math.min(10, Math.max(1, rawCount));
+
+  // Dynamic 3-level taxonomy fetched directly from DB / API
+  const [subjectsList, setSubjectsList] = useState<string[]>([]);
+  const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
+
+  // Fetch dynamic taxonomy from DB endpoint (/api/v1/questions/taxonomy)
+  useEffect(() => {
+    async function fetchDBTaxonomy() {
+      try {
+        const res = await fetch('/api/v1/questions/taxonomy');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.subjects && Array.isArray(data.subjects)) {
+            const cleanSubs = data.subjects.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+            if (cleanSubs.length > 0) {
+              setSubjectsList(cleanSubs);
+            }
+          }
+          if (data.hierarchy && typeof data.hierarchy === 'object') {
+            setThreeLevelHierarchy(data.hierarchy);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch DB taxonomy:', err);
+      }
+    }
+    fetchDBTaxonomy();
+  }, []);
+
+  // Dynamically mapped topics for selected subject (derived 100% from DB taxonomy)
+  const availableTopics = useMemo(() => {
+    const defaultList = ['All Topics'];
+    const dbTopicMap = threeLevelHierarchy[gSubject];
+    if (dbTopicMap && typeof dbTopicMap === 'object') {
+      const dbTopics = Object.keys(dbTopicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
+      if (dbTopics.length > 0) {
+        return [...defaultList, ...dbTopics];
+      }
+    }
+    return defaultList;
+  }, [gSubject, threeLevelHierarchy]);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -180,7 +220,15 @@ export function GuestExamPage() {
       }
 
       const fetchedList = Array.from(fetchedMap.values());
-      const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
+      let questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
+      if (gDifficulty && gDifficulty.trim()) {
+        const filteredByDiff = questionsList.filter(
+          (q) => String(q.difficulty || '').toUpperCase() === gDifficulty.toUpperCase()
+        );
+        if (filteredByDiff.length > 0) {
+          questionsList = filteredByDiff;
+        }
+      }
 
       setAllQuestions(questionsList);
       setTotalQuestions(questionsList.length);
@@ -366,7 +414,7 @@ export function GuestExamPage() {
 
     setRevealedMap(updatedRevealedMap);
 
-    // Update palette question_status on Submit & Show Solution
+    // Update palette question_status on Submit
     setPalette((prev) =>
       prev.map((item) => {
         if (item.question_id === targetId) {
@@ -379,15 +427,19 @@ export function GuestExamPage() {
         return item;
       })
     );
+  };
 
-    // Check if ALL questions are finished (revealed)
+  const handleShowSolution = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+    const rMap = passedRevealedMap || revealedMap;
     const numQuestions = allQuestions.length;
-    if (Object.keys(updatedRevealedMap).length >= numQuestions && numQuestions > 0) {
-      handleFinishGuestExam(updatedRevealedMap);
+    // When Show Solution is clicked, if test is completed (or 1 question), start 10s countdown to feedback modal
+    const isCompleted = Object.keys(rMap).length >= numQuestions || numQuestions === 1;
+    if (isCompleted && scoreCountdown === null && !showScoreModal) {
+      handleFinishGuestExam(rMap, true);
     }
   };
 
-  const handleFinishGuestExam = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+  const handleFinishGuestExam = (passedRevealedMap?: Record<string, RevealAnswerResponse>, startCountdown: boolean = false) => {
     const rMap = passedRevealedMap || revealedMap;
     const numQuestions = allQuestions.length;
     let correctCount = 0;
@@ -457,8 +509,13 @@ export function GuestExamPage() {
 
     setGuestScoreData(scorePayload);
     saveGuestAttempt(scorePayload);
-    setScoreCountdown(null);
-    setShowScoreModal(true);
+
+    if (startCountdown) {
+      setScoreCountdown(10);
+    } else {
+      setScoreCountdown(null);
+      setShowScoreModal(true);
+    }
   };
 
   // Clear Response
@@ -968,7 +1025,7 @@ export function GuestExamPage() {
                 </div>
 
                 <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {['Polity', 'History', 'Economy', 'Geography', 'Environment', 'Science & Technology']
+                  {(subjectsList.length > 0 ? subjectsList : (Object.keys(threeLevelHierarchy).length > 0 ? Object.keys(threeLevelHierarchy) : ['Polity', 'History', 'Economy', 'Geography', 'Environment', 'Science & Technology']))
                     .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                     .map((opt) => (
                       <div
@@ -1076,7 +1133,7 @@ export function GuestExamPage() {
                 </div>
 
                 <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {['All Topics', 'Fundamental Rights', 'Preamble', 'Directive Principles', 'Union Legislature', 'Modern History', 'Monetary Policy']
+                  {availableTopics
                     .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                     .map((opt) => {
                       const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
@@ -1117,89 +1174,7 @@ export function GuestExamPage() {
             )}
           </div>
 
-          {/* Filter 4: Count */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 120 }}>
-            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
-              Question Count
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveDropdown(activeDropdown === 'count' ? null : 'count');
-                setFilterSearchQuery('');
-              }}
-              style={{
-                width: '100%',
-                padding: '8px 14px',
-                borderRadius: 9,
-                border: activeDropdown === 'count' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                backgroundColor: activeDropdown === 'count' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
-                fontSize: 13,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                boxShadow: activeDropdown === 'count' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{gCount} Questions</span>
-              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'count' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
-            </button>
-
-            {/* Count Popover */}
-            {activeDropdown === 'count' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  left: 0,
-                  width: 170,
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 12,
-                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                  padding: 8,
-                  zIndex: 100,
-                }}
-              >
-                {['3', '5', '8', '10'].map((opt) => (
-                  <div
-                    key={opt}
-                    onClick={() => {
-                      navigate(`/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&subtopic=${encodeURIComponent(gSubtopic)}&count=${opt}`);
-                      setActiveDropdown(null);
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 7,
-                      fontSize: 12.5,
-                      fontWeight: gCount.toString() === opt ? 700 : 500,
-                      color: gCount.toString() === opt ? '#1E3A8A' : '#334155',
-                      backgroundColor: gCount.toString() === opt ? '#EFF6FF' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (gCount.toString() !== opt) e.currentTarget.style.backgroundColor = '#F8FAFC';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (gCount.toString() !== opt) e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <span>{opt} Questions</span>
-                    {gCount.toString() === opt && <Check size={14} color="#1E3A8A" />}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Filter 5: Difficulty */}
+          {/* Filter 4: Difficulty */}
           <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
             <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
               Difficulty
@@ -1227,7 +1202,7 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>All Levels</span>
+              <span>{gDifficulty ? gDifficulty : 'All Levels'}</span>
               <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
             </button>
 
@@ -1247,35 +1222,40 @@ export function GuestExamPage() {
                   zIndex: 100,
                 }}
               >
-                {['All Levels', 'Moderate', 'High Yield', 'Advanced'].map((opt) => (
-                  <div
-                    key={opt}
-                    onClick={() => {
-                      setActiveDropdown(null);
-                    }}
-                    style={{
-                      padding: '8px 10px',
-                      borderRadius: 7,
-                      fontSize: 12.5,
-                      fontWeight: opt === 'All Levels' ? 700 : 500,
-                      color: opt === 'All Levels' ? '#1E3A8A' : '#334155',
-                      backgroundColor: opt === 'All Levels' ? '#EFF6FF' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (opt !== 'All Levels') e.currentTarget.style.backgroundColor = '#F8FAFC';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (opt !== 'All Levels') e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <span>{opt}</span>
-                    {opt === 'All Levels' && <Check size={14} color="#1E3A8A" />}
-                  </div>
-                ))}
+                {['All Levels', 'EASY', 'MEDIUM', 'HARD'].map((opt) => {
+                  const isSelected = (opt === 'All Levels' && !gDifficulty) || gDifficulty.toUpperCase() === opt;
+                  return (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        const val = opt === 'All Levels' ? '' : opt;
+                        navigate(`/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`);
+                        setActiveDropdown(null);
+                      }}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: 7,
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? 700 : 500,
+                        color: isSelected ? '#1E3A8A' : '#334155',
+                        backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <span>{opt}</span>
+                      {isSelected && <Check size={14} color="#1E3A8A" />}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1288,6 +1268,7 @@ export function GuestExamPage() {
           display: 'flex',
           flex: 1,
           paddingBottom: 28,
+          paddingRight: 24,
           overflow: 'hidden',
           position: 'relative',
           backgroundColor: '#F8FAF8',
@@ -1308,12 +1289,11 @@ export function GuestExamPage() {
               gap: 14,
               overflowY: 'auto',
               flexShrink: 0,
-              height: 'fit-content',
-              maxHeight: 'calc(100vh - 160px)',
-              position: 'sticky',
-              top: 20,
+              height: 'calc(100% - 40px)',
+              maxHeight: 'calc(100% - 40px)',
               marginLeft: 24,
               marginTop: 12,
+              marginBottom: 28,
               boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             }}
           >
@@ -1327,7 +1307,7 @@ export function GuestExamPage() {
                   </span>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
-                  3 Sets
+                  5 Sets
                 </span>
               </div>
               <p style={{ fontSize: 11.5, color: '#64748B', margin: 0, lineHeight: 1.35 }}>
@@ -1444,6 +1424,78 @@ export function GuestExamPage() {
                   <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> High frequency conceptual tests.
                 </div>
               </div>
+
+              {/* Card 4 */}
+              <div
+                onClick={() => navigate(`/guest-exam?subject=Environment&count=10`)}
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2018 - 2024 • Environment</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#4338CA', backgroundColor: '#EEF2FF', padding: '1px 5px', borderRadius: 4, border: '1px solid #C7D2FE' }}>
+                    BIODIVERSITY
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                  Western Ghats & Conservation
+                </div>
+                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> Frequently asked species & hotspot trends.
+                </div>
+              </div>
+
+              {/* Card 5 */}
+              <div
+                onClick={() => navigate(`/guest-exam?subject=Geography&count=10`)}
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2020 - 2024 • Geography</span>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#0D9488', backgroundColor: '#F0FDFA', padding: '1px 5px', borderRadius: 4, border: '1px solid #99F6E4' }}>
+                    MAP BASED
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                  River Systems & Drainage
+                </div>
+                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> High frequency map-based questions.
+                </div>
+              </div>
             </div>
           </aside>
         )}
@@ -1462,26 +1514,10 @@ export function GuestExamPage() {
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
           onRevealAnswer={() => handleRevealAnswer()}
+          onShowSolution={() => handleShowSolution()}
           onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
           onNext={() => currentQIndex < totalQuestions - 1 && handleSelectQuestion(currentQIndex + 1)}
         />
-
-        {/* Right Question Palette */}
-        {!isMobile && (
-          <ExamQuestionPalette
-            questions={allQuestions}
-            palette={palette}
-            currentQIndex={currentQIndex}
-            selectedOptions={selectedOptionsMap}
-            markedForReview={markedForReviewMap}
-            paletteFilter={paletteFilter}
-            onSelectQuestion={(idx) => handleSelectQuestion(idx)}
-            onFilterChange={(f) => setPaletteFilter(f)}
-            onSubmitTest={() => handleFinishGuestExam()}
-            onRevealAnswer={() => handleRevealAnswer()}
-            isRevealed={!!currentRevealedResult}
-          />
-        )}
       </div>
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
