@@ -103,14 +103,25 @@ class Question(SQLModel, table=True):
     validation_status: Optional[str] = Field(
         default="PENDING",
         index=True,
-        description="PENDING, VALID, REJECTED, AUTO_FIXED",
+        description="PENDING, VALID, REJECTED, AUTO_FIXED, PARTIALLY_CORRUPTED, CORRUPTED",
     )
     validation_issues_json: Optional[list] = Field(
         default=[],
         sa_column=Column(PortableJSON),
         description="JSON array of validation error codes or issue descriptions",
     )
+    integrity_status: Optional[str] = Field(
+        default="PENDING",
+        index=True,
+        description="VALID, PARTIALLY_CORRUPTED, CORRUPTED, PENDING",
+    )
+    integrity_reasons_json: Optional[list] = Field(
+        default=[],
+        sa_column=Column(PortableJSON),
+        description="JSON array of integrity diagnostics and issue reasons",
+    )
     page_number_in_pdf: Optional[int] = Field(default=None)
+
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

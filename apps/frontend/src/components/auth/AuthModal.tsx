@@ -96,7 +96,7 @@ export function AuthModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        zIndex: 1000000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -533,7 +533,15 @@ export function AuthModal({
                 transition: 'all 0.15s ease',
                 fontFamily: "'Manrope', sans-serif",
               }}
-              onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+              onClick={() => {
+                sessionStorage.setItem('pending_guest_sync', 'true');
+                onClose();
+                const redirectTarget = `${window.location.origin}/dashboard`;
+                clerk.openSignIn({
+                  fallbackRedirectUrl: redirectTarget,
+                  signUpFallbackRedirectUrl: redirectTarget,
+                });
+              }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#F8FAFC';
                 e.currentTarget.style.borderColor = '#CBD5E1';

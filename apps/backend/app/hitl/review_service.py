@@ -364,6 +364,10 @@ class HumanReviewService:
         question.updated_at = datetime.now(timezone.utc)
         self.session.add(question)
 
+        # Re-evaluate & persist question integrity directly in DB table
+        from app.services.syllabus_service import SyllabusService
+        await SyllabusService(self.session).evaluate_and_persist_question_integrity(question)
+
         # Update Review Task
         review_task_res = await self.session.exec(
             select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
@@ -379,6 +383,7 @@ class HumanReviewService:
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(question)
+
 
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
