@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { useTheme } from '../hooks/useTheme';
@@ -25,6 +25,7 @@ const studyHoursData = [
 ];
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const { theme, toggleTheme } = useTheme();
   const { user: clerkUser } = useUser();
@@ -75,7 +76,13 @@ export function DashboardPage() {
     const token = (await getToken()) || localStorage.getItem('access_token');
     if (token) {
       // Auto-sync any guest attempts stored in localStorage to backend DB first
-      await syncGuestSessionsOnAuth(token);
+      const latestId = await syncGuestSessionsOnAuth(token);
+      const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
+      if (syncedId && window.location.pathname !== '/analytics') {
+        sessionStorage.removeItem('latest_synced_attempt_id');
+        navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
+        return;
+      }
 
       try {
         const res = await fetch('/api/v1/attempts/student-dashboard-stats', {

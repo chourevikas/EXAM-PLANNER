@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopHeader } from './StudentTopHeader';
-import { fetchCurrentUser } from '../../services/authService';
+import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../../services/authService';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -13,15 +14,28 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const { getToken } = useAuth();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     if (isClerkLoaded && clerkUser) {
-      getToken().then((token) => {
+      getToken().then(async (token) => {
         if (token) {
           localStorage.setItem('access_token', token);
+
+          // Auto-sync guest exam attempts for Clerk OAuth user
+          const latestId = await syncGuestSessionsOnAuth(token);
+          const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
+          const isPending = sessionStorage.getItem('pending_guest_sync');
+          if (syncedId || isPending) {
+            sessionStorage.removeItem('pending_guest_sync');
+            if (syncedId && window.location.pathname !== '/analytics') {
+              sessionStorage.removeItem('latest_synced_attempt_id');
+              navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
+            }
+          }
         }
       }).catch(err => console.error("Failed to sync Clerk token:", err));
 
@@ -42,7 +56,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
         return updated;
       });
     }
-  }, [clerkUser, isClerkLoaded, getToken]);
+  }, [clerkUser, isClerkLoaded, getToken, navigate]);
 
   useEffect(() => {
     document.title = `${pageTitle} - ExamPlanner`;

@@ -314,7 +314,10 @@ export function SignInPage() {
               transition: 'all 0.15s ease',
               fontFamily: "'Manrope', sans-serif",
             }}
-            onClick={() => clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' })}
+            onClick={() => {
+              sessionStorage.setItem('pending_guest_sync', 'true');
+              clerk.openSignIn({ fallbackRedirectUrl: '/dashboard' });
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#F8FAFC';
               e.currentTarget.style.borderColor = '#CBD5E1';
