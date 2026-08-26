@@ -395,7 +395,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 break
 
         sol_data = None
-        for s_prefix in [s_folder, alt_folder]:
+        for s_prefix in [s_folder, alt_s_folder]:
             for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"]:
                 s_file = f"{s_prefix.rstrip('/')}/{pattern}"
                 try:
@@ -671,8 +671,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             "is_correct": r.is_correct,
             "closeness_score_awarded": r.closeness_score_awarded,
             "final_score": r.final_score,
-            "time_taken_seconds": r.time_taken_seconds if r.time_taken_seconds > 0 else 60.0,
-            "expected_time_seconds": r.expected_time_seconds if r.expected_time_seconds > 0 else 60.0,
+            "time_taken_seconds": float(r.time_taken_seconds or 0.0),
+            "expected_time_seconds": float(r.expected_time_seconds if (r.expected_time_seconds and r.expected_time_seconds > 0) else 60.0),
             "is_switched": r.is_switched,
             "initial_correct": False,
             "gti_item_score": r.gti_item_score,
@@ -758,49 +758,49 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # Detailed logs explaining how each matrix was evaluated
     logger.info(f"🧠 [STEP 1/4: 12-MATRIX COMPUTATION COMPLETED in {mat_duration_ms}ms]")
-    icrs_obj = part_3.get("icrs", {})
+    icrs_obj = part_3.get("icrs", {}) or part_2.get("icrs_overall_readiness", {})
     logger.info(
         f"   ├─ 1. ICRS (Exam Preparedness): {icrs_obj.get('icrs_score', 0)}/100 ({icrs_obj.get('readiness_tier', 'FOUNDATION')}) "
         f"| Grounding: Net Marks={icrs_obj.get('net_score', 0):.2f}/200.0, Qualifying Cutoff={icrs_obj.get('qualifying_cutoff_marks', 92.0)} Marks, Coverage={icrs_obj.get('attempted_count', 0)}/{icrs_obj.get('total_questions', 100)} questions"
     )
-    irt_obj = part_3.get("irt_3pl", {})
+    irt_obj = part_3.get("irt_3pl", {}) or part_2.get("irt_ability_estimate", {})
     logger.info(
         f"   ├─ 2. IRT 3PL Mastery (Latent Ability): Theta={irt_obj.get('latent_ability_theta', 0.0):+.2f} "
         f"| Percentile={irt_obj.get('percentile_rank', 50.0)}% | Tier={irt_obj.get('ability_label', 'Competent')}"
     )
-    gti_obj = part_3.get("gti", {})
+    gti_obj = part_3.get("gti", {}) or part_2.get("guessing_tendency_index", {})
     logger.info(
         f"   ├─ 3. GTI (Guessing Tendency): Aggregate={gti_obj.get('aggregate', 0.0)*100:.1f}% "
         f"| Category={gti_obj.get('label', 'Calculated 50:50')} | High Impulse Guesses={gti_obj.get('high_guessing_count', 0)}"
     )
-    oeei_obj = part_3.get("oeei", {})
+    oeei_obj = part_3.get("oeei", {}) or part_2.get("option_elimination_index", {})
     logger.info(
         f"   ├─ 4. OEEI (Option Elimination Precision): Conversion={oeei_obj.get('oeei_score_pct', 70.0):.1f}% "
         f"| Rating={oeei_obj.get('elimination_rating', 'HIGH_TACTICAL_PRECISION')}"
     )
-    satoi_obj = part_3.get("satoi", {})
+    satoi_obj = part_3.get("satoi", {}) or part_2.get("satoi_cognitive_stamina", {})
     logger.info(
         f"   ├─ 5. SATOI (Exam Stamina & Endurance): Stamina Score={satoi_obj.get('satoi_score', 80)}/100 "
         f"| Status={satoi_obj.get('stamina_label', 'Healthy Stamina')} | Dropout Check: {len(responses_payload)} items assessed"
     )
-    pacing_obj = part_3.get("pacing", {})
+    pacing_obj = part_3.get("pacing", {}) or part_2.get("pacing_speed_strategy", {})
     logger.info(
         f"   ├─ 6. Time Budgeting & Pacing: Status={pacing_obj.get('pacing_status', 'BALANCED')} "
         f"| Avg Pace={pacing_obj.get('avg_time_per_question_sec', 60.0):.1f}s/question (Target: 72s) | Duration Utilization={pacing_obj.get('time_utilization_pct', 90)}%"
     )
-    osri_obj = part_3.get("switch_regret", {})
+    osri_obj = part_3.get("switch_regret", {}) or part_2.get("osri_switch_regret", {})
     logger.info(
         f"   ├─ 7. Answer Revision Safety: Total Switches={osri_obj.get('total_switches', 0)} "
         f"| Right->Wrong (Costly)={osri_obj.get('negative_regret_switches', 0)} (lost {osri_obj.get('negative_regret_switches', 0)*2.67:.1f} Marks) "
         f"| Wrong->Right (Rewarding)={osri_obj.get('positive_switches', 0)} (gained +{osri_obj.get('positive_switches', 0)*2.67:.1f} Marks) "
         f"| Net Revision Impact={osri_obj.get('net_score_impact', 0.0):+.2f} Marks"
     )
-    blooms_obj = part_3.get("blooms", {})
+    blooms_obj = part_3.get("blooms", {}) or part_2.get("blooms_mastery_index", {})
     logger.info(
-        f"   ├─ 8. Cognitive Thinking Levels (Bloom's): Recall={blooms_obj.get('fact_recall_accuracy', 0.0):.1f}% "
+        f"   ├─ 8. Cognitive Thinking Levels: Recall={blooms_obj.get('fact_recall_accuracy', 0.0):.1f}% "
         f"| Analytical={blooms_obj.get('conceptual_analysis_accuracy', 0.0):.1f}% | Critical Evaluation={blooms_obj.get('critical_evaluation_accuracy', 0.0):.1f}%"
     )
-    dist_obj = part_3.get("distractor", {})
+    dist_obj = part_3.get("distractor", {}) or part_2.get("distractor_closeness_model", {})
     logger.info(
         f"   ├─ 9. Trap Detection & Distractor Resistance: Trap Resistance Index={part_2.get('trap_resistance_index', 80)}/100 "
         f"| Near-Miss Selections={dist_obj.get('high_closeness_count', 0)} | Cognitive Traps={dist_obj.get('misleading_distractor_count', 0)}"
@@ -821,12 +821,12 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     )
 
     # 5. Update Attempt fields in DB
-    attempt.irt_theta = part_3["irt_3pl"]["latent_ability_theta"]
-    attempt.gti_score = part_3["gti"]["aggregate"]
-    attempt.oeei_score = part_3["oeei"]["oeei_score"]
-    attempt.satoi_score = part_3["satoi"]["satoi_score"]
-    attempt.icrs_score = part_3["icrs"]["icrs_score"]
-    attempt.pacing_status = part_3["pacing"]["pacing_status"]
+    attempt.irt_theta = float(irt_obj.get("latent_ability_theta", 0.0))
+    attempt.gti_score = float(gti_obj.get("aggregate", 0.20))
+    attempt.oeei_score = float(oeei_obj.get("oeei_score", 0.70))
+    attempt.satoi_score = float(satoi_obj.get("satoi_score", 85.0))
+    attempt.icrs_score = float(icrs_obj.get("icrs_score", 65.0))
+    attempt.pacing_status = str(pacing_obj.get("pacing_status", "BALANCED_PACING"))
     session.add(attempt)
 
     # 6. Update UserSkillProfile
@@ -870,7 +870,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     for tax_type, item in all_tax_items:
         code_name = (item.get("taxonomy_name") or "General").strip()
         norm_type = str(tax_type).strip().upper()
-        norm_code = code_name[:100]
+        norm_code = code_name.strip().upper()[:100]
         t_key = (norm_type, norm_code)
         if t_key in aggregated_tax:
             aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
@@ -889,17 +889,19 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 "strength_status": item.get("strength_status", "MODERATE"),
             }
 
-    # Bulk query existing taxonomy masteries in 1 query
+    # Bulk query existing taxonomy masteries in 1 query with case-normalized upper keys
     existing_tax_res = await session.exec(select(UserTaxonomyMastery).where(UserTaxonomyMastery.user_id == user.id))
     existing_tax_all = existing_tax_res.all()
     tax_map: Dict[tuple, UserTaxonomyMastery] = {}
     for m in existing_tax_all:
         norm_t = str(m.taxonomy_type).strip().upper()
-        tax_map[(norm_t, str(m.taxonomy_id_code).strip())] = m
-        tax_map[(norm_t, str(m.taxonomy_name).strip())] = m
+        norm_c = str(m.taxonomy_id_code).strip().upper()
+        norm_n = str(m.taxonomy_name).strip().upper()
+        tax_map[(norm_t, norm_c)] = m
+        tax_map[(norm_t, norm_n)] = m
 
     for (norm_type, norm_code), item in aggregated_tax.items():
-        m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"]))
+        m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"].strip().upper()))
         if not m_obj:
             m_obj = UserTaxonomyMastery(
                 user_id=user.id,
@@ -913,7 +915,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             )
             session.add(m_obj)
             tax_map[(norm_type, norm_code)] = m_obj
-            tax_map[(norm_type, item["taxonomy_name"])] = m_obj
+            tax_map[(norm_type, item["taxonomy_name"].strip().upper())] = m_obj
         else:
             m_obj.total_attempts += item["total_questions"]
             m_obj.correct_attempts += item["correct"]

@@ -109,7 +109,7 @@ class CognitiveDiagnosticInsight(BaseModel):
 
     study_plan_tasks: List[ActionableStudyTask] = Field(
         default_factory=list,
-        description="4-6 concrete, prioritized, time-allocated study tasks recommended for injection into the aspirant's study calendar."
+        description="Exactly 4 concrete, prioritized, time-allocated study tasks recommended for injection into the aspirant's study calendar."
     )
     closing_mentorship_advice: str = Field(
         ...,

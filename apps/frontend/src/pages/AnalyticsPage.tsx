@@ -316,45 +316,89 @@ export function AnalyticsPage() {
           </p>
         </div>
 
-        {/* Completed Exam Attempt Selector */}
-        {attemptsHistory.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <FileCheck size={14} color="#10b981" /> Switch Report View:
-            </label>
-            <div style={{ position: 'relative' }}>
+        {/* Back to Master Cumulative Overview Button (When viewing single exam) */}
+        {selectedAttemptId !== 'CUMULATIVE_ALL' && (
+          <button
+            onClick={handleBackToCumulative}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 18px',
+              borderRadius: 14,
+              backgroundColor: 'var(--bg-subtle)',
+              border: '1px solid var(--accent-primary)',
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-color-base)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <BarChart3 size={16} color="#2563eb" />
+            ← Back to Master Cumulative Report
+          </button>
+        )}
+      </section>
+
+      {/* Per-Exam Attempt Switcher (When viewing an individual exam that has multiple attempts) */}
+      {(() => {
+        if (selectedAttemptId === 'CUMULATIVE_ALL') return null;
+        const currentAtt = attemptsHistory.find((a) => a.attempt_id === selectedAttemptId);
+        if (!currentAtt) return null;
+        const sameExamAttempts = attemptsHistory.filter(
+          (a) => a.exam_id === currentAtt.exam_id || a.exam_name === currentAtt.exam_name
+        );
+        if (sameExamAttempts.length <= 1) return null;
+
+        return (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: '14px 20px',
+              borderRadius: 16,
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-default)',
+              boxShadow: 'var(--shadow-color-base)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>
+                🔄 Multiple Attempts Found for this Exam ({sameExamAttempts.length} Total):
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Switch Attempt:</span>
               <select
-                value={selectedAttemptId || 'CUMULATIVE_ALL'}
-                onChange={handleSelectAttempt}
+                value={selectedAttemptId}
+                onChange={(e) => handleViewSingleExam(e.target.value)}
                 style={{
-                  width: '100%',
-                  padding: '10px 16px',
-                  borderRadius: 14,
+                  padding: '6px 14px',
+                  borderRadius: 10,
                   backgroundColor: 'var(--bg-subtle)',
-                  border: '1px solid var(--accent-primary)',
+                  border: '1px solid #2563eb',
                   color: 'var(--text-primary)',
-                  fontSize: 13,
+                  fontSize: 12.5,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  appearance: 'none',
                 }}
               >
-                <option value="CUMULATIVE_ALL">
-                  🌟 All Exams Cumulative Performance (Master Longitudinal Overview)
-                </option>
-                {attemptsHistory.map((att) => {
-                  const modeLabel = att.mode === 'PRACTICE' ? 'Practice' : att.mode === 'REVISION' ? 'Revision' : 'Full Mock';
-                  return (
-                    <option key={att.attempt_id} value={att.attempt_id}>
-                      [{modeLabel}] {att.exam_name} ({new Date(att.started_at).toLocaleDateString()}) — Score: {att.total_score}/{att.max_possible_score}
-                    </option>
-                  );
-                })}
+                {sameExamAttempts.map((att, idx) => (
+                  <option key={att.attempt_id} value={att.attempt_id}>
+                    Attempt #{sameExamAttempts.length - idx} • {new Date(att.started_at).toLocaleDateString()} — Score: {att.total_score}/{att.max_possible_score}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
-        )}
-      </section>
+        );
+      })()}
 
       {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
       {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
@@ -371,7 +415,7 @@ export function AnalyticsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BarChart3 size={18} color="#2563eb" /> Completed Exam Papers ({attemptsHistory.length})
+                <BarChart3 size={18} color="#2563eb" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
               </h3>
               <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
                 Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
@@ -384,68 +428,96 @@ export function AnalyticsPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-default)', textAlign: 'left' }}>
                   <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Name</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Paper & Attempt</th>
                   <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Mode</th>
                   <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Date</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Marks Scored / Max Marks</th>
                   <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Questions</th>
                   <th style={{ padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {attemptsHistory.map((att, idx) => (
-                  <tr
-                    key={att.attempt_id}
-                    style={{
-                      borderBottom: '1px solid var(--border-default)',
-                    }}
-                  >
-                    <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{idx + 1}</td>
-                    <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{att.exam_name}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: '3px 8px',
-                          borderRadius: 8,
-                          backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                          color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
-                        }}
-                      >
-                        {att.mode.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                      {new Date(att.started_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      {att.total_score} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score}</span>
-                    </td>
-                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                      {att.total_questions} Questions
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => handleViewSingleExam(att.attempt_id)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: 10,
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
-                          border: 'none',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        View Exam Report →
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {attemptsHistory.map((att, idx) => {
+                  const sameExamList = attemptsHistory.filter((a) => a.exam_id === att.exam_id || a.exam_name === att.exam_name);
+                  const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
+                  const attemptNum = sameExamList.length - attemptIndex;
+
+                  return (
+                    <tr
+                      key={att.attempt_id}
+                      style={{
+                        borderBottom: '1px solid var(--border-default)',
+                      }}
+                    >
+                      <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{idx + 1}</td>
+                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span>{att.exam_name}</span>
+                          {sameExamList.length > 1 && (
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                padding: '2px 7px',
+                                borderRadius: 6,
+                                backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                                color: '#2563eb',
+                                border: '1px solid rgba(37, 99, 235, 0.25)',
+                              }}
+                            >
+                              Attempt #{attemptNum}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                            color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
+                          }}
+                        >
+                          {att.mode.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                        {new Date(att.started_at).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        <span style={{ color: Number(att.total_score) >= 92 ? '#10b981' : '#2563eb' }}>
+                          {att.total_score}
+                        </span>{' '}
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
+                      </td>
+                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                        {att.total_questions} Questions
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => handleViewSingleExam(att.attempt_id)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: 10,
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          View Exam Report →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

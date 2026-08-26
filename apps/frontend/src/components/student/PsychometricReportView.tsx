@@ -848,11 +848,17 @@ export function PsychometricReportView({
         }}
       >
         {[
-          { id: 'questions', label: '1. Per-Question Diagnostic & Solutions', icon: Target },
-          { id: 'exam-matrices', label: '2. Exam Performance & Cognitive Scorecard', icon: Zap },
-          { id: 'topics', label: '3. Syllabus Hierarchy & Topic Retention', icon: BookOpen },
-          { id: 'user-aggregate', label: '4. Aggregate Candidate Profile & Growth', icon: TrendingUp },
-        ].map((tab) => {
+          { id: 'questions', label: '1. Per-Question Diagnostics & Solutions', icon: Target },
+          { id: 'exam-matrices', label: isCumulative ? '1. Cumulative Performance Scorecards' : '2. Exam Performance & Cognitive Scorecard', icon: Zap },
+          { id: 'topics', label: isCumulative ? '2. Syllabus & Category Mastery' : '3. Syllabus & Category Mastery', icon: BookOpen },
+          { id: 'user-aggregate', label: '3. Longitudinal Evolution & Trends', icon: TrendingUp },
+        ].filter((tab) => {
+          if (isCumulative) {
+            return tab.id !== 'questions';
+          } else {
+            return tab.id !== 'user-aggregate';
+          }
+        }).map((tab) => {
           const IconComp = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1002,224 +1008,611 @@ export function PsychometricReportView({
             );
           })()}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+          {/* 9 Macro Performance Scorecards (Horizontal Full-Width Cards with Optimal Height) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
             {/* 1. Overall Exam Readiness */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563eb' }}>
-                  <Zap size={20} />
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #2563eb',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#2563eb',
+                      backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 01
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Overall Exam Readiness
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Qualification Target Benchmark</div>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>1. Exam Readiness & Cutoff Target</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Overall Qualification Benchmark</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#2563eb', marginBottom: 6 }}>
-                {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100</span>
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                {(() => {
-                  const b = getBadgeStyle(icrs?.readiness_label || icrs?.classification || 'Competitive Benchmark Ready');
-                  return (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                      {b.label}
-                    </span>
-                  );
-                })()}
-              </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(37,99,235,0.1)' : 'rgba(37,99,235,0.06)', borderLeft: '3px solid #2563eb', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.exam_readiness_insight || aiInsights.benchmark_verdict || icrs?.interpretation || 'Multi-factor readiness index evaluating net score against qualification benchmarks.'}
-              </div>
-              {renderInfoToggle('icrs_info', 'Comprehensive multi-factor readiness score.', 'Evaluates your net score against historical cutoffs, attempt accuracy, and elimination discipline.', 'Score > 70 indicates competitive prelims readiness.')}
-            </div>
 
-            {/* 2. Knowledge Depth & Syllabus Mastery */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(16,185,129,0.15)', color: '#10b981' }}>
-                  <Brain size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>2. Knowledge Depth & Mastery</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>True Concept Command Across Difficulty Levels</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#10b981', marginBottom: 6 }}>
-                {irt?.percentile_rank ? `Top ${(100 - irt.percentile_rank).toFixed(1)}% Benchmark` : 'Competent Tier'}
-              </div>
-              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#475569', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                <div>Estimated Percentile: <strong>{irt?.percentile_rank ?? 50.0}%</strong> • Mastery Tier: <strong style={{ color: '#10b981' }}>{irt?.ability_label || 'Competent'}</strong></div>
-              </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.06)', borderLeft: '3px solid #10b981', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.knowledge_depth_insight || 'Measures underlying conceptual strength independently of question difficulty variations.'}
-              </div>
-              {renderInfoToggle('irt_info', 'Estimates true underlying ability independently of paper difficulty.', 'Calculates how consistently you answer moderate and high-difficulty questions correctly.', 'Percentile > 75% represents competitive benchmark.')}
-            </div>
-
-            {/* 3. Guessing Risk & Tactical Discipline */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>3. Guessing Risk & Discipline</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Educated Eliminations vs Blind Guesses</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#f59e0b', marginBottom: 6 }}>
-                {(() => {
-                  const val = gti?.aggregate !== undefined ? gti.aggregate : gti?.aggregate_gti !== undefined ? gti.aggregate_gti : 0.15;
-                  return `${(val * 100).toFixed(1)}% Guess Rate`;
-                })()}
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                {(() => {
-                  const b = getBadgeStyle(gti?.label || gti?.category || 'CONTROLLED_CALCULATED_RISK');
-                  return (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                      {b.label}
-                    </span>
-                  );
-                })()}
-              </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.06)', borderLeft: '3px solid #f59e0b', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.guessing_and_confidence_insight || gti?.recommendation || 'Differentiates educated 50:50 eliminations from blind impulsive guesses under time pressure.'}
-              </div>
-              {renderInfoToggle('gti_info', 'Ratio of rushed guesses versus thoughtful attempts.', 'Evaluates response times against minimum cognitive thresholds.', 'Guess rate < 20% indicates controlled exam discipline.')}
-            </div>
-
-            {/* 4. Option Elimination Skill */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(139,92,246,0.15)', color: '#8b5cf6' }}>
-                  <Sliders size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>4. Option Elimination Skill</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Accuracy on 50:50 Pruned Choices</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#8b5cf6', marginBottom: 6 }}>
-                {(() => {
-                  const rawScore = oeei?.oeei_score_pct ?? (oeei?.oeei_score !== undefined ? (oeei.oeei_score <= 1.0 ? oeei.oeei_score * 100 : oeei.oeei_score) : 70);
-                  return `${Math.round(rawScore)}% Conversion`;
-                })()}
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                {(() => {
-                  const b = getBadgeStyle(oeei?.elimination_rating || oeei?.elimination_efficiency_rating || 'HIGH_TACTICAL_PRECISION');
-                  return (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                      {b.label}
-                    </span>
-                  );
-                })()}
-              </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.06)', borderLeft: '3px solid #8b5cf6', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.elimination_skill_insight || 'Measures how reliably you convert 50:50 elimination choices into net positive marks.'}
-              </div>
-              {renderInfoToggle('oeei_info', 'Option elimination conversion rate.', 'Measures accuracy on questions after eliminating 1 or 2 options.', 'Conversion > 70% indicates strong analytical pruning.')}
-            </div>
-
-            {/* 5. Exam Stamina & Endurance */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(6,182,212,0.15)', color: '#06b6d4' }}>
-                  <Activity size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>5. Exam Stamina & Endurance</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Focus & Precision Across 2 Hours</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#06b6d4', marginBottom: 6 }}>
-                {satoi?.satoi_score ?? 80} / 100 Stamina
-              </div>
-              <div style={{ marginBottom: 10 }}>
-                {(() => {
-                  const b = getBadgeStyle(satoi?.stamina_label || satoi?.cognitive_stamina_status || 'STABLE_COGNITIVE_STAMINA');
-                  return (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                      {b.label}
-                    </span>
-                  );
-                })()}
-              </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(6,182,212,0.1)' : 'rgba(6,182,212,0.06)', borderLeft: '3px solid #06b6d4', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.stamina_and_consistency_insight || satoi?.recommendation || 'Evaluates whether your attempt accuracy and focus remained stable across all 4 quarters of the paper.'}
-              </div>
-              {renderInfoToggle('satoi_info', 'Cognitive endurance across paper quartiles.', 'Compares accuracy in early questions versus late questions taking unattempted questions into account.', 'Score > 75 represents stable 2-hour test stamina.')}
-            </div>
-
-            {/* 6. Pacing & Time Management */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(236,72,153,0.15)', color: '#ec4899' }}>
-                  <Clock size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>6. Pacing & Time Management</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Time Allocation & Velocity per Question</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#ec4899', marginBottom: 6 }}>
-                ~{pacing?.avg_time_per_question_sec ? Math.round(pacing.avg_time_per_question_sec) : 60}s <span style={{ fontSize: 13, color: '#64748b' }}>/ question</span>
-              </div>
-              <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                <div>Time Utilization: <strong>{pacing?.time_utilization_pct || 90}% of Allotted Duration</strong> (Benchmark: 72s/q)</div>
-                <div>
-                  Pacing Status:{' '}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#2563eb' }}>
+                    {icrs?.icrs_score !== undefined ? icrs.icrs_score : 75} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100</span>
+                  </div>
                   {(() => {
-                    const b = getBadgeStyle(pacing?.pacing_classification || pacing?.pacing_status || 'BALANCED_PACING');
+                    const b = getBadgeStyle(icrs?.readiness_label || icrs?.classification || 'Competitive Benchmark Ready');
                     return (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          backgroundColor: b.bg,
+                          color: b.color,
+                          border: `1px solid ${b.border}`,
+                        }}
+                      >
                         {b.label}
                       </span>
                     );
                   })()}
                 </div>
               </div>
-              {/* Dedicated AI Context Box */}
-              <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(236,72,153,0.1)' : 'rgba(236,72,153,0.06)', borderLeft: '3px solid #ec4899', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                <strong>AI Context:</strong> {aiInsights.pacing_and_time_insight || 'Tracks whether you allocated sufficient time per question without running into end-of-test time pressure.'}
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Cutoff Buffer: <strong>{icrs?.cutoff_margin !== undefined ? `${icrs.cutoff_margin > 0 ? '+' : ''}${icrs.cutoff_margin} Marks` : 'On Qualifying Track'}</strong> • Readiness Band: <strong>{icrs?.readiness_label || 'Competitive'}</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(37,99,235,0.08)' : 'rgba(37,99,235,0.04)',
+                  borderLeft: '3px solid #2563eb',
+                  border: `1px solid ${isDark ? 'rgba(37,99,235,0.2)' : 'rgba(37,99,235,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.exam_readiness_insight || aiInsights.benchmark_verdict || icrs?.interpretation || 'Multi-factor readiness index evaluating net score against qualification benchmarks.'}
+              </div>
+              {renderInfoToggle('icrs_info', 'Comprehensive multi-factor readiness score.', 'Evaluates your net score against historical cutoffs, attempt accuracy, and elimination discipline.', 'Score > 70 indicates competitive prelims readiness.')}
+            </div>
+
+            {/* 2. Knowledge Depth & Mastery */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #10b981',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#10b981',
+                      backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#f0fdf4',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 02
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Knowledge Depth & Mastery
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Conceptual Command Across Difficulty</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#10b981' }}>
+                    {irt?.percentile_rank ? `Top ${(100 - irt.percentile_rank).toFixed(1)}% Benchmark` : 'Competent Tier'}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(16,185,129,0.15)',
+                      color: '#10b981',
+                      border: '1px solid rgba(16,185,129,0.3)',
+                    }}
+                  >
+                    {irt?.ability_label || 'Competent Tier'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Estimated Percentile: <strong>{irt?.percentile_rank ?? 50.0}%</strong> • Mastery Status: <strong style={{ color: '#10b981' }}>{irt?.ability_label || 'Competent'}</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.04)',
+                  borderLeft: '3px solid #10b981',
+                  border: `1px solid ${isDark ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.knowledge_depth_insight || 'Measures underlying conceptual strength independently of question difficulty variations.'}
+              </div>
+              {renderInfoToggle('irt_info', 'Estimates true underlying ability independently of paper difficulty.', 'Calculates how consistently you answer moderate and high-difficulty questions correctly.', 'Percentile > 75% represents competitive benchmark.')}
+            </div>
+
+            {/* 3. Guessing Risk & Confidence */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #f59e0b',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#f59e0b',
+                      backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#fefce8',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 03
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Guessing Risk & Confidence
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Educated Eliminations vs Blind Guesses</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#f59e0b' }}>
+                    {(() => {
+                      const val = gti?.aggregate !== undefined ? gti.aggregate : gti?.aggregate_gti !== undefined ? gti.aggregate_gti : 0.15;
+                      return `${(val * 100).toFixed(1)}% Guess Rate`;
+                    })()}
+                  </div>
+                  {(() => {
+                    const b = getBadgeStyle(gti?.label || gti?.category || 'CONTROLLED_CALCULATED_RISK');
+                    return (
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          backgroundColor: b.bg,
+                          color: b.color,
+                          border: `1px solid ${b.border}`,
+                        }}
+                      >
+                        {b.label}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Instinct Profile: <strong>{gti?.label || 'Controlled Risk'}</strong> • Discipline Threshold: <strong>Target &lt; 20%</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.04)',
+                  borderLeft: '3px solid #f59e0b',
+                  border: `1px solid ${isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.guessing_and_confidence_insight || gti?.recommendation || 'Differentiates educated 50:50 eliminations from blind impulsive guesses under time pressure.'}
+              </div>
+              {renderInfoToggle('gti_info', 'Ratio of rushed guesses versus thoughtful attempts.', 'Evaluates response times against minimum cognitive thresholds.', 'Guess rate < 20% indicates controlled exam discipline.')}
+            </div>
+
+            {/* 4. Elimination Accuracy */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #8b5cf6',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#8b5cf6',
+                      backgroundColor: isDark ? 'rgba(139,92,246,0.15)' : '#faf5ff',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 04
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Elimination Accuracy
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Accuracy on 50:50 Pruned Choices</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#8b5cf6' }}>
+                    {(() => {
+                      const rawScore = oeei?.oeei_score_pct ?? (oeei?.oeei_score !== undefined ? (oeei.oeei_score <= 1.0 ? oeei.oeei_score * 100 : oeei.oeei_score) : 70);
+                      return `${Math.round(rawScore)}% Conversion`;
+                    })()}
+                  </div>
+                  {(() => {
+                    const b = getBadgeStyle(oeei?.elimination_rating || oeei?.elimination_efficiency_rating || 'HIGH_TACTICAL_PRECISION');
+                    return (
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          backgroundColor: b.bg,
+                          color: b.color,
+                          border: `1px solid ${b.border}`,
+                        }}
+                      >
+                        {b.label}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Elimination Rating: <strong>{oeei?.elimination_rating || 'High Precision'}</strong> • Target: <strong>&gt; 70% Conversion</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(139,92,246,0.08)' : 'rgba(139,92,246,0.04)',
+                  borderLeft: '3px solid #8b5cf6',
+                  border: `1px solid ${isDark ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#8b5cf6', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.elimination_skill_insight || 'Measures how reliably you convert 50:50 elimination choices into net positive marks.'}
+              </div>
+              {renderInfoToggle('oeei_info', 'Option elimination conversion rate.', 'Measures accuracy on questions after eliminating 1 or 2 options.', 'Conversion > 70% indicates strong analytical pruning.')}
+            </div>
+
+            {/* 5. Cognitive Stamina */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #06b6d4',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#06b6d4',
+                      backgroundColor: isDark ? 'rgba(6,182,212,0.15)' : '#ecfeff',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 05
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Cognitive Stamina
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Focus & Precision Across Duration</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#06b6d4' }}>
+                    {satoi?.satoi_score ?? 80} / 100 Stamina
+                  </div>
+                  {(() => {
+                    const b = getBadgeStyle(satoi?.stamina_label || satoi?.cognitive_stamina_status || 'STABLE_COGNITIVE_STAMINA');
+                    return (
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          backgroundColor: b.bg,
+                          color: b.color,
+                          border: `1px solid ${b.border}`,
+                        }}
+                      >
+                        {b.label}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Endurance Profile: <strong>{satoi?.stamina_label || 'Stable Focus'}</strong> • Late Exam Stability: <strong>Maintained</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(6,182,212,0.08)' : 'rgba(6,182,212,0.04)',
+                  borderLeft: '3px solid #06b6d4',
+                  border: `1px solid ${isDark ? 'rgba(6,182,212,0.2)' : 'rgba(6,182,212,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.stamina_and_consistency_insight || satoi?.recommendation || 'Evaluates whether your attempt accuracy and focus remained stable across all quarters of the paper.'}
+              </div>
+              {renderInfoToggle('satoi_info', 'Cognitive endurance across paper quartiles.', 'Compares accuracy in early questions versus late questions taking unattempted questions into account.', 'Score > 75 represents stable 2-hour test stamina.')}
+            </div>
+
+            {/* 6. Pacing & Speed Management */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #ec4899',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#ec4899',
+                      backgroundColor: isDark ? 'rgba(236,72,153,0.15)' : '#fdf2f8',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 06
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Pacing & Speed Management
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>Time Allocation & Velocity per Question (Telemetry Calibrated)</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#ec4899' }}>
+                    ~{pacing?.avg_time_per_question_sec ? Math.round(pacing.avg_time_per_question_sec) : 60}s <span style={{ fontSize: 13, color: '#64748b' }}>/ question</span>
+                  </div>
+                  {(() => {
+                    const b = getBadgeStyle(pacing?.pacing_classification || pacing?.pacing_status || 'BALANCED_PACING');
+                    return (
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          padding: '3px 10px',
+                          borderRadius: 12,
+                          backgroundColor: b.bg,
+                          color: b.color,
+                          border: `1px solid ${b.border}`,
+                        }}
+                      >
+                        {b.label}
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                Time Utilization: <strong>{pacing?.time_utilization_pct || 90}% of Duration</strong> • Benchmark Pace: <strong>60–72s / question</strong>
+              </div>
+
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 10,
+                  backgroundColor: isDark ? 'rgba(236,72,153,0.08)' : 'rgba(236,72,153,0.04)',
+                  borderLeft: '3px solid #ec4899',
+                  border: `1px solid ${isDark ? 'rgba(236,72,153,0.2)' : 'rgba(236,72,153,0.15)'}`,
+                  borderLeftWidth: 3,
+                  fontSize: 12.5,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#ec4899', textTransform: 'uppercase', marginBottom: 2 }}>
+                  💡 AI Diagnostic Context
+                </div>
+                {aiInsights.pacing_and_time_insight || 'Tracks whether you allocated sufficient time per question without running into end-of-test time pressure.'}
               </div>
               {renderInfoToggle('pacing_info', 'Time management across the full paper.', 'Tracks whether you allocated sufficient time per question without running into end-of-test time pressure.', 'Ideal average pace is 60–75s per question for UPSC GS1.')}
             </div>
 
             {/* 7. Decision Consistency & Changing Answers */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(244,63,94,0.15)', color: '#f43f5e' }}>
-                  <RotateCcw size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>7. Decision Consistency</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Outcome & Marks Impact of Changing Options</div>
-                </div>
-              </div>
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #f43f5e',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
               {(() => {
-                const totalSwitches = switchRegret?.total_switches ?? switchRegret?.switch_frequency ?? 0;
+                const totalSwitches = switchRegret?.total_switches ?? switchRegret?.switch_frequency ?? questionsList.filter((q) => q.is_option_switched || (q.option_switch_count && q.option_switch_count > 0)).length;
                 const posSwitches = switchRegret?.positive_switches ?? 0;
                 const negSwitches = switchRegret?.negative_regret_switches ?? 0;
-                const netImpact = Math.round((posSwitches * 2.6667 - negSwitches * 2.6667) * 100) / 100;
+                const wrongToWrong = switchRegret?.wrong_to_wrong_switches ?? Math.max(0, totalSwitches - posSwitches - negSwitches);
+                const netImpact = switchRegret?.net_score_impact !== undefined ? Number(switchRegret.net_score_impact) : (Math.round((posSwitches * 2.6667 - negSwitches * 2.6667) * 100) / 100);
 
                 return (
                   <>
-                    <div style={{ fontSize: 28, fontWeight: 900, color: netImpact >= 0 ? '#10b981' : '#ef4444', marginBottom: 6 }}>
-                      {netImpact >= 0 ? `+${netImpact}` : netImpact} Marks <span style={{ fontSize: 13, color: '#64748b' }}>Net Impact</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 900,
+                            color: '#f43f5e',
+                            backgroundColor: isDark ? 'rgba(244,63,94,0.15)' : '#fff1f2',
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Metric 07
+                        </span>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                            Answer Changing Impact
+                          </h3>
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>Outcome & Marks Impact of Changing Options</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: netImpact >= 0 ? '#10b981' : '#ef4444' }}>
+                          {netImpact >= 0 ? `+${netImpact}` : netImpact} Marks <span style={{ fontSize: 13, color: '#64748b' }}>Net Impact</span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            backgroundColor: netImpact >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
+                            color: netImpact >= 0 ? '#10b981' : '#f43f5e',
+                            border: `1px solid ${netImpact >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}`,
+                          }}
+                        >
+                          {totalSwitches === 0 ? 'Zero Switches' : netImpact >= 0 ? 'Net Positive' : 'Switch Regret'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                      <div>Changed: <strong>{totalSwitches} questions</strong> (Right→Wrong: <strong style={{ color: '#ef4444' }}>{negSwitches}</strong>, Wrong→Right: <strong style={{ color: '#10b981' }}>{posSwitches}</strong>)</div>
+
+                    <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                      Changed: <strong>{totalSwitches} questions</strong> (Right→Wrong: <strong style={{ color: '#ef4444' }}>{negSwitches}</strong>, Wrong→Right: <strong style={{ color: '#10b981' }}>{posSwitches}</strong>, Wrong→Wrong: <strong style={{ color: '#f59e0b' }}>{wrongToWrong}</strong>)
                     </div>
-                    {/* Dedicated AI Context Box */}
-                    <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(244,63,94,0.1)' : 'rgba(244,63,94,0.06)', borderLeft: '3px solid #f43f5e', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                      <strong>AI Context:</strong> {aiInsights.decision_confidence_insight || 'Measures whether second-guessing and switching options produced positive gains or costly negative penalties.'}
+
+                    <div
+                      style={{
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        backgroundColor: isDark ? 'rgba(244,63,94,0.08)' : 'rgba(244,63,94,0.04)',
+                        borderLeft: '3px solid #f43f5e',
+                        border: `1px solid ${isDark ? 'rgba(244,63,94,0.2)' : 'rgba(244,63,94,0.15)'}`,
+                        borderLeftWidth: 3,
+                        fontSize: 12.5,
+                        color: isDark ? '#cbd5e1' : '#334155',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase', marginBottom: 2 }}>
+                        💡 AI Diagnostic Context
+                      </div>
+                      {aiInsights.decision_confidence_insight || 'Measures whether second-guessing and switching options produced positive gains or costly negative penalties.'}
                     </div>
                   </>
                 );
@@ -1227,64 +1620,102 @@ export function PsychometricReportView({
               {renderInfoToggle('switch_info', 'Measures the cost vs benefit of second-guessing.', 'Tracks whether switching answers produced point gains or costly negative marking.', 'Only change answers when you find concrete factual evidence.')}
             </div>
 
-            {/* 8. Thinking Styles & Cognitive Levels */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1' }}>
-                  <Layers size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>8. Thinking Styles & Levels</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Fact Recall vs Analytical Thinking</div>
-                </div>
-              </div>
+            {/* 8. Trap Resistance */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #a855f7',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
               {(() => {
-                const rem = blooms?.REMEMBER ?? blooms?.fact_recall_accuracy ?? blooms?.fact_recall ?? 0;
-                const ana = blooms?.ANALYZE ?? blooms?.conceptual_analysis_accuracy ?? blooms?.conceptual_analysis ?? 0;
-                const eva = blooms?.EVALUATE ?? blooms?.critical_evaluation_accuracy ?? blooms?.critical_evaluation ?? 0;
-                return (
-                  <>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#6366f1', marginBottom: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                      <span>Recall: <strong>{rem}%</strong></span>
-                      <span>Analysis: <strong>{ana}%</strong></span>
-                      <span>Evaluation: <strong>{eva}%</strong></span>
-                    </div>
-                    {/* Dedicated AI Context Box */}
-                    <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.06)', borderLeft: '3px solid #6366f1', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                      <strong>AI Context:</strong> {aiInsights.thinking_levels_insight || 'Analyzes performance across factual, conceptual analytical, and statement-based questions.'}
-                    </div>
-                  </>
-                );
-              })()}
-              {renderInfoToggle('blooms_info', 'Accuracy categorized by cognitive difficulty tier.', 'Analyzes performance across factual, analytical, and statement-based questions.', '> 70% in Analysis & Evaluation is required for UPSC GS1.')}
-            </div>
+                const nearMiss = questionsList.filter((q) => {
+                  const c = q.closeness_score_awarded ?? q.closeness_score ?? 0;
+                  const label = q.closeness_classification || '';
+                  return !getQuestionState(q).isCorr && ((c >= 0.33 && c < 0.99) || label.includes('High-Closeness') || label.includes('Near-Correct') || label.includes('Moderate'));
+                }).length || (distractor?.high_closeness_count ?? 0);
 
-            {/* 9. Distractor & Trap Resistance */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' }}>
-                  <Target size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>9. Distractor & Trap Resistance</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Deceptive Option Avoidance</div>
-                </div>
-              </div>
-              {(() => {
-                const trapRes = (report as any)?.part_2_exam_macro_scorecard?.trap_resistance_index ?? 80;
-                const nearMiss = typeof distractor === 'object' ? (distractor?.high_closeness_count ?? distractor?.['High-Closeness Distractor (Partial Knowledge)'] ?? 0) : Number(distractor || 0);
-                const cogTraps = typeof distractor === 'object' ? (distractor?.misleading_distractor_count ?? distractor?.['Misleading Distractor (Cognitive Trap)'] ?? 0) : 0;
+                const cogTraps = questionsList.filter((q) => {
+                  const c = q.closeness_score_awarded ?? q.closeness_score ?? 0;
+                  const label = q.closeness_classification || '';
+                  return !getQuestionState(q).isCorr && (c < 0.0 || label.includes('Misleading') || label.includes('Trap') || label.includes('Inverse') || label.includes('Contradictory'));
+                }).length || (distractor?.misleading_distractor_count ?? 0);
+
+                const totalTrapsFallen = nearMiss + cogTraps;
+                const totalQCount = Math.max(1, questionsList.length || 10);
+                const trapResistancePct = Math.max(0, Math.min(100, Math.round((1.0 - (totalTrapsFallen / totalQCount)) * 100)));
+
                 return (
                   <>
-                    <div style={{ fontSize: 28, fontWeight: 900, color: '#a855f7', marginBottom: 6 }}>
-                      {trapRes} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100 Resistance</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 900,
+                            color: '#a855f7',
+                            backgroundColor: isDark ? 'rgba(168,85,247,0.15)' : '#faf5ff',
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Metric 08
+                        </span>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                            Trap Resistance
+                          </h3>
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>Distractor & Extreme Keyword Avoidance (Closeness Score Evaluated)</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: '#a855f7' }}>
+                          {trapResistancePct} <span style={{ fontSize: 13, color: '#64748b' }}>/ 100 Resistance</span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            backgroundColor: 'rgba(168,85,247,0.15)',
+                            color: '#a855f7',
+                            border: '1px solid rgba(168,85,247,0.3)',
+                          }}
+                        >
+                          {trapResistancePct >= 80 ? 'Trap Shield' : trapResistancePct >= 60 ? 'Moderate Shield' : 'Trap Vulnerable'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                      <div>Near-Miss Traps: <strong>{nearMiss}</strong> • Statement Traps: <strong>{cogTraps} Detected</strong></div>
+
+                    <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155' }}>
+                      Near-Miss Distractors: <strong>{nearMiss}</strong> • Statement Traps: <strong>{cogTraps} Detected</strong> • Traps Deflected: <strong>{totalQCount - totalTrapsFallen} / {totalQCount}</strong>
                     </div>
-                    {/* Dedicated AI Context Box */}
-                    <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(168,85,247,0.1)' : 'rgba(168,85,247,0.06)', borderLeft: '3px solid #a855f7', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                      <strong>AI Context:</strong> {aiInsights.trap_resistance_insight || 'Detects errors caused by extreme keyword traps (all, only, never) or partial memory alignment.'}
+
+                    <div
+                      style={{
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        backgroundColor: isDark ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.04)',
+                        borderLeft: '3px solid #a855f7',
+                        border: `1px solid ${isDark ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.15)'}`,
+                        borderLeftWidth: 3,
+                        fontSize: 12.5,
+                        color: isDark ? '#cbd5e1' : '#334155',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', textTransform: 'uppercase', marginBottom: 2 }}>
+                        💡 AI Diagnostic Context
+                      </div>
+                      {aiInsights.trap_resistance_insight || (totalTrapsFallen === 0 ? 'You exhibit strong trap resistance, successfully avoiding high-closeness and inverse fact distractors in the questions you chose to answer.' : `Detected ${totalTrapsFallen} trap selections. Strengthen factual boundary precision on extreme statement options.`)}
                     </div>
                   </>
                 );
@@ -1292,49 +1723,57 @@ export function PsychometricReportView({
               {renderInfoToggle('distractor_info', 'Resistance to deceptive distractor options.', 'Detects errors caused by extreme word traps (all, only, never) or partial memory alignment.', 'Resistance > 80 indicates deep conceptual clarity.')}
             </div>
 
-            {/* 10. Memory Retention & Spaced Revision */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(20,184,166,0.15)', color: '#14b8a6' }}>
-                  <BookOpen size={20} />
+            {/* 9. Priority Syllabus Action Areas */}
+            <div
+              style={{
+                ...cardStyle,
+                width: '100%',
+                padding: '16px 20px',
+                borderLeft: '5px solid #ef4444',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: '#ef4444',
+                      backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2',
+                      padding: '3px 8px',
+                      borderRadius: 8,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Metric 09
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                      Priority Syllabus Focus
+                    </h3>
+                    <div style={{ fontSize: 11.5, color: '#64748b' }}>High-Yield Action Areas</div>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>10. Memory Retention</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Memory Stability & Upcoming Review Schedule</div>
-                </div>
-              </div>
-              {(() => {
-                const avgStab = (report as any)?.part_2_exam_macro_scorecard?.avg_concept_stability_days ?? 3.5;
-                const topicsDue = topicDecay?.topic_decay_records?.length || (report as any)?.part_2_exam_macro_scorecard?.topics_scheduled_for_review_count || 0;
-                return (
-                  <>
-                    <div style={{ fontSize: 28, fontWeight: 900, color: '#14b8a6', marginBottom: 6 }}>
-                      ~{avgStab} <span style={{ fontSize: 13, color: '#64748b' }}>Days Stability</span>
-                    </div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                      <div>Topics Scheduled for Review: <strong>{topicsDue} topics</strong></div>
-                    </div>
-                    {/* Dedicated AI Context Box */}
-                    <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(20,184,166,0.1)' : 'rgba(20,184,166,0.06)', borderLeft: '3px solid #14b8a6', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                      <strong>AI Context:</strong> {aiInsights.memory_retention_insight || 'Predicts memory retention across studied syllabus topics to schedule timely revision before forgetting.'}
-                    </div>
-                  </>
-                );
-              })()}
-              {renderInfoToggle('fsrs_info', 'Predicts memory retention across studied syllabus topics.', 'Calculates topic stability to alert you before concepts decay from active memory.', 'Stability > 3.0 days prevents forgetting before test day.')}
-            </div>
 
-            {/* 11. High-Priority Revision Targets */}
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ padding: 8, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-                  <ShieldAlert size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>11. High-Priority Revision Targets</h3>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>Urgent Syllabus Focus Areas</div>
-                </div>
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(239,68,68,0.15)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                  }}
+                >
+                  Urgent Action
+                </span>
               </div>
+
               {(() => {
                 const weakSpotsList: string[] =
                   (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.high_yield_weak_spots?.topics ||
@@ -1344,20 +1783,32 @@ export function PsychometricReportView({
                   [];
                 const urgentLabel =
                   weakSpotsList.length > 0
-                    ? weakSpotsList.slice(0, 3).join(', ')
+                    ? weakSpotsList.slice(0, 4).join(', ')
                     : 'All evaluated topics above qualifying threshold';
 
                 return (
                   <>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: weakSpotsList.length > 0 ? '#ef4444' : '#10b981', marginBottom: 6 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: weakSpotsList.length > 0 ? '#ef4444' : '#10b981' }}>
                       {urgentLabel}
                     </div>
-                    <div style={{ fontSize: 12.5, color: isDark ? '#e2e8f0' : '#334155', marginBottom: 10 }}>
-                      Automated Study Tasks: <strong>Interactive recommendations below</strong>
-                    </div>
-                    {/* Dedicated AI Context Box */}
-                    <div style={{ padding: '10px 12px', borderRadius: 10, backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.06)', borderLeft: '3px solid #ef4444', fontSize: 12.5, color: isDark ? '#cbd5e1' : '#334155', lineHeight: 1.5, marginBottom: 8 }}>
-                      <strong>AI Context:</strong> {aiInsights.critical_vulnerabilities?.[0] || 'Focus on high-yield revision tasks listed below to maximize your score.'}
+
+                    <div
+                      style={{
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.04)',
+                        borderLeft: '3px solid #ef4444',
+                        border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.15)'}`,
+                        borderLeftWidth: 3,
+                        fontSize: 12.5,
+                        color: isDark ? '#cbd5e1' : '#334155',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', marginBottom: 2 }}>
+                        💡 AI Diagnostic Context
+                      </div>
+                      {aiInsights.critical_vulnerabilities?.[0] || 'Focus on high-yield revision tasks listed below to maximize your score.'}
                     </div>
                   </>
                 );
@@ -1366,14 +1817,120 @@ export function PsychometricReportView({
             </div>
           </div>
 
+          {/* Single Exam Dedicated Visualizer Graphs (Pacing Velocity Curve & Quartile Stamina Fatigue Curve) */}
+          {questionsList.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 20, marginTop: 4 }}>
+              {/* Visualizer 1: Per-Question Pacing Velocity Curve */}
+              <div style={cardStyle}>
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                    ⚡ Pacing & Time Allocation Curve per Question
+                  </h3>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    Tracks actual time spent (seconds) on each question compared against the 60s benchmark pace.
+                  </p>
+                </div>
+                <div style={{ height: 240, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={questionsList.map((q, i) => {
+                        const st = getQuestionState(q);
+                        const t = Number(q.time_taken_seconds || 0);
+                        return {
+                          qNum: `Q${q.question_number || i + 1}`,
+                          time_taken: t,
+                          target_pace: 60,
+                          status: st.isCorr ? 'Correct' : st.isInc ? 'Incorrect' : 'Unattempted',
+                        };
+                      })}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                      <XAxis dataKey="qNum" tick={{ fontSize: 10, fill: '#64748b' }} interval={Math.max(0, Math.floor(questionsList.length / 10))} />
+                      <YAxis tick={{ fontSize: 11, fill: '#64748b' }} unit="s" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                          borderColor: isDark ? '#334155' : '#cbd5e1',
+                          borderRadius: 12,
+                          fontSize: 12,
+                        }}
+                        formatter={(val: any, name: any) => [`${val}s`, name === 'time_taken' ? 'Time Spent' : 'Target Pace']}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Area type="monotone" dataKey="time_taken" name="Time Spent (s)" stroke="#2563eb" fill="rgba(37,99,235,0.2)" strokeWidth={2} />
+                      <Line type="monotone" dataKey="target_pace" name="Target Pace (60s)" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Visualizer 2: Cognitive Stamina & Endurance Fatigue Curve (Quartiles) */}
+              <div style={cardStyle}>
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: isDark ? '#ffffff' : '#0f172a' }}>
+                    🔋 Cognitive Stamina & Accuracy Across Test Quartiles
+                  </h3>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                    Compares precision across all 4 quarters of the paper to identify late-exam mental fatigue.
+                  </p>
+                </div>
+                <div style={{ height: 240, width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={(() => {
+                        const totalQ = questionsList.length || 4;
+                        const qSize = Math.max(1, Math.ceil(totalQ / 4));
+                        const quartiles = [
+                          { name: 'Q1 (0-25%)', questions: questionsList.slice(0, qSize) },
+                          { name: 'Q2 (25-50%)', questions: questionsList.slice(qSize, qSize * 2) },
+                          { name: 'Q3 (50-75%)', questions: questionsList.slice(qSize * 2, qSize * 3) },
+                          { name: 'Q4 (75-100%)', questions: questionsList.slice(qSize * 3) },
+                        ];
+                        return quartiles.map((q) => {
+                          const att = q.questions.filter((item) => getQuestionState(item).isAtt);
+                          const corr = q.questions.filter((item) => getQuestionState(item).isCorr).length;
+                          const acc = att.length > 0 ? Math.round((corr / att.length) * 100) : 0;
+                          const avgT = q.questions.length > 0 ? Math.round(q.questions.reduce((a, b) => a + Number(b.time_taken_seconds || 0), 0) / q.questions.length) : 0;
+                          return {
+                            quartile: q.name,
+                            accuracy: acc,
+                            avg_time: avgT,
+                          };
+                        });
+                      })()}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
+                      <XAxis dataKey="quartile" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                          borderColor: isDark ? '#334155' : '#cbd5e1',
+                          borderRadius: 12,
+                          fontSize: 12,
+                        }}
+                        formatter={(val: any) => [`${val}%`, 'Accuracy']}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="accuracy" name="Quarter Accuracy %" fill="#06b6d4" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+
             {/* Personalized Actionable Revision Tasks (Interactive Recommendation Board with Study Plan Sync) */}
             {(() => {
-              const rawTasksList =
+              const rawTasksList = (
                 (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
                 (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
                 (report as any)?.llm_insight?.study_plan_tasks ||
                 (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
-                [];
+                []
+              ).slice(0, 4);
 
               if (!rawTasksList || rawTasksList.length === 0) return null;
 
@@ -1427,7 +1984,7 @@ export function PsychometricReportView({
                               color: isDark ? '#ffffff' : '#0f172a',
                             }}
                           >
-                            AI-Recommended Study Plan Tasks
+                            AI-Recommended Study Plan Tasks (4 Priorities)
                           </h3>
                           <span
                             style={{
@@ -1439,7 +1996,7 @@ export function PsychometricReportView({
                               color: '#2563eb',
                             }}
                           >
-                            Recommendations
+                            4 Action Steps
                           </span>
                         </div>
                         <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
@@ -1495,7 +2052,7 @@ export function PsychometricReportView({
                             fontWeight: 800,
                           }}
                         >
-                          <CheckCircle2 size={16} /> All Tasks Added
+                          <CheckCircle2 size={16} /> All 4 Tasks Added
                         </div>
                       )}
                     </div>
@@ -1560,6 +2117,20 @@ export function PsychometricReportView({
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 900,
+                                    padding: '2px 7px',
+                                    borderRadius: 6,
+                                    backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                                    color: '#2563eb',
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  Task 0{idx + 1}
+                                </span>
+
                                 <span
                                   style={{
                                     fontSize: 11,
@@ -3467,6 +4038,146 @@ export function PsychometricReportView({
                 <span style={{ color: '#10b981', fontWeight: 700 }}>⚡ Optimal (0.7x–1.35x)</span>
                 <span style={{ color: '#ef4444', fontWeight: 700 }}>⏳ Bottleneck (&gt;1.35x)</span>
                 <span style={{ color: '#8b5cf6', fontWeight: 700 }}>💨 Rapid (&lt;0.7x)</span>
+              </div>
+            </div>
+
+            {/* Cumulative Cognitive Category Mastery Board (Bloom Thinking Levels) */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Brain size={18} color="#2563eb" />
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                  Cumulative Category Mastery (All Cognitive Thinking Types)
+                </h4>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                {(() => {
+                  const bloomKeys: { [key: string]: { label: string; icon: string; color: string } } = {
+                    REMEMBER: { label: 'Recall / Memory', icon: '🧠', color: '#3b82f6' },
+                    UNDERSTAND: { label: 'Understanding', icon: '💡', color: '#10b981' },
+                    APPLY: { label: 'Application', icon: '⚙️', color: '#8b5cf6' },
+                    ANALYZE: { label: 'Analysis', icon: '🔍', color: '#f59e0b' },
+                    EVALUATE: { label: 'Evaluation', icon: '⚖️', color: '#ec4899' },
+                    CREATE: { label: 'Synthesis', icon: '🚀', color: '#06b6d4' },
+                  };
+
+                  const statsMap: { [key: string]: { total: number; correct: number } } = {};
+                  Object.keys(bloomKeys).forEach((k) => {
+                    statsMap[k] = { total: 0, correct: 0 };
+                  });
+
+                  if (questionsList && questionsList.length > 0) {
+                    questionsList.forEach((q) => {
+                      const raw = (q.bloom_level || q.blooms_level || q.bloom_category || 'UNDERSTAND').toUpperCase();
+                      const matchKey = Object.keys(bloomKeys).find((k) => raw.includes(k)) || 'UNDERSTAND';
+                      statsMap[matchKey].total += 1;
+                      if (getQuestionState(q).isCorr) {
+                        statsMap[matchKey].correct += 1;
+                      }
+                    });
+                  } else {
+                    const bObj = (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels || (report as any)?.blooms_mastery || {};
+                    Object.keys(bloomKeys).forEach((k) => {
+                      const acc = Number(bObj[k] ?? bObj[k.toLowerCase()] ?? 70);
+                      statsMap[k] = { total: 10, correct: Math.round(acc / 10) };
+                    });
+                  }
+
+                  return Object.entries(bloomKeys).map(([k, meta]) => {
+                    const s = statsMap[k];
+                    const acc = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+                    return (
+                      <div
+                        key={k}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: 12,
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                          borderLeft: `4px solid ${meta.color}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: isDark ? '#e2e8f0' : '#334155' }}>
+                            {meta.icon} {meta.label}
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 900, color: meta.color }}>
+                            {acc}%
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
+                          <span>{s.correct}/{s.total} Correct</span>
+                          <span>{acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'}</span>
+                        </div>
+                        <div style={{ width: '100%', height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', overflow: 'hidden' }}>
+                          <div style={{ width: `${acc}%`, height: '100%', backgroundColor: meta.color, borderRadius: 2 }} />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Cumulative Subject Mastery Overview Scoreboard */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Layers size={18} color="#10b981" />
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                  Subject-Wise Performance & Marks Scoreboard
+                </h4>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                {hierarchyData.map((subj: any) => {
+                  const bStyle = getBadgeStyle(subj.status);
+                  const netMarks = Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.66) * 100) / 100;
+                  return (
+                    <div
+                      key={`card_${subj.name}`}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 12,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                        borderLeft: `4px solid ${subj.accuracy >= 70 ? '#10b981' : subj.accuracy >= 50 ? '#f59e0b' : '#ef4444'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {subj.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>
+                            {subj.topics?.length || 0} Topics • {subj.total} Questions
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 8,
+                            backgroundColor: bStyle.bg,
+                            color: bStyle.color,
+                            border: `1px solid ${bStyle.border}`,
+                          }}
+                        >
+                          {subj.accuracy}% Acc
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155' }}>
+                        <span>Correct: <strong>{subj.correct}/{subj.attempted}</strong></span>
+                        <span>Net Score: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} Marks</strong></span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

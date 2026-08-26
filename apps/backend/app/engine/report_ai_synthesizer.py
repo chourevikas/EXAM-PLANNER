@@ -39,8 +39,8 @@ YOUR MANDATE:
    - "Trap Resistance" (instead of Distractor Closeness)
    - "Memory Retention & Spaced Review" (instead of FSRS decay)
 4. For EACH of the 11 diagnostic points listed in the schema, generate a concise, crisp 1-2 sentence contextual interpretation explaining what the candidate's specific number means for their preparation and what tactical adjustment to make.
-5. Generate 4 to 6 concrete, prioritized, TIME-ALLOCATED study tasks (ActionableStudyTask) for the aspirant's study calendar.
-   - Each task MUST have a realistic duration (e.g. 30, 45, 60 mins), specific activity type (CONCEPT_REVISION, TARGETED_MCQ_PRACTICE, ERROR_LOG_AUDIT, etc.), priority, due timeframe, and a 3-step action checklist.
+5. Generate EXACTLY 4 concrete, prioritized, TIME-ALLOCATED study tasks (ActionableStudyTask) for the aspirant's study calendar.
+   - Each task MUST have a realistic duration (e.g. 30, 45, 60 mins), specific activity type (CONCEPT_REVISION, TARGETED_MCQ_PRACTICE, ERROR_LOG_AUDIT, FLASHCARD_SPACED_REVIEW, PACING_DRILL), priority, due timeframe, and a 3-step action checklist.
 6. Return the result matching the required schema exactly.
 """
 
@@ -242,7 +242,7 @@ YOUR MANDATE:
             f"Concept stability indicates {len(weak_tax)} high-priority topic areas entering their optimal revision window for spaced review."
         )
 
-        # 7. Actionable Study Plan Tasks
+        # 7. Actionable Study Plan Tasks (Exactly 4 high-yield tasks)
         study_tasks = []
         for idx, wt in enumerate(weak_tax[:4], start=1):
             t_subj = wt.get("subject", "General Studies")
@@ -262,7 +262,7 @@ YOUR MANDATE:
                     priority=PriorityEnum.CRITICAL if t_acc < 40.0 else PriorityEnum.HIGH,
                     allocated_time_minutes=45 if t_acc < 40.0 else 30,
                     due_in_days=min(7, idx + 1),
-                    reasoning=f"Accuracy dipped to {t_acc:.1f}% in this exam with {len(missed_qs)} missed/trapped questions.",
+                    reasoning=f"Accuracy was {t_acc:.1f}% in this exam with {len(missed_qs)} missed/trapped questions.",
                     action_checklist=[
                         f"Review core textbook notes & syllabus chapter for {t_name}",
                         f"Examine step-by-step solution breakdowns for missed exam items",
@@ -273,28 +273,95 @@ YOUR MANDATE:
                 )
             )
 
-        if not study_tasks:
+        fallback_templates = [
+            (
+                "Mock Error Log Consolidation & Review",
+                "General Studies",
+                "Comprehensive Review",
+                "Distractor Traps",
+                ActivityTypeEnum.ERROR_LOG_AUDIT,
+                PriorityEnum.HIGH,
+                30,
+                2,
+                "Consolidate learning from switched and near-miss questions before the next test.",
+                [
+                    "Review step-by-step solutions for all incorrect questions",
+                    "Log high-closeness distractor traps in your personal revision diary",
+                    "Verify key takeaway concepts for recurring question patterns",
+                ],
+            ),
+            (
+                "Option Elimination & 50:50 Dilemma Drill",
+                "General Studies",
+                "Tactical MCQ Strategy",
+                "Elimination Precision",
+                ActivityTypeEnum.TARGETED_MCQ_PRACTICE,
+                PriorityEnum.HIGH,
+                40,
+                3,
+                "Sharpen tactical elimination skills to convert 50:50 choices into consistent score gains.",
+                [
+                    "Identify and eliminate 2 clearly implausible options before analyzing remaining choices",
+                    "Watch out for absolute qualifiers like 'always', 'all', 'never'",
+                    "Complete a 15-question speed drill under strict 45-second timer constraints",
+                ],
+            ),
+            (
+                "High-Yield Concept Spaced Retention Booster",
+                "General Studies",
+                "Core Syllabus Mastery",
+                "Spaced Review",
+                ActivityTypeEnum.FLASHCARD_SPACED_REVIEW,
+                PriorityEnum.MEDIUM,
+                30,
+                4,
+                "Prevent memory decay in high-frequency exam syllabus themes.",
+                [
+                    "Run through active recall summaries for weak topic areas",
+                    "Re-attempt previously missed questions without looking at solutions",
+                    "Create condensed 1-page formula/concept summary sheets",
+                ],
+            ),
+            (
+                "First-Pass Pacing & Speed Management Drill",
+                "General Studies",
+                "Exam Temperament",
+                "Time Allocation",
+                ActivityTypeEnum.PACING_DRILL,
+                PriorityEnum.MEDIUM,
+                35,
+                5,
+                "Calibrate time per question to prevent late-stage exam time bottlenecks.",
+                [
+                    "Practice 25 questions in a single unbroken 25-minute sprint",
+                    "Mark tough 3-statement questions for round 2 within 15 seconds",
+                    "Review time-efficiency ratio to maintain < 55s average per question",
+                ],
+            ),
+        ]
+
+        while len(study_tasks) < 4:
+            tmpl_idx = len(study_tasks)
+            t_title, t_sub, t_top, t_subtop, t_act, t_pri, t_dur, t_due, t_rea, t_chk = fallback_templates[tmpl_idx % len(fallback_templates)]
             study_tasks.append(
                 ActionableStudyTask(
-                    task_id=f"task_1_{uuid.uuid4().hex[:6]}",
-                    title="Mock Error Log Consolidation & Review",
-                    subject="General Studies",
-                    topic="Comprehensive Review",
-                    subtopic="Distractor Traps",
-                    activity_type=ActivityTypeEnum.ERROR_LOG_AUDIT,
-                    priority=PriorityEnum.HIGH,
-                    allocated_time_minutes=30,
-                    due_in_days=2,
-                    reasoning="Consolidate learning from switched and flagged questions before the next test.",
-                    action_checklist=[
-                        "Review step-by-step solutions for all incorrect questions",
-                        "Log high-closeness distractor traps in your personal revision diary",
-                        "Schedule your next timed practice drill in 3 days",
-                    ],
+                    task_id=f"task_{tmpl_idx + 1}_{uuid.uuid4().hex[:6]}",
+                    title=t_title,
+                    subject=t_sub,
+                    topic=t_top,
+                    subtopic=t_subtop,
+                    activity_type=t_act,
+                    priority=t_pri,
+                    allocated_time_minutes=t_dur,
+                    due_in_days=t_due,
+                    reasoning=t_rea,
+                    action_checklist=t_chk,
                     linked_question_numbers=[],
                     is_added_to_plan=False,
                 )
             )
+
+        study_tasks = study_tasks[:4]
 
         # 8. Closing Mentorship Advice
         closing = (

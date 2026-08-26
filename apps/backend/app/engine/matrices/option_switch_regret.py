@@ -18,6 +18,8 @@ class OptionSwitchRegretStrategy:
 
         pos_switches = 0
         neg_switches = 0
+        wrong_to_wrong_switches = 0
+        right_to_right_switches = 0
 
         for s in switch_events:
             init_c = s.get("initial_correct", False)
@@ -27,9 +29,14 @@ class OptionSwitchRegretStrategy:
                 pos_switches += 1
             elif init_c and not final_c:
                 neg_switches += 1
+            elif not init_c and not final_c:
+                wrong_to_wrong_switches += 1
+            else:
+                right_to_right_switches += 1
 
         total = len(switch_events)
         regret_ratio = neg_switches / total if total > 0 else 0.0
+        net_impact = round((pos_switches * 2.6667 - neg_switches * 2.6667), 2)
 
         # 5-Tier Finer Regret Boundaries
         if regret_ratio > 0.60:
@@ -44,15 +51,21 @@ class OptionSwitchRegretStrategy:
         elif total > 0 and regret_ratio > 0.0:
             regret_level = "CONSTRUCTIVE_SECOND_THOUGHTS"
             rec = "Constructive second thoughts. Most answer modifications corrected mistaken initial assumptions."
-        else:
+        elif pos_switches > 0:
             regret_level = "INTUITIVE_PRECISION_NO_REGRET"
             rec = "Flawless revision discipline. All answer switches yielded positive point gains."
+        else:
+            regret_level = "NEUTRAL_DISTRACTOR_SWITCH"
+            rec = "Neutral revision outcome with switches between alternative distractor options."
 
         return {
             "total_switches": total,
             "switch_frequency": total,
             "positive_switches": pos_switches,
             "negative_regret_switches": neg_switches,
+            "wrong_to_wrong_switches": wrong_to_wrong_switches,
+            "right_to_right_switches": right_to_right_switches,
+            "net_score_impact": net_impact,
             "regret_index": round(regret_ratio, 2),
             "regret_ratio": round(regret_ratio, 2),
             "regret_level": regret_level,

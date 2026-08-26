@@ -113,8 +113,8 @@ class MatrixOrchestrator:
             irt_p = sol.get("irt_params", {"a": 1.5, "b": 0.0, "c": 0.25})
 
             is_corr = bool(r.get("is_correct", False))
-            time_taken = float(r.get("time_taken_seconds", 60.0))
-            exp_time = float(r.get("expected_time_seconds", 60.0))
+            time_taken = float(r.get("time_taken_seconds", 0.0) or 0.0)
+            exp_time = float(r.get("expected_time_seconds", 60.0) or 60.0)
             c_score = float(r.get("closeness_score_awarded", 1.0 if is_corr else 0.0))
 
             # Compute item GTI mathematically if not already set
@@ -603,7 +603,7 @@ class MatrixOrchestrator:
             strengths_list.append(f"Demonstrated solid concept command in {', '.join(strong_subjs)}.")
         if gti_interp.get("category") in ("HIGH_CONFIDENCE_METHODICAL", "CONTROLLED_CALCULATED_RISK"):
             strengths_list.append("High instinct discipline with minimal rushed guessing errors.")
-        if oeei_eval.get("oeei_score", 0) >= 0.70:
+        if float(oeei_eval.get("oeei_score") or 0.0) >= 0.70:
             strengths_list.append("Effective option elimination tactics, avoiding cognitive distractor traps.")
         if not strengths_list:
             strengths_list.append(f"Successfully completed all {total_q} questions within the exam duration.")
@@ -619,9 +619,9 @@ class MatrixOrchestrator:
         if not weaknesses_list:
             weaknesses_list.append("Minor accuracy drop on higher-order analytical statement questions.")
 
-        # Generate Concrete Actionable Revision Tasks
+        # Generate Concrete Actionable Revision Tasks (Exactly 4 max)
         actionable_tasks = []
-        for idx, wt in enumerate(part_3_taxonomy.get("by_topic", [])[:5], start=1):
+        for idx, wt in enumerate(part_3_taxonomy.get("by_topic", [])[:4], start=1):
             if wt.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE"):
                 t_name = wt.get("taxonomy_name", "General Studies")
                 t_acc = wt.get("accuracy_percentage", 40.0)
@@ -668,6 +668,8 @@ class MatrixOrchestrator:
                 "is_added_to_plan": False,
             })
 
+        actionable_tasks = actionable_tasks[:4]
+
         instant_mentorship_insight = {
             "executive_summary": f"Completed test with {tot_score:.2f} net marks ({round((tot_corr_count / max(1, tot_attempted)) * 100.0, 1)}% accuracy). Pacing was {pacing_eval.get('pacing_status', 'BALANCED').replace('_', ' ').title()}.",
             "benchmark_verdict": f"Score: {tot_score:.2f} / {max_score:.2f} Marks",
@@ -691,7 +693,7 @@ class MatrixOrchestrator:
         }
         if gti_interp.get("category") in ("IMPULSIVE_BLIND_GUESSING", "ELEVATED_IMPULSIVE_RISK"):
             weak_spots_categorized["techniques"].append("Impulsive Guessing Risk")
-        if switch_eval.get("regret_index", 0.0) > 0.40:
+        if float(switch_eval.get("regret_index") or 0.0) > 0.40:
             weak_spots_categorized["techniques"].append("Panic Answer Switching")
         if pacing_eval.get("pacing_status") in ("EARLY_BOTTLENECK_OVERTHINK", "LATE_EXAM_PANIC_RUSH"):
             weak_spots_categorized["techniques"].append("Uneven Exam Pacing")
@@ -707,7 +709,7 @@ class MatrixOrchestrator:
         }
         if gti_interp.get("category") in ("HIGH_CONFIDENCE_METHODICAL", "CONTROLLED_CALCULATED_RISK"):
             strong_spots_categorized["techniques"].append("Disciplined Instinct & Minimal Guessing")
-        if oeei_eval.get("oeei_score", 0) >= 0.70:
+        if float(oeei_eval.get("oeei_score") or 0.0) >= 0.70:
             strong_spots_categorized["techniques"].append("Tactical Option Elimination")
 
         # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
