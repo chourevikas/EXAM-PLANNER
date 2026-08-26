@@ -21,6 +21,8 @@ import {
   revealQuestionAnswer,
   sendExamHeartbeat,
   submitExamAttempt,
+  listExams,
+  ExamItem,
 } from '../services/examService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
@@ -65,6 +67,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
+  const [isPYQ, setIsPYQ] = useState<boolean>(false);
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
@@ -223,6 +226,48 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           await loadGuestSessionQuestions();
           return;
         }
+
+        const typeParam = searchParams.get('type');
+        const examParam = searchParams.get('exam');
+        let isPyqTest = typeParam === 'PYQ';
+
+        if (!typeParam) {
+          if (
+            (examId && examId.toLowerCase().includes('pyq')) ||
+            (paramAttemptId && paramAttemptId.toLowerCase().includes('pyq')) ||
+            (examParam && examParam.toLowerCase().includes('pyq'))
+          ) {
+            isPyqTest = true;
+          }
+        }
+
+        try {
+          const liveExams: ExamItem[] = await listExams();
+          const targetId = examId || paramAttemptId;
+          const match = liveExams.find(
+            (e: ExamItem) => e.id === targetId || e.code === targetId || e.name === targetId
+          );
+          if (match) {
+            if (
+              match.exam_type === 'PYQ' ||
+              match.code?.toLowerCase().includes('pyq') ||
+              match.name?.toLowerCase().includes('pyq')
+            ) {
+              isPyqTest = true;
+            } else if (
+              match.exam_type === 'STATIC_MOCK' ||
+              match.exam_type === 'MOCK' ||
+              match.code?.toLowerCase().includes('mock') ||
+              match.name?.toLowerCase().includes('mock')
+            ) {
+              isPyqTest = false;
+            }
+          }
+        } catch (e) {
+          console.warn('Exam type lookup warning:', e);
+        }
+
+        setIsPYQ(isPyqTest);
 
         if (paramAttemptId) {
           // Resume existing session
@@ -869,7 +914,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           {[
             { id: 'question', label: 'Question', icon: FileText },
             { id: 'sections', label: 'Sections', icon: Layers },
-            { id: 'palette', label: 'Palette', icon: Grid },
+            ...(isPYQ ? [{ id: 'palette', label: 'Palette', icon: Grid }] : []),
           ].map((tab) => {
             const TabIcon = tab.icon;
             const isActive = mobileTab === tab.id;
@@ -933,7 +978,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       >
         {/* Center: Question Card Workspace with Collapsible Trigger Button */}
         {(!isMobile || mobileTab === 'question') && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="#2563eb" />
@@ -953,21 +998,23 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 isRevealing={isRevealing}
                 onSelectOption={handleSelectOption}
                 onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
-                onRevealAnswer={handleRevealAnswer}
+                onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+                isPYQ={isPYQ}
               />
             ) : null}
           </div>
         )}
 
-        {/* Right: Question Palette */}
-        {(!isMobile || mobileTab === 'palette') && (
+        {/* Right: Question Palette (Kept for PYQ Tests) */}
+        {isPYQ && (!isMobile || mobileTab === 'palette') && (
           <ExamQuestionPalette
             palette={palette.length > 0 ? palette : undefined}
             currentQIndex={currentQIndex}
             paletteFilter={paletteFilter}
             onSelectQuestion={handleSelectQuestionFromPalette}
             onFilterChange={setPaletteFilter}
+            onRevealAnswer={undefined}
           />
         )}
       </div>
@@ -980,6 +1027,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         isLastQuestion={currentQIndex >= totalQuestions - 1}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
+        onSubmitAnswer={isPYQ ? undefined : handleRevealAnswer}
         onPrev={handlePrev}
         onNext={handleNext}
       />

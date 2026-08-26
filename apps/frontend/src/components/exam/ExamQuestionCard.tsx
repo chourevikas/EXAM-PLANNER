@@ -47,6 +47,7 @@ interface ExamQuestionCardProps {
   onToggleSidebar?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
+  isPYQ?: boolean;
 }
 
 function cleanQuestionTextBody(rawText: string): string {
@@ -130,6 +131,7 @@ export function ExamQuestionCard({
   onToggleSidebar,
   onPrev,
   onNext,
+  isPYQ = false,
 }: ExamQuestionCardProps) {
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
 
@@ -245,7 +247,7 @@ export function ExamQuestionCard({
       style={{
         flex: 1,
         width: '100%',
-        padding: '12px 24px 28px 24px',
+        padding: isPYQ ? '16px 36px 28px 36px' : '12px 24px 28px 24px',
         overflow: 'hidden',
         boxSizing: 'border-box',
         backgroundColor: '#F8FAF8',
@@ -260,7 +262,7 @@ export function ExamQuestionCard({
     >
       <div
         style={{
-          maxWidth: '100%',
+          maxWidth: isPYQ ? '1100px' : '100%',
           width: '100%',
           margin: '0 auto',
           display: 'flex',

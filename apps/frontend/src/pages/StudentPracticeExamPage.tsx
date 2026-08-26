@@ -1,30 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SlidersHorizontal, ChevronDown, Check, Search } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
-import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
-import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
-import { fetchMasterSyllabus, verifySyllabusNode } from '../services/examService';
+import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/examService';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // URL Params
-  const gExam = searchParams.get('exam') || '';
+  const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
   const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
   const gTopic = searchParams.get('topic') || '';
   const gSubtopic = searchParams.get('subtopic') || '';
+  const gDifficulty = searchParams.get('difficulty') || '';
   const gCount = parseInt(searchParams.get('count') || '10', 10);
 
-  // Master Syllabus Taxonomy state fetched directly from /api/v1/syllabus
+  // Interactive Filter Bar Popover State
+  const [activeDropdown, setActiveDropdown] = useState<'exam' | 'subject' | 'topic' | 'difficulty' | null>(null);
+  const [filterSearchQuery, setFilterSearchQuery] = useState('');
+
+  // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
+  const [availableExams, setAvailableExams] = useState<string[]>([]);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -98,12 +103,19 @@ export function StudentPracticeExamPage() {
       setIsLoading(true);
       const fetchedMap = new Map<string, any>();
 
-      // 1. Fetch Master Syllabus Tree (/api/v1/syllabus)
+      // 1. Fetch Master Syllabus Tree & Published Exams from API
       try {
-        const sData = await fetchMasterSyllabus();
+        const [sData, eList] = await Promise.all([
+          fetchMasterSyllabus().catch(() => null),
+          listExams('PUBLISHED').catch(() => []),
+        ]);
         if (sData) setMasterSyllabus(sData);
+        if (eList && eList.length > 0) {
+          const names = Array.from(new Set(eList.map((e: any) => e.title || e.exam_name || e.code).filter(Boolean)));
+          if (names.length > 0) setAvailableExams(names);
+        }
       } catch (err) {
-        console.warn('Practice exam fetchMasterSyllabus warning:', err);
+        console.warn('Practice exam taxonomy API warning:', err);
       }
 
       const formatQuestion = (q: any, idx: number): QuestionOut => {
@@ -161,44 +173,54 @@ export function StudentPracticeExamPage() {
         if (match) numericYear = match[1];
       }
 
-      // Fetch questions helper
-      const fetchQuestionsByFilter = async (filterParams: Record<string, string>) => {
-        const query = new URLSearchParams({ limit: '100', include_solutions: 'true', ...filterParams });
-        if (gExam && gExam.toLowerCase().includes('upsc')) {
-          query.append('exam_name', 'upsc');
-        }
-        if (numericYear) {
-          query.append('exam_year', numericYear);
-        }
-        const res = await fetch(`/api/v1/questions?${query.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          (data.items || []).forEach((item: any) => {
-            if (item.question_id && !fetchedMap.has(item.question_id)) {
-              fetchedMap.set(item.question_id, item);
-            }
-          });
+      const fetchWithParams = async (params: URLSearchParams) => {
+        try {
+          const res = await fetch(`/api/v1/questions?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            (data.items || []).forEach((item: any) => {
+              if (item.question_id && !fetchedMap.has(item.question_id)) {
+                fetchedMap.set(item.question_id, item);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Practice questions fetch error:', err);
         }
       };
 
       try {
-        // Step A: Primary query with narrowest selection (Subtopic -> Topic -> Subject)
-        const primaryFilters: Record<string, string> = {};
-        if (reqSubtopic) primaryFilters.subtopic_name = reqSubtopic;
-        else if (reqTopic) primaryFilters.topic_name = reqTopic;
-        else if (reqSubject) primaryFilters.subject_name = reqSubject;
+        // 1. Try with full specificity (subject + topic + subtopic + year)
+        const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+        if (reqSubject) p1.append('subject_name', reqSubject);
+        if (reqTopic) p1.append('topic_name', reqTopic);
+        if (reqSubtopic) p1.append('subtopic_name', reqSubtopic);
+        if (numericYear) p1.append('exam_year', numericYear);
+        if (gExam) p1.append('exam_name', gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase());
 
-        await fetchQuestionsByFilter(primaryFilters);
+        await fetchWithParams(p1);
 
-        // Step B: Fallback to Topic or Subject if primary query yielded fewer questions than gCount
-        if (fetchedMap.size < gCount && reqSubtopic && reqTopic) {
-          await fetchQuestionsByFilter({ topic_name: reqTopic });
+        // 2. Fallback: Relax subtopic & year if 0 questions found
+        if (fetchedMap.size === 0 && reqTopic) {
+          const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (reqSubject) p2.append('subject_name', reqSubject);
+          p2.append('topic_name', reqTopic);
+          p2.append('exam_name', 'upsc');
+          await fetchWithParams(p2);
         }
-        if (fetchedMap.size < gCount && reqSubject) {
-          await fetchQuestionsByFilter({ subject_name: reqSubject });
+
+        // 3. Fallback: Relax topic if still 0 questions found
+        if (fetchedMap.size === 0 && reqSubject) {
+          const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          p3.append('subject_name', reqSubject);
+          p3.append('exam_name', 'upsc');
+          await fetchWithParams(p3);
         }
-        if (fetchedMap.size < gCount) {
-          await fetchQuestionsByFilter({});
+
+        // 4. Fallback: General authentic questions pool if specific combination returned 0
+        if (fetchedMap.size === 0) {
+          const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          await fetchWithParams(p4);
         }
       } catch (err) {
         console.warn('Practice questions fetch warning:', err);
@@ -326,33 +348,35 @@ export function StudentPracticeExamPage() {
       [qId]: { optionId, optionLabel },
     }));
 
-    setPalette((prev) =>
-      prev.map((item) => {
-        if (item.question_id === qId) {
-          const isMarked = markedForReview[qId];
-          return {
-            ...item,
-            question_status: isMarked ? ('ANSWERED_AND_MARKED' as any) : ('ANSWERED' as any),
-          };
-        }
-        return item;
-      })
-    );
+    handleRevealAnswer(qId, optionId, optionLabel);
   };
 
-  // Reveal Answer / Submit Solution
-  const handleRevealAnswer = () => {
-    if (!activeQuestion) return;
-    const targetQuestion = activeQuestion;
-    const targetId = targetQuestion.question_id;
-    const userResp = userResponses[targetId];
+  // Reveal Instant Per-Question Answer & Description with Full Solution
+  const handleRevealAnswer = async (qId?: string, overrideOptId?: string, overrideOptLbl?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return;
+
+    const targetQuestion = allQuestions.find((q) => q.question_id === targetId) || activeQuestion;
+    if (!targetQuestion) return;
+
+    // If user hasn't selected an option yet, default to the first option so they can view the solution
+    let userResp = overrideOptId ? { optionId: overrideOptId, optionLabel: overrideOptLbl || '' } : userResponses[targetId];
+    if (!userResp && targetQuestion.options && targetQuestion.options.length > 0) {
+      const defaultOpt = targetQuestion.options[0];
+      const defaultLabel = cleanOptionLabel(defaultOpt.option_label || '', 0);
+      userResp = { optionId: defaultOpt.option_id, optionLabel: defaultLabel };
+      setUserResponses((prev) => ({
+        ...prev,
+        [targetId]: userResp!,
+      }));
+    }
 
     const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
 
     let isUserCorrect = false;
     if (userResp && targetQuestion.options) {
       const selectedOpt = targetQuestion.options.find(
-        (o, idx) => o.option_id === userResp.optionId || cleanOptionLabel(o.option_label || '', idx) === userResp.optionLabel
+        (o, idx) => o.option_id === userResp!.optionId || cleanOptionLabel(o.option_label || '', idx) === userResp!.optionLabel
       );
       if (selectedOpt && selectedOpt.is_correct) {
         isUserCorrect = true;
@@ -362,26 +386,32 @@ export function StudentPracticeExamPage() {
     const correctOptIndex = targetQuestion.options?.findIndex((o) => o.is_correct) ?? 0;
     const correctLabel = correctOpt ? cleanOptionLabel(correctOpt.option_label || '', correctOptIndex) : 'A';
 
-    const expText = (targetQuestion as any).explanation ||
-      (targetQuestion as any).description ||
-      (targetQuestion as any).explanation_text ||
-      (targetQuestion as any).solution ||
-      (targetQuestion as any).solution_text ||
-      '';
+    // Fetch rich solution metadata & distractor analyses if available
+    let solPayload: any = null;
+    try {
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      if (solRes.ok) {
+        solPayload = await solRes.json();
+      }
+    } catch (err) {
+      console.warn('Failed to fetch full solution artifact:', err);
+    }
+
+    const expContent = solPayload?.explanation || (targetQuestion as any).explanation || (targetQuestion as any).description || (targetQuestion as any).solution || (targetQuestion as any).solution_text || `Option (${correctLabel}) is correct.`;
 
     const revealObj: RevealAnswerResponse = {
       question_id: targetId,
       question_number: targetQuestion.question_number,
-      correct_option_id: correctOpt?.option_id || '',
-      correct_option_label: correctLabel,
+      correct_option_id: solPayload?.correct_option_id || correctOpt?.option_id || '',
+      correct_option_label: solPayload?.correct_option_label || correctLabel,
       is_user_correct: isUserCorrect,
       user_selected_option_id: userResp?.optionId || null,
       user_selected_label: userResp?.optionLabel || null,
       marks_awarded: isUserCorrect ? (targetQuestion.marks || 2.0) : -(targetQuestion.negative_marks || 0.66),
       closeness_score: isUserCorrect ? 100 : 0,
       closeness_classification: isUserCorrect ? 'EXACT' : 'INCORRECT',
-      explanation: expText,
-      distractor_scores: {},
+      explanation: expContent,
+      distractor_scores: solPayload?.distractor_scores || {},
     };
 
     const updatedRevealedMap = {
@@ -408,6 +438,15 @@ export function StudentPracticeExamPage() {
     const numQuestions = allQuestions.length;
     if (Object.keys(updatedRevealedMap).length >= numQuestions && numQuestions > 0) {
       handleFinishPracticeExam(updatedRevealedMap);
+    }
+  };
+
+  const handleShowSolution = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+    const rMap = passedRevealedMap || revealedMap;
+    const numQuestions = allQuestions.length;
+    const isCompleted = Object.keys(rMap).length >= numQuestions || numQuestions === 1;
+    if (isCompleted && scoreCountdown === null && !showScoreModal) {
+      handleFinishPracticeExam(rMap);
     }
   };
 
@@ -535,6 +574,49 @@ export function StudentPracticeExamPage() {
     );
   };
 
+  // Dynamically extract subjects from API masterSyllabus tree and fetched questions
+  const syllabusSubjects = masterSyllabus ? Object.keys(masterSyllabus) : [];
+  const questionSubjects = Array.from(new Set(allQuestions.map((q) => q.section_code || (q as any).subject_name).filter(Boolean)));
+  const combinedSubjects = Array.from(new Set([...syllabusSubjects, ...questionSubjects]));
+  const subjectsList = ['All Subjects', ...combinedSubjects];
+
+  // Dynamically extract topics from API masterSyllabus tree and fetched questions
+  let dynamicTopics: string[] = [];
+  if (gSubject && gSubject !== 'All Subjects' && masterSyllabus && masterSyllabus[gSubject]) {
+    dynamicTopics = Object.keys(masterSyllabus[gSubject]);
+  } else if (masterSyllabus) {
+    Object.keys(masterSyllabus).forEach((sKey) => {
+      if (masterSyllabus[sKey] && typeof masterSyllabus[sKey] === 'object') {
+        dynamicTopics.push(...Object.keys(masterSyllabus[sKey]));
+      }
+    });
+  }
+  const qTopics = allQuestions.map((q) => q.topic_name).filter(Boolean) as string[];
+  dynamicTopics = Array.from(new Set([...dynamicTopics, ...qTopics]));
+  const availableTopics = ['All Topics', ...dynamicTopics];
+
+  const selectedOptionsMap: Record<number, string> = {};
+  const markedForReviewMap: Record<number, boolean> = {};
+
+  allQuestions.forEach((q, idx) => {
+    if (userResponses[q.question_id]) {
+      selectedOptionsMap[idx] = userResponses[q.question_id].optionId;
+    }
+    if (markedForReview[q.question_id]) {
+      markedForReviewMap[idx] = true;
+    }
+  });
+
+  const answeredCount = Object.keys(userResponses).length;
+  const markedCount = Object.values(markedForReview).filter(Boolean).length;
+  const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
+
+  const currentResponse = activeQuestion ? userResponses[activeQuestion.question_id] : null;
+  const currentRevealedResult = activeQuestion ? revealedMap[activeQuestion.question_id] : null;
+
+  const isCurrentAnswered = !!currentResponse;
+  const isCurrentMarked = activeQuestion ? !!markedForReview[activeQuestion.question_id] : false;
+
   if (isLoading) {
     return (
       <ExamLoaderOverlay
@@ -573,29 +655,6 @@ export function StudentPracticeExamPage() {
     );
   }
 
-  const currentResponse = userResponses[activeQuestion.question_id];
-  const isCurrentAnswered = !!currentResponse;
-  const isCurrentMarked = !!markedForReview[activeQuestion.question_id];
-  const currentRevealedResult = revealedMap[activeQuestion.question_id] || null;
-
-  const selectedOptionsMap: Record<number, string> = {};
-  allQuestions.forEach((q, idx) => {
-    if (userResponses[q.question_id]) {
-      selectedOptionsMap[idx] = userResponses[q.question_id].optionId;
-    }
-  });
-
-  const markedForReviewMap: Record<number, boolean> = {};
-  allQuestions.forEach((q, idx) => {
-    if (markedForReview[q.question_id]) {
-      markedForReviewMap[idx] = true;
-    }
-  });
-
-  const answeredCount = Object.keys(revealedMap).length;
-  const markedCount = Object.values(markedForReview).filter(Boolean).length;
-  const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
-
   return (
     <div
       style={{
@@ -627,7 +686,7 @@ export function StudentPracticeExamPage() {
       <ExamSectionSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        sections={[{ id: 'student-sec-1', label: gTopic, total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length }]}
+        sections={[{ id: 'student-sec-1', label: gTopic || gSubject || 'General Studies', total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length }]}
         activeSectionId="student-sec-1"
         palette={palette}
         totalQuestions={totalQuestions}
@@ -643,13 +702,444 @@ export function StudentPracticeExamPage() {
         onSelectSection={() => handleSelectQuestion(0)}
       />
 
+      {/* Premium Floating Exam Filter Window (Same as Guest Exam Page) */}
+      <div
+        style={{
+          marginTop: 64,
+          padding: '16px 28px 8px 28px',
+          backgroundColor: 'transparent',
+          zIndex: 80,
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            borderRadius: 16,
+            padding: '14px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 20,
+            boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+            position: 'relative',
+          }}
+        >
+          {/* Filter Bar Badge */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              paddingRight: 16,
+              borderRight: '1px solid #F1F5F9',
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                backgroundColor: '#EFF6FF',
+                color: '#1E3A8A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <SlidersHorizontal size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                FILTERS
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                Practice Engine
+              </span>
+            </div>
+          </div>
+
+          {/* Filter 1: Exam Target */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Exam Target
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gExam || 'UPSC CSE'}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {activeDropdown === 'exam' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 220,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 8,
+                  zIndex: 100,
+                }}
+              >
+                {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map((opt) => (
+                  <div
+                    key={opt}
+                    onClick={() => {
+                      const current = new URLSearchParams(searchParams);
+                      current.set('exam', opt);
+                      navigate(`/practice-exam?${current.toString()}`);
+                      setActiveDropdown(null);
+                    }}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: gExam === opt ? 700 : 500,
+                      color: gExam === opt ? '#1E3A8A' : '#334155',
+                      backgroundColor: gExam === opt ? '#EFF6FF' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span>{opt}</span>
+                    {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filter 2: Subject Focus */}
+          <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Subject Focus
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gSubject || 'All Subjects'}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {activeDropdown === 'subject' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 250,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 10,
+                  zIndex: 100,
+                }}
+              >
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search subject..."
+                    value={filterSearchQuery}
+                    onChange={(e) => setFilterSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px 7px 30px',
+                      borderRadius: 7,
+                      border: '1px solid #E2E8F0',
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#F8FAFC',
+                    }}
+                  />
+                </div>
+
+                <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {subjectsList
+                    .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                    .map((opt) => (
+                      <div
+                        key={opt}
+                        onClick={() => {
+                          const current = new URLSearchParams(searchParams);
+                          if (opt === 'All Subjects') {
+                            current.delete('subject');
+                            current.delete('topic');
+                          } else {
+                            current.set('subject', opt);
+                            current.delete('topic');
+                          }
+                          navigate(`/practice-exam?${current.toString()}`);
+                          setActiveDropdown(null);
+                        }}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 7,
+                          fontSize: 12.5,
+                          fontWeight: gSubject === opt ? 700 : 500,
+                          color: gSubject === opt ? '#1E3A8A' : '#334155',
+                          backgroundColor: gSubject === opt ? '#EFF6FF' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>{opt}</span>
+                        {gSubject === opt && <Check size={14} color="#1E3A8A" />}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter 3: Specific Topic */}
+          <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Specific Topic
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gTopic || 'All Topics'}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {activeDropdown === 'topic' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 270,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 10,
+                  zIndex: 100,
+                }}
+              >
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search topics..."
+                    value={filterSearchQuery}
+                    onChange={(e) => setFilterSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px 7px 30px',
+                      borderRadius: 7,
+                      border: '1px solid #E2E8F0',
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#F8FAFC',
+                    }}
+                  />
+                </div>
+
+                <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {availableTopics
+                    .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                    .map((opt) => {
+                      const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                      return (
+                        <div
+                          key={opt}
+                          onClick={() => {
+                            const current = new URLSearchParams(searchParams);
+                            if (opt === 'All Topics') current.delete('topic');
+                            else current.set('topic', opt);
+                            navigate(`/practice-exam?${current.toString()}`);
+                            setActiveDropdown(null);
+                          }}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 7,
+                            fontSize: 12.5,
+                            fontWeight: isSelected ? 700 : 500,
+                            color: isSelected ? '#1E3A8A' : '#334155',
+                            backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span>{opt}</span>
+                          {isSelected && <Check size={14} color="#1E3A8A" />}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter 4: Difficulty */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
+              Difficulty
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(activeDropdown === 'difficulty' ? null : 'difficulty');
+                setFilterSearchQuery('');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 14px',
+                borderRadius: 9,
+                border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
+                color: '#0F172A',
+                fontSize: 13,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>{gDifficulty ? gDifficulty : 'All Levels'}</span>
+              <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {activeDropdown === 'difficulty' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: 0,
+                  width: 170,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 12,
+                  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                  padding: 8,
+                  zIndex: 100,
+                }}
+              >
+                {['All Levels', 'EASY', 'MEDIUM', 'HARD'].map((opt) => {
+                  const isSelected = (opt === 'All Levels' && !gDifficulty) || gDifficulty.toUpperCase() === opt;
+                  return (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        const current = new URLSearchParams(searchParams);
+                        if (opt === 'All Levels') current.delete('difficulty');
+                        else current.set('difficulty', opt);
+                        navigate(`/practice-exam?${current.toString()}`);
+                        setActiveDropdown(null);
+                      }}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: 7,
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? 700 : 500,
+                        color: isSelected ? '#1E3A8A' : '#334155',
+                        backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span>{opt}</span>
+                      {isSelected && <Check size={14} color="#1E3A8A" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Main Console Workspace */}
       <div
         style={{
           display: 'flex',
           flex: 1,
-          marginTop: 60,
-          marginBottom: 64,
+          marginTop: 0,
+          marginBottom: 0,
           overflow: 'hidden',
           position: 'relative',
           backgroundColor: '#F8FAFC',
@@ -669,49 +1159,20 @@ export function StudentPracticeExamPage() {
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
           onRevealAnswer={() => handleRevealAnswer()}
+          onShowSolution={() => handleShowSolution()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
+          onNext={() => currentQIndex < totalQuestions - 1 && handleSelectQuestion(currentQIndex + 1)}
         />
 
-        {/* Right Question Palette */}
-        {!isMobile && (
-          <ExamQuestionPalette
-            questions={allQuestions}
-            palette={palette}
-            currentQIndex={currentQIndex}
-            selectedOptions={selectedOptionsMap}
-            markedForReview={markedForReviewMap}
-            paletteFilter={paletteFilter}
-            onSelectQuestion={(idx) => handleSelectQuestion(idx)}
-            onFilterChange={(f) => setPaletteFilter(f)}
-          />
-        )}
       </div>
-
-      {/* Fixed Bottom Exam Control Bar */}
-      <ExamFooterBar
-        isAnswered={isCurrentAnswered}
-        isMarkedForReview={isCurrentMarked}
-        isFirstQuestion={currentQIndex === 0}
-        isLastQuestion={currentQIndex >= totalQuestions - 1}
-        isRevealed={!!currentRevealedResult}
-        onClearResponse={handleClearResponse}
-        onToggleMarkReview={handleToggleMarkReview}
-        onSubmitAnswer={() => handleRevealAnswer()}
-        onSubmitTest={() => handleFinishPracticeExam()}
-        onPrev={() => handleSelectQuestion(currentQIndex - 1)}
-        onNext={() => {
-          if (currentQIndex < totalQuestions - 1) {
-            handleSelectQuestion(currentQIndex + 1);
-          }
-        }}
-      />
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
       {scoreCountdown !== null && (
         <div
           style={{
             position: 'fixed',
-            bottom: 74,
+            bottom: 24,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,

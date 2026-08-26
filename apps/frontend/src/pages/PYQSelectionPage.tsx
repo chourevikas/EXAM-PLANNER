@@ -223,7 +223,7 @@ export function PYQSelectionPage() {
                   {hasInProgress ? (
                     <>
                       <Link 
-                        to={`/exam/${exam.id}`}
+                        to={`/exam/${exam.id}?type=PYQ`}
                         style={{
                           flex: 1,
                           padding: '10px 14px',
@@ -265,7 +265,7 @@ export function PYQSelectionPage() {
                       )}
 
                       <Link 
-                        to={`/exam/${exam.id}?forceNew=true`}
+                        to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 12px',
                           borderRadius: 12,
@@ -308,7 +308,7 @@ export function PYQSelectionPage() {
                       </Link>
 
                       <Link 
-                        to={`/exam/${exam.id}?forceNew=true`}
+                        to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 14px',
                           borderRadius: 12,
@@ -329,7 +329,7 @@ export function PYQSelectionPage() {
                     </>
                   ) : (
                     <Link 
-                      to={`/exam/${exam.id}`}
+                      to={`/exam/${exam.id}?type=PYQ`}
                       style={{
                         flex: 1,
                         padding: '10px 14px',

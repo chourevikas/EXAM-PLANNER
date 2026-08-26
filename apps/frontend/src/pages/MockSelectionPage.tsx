@@ -692,7 +692,7 @@ export function MockSelectionPage() {
                 <div style={{ paddingTop: 8 }}>
                   {isInProgress ? (
                     <Link
-                      to={`/exam/${mock.inProgressAttemptId || mock.id}`}
+                      to={`/exam/${mock.inProgressAttemptId || mock.id}?type=MOCK`}
                       style={{
                         width: '100%',
                         height: 40,
@@ -715,7 +715,7 @@ export function MockSelectionPage() {
                   ) : isCompleted ? (
                     <div style={{ display: 'flex', gap: 10 }}>
                       <Link
-                        to={`/exam/${mock.id}`}
+                        to={`/exam/${mock.id}?type=MOCK`}
                         style={{
                           flex: 1,
                           height: 40,
@@ -736,7 +736,7 @@ export function MockSelectionPage() {
                       </Link>
 
                       <Link
-                        to={`/exam/${mock.completedAttemptId || mock.id}`}
+                        to={`/analytics?attemptId=${mock.completedAttemptId || mock.id}`}
                         style={{
                           padding: '0 16px',
                           height: 40,
@@ -758,7 +758,7 @@ export function MockSelectionPage() {
                     </div>
                   ) : (
                     <Link
-                      to={`/exam/${mock.id}`}
+                      to={`/exam/${mock.id}?type=MOCK`}
                       style={{
                         width: '100%',
                         height: 40,
