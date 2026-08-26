@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { Ico } from '../components/common/Icons';
-import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
-import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
+import { listExams, listCandidateAttempts, formatCanonicalExamTitle, fetchMasterSyllabus, fetchExamsByYear } from '../services/examService';
+import { StatusBadge } from '../components/common/StatusBadge';
+import {
+  CheckCircle2,
+  PlayCircle,
+  BarChart2,
+  RotateCcw,
+  Zap,
+  ArrowRight,
+  ChevronRight,
+  Target
+} from 'lucide-react';
 
 interface DisplayMock {
   id: string;
@@ -15,20 +25,137 @@ interface DisplayMock {
   completedAttemptId?: string;
   inProgressAttemptId?: string;
   scoreText?: string;
+  progressPercent?: number;
 }
 
 export function MockSelectionPage() {
+  const navigate = useNavigate();
   const [hoveredMock, setHoveredMock] = useState<string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
+
+  // Dynamic 3-level taxonomy state fetched directly from DB / Syllabus API (/api/v1/syllabus)
+  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
+  const [subjectsList, setSubjectsList] = useState<string[]>([]);
+  const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
+
+  // Form selections
+  const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
+  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('All Subtopics (Entire Topic)');
+  const [questionCount, setQuestionCount] = useState<number>(10);
+
+  // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
+  useEffect(() => {
+    async function loadDynamicTaxonomy() {
+      setIsTaxonomyLoading(true);
+      try {
+        const taxData = await fetchMasterSyllabus();
+        if (taxData) {
+          if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
+            setMasterSubjects(taxData.subjects);
+          }
+          if (taxData.subjects_list && Array.isArray(taxData.subjects_list) && taxData.subjects_list.length > 0) {
+            const cleanSubs = taxData.subjects_list.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+            if (cleanSubs.length > 0) {
+              setSubjectsList(cleanSubs);
+              setSelectedSubject((prev) => (prev && cleanSubs.includes(prev) ? prev : cleanSubs[0]));
+            }
+          }
+          if (taxData.hierarchy && typeof taxData.hierarchy === 'object') {
+            setThreeLevelHierarchy(taxData.hierarchy);
+          }
+        }
+
+        const yearsData = await fetchExamsByYear();
+        if (yearsData && Array.isArray(yearsData.years) && yearsData.years.length > 0) {
+          const fetchedYears = yearsData.years.map((y: number) => `${y} PYQs`);
+          const minYear = Math.min(...yearsData.years);
+          const maxYear = Math.max(...yearsData.years);
+          const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
+          setYearOptions(yearsArray);
+          setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
+        }
+      } catch (err) {
+        console.warn('Taxonomy / Exam years fetch warning:', err);
+      } finally {
+        setIsTaxonomyLoading(false);
+      }
+    }
+
+    loadDynamicTaxonomy();
+  }, []);
+
+  // Compute available topics for the chosen subject directly from DB taxonomy API
+  const availableTopics = useMemo(() => {
+    const defaultList = ['All Topics (Entire Subject)'];
+    if (!selectedSubject) return defaultList;
+
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics) && currentSubj.topics.length > 0) {
+      const topicNames = currentSubj.topics.map((t: any) => t.name).filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
+      if (topicNames.length > 0) return [...defaultList, ...topicNames];
+    }
+
+    const topicMap = threeLevelHierarchy[selectedSubject];
+    if (topicMap && typeof topicMap === 'object') {
+      const keys = Object.keys(topicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
+      if (keys.length > 0) return [...defaultList, ...keys];
+    }
+
+    return defaultList;
+  }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
+
+  // Compute available subtopics for the chosen subject & topic directly from DB taxonomy API
+  const availableSubtopics = useMemo(() => {
+    const defaultList = ['All Subtopics (Entire Topic)'];
+    if (!selectedSubject || !selectedTopic || selectedTopic.startsWith('All Topics')) {
+      return defaultList;
+    }
+
+    const currentSubj = masterSubjects.find(
+      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
+    );
+    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics)) {
+      const currentTopic = currentSubj.topics.find(
+        (t: any) => t.name === selectedTopic || t.name.toLowerCase().includes(selectedTopic.toLowerCase())
+      );
+      if (currentTopic && currentTopic.subtopics && Array.isArray(currentTopic.subtopics) && currentTopic.subtopics.length > 0) {
+        const subtopicNames = currentTopic.subtopics
+          .map((st: any) => (typeof st === 'string' ? st : st.name))
+          .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Subtopics'));
+        if (subtopicNames.length > 0) return [...defaultList, ...subtopicNames];
+      }
+    }
+
+    const rawSubs = threeLevelHierarchy[selectedSubject]?.[selectedTopic];
+    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
+      const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
+      if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
+    }
+
+    return defaultList;
+  }, [selectedSubject, selectedTopic, masterSubjects, threeLevelHierarchy]);
+
 
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
       setIsLoading(true);
       try {
+        const token = await getToken();
+        if (token) {
+          localStorage.setItem('access_token', token);
+        }
         const [liveExams, userAttempts] = await Promise.all([
-          listExams(undefined, true),
-          listCandidateAttempts(),
+          listExams(undefined, true, token || undefined),
+          listCandidateAttempts(token || undefined),
         ]);
 
         const mocks = liveExams.filter(
@@ -38,7 +165,7 @@ export function MockSelectionPage() {
         const targetList = mocks.length > 0 ? mocks : liveExams.filter((e) => e.is_active === true);
 
         if (targetList.length > 0) {
-          const mapped: DisplayMock[] = targetList.map((e) => {
+          const mapped: DisplayMock[] = targetList.map((e, index) => {
             const examAttempts = userAttempts.filter(
               (att) => att.exam_id === e.id || att.exam_id === e.code
             );
@@ -51,27 +178,27 @@ export function MockSelectionPage() {
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
             let scoreText: string | undefined = undefined;
+            let progressPercent: number | undefined = undefined;
 
             if (inProgressAttempt) {
               status = 'IN_PROGRESS';
+              progressPercent = 65;
             } else if (completedAttempt) {
               status = 'COMPLETED';
-            }
-
-            if (completedAttempt) {
-              scoreText = `${completedAttempt.total_score} / ${completedAttempt.max_possible_score}`;
+              scoreText = `${completedAttempt.total_score || 0} / ${completedAttempt.max_possible_score || 200}`;
             }
 
             return {
               id: e.id,
               title: formatCanonicalExamTitle(e),
-              category: e.stage || 'Full Length',
+              category: 'PRELIMS',
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
               completedAttemptId: completedAttempt?.attempt_id,
               inProgressAttemptId: inProgressAttempt?.attempt_id,
               scoreText,
+              progressPercent,
             };
           });
           setMocksList(mapped);
@@ -88,232 +215,491 @@ export function MockSelectionPage() {
     fetchLiveMocksAndAttempts();
   }, []);
 
+  const handleStartPracticeTest = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : '');
+    const finalTopic = selectedTopic || 'All Topics (Entire Subject)';
+    const finalSubtopic = selectedSubtopic || 'All Subtopics (Entire Topic)';
+    const finalYear = selectedYear || (yearOptions.length > 0 ? yearOptions[0] : '');
+
+    const queryParams = new URLSearchParams({
+      exam: selectedExam,
+      year: finalYear,
+      subject: finalSubject,
+      topic: finalTopic,
+      subtopic: finalSubtopic,
+      count: questionCount.toString(),
+    });
+
+    navigate(`/practice-exam?${queryParams.toString()}`);
+  };
+
+
   return (
-    <StudentLayout pageTitle="Mock Tests">
-      {/* Header Banner */}
-      <section style={{ 
-        marginBottom: 32, padding: 32, borderRadius: 24,
-        backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
-        boxShadow: 'var(--shadow-color-base)',
-        backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(219,39,119,0.06) 100%)'
+    <StudentLayout pageTitle="Practice Tests">
+      {/* Top Banner Hero Container */}
+      <section style={{
+        marginBottom: 32,
+        padding: '32px 36px',
+        borderRadius: 20,
+        background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FAF5FF 100%)',
+        border: '1px solid #E0E7FF',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.05)'
       }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 20, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
-          <Ico.Book size={14} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Adaptive Testing</span>
+        <div style={{ maxWidth: '600px', zIndex: 2 }}>
+          {/* Capsule Pill Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 12px',
+            backgroundColor: '#E0E7FF',
+            color: '#3730A3',
+            fontSize: 11,
+            fontWeight: 700,
+            borderRadius: 20,
+            marginBottom: 14,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em'
+          }}>
+            <Zap size={13} fill="#4338CA" color="#4338CA" /> ADAPTIVE PRACTICE
+          </div>
+
+          <h1 style={{
+            fontSize: 32,
+            fontWeight: 800,
+            color: '#1E1B4B',
+            margin: '0 0 10px 0',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2
+          }}>
+            Practice Tests
+          </h1>
+
+          <p style={{
+            fontSize: 14,
+            color: '#4338CA',
+            margin: 0,
+            lineHeight: 1.6,
+            fontWeight: 500
+          }}>
+            Configure a targeted practice test by topic and subtopic, or attempt full-length test series.
+          </p>
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>UPSC Mock Tests</h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Practice with real test conditions, instant scoring, and psychometric feedback.</p>
+
+        {/* Right Side Illustration Graphic (Checklist + Bullseye Target) */}
+        <div style={{ position: 'relative', flexShrink: 0, width: 220, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="220" height="140" viewBox="0 0 220 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Soft decorative background circles */}
+            <circle cx="160" cy="70" r="55" fill="#E0E7FF" fillOpacity="0.5" />
+            <circle cx="180" cy="40" r="15" fill="#DDD6FE" fillOpacity="0.6" />
+
+            {/* Checklist Clipboard */}
+            <g transform="translate(45, 15) rotate(-6)">
+              <rect x="0" y="0" width="85" height="110" rx="10" fill="#FFFFFF" filter="drop-shadow(0px 8px 16px rgba(99, 102, 241, 0.15))" stroke="#C7D2FE" strokeWidth="2" />
+              <rect x="28" y="-6" width="30" height="12" rx="4" fill="#F59E0B" />
+              {/* Lines and checkmarks */}
+              <circle cx="20" cy="30" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
+              <path d="M17 30L19 32L23 28" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="34" y="27" width="38" height="6" rx="3" fill="#E0E7FF" />
+
+              <circle cx="20" cy="55" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
+              <path d="M17 55L19 57L23 53" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="34" y="52" width="38" height="6" rx="3" fill="#E0E7FF" />
+
+              <circle cx="20" cy="80" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
+              <path d="M17 80L19 82L23 78" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="34" y="77" width="28" height="6" rx="3" fill="#E0E7FF" />
+            </g>
+
+            {/* Bullseye Target & Dart */}
+            <g transform="translate(130, 35)">
+              <circle cx="45" cy="45" r="35" fill="#EF4444" filter="drop-shadow(0px 6px 12px rgba(239, 68, 68, 0.25))" />
+              <circle cx="45" cy="45" r="25" fill="#FFFFFF" />
+              <circle cx="45" cy="45" r="15" fill="#EF4444" />
+              <circle cx="45" cy="45" r="6" fill="#FFFFFF" />
+
+              {/* Dart Shaft hitting center */}
+              <path d="M75 15L48 42" stroke="#6366F1" strokeWidth="5" strokeLinecap="round" />
+              <path d="M75 15L85 5L75 5L75 15Z" fill="#818CF8" />
+              <path d="M75 15L85 25L85 15L75 15Z" fill="#818CF8" />
+            </g>
+          </svg>
+        </div>
       </section>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-          <div className="spinner" style={{ marginBottom: 12 }} />
-          Fetching real-time mock test archive and attempt status...
-        </div>
-      ) : mocksList.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-default)' }}>
-          <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
-            <Ico.Book size={40} />
+      {/* Instant Topic & Subtopic Generator Card */}
+      <section style={{
+        marginBottom: 36,
+        padding: '28px 32px',
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+          }}>
+            <Zap size={22} fill="#FFFFFF" color="#FFFFFF" />
           </div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Approved Mock Tests Available Yet</h3>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-            Mock tests uploaded will appear here as soon as they are published by an administrator.
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1E293B', margin: 0 }}>
+              Instant Practice Test Generator
+            </h2>
+            <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
+              Select your target subject, topic, and subtopic to launch a custom practice test.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleStartPracticeTest}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+            {/* Target Exam */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Target Exam
+              </label>
+              <select
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                <option value="UPSC CSE">UPSC CSE (Civil Services)</option>
+              </select>
+            </div>
+
+            {/* Target / PYQ Year */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Target / PYQ Year
+              </label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Subject
+              </label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => {
+                  setSelectedSubject(e.target.value);
+                  setSelectedTopic('All Topics (Entire Subject)');
+                  setSelectedSubtopic('All Subtopics (Entire Topic)');
+                }}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {subjectsList.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Topic */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Topic
+              </label>
+              <select
+                value={selectedTopic}
+                onChange={(e) => {
+                  setSelectedTopic(e.target.value);
+                  setSelectedSubtopic('All Subtopics (Entire Topic)');
+                }}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {availableTopics.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subtopic */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+                Subtopic
+              </label>
+              <select
+                value={selectedSubtopic}
+                onChange={(e) => setSelectedSubtopic(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FAFAFC',
+                  color: '#1E293B',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  outline: 'none',
+                }}
+              >
+                {availableSubtopics.map((sub) => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+
+          {/* Question Count and CTA Button Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+            paddingTop: 20,
+            borderTop: '1px dashed #E2E8F0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>Questions:</span>
+              {[10, 15, 20, 30].map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setQuestionCount(count)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    border: questionCount === count ? '1.5px solid #3B82F6' : '1px solid #E2E8F0',
+                    backgroundColor: '#FFFFFF',
+                    color: questionCount === count ? '#2563EB' : '#475569',
+                    fontWeight: questionCount === count ? 700 : 500,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {count} Qs
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '12px 24px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%)',
+                color: '#FFFFFF',
+                fontWeight: 700,
+                fontSize: 14,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
+                transition: 'transform 0.15s ease, boxShadow 0.15s ease',
+              }}
+            >
+              <PlayCircle size={18} fill="#FFFFFF" color="#3B82F6" />
+              <span>Start Practice Test</span>
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* Full-Length & Curated Test Series Header Row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1E293B', margin: 0 }}>
+            Full-Length & Curated Test Series
+          </h2>
+          <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
+            Attempt structured tests or revisit your previous attempts.
           </p>
+        </div>
+
+        <Link
+          to="/pyq"
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#2563EB',
+            textDecoration: 'none',
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: '1px solid #EFF6FF',
+            backgroundColor: '#EFF6FF',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          View All Tests <ChevronRight size={14} />
+        </Link>
+      </div>
+
+      {/* Test Series Cards Grid */}
+      {isLoading ? (
+        <div style={{ padding: 48, textAlign: 'center', color: '#64748B' }}>
+          <div className="spinner" style={{ marginBottom: 12 }} />
+          Loading test series archive...
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-          {mocksList.map((mock) => {
-            const hasCompleted = Boolean(mock.completedAttemptId);
-            const hasInProgress = Boolean(mock.inProgressAttemptId);
+          {mocksList.slice(0, 3).map((mock) => {
+            const isCompleted = mock.status === 'COMPLETED';
+            const isInProgress = mock.status === 'IN_PROGRESS';
 
             return (
-              <div 
-                key={mock.id} 
+              <div
+                key={mock.id}
                 onMouseEnter={() => setHoveredMock(mock.id)}
                 onMouseLeave={() => setHoveredMock(null)}
                 style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderRadius: 20,
-                  border: `1px solid ${hoveredMock === mock.id ? 'var(--accent-primary)' : hasCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 14,
+                  border: `1px solid ${hoveredMock === mock.id ? '#3B82F6' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
                   padding: '24px',
-                  boxShadow: hoveredMock === mock.id ? '0 12px 30px var(--shadow-color-accent)' : '0 8px 24px var(--shadow-color-base)',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  transform: hoveredMock === mock.id ? 'translateY(-4px)' : 'translateY(0)',
+                  boxShadow: hoveredMock === mock.id
+                    ? '0 8px 24px rgba(15, 23, 42, 0.08)'
+                    : '0 1px 3px rgba(15, 23, 42, 0.03)',
+                  transition: 'all 0.15s ease',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  gap: 16,
+                  gap: 20
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <div style={{
-                      backgroundColor: hasInProgress ? 'rgba(245,158,11,0.12)' : hasCompleted ? 'rgba(16,185,129,0.12)' : 'var(--accent-bg)',
-                      color: hasInProgress ? '#f59e0b' : hasCompleted ? '#10b981' : 'var(--accent-primary)',
-                      padding: '6px 12px',
-                      borderRadius: 20,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
+                  {/* Category Badge & Status Indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      backgroundColor: '#EFF6FF',
+                      color: '#2563EB',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
                     }}>
-                      {hasInProgress ? (
-                        <>
-                          <PlayCircle size={14} /> In Progress
-                        </>
-                      ) : hasCompleted ? (
-                        <>
-                          <CheckCircle2 size={14} /> Completed
-                        </>
-                      ) : (
-                        <>
-                          {mock.category}
-                        </>
-                      )}
-                    </div>
-                    <div style={{ color: 'var(--text-muted)' }}>
-                      <Ico.Book size={20} />
-                    </div>
-                  </div>
-                  
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px 0', lineHeight: 1.3 }}>
-                    {mock.title}
-                  </h3>
-                  
-                  <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
-                    <span>{mock.totalQuestions} Questions</span>
-                    <span>•</span>
-                    <span>{mock.duration}</span>
+                      {mock.category}
+                    </span>
+
+                    {isCompleted ? (
+                      <StatusBadge status="completed" label="Completed" size="sm" />
+                    ) : isInProgress ? (
+                      <StatusBadge status="in-progress" label="In Progress" size="sm" />
+                    ) : (
+                      <StatusBadge status="active" label="Ready" size="sm" />
+                    )}
                   </div>
 
-                  {hasCompleted && mock.scoreText && (
-                    <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#10b981', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Report Ready</span>
-                      <span>Score: {mock.scoreText}</span>
+                  {/* Title */}
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 8px 0' }}>
+                    {mock.title}
+                  </h3>
+
+                  {/* Questions & Duration */}
+                  <div style={{ fontSize: 13, color: '#64748B', marginBottom: 12 }}>
+                    {mock.totalQuestions} Questions &nbsp;•&nbsp; {mock.duration}
+                  </div>
+
+                  {/* In Progress: Progress Bar */}
+                  {isInProgress && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#EA580C', marginBottom: 6 }}>
+                        <span>65% Completed</span>
+                      </div>
+                      <div style={{ width: '100%', height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden' }}>
+                        <div style={{ width: '65%', height: '100%', backgroundColor: '#F97316', borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Completed: Score Badge */}
+                  {isCompleted && (
+                    <div style={{ marginTop: 10, padding: '4px 10px', backgroundColor: '#ECFDF5', borderRadius: 6, fontSize: 12, fontWeight: 700, color: '#059669', display: 'inline-block' }}>
+                      Score: {mock.scoreText || '0 / 200'}
                     </div>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div style={{ paddingTop: 16, borderTop: '1px solid var(--border-default)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  {hasInProgress ? (
-                    <>
-                      <Link 
-                        to={`/exam/${mock.id}`}
-                        style={{
-                          flex: 1,
-                          padding: '10px 14px',
-                          borderRadius: 12,
-                          backgroundColor: '#f59e0b',
-                          color: '#ffffff',
-                          fontWeight: 700,
-                          fontSize: 13,
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          textAlign: 'center',
-                        }}
-                      >
-                        <PlayCircle size={16} /> Resume
-                      </Link>
-
-                      {hasCompleted && (
-                        <Link 
-                          to={`/analytics?attemptId=${mock.completedAttemptId}`}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: 12,
-                            backgroundColor: '#2563eb',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                            fontSize: 13,
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
-                          title="View Previous Report"
-                        >
-                          <BarChart2 size={16} /> Report
-                        </Link>
-                      )}
-
-                      <Link 
-                        to={`/exam/${mock.id}?forceNew=true`}
-                        style={{
-                          padding: '10px 12px',
-                          borderRadius: 12,
-                          backgroundColor: 'var(--bg-subtle)',
-                          color: 'var(--text-primary)',
-                          fontWeight: 600,
-                          fontSize: 13,
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          border: '1px solid var(--border-default)',
-                        }}
-                        title="Start Fresh Test"
-                      >
-                        <RotateCcw size={14} /> Retake
-                      </Link>
-                    </>
-                  ) : hasCompleted ? (
-                    <>
-                      <Link 
-                        to={`/analytics?attemptId=${mock.completedAttemptId}`}
-                        style={{
-                          flex: 1,
-                          padding: '10px 14px',
-                          borderRadius: 12,
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
-                          fontWeight: 700,
-                          fontSize: 13,
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          textAlign: 'center',
-                        }}
-                      >
-                        <BarChart2 size={16} /> View Report
-                      </Link>
-
-                      <Link 
-                        to={`/exam/${mock.id}?forceNew=true`}
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: 12,
-                          backgroundColor: 'var(--bg-subtle)',
-                          color: 'var(--text-primary)',
-                          fontWeight: 600,
-                          fontSize: 13,
-                          textDecoration: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          border: '1px solid var(--border-default)',
-                        }}
-                        title="Retake Test"
-                      >
-                        <RotateCcw size={14} /> Retake
-                      </Link>
-                    </>
-                  ) : (
-                    <Link 
-                      to={`/exam/${mock.id}`}
+                {/* Bottom Action Button(s) */}
+                <div style={{ paddingTop: 8 }}>
+                  {isInProgress ? (
+                    <Link
+                      to={`/exam/${mock.inProgressAttemptId || mock.id}`}
                       style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        backgroundColor: 'var(--accent-primary)',
-                        color: '#ffffff',
+                        width: '100%',
+                        height: 40,
+                        borderRadius: 8,
+                        backgroundColor: '#FFF7ED',
+                        border: '1px solid #FFEDD5',
+                        color: '#EA580C',
                         fontWeight: 700,
                         fontSize: 13,
                         textDecoration: 'none',
@@ -321,10 +707,76 @@ export function MockSelectionPage() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: 6,
-                        textAlign: 'center',
+                        boxSizing: 'border-box'
                       }}
                     >
-                      Start Test <Ico.ArrowRight size={14} />
+                      <RotateCcw size={15} /> Resume Practice
+                    </Link>
+                  ) : isCompleted ? (
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <Link
+                        to={`/exam/${mock.id}`}
+                        style={{
+                          flex: 1,
+                          height: 40,
+                          borderRadius: 8,
+                          backgroundColor: '#10B981',
+                          color: '#FFFFFF',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <PlayCircle size={15} fill="#FFFFFF" color="#10B981" /> Retake Test
+                      </Link>
+
+                      <Link
+                        to={`/exam/${mock.completedAttemptId || mock.id}`}
+                        style={{
+                          padding: '0 16px',
+                          height: 40,
+                          borderRadius: 8,
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          color: '#334155',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <BarChart2 size={15} /> Report
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link
+                      to={`/exam/${mock.id}`}
+                      style={{
+                        width: '100%',
+                        height: 40,
+                        borderRadius: 8,
+                        backgroundColor: '#2563EB',
+                        color: '#FFFFFF',
+                        fontWeight: 700,
+                        fontSize: 13,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        boxSizing: 'border-box',
+                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                      }}
+                    >
+                      <PlayCircle size={15} fill="#FFFFFF" color="#2563EB" /> Start Test
                     </Link>
                   )}
                 </div>

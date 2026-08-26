@@ -149,37 +149,57 @@ class AnswerKeyService:
         }
 
     async def list_batches(self) -> List[AnswerKeyBatch]:
-        return await self.repo.list_batches()
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("answer_keys:batches:list")
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return [AnswerKeyBatch(**b) for b in cached_data]
+
+        batches = await self.repo.list_batches()
+        if batches:
+            serialized = [b.dict() if hasattr(b, "dict") else b.model_dump(mode="json") for b in batches]
+            await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return batches
 
     async def get_batch_detail(self, batch_id: uuid.UUID) -> Dict[str, Any]:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("answer_keys:batch", str(batch_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         batch = await self.repo.get_batch_by_id(batch_id)
         if not batch:
             raise HTTPException(status_code=404, detail="Answer key batch not found.")
 
         mappings = await self.repo.get_mappings_for_batch(batch_id)
 
-        return {
+        res_data = {
             "batch_id": str(batch.id),
             "exam_id": str(batch.exam_id),
             "pdf_path": batch.pdf_path,
             "target_set_code": batch.target_set_code,
             "detected_set_code": batch.detected_set_code,
-            "set_match_status": batch.set_match_status.value,
+            "set_match_status": batch.set_match_status.value if hasattr(batch.set_match_status, "value") else str(batch.set_match_status),
             "total_extracted": batch.total_keys_extracted,
             "total_mapped": batch.total_keys_mapped,
-            "created_at": batch.created_at,
+            "created_at": batch.created_at.isoformat() if batch.created_at else None,
             "mappings": [
                 {
                     "mapping_id": str(m.id),
                     "question_id": str(m.question_id) if m.question_id else None,
                     "question_number": m.printed_question_number,
                     "detected_option_label": m.detected_option_label,
-                    "mapping_status": m.mapping_status.value,
+                    "mapping_status": m.mapping_status.value if hasattr(m.mapping_status, "value") else str(m.mapping_status),
                     "notes": m.notes,
                 }
                 for m in mappings
             ],
         }
+        await cache.set(cache_key, res_data, ttl_seconds=3600)
+        return res_data
 
     async def map_stored_answers_from_db(self, exam_id: uuid.UUID) -> int:
         """
@@ -241,6 +261,13 @@ class AnswerKeyService:
             self.session.add(batch)
 
         await self.session.commit()
+
+        from app.cache import get_cache, invalidate_exam_cache
+        cache = get_cache()
+        await cache.delete_pattern("ep:answer_keys:batches:*")
+        await cache.delete_pattern("ep:answer_keys:batch:*")
+        await invalidate_exam_cache(str(exam_id))
+
         logger.info(
             f"✅ [ANSWER KEY DB REMAP COMPLETE] Successfully mapped {total_newly_mapped} answer keys from DB for Exam ID {exam_id}"
         )

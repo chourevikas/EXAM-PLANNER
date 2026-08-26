@@ -1,11 +1,12 @@
 import React from 'react';
 import { AdminApprovalRequest } from '../../types/auth';
+import { ShieldCheck, UserX, RefreshCw, Clock, Building, Mail } from 'lucide-react';
 
 interface PendingApprovalsTabProps {
   requests: AdminApprovalRequest[];
   loading: boolean;
   processingId: string | null;
-  onApprove: (id: string, name: string, role?: string) => void;
+  onApprove: (id: string, name: string) => void;
   onReject: (id: string, name: string) => void;
   onRefresh: () => void;
 }
@@ -23,49 +24,94 @@ export function PendingApprovalsTab({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 20,
+        borderRadius: 22,
         padding: 32,
-        boxShadow: 'var(--shadow-md)',
+        boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
+        fontFamily: 'Inter, sans-serif',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      {/* Header Bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
-            Candidate Registration Queue
-          </h2>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-            Review registered candidates and assign them as Student or Administrator.
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
+              Candidate Registration Queue
+            </h2>
+            {requests.length > 0 && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: '3px 10px',
+                  borderRadius: 99,
+                  background: 'rgba(249, 115, 22, 0.12)',
+                  color: '#f97316',
+                  border: '1px solid rgba(249, 115, 22, 0.25)',
+                }}
+              >
+                {requests.length} Pending
+              </span>
+            )}
+          </div>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4, margin: '4px 0 0 0' }}>
+            Review registered administrator access requests and approve or reject applications.
           </p>
         </div>
-        <button onClick={onRefresh} className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: 13 }}>
-          🔄 Refresh
+
+        <button
+          onClick={onRefresh}
+          style={{
+            padding: '9px 18px',
+            fontSize: 13,
+            fontWeight: 600,
+            borderRadius: 10,
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-body)',
+            color: 'var(--text-main)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-card)';
+            e.currentTarget.style.borderColor = 'var(--text-subtle)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--bg-body)';
+            e.currentTarget.style.borderColor = 'var(--border-color)';
+          }}
+        >
+          <RefreshCw size={14} className={loading ? 'spin' : ''} />
+          <span>Refresh Queue</span>
         </button>
       </div>
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
           Loading candidate applications...
         </div>
       ) : requests.length === 0 ? (
         <div
           style={{
-            padding: 48,
+            padding: '56px 24px',
             textAlign: 'center',
-            background: 'var(--bg-secondary)',
-            borderRadius: 16,
-            border: '1px solid var(--border-color)',
+            background: 'var(--bg-body)',
+            borderRadius: 18,
+            border: '1px border-dashed var(--border-color)',
           }}
         >
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🎉</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-main)' }}>
             All Candidate Registrations Processed!
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            There are currently no candidates waiting for review.
+          <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6, maxWidth: 400, margin: '6px auto 0 auto' }}>
+            There are currently no candidates waiting for Super Admin authorization review.
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {requests.map((req) => (
             <div
               key={req.id}
@@ -73,83 +119,122 @@ export function PendingApprovalsTab({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'var(--bg-secondary)',
+                background: 'var(--bg-body)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 16,
-                padding: 24,
+                borderRadius: 18,
+                padding: '24px 28px',
                 gap: 20,
                 flexWrap: 'wrap',
                 position: 'relative',
-                boxShadow: 'var(--shadow-sm)',
+                boxShadow: '0 4px 16px -4px rgba(15, 29, 56, 0.04)',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(249, 115, 22, 0.3)';
+                e.currentTarget.style.boxShadow = '0 8px 24px -6px rgba(15, 29, 56, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.boxShadow = '0 4px 16px -4px rgba(15, 29, 56, 0.04)';
               }}
             >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-main)' }}>
+              <div style={{ minWidth: 260, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
                     {req.full_name}
                   </span>
                   <span
                     style={{
                       fontSize: 12,
-                      color: 'var(--royal)',
-                      background: 'rgba(37, 99, 235, 0.12)',
-                      padding: '2px 10px',
+                      color: '#2563eb',
+                      background: 'rgba(37, 99, 235, 0.1)',
+                      padding: '3px 12px',
                       borderRadius: 99,
                       fontWeight: 600,
-                      border: '1px solid rgba(37, 99, 235, 0.25)',
+                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
                   >
+                    <Mail size={12} />
                     {req.email}
                   </span>
                 </div>
 
-                <div style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 4 }}>
-                  Registered on {new Date(req.created_at).toLocaleString()}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12.5, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                  {req.organization_name && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Building size={14} color="var(--text-subtle)" />
+                      <span>{req.organization_name} {req.department ? `(${req.department})` : ''}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Clock size={14} color="var(--text-subtle)" />
+                    <span>Applied {new Date(req.created_at).toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <button
                   onClick={() => onReject(req.id, req.full_name)}
                   disabled={processingId === req.id}
-                  className="btn btn-ghost"
                   style={{
-                    padding: '8px 14px',
+                    padding: '9px 18px',
                     fontSize: 13,
-                    color: '#EF4444',
-                    borderColor: 'rgba(239, 68, 68, 0.4)',
+                    fontWeight: 600,
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
                   }}
                 >
-                  Reject
+                  <UserX size={15} />
+                  <span>Reject</span>
                 </button>
 
                 <button
-                  onClick={() => onApprove(req.id, req.full_name, 'STUDENT')}
+                  onClick={() => onApprove(req.id, req.full_name)}
                   disabled={processingId === req.id}
-                  className="btn btn-primary"
                   style={{
-                    padding: '8px 16px',
+                    padding: '9px 20px',
                     fontSize: 13,
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    borderColor: '#2563eb',
-                  }}
-                >
-                  {processingId === req.id ? 'Processing...' : '🎓 Make Student'}
-                </button>
-
-                <button
-                  onClick={() => onApprove(req.id, req.full_name, 'ADMIN')}
-                  disabled={processingId === req.id}
-                  className="btn btn-primary"
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: 13,
+                    fontWeight: 700,
+                    borderRadius: 10,
+                    cursor: 'pointer',
                     background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                    borderColor: 'var(--emerald)',
+                    border: '1px solid #10B981',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
                     boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 18px rgba(16, 185, 129, 0.45)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.35)';
                   }}
                 >
-                  {processingId === req.id ? 'Processing...' : '⚙️ Make Admin'}
+                  <ShieldCheck size={16} />
+                  <span>{processingId === req.id ? 'Processing...' : 'Approve Admin'}</span>
                 </button>
               </div>
             </div>

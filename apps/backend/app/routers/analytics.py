@@ -1,6 +1,8 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -9,8 +11,6 @@ from app.core.deps import get_current_user
 from app.db.models.user import User, UserRole
 from app.schemas.analytics import StudyActivityCreate, StudyActivityOut
 from app.db.models.study_plan import StudyActivity
-from app.core.deps import get_current_user
-from app.db.models.user import User
 from sqlmodel import select, col
 from datetime import datetime, timezone
 
@@ -29,7 +29,8 @@ async def get_attempt_evaluation_status(
     Guarantees zero proxy/deployment timeout errors by returning lightweight progress updates.
     """
     service = AnalyticsService(session)
-    return await service.get_attempt_evaluation_status(attempt_id=attempt_id)
+    res = await service.get_attempt_evaluation_status(attempt_id=attempt_id)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
@@ -43,7 +44,8 @@ async def get_attempt_question_report(
     distractor traps, time window, and question-level scores.
     """
     service = AnalyticsService(session)
-    return await service.get_attempt_question_report(attempt_id=attempt_id)
+    res = await service.get_attempt_question_report(attempt_id=attempt_id)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/attempts/{attempt_id}/exam", summary="Report 2: Exam-Level 12-Matrix Aggregated Report")
@@ -56,7 +58,8 @@ async def get_attempt_exam_report(
     Report 2: Comprehensive 12-matrix aggregated exam diagnostic summary, taxonomy mastery grid, and AI insights.
     """
     service = AnalyticsService(session)
-    return await service.get_attempt_exam_report(attempt_id=attempt_id)
+    res = await service.get_attempt_exam_report(attempt_id=attempt_id)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/attempts/{attempt_id}/user-delta", summary="Report 3: Cumulative User Skill Progression Delta Report")
@@ -70,7 +73,8 @@ async def get_attempt_user_progression_report(
     taxonomy promotions, and spaced repetition review schedules.
     """
     service = AnalyticsService(session)
-    return await service.get_attempt_user_progression_report(attempt_id=attempt_id)
+    res = await service.get_attempt_user_progression_report(attempt_id=attempt_id)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/user/{user_id}/skill-profile", summary="User Cumulative Psychometric Skill Profile")
@@ -82,10 +86,11 @@ async def get_user_cumulative_skill_profile(
     """
     Retrieves the user's cumulative long-term skill profile and active taxonomy mastery grid.
     """
-    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+    if current_user.id != user_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's skill profile.")
     service = AnalyticsService(session)
-    return await service.get_user_skill_profile(user_id=user_id)
+    res = await service.get_user_skill_profile(user_id=user_id)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/users/{user_id}/aggregate-report", summary="Cumulative Multi-Exam Psychometric Performance Report")
@@ -100,10 +105,11 @@ async def get_user_cumulative_aggregate_report(
     including cross-exam comparison trajectories, 12-matrix aggregates, and universal taxonomy mastery.
     """
     target_uuid = current_user.id if user_id == "me" else uuid.UUID(user_id)
-    if current_user.id != target_uuid and current_user.role != UserRole.ADMIN:
+    if current_user.id != target_uuid and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative report.")
     service = AnalyticsService(session)
-    return await service.get_user_cumulative_aggregate_report(user_id=target_uuid, force_recompute=force_recompute)
+    res = await service.get_user_cumulative_aggregate_report(user_id=target_uuid, force_recompute=force_recompute)
+    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/users/{user_id}/aggregate-report/markdown", summary="Cumulative Multi-Exam Markdown Audit")
@@ -116,7 +122,7 @@ async def get_user_cumulative_aggregate_markdown(
     Returns the complete cumulative multi-exam psychometric report rendered as a Markdown audit document.
     """
     target_uuid = current_user.id if user_id == "me" else uuid.UUID(user_id)
-    if current_user.id != target_uuid and current_user.role != UserRole.ADMIN:
+    if current_user.id != target_uuid and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative audit.")
     service = AnalyticsService(session)
     return await service.get_user_cumulative_aggregate_markdown(user_id=target_uuid)
@@ -184,6 +190,37 @@ async def get_todays_activities(
     
     result = await session.exec(statement)
     return result.all()
+
+
+@router.get("/predicted-rank", summary="Get User's Estimated All India Rank (AIR) & Percentile")
+async def get_user_predicted_rank(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates user's estimated All India Rank (AIR) and percentile for UPSC CSE Prelims."""
+    service = AnalyticsService(session)
+    return await service.get_predicted_rank(current_user.id)
+
+
+@router.get("/monthly-benchmark", summary="Get User's National Benchmarking & Monthly Performance Metrics")
+async def get_user_monthly_benchmark(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates candidate's national benchmarking, percentile growth, readiness index, and subject comparisons."""
+    service = AnalyticsService(session)
+    return await service.get_monthly_benchmark(current_user.id)
+
+
+@router.get("/subject-performance", summary="Get Subject-Wise Accuracy & Performance Metrics")
+async def get_user_subject_performance(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    """Calculates subject accuracy percentages based on user study activities and exam responses."""
+    service = AnalyticsService(session)
+    return await service.get_user_subject_performance(current_user.id)
+
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/json")
 async def get_exam_psychometric_report_json(

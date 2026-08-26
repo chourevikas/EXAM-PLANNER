@@ -17,8 +17,11 @@ import {
 
 const API_BASE_URL = '/api/v1';
 
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token');
+function getAuthHeaders(customToken?: string): Record<string, string> {
+  let token = customToken || localStorage.getItem('access_token');
+  if (!token && (window as any).Clerk?.session) {
+    token = (window as any).Clerk.session.lastActiveToken?.jwt;
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -282,7 +285,7 @@ export interface ExamItem {
 }
 
 /** 11. Fetch All Available Registered Exams */
-export async function listExams(status?: string, includeInactive: boolean = false): Promise<ExamItem[]> {
+export async function listExams(status?: string, includeInactive: boolean = false, customToken?: string): Promise<ExamItem[]> {
   try {
     let url = `${API_BASE_URL}/exams`;
     if (status) {
@@ -290,7 +293,7 @@ export async function listExams(status?: string, includeInactive: boolean = fals
     }
     const response = await fetch(url, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(customToken),
     });
     if (!response.ok) {
       return [];
@@ -320,11 +323,11 @@ export interface AttemptHistoryItem {
 }
 
 /** 12. Fetch Candidate Attempts History */
-export async function listCandidateAttempts(): Promise<AttemptHistoryItem[]> {
+export async function listCandidateAttempts(customToken?: string): Promise<AttemptHistoryItem[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/attempts`, {
       method: 'GET',
-      headers: getAuthHeaders(),
+      headers: getAuthHeaders(customToken),
     });
     if (!response.ok) {
       return [];
@@ -385,16 +388,43 @@ export async function prefetchQuestion(attemptId: string, qNum: number, lang: st
     fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
-    }).catch(() => {});
-  } catch (_) {}
+    }).catch(() => { });
+  } catch (_) { }
 }
 
 export async function saveQuestionResponsesBatch(attemptId: string, payload: any): Promise<any> {
-  return { status: 'ACCEPTED' };
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      console.warn('Batch response sync warning:', response.status, errBody);
+      return { status: 'FAILED', error: errBody };
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Network error during saveQuestionResponsesBatch:', err);
+    return { status: 'FAILED', error: String(err) };
+  }
 }
 
 export async function getResponseBatchStatus(attemptId: string, batchId: string): Promise<any> {
-  return { status: 'PROCESSED' };
+  try {
+    const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/responses/batch/${batchId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      return { status: 'PROCESSED' };
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Network error during getResponseBatchStatus:', err);
+    return { status: 'PROCESSED' };
+  }
 }
 
 export async function getAttemptEvaluationStatus(attemptId: string): Promise<any> {
@@ -416,7 +446,7 @@ export async function getAttemptEvaluationStatus(attemptId: string): Promise<any
 export async function pollAttemptReportUntilReady(
   attemptId: string,
   onUpdate: (status: any) => void,
-  maxRetries: number = 35,
+  maxRetries: number = 80,
   delay: number = 1500
 ): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
@@ -493,3 +523,80 @@ export async function getUserCumulativeAggregateMarkdown(userId?: string): Promi
     return '';
   }
 }
+
+export async function fetchMasterSyllabus(examId?: string): Promise<any> {
+  try {
+    const url = examId ? `${API_BASE_URL}/syllabus?exam_id=${encodeURIComponent(examId)}` : `${API_BASE_URL}/syllabus`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch master syllabus hierarchy:', err);
+    return null;
+  }
+}
+
+export async function fetchExamsByYear(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exams/by-year`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exams grouped by year:', err);
+    return null;
+  }
+}
+
+export async function verifySyllabusNode(payload: { subject?: string; topic?: string; subtopic?: string }): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/syllabus/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to verify syllabus node:', err);
+    return null;
+  }
+}
+
+export async function fetchExamSyllabusTree(examId: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exams/${encodeURIComponent(examId)}/syllabus`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exam syllabus tree:', err);
+    return null;
+  }
+}
+
+export async function fetchExamIntegrityQuestions(examId: string, status?: string): Promise<any> {
+  try {
+    const url = status
+      ? `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?status=${encodeURIComponent(status)}`
+      : `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch exam integrity diagnostics:', err);
+    return null;
+  }
+}
+
+

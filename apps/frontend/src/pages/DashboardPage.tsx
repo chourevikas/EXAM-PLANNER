@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
 import { useTheme } from '../hooks/useTheme';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
-import { fetchCurrentUser } from '../services/authService';
+import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
 import { listExams } from '../services/examService';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
+import StudentMetricCard from '../components/student/StudentMetricCard';
 
-const subjectData = [
-  { subject: 'History', accuracy: 85 },
-  { subject: 'Polity', accuracy: 72 },
-  { subject: 'Geography', accuracy: 90 },
-  { subject: 'Economy', accuracy: 55 },
-  { subject: 'Science', accuracy: 65 },
-];
+import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
+import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -28,7 +25,17 @@ const studyHoursData = [
 ];
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+
+  useEffect(() => {
+    if (user?.role === 'SUPER_ADMIN') {
+      navigate('/superadmin', { replace: true });
+    } else if (user?.role === 'ADMIN') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
+
   const { theme, toggleTheme } = useTheme();
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
@@ -39,6 +46,9 @@ export function DashboardPage() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [badges, setBadges] = useState<{ unlocked: any[], locked: any[] }>({ unlocked: [], locked: [] });
   const [todayActivities, setTodayActivities] = useState<any[]>([]);
+  const [subjectData, setSubjectData] = useState<any[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(true);
+  const [predictedRank, setPredictedRank] = useState<PredictedRankResponse | null>(null);
   const [studyLog, setStudyLog] = useState<any>({
     activity_type: 'REVISION',
     activity_source: 'UNPLANNED',
@@ -51,6 +61,11 @@ export function DashboardPage() {
     notes: ''
   });
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
+
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [attemptsPage, setAttemptsPage] = useState<number>(0);
+  const [guestSessionsPage, setGuestSessionsPage] = useState<number>(0);
+  const SESSIONS_PER_PAGE = 3;
 
   const fetchActivities = async () => {
     const token = await getToken();
@@ -66,6 +81,54 @@ export function DashboardPage() {
     }
   };
 
+  const fetchDashboardStats = async () => {
+    const token = (await getToken()) || localStorage.getItem('access_token');
+    if (token) {
+      // Auto-sync any guest attempts stored in localStorage to backend DB first
+      const latestId = await syncGuestSessionsOnAuth(token);
+      const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
+      if (syncedId && window.location.pathname !== '/analytics') {
+        sessionStorage.removeItem('latest_synced_attempt_id');
+        navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/attempts/student-dashboard-stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.totalExams !== undefined) {
+            setDashboardStats(data);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch student dashboard stats:", err);
+      }
+    }
+  };
+
+
+  const fetchSubjectPerformance = async () => {
+    try {
+      const token = (await getToken()) || localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/v1/analytics/subject-performance', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setSubjectData(data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch subject performance:", err);
+    } finally {
+      setIsLoadingSubjects(false);
+    }
+  };
+
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
 
@@ -76,13 +139,18 @@ export function DashboardPage() {
       }
     }).catch(err => console.error("Failed to fetch live exams:", err));
 
-    fetchCurrentUser().then(data => {
-      setUser(data);
-    }).catch(err => {
-      console.error("Failed to fetch fresh user data:", err);
+    getToken().then((token) => {
+      fetchCurrentUser(token || undefined).then(data => {
+        setUser(data);
+      }).catch(err => {
+        console.error("Failed to fetch fresh user data:", err);
+      });
     });
 
     fetchActivities();
+    fetchDashboardStats();
+    fetchSubjectPerformance();
+    fetchPredictedRank().then(data => setPredictedRank(data)).catch(err => console.error("Failed to fetch predicted rank:", err));
 
     // Fetch user badges
     getToken().then((token: string | null) => {
@@ -103,7 +171,13 @@ export function DashboardPage() {
     });
   }, []);
 
+
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
+
+  const todayQuestionsAttempted = todayActivities.reduce((acc: number, curr: any) => acc + (curr.questions_attempted || 0), 0);
+  const totalQuestionsSolved = dashboardStats && dashboardStats.totalQuestionsAttempted !== undefined
+    ? dashboardStats.totalQuestionsAttempted
+    : (user?.free_questions_attempted || 0);
 
   return (
     <StudentLayout pageTitle="Dashboard">
@@ -144,116 +218,167 @@ export function DashboardPage() {
         </button>
       </section>
 
-      {/* 2. Key Metrics Grid */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 40 }}>
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Questions Attempted</span>
-            <div style={{ color: 'var(--accent-primary)' }}><Ico.Target /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
-            {user.free_questions_attempted ?? 0} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>/ 100</span>
-          </div>
-          <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(((user.free_questions_attempted ?? 0) / 100) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 3 }} />
-          </div>
-        </div>
+      {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
+        <StudentMetricCard
+          title="Total Questions Solved"
+          value={
+            <span>
+              {totalQuestionsSolved.toLocaleString()}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
+            </span>
+          }
+          supportingText={todayQuestionsAttempted > 0 ? `${todayQuestionsAttempted} Qs attempted today` : "Across all practice exams"}
+          icon={<Ico.Target size={18} />}
+          showProgress={true}
+          progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
+          accentColor="#2563EB"
+        />
 
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Study Streak</span>
-            <div style={{ color: 'var(--warning-primary)' }}><Ico.Trend /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            {user.current_streak ?? 0} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 500 }}>
-            Keep it up!
-          </div>
-        </div>
+        <StudentMetricCard
+          title="Tests Completed"
+          value={
+            <span>
+              {dashboardStats?.totalExams ?? 0}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Exams</span>
+            </span>
+          }
+          supportingText="Completed practice tests"
+          icon={<Ico.Trophy size={18} />}
+          accentColor="#D97706"
+        />
 
-        <div
+        <StudentMetricCard
+          title="Overall Accuracy"
+          value={
+            <span>
+              {dashboardStats?.overallAccuracy ?? 0}%
+            </span>
+          }
+          supportingText="Average correctness score"
+          icon={<Ico.Chart size={18} />}
+          accentColor="#10B981"
+        />
+
+        <StudentMetricCard
+          title="Total XP / Badges"
+          value={
+            <span>
+              {(user.total_xp ?? 0).toLocaleString()}{' '}
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>XP</span>
+            </span>
+          }
+          supportingText={
+            <span style={{ color: '#2563EB', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              View Achievements <Ico.ArrowRight size={13} />
+            </span>
+          }
+          icon={<Ico.Star filled />}
           onClick={() => setShowBadgesModal(true)}
-          style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)', cursor: 'pointer', transition: 'transform 0.2s' }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Total XP / Badges</span>
-            <div style={{ color: 'var(--emerald, #10B981)' }}><Ico.Star filled /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            {(user.total_xp ?? 0).toLocaleString()} <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-            View Achievements <Ico.ArrowRight size={14} />
-          </div>
-        </div>
-
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 20, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Predicted Rank</span>
-            <div style={{ color: 'var(--info-primary)' }}><Ico.Chart /></div>
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-            Top 8%
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-            92nd Percentile
-          </div>
-        </div>
+          accentColor="#3B82F6"
+        />
       </section>
 
+
       {/* 3. Performance Analytics */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 40 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 32 }}>
         {/* Subject Accuracy */}
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            padding: '22px 24px',
+            borderRadius: 14,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
+              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
+            </div>
+            {subjectData.length > 0 && subjectData.every(s => s.total_attempted === 0) && (
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, backgroundColor: '#FEF3C7', color: '#B45309' }}>
+                No Activity Recorded
+              </span>
+            )}
           </div>
-          <div style={{ height: 260, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-disabled)" opacity={0.5} />
-                <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
-                <Tooltip
-                  cursor={{ fill: 'var(--bg-hover)' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)', borderRadius: 12, boxShadow: 'var(--shadow-color-base)', color: 'var(--text-primary)' }}
-                />
-                <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                  {subjectData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? 'var(--success-primary)' : entry.accuracy >= 60 ? 'var(--accent-primary)' : 'var(--warning-primary)'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div style={{ height: 250, width: '100%' }}>
+            {isLoadingSubjects ? (
+              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', fontSize: 13 }}>
+                Loading subject performance...
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={subjectData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                  <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} domain={[0, 100]} unit="%" />
+                  <Tooltip
+                    cursor={{ fill: '#F8FAFC' }}
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 4 }}>{data.subject}</div>
+                            <div style={{ fontSize: 12, color: '#2563EB', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
+                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                              Attempted: {data.total_attempted} | Correct: {data.total_correct}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="accuracy" radius={[6, 6, 0, 0]} maxBarSize={38}>
+                    {subjectData.map((entry: any, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#10B981' : entry.accuracy >= 60 ? '#2563EB' : '#D97706'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
+
         {/* Time Management */}
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
-          <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Time Management</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Study hours logged this week.</p>
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            padding: '22px 24px',
+            borderRadius: 14,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+            fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Time Management</h3>
+            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Study hours logged this week.</p>
           </div>
-          <div style={{ height: 260, width: '100%' }}>
+          <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={studyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary-main)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="var(--primary-main)" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border-disabled)" opacity={0.5} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                 <Tooltip
-                  cursor={{ stroke: 'var(--border-hover)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)', borderRadius: 12, boxShadow: 'var(--shadow-color-base)', color: 'var(--text-primary)' }}
+                  cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#0F172A' }}
                 />
-                <Area type="monotone" dataKey="hours" stroke="var(--primary-main)" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                <Area type="monotone" dataKey="hours" stroke="#2563EB" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -478,6 +603,266 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* 5. Exam Attempts History & Synced Guest Sessions Feed - Symmetrical Cards */}
+      <section style={{ marginBottom: 40 }}>
+        {(() => {
+          const registeredAttempts = dashboardStats?.recentAttempts?.filter((a: any) => !a.isGuestSynced) || [];
+          const syncedGuestAttempts = dashboardStats?.recentAttempts?.filter((a: any) => a.isGuestSynced) || [];
+          
+          const attemptsTotalPages = Math.max(1, Math.ceil(registeredAttempts.length / SESSIONS_PER_PAGE));
+          const visibleRegisteredAttempts = registeredAttempts.slice(attemptsPage * SESSIONS_PER_PAGE, (attemptsPage + 1) * SESSIONS_PER_PAGE);
+
+          const guestTotalPages = Math.max(1, Math.ceil(syncedGuestAttempts.length / SESSIONS_PER_PAGE));
+          const visibleSyncedGuestAttempts = syncedGuestAttempts.slice(guestSessionsPage * SESSIONS_PER_PAGE, (guestSessionsPage + 1) * SESSIONS_PER_PAGE);
+
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
+              
+              {/* Card 1: Recent Exam Attempts */}
+              <div style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 24,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: 420,
+                boxSizing: 'border-box'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Trophy size={18} color="#2563EB" /> Recent Exam Attempts
+                      </h3>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Registered exam history</p>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                      {registeredAttempts.length} Recorded
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {visibleRegisteredAttempts.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                        <Trophy size={28} />
+                        <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No main exam attempts recorded yet.</p>
+                      </div>
+                    ) : (
+                      visibleRegisteredAttempts.map((attempt: any) => (
+                        <div
+                          key={attempt.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--bg-subtle)',
+                            borderRadius: 14,
+                            border: '1px solid var(--border-default)',
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#10B981',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 800, fontSize: 14
+                            }}>
+                              P
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {attempt.topicName}
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {attempt.targetExam} • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                              Score: {attempt.score} / {attempt.totalMarksPossible}
+                            </div>
+                            <StatusBadge
+                              status={attempt.accuracy >= 70 ? 'high-accuracy' : attempt.accuracy >= 40 ? 'moderate-accuracy' : 'low-accuracy'}
+                              label={`${attempt.accuracy}% Acc`}
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Pagination Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Page {attemptsPage + 1} of {attemptsTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setAttemptsPage(p => Math.max(0, p - 1))}
+                      disabled={attemptsPage === 0}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: attemptsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: attemptsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: attemptsPage === 0 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setAttemptsPage(p => Math.min(attemptsTotalPages - 1, p + 1))}
+                      disabled={attemptsPage >= attemptsTotalPages - 1}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: attemptsPage >= attemptsTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: attemptsPage >= attemptsTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: attemptsPage >= attemptsTotalPages - 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Synced Guest Sessions */}
+              <div style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: 24,
+                borderRadius: 24,
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                height: 420,
+                boxSizing: 'border-box'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <RefreshCw size={18} color="#059669" /> Synced Guest Sessions
+                      </h3>
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Auto-synced guest tests</p>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                      {syncedGuestAttempts.length} Synced
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {visibleSyncedGuestAttempts.length === 0 ? (
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                        <RefreshCw size={28} />
+                        <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No guest sessions synced yet.</p>
+                      </div>
+                    ) : (
+                      visibleSyncedGuestAttempts.map((attempt: any) => (
+                        <div
+                          key={attempt.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--bg-subtle)',
+                            borderRadius: 14,
+                            border: '1px solid var(--border-default)',
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 800, fontSize: 14
+                            }}>
+                              G
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {attempt.topicName}
+                                </span>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                                  SYNCED
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                {attempt.targetExam} • {new Date(attempt.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                              Score: {attempt.score} / {attempt.totalMarksPossible}
+                            </div>
+                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
+                              {attempt.accuracy}% Acc
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Pagination Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    Page {guestSessionsPage + 1} of {guestTotalPages}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setGuestSessionsPage(p => Math.max(0, p - 1))}
+                      disabled={guestSessionsPage === 0}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: guestSessionsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: guestSessionsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: guestSessionsPage === 0 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setGuestSessionsPage(p => Math.min(guestTotalPages - 1, p + 1))}
+                      disabled={guestSessionsPage >= guestTotalPages - 1}
+                      style={{
+                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        backgroundColor: guestSessionsPage >= guestTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
+                        color: guestSessionsPage >= guestTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
+                        cursor: guestSessionsPage >= guestTotalPages - 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })()}
+      </section>
+
       {/* Badges Modal */}
       {showBadgesModal && (
         <div style={{

@@ -305,6 +305,20 @@ whitesource/
 #ai folders
 .bob/
 
+#env files
+*.env
+*.env.test
+*.env.local
+*.env.dev
+*.env.prod
+
+#PEM
+*.pem
+*.key
+*.crt
+*.cert
+*.pem.crt
+
 # # GCP Service Account Credentials
 # gcp-service-account.json
 # *service-account*.json

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopHeader } from './StudentTopHeader';
-import { fetchCurrentUser } from '../../services/authService';
+import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../../services/authService';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -9,15 +11,66 @@ interface StudentLayoutProps {
 }
 
 export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
+  const { getToken } = useAuth();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    document.title = `${pageTitle} - RankEdge Exam Planner`;
+    if (isClerkLoaded && clerkUser) {
+      getToken().then(async (token) => {
+        if (token) {
+          localStorage.setItem('access_token', token);
+
+          // Auto-sync guest exam attempts for Clerk OAuth user
+          const latestId = await syncGuestSessionsOnAuth(token);
+          const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
+          const isPending = sessionStorage.getItem('pending_guest_sync');
+          if (syncedId || isPending) {
+            sessionStorage.removeItem('pending_guest_sync');
+            if (syncedId && window.location.pathname !== '/analytics') {
+              sessionStorage.removeItem('latest_synced_attempt_id');
+              navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
+            }
+          }
+        }
+      }).catch(err => console.error("Failed to sync Clerk token:", err));
+
+      const email = clerkUser.primaryEmailAddress?.emailAddress;
+      const name = clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+      const phone = clerkUser.primaryPhoneNumber?.phoneNumber || clerkUser.phoneNumbers?.[0]?.phoneNumber;
+      
+      setUser((prev: any) => {
+        const updated = {
+          ...prev,
+          email: email || prev?.email || '',
+          full_name: name || prev?.full_name || 'Aspirant',
+          phone: phone || prev?.phone || '',
+          avatar_url: clerkUser.imageUrl || prev?.avatar_url || prev?.profile_image || '',
+          clerk_id: clerkUser.id,
+        };
+        localStorage.setItem('user', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [clerkUser, isClerkLoaded, getToken, navigate]);
+
+  useEffect(() => {
+    document.title = `${pageTitle} - ExamPlanner`;
     fetchCurrentUser().then(data => {
-      setUser(data);
+      setUser((prev: any) => {
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        const merged = {
+          ...prev,
+          ...data,
+          profile_image: data?.profile_image || prev?.profile_image || stored?.profile_image
+        };
+        localStorage.setItem('user', JSON.stringify(merged));
+        return merged;
+      });
     }).catch(err => {
       console.error("Failed to fetch user data:", err);
     });
@@ -41,7 +94,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-page, #f8fafc)', fontFamily: 'var(--font-sans)', color: 'var(--text-primary)', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top 0, left 0, right 0) */}
       <StudentTopHeader 
@@ -58,7 +111,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
           user={user} 
           collapsed={collapsed}
           mobileOpen={mobileOpen}
-          onToggleCollapse={() => setCollapsed(!collapsed)}
+          onToggleCollapse={handleToggleSidebar}
           onCloseMobile={() => setMobileOpen(false)}
         />
 
@@ -76,8 +129,8 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
         >
           {/* Page Content Viewport */}
           <main style={{ 
-            padding: isMobile ? '16px' : '32px', 
-            maxWidth: '1280px', 
+            padding: isMobile ? '16px' : '28px 36px', 
+            maxWidth: '1360px', 
             margin: '0 auto', 
             width: '100%', 
             boxSizing: 'border-box' 

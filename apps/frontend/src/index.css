@@ -1,42 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@theme inline {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Outfit', system-ui, sans-serif;
+@layer base {
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
 }
 
-/* Hide scrollbars by default, show on scroll */
+/* Base custom scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.5);
+  background: #94a3b8;
 }
 
-@keyframes pulse-red {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-  50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+/* Modern smooth animations */
+.transition-layout {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.timer-critical {
-  animation: pulse-red 1.5s ease-in-out infinite;
-}
-
-.timer-text-critical {
-  animation: pulse-glow 1.5s ease-in-out infinite;
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 @keyframes option-select {
@@ -50,51 +47,51 @@
 }
 
 :root {
-  --bg-page: #F8FAFC;
+  --bg-page: #F4F6F9;
   --bg-card: #FFFFFF;
   --bg-card-alt: #FAFAFA;
-  --bg-hover: #F9FAFB;
-  --bg-hover-accent: #FAFAFF;
-  --bg-subtle: #F3F4F6;
+  --bg-hover: #F8FAFC;
+  --bg-hover-accent: #EFF6FF;
+  --bg-subtle: #F1F5F9;
   
-  --text-primary: #111827;
-  --text-secondary: #374151;
-  --text-muted: #6B7280;
-  --text-disabled: #9CA3AF;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-accent-dark: #1E1B4B;
+  --text-accent-dark: #1E293B;
   
-  --border-default: #E5E7EB;
-  --border-disabled: #D1D5DB;
+  --border-default: #E2E8F0;
+  --border-disabled: #CBD5E1;
   
-  --accent-primary: #5B5CEB;
-  --accent-bg: #EEF2FF;
-  --accent-border: #C7C8F5;
-  --accent-border-hover: #A5B4FC;
-  --accent-hover: #4A4BD6;
-  --accent-dark: #4338CA;
-  --accent-darker: #3730A3;
-  --accent-gradient-end: #4F46E5;
+  --accent-primary: #2563EB;
+  --accent-bg: #EFF6FF;
+  --accent-border: #93C5FD;
+  --accent-border-hover: #60A5FA;
+  --accent-hover: #1D4ED8;
+  --accent-dark: #1E40AF;
+  --accent-darker: #1E3A8A;
+  --accent-gradient-end: #1D4ED8;
 
-  --success-primary: #22C55E;
-  --success-bg: #DCFCE7;
-  --success-icon: #16A34A;
-  --success-text: #15803D;
+  --success-primary: #059669;
+  --success-bg: #ECFDF5;
+  --success-icon: #10B981;
+  --success-text: #047857;
 
-  --warning-primary: #F59E0B;
-  --warning-text: #D97706;
+  --warning-primary: #D97706;
+  --warning-text: #B45309;
   --warning-bg: #FEF3C7;
   --warning-bg-alt: #FFFBEB;
   --warning-border: #FDE68A;
   --warning-text-dark: #92400E;
 
-  --danger-primary: #EF4444;
-  --danger-text: #DC2626;
+  --danger-primary: #DC2626;
+  --danger-text: #B91C1C;
   --danger-bg: #FEF2F2;
   --danger-bg-alt: #FEE2E2;
   --danger-border: #FECACA;
   --danger-border-alt: #FCA5A5;
-  --danger-text-dark: #B91C1C;
+  --danger-text-dark: #7F1D1D;
 
   --info-primary: #2563EB;
   --info-bg: #DBEAFE;
@@ -102,64 +99,48 @@
   --pink-primary: #DB2777;
   --pink-bg: #FCE7F3;
 
-  --shadow-color-base: rgba(15,23,42,0.05);
-  --shadow-color-accent: rgba(91,92,235,0.3);
+  --shadow-color-base: rgba(15,23,42,0.04);
+  --shadow-color-accent: rgba(37,99,235,0.15);
 }
 
 .dark, [data-theme="dark"] {
-  --bg-page: #0F172A;
-  --bg-card: #1E293B;
-  --bg-card-alt: #0F172A;
-  --bg-hover: #334155;
-  --bg-hover-accent: #1E1B4B;
-  --bg-subtle: #334155;
+  --bg-page: #F4F6F9;
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #FAFAFA;
+  --bg-hover: #F8FAFC;
+  --bg-hover-accent: #EFF6FF;
+  --bg-subtle: #F1F5F9;
   
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #94A3B8;
-  --text-disabled: #64748B;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-accent-dark: #FFFFFF;
+  --text-accent-dark: #1E293B;
   
-  --border-default: #334155;
-  --border-disabled: #475569;
+  --border-default: #E2E8F0;
+  --border-disabled: #CBD5E1;
   
-  --accent-primary: #6366F1;
-  --accent-bg: #1E1B4B;
-  --accent-border: #3730A3;
-  --accent-border-hover: #4F46E5;
-  --accent-hover: #4F46E5;
-  --accent-dark: #3730A3;
-  --accent-darker: #312E81;
-  --accent-gradient-end: #4338CA;
+  --accent-primary: #2563EB;
+  --accent-bg: #EFF6FF;
+  --accent-border: #93C5FD;
+  --accent-border-hover: #60A5FA;
+  --accent-hover: #1D4ED8;
+  --accent-dark: #1E40AF;
 
-  --success-primary: #10B981;
-  --success-bg: #064E3B;
-  --success-icon: #34D399;
-  --success-text: #6EE7B7;
+  --success-primary: #059669;
+  --success-bg: #ECFDF5;
 
-  --warning-primary: #F59E0B;
-  --warning-text: #FBBF24;
-  --warning-bg: #78350F;
-  --warning-bg-alt: #451A03;
-  --warning-border: #92400E;
-  --warning-text-dark: #FDE68A;
+  --warning-primary: #D97706;
+  --warning-bg: #FEF3C7;
 
-  --danger-primary: #EF4444;
-  --danger-text: #F87171;
-  --danger-bg: #7F1D1D;
-  --danger-bg-alt: #450A0A;
-  --danger-border: #991B1B;
-  --danger-border-alt: #7F1D1D;
-  --danger-text-dark: #FECACA;
+  --danger-primary: #DC2626;
+  --danger-bg: #FEF2F2;
 
-  --info-primary: #3B82F6;
-  --info-bg: #1E3A8A;
+  --info-primary: #2563EB;
+  --info-bg: #DBEAFE;
 
-  --pink-primary: #EC4899;
-  --pink-bg: #831843;
-
-  --shadow-color-base: rgba(0,0,0,0.5);
+  --shadow-color-base: rgba(15,23,42,0.04);
 }
 
 @keyframes fadeIn {

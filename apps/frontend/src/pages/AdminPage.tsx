@@ -29,7 +29,7 @@ export function AdminPage() {
   });
 
   useEffect(() => {
-    document.title = "Admin Dashboard - RankEdge Exam Planner";
+    document.title = "Admin Dashboard - ExamPlanner";
     fetchCurrentUser().then(data => {
       setUser(data);
     }).catch(err => {

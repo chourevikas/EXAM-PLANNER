@@ -1,6 +1,8 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, Query
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import cast, String
 
@@ -37,8 +39,20 @@ async def get_admin_overview_stats(
     Returns real-time dashboard statistics: total uploaded papers, extracted question counts,
     AI parsing accuracy, supported exam types, recent uploads feed, and subject distribution.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("admin:overview_stats")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.get_admin_overview_stats()
+    stats = await service.get_admin_overview_stats()
+    if stats is not None:
+        serialized = jsonable_encoder(stats)
+        await cache.set(cache_key, serialized, ttl_seconds=300)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 
@@ -66,10 +80,14 @@ async def approve_admin_request(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.approve_admin_request(
+    res = await service.approve_admin_request(
         user_id=user_id, current_super_admin=current_user
     )
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/reject/{user_id}", response_model=UserOut)
@@ -79,10 +97,14 @@ async def reject_admin_request(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.reject_admin_request(
+    res = await service.reject_admin_request(
         user_id=user_id, payload=payload, current_super_admin=current_user
     )
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/suspend/{user_id}", response_model=UserOut)
@@ -91,8 +113,12 @@ async def suspend_admin_user(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.suspend_admin_user(user_id=user_id)
+    res = await service.suspend_admin_user(user_id=user_id)
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.post("/reactivate/{user_id}", response_model=UserOut)
@@ -101,8 +127,12 @@ async def reactivate_admin_user(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    return await service.reactivate_admin_user(user_id=user_id)
+    res = await service.reactivate_admin_user(user_id=user_id)
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:overview_stats*")
+    return res
 
 
 @router.get("/audit-logs", response_model=List[AdminApprovalLogOut])
@@ -119,8 +149,20 @@ async def get_system_diagnostics(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("admin:system_stats")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.get_system_diagnostics()
+    stats = await service.get_system_diagnostics()
+    if stats is not None:
+        serialized = jsonable_encoder(stats)
+        await cache.set(cache_key, serialized, ttl_seconds=300)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 
@@ -133,6 +175,13 @@ async def list_exam_pipeline_statuses(
     Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
     answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
     """
+    from app.cache import get_cache
+    cache = get_cache()
+    cache_key = "ep:admin:pipeline_status"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     from sqlmodel import select, func, case
     from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, QuestionStatus
     from app.db.models.pipeline_run import PipelineRun
@@ -357,7 +406,9 @@ async def list_exam_pipeline_statuses(
             "solutions_json_folder_path": exam.solutions_json_folder_path,
         })
 
-    return pipeline_list
+    encoded = jsonable_encoder(pipeline_list)
+    await cache.set(cache_key, encoded, ttl_seconds=10)
+    return JSONResponse(content=encoded)
 
 
 @router.get("/exams/stuck-pipelines", summary="List Interrupted / Stuck Pipelines Requiring Admin Action")
@@ -369,6 +420,13 @@ async def list_stuck_pipelines(
     Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
     so the admin UI can display an action prompt to resume with skipped pre-extracted items.
     """
+    from app.cache import get_cache
+    cache = get_cache()
+    cache_key = "ep:admin:stuck_pipelines"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     from sqlmodel import select, func
     from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, ExamStatus
     from app.db.models.pipeline_run import PipelineRun
@@ -488,7 +546,9 @@ async def list_stuck_pipelines(
                 "can_resume": True,
             })
 
-    return stuck_list
+    encoded = jsonable_encoder(stuck_list)
+    await cache.set(cache_key, encoded, ttl_seconds=10)
+    return JSONResponse(content=encoded)
 
 
 @router.post("/exams/{exam_id}/resume-pipeline", summary="Resume Interrupted Pipeline Skipping Completed Parts")
@@ -659,14 +719,33 @@ async def get_exam_review_questions_admin(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "admin:review",
+        str(exam_id),
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     q_service = QuestionService(session)
-    return await q_service.get_exam_questions_for_review(
+    review_res = await q_service.get_exam_questions_for_review(
         exam_id=exam_id,
         page=page,
         limit=limit,
         language=language,
         status=status,
     )
+    if review_res is not None:
+        serialized = jsonable_encoder(review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.post("/exams/{exam_id}/approve", summary="Approve Exam & Build JSON Folders")
@@ -762,7 +841,7 @@ async def approve_and_publish_exam(
     # 1 & 2. Generate JSON files and upload to S3 folder paths with Retryable Error Handling
     builder = ExamJsonBuilder(session)
     try:
-        json_paths = await builder.generate_and_upload(exam_uuid)
+        json_paths = await builder.generate_and_upload(exam_uuid, sync_all=True)
     except Exception as s3_err:
         logger.error(f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True)
         # Record retryable failed pipeline run
@@ -799,6 +878,9 @@ async def approve_and_publish_exam(
     await session.commit()
     await session.refresh(exam)
 
+    from app.cache import invalidate_exam_cache
+    await invalidate_exam_cache(str(exam.id))
+
     return {
         "status": "APPROVED_AND_PUBLISHED",
         "publish_status": "PUBLISHED",
@@ -811,7 +893,210 @@ async def approve_and_publish_exam(
         "solutions_json_path": exam.solutions_json_path,
         "questions_json_folder_path": exam.questions_json_folder_path,
         "solutions_json_folder_path": exam.solutions_json_folder_path,
+        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
+        "is_s3_out_of_sync": False,
         "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
+    }
+
+
+@router.post("/exams/{exam_id}/sync", status_code=202, summary="Sync Exam Questions & Solutions to S3 (Background Task)")
+async def sync_exam_s3_artifacts(
+    exam_id: str,
+    background_tasks: BackgroundTasks,
+    sync_all: bool = Query(default=False, description="If True, re-syncs all individual questions + master JSON. If False (default), re-syncs only master exam JSONs."),
+    sync_target: str = Query(default="MASTERS_ONLY", description="Sync target scope: 'MASTERS_ONLY' (both masters), 'QUESTIONS_MASTER', 'SOLUTIONS_MASTER', 'FULL_ALL'"),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Launches a background task to regenerate and upload consolidated exam_questions.json
+    and exam_solutions.json (and optionally all individual Q files if sync_all=True or sync_target='FULL_ALL') to S3,
+    updating last_synced_at upon completion.
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+    from app.db.models import Exam, Question
+    from app.db.models.pipeline_run import PipelineRun
+    from sqlmodel import select
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    q_res = await session.exec(select(Question).where(Question.exam_id == exam_uuid))
+    questions = q_res.all()
+    if not questions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"EXAM_CANNOT_BE_SYNCED: Exam '{exam.code}' has no questions in database."
+        )
+
+    if sync_all:
+        sync_target = "FULL_ALL"
+
+    # Check if a sync or publish pipeline is already running
+    existing_run_stmt = (
+        select(PipelineRun)
+        .where(
+            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
+            PipelineRun.status.in_(["RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"]),
+        )
+        .order_by(PipelineRun.started_at.desc())
+    )
+    existing_run = (await session.exec(existing_run_stmt)).first()
+    if existing_run:
+        return {
+            "status": "SYNC_ALREADY_IN_PROGRESS",
+            "pipeline_run_id": str(existing_run.id),
+            "exam_id": str(exam.id),
+            "exam_code": exam.code,
+            "is_syncing": True,
+            "message": f"S3 synchronization is already running in background for exam '{exam.code}'.",
+        }
+
+    # Create new PipelineRun for S3_PUBLISH
+    run = PipelineRun(
+        exam_id=exam_uuid,
+        pipeline_type="S3_PUBLISH",
+        status="RUNNING",
+        current_step=f"INITIALIZING_S3_SYNC_({sync_target.upper()})",
+        progress_percent=10.0,
+        started_at=datetime.now(timezone.utc),
+    )
+    session.add(run)
+    await session.commit()
+    await session.refresh(run)
+
+    run_id = run.id
+
+    from app.tasks.celery_app import has_active_celery_workers
+    from app.tasks.sync_tasks import async_sync_exam_s3, sync_exam_s3_task
+    from app.services.task_registry import task_registry
+
+    use_celery = has_active_celery_workers()
+    task_id = f"s3_sync_{uuid.uuid4().hex[:8]}"
+
+    if use_celery:
+        celery_res = sync_exam_s3_task.delay(
+            str(exam_uuid),
+            str(run_id),
+            sync_all=sync_all,
+            sync_target=sync_target,
+            task_id=task_id,
+            execution_engine="Celery Worker",
+        )
+        task_registry.register_celery_task(str(exam_uuid), getattr(celery_res, "id", task_id))
+        task_registry.register_celery_task(f"sync_{exam_uuid}", getattr(celery_res, "id", task_id))
+        execution_engine = "Celery Worker"
+    else:
+        background_tasks.add_task(
+            async_sync_exam_s3,
+            exam_id_str=str(exam_uuid),
+            run_id_str=str(run_id),
+            sync_all=sync_all,
+            sync_target=sync_target,
+            task_id=task_id,
+            execution_engine="FastAPI BackgroundTasks",
+            session=session,
+        )
+        execution_engine = "FastAPI BackgroundTasks"
+
+    scope_name = (
+        "Full S3 Sync (Master + All Individual Q Files)"
+        if sync_target == "FULL_ALL"
+        else "Master Solutions JSON Sync"
+        if sync_target == "SOLUTIONS_MASTER"
+        else "Master Questions JSON Sync"
+        if sync_target == "QUESTIONS_MASTER"
+        else "Master Questions & Solutions Sync"
+    )
+
+    return {
+        "status": "SYNC_STARTED",
+        "pipeline_run_id": str(run_id),
+        "exam_id": str(exam.id),
+        "exam_code": exam.code,
+        "sync_all": sync_all,
+        "sync_target": sync_target,
+        "is_syncing": True,
+        "execution_engine": execution_engine,
+        "message": f"{scope_name} started ({execution_engine}) for exam '{exam.code}'.",
+    }
+
+
+@router.get("/exams/{exam_id}/sync-status", summary="Get S3 Sync Status of Exam")
+async def get_exam_sync_status(
+    exam_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns the current S3 sync status, whether a background sync task is currently running,
+    progress info, error logs if failed, and sync timestamps.
+    """
+    import uuid
+    from fastapi import HTTPException
+    from app.db.models import Exam, ExamStatus
+    from app.db.models.pipeline_run import PipelineRun
+    from sqlmodel import select
+
+    try:
+        exam_uuid = uuid.UUID(exam_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+
+    exam = await session.get(Exam, exam_uuid)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    publish_run_stmt = (
+        select(PipelineRun)
+        .where(
+            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
+        )
+        .order_by(PipelineRun.started_at.desc())
+    )
+    publish_run = (await session.exec(publish_run_stmt)).first()
+
+    is_syncing = bool(publish_run and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"))
+
+    exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+    is_published = (exam_status_str == "PUBLISHED") and bool(exam.questions_json_path or exam.questions_json_folder_path)
+
+    is_s3_out_of_sync = False
+    if is_published:
+        if exam.last_synced_at is None:
+            is_s3_out_of_sync = True
+        elif exam.updated_at:
+            upd = exam.updated_at if exam.updated_at.tzinfo else exam.updated_at.replace(tzinfo=timezone.utc)
+            sync = exam.last_synced_at if exam.last_synced_at.tzinfo else exam.last_synced_at.replace(tzinfo=timezone.utc)
+            is_s3_out_of_sync = upd > sync
+
+    return {
+        "exam_id": str(exam.id),
+        "exam_code": exam.code,
+        "is_published": is_published,
+        "is_syncing": is_syncing,
+        "sync_status": publish_run.status if publish_run else "IDLE",
+        "current_step": publish_run.current_step if publish_run else None,
+        "progress_percent": publish_run.progress_percent if publish_run else 0.0,
+        "error_log": publish_run.error_log if publish_run else None,
+        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
+        "is_s3_out_of_sync": is_s3_out_of_sync,
+        "questions_json_path": exam.questions_json_path,
+        "solutions_json_path": exam.solutions_json_path,
+        "questions_json_folder_path": exam.questions_json_folder_path,
+        "solutions_json_folder_path": exam.solutions_json_folder_path,
     }
 
 
@@ -932,6 +1217,10 @@ async def admin_upload_question_paper(
     await session.commit()
     await session.refresh(exam)
 
+    from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+    await invalidate_exam_cache(str(exam.id))
+    await invalidate_pipeline_status_cache()
+
     return {
         "status": "ACCEPTED",
         "message": f"Question Paper uploaded successfully for exam '{canonical_exam_code}'.",
@@ -1022,6 +1311,10 @@ async def admin_upload_answer_key(
 
     await session.commit()
     await session.refresh(exam)
+
+    from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+    await invalidate_exam_cache(str(exam.id))
+    await invalidate_pipeline_status_cache()
 
     return {
         "status": "ACCEPTED",

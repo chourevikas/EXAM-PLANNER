@@ -17,7 +17,7 @@ export function WhySection() {
       <div className="landing-container">
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <div className="section-label" style={{ justifyContent: 'center' }}>Why RankEdge</div>
+          <div className="section-label" style={{ justifyContent: 'center' }}>Why ExamPlanner</div>
           <h2
             className="section-heading"
             style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}
@@ -85,7 +85,7 @@ export function WhySection() {
             </h3>
 
             <p style={{ fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.72, marginBottom: 28 }}>
-              RankEdge doesn't just throw questions at you — it understands your learning patterns,
+              ExamPlanner doesn't just throw questions at you — it understands your learning patterns,
               predicts where you'll lose marks, and adapts every session to fix exactly that.
             </p>
 

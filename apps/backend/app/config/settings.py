@@ -103,6 +103,36 @@ class Settings(BaseSettings):
         description="If True, executes Celery tasks synchronously in-memory (useful when Redis is not running)",
     )
 
+    # Caching Layer Settings
+    CACHE_ENABLED: bool = Field(
+        default=True,
+        description="Master switch to enable or disable caching across the application.",
+    )
+    CACHE_TYPE: str = Field(
+        default="auto",
+        description="Cache engine type: 'redis', 'memory', 'none', or 'auto' (tries Redis, falls back to In-Memory).",
+    )
+    ENABLE_MEMORY_CACHE_FALLBACK: bool = Field(
+        default=True,
+        description="If True, falls back to bounded In-Memory LRU cache if Redis is unreachable. If False, bypasses caching on Redis failure.",
+    )
+    CACHE_IN_MEMORY_MAX_SIZE: int = Field(
+        default=1000,
+        description="Maximum number of items stored in bounded in-memory LRU cache to prevent RAM exhaustion.",
+    )
+    CACHE_DEFAULT_TTL_SECONDS: int = Field(
+        default=1800,
+        description="Default time-to-live (TTL) for cached items in seconds (30 minutes).",
+    )
+    REDIS_CACHE_URL: str = Field(
+        default="redis://localhost:6379/1",
+        description="Redis connection URL for caching layer (uses database 1).",
+    )
+    CACHE_KEY_PREFIX: str = Field(
+        default="ep",
+        description="Namespace prefix prepended to all cache keys.",
+    )
+
     # Pipeline Execution & Batching Settings
     PIPELINE_BATCH_SIZE: int = Field(
         default=5,

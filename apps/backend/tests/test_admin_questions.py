@@ -172,6 +172,168 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Polity", subj_names)
             self.assertIn("History", subj_names)
 
+    async def test_realtime_s3_sync_on_create_update_delete(self):
+        from app.storage.factory import get_storage_provider
+        storage = get_storage_provider()
+
+        async with self.session_factory() as session:
+            exam_id = uuid.uuid4()
+            exam = Exam(
+                id=exam_id,
+                code="upsc-s3-test-2024",
+                name="UPSC S3 Test 2024",
+                stage="prelims",
+                total_questions=2,
+                paper_set_code="SET_A",
+            )
+            session.add(exam)
+            await session.commit()
+
+            service = QuestionService(session)
+
+            # 1. Create Question -> Real-time S3 upload
+            payload = QuestionCreatePayload(
+                exam_id=exam_id,
+                question_number_in_paper=1,
+                question_text="What is Article 21 of the Indian Constitution?",
+                options=[
+                    QuestionOptionPayload(option_label="A", option_text="Right to Life", is_correct=True),
+                    QuestionOptionPayload(option_label="B", option_text="Right to Equality", is_correct=False),
+                ],
+                core_concept="Fundamental Rights",
+                detailed_solution="Article 21 guarantees protection of life and personal liberty.",
+            )
+
+            created_res = await service.create_question(payload)
+            q_id = uuid.UUID(created_res.question_id)
+
+            q_file = "artifacts/upsc-s3-test-2024/set-a/json/questions/Q001.json"
+            s_file = "artifacts/upsc-s3-test-2024/set-a/json/solutions/Q001.json"
+
+            self.assertTrue(await storage.exists(q_file))
+            self.assertTrue(await storage.exists(s_file))
+
+            # 2. Update Question -> Real-time S3 update
+            update_payload = QuestionUpdatePayload(
+                question_text="Updated: What is Article 21 of the Constitution?",
+            )
+            await service.update_question_detail(question_id=q_id, payload=update_payload)
+
+            q_data = await storage.download_json(q_file)
+            self.assertIn("Updated: What is Article 21", q_data["text"])
+
+            # 3. Delete Question -> Real-time S3 deletion
+            await service.delete_question(question_id=q_id)
+            self.assertFalse(await storage.exists(q_file))
+            self.assertFalse(await storage.exists(s_file))
+
+    async def test_hierarchy_links_upsert_deduplication_and_no_unique_violations(self):
+        """Tests that submitting duplicate subtopics or re-updating hierarchy links never triggers unique constraint violations."""
+        async with self.session_factory() as session:
+            exam_id = uuid.uuid4()
+            exam = Exam(
+                id=exam_id,
+                code="upsc-hierarchy-safe-2024",
+                name="UPSC Hierarchy Safe 2024",
+                stage="prelims",
+                total_questions=1,
+            )
+            session.add(exam)
+            await session.commit()
+
+            service = QuestionService(session)
+
+            # 1. Create Question with primary and secondary concepts
+            create_payload = QuestionCreatePayload(
+                exam_id=exam_id,
+                question_number_in_paper=1,
+                question_text="Which Act introduced dyarchy at the provincial level?",
+                options=[
+                    QuestionOptionPayload(option_label="A", option_text="Government of India Act 1919", is_correct=True),
+                    QuestionOptionPayload(option_label="B", option_text="Government of India Act 1935", is_correct=False),
+                ],
+                hierarchy_links=[
+                    QuestionHierarchyLinkPayload(
+                        subject_name="Polity",
+                        topic_name="Constitutional Development",
+                        subtopic_name="Acts Under British Rule",
+                        is_primary=True,
+                        relevance_weight=1.0,
+                        concept_name="Dyarchy in Provinces",
+                    ),
+                    QuestionHierarchyLinkPayload(
+                        subject_name="History",
+                        topic_name="Modern History",
+                        subtopic_name="Nationalist Movement",
+                        is_primary=False,
+                        relevance_weight=0.8,
+                        concept_name="Montagu-Chelmsford Reforms",
+                    ),
+                ],
+            )
+            res = await service.create_question(create_payload)
+            q_id = uuid.UUID(res.question_id)
+
+            # Verify initial 2 hierarchy links
+            initial_q = await service.get_question_detail(q_id)
+            self.assertEqual(len(initial_q.hierarchy), 2)
+
+            # 2. Update with DUPLICATE subtopics in the hierarchy_links payload
+            # (Simulates frontend submitting duplicate concept tags or identical subtopic names)
+            update_payload = QuestionUpdatePayload(
+                hierarchy_links=[
+                    QuestionHierarchyLinkPayload(
+                        subject_name="Polity",
+                        topic_name="Constitutional Development",
+                        subtopic_name="Acts Under British Rule",
+                        is_primary=True,
+                        relevance_weight=1.0,
+                        concept_name="Updated Dyarchy Concept",
+                    ),
+                    QuestionHierarchyLinkPayload(
+                        subject_name="Polity",
+                        topic_name="Constitutional Development",
+                        subtopic_name="Acts Under British Rule",  # EXACT DUPLICATE SUBTOPIC
+                        is_primary=False,
+                        relevance_weight=0.9,
+                        concept_name="Duplicate Concept Tag",
+                    ),
+                    QuestionHierarchyLinkPayload(
+                        subject_name="History",
+                        topic_name="Modern History",
+                        subtopic_name="Nationalist Movement",
+                        is_primary=False,
+                        relevance_weight=0.85,
+                        concept_name="Montagu-Chelmsford Reforms Updated",
+                    ),
+                ]
+            )
+
+            # This must NOT raise UniqueViolationError or IntegrityError
+            updated_res = await service.update_question_detail(question_id=q_id, payload=update_payload)
+            self.assertIsNotNone(updated_res)
+
+            # Check that deduplication merged the duplicate subtopic into 1 link
+            self.assertEqual(len(updated_res.hierarchy), 2)
+
+            # 3. Update AGAIN multiple times to guarantee idempotence and zero unique constraint conflicts
+            for i in range(3):
+                repeat_update = QuestionUpdatePayload(
+                    question_text=f"Iteration {i}: Which Act introduced dyarchy at the provincial level?",
+                    hierarchy_links=[
+                        QuestionHierarchyLinkPayload(
+                            subject_name="Polity",
+                            topic_name="Constitutional Development",
+                            subtopic_name="Acts Under British Rule",
+                            is_primary=True,
+                            relevance_weight=1.0,
+                        ),
+                    ],
+                )
+                repeat_res = await service.update_question_detail(question_id=q_id, payload=repeat_update)
+                self.assertEqual(len(repeat_res.hierarchy), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
+

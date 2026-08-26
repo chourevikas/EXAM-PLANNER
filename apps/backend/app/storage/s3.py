@@ -197,4 +197,15 @@ class S3StorageProvider(BaseStorageProvider):
                 )
                 return self.get_public_url(relative_path)
 
+    async def delete_file(self, relative_path: str) -> bool:
+        async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+            try:
+                await s3.delete_object(Bucket=self.bucket_name, Key=relative_path)
+                logger.info(f"Deleted S3 object s3://{self.bucket_name}/{relative_path}")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed deleting S3 object '{relative_path}': {e}")
+                return False
+
+
 

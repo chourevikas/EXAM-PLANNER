@@ -129,9 +129,28 @@ class AdminService:
         return result
 
     async def get_system_diagnostics(self) -> SystemStatsOut:
-        return await self.repo.get_system_stats()
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("admin:stats")
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return SystemStatsOut(**cached_data) if isinstance(cached_data, dict) else cached_data
+
+        stats = await self.repo.get_system_stats()
+        if stats:
+            serialized = stats.model_dump(mode="json") if hasattr(stats, "model_dump") else stats
+            await cache.set(cache_key, serialized, ttl_seconds=300)
+            return SystemStatsOut(**stats) if isinstance(stats, dict) else stats
+        return stats
 
     async def get_admin_overview_stats(self) -> AdminOverviewStatsOut:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("admin:overview_stats")
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return AdminOverviewStatsOut(**cached_data)
+
         now = datetime.now(timezone.utc)
 
         # 1. Total Papers Uploaded
@@ -297,9 +316,11 @@ class AdminService:
                     )
                 )
 
-        return AdminOverviewStatsOut(
+        res = AdminOverviewStatsOut(
             metrics=metrics,
             recent_uploads=recent_uploads,
             subject_breakdown=subject_breakdown,
         )
+        await cache.set(cache_key, res.model_dump(mode="json"), ttl_seconds=300)
+        return res
 

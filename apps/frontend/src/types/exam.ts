@@ -1,4 +1,4 @@
-export type ExamName = 'upsc' | 'mppsc' | 'mpsc';
+export type ExamName = 'upsc';
 
 export type PaperType = 'previous_year_question' | 'mock_test';
 
@@ -63,6 +63,7 @@ export interface BatchSaveItem {
   selected_option_id?: string | null;
   is_marked_for_review?: boolean;
   time_spent_seconds?: number;
+  is_switched?: boolean;
   option_switch_count?: number;
   client_timestamp?: string;
 }
@@ -89,6 +90,7 @@ export interface BatchStatusResponse {
 
 export interface SubmitExamRequest {
   submission_reason?: string;
+  responses?: BatchSaveItem[];
 }
 
 export interface HeartbeatRequest {
@@ -100,6 +102,7 @@ export interface OptionOut {
   option_id: string;
   option_label: string;
   text: string;
+  is_correct?: boolean;
   textHindi?: string;
   text_hindi?: string;
   display_order?: number;
@@ -119,6 +122,8 @@ export interface QuestionOut {
   subject?: string;
   topic?: string;
   subtopic?: string;
+  topic_name?: string;
+  subtopic_name?: string;
   difficulty?: string;
   marks?: number;
   negative_marks?: number;

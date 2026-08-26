@@ -17,6 +17,7 @@ from app.db.models import (
     QuestionStatus,
 )
 from app.storage.factory import get_storage_provider
+from app.services.exam_json_builder import ExamJsonBuilder
 from app.pipeline.vision_extractor import (
     load_pdf_page_image_lazily,
     ainvoke_extraction_llm,
@@ -48,6 +49,17 @@ class HumanReviewService:
         self, exam_id: Optional[uuid.UUID] = None, only_flagged: bool = False
     ) -> List[HumanReviewTask]:
         """Asynchronously fetches pending human review tasks for Admin review."""
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "review:tasks",
+            str(exam_id) if exam_id else "all",
+            only_flagged=only_flagged,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return [HumanReviewTask(**t) for t in cached_data]
+
         query = select(HumanReviewTask).where(
             HumanReviewTask.review_status == "PENDING_REVIEW"
         )
@@ -57,7 +69,11 @@ class HumanReviewService:
             query = query.where(HumanReviewTask.is_flagged_by_validator == True)
 
         result = await self.session.exec(query.order_by(col(HumanReviewTask.created_at)))
-        return list(result.all())
+        tasks = list(result.all())
+        if tasks:
+            serialized = [t.dict() if hasattr(t, "dict") else t.model_dump(mode="json") for t in tasks]
+            await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return tasks
 
     async def get_question_review_detail(
         self, question_id: uuid.UUID
@@ -348,6 +364,10 @@ class HumanReviewService:
         question.updated_at = datetime.now(timezone.utc)
         self.session.add(question)
 
+        # Re-evaluate & persist question integrity directly in DB table
+        from app.services.syllabus_service import SyllabusService
+        await SyllabusService(self.session).evaluate_and_persist_question_integrity(question)
+
         # Update Review Task
         review_task_res = await self.session.exec(
             select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
@@ -360,8 +380,24 @@ class HumanReviewService:
             review_task.reviewed_at = datetime.now(timezone.utc)
             self.session.add(review_task)
 
+        await self.session.flush()
         await self.session.commit()
         await self.session.refresh(question)
+
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
+
+        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        if question.exam_id:
+            exam = await self.session.get(Exam, question.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(question.id)
+
         return question
 
     async def trigger_llm_reextraction_for_question(
@@ -481,6 +517,12 @@ class HumanReviewService:
 
         await self.session.commit()
         await self.session.refresh(question)
+        if question.exam_id:
+            exam = await self.session.get(Exam, question.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
         return question
 
     async def update_question_explanation(
@@ -529,4 +571,16 @@ class HumanReviewService:
         self.session.add(expl)
         await self.session.commit()
         await self.session.refresh(expl)
+
+        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        q = await self.session.get(Question, question_id)
+        if q and q.exam_id:
+            exam = await self.session.get(Exam, q.exam_id)
+            if exam:
+                exam.updated_at = datetime.now(timezone.utc)
+                self.session.add(exam)
+                await self.session.commit()
+            builder = ExamJsonBuilder(self.session)
+            await builder.sync_single_question_artifacts(question_id)
+
         return expl

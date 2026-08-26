@@ -34,6 +34,7 @@ import {
   ExamPipelineStatusItem,
   StuckPipelineItem,
 } from '../../services/adminService';
+import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
@@ -655,24 +656,70 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
-  // Initial load when visiting the page: load queue and check stuck pipelines once
+  const pollerRef = useRef<AdaptivePollerController | null>(null);
+
+  // Initial load and Adaptive Non-Linear Polling for pipeline queue updates
   useEffect(() => {
     loadRealTimeQueue(false);
     loadStuckPipelines();
-  }, []);
 
-  // Polling for exam pipeline status updates using GET /exams/pipeline-status every 10 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadRealTimeQueue(true);
-    }, 10000);
+    const poller = createAdaptivePoller(
+      async () => {
+        try {
+          const data = await fetchExamPipelineStatuses();
+          setPipelineExams(data);
+          if (selectedExam) {
+            const updated = data.find((item) => item.id === selectedExam.id);
+            if (updated) setSelectedExam(updated);
+          }
 
-    return () => clearInterval(intervalId);
+          const hasActive = data.some(
+            (e) =>
+              (e.status || '').toUpperCase().includes('PROCESSING') ||
+              (e.status || '').toUpperCase().includes('IN_PROGRESS') ||
+              (e.overall_status || '').toUpperCase().includes('PROCESSING')
+          );
+
+          const activeTasks = data.filter((e) =>
+            (e.status || '').toUpperCase().includes('PROCESSING') ||
+            (e.status || '').toUpperCase().includes('IN_PROGRESS')
+          );
+          const maxProgress = activeTasks.length > 0
+            ? Math.max(...activeTasks.map((t) => (t.stage3_status === 'COMPLETED' ? 95 : t.stage2_status === 'COMPLETED' ? 66 : 33)))
+            : 0;
+
+          return {
+            hasActiveTask: hasActive,
+            progressPercent: maxProgress,
+            isCompleted: !hasActive,
+          };
+        } catch (err) {
+          console.error('Adaptive poller error fetching queue:', err);
+          return { hasActiveTask: false };
+        }
+      },
+      {
+        initialDelayMs: 8000,
+        minDelayMs: 3000,
+        maxDelayMs: 30000,
+        idleDelayMs: 35000,
+        activeDecayStepMs: 2000,
+      }
+    );
+
+    pollerRef.current = poller;
+    poller.start();
+
+    return () => {
+      poller.stop();
+      pollerRef.current = null;
+    };
   }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     await handleHookSubmit(e);
     setTimeout(() => {
+      pollerRef.current?.resetCurve();
       loadRealTimeQueue(true);
     }, 1200);
   };

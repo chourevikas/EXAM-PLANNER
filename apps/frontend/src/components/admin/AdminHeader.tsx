@@ -1,9 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react';
 import { Logo } from '../common/Logo';
 import { useTheme } from '../../hooks/useTheme';
+import { logoutUser } from '../../services/authService';
 
 export function AdminHeader() {
+  const navigate = useNavigate();
+  const clerk = useClerk();
   const { theme, toggleTheme } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -17,9 +21,24 @@ export function AdminHeader() {
         <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
           Welcome, <strong>{user.full_name || 'Admin'}</strong>
         </span>
-        <Link to="/signout" className="btn btn-ghost" style={{ padding: '7px 16px', fontSize: 13, borderRadius: 10 }}>
+        <button
+          type="button"
+          onClick={async () => {
+            logoutUser();
+            if (clerk && clerk.signOut) {
+              try {
+                await clerk.signOut();
+              } catch (e) {
+                console.warn('Clerk signout error:', e);
+              }
+            }
+            window.location.href = '/';
+          }}
+          className="btn btn-ghost"
+          style={{ padding: '7px 16px', fontSize: 13, borderRadius: 10, cursor: 'pointer' }}
+        >
           Sign Out
-        </Link>
+        </button>
       </div>
     </header>
   );

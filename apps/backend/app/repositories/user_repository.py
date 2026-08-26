@@ -54,6 +54,7 @@ class UserRepository:
         organization_name: Optional[str] = None,
         department: Optional[str] = None,
     ) -> User:
+        # Students and Super Admins are directly ACTIVE on registration; institutional ADMINs require pending approval
         status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
         new_user = User(
@@ -87,7 +88,7 @@ class UserRepository:
     async def get_pending_admins(self) -> List[User]:
         stmt = (
             select(User)
-            .where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING)
+            .where(User.status == UserStatus.PENDING)
             .options(
                 selectinload(User.student_profile),
                 selectinload(User.admin_profile),
@@ -135,7 +136,7 @@ class UserRepository:
         self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str
     ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
-        if not user or user.role != UserRole.ADMIN:
+        if not user:
             return None
 
         super_admin_uuid = (
@@ -165,8 +166,9 @@ class UserRepository:
         reason: Optional[str] = None,
     ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
-        if not user or user.role != UserRole.ADMIN:
+        if not user:
             return None
+
 
         super_admin_uuid = (
             uuid.UUID(str(super_admin_id))

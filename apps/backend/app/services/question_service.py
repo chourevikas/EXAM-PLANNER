@@ -40,6 +40,8 @@ from app.schemas.question import (
     HierarchyLinkDetail,
     ExamReviewQuestionsResponse,
 )
+from datetime import datetime, timezone
+from app.services.exam_json_builder import ExamJsonBuilder
 from app.repositories.question_repository import QuestionRepository
 from app.storage.factory import get_storage_provider
 from app.formatters.yaml_exporter import async_export_question_to_yaml_string
@@ -76,6 +78,35 @@ class QuestionService:
         page: int = 1,
         limit: int = 20,
     ) -> QuestionPaginatedResponse:
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "questions:list",
+            subject_id=str(subject_id) if subject_id else None,
+            subject_name=subject_name,
+            subject_code=subject_code,
+            topic_id=str(topic_id) if topic_id else None,
+            topic_name=topic_name,
+            topic_code=topic_code,
+            subtopic_id=str(subtopic_id) if subtopic_id else None,
+            subtopic_name=subtopic_name,
+            subtopic_code=subtopic_code,
+            exam_id=str(exam_id) if exam_id else None,
+            exam_name=exam_name,
+            exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
+            exam_year=exam_year,
+            paper_set_code=paper_set_code,
+            stage=stage,
+            status=str(status.value if hasattr(status, "value") else status) if status else None,
+            language=str(language.value if hasattr(language, "value") else language),
+            include_solutions=include_solutions,
+            page=page,
+            limit=limit,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return QuestionPaginatedResponse(**cached_data)
+
         page = max(1, page)
         limit = max(1, min(100, limit))
         skip = (page - 1) * limit
@@ -107,13 +138,16 @@ class QuestionService:
 
         pages = math.ceil(total / limit) if limit > 0 else 1
 
-        return QuestionPaginatedResponse(
+        response = QuestionPaginatedResponse(
             items=items,
             total=total,
             page=page,
             limit=limit,
             pages=pages,
         )
+        if response is not None:
+            await cache.set(cache_key, response.model_dump(mode="json"), ttl_seconds=1800)
+        return response
 
     async def get_exam_questions_for_review(
         self,
@@ -228,6 +262,17 @@ class QuestionService:
 
         pages = math.ceil(len(filtered_qs) / limit) if limit > 0 else 1
 
+        is_syncing = bool(publish_run and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"))
+
+        is_s3_out_of_sync = False
+        if is_s3_published:
+            if exam.last_synced_at is None:
+                is_s3_out_of_sync = True
+            elif exam.updated_at:
+                upd = exam.updated_at if exam.updated_at.tzinfo else exam.updated_at.replace(tzinfo=timezone.utc)
+                sync = exam.last_synced_at if exam.last_synced_at.tzinfo else exam.last_synced_at.replace(tzinfo=timezone.utc)
+                is_s3_out_of_sync = upd > sync
+
         return ExamReviewQuestionsResponse(
             exam_id=str(exam.id),
             exam_name=exam.name,
@@ -250,6 +295,10 @@ class QuestionService:
             solutions_json_path=exam.solutions_json_path,
             questions_json_folder_path=exam.questions_json_folder_path,
             solutions_json_folder_path=exam.solutions_json_folder_path,
+            last_synced_at=exam.last_synced_at,
+            updated_at=exam.updated_at,
+            is_s3_out_of_sync=is_s3_out_of_sync,
+            is_syncing=is_syncing,
             items=items,
             page=page,
             limit=limit,
@@ -257,17 +306,34 @@ class QuestionService:
         )
 
     async def get_question_detail(
-        self, question_id: uuid.UUID, language: LanguageCode = LanguageCode.ENGLISH
+        self, question_id: uuid.UUID | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> QuestionDetailResponse:
-        q = await self.repo.get_by_id(question_id)
+        from app.cache import get_cache, build_cache_key
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        cache = get_cache()
+        cache_key = build_cache_key(
+            "questions:detail",
+            str(q_uuid),
+            lang=str(language.value if hasattr(language, "value") else language),
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return QuestionDetailResponse(**cached_data)
+
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
-        return await self._build_question_detail_response(q, target_lang=language)
+        detail_res = await self._build_question_detail_response(q, target_lang=language)
+        if detail_res is not None:
+            await cache.set(cache_key, detail_res.model_dump(mode="json"), ttl_seconds=3600)
+        return detail_res
 
     async def update_question_detail(
-        self, question_id: uuid.UUID, payload: QuestionUpdatePayload
+        self, question_id: uuid.UUID | str, payload: QuestionUpdatePayload
     ) -> QuestionDetailResponse:
-        q = await self.repo.get_by_id(question_id)
+        from app.cache import invalidate_question_cache
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
@@ -377,6 +443,24 @@ class QuestionService:
                             distractor_analysis=opt_payload.distractor_analysis,
                         )
                         self.session.add(new_ot)
+                else:
+                    new_opt = QuestionOption(
+                        question_id=q.id,
+                        option_label=opt_payload.option_label,
+                        display_order=opt_payload.display_order,
+                        is_correct=opt_payload.is_correct,
+                        closeness_score=opt_payload.closeness_score,
+                    )
+                    self.session.add(new_opt)
+                    await self.session.flush()
+
+                    new_ot = OptionTranslation(
+                        option_id=new_opt.id,
+                        language=target_lang,
+                        option_text=opt_payload.option_text,
+                        distractor_analysis=opt_payload.distractor_analysis,
+                    )
+                    self.session.add(new_ot)
 
         # Update Explanation (All 4 Parameters: core_concept, detailed_solution, common_traps, key_takeaways)
         if any([payload.core_concept, payload.detailed_solution, payload.common_traps is not None, payload.key_takeaways is not None]):
@@ -505,8 +589,30 @@ class QuestionService:
 
         await self.session.commit()
         await self.session.refresh(q)
+
+        # Re-evaluate & persist question integrity directly to Question columns
+        from app.services.syllabus_service import SyllabusService
+        await SyllabusService(self.session).evaluate_and_persist_question_integrity(q)
+
+        await self._touch_exam_updated_at(q.exam_id)
         await self._recalculate_exam_metrics(q.exam_id)
+
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(q.id), str(q.exam_id) if q.exam_id else None)
+
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
+
+    async def _touch_exam_updated_at(self, exam_id: Optional[uuid.UUID]):
+        if not exam_id:
+            return
+        exam = await self.session.get(Exam, exam_id)
+        if exam:
+            exam.updated_at = datetime.now(timezone.utc)
+            self.session.add(exam)
+            await self.session.commit()
 
     async def _recalculate_exam_metrics(self, exam_id: Optional[uuid.UUID]):
         if not exam_id:
@@ -628,7 +734,14 @@ class QuestionService:
 
         await self.session.commit()
         await self.session.refresh(q)
+        await self._touch_exam_updated_at(payload.exam_id)
         await self._recalculate_exam_metrics(payload.exam_id)
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(q.id), str(payload.exam_id))
+
+        builder = ExamJsonBuilder(self.session)
+        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _save_hierarchy_links(
@@ -638,7 +751,8 @@ class QuestionService:
         subtopic_ids: Optional[List[uuid.UUID]] = None,
         hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None,
     ):
-        links_to_create = []
+        # 1. Collect and deduplicate target hierarchy link definitions keyed by subtopic_id (UUID)
+        target_links: Dict[uuid.UUID, Dict[str, Any]] = {}
 
         if hierarchy_links:
             for idx, link_p in enumerate(hierarchy_links):
@@ -723,28 +837,48 @@ class QuestionService:
                             if top:
                                 subj_id = top.subject_id
 
-                is_prim = link_p.is_primary or (idx == 0)
-                links_to_create.append(
-                    (s_id, t_id, subj_id, is_prim, link_p.relevance_weight, link_p.concept_name)
-                )
+                if s_id:
+                    is_prim = link_p.is_primary or (len(target_links) == 0 and idx == 0)
+                    if s_id in target_links:
+                        # Safely merge duplicate subtopic references
+                        target_links[s_id]["is_primary"] = target_links[s_id]["is_primary"] or is_prim
+                        target_links[s_id]["relevance_weight"] = max(
+                            target_links[s_id]["relevance_weight"],
+                            link_p.relevance_weight if link_p.relevance_weight is not None else 1.0,
+                        )
+                        if link_p.concept_name:
+                            target_links[s_id]["concept_name"] = link_p.concept_name
+                    else:
+                        target_links[s_id] = {
+                            "topic_id": t_id,
+                            "subject_id": subj_id,
+                            "is_primary": is_prim,
+                            "relevance_weight": link_p.relevance_weight if link_p.relevance_weight is not None else 1.0,
+                            "concept_name": link_p.concept_name,
+                        }
 
         if subtopic_ids:
             for idx, s_id in enumerate(subtopic_ids):
-                if any(item[0] == s_id for item in links_to_create):
-                    continue
-                t_id = None
-                subj_id = None
-                subtop = await self.session.get(Subtopic, s_id)
-                if subtop:
-                    t_id = subtop.topic_id
-                    if t_id:
-                        top = await self.session.get(Topic, t_id)
-                        if top:
-                            subj_id = top.subject_id
-                is_prim = (len(links_to_create) == 0 and idx == 0)
-                links_to_create.append((s_id, t_id, subj_id, is_prim, 1.0, None))
+                if s_id and s_id not in target_links:
+                    t_id = None
+                    subj_id = None
+                    subtop = await self.session.get(Subtopic, s_id)
+                    if subtop:
+                        t_id = subtop.topic_id
+                        if t_id:
+                            top = await self.session.get(Topic, t_id)
+                            if top:
+                                subj_id = top.subject_id
+                    is_prim = (len(target_links) == 0 and idx == 0)
+                    target_links[s_id] = {
+                        "topic_id": t_id,
+                        "subject_id": subj_id,
+                        "is_primary": is_prim,
+                        "relevance_weight": 1.0,
+                        "concept_name": None,
+                    }
 
-        if subtopic_id and not any(item[0] == subtopic_id for item in links_to_create):
+        if subtopic_id and subtopic_id not in target_links:
             t_id = None
             subj_id = None
             subtop = await self.session.get(Subtopic, subtopic_id)
@@ -754,44 +888,101 @@ class QuestionService:
                     top = await self.session.get(Topic, t_id)
                     if top:
                         subj_id = top.subject_id
-            is_prim = (len(links_to_create) == 0)
-            links_to_create.append((subtopic_id, t_id, subj_id, is_prim, 1.0, None))
+            is_prim = (len(target_links) == 0)
+            target_links[subtopic_id] = {
+                "topic_id": t_id,
+                "subject_id": subj_id,
+                "is_primary": is_prim,
+                "relevance_weight": 1.0,
+                "concept_name": None,
+            }
 
-        if not links_to_create:
+        if not target_links:
             return
 
-        existing_stmt = select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id == question_id)
+        # Ensure at least one primary hierarchy link exists
+        if not any(item["is_primary"] for item in target_links.values()):
+            first_key = next(iter(target_links))
+            target_links[first_key]["is_primary"] = True
+
+        # 2. Fetch existing QuestionHierarchyLink records for this question
+        existing_stmt = select(QuestionHierarchyLink).where(
+            QuestionHierarchyLink.question_id == question_id
+        )
         existing_links = (await self.session.exec(existing_stmt)).all()
-        for el in existing_links:
-            await self.session.delete(el)
+        existing_by_subtopic: Dict[uuid.UUID, QuestionHierarchyLink] = {
+            link.subtopic_id: link for link in existing_links
+        }
 
+        # 3. Clean up obsolete links not present in target_links
+        for existing_subtopic_id, existing_link in existing_by_subtopic.items():
+            if existing_subtopic_id not in target_links:
+                await self.session.delete(existing_link)
+
+        # Flush pending deletes first to ensure clean state in DB unique index
+        await self.session.flush()
+
+        # 4. Upsert target hierarchy links in-place (updating existing, adding new)
         primary_subtopic_id = None
-        for s_id, t_id, subj_id, is_prim, weight, c_name in links_to_create:
-            if is_prim and not primary_subtopic_id:
+        for s_id, data in target_links.items():
+            if data["is_primary"] and not primary_subtopic_id:
                 primary_subtopic_id = s_id
-            link = QuestionHierarchyLink(
-                question_id=question_id,
-                subtopic_id=s_id,
-                topic_id=t_id,
-                subject_id=subj_id,
-                is_primary=is_prim,
-                relevance_weight=weight,
-                concept_name=c_name,
-            )
-            self.session.add(link)
 
-        if primary_subtopic_id or (links_to_create and links_to_create[0][0]):
+            if s_id in existing_by_subtopic:
+                # In-place update of existing link
+                link = existing_by_subtopic[s_id]
+                link.topic_id = data["topic_id"]
+                link.subject_id = data["subject_id"]
+                link.is_primary = data["is_primary"]
+                link.relevance_weight = data["relevance_weight"]
+                if data["concept_name"] is not None:
+                    link.concept_name = data["concept_name"]
+                self.session.add(link)
+            else:
+                # Add new link
+                link = QuestionHierarchyLink(
+                    question_id=question_id,
+                    subtopic_id=s_id,
+                    topic_id=data["topic_id"],
+                    subject_id=data["subject_id"],
+                    is_primary=data["is_primary"],
+                    relevance_weight=data["relevance_weight"],
+                    concept_name=data["concept_name"],
+                )
+                self.session.add(link)
+
+        await self.session.flush()
+
+        # 5. Synchronize primary subtopic_id on Question
+        if primary_subtopic_id or target_links:
             q_obj = await self.session.get(Question, question_id)
             if q_obj:
-                q_obj.subtopic_id = primary_subtopic_id or links_to_create[0][0]
+                q_obj.subtopic_id = primary_subtopic_id or next(iter(target_links))
                 self.session.add(q_obj)
 
-    async def delete_question(self, question_id: uuid.UUID) -> bool:
-        q = await self.repo.get_by_id(question_id)
+    async def delete_question(self, question_id: uuid.UUID | str) -> bool:
+        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        q = await self.repo.get_by_id(q_uuid)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+        exam_id = q.exam_id
+        q_num = q.question_number_in_paper
+        exam = await self.session.get(Exam, exam_id) if exam_id else None
+        exam_code = exam.code if exam else None
+        paper_set = exam.paper_set_code if exam else "SET_A"
+
         await self.session.delete(q)
         await self.session.commit()
+
+        from app.cache import invalidate_question_cache
+        await invalidate_question_cache(str(question_id), str(exam_id) if exam_id else None)
+
+        if exam_id:
+            await self._touch_exam_updated_at(exam_id)
+            await self._recalculate_exam_metrics(exam_id)
+        if exam_code:
+            builder = ExamJsonBuilder(self.session)
+            await builder.delete_single_question_artifacts(exam_code, paper_set, q_num)
         return True
 
     async def get_question_yaml_file(self, question_id: uuid.UUID) -> str:

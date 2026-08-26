@@ -15,6 +15,8 @@ class FSRSEngine:
         r = (1.0 + (elapsed_days / (9.0 * stability))) ** (-1.0)
         return max(0.0, min(1.0, r))
 
+    retrievability = calculate_retrievability
+
     @classmethod
     def update_memory_state(
         cls,

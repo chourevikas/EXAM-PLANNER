@@ -3,14 +3,21 @@ import uuid
 import logging
 from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
 from app.schemas.question import ExamReviewQuestionsResponse
+from app.schemas.syllabus import CompleteSyllabusResponse
+from app.schemas.question_integrity import ExamIntegrityQuestionsResponse
+from app.schemas.exam_year import ExamsByYearResponse
 from app.services.exam_service import ExamService
 from app.services.exam_export_service import ExamExportService
 from app.services.question_service import QuestionService
+from app.services.syllabus_service import SyllabusService
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +72,20 @@ async def list_exams(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Lists all registered competitive exams, optionally filtered by status and is_active."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:list", status=status, is_active=is_active)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     service = ExamService(session)
-    return await service.list_exams(status=status, is_active=is_active)
+    exams = await service.list_exams(status=status, is_active=is_active)
+    if exams is not None:
+        serialized = jsonable_encoder(exams)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content=[])
 
 
 @router.get(
@@ -93,14 +112,33 @@ async def get_exam_questions_for_review(
     core concepts, option distractor analyses (option explanations),
     key takeaways, and points to remember/common traps, with real-time review progress counters.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "exams:review",
+        str(exam_id),
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+        status=str(status.value if hasattr(status, "value") else status) if status else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     q_service = QuestionService(session)
-    return await q_service.get_exam_questions_for_review(
+    review_res = await q_service.get_exam_questions_for_review(
         exam_id=exam_id,
         page=page,
         limit=limit,
         language=language,
         status=status,
     )
+    if review_res is not None:
+        serialized = review_res.model_dump(mode="json") if hasattr(review_res, "model_dump") else (review_res.dict() if hasattr(review_res, "dict") else review_res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content={})
 
 
 @router.get("/{exam_id}/question-artifact/{question_number}")
@@ -163,6 +201,13 @@ async def get_question_from_db_fallback(
     Dedicated Database Fallback endpoint: Directly queries PostgreSQL for question,
     options, translations, and metadata when direct S3 download fails.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:q_fallback", str(exam_id), question_number)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     from app.db.models import Exam, Question, QuestionOption, QuestionTranslation, OptionTranslation
     from sqlmodel import select
     from fastapi import HTTPException
@@ -225,7 +270,7 @@ async def get_question_from_db_fallback(
     default_q_txt = db_q_trans[0].question_text if db_q_trans else f"Question #{q.question_number_in_paper}"
     logger.info(f"[DB_FALLBACK:QUESTION_SUCCESS] Successfully retrieved Question #{question_number} from DB (options_count={len(opts_list)}) for Exam '{exam.code}'")
 
-    return {
+    res_data = {
         "question_number": question_number,
         "exam_id": str(exam.id),
         "exam_code": exam.code,
@@ -242,6 +287,8 @@ async def get_question_from_db_fallback(
         },
         "source": "DATABASE_FALLBACK",
     }
+    await cache.set(cache_key, res_data, ttl_seconds=3600)
+    return JSONResponse(content=res_data)
 
 
 @router.get("/{exam_id}/solution-artifact/{question_number}")
@@ -302,9 +349,16 @@ async def get_solution_from_db_fallback(
     Dedicated Database Fallback endpoint: Directly queries PostgreSQL for solution explanation,
     correct option, and distractor closeness when S3 is unavailable.
     """
-    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:sol_fallback", str(exam_id), question_number)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    from app.db.models import Exam, Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionMetadata
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
-    from sqlmodel import select
+    from sqlmodel import select, col
     from fastapi import HTTPException
 
     logger.info(f"[DB_FALLBACK:SOLUTION] Invoked DB fallback for Solution #{question_number}, Exam ID={exam_id}")
@@ -328,7 +382,7 @@ async def get_solution_from_db_fallback(
         )
 
     opts_res = await session.exec(
-        select(QuestionOption).where(QuestionOption.question_id == q.id)
+        select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order).asc())
     )
     db_opts = opts_res.all()
     correct_opt = next((o for o in db_opts if o.is_correct), None)
@@ -336,42 +390,95 @@ async def get_solution_from_db_fallback(
         logger.error(f"[DB_FALLBACK:SOLUTION] No correct option configured in DB for question #{question_number}")
         raise HTTPException(status_code=404, detail="Correct option not configured in database.")
 
+    opt_ids = [o.id for o in db_opts]
+    opt_trans_map = {}
+    if opt_ids:
+        for t in (await session.exec(select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)))).all():
+            opt_trans_map[t.option_id] = t
+
     expl_res = await session.exec(
         select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
     )
     expl_model = expl_res.first()
 
+    meta_res = await session.exec(
+        select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
+    )
+    q_meta = meta_res.first()
+
     distractor_map = {}
     for o in db_opts:
-        closeness = getattr(o, "distractor_closeness_score", 0.0) or 0.0
+        trans = opt_trans_map.get(o.id)
+        closeness = getattr(o, "distractor_closeness_score", 0.0) or (1.0 if o.is_correct else 0.0)
         cls_tier = ClosenessEvaluator.classify_option(closeness)
         distractor_map[str(o.id)] = {
+            "option_id": str(o.id),
             "label": o.option_label,
+            "text": trans.option_text if trans else f"Option {o.option_label}",
             "closeness_score": closeness,
+            "is_correct": o.is_correct,
             "classification": cls_tier,
+            "distractor_analysis": trans.distractor_analysis if trans else None,
         }
+
+    detailed_solution = (expl_model.detailed_solution if (expl_model and expl_model.detailed_solution) else (
+        f"**Option ({correct_opt.option_label}) is correct.**\n\nStandard constitutional and syllabus reasoning."
+    ))
+
+    core_concept = expl_model.core_concept if expl_model and expl_model.core_concept else "Core conceptual analysis"
+    common_traps = expl_model.common_traps_json if (expl_model and expl_model.common_traps_json) else []
+    key_takeaways = expl_model.key_takeaways_json if (expl_model and expl_model.key_takeaways_json) else []
+
+    blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
+    cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
+    primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
 
     logger.info(f"[DB_FALLBACK:SOLUTION_SUCCESS] Successfully retrieved Solution #{question_number} from DB for Exam '{exam.code}' (correct_opt={correct_opt.option_label})")
 
-    return {
+    res_data = {
+        "question_id": str(q.id),
         "question_number": question_number,
         "exam_id": str(exam.id),
         "exam_code": exam.code,
+        "correct_option_id": str(correct_opt.id),
+        "correct_option_label": correct_opt.option_label,
+        "difficulty": q.difficulty.value if hasattr(q.difficulty, 'value') else str(q.difficulty),
+        "blooms_level": blooms_level,
+        "cognitive_skill": cognitive_skill,
+        "primary_concept_tag": primary_concept_tag,
+        "irt_params": {
+            "a": q_meta.irt_discrimination_a if q_meta and q_meta.irt_discrimination_a is not None else 1.50,
+            "b": q_meta.irt_difficulty_b if q_meta and q_meta.irt_difficulty_b is not None else 0.00,
+            "c": q_meta.irt_pseudo_guessing_c if q_meta and q_meta.irt_pseudo_guessing_c is not None else 0.25,
+        },
+        "subject": "General Studies",
+        "topic": "Syllabus Topic",
+        "subtopic": "Micro Topic",
+        "explanation": {
+            "core_concept": core_concept,
+            "detailed_solution": detailed_solution,
+            "common_traps": common_traps,
+            "key_takeaways": key_takeaways,
+        },
+        "distractor_scores": distractor_map,
         "data": {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
             "correct_option_id": str(correct_opt.id),
             "correct_option_label": correct_opt.option_label,
             "explanation": {
-                "text": expl_model.detailed_solution if expl_model else "Comprehensive explanation available in study mode.",
-                "core_concept": expl_model.core_concept if expl_model else None,
-                "key_takeaways": expl_model.key_takeaways_json if expl_model else [],
-                "common_traps": expl_model.common_traps_json if expl_model else [],
+                "text": detailed_solution,
+                "detailed_solution": detailed_solution,
+                "core_concept": core_concept,
+                "key_takeaways": key_takeaways,
+                "common_traps": common_traps,
             },
             "distractor_scores": distractor_map,
         },
         "source": "DATABASE_FALLBACK",
     }
+    await cache.set(cache_key, res_data, ttl_seconds=3600)
+    return JSONResponse(content=jsonable_encoder(res_data))
 
 
 
@@ -420,6 +527,37 @@ async def download_exam_export_zip_path(
     )
 
 
+@router.get(
+    "/by-year",
+    response_model=ExamsByYearResponse,
+    summary="Get Exams Grouped by Year",
+)
+@router.get(
+    "/years",
+    response_model=ExamsByYearResponse,
+    summary="Get Exams Grouped by Year (Alias)",
+)
+async def get_exams_by_year(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Returns all available exams grouped chronologically by exam year (e.g. 2024, 2023, 2019)
+    along with question counts, pipeline status, and publication flags.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:by_year")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_exams_by_year()
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=300)
+    return JSONResponse(content=serialized)
+
+
 @router.get("/{exam_id}", response_model=Exam)
 async def get_exam_detail(
     exam_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
@@ -427,4 +565,80 @@ async def get_exam_detail(
     """Fetches details of a specific exam by ID."""
     service = ExamService(session)
     return await service.get_exam_detail(exam_id)
+
+
+
+@router.get(
+    "/{exam_id}/syllabus",
+    response_model=CompleteSyllabusResponse,
+    summary="Get Complete Syllabus for Specific Exam",
+)
+async def get_exam_syllabus(
+    exam_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Returns the complete 3-level syllabus tree mapped to this exam's active SyllabusVersion.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("exams:syllabus", str(exam_id))
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_complete_syllabus(exam_id=exam_id)
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=72000)
+    return JSONResponse(content=serialized)
+
+
+@router.get(
+    "/{exam_id}/integrity-questions",
+    response_model=ExamIntegrityQuestionsResponse,
+    summary="Get Paginated Question Integrity & Issue Breakdown for Exam Review",
+)
+async def get_exam_integrity_questions(
+    exam_id: uuid.UUID,
+    issue_type: Optional[str] = Query(
+        default=None,
+        description="Filter by issue type: 'ALL_ISSUES', 'CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID'",
+    ),
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Language"),
+    page: int = Query(default=1, ge=1, description="Page number"),
+    limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Inspects database integrity across all questions in an exam.
+    Returns categorized questions ('CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID')
+    with precise diagnostic issue descriptions, options/statement status, and pagination.
+    """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "exams:integrity",
+        str(exam_id),
+        issue_type or "ALL",
+        page=page,
+        limit=limit,
+        lang=str(language.value if hasattr(language, "value") else language),
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    service = SyllabusService(session)
+    response = await service.get_exam_question_integrity(
+        exam_id=exam_id,
+        issue_type=issue_type,
+        page=page,
+        limit=limit,
+        language=language,
+    )
+    serialized = jsonable_encoder(response)
+    await cache.set(cache_key, serialized, ttl_seconds=300)
+    return JSONResponse(content=serialized)
+
 

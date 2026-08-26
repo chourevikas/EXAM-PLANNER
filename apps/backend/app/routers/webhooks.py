@@ -35,6 +35,9 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     except WebhookVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
         
+    if not event or not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="Invalid webhook event payload")
+        
     event_type = event.get("type")
     data = event.get("data", {})
     

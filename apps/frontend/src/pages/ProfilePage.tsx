@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import {
   User,
@@ -19,9 +20,13 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { updateUserProfile, fetchCurrentUser } from '../services/authService';
+import { UserAvatar } from '../components/common/UserAvatar';
+
 const PREDEFINED_AVATARS = ['👨‍🎓', '👩‍🎓', '🚀', '🌟', '🧠', '🦉', '🎯', '📚'];
 
 export function ProfilePage() {
+  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const [user, setUser] = useState(() => {
     return JSON.parse(localStorage.getItem('user') || '{}');
   });
@@ -32,8 +37,36 @@ export function ProfilePage() {
   // Form Fields
   const [fullName, setFullName] = useState(user.full_name || 'Aspirant');
   const [profileImage, setProfileImage] = useState(user.profile_image || '👨‍🎓');
-  const [phone, setPhone] = useState(user.phone || '+91 98765 43210');
+  const [phone, setPhone] = useState(user.phone || '');
   const [bio, setBio] = useState(user.bio || 'Determined UPSC CSE 2026 aspirant focused on Prelims General Studies & Answer Writing.');
+  
+  // Sync Clerk user details if logged in via Clerk
+  useEffect(() => {
+    if (isClerkLoaded && clerkUser) {
+      const email = clerkUser.primaryEmailAddress?.emailAddress;
+      const name = clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+      const phoneNum = clerkUser.primaryPhoneNumber?.phoneNumber || clerkUser.phoneNumbers?.[0]?.phoneNumber;
+
+      setUser((prev: any) => {
+        const updated = {
+          ...prev,
+          email: email || prev?.email || '',
+          full_name: name || prev?.full_name || 'Aspirant',
+          phone: phoneNum || prev?.phone || '',
+          clerk_id: clerkUser.id,
+        };
+        localStorage.setItem('user', JSON.stringify(updated));
+        return updated;
+      });
+
+      if (name && (!fullName || fullName === 'Aspirant')) {
+        setFullName(name);
+      }
+      if (phoneNum && !phone) {
+        setPhone(phoneNum);
+      }
+    }
+  }, [clerkUser, isClerkLoaded]);
   
   // Exam Target Fields
   const [targetExam, setTargetExam] = useState(user.target_exam || 'UPSC CSE');
@@ -48,7 +81,16 @@ export function ProfilePage() {
   const [twoFactor, setTwoFactor] = useState(true);
 
   useEffect(() => {
-    document.title = 'Profile Settings - RankEdge';
+    document.title = 'Profile Settings - ExamPlanner';
+    fetchCurrentUser().then(data => {
+      setUser((prev: any) => {
+        const merged = { ...prev, ...data };
+        localStorage.setItem('user', JSON.stringify(merged));
+        return merged;
+      });
+    }).catch(err => {
+      console.error("Failed to fetch live user profile stats:", err);
+    });
   }, []);
 
   const handleSaveChanges = (e: React.FormEvent) => {
@@ -68,8 +110,12 @@ export function ProfilePage() {
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setUser(updatedUser);
     
-    // Trigger window event so header picks up changes
+    // Trigger window events so header picks up changes
+    window.dispatchEvent(new Event('user_profile_updated'));
     window.dispatchEvent(new Event('storage'));
+
+    updateUserProfile({ full_name: fullName, profile_image: profileImage })
+      .catch(err => console.error("Failed to sync profile change with backend:", err));
 
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -98,23 +144,16 @@ export function ProfilePage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           {/* Avatar Display */}
-          <div
+          <UserAvatar
+            userOrImage={clerkUser?.imageUrl || profileImage || user}
+            size={84}
+            fullName={fullName}
             style={{
-              width: 84,
-              height: 84,
               borderRadius: '50%',
-              backgroundColor: 'rgba(59, 130, 246, 0.15)',
               border: '2px solid var(--accent-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 42,
-              boxShadow: '0 4px 16px var(--shadow-color-accent)',
-              flexShrink: 0
+              boxShadow: '0 4px 16px var(--shadow-color-accent)'
             }}
-          >
-            {profileImage}
-          </div>
+          />
 
           {/* User Details */}
           <div>
@@ -157,22 +196,22 @@ export function ProfilePage() {
             </div>
 
             <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>
-              {user.email || 'aspirant@examplanner.com'} • Target: <strong style={{ color: 'var(--text-primary)' }}>{targetExam} {targetYear}</strong>
+              {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'aspirant@examplanner.com'} • Target: <strong style={{ color: 'var(--text-primary)' }}>{targetExam} {targetYear}</strong>
             </div>
 
             {/* Quick Badges */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
                 <Zap size={13} color="#f59e0b" fill="#f59e0b" />
-                <span>14-Day Streak</span>
+                <span>{user?.current_streak || 0}-Day Streak</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
                 <BookOpen size={13} color="#3b82f6" />
-                <span>1,250 Questions Solved</span>
+                <span>{(user?.total_questions_attempted ?? user?.free_questions_attempted ?? 0).toLocaleString()} Questions Solved</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
                 <Award size={13} color="#10b981" />
-                <span>Level 4 Scholar</span>
+                <span>Level {user?.level || 1} Scholar</span>
               </div>
             </div>
           </div>
@@ -336,7 +375,7 @@ export function ProfilePage() {
                 </label>
                 <input
                   type="email"
-                  value={user.email || 'aspirant@examplanner.com'}
+                  value={clerkUser?.primaryEmailAddress?.emailAddress || user.email || ''}
                   disabled
                   style={{
                     width: '100%',
@@ -381,7 +420,7 @@ export function ProfilePage() {
                 </label>
                 <input
                   type="text"
-                  value="ASPIRANT / STUDENT"
+                  value={user.role ? user.role.toUpperCase() : "ASPIRANT / STUDENT"}
                   disabled
                   style={{
                     width: '100%',
@@ -459,9 +498,6 @@ export function ProfilePage() {
                 }}
               >
                 <option value="UPSC CSE">UPSC Civil Services Examination (CSE)</option>
-                <option value="State PCS">State Public Service Commission (UPPSC / BPSC)</option>
-                <option value="SSC CGL">SSC Combined Graduate Level (CGL)</option>
-                <option value="RBI Grade B">RBI Grade B Officer</option>
               </select>
             </div>
 
@@ -567,7 +603,7 @@ export function ProfilePage() {
                   Current Subscription Plan
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>{isPro ? 'RankEdge Pro Annual Plan' : 'Free Starter Plan'}</span>
+                  <span>{isPro ? 'ExamPlanner Pro Annual Plan' : 'Free Starter Plan'}</span>
                   {isPro && <Star size={16} fill="#60a5fa" color="#60a5fa" />}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>

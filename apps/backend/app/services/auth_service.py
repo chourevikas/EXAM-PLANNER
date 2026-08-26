@@ -60,7 +60,7 @@ class AuthService:
             department=user_in.department,
         )
 
-        if user.role == UserRole.ADMIN and user.status == UserStatus.PENDING:
+        if user.status == UserStatus.PENDING:
             token_response = TokenResponse(
                 access_token="",
                 token_type="bearer",
@@ -70,6 +70,7 @@ class AuthService:
                 message="Successfully registered! Please wait for Super Admin approval before logging in.",
             )
             return token_response, None
+
 
         u_id = user.id
         u_role = user.role

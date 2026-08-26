@@ -1,6 +1,41 @@
 import { UserRole, AuthResponse } from '../types/auth';
+import { getGuestAttempts, clearGuestAttempts } from '../utils/guestStorage';
 
 const API_BASE_URL = '/api/v1/auth';
+
+export async function syncGuestSessionsOnAuth(token: string): Promise<string | null> {
+  const attempts = getGuestAttempts();
+  if (!attempts || attempts.length === 0) return null;
+
+  try {
+    const res = await fetch('/api/v1/attempts/sync-guest-sessions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ sessions_payload: attempts }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      clearGuestAttempts();
+      const latestId = data?.latest_attempt_id || null;
+      if (latestId) {
+        sessionStorage.setItem('latest_synced_attempt_id', latestId);
+      }
+      console.log('Successfully synced guest exam attempts to candidate account:', latestId);
+      return latestId;
+    } else {
+      const errText = await res.text();
+      console.warn('Sync guest sessions API returned error status:', res.status, errText);
+    }
+
+  } catch (err) {
+    console.warn('Failed to sync guest exam attempts during authentication:', err);
+  }
+  return null;
+}
 
 export async function loginUser(email: string, password: string, role?: UserRole): Promise<AuthResponse> {
   const res = await fetch(`${API_BASE_URL}/login`, {
@@ -25,6 +60,7 @@ export async function loginUser(email: string, password: string, role?: UserRole
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
 }
@@ -59,17 +95,25 @@ export async function registerUser(
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
 }
 
+
 export function logoutUser(): void {
   localStorage.removeItem('access_token');
   localStorage.removeItem('user');
+  localStorage.removeItem('latest_synced_attempt_id');
+  try {
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn("Error clearing sessionStorage during logout:", e);
+  }
 }
 
-export async function fetchCurrentUser(): Promise<any> {
-  const token = localStorage.getItem('access_token');
+export async function fetchCurrentUser(customToken?: string): Promise<any> {
+  const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 
   const res = await fetch(`${API_BASE_URL}/me`, {
@@ -84,5 +128,28 @@ export async function fetchCurrentUser(): Promise<any> {
 
   const data = await res.json();
   localStorage.setItem('user', JSON.stringify(data));
+  return data;
+}
+
+export async function updateUserProfile(updateData: { full_name?: string; profile_image?: string }, customToken?: string): Promise<any> {
+  const token = customToken || localStorage.getItem('access_token');
+  if (!token) throw new Error('No access token found');
+
+  const res = await fetch(`${API_BASE_URL}/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(updateData)
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update user profile');
+  }
+
+  const data = await res.json();
+  localStorage.setItem('user', JSON.stringify(data));
+  window.dispatchEvent(new Event('user_profile_updated'));
   return data;
 }

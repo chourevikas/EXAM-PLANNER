@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
 
@@ -11,9 +11,6 @@ const SignInPage = lazy(() =>
 );
 const SignUpPage = lazy(() =>
   import('./pages/SignUpPage').then((m) => ({ default: m.SignUpPage }))
-);
-const SignOutPage = lazy(() =>
-  import('./pages/SignOutPage').then((m) => ({ default: m.SignOutPage }))
 );
 const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
@@ -32,6 +29,12 @@ const MonthlyReportPage = lazy(() =>
 );
 const ProfilePage = lazy(() =>
   import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+const GuestExamPage = lazy(() =>
+  import('./pages/GuestExamPage').then((m) => ({ default: m.GuestExamPage }))
+);
+const StudentPracticeExamPage = lazy(() =>
+  import('./pages/StudentPracticeExamPage').then((m) => ({ default: m.StudentPracticeExamPage }))
 );
 const ExamEnginePage = lazy(() =>
   import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage }))
@@ -69,7 +72,7 @@ function LoadingFallback() {
         fontWeight: 600,
       }}
     >
-      Loading RankEdge...
+      Loading ExamPlanner...
     </div>
   );
 }
@@ -81,10 +84,22 @@ export default function App() {
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="/signout" element={<SignOutPage />} />
-          
+          <Route path="/signin" element={<LandingPage initialAuthMode="login" />} />
+          <Route path="/login" element={<LandingPage initialAuthMode="login" />} />
+          <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
+          <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
+          <Route path="/guest-exam" element={<GuestExamPage />} />
+
+          {/* Student Practice Exam - Protected Route */}
+          <Route
+            path="/practice-exam"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <StudentPracticeExamPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Exam Engine - Protected Route */}
           <Route
             path="/exam/:examId"
@@ -182,6 +197,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

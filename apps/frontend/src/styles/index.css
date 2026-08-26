@@ -273,6 +273,12 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+/* Disable native browser password reveal icons to prevent double-eye buttons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 .form-input.input-error {
   border-color: #EF4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);

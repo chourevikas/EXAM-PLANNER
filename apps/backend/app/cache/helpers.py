@@ -1,0 +1,125 @@
+import hashlib
+import json
+from typing import Any, Optional, Dict
+from app.cache.factory import get_cache
+from app.config.settings import get_settings
+from app.config.logger import setup_logger
+
+logger = setup_logger("CacheHelpers")
+
+
+def generate_filter_hash(params: Dict[str, Any]) -> str:
+    """Generates a stable, sorted MD5 hash for query parameter dictionaries."""
+    filtered = {
+        k: str(v)
+        for k, v in sorted(params.items())
+        if v is not None and v != "" and k not in ("session", "current_user", "background_tasks")
+    }
+    if not filtered:
+        return "all"
+    raw_str = json.dumps(filtered, sort_keys=True)
+    return hashlib.md5(raw_str.encode("utf-8")).hexdigest()[:12]
+
+
+def build_cache_key(prefix: str, *args, **kwargs) -> str:
+    """Builds a standardized namespaced cache key: 'ep:{prefix}:{arg1}:{arg2}:...'."""
+    settings = get_settings()
+    app_prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    parts = [app_prefix, prefix]
+    for arg in args:
+        if arg is not None:
+            parts.append(str(arg))
+
+    if kwargs:
+        filter_hash = generate_filter_hash(kwargs)
+        parts.append(filter_hash)
+
+    return ":".join(parts)
+
+
+async def invalidate_exam_cache(exam_id: str) -> None:
+    """Invalidates all cached data associated with a specific exam or exam listings."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    exam_id_str = str(exam_id)
+    keys_to_delete = [
+        f"{prefix}:exams:detail:{exam_id_str}",
+        f"{prefix}:exams:manifest:{exam_id_str}",
+        f"{prefix}:exams:structure:{exam_id_str}",
+    ]
+
+    for k in keys_to_delete:
+        await cache.delete(k)
+
+    # Invalidate wildcard patterns
+    patterns = [
+        f"{prefix}:exams:list*",
+        f"{prefix}:exams:search*",
+        f"{prefix}:exams:pipeline_status*",
+        f"{prefix}:exams:review:{exam_id_str}*",
+        f"{prefix}:admin:review:{exam_id_str}*",
+        f"{prefix}:admin:overview_stats*",
+    ]
+    for pat in patterns:
+        deleted = await cache.delete_pattern(pat)
+        if deleted:
+            logger.debug(f"[CACHE_INVALIDATE] Pattern '{pat}' deleted {deleted} keys.")
+
+
+async def invalidate_question_cache(
+    question_id: str, exam_id: Optional[str] = None
+) -> None:
+    """Invalidates cache entries for a modified question and related question listings."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    q_id_str = str(question_id)
+    await cache.delete_pattern(f"{prefix}:questions:detail:{q_id_str}*")
+    await cache.delete_pattern(f"{prefix}:questions:list*")
+
+    if exam_id:
+        exam_id_str = str(exam_id)
+        await cache.delete_pattern(f"{prefix}:exams:review:{exam_id_str}*")
+        await cache.delete_pattern(f"{prefix}:admin:review:{exam_id_str}*")
+    else:
+        await cache.delete_pattern(f"{prefix}:exams:review:*")
+        await cache.delete_pattern(f"{prefix}:admin:review:*")
+
+
+async def invalidate_user_cache(user_id: str) -> None:
+    """Invalidates user profile, permissions, and attempt history cache."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    u_id_str = str(user_id)
+    await cache.delete(f"{prefix}:users:detail:{u_id_str}")
+    await cache.delete_pattern(f"{prefix}:users:list*")
+    await cache.delete_pattern(f"{prefix}:attempts:user:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:skill_profile:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:aggregate:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:rank:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:monthly_benchmark:{u_id_str}*")
+
+
+
+async def invalidate_pipeline_status_cache() -> None:
+    """Invalidates active pipeline queue status and stuck pipelines cache."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+    await cache.delete(f"{prefix}:exams:pipeline_status")
+    await cache.delete(f"{prefix}:admin:pipeline_status")
+    await cache.delete(f"{prefix}:admin:stuck_pipelines")
+
+
+async def invalidate_taxonomy_cache() -> None:
+    """Invalidates dynamic syllabus hierarchy taxonomy cache."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+    await cache.delete(f"{prefix}:questions:taxonomy")

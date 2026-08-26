@@ -1,7 +1,9 @@
 import uuid
-from typing import Optional
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from typing import Optional, Any
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Body
+from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
+
 
 from app.db.session import get_async_session
 from app.core.deps import get_current_user
@@ -40,14 +42,34 @@ async def list_candidate_attempts(
     """
     Parameter 13: Lists candidate's exam attempts history with optional filtering by exam_id or status.
     """
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key(
+        "attempts:user",
+        str(current_user.id),
+        skip=skip,
+        limit=limit,
+        exam_id=str(exam_id) if exam_id else None,
+        status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
+    )
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    from fastapi.encoders import jsonable_encoder
     service = ExamSessionService(session)
-    return await service.list_user_attempts(
+    res = await service.list_user_attempts(
         user_id=current_user.id,
         skip=skip,
         limit=limit,
         exam_id=exam_id,
         status_filter=status_filter,
     )
+    if res is not None:
+        serialized = jsonable_encoder(res)
+        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        return JSONResponse(content=serialized)
+    return JSONResponse(content=[])
 
 
 @router.post("/start", response_model=StartExamResponse, status_code=status.HTTP_201_CREATED)
@@ -203,12 +225,15 @@ async def submit_exam_attempt(
     Synchronously calculates raw scores and enqueues the async post-submission psychometric analysis pipeline.
     """
     service = ExamSessionService(session)
-    return await service.submit_exam(
+    res = await service.submit_exam(
         attempt_id=attempt_id,
         user_id=current_user.id,
         req=req,
         background_tasks=background_tasks,
     )
+    from app.cache import invalidate_user_cache
+    await invalidate_user_cache(str(current_user.id))
+    return res
 
 
 @router.get("/{attempt_id}/result", summary="Dedicated Result View for Submitted/Evaluated Attempt")
@@ -222,3 +247,30 @@ async def get_attempt_result(
     """
     service = ExamSessionService(session)
     return await service.get_attempt_result(attempt_id=attempt_id, user_id=current_user.id)
+
+
+@router.post("/sync-guest-sessions", summary="Sync guest exam attempts to candidate user account")
+async def sync_guest_sessions(
+    sessions_payload: Any = Body(default=[]),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Migrates guest test sessions from browser localStorage into candidate's user account database.
+    """
+    service = ExamSessionService(session)
+    return await service.sync_guest_sessions(user_id=current_user.id, sessions_list=sessions_payload)
+
+
+
+@router.get("/student-dashboard-stats", summary="Get merged student dashboard statistics")
+async def get_student_dashboard_stats(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns aggregated stats and recent test attempt history for the student dashboard.
+    """
+    service = ExamSessionService(session)
+    return await service.get_student_dashboard_stats(user_id=current_user.id)
+

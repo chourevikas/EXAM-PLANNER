@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./apps/backend/app:/app/app
     environment:
       # You can add database and other env variables here
       - PORT=8000

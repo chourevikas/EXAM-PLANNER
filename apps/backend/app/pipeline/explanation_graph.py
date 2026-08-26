@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any, TypedDict, Optional, Tuple
 from sqlmodel import select, col, func
 from langgraph.graph import StateGraph, END, START
-
+import asyncio
 from app.db.session import managed_async_session
 from app.db.models import (
     Exam,
@@ -506,7 +506,20 @@ async def _generate_and_save_single_question_explanation(
                 session.add(subtop_record)
 
                 db_q.subtopic_id = subtop_record.id
+                db_q.status = QuestionStatus.PENDING_HUMAN_REVIEW
+                db_q.requires_human_review = True
+
+                from app.schemas.syllabus_literals import verify_syllabus_node
+                _, _, _, is_exact_syl, syl_issue = verify_syllabus_node(primary_subj, primary_topic, primary_subtop)
+                if not is_exact_syl and syl_issue:
+                    cur_issues = list(db_q.validation_issues_json or [])
+                    if syl_issue not in cur_issues:
+                        cur_issues.append(syl_issue)
+                    db_q.validation_issues_json = cur_issues
+                    db_q.validation_status = "PARTIALLY_CORRUPTED"
+
                 session.add(db_q)
+
 
                 # Process Multi-Concept Items (Primary + Extra Remaining Concepts)
                 raw_concepts = (
@@ -574,9 +587,14 @@ async def _generate_and_save_single_question_explanation(
                             session.add(link)
                         processed_links[c_subtop_rec.id] = link
 
+            # Evaluate & persist question integrity directly to Question columns
+            from app.services.syllabus_service import SyllabusService
+            await SyllabusService(session).evaluate_and_persist_question_integrity(db_q)
+
             await session.commit()
 
     return True
+
 
 
 async def node_generate_and_save_explanations(

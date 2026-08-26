@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar, Section, Question } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
-import { FileText, Layers, Grid, Loader2 } from 'lucide-react';
+import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
+import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import {
   startExamAttempt,
@@ -21,6 +22,8 @@ import {
   sendExamHeartbeat,
   submitExamAttempt,
 } from '../services/examService';
+import { saveGuestAttempt } from '../utils/guestStorage';
+import { AuthModal, AuthMode } from '../components/auth/AuthModal';
 
 import {
   AttemptMode,
@@ -32,11 +35,15 @@ import {
   BatchSaveItem,
 } from '../types/exam';
 
-export function ExamEnginePage() {
+export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const { examId, attemptId: paramAttemptId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const isGuestMode = isGuest || location.pathname === '/guest-exam';
 
   // ─── Session State ───────────────────────────────────────────────────────────
   const [attemptId, setAttemptId] = useState<string | null>(paramAttemptId || null);
@@ -51,6 +58,13 @@ export function ExamEnginePage() {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Guest Scorecard Modal State
+  const [showGuestScoreModal, setShowGuestScoreModal] = useState(false);
+  const [guestScoreData, setGuestScoreData] = useState<any>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signup');
 
   // Preloaded All Questions for Zero-Lag Client-Side Caching & Language Switching
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
@@ -75,44 +89,64 @@ export function ExamEnginePage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [mobileTab, setMobileTab] = useState<'question' | 'sections' | 'palette'>('question');
 
-  // Question Time Telemetry tracking
+  // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
+  const accumulatedTimePerQuestionRef = useRef<Map<string, number>>(new Map());
+
+  const getActiveQuestionTotalTime = (qId?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return 0;
+    const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
+    const isActive = !qId || qId === activeQuestion?.question_id;
+    const currentVisit = isActive ? Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0) : 0;
+    return Math.max(0, prevAcc + currentVisit);
+  };
+
+  const saveQuestionVisitTime = (qId?: string) => {
+    const targetId = qId || activeQuestion?.question_id;
+    if (!targetId) return;
+    const elapsed = Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0);
+    const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
+    const newAcc = prevAcc + elapsed;
+    accumulatedTimePerQuestionRef.current.set(targetId, newAcc);
+    questionStartTimeRef.current = Date.now();
+  };
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
   const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
   const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
 
   // Queue a modified response if it passes dirty-check verification
   const queueResponseUpdate = (
     questionId: string,
     optId: string | null,
-    markedForRev: boolean
+    markedForRev: boolean,
+    forcedTimeSpent?: number
   ) => {
     if (!questionId) return;
-    const timeSpent = (Date.now() - questionStartTimeRef.current) / 1000.0;
+    const timeSpent = forcedTimeSpent !== undefined ? forcedTimeSpent : getActiveQuestionTotalTime(questionId);
     const last = lastSyncedSnapshotRef.current.get(questionId);
 
     // Dirty-check verification: verify if genuinely modified to avoid false flags
     const isOptionModified = !last ? optId !== null : last.selected_option_id !== optId;
     const isReviewModified = !last ? markedForRev : last.is_marked_for_review !== markedForRev;
-    const isTimeModified = !last ? timeSpent > 1.0 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 2.0;
+    const isTimeModified = !last ? timeSpent > 0.2 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 1.0;
+
+    const switchCount = optionSwitchesCountRef.current.get(questionId) || 0;
 
     if (isOptionModified || isReviewModified || isTimeModified) {
       const item: BatchSaveItem = {
         question_id: questionId,
         selected_option_id: optId,
         is_marked_for_review: markedForRev,
-        time_spent_seconds: timeSpent,
+        time_spent_seconds: Math.round(timeSpent * 10) / 10,
+        is_switched: switchCount > 0,
+        option_switch_count: switchCount,
         client_timestamp: new Date().toISOString(),
       };
-      console.info(`%c[ExamEngine:DIRTY_DETECTED] Queued modified response for Question ${questionId}`, 'color: #ec4899; font-weight: bold;', {
-        item,
-        reason: { isOptionModified, isReviewModified, isTimeModified }
-      });
       pendingBatchQueueRef.current.set(questionId, item);
-    } else {
-      console.debug(`[ExamEngine:CLEAN] Question ${questionId} is clean/unmodified against snapshot, queueing omitted.`);
     }
   };
 
@@ -125,7 +159,6 @@ export function ExamEnginePage() {
     isSyncingBatchRef.current = true;
     const itemsToSend = Array.from(pendingBatchQueueRef.current.values());
     const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    console.info(`%c[ExamEngine:FLUSH_START] Dispatching batch '${batchId}' (${itemsToSend.length} items) to backend...`, 'color: #06b6d4; font-weight: bold;', itemsToSend);
 
     try {
       const ack = await saveQuestionResponsesBatch(attemptId, {
@@ -134,7 +167,6 @@ export function ExamEnginePage() {
       });
 
       if (ack.status === 'ACCEPTED' || ack.status === 'PROCESSED') {
-        console.info(`%c[ExamEngine:FLUSH_SUCCESS] Batch '${batchId}' acknowledged as ${ack.status}`, 'color: #10b981; font-weight: bold;', ack);
         // Record successfully synced snapshot for dirty-checking
         for (const item of itemsToSend) {
           lastSyncedSnapshotRef.current.set(item.question_id, {
@@ -151,21 +183,30 @@ export function ExamEnginePage() {
         }
       }
     } catch (err) {
-      console.warn(`%c[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, 'color: #ef4444; font-weight: bold;', err);
+      console.warn(`[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, err);
       // Items remain in pendingBatchQueueRef for automatic retry on next flush
     } finally {
       isSyncingBatchRef.current = false;
     }
   };
 
-  // Periodic background flush every 2.5 seconds
+  // Active Real-Time 3s Telemetry & Background Sync Interval
   useEffect(() => {
     if (!attemptId) return;
     const interval = setInterval(() => {
+      if (activeQuestion) {
+        const currentTotalTime = getActiveQuestionTotalTime(activeQuestion.question_id);
+        queueResponseUpdate(
+          activeQuestion.question_id,
+          selectedOptionId,
+          isMarkedForReview,
+          currentTotalTime
+        );
+      }
       flushPendingBatches();
-    }, 2500);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [attemptId]);
+  }, [attemptId, activeQuestion, selectedOptionId, isMarkedForReview]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -178,6 +219,11 @@ export function ExamEnginePage() {
     async function initSession() {
       setIsLoadingSession(true);
       try {
+        if (isGuestMode) {
+          await loadGuestSessionQuestions();
+          return;
+        }
+
         if (paramAttemptId) {
           // Resume existing session
           const sessionStatus = await getExamAttemptStatus(paramAttemptId);
@@ -245,10 +291,132 @@ export function ExamEnginePage() {
     }
 
     initSession();
-  }, [examId, paramAttemptId]);
+  }, [examId, paramAttemptId, isGuestMode]);
+
+  const loadGuestSessionQuestions = async () => {
+    const gExam = searchParams.get('exam') || 'UPSC Prelims (GS Paper 1)';
+    const gYear = searchParams.get('year') || '2023';
+    const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
+    const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+    const gCount = parseInt(searchParams.get('count') || '10', 10);
+
+    setTotalQuestions(gCount);
+    setTimeLeft(gCount * 120);
+    setAttemptMode('PRACTICE');
+
+    const apiParams = new URLSearchParams({
+      limit: gCount.toString(),
+    });
+
+    if (gTopic && gTopic !== 'All Topics') {
+      apiParams.append('topic_name', gTopic);
+    }
+    if (gSubtopic && gSubtopic !== 'All Subtopics') {
+      apiParams.append('subtopic_name', gSubtopic);
+    }
+    if (gYear && gYear !== 'All Years (2018 - 2024)' && !isNaN(Number(gYear))) {
+      apiParams.append('exam_year', gYear);
+    }
+    if (gExam && gExam.toLowerCase().includes('upsc')) {
+      apiParams.append('exam_name', 'upsc');
+    }
+
+    try {
+      const res = await fetch(`/api/v1/questions?${apiParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const itemsToUse = data.items.length > gCount ? data.items.slice(0, gCount) : data.items;
+          const questionsList: QuestionOut[] = itemsToUse.map((q: any, idx: number) => ({
+            question_id: q.question_id || `q-guest-${idx + 1}`,
+            question_number: idx + 1,
+            text: q.question_text || `Question #${idx + 1}`,
+            options: (q.options || []).map((o: any) => ({
+              option_id: o.option_id || `opt-${idx}-${o.option_label}`,
+              option_label: o.option_label,
+              text: o.option_text || o.text || `Option ${o.option_label}`,
+              is_correct: Boolean(o.is_correct),
+            })),
+            section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
+            difficulty: q.difficulty || 'MEDIUM',
+            marks: q.marks || 2.0,
+            negative_marks: q.negative_marks || 0.66,
+            expected_time_seconds: q.expected_time_seconds || 60,
+          }));
+
+          setAllQuestions(questionsList);
+          setTotalQuestions(questionsList.length);
+          setActiveQuestion(questionsList[0]);
+
+          const initialPalette: QuestionPaletteItem[] = questionsList.map((q, i) => ({
+            question_number: i + 1,
+            question_id: q.question_id,
+            question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
+          }));
+          setPalette(initialPalette);
+          setResponseSummary({
+            answered_count: 0,
+            marked_for_review_count: 0,
+            unattempted_count: questionsList.length,
+            total: questionsList.length,
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('API questions fetch warning for guest mode:', err);
+    }
+
+    // Fallback demo questions if database has no matching items for the criteria
+    loadGuestFallbackData(gTopic, gSubtopic, gCount);
+  };
+
+  function loadGuestFallbackData(topicName: string, subtopicName: string, count: number) {
+    const sampleQuestions: QuestionOut[] = Array.from({ length: count }, (_, idx) => {
+      const qNum = idx + 1;
+      return {
+        question_id: `guest-q-${qNum}`,
+        question_number: qNum,
+        text: `[${topicName} - ${subtopicName}] Question #${qNum}: Which of the following statements regarding ${subtopicName !== 'All Subtopics' ? subtopicName : topicName} under the Indian Constitution / Syllabus is correct?`,
+        options: [
+          { option_id: `g-opt-${qNum}-A`, option_label: 'A', text: `Statement I: It is guaranteed under Part III of the Constitution and enforceable by law.`, is_correct: true },
+          { option_id: `g-opt-${qNum}-B`, option_label: 'B', text: `Statement II: It requires explicit legislative enactment for enforcement in all scenarios.`, is_correct: false },
+          { option_id: `g-opt-${qNum}-C`, option_label: 'C', text: `Both Statement I and Statement II are incorrect.`, is_correct: false },
+          { option_id: `g-opt-${qNum}-D`, option_label: 'D', text: `Neither Statement I nor Statement II applies to this subtopic.`, is_correct: false },
+        ],
+        section_code: topicName,
+        difficulty: qNum % 2 === 0 ? 'HARD' : 'MEDIUM',
+        marks: 2.0,
+        negative_marks: 0.66,
+        expected_time_seconds: 60,
+      };
+    });
+
+    setAllQuestions(sampleQuestions);
+    setTotalQuestions(sampleQuestions.length);
+    setActiveQuestion(sampleQuestions[0]);
+
+    const initialPalette: QuestionPaletteItem[] = sampleQuestions.map((q, i) => ({
+      question_number: i + 1,
+      question_id: q.question_id,
+      question_status: i === 0 ? 'VISITED' : ('UNVISITED' as any),
+    }));
+    setPalette(initialPalette);
+    setResponseSummary({
+      answered_count: 0,
+      marked_for_review_count: 0,
+      unattempted_count: sampleQuestions.length,
+      total: sampleQuestions.length,
+    });
+  }
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: string, qNum: number) => {
+    // Record elapsed time on the outgoing question before switching
+    if (activeQuestion) {
+      saveQuestionVisitTime(activeQuestion.question_id);
+    }
+
     if (allQuestions.length >= qNum && allQuestions[qNum - 1]) {
       // Instant Client-Side Zero-Lag Question Flipping
       questionStartTimeRef.current = Date.now();
@@ -329,6 +497,15 @@ export function ExamEnginePage() {
 
   // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
   const handleSelectOption = (optionId: string, optionLabel: string) => {
+    if (activeQuestion) {
+      const qId = activeQuestion.question_id;
+      const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
+      if (prevOpt && prevOpt !== optionId) {
+        const curCount = (optionSwitchesCountRef.current.get(qId) || 0) + 1;
+        optionSwitchesCountRef.current.set(qId, curCount);
+      }
+    }
+
     setSelectedOptionId(optionId);
     setSelectedOptionLabel(optionLabel);
 
@@ -398,7 +575,8 @@ export function ExamEnginePage() {
 
   const saveCurrentResponse = () => {
     if (activeQuestion) {
-      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview);
+      const currentTotalTime = getActiveQuestionTotalTime(activeQuestion.question_id);
+      queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview, currentTotalTime);
       // Trigger non-blocking background flush
       flushPendingBatches();
     }
@@ -464,13 +642,103 @@ export function ExamEnginePage() {
   const handleConfirmSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+
+    if (isGuestMode || !attemptId) {
+      let correctCount = 0;
+      let wrongCount = 0;
+      let unattemptedCount = 0;
+
+      allQuestions.forEach((q) => {
+        const saved = lastSyncedSnapshotRef.current.get(q.question_id) || pendingBatchQueueRef.current.get(q.question_id);
+        const selId = saved?.selected_option_id;
+        if (!selId) {
+          unattemptedCount++;
+        } else {
+          const opt = q.options?.find((o: any) => o.option_id === selId);
+          if (opt && opt.is_correct) {
+            correctCount++;
+          } else {
+            wrongCount++;
+          }
+        }
+      });
+
+      const totalScore = allQuestions.length * 2.0;
+      const score = Math.max(0, Number((correctCount * 2.0 - wrongCount * 0.66).toFixed(2)));
+      const accuracy = Math.round((correctCount / (correctCount + wrongCount || 1)) * 100);
+
+      const gExam = searchParams.get('exam') || 'UPSC Prelims';
+      const gTopic = searchParams.get('topic') || 'Indian Polity & Governance';
+      const gSubtopic = searchParams.get('subtopic') || 'Fundamental Rights';
+
+      const responsesPayload = (allQuestions || []).map((q) => {
+        const qId = q.question_id;
+        const selOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
+        const rev = revealResults[qId];
+        return {
+          question_id: qId,
+          selected_option_id: selOpt || null,
+          is_correct: Boolean(rev?.is_user_correct),
+          time_taken_seconds: accumulatedTimePerQuestionRef.current.get(qId) || 60.0,
+          expected_time_seconds: 60.0,
+          is_switched: false,
+        };
+      });
+
+      const guestPayload = {
+        score,
+        totalMarksPossible: totalScore,
+        correctCount,
+        incorrectCount: wrongCount,
+        unattemptedCount,
+        accuracy,
+        totalQuestions: allQuestions.length,
+        topicName: gTopic,
+        subtopicName: gSubtopic,
+        targetExam: gExam,
+        targetYear: 'Target 2026',
+        timeSpentSeconds: Math.max(0, 7200 - timeLeft),
+        responses: responsesPayload,
+      };
+
+      setGuestScoreData(guestPayload);
+      saveGuestAttempt(guestPayload);
+      setShowGuestScoreModal(true);
+      setIsSubmitting(false);
+      setShowSubmitModal(false);
+      return;
+    }
+
     try {
       if (attemptId) {
-        // Zero-Data-Loss Guarantee: Flush all pending batches before final submission
-        saveCurrentResponse();
+        // Zero-Data-Loss Guarantee: Lock in active question dwell time and flush pending batches
+        saveQuestionVisitTime();
         await flushPendingBatches();
 
-        await submitExamAttempt(attemptId, { submission_reason: 'USER_CLICKED_SUBMIT' });
+        const allFinalResponses = (allQuestions || []).map((q) => {
+          const qId = q.question_id;
+          const isCurrentActive = activeQuestion?.question_id === qId;
+          const saved = lastSyncedSnapshotRef.current.get(qId) || pendingBatchQueueRef.current.get(qId);
+          const selOpt = isCurrentActive ? selectedOptionId : (saved?.selected_option_id ?? null);
+          const isMarked = isCurrentActive ? isMarkedForReview : Boolean(saved?.is_marked_for_review);
+          const tSpent = accumulatedTimePerQuestionRef.current.get(qId) || saved?.time_spent_seconds || 0;
+
+          const switchCount = optionSwitchesCountRef.current.get(qId) || 0;
+
+          return {
+            question_id: qId,
+            selected_option_id: selOpt,
+            is_marked_for_review: isMarked,
+            time_spent_seconds: Math.round(tSpent * 10) / 10,
+            is_switched: switchCount > 0,
+            option_switch_count: switchCount,
+          };
+        });
+
+        await submitExamAttempt(attemptId, {
+          submission_reason: 'USER_CLICKED_SUBMIT',
+          responses: allFinalResponses.length > 0 ? allFinalResponses : undefined,
+        });
         navigate(`/analytics?attemptId=${attemptId}`);
       } else {
         navigate('/analytics');
@@ -543,10 +811,10 @@ export function ExamEnginePage() {
 
   if (isLoadingSession) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <Loader2 size={28} className="animate-spin" color="#2563eb" />
-        <span style={{ fontSize: 16, fontWeight: 700 }}>Initializing RankEdge Exam Session...</span>
-      </div>
+      <ExamLoaderOverlay
+        title="Initializing Exam Session"
+        subtitle="Loading questions, anti-cheat status, and timer configuration..."
+      />
     );
   }
 
@@ -562,11 +830,19 @@ export function ExamEnginePage() {
     >
       {/* Top Header */}
       <ExamHeader
-        examTitle="RankEdge PYQ Engine"
+        examTitle={searchParams.get('exam') || "UPSC CSE"}
         paperSubtitle="UPSC CSE Prelims 2023 • GS Paper I"
         timeLeft={timeLeft}
         language={language}
         isSubmitting={isSubmitting}
+        topicName={searchParams.get('topic') || 'General Studies'}
+        subtopicName={searchParams.get('subtopic') || ''}
+        parentBreadcrumb="Student Dashboard"
+        onBack={() => {
+          if (window.confirm('Are you sure you want to leave the examination? Your progress is saved automatically.')) {
+            navigate('/dashboard');
+          }
+        }}
         onLanguageChange={setLanguage}
         onSubmitClick={handleOpenSubmitModal}
       />
@@ -623,46 +899,45 @@ export function ExamEnginePage() {
         </div>
       )}
 
+      {/* Slide-out Drawer Left Sidebar */}
+      <ExamSectionSidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        sections={subjectSections}
+        activeSectionId={activeSectionId}
+        palette={palette}
+        totalQuestions={totalQuestions}
+        currentQIndex={currentQIndex}
+        responseSummary={liveResponseSummary}
+        onSelectSection={(secId, startQ) => {
+          setActiveSectionId(secId);
+          if (startQ && startQ >= 1 && startQ <= totalQuestions) {
+            handleSelectQuestionFromPalette(startQ - 1);
+          }
+        }}
+        onSelectQuestion={handleSelectQuestionFromPalette}
+      />
+
       {/* Main Viewport Body */}
       <div
         style={{
-          marginTop: isMobile ? 108 : 64,
-          marginBottom: 70,
+          marginTop: isMobile ? 104 : 60,
+          marginBottom: 64,
           display: 'flex',
           flex: 1,
-          height: isMobile ? 'calc(100vh - 178px)' : 'calc(100vh - 134px)',
+          height: isMobile ? 'calc(100vh - 168px)' : 'calc(100vh - 124px)',
           boxSizing: 'border-box',
           overflow: 'hidden',
+          backgroundColor: '#F8FAFC',
         }}
       >
-        {/* Left: Section Sidebar */}
-        {(!isMobile || mobileTab === 'sections') && (
-          <div style={{ width: isMobile ? '100%' : 240, height: '100%' }}>
-            <ExamSectionSidebar
-              sections={subjectSections}
-              activeSectionId={activeSectionId}
-              palette={palette}
-              totalQuestions={totalQuestions}
-              currentQIndex={currentQIndex}
-              responseSummary={liveResponseSummary}
-              onSelectSection={(secId, startQ) => {
-                setActiveSectionId(secId);
-                if (startQ && startQ >= 1 && startQ <= totalQuestions) {
-                  handleSelectQuestionFromPalette(startQ - 1);
-                }
-              }}
-              onSelectQuestion={handleSelectQuestionFromPalette}
-            />
-          </div>
-        )}
-
-        {/* Center: Question Card */}
+        {/* Center: Question Card Workspace with Collapsible Trigger Button */}
         {(!isMobile || mobileTab === 'question') && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
             {isLoadingQuestion ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="#2563eb" />
-                <span>Loading question #{currentQIndex + 1}...</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#64748B' }}>Loading question #{currentQIndex + 1}...</span>
               </div>
             ) : activeQuestion ? (
               <ExamQuestionCard
@@ -679,6 +954,7 @@ export function ExamEnginePage() {
                 onSelectOption={handleSelectOption}
                 onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
                 onRevealAnswer={handleRevealAnswer}
+                onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
               />
             ) : null}
           </div>
@@ -686,15 +962,13 @@ export function ExamEnginePage() {
 
         {/* Right: Question Palette */}
         {(!isMobile || mobileTab === 'palette') && (
-          <div style={{ width: isMobile ? '100%' : 300, height: '100%' }}>
-            <ExamQuestionPalette
-              palette={palette.length > 0 ? palette : undefined}
-              currentQIndex={currentQIndex}
-              paletteFilter={paletteFilter}
-              onSelectQuestion={handleSelectQuestionFromPalette}
-              onFilterChange={setPaletteFilter}
-            />
-          </div>
+          <ExamQuestionPalette
+            palette={palette.length > 0 ? palette : undefined}
+            currentQIndex={currentQIndex}
+            paletteFilter={paletteFilter}
+            onSelectQuestion={handleSelectQuestionFromPalette}
+            onFilterChange={setPaletteFilter}
+          />
         )}
       </div>
 
@@ -703,6 +977,7 @@ export function ExamEnginePage() {
         isAnswered={selectedOptionId !== null}
         isMarkedForReview={isMarkedForReview}
         isFirstQuestion={currentQIndex === 0}
+        isLastQuestion={currentQIndex >= totalQuestions - 1}
         onClearResponse={handleClearResponse}
         onToggleMarkReview={handleToggleMarkReview}
         onPrev={handlePrev}
@@ -719,6 +994,199 @@ export function ExamEnginePage() {
         onResume={() => !isSubmitting && setShowSubmitModal(false)}
         onConfirmSubmit={handleConfirmSubmit}
       />
+
+      {/* Guest Performance Scorecard Modal */}
+      {showGuestScoreModal && guestScoreData && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 500,
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderRadius: 24,
+              padding: '32px',
+              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
+              textAlign: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                color: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+              }}
+            >
+              <Trophy size={28} />
+            </div>
+
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#0f172a', marginBottom: 4 }}>
+              Guest Test Results
+            </h2>
+
+            <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 20 }}>
+              Topic: <strong>{guestScoreData.topic}</strong> • Subtopic: <strong>{guestScoreData.subtopic}</strong>
+            </p>
+
+            {/* Score Pill */}
+            <div
+              style={{
+                backgroundColor: isDark ? '#0f172a' : '#f0f6ff',
+                borderRadius: 16,
+                padding: '18px',
+                marginBottom: 20,
+                border: '1px solid rgba(37, 99, 235, 0.15)',
+              }}
+            >
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Your Estimated Score
+              </div>
+              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#1e293b', margin: '4px 0' }}>
+                {guestScoreData.score} <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>/ {guestScoreData.totalScore}</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>
+                Accuracy: {guestScoreData.accuracy}%
+              </div>
+            </div>
+
+            {/* Metrics Breakdown Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>CORRECT</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{guestScoreData.correctCount}</div>
+              </div>
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>WRONG</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{guestScoreData.wrongCount}</div>
+              </div>
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>UNATTEMPTED</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#64748b' }}>{guestScoreData.unattemptedCount}</div>
+              </div>
+            </div>
+
+            {/* CTA Box */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 20,
+                border: '1px solid rgba(37,99,235,0.2)',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={15} /> Unlock Full 12-Matrix Psychometric Analysis
+              </div>
+              <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
+                Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setAuthModalOpen(true);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: 'none',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <UserPlus size={16} /> Sign Up / Sign In to Analyze
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid var(--border-default)',
+                    backgroundColor: 'transparent',
+                    color: isDark ? '#cbd5e1' : '#475569',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Back Home
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>Already registered?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthModalOpen(true);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Log In
+                </button>
+              </div>
+            </div>
+
+            <AuthModal
+              isOpen={authModalOpen}
+              mode={authMode}
+              onClose={() => setAuthModalOpen(false)}
+              onSwitchMode={(m) => setAuthMode(m)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Submitting & Evaluating Overlay */}
       {isSubmitting && (

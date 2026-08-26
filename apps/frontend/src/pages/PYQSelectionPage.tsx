@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
 import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 interface DisplayExam {
   id: string;
@@ -22,14 +24,19 @@ export function PYQSelectionPage() {
   const [hoveredExam, setHoveredExam] = useState<string | null>(null);
   const [examsList, setExamsList] = useState<DisplayExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { getToken } = useAuth();
 
   useEffect(() => {
     async function fetchLiveExamsAndAttempts() {
       setIsLoading(true);
       try {
+        const token = await getToken();
+        if (token) {
+          localStorage.setItem('access_token', token);
+        }
         const [liveExams, userAttempts] = await Promise.all([
-          listExams('PUBLISHED', true),
-          listCandidateAttempts(),
+          listExams('PUBLISHED', true, token || undefined),
+          listCandidateAttempts(token || undefined),
         ]);
 
         // Only display exams that have been Approved & Published by Admin with is_active = True
@@ -135,19 +142,38 @@ export function PYQSelectionPage() {
                 onMouseEnter={() => setHoveredExam(exam.id)}
                 onMouseLeave={() => setHoveredExam(null)}
                 style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderRadius: 20,
-                  border: `1px solid ${hoveredExam === exam.id ? 'var(--accent-primary)' : hasCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
-                  padding: '24px',
-                  boxShadow: hoveredExam === exam.id ? '0 12px 30px var(--shadow-color-accent)' : '0 8px 24px var(--shadow-color-base)',
-                  transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  transform: hoveredExam === exam.id ? 'translateY(-4px)' : 'translateY(0)',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 14,
+                  border: `1px solid ${hoveredExam === exam.id ? '#2563EB' : hasCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  padding: '22px 24px',
+                  boxShadow: hoveredExam === exam.id
+                    ? '0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.03)'
+                    : '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
+                  transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  transform: hoveredExam === exam.id ? 'translateY(-3px)' : 'translateY(0)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   gap: 16,
+                  fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
                 }}
               >
+                {/* Top Edge Accent Line */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    backgroundColor: '#2563EB',
+                    transform: hoveredExam === exam.id ? 'scaleX(1)' : 'scaleX(0)',
+                    transformOrigin: 'left center',
+                    transition: 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                />
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{
@@ -162,17 +188,11 @@ export function PYQSelectionPage() {
                       gap: 6,
                     }}>
                       {hasInProgress ? (
-                        <>
-                          <PlayCircle size={14} /> In Progress
-                        </>
+                        <StatusBadge status="in-progress" label="In Progress" size="sm" />
                       ) : hasCompleted ? (
-                        <>
-                          <CheckCircle2 size={14} /> Exam Completed
-                        </>
+                        <StatusBadge status="completed" label="Exam Completed" size="sm" />
                       ) : (
-                        <>
-                          {exam.year} Paper
-                        </>
+                        <StatusBadge status="pyq" label={`${exam.year} Paper`} size="sm" />
                       )}
                     </div>
                     <div style={{ color: 'var(--text-muted)' }}>

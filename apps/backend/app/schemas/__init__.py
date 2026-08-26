@@ -16,6 +16,23 @@ from app.schemas.exam_attempt import (
     BatchSaveResponseAck,
     BatchStatusResponse,
 )
+from app.schemas.syllabus import (
+    SyllabusSubtopicItem,
+    SyllabusTopicItem,
+    SyllabusSubjectItem,
+    CompleteSyllabusResponse,
+    SyllabusVerifyRequest,
+    SyllabusVerifyResponse,
+)
+from app.schemas.question_integrity import (
+    QuestionIssueDetail,
+    ExamIntegrityQuestionsResponse,
+)
+from app.schemas.exam_year import (
+    ExamYearItem,
+    ExamsByYearResponse,
+)
+
 
 __all__ = [
     "UserRegister",
@@ -37,5 +54,17 @@ __all__ = [
     "BatchSaveResponseRequest",
     "BatchSaveResponseAck",
     "BatchStatusResponse",
+    "SyllabusSubtopicItem",
+    "SyllabusTopicItem",
+    "SyllabusSubjectItem",
+    "CompleteSyllabusResponse",
+    "SyllabusVerifyRequest",
+    "SyllabusVerifyResponse",
+    "QuestionIssueDetail",
+    "ExamIntegrityQuestionsResponse",
+    "ExamYearItem",
+    "ExamsByYearResponse",
 ]
+
+
 
