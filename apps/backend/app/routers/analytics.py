@@ -33,6 +33,20 @@ async def get_attempt_evaluation_status(
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
+@router.post("/reports/attempts/{attempt_id}/retry", summary="Retry Failed Post-Submission Evaluation")
+async def retry_attempt_evaluation(
+    attempt_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Manually re-triggers the post-submission evaluation pipeline for a failed attempt.
+    """
+    service = AnalyticsService(session)
+    res = await service.retry_attempt_evaluation(attempt_id=attempt_id)
+    return JSONResponse(content=jsonable_encoder(res))
+
+
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
 async def get_attempt_question_report(
     attempt_id: uuid.UUID,

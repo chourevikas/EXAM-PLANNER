@@ -6,25 +6,26 @@ import { PsychometricReportView } from '../components/student/PsychometricReport
 import { Ico } from '../components/common/Icons';
 import {
   getPsychometricReportJson,
-  getPsychometricReportMarkdown,
   getAttemptQuestionReport,
   getAttemptUserProgressionReport,
   listCandidateAttempts,
   getAttemptEvaluationStatus,
   pollAttemptReportUntilReady,
+  retryAttemptEvaluation,
+  getUserCumulativeAggregateReport,
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport, QuestionReportItem, UserProgressionReportData } from '../types/exam';
-import { Loader2, FileCheck, Sparkles, Cpu, Activity } from 'lucide-react';
+import { Loader2, FileCheck, Sparkles, Cpu, Activity, RefreshCw, AlertCircle, ArrowLeft, BarChart3 } from 'lucide-react';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const attemptIdParam = searchParams.get('attemptId');
 
   const [attemptsHistory, setAttemptsHistory] = useState<AttemptHistoryItem[]>([]);
-  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(attemptIdParam);
+  // Default to CUMULATIVE_ALL unless a specific attemptId is requested
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string>(attemptIdParam || 'CUMULATIVE_ALL');
   const [report, setReport] = useState<PsychometricReport | null>(null);
-  const [markdown, setMarkdown] = useState<string | undefined>(undefined);
   const [questionReportData, setQuestionReportData] = useState<QuestionReportItem[]>([]);
   const [userProgressionData, setUserProgressionData] = useState<UserProgressionReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +34,22 @@ export function AnalyticsPage() {
   const [evalMessage, setEvalMessage] = useState('Evaluating responses...');
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const handleRetryEvaluation = async () => {
+    if (!selectedAttemptId || selectedAttemptId === 'CUMULATIVE_ALL') return;
+    setIsRetrying(true);
+    setError(null);
+    try {
+      await retryAttemptEvaluation(selectedAttemptId);
+      setReloadTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      setError(err.message || 'Failed to trigger evaluation retry.');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   // 1. Fetch user's attempt history on mount
   useEffect(() => {
@@ -41,16 +58,9 @@ export function AnalyticsPage() {
       try {
         const history = await listCandidateAttempts();
         const completed = history.filter(
-          (a) => a.status === 'COMPLETED' || a.status === 'EVALUATED' || a.status === 'SUBMITTED' || a.status === 'AUTO_SUBMITTED'
+          (a) => a.status === 'COMPLETED' || a.status === 'EVALUATED' || a.status === 'SUBMITTED' || a.status === 'AUTO_SUBMITTED' || a.status === 'FAILED'
         );
         setAttemptsHistory(completed);
-
-        // If no attemptId in URL, auto-select the latest completed attempt
-        if (!attemptIdParam && completed.length > 0) {
-          const latest = completed[0].attempt_id;
-          setSelectedAttemptId(latest);
-          setSearchParams({ attemptId: latest });
-        }
       } catch (err) {
         console.warn('Failed to load candidate attempt history for analytics page:', err);
       } finally {
@@ -65,13 +75,14 @@ export function AnalyticsPage() {
   useEffect(() => {
     if (attemptIdParam) {
       setSelectedAttemptId(attemptIdParam);
+    } else {
+      setSelectedAttemptId('CUMULATIVE_ALL');
     }
   }, [attemptIdParam]);
 
-  // 2. Fetch specific reports whenever selectedAttemptId changes with Long-Polling
+  // 2. Fetch specific reports whenever selectedAttemptId changes
   useEffect(() => {
-    if (!selectedAttemptId) return;
-    const targetId = selectedAttemptId;
+    const targetId = selectedAttemptId || 'CUMULATIVE_ALL';
     let isCancelled = false;
 
     async function fetchReportWithPolling() {
@@ -81,19 +92,12 @@ export function AnalyticsPage() {
       // Handle All Exams Cumulative Profile
       if (targetId === 'CUMULATIVE_ALL') {
         try {
-          const { getUserCumulativeAggregateReport, getUserCumulativeAggregateMarkdown } = await import('../services/examService');
-          const [cumRep, cumMd] = await Promise.allSettled([
-            getUserCumulativeAggregateReport(),
-            getUserCumulativeAggregateMarkdown(),
-          ]);
+          const cumRep = await getUserCumulativeAggregateReport();
           if (isCancelled) return;
-          if (cumRep.status === 'fulfilled') {
-            setReport(cumRep.value);
+          if (cumRep) {
+            setReport(cumRep);
           } else {
-            setError(cumRep.reason?.message || 'Failed to synthesize cumulative report.');
-          }
-          if (cumMd.status === 'fulfilled') {
-            setMarkdown(cumMd.value);
+            setError('Failed to synthesize cumulative report.');
           }
           setQuestionReportData([]);
           setUserProgressionData(null);
@@ -111,10 +115,18 @@ export function AnalyticsPage() {
       try {
         // Step 1: Check status via lightweight polling endpoint
         const initialStatus = await getAttemptEvaluationStatus(targetId);
+
+        if (initialStatus && (initialStatus.is_failed || initialStatus.status === 'FAILED')) {
+          setError(initialStatus.message || 'Psychometric evaluation failed for this attempt. Please click Retry below to re-evaluate.');
+          setIsEvaluating(false);
+          setIsLoading(false);
+          return;
+        }
+
         if (initialStatus && !initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
           setIsEvaluating(true);
           setEvalProgress(initialStatus.progress_percentage || 40);
-          setEvalMessage(initialStatus.message || 'Synthesizing 12 psychometric matrices & smart mentor recommendations...');
+          setEvalMessage(initialStatus.message || 'Synthesizing 11 psychometric matrices & smart mentor recommendations...');
 
           // Long-polling loop (every 1.5s)
           const isReady = await pollAttemptReportUntilReady(
@@ -122,9 +134,9 @@ export function AnalyticsPage() {
             (statusUpdate) => {
               if (isCancelled) return;
               setEvalProgress(statusUpdate.progress_percentage || 60);
-              setEvalMessage(statusUpdate.message || 'Computing IRT 3PL ability and FSRS decay curves...');
+              setEvalMessage(statusUpdate.message || 'Computing knowledge ability and decay curves...');
             },
-            200, // Increased to 300 seconds (5 mins)
+            200,
             1500
           );
 
@@ -132,19 +144,22 @@ export function AnalyticsPage() {
           setIsEvaluating(false);
 
           if (!isReady) {
-            console.warn('[AnalyticsPage:POLL_TIMEOUT] Polling threshold reached. Evaluation still in progress.');
-            setError('The psychometric evaluation is taking longer than expected. You can safely leave this page and check back later.');
+            const checkLatest = await getAttemptEvaluationStatus(targetId);
+            if (checkLatest && (checkLatest.is_failed || checkLatest.status === 'FAILED')) {
+              setError(checkLatest.message || 'Psychometric evaluation failed. Please click Retry below.');
+            } else {
+              setError('The psychometric evaluation is taking longer than expected. You can click Retry or refresh later.');
+            }
             setIsLoading(false);
-            return; // Stop here, don't fetch incomplete reports
+            return;
           }
         } else {
           setIsEvaluating(false);
         }
 
-        // Step 2: Fetch all 4 complete reports in parallel once ready
-        const [jsonRes, mdRes, qRes, progRes] = await Promise.allSettled([
+        // Step 2: Fetch structured JSON reports in parallel (no raw markdown calls)
+        const [jsonRes, qRes, progRes] = await Promise.allSettled([
           getPsychometricReportJson(targetId),
-          getPsychometricReportMarkdown(targetId),
           getAttemptQuestionReport(targetId),
           getAttemptUserProgressionReport(targetId),
         ]);
@@ -155,10 +170,6 @@ export function AnalyticsPage() {
           setReport(jsonRes.value);
         } else {
           setError(jsonRes.reason?.message || 'Report is currently compiling in background. Please refresh in a moment.');
-        }
-
-        if (mdRes.status === 'fulfilled') {
-          setMarkdown(mdRes.value);
         }
 
         if (qRes.status === 'fulfilled' && qRes.value?.questions) {
@@ -185,7 +196,7 @@ export function AnalyticsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedAttemptId]);
+  }, [selectedAttemptId, reloadTrigger]);
 
   const handleSelectAttempt = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newId = e.target.value;
@@ -199,8 +210,67 @@ export function AnalyticsPage() {
     }
   };
 
+  const handleViewSingleExam = (attemptId: string) => {
+    setSelectedAttemptId(attemptId);
+    setSearchParams({ attemptId });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToCumulative = () => {
+    setSelectedAttemptId('CUMULATIVE_ALL');
+    setSearchParams({});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <StudentLayout pageTitle="Deep Analytics">
+      {/* Single Exam Mode Back Banner */}
+      {selectedAttemptId !== 'CUMULATIVE_ALL' && (
+        <div
+          style={{
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            borderRadius: 16,
+            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+            border: '1px solid rgba(37, 99, 235, 0.25)',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Viewing Individual Exam Report:</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb' }}>
+              {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
+            </span>
+          </div>
+
+          <button
+            onClick={handleBackToCumulative}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 12,
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <ArrowLeft size={16} />
+            <span>← Back to Cumulative User Report</span>
+          </button>
+        </div>
+      )}
+
       {/* Header Banner */}
       <section
         style={{
@@ -233,14 +303,16 @@ export function AnalyticsPage() {
           >
             <Ico.Chart size={14} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>
-              Psychometric Intelligence Archive
+              {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Longitudinal Master Report' : 'Single Exam Psychometric Diagnostic'}
             </span>
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
-            Detailed Psychometric & Cognitive Analytics
+            {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Student Performance & Mastery Profile' : 'Exam Performance & Cognitive Diagnostic'}
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-            Comprehensive breakdown of your speed, topic accuracy, IRT latent ability, and guessing risk.
+            {selectedAttemptId === 'CUMULATIVE_ALL'
+              ? 'Multi-exam weighted synthesis across all completed tests with AI contextual diagnosis, subject mastery, and actionable study plans.'
+              : 'Detailed question-by-question breakdown, macro scores, and AI mentorship guidance for this completed test.'}
           </p>
         </div>
 
@@ -248,11 +320,11 @@ export function AnalyticsPage() {
         {attemptsHistory.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 260 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <FileCheck size={14} color="#10b981" /> Select Saved Completed Exam:
+              <FileCheck size={14} color="#10b981" /> Switch Report View:
             </label>
             <div style={{ position: 'relative' }}>
               <select
-                value={selectedAttemptId || ''}
+                value={selectedAttemptId || 'CUMULATIVE_ALL'}
                 onChange={handleSelectAttempt}
                 style={{
                   width: '100%',
@@ -268,18 +340,117 @@ export function AnalyticsPage() {
                 }}
               >
                 <option value="CUMULATIVE_ALL">
-                  🌟 All Exams Cumulative Performance (12-Matrix Aggregation & Cross-Exam Comparison)
+                  🌟 All Exams Cumulative Performance (Master Longitudinal Overview)
                 </option>
-                {attemptsHistory.map((att) => (
-                  <option key={att.attempt_id} value={att.attempt_id}>
-                    {att.exam_name} ({new Date(att.started_at).toLocaleDateString()}) - Score: {att.total_score}/{att.max_possible_score}
-                  </option>
-                ))}
+                {attemptsHistory.map((att) => {
+                  const modeLabel = att.mode === 'PRACTICE' ? 'Practice' : att.mode === 'REVISION' ? 'Revision' : 'Full Mock';
+                  return (
+                    <option key={att.attempt_id} value={att.attempt_id}>
+                      [{modeLabel}] {att.exam_name} ({new Date(att.started_at).toLocaleDateString()}) — Score: {att.total_score}/{att.max_possible_score}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
         )}
       </section>
+
+      {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
+      {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
+        <section
+          style={{
+            marginBottom: 24,
+            padding: 24,
+            borderRadius: 20,
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--border-default)',
+            boxShadow: 'var(--shadow-color-base)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <BarChart3 size={18} color="#2563eb" /> Completed Exam Papers ({attemptsHistory.length})
+              </h3>
+              <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+                Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border-default)', textAlign: 'left' }}>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Name</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Mode</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Date</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Score</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Questions</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attemptsHistory.map((att, idx) => (
+                  <tr
+                    key={att.attempt_id}
+                    style={{
+                      borderBottom: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{idx + 1}</td>
+                    <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{att.exam_name}</td>
+                    <td style={{ padding: '12px' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: 8,
+                          backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
+                        }}
+                      >
+                        {att.mode.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                      {new Date(att.started_at).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {att.total_score} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score}</span>
+                    </td>
+                    <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                      {att.total_questions} Questions
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => handleViewSingleExam(att.attempt_id)}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 10,
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        View Exam Report →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
       {isEvaluating && (
@@ -352,8 +523,54 @@ export function AnalyticsPage() {
 
       {/* Error / Processing Banner */}
       {error && !isEvaluating && (
-        <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#d97706', marginBottom: 24 }}>
-          <strong>Notice: </strong> {error}
+        <div
+          style={{
+            padding: '20px 24px',
+            borderRadius: 16,
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'var(--text-primary)',
+            marginBottom: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
+            <AlertCircle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
+              <strong style={{ color: '#ef4444' }}>Evaluation Notice: </strong>
+              <span>{error}</span>
+            </div>
+          </div>
+
+          {selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
+            <button
+              onClick={handleRetryEvaluation}
+              disabled={isRetrying}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 20px',
+                borderRadius: 12,
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: isRetrying ? 'not-allowed' : 'pointer',
+                opacity: isRetrying ? 0.7 : 1,
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <RefreshCw size={16} className={isRetrying ? 'animate-spin' : ''} />
+              <span>{isRetrying ? 'Retrying Evaluation...' : 'Retry Evaluation'}</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -361,7 +578,6 @@ export function AnalyticsPage() {
       {report ? (
         <PsychometricReportView
           report={report}
-          markdownContent={markdown}
           questionReportData={questionReportData}
           userProgressionData={userProgressionData}
         />

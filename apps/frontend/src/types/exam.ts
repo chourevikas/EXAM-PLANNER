@@ -303,11 +303,64 @@ export interface ExamTimelineItem {
   oeei_score: number;
   satoi_score: number;
   pacing_status: string;
+  mode?: string;
+  exam_type_label?: string;
+  mode_weight?: number;
+}
+
+export interface ActionableStudyTask {
+  task_id: string;
+  title: string;
+  subject: string;
+  topic: string;
+  subtopic?: string;
+  activity_type: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  allocated_time_minutes: number;
+  due_in_days: number;
+  reasoning: string;
+  action_checklist: string[];
+  linked_question_numbers?: number[];
+  is_added_to_plan?: boolean;
+}
+
+export interface CognitiveDiagnosticInsight {
+  executive_summary: string;
+  benchmark_verdict: string;
+  tactical_strengths: string[];
+  critical_vulnerabilities: string[];
+  pacing_and_unattempted_diagnosis: string;
+  distractor_trap_critique: string;
+  study_plan_tasks: ActionableStudyTask[];
+  closing_mentorship_advice: string;
+}
+
+export interface ModalityAggregateSummary {
+  count: number;
+  icrs_score: number;
+  irt_theta: number;
+  gti_score: number;
+  oeei_score: number;
+  satoi_score: number;
+  accuracy_percentage: number;
+  total_questions_attempted: number;
+  total_score: number;
+  total_max_score?: number;
+}
+
+export interface SegregatedAggregates {
+  all_exams: ModalityAggregateSummary;
+  full_mock_exams: ModalityAggregateSummary;
+  practice_tests: ModalityAggregateSummary;
+  guest_trials: ModalityAggregateSummary;
+  modality_weights: Record<string, number>;
 }
 
 export interface PsychometricReport {
   is_cumulative?: boolean;
   exam_timeline?: ExamTimelineItem[];
+  segregated_aggregates?: SegregatedAggregates;
+  llm_insight?: CognitiveDiagnosticInsight;
   evolution_graphs?: {
     labels: string[];
     dates: string[];

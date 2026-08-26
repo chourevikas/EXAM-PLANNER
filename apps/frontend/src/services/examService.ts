@@ -434,13 +434,25 @@ export async function getAttemptEvaluationStatus(attemptId: string): Promise<any
       headers: getAuthHeaders(),
     });
     if (!response.ok) {
-      return { is_ready: true, status: 'EVALUATED' };
+      return { is_ready: false, status: 'UNKNOWN' };
     }
     return await response.json();
   } catch (err) {
     console.warn('Failed to fetch attempt evaluation status:', err);
-    return { is_ready: true, status: 'EVALUATED' };
+    return { is_ready: false, status: 'UNKNOWN' };
   }
+}
+
+export async function retryAttemptEvaluation(attemptId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${attemptId}/retry`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to retry evaluation.');
+  }
+  return await response.json();
 }
 
 export async function pollAttemptReportUntilReady(
@@ -453,8 +465,13 @@ export async function pollAttemptReportUntilReady(
     try {
       const status = await getAttemptEvaluationStatus(attemptId);
       if (onUpdate) onUpdate(status);
-      if (status && (status.is_ready || status.status === 'COMPLETED' || status.status === 'EVALUATED')) {
-        return true;
+      if (status) {
+        if (status.is_failed || status.status === 'FAILED') {
+          return false;
+        }
+        if (status.is_ready || status.status === 'COMPLETED' || status.status === 'EVALUATED') {
+          return true;
+        }
       }
     } catch (err) {
       console.warn('Polling error:', err);
@@ -596,6 +613,36 @@ export async function fetchExamIntegrityQuestions(examId: string, status?: strin
   } catch (err) {
     console.warn('Failed to fetch exam integrity diagnostics:', err);
     return null;
+  }
+}
+
+export async function bulkAddStudyTasksFromReport(payload: {
+  attempt_id: string;
+  tasks: any[];
+}): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/study-plan/tasks/bulk-from-report`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to schedule study tasks.');
+  }
+  return data;
+}
+
+export async function getAttemptScheduledTasksStatus(attemptId: string): Promise<{ attempt_id: string; scheduled_task_titles: string[]; tasks: any[] }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/study-plan/tasks/attempt/${encodeURIComponent(attemptId)}/status`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return { attempt_id: attemptId, scheduled_task_titles: [], tasks: [] };
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch attempt scheduled tasks status:', err);
+    return { attempt_id: attemptId, scheduled_task_titles: [], tasks: [] };
   }
 }
 

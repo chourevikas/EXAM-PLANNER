@@ -148,6 +148,8 @@ async def async_init_db():
                 from alembic.runtime.environment import EnvironmentContext
 
                 alembic_cfg = Config(str(alembic_ini_path))
+                alembic_dir = alembic_ini_path.parent / "alembic"
+                alembic_cfg.set_main_option("script_location", str(alembic_dir))
                 script = ScriptDirectory.from_config(alembic_cfg)
 
                 def do_upgrade(connection):

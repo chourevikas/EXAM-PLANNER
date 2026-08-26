@@ -57,9 +57,23 @@ async def compile_comprehensive_psychometric_report(
 
     # 3. Synchronously execute post-submission pipeline core
     from app.engine.post_submission_pipeline import _run_pipeline_core
+    from app.db.models.enums import AttemptStatus
     logger.info(f"Report for Attempt '{attempt.id}' requested. Evaluating 12 psychometric matrices synchronously...")
-    await _run_pipeline_core(session, attempt.id)
-    await session.refresh(attempt)
+    try:
+        await _run_pipeline_core(session, attempt.id)
+        await session.refresh(attempt)
+    except Exception as pipe_err:
+        logger.error(f"Error during synchronous evaluation of attempt '{attempt.id}': {pipe_err}", exc_info=True)
+        attempt.report_metadata_json = {
+            "status": "FAILED",
+            "is_ready": False,
+            "can_retry": True,
+            "error_message": str(pipe_err),
+            "failed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        session.add(attempt)
+        await session.commit()
+        raise ValueError(f"Evaluation failed for Attempt '{attempt.id}': {pipe_err}")
 
     if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
         if "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:

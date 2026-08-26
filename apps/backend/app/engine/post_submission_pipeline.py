@@ -30,7 +30,7 @@ from app.db.models import (
     StudyTask,
 )
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
-from app.engine.matrix_orchestrator import MatrixOrchestrator
+from app.engine.matrix_orchestrator import MatrixOrchestrator, is_placeholder_taxonomy
 from app.engine.matrices.fsrs_retention import FSRSEngine
 from app.storage.factory import get_storage_provider
 from app.db.session import managed_async_session
@@ -208,6 +208,22 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID, session: Optional[
                 await _run_pipeline_core(managed_sess, attempt_id)
     except Exception as e:
         logger.error(f"Post-submission pipeline encountered an unexpected error on attempt '{attempt_id}': {e}", exc_info=True)
+        try:
+            async with managed_async_session() as err_sess:
+                err_att = await err_sess.get(ExamAttempt, attempt_id)
+                if err_att:
+                    err_att.report_metadata_json = {
+                        "status": "FAILED",
+                        "is_ready": False,
+                        "can_retry": True,
+                        "error_message": f"Evaluation error: {str(e)}",
+                        "failed_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    err_sess.add(err_att)
+                    await err_sess.commit()
+                    logger.info(f"Recorded evaluation failure on attempt '{attempt_id}' with retry capability.")
+        except Exception as db_fail_err:
+            logger.error(f"Failed to record failure status on attempt '{attempt_id}': {db_fail_err}")
     finally:
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
 
@@ -838,20 +854,35 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         profile.updated_at = datetime.now(timezone.utc)
     session.add(profile)
 
-    # 7. Bulk Update UserTaxonomyMastery
+    # 7. Bulk Update UserTaxonomyMastery (Filtering out synthetic wildcard/placeholder labels)
     t_db_start = datetime.now(timezone.utc)
-    all_tax_items = [("SUBJECT", x) for x in tax_by_subj] + [("TOPIC", x) for x in tax_by_top] + [("SUBTOPIC", x) for x in tax_by_sub]
+    all_tax_items = [
+        (t_type, x)
+        for (t_type, items) in [
+            ("SUBJECT", tax_by_subj),
+            ("TOPIC", tax_by_top),
+            ("SUBTOPIC", tax_by_sub)
+        ]
+        for x in items
+        if not is_placeholder_taxonomy(x.get("taxonomy_name") or x.get("name"))
+    ]
     aggregated_tax: Dict[tuple, Dict[str, Any]] = {}
     for tax_type, item in all_tax_items:
-        code_name = item.get("taxonomy_name") or "General"
-        t_key = (tax_type, code_name)
+        code_name = (item.get("taxonomy_name") or "General").strip()
+        norm_type = str(tax_type).strip().upper()
+        norm_code = code_name[:100]
+        t_key = (norm_type, norm_code)
         if t_key in aggregated_tax:
             aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
             aggregated_tax[t_key]["correct"] += item.get("correct", 0)
+            tot = aggregated_tax[t_key]["total_questions"]
+            cor = aggregated_tax[t_key]["correct"]
+            aggregated_tax[t_key]["accuracy_percentage"] = round((cor / max(1, tot)) * 100.0, 1)
         else:
             aggregated_tax[t_key] = {
-                "taxonomy_type": tax_type,
-                "taxonomy_id_code": code_name,
+                "taxonomy_type": norm_type,
+                "taxonomy_id_code": norm_code,
+                "taxonomy_name": code_name,
                 "total_questions": item.get("total_questions", 0),
                 "correct": item.get("correct", 0),
                 "accuracy_percentage": item.get("accuracy_percentage", 0.0),
@@ -860,22 +891,29 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # Bulk query existing taxonomy masteries in 1 query
     existing_tax_res = await session.exec(select(UserTaxonomyMastery).where(UserTaxonomyMastery.user_id == user.id))
-    tax_map = {(m.taxonomy_type, m.taxonomy_id_code): m for m in existing_tax_res.all()}
+    existing_tax_all = existing_tax_res.all()
+    tax_map: Dict[tuple, UserTaxonomyMastery] = {}
+    for m in existing_tax_all:
+        norm_t = str(m.taxonomy_type).strip().upper()
+        tax_map[(norm_t, str(m.taxonomy_id_code).strip())] = m
+        tax_map[(norm_t, str(m.taxonomy_name).strip())] = m
 
-    for (tax_type, code_name), item in aggregated_tax.items():
-        m_obj = tax_map.get((tax_type, code_name))
+    for (norm_type, norm_code), item in aggregated_tax.items():
+        m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"]))
         if not m_obj:
             m_obj = UserTaxonomyMastery(
                 user_id=user.id,
-                taxonomy_type=tax_type,
-                taxonomy_id_code=code_name,
-                taxonomy_name=code_name,
+                taxonomy_type=norm_type,
+                taxonomy_id_code=norm_code,
+                taxonomy_name=item["taxonomy_name"],
                 total_attempts=item["total_questions"],
                 correct_attempts=item["correct"],
                 mastery_percentage=item["accuracy_percentage"],
                 strength_status=item["strength_status"],
             )
             session.add(m_obj)
+            tax_map[(norm_type, norm_code)] = m_obj
+            tax_map[(norm_type, item["taxonomy_name"])] = m_obj
         else:
             m_obj.total_attempts += item["total_questions"]
             m_obj.correct_attempts += item["correct"]
@@ -974,28 +1012,98 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     except Exception as badge_err:
         logger.warning(f"Gamification processing warning: {badge_err}")
 
-    # 8. Save Full Report JSON (Report 2) to storage
-    report_s3_key = f"exams/{exam.code}/reports/{attempt.id}_exam_report.json"
-    try:
-        await storage.upload_json(report, report_s3_key)
-        logger.info(f"Saved exam report JSON to storage key '{report_s3_key}'.")
-    except Exception as s3_err:
-        logger.warning(f"Could not upload report JSON to storage: {s3_err}")
+    # 8. AI Diagnostic Synthesis (Structured Output LLM Call with Zero Math Hallucination)
+    from app.engine.report_ai_synthesizer import ReportAISynthesizer
+    
+    part_1_items = report.get("part_1_per_question_analysis", [])
+    tax_analysis = report.get("part_2_taxonomy_analysis", {})
+    score_summary = part_2.get("score_summary", {})
+    upsc_bench = part_2.get("upsc_prelims_benchmark", {})
+    
+    precalc_payload = {
+        "scoring": {
+            "net_score": score_summary.get("total_score", 0.0),
+            "max_score": score_summary.get("max_score", 200.0),
+            "qualifying_cutoff": upsc_bench.get("expected_cutoff_marks", 92.0),
+            "cutoff_margin": upsc_bench.get("cutoff_margin", 0.0),
+            "accuracy_percentage": score_summary.get("accuracy_percentage", 0.0),
+            "attempted_count": score_summary.get("attempted_count", 0),
+            "unattempted_count": score_summary.get("unattempted_count", 0),
+            "correct_count": score_summary.get("correct_count", 0),
+            "incorrect_count": score_summary.get("incorrect_count", 0),
+            "gross_positive_marks": upsc_bench.get("positive_marks_earned", 0.0),
+            "negative_marks_lost": upsc_bench.get("negative_marks_lost", 0.0),
+        },
+        "psychometrics": {
+            "icrs_score": icrs_obj.get("icrs_score", 65.0),
+            "readiness_tier": icrs_obj.get("readiness_tier", "MODERATE_DEVELOPING_READINESS"),
+            "irt_latent_theta": irt_obj.get("latent_ability_theta", 0.0),
+            "percentile_rank": irt_obj.get("percentile_rank", 50.0),
+            "gti_aggregate": gti_obj.get("aggregate", 0.20),
+            "gti_category": gti_obj.get("category", "CONTROLLED_CALCULATED_RISK"),
+            "oeei_score_pct": oeei_obj.get("oeei_score_pct", 70.0),
+            "satoi_score": satoi_obj.get("satoi_score", 85.0),
+            "pacing_status": pacing_obj.get("pacing_status", "BALANCED"),
+            "avg_seconds_per_question": pacing_obj.get("avg_time_per_question_sec", 60.0),
+            "switch_regret_index": osri_obj.get("regret_index", 0.0),
+            "negative_switches_count": osri_obj.get("negative_regret_switches", 0),
+            "positive_switches_count": osri_obj.get("positive_switches", 0),
+        },
+        "unattempted_analysis": part_2.get("unattempted_summary", {}),
+        "distractor_vulnerability": {
+            "high_closeness_traps_fallen": dist_obj.get("high_closeness_count", 0),
+            "inverse_fact_traps_fallen": dist_obj.get("inverse_distractor_count", 0),
+            "neutral_distractor_misses": dist_obj.get("neutral_distractor_count", 0),
+        },
+        "blooms_mastery": blooms_obj,
+        "weak_taxonomy_areas": [
+            {
+                "subject": wt.get("subject") or "General Studies",
+                "topic": wt.get("taxonomy_name") or wt.get("name"),
+                "subtopic": wt.get("subtopic"),
+                "accuracy": wt.get("accuracy_percentage", 0.0),
+                "missed_questions": [q["question_number"] for q in part_1_items if (q.get("topic") == wt.get("taxonomy_name") or q.get("subject") == wt.get("taxonomy_name")) and not q.get("is_correct")],
+                "fsrs_stability_days": wt.get("fsrs_stability_days", 1.5),
+                "retention_health": wt.get("retention_health", "REVISION_RECOMMENDED_SOON"),
+            }
+            for wt in tax_analysis.get("by_topic", []) if wt.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE")
+        ][:5],
+        "strong_taxonomy_areas": [
+            {
+                "subject": st.get("subject") or "General Studies",
+                "topic": st.get("taxonomy_name") or st.get("name"),
+                "accuracy": st.get("accuracy_percentage", 0.0),
+                "fsrs_stability_days": st.get("fsrs_stability_days", 5.0),
+                "retention_health": st.get("retention_health", "OPTIMAL_LONG_TERM_STABILITY"),
+            }
+            for st in tax_analysis.get("by_topic", []) if st.get("strength_status") in ("STRONG", "EXCEPTIONAL_MASTERY")
+        ][:3],
+    }
 
-    # 9. Mentorship Insights (Fast Rule-Based)
-    mentorship_insight = part_3.get("mentorship_insight") or part_3.get("llm_insight") or _generate_rule_based_insight(
-        user=user,
-        exam=exam,
-        attempt=attempt,
-        part_3=part_3,
-        taxonomy=report["part_2_taxonomy_analysis"],
+    candidate_dict = {"user_id": str(user.id), "full_name": user.full_name, "email": user.email}
+    exam_dict = {"attempt_id": str(attempt.id), "exam_id": str(exam.id), "exam_name": traceable_exam_name, "exam_code": exam.code, "mode": str(attempt.mode)}
+
+    mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+        candidate_info=candidate_dict,
+        exam_info=exam_dict,
+        precalculated_metrics=precalc_payload,
     )
 
-    # 10. Bulk Persist Report 1 (Per-Question Diagnostics)
+    # Sync AI cognitive insights and study tasks into report structures
+    ai_tasks = mentorship_insight.get("study_plan_tasks", [])
+    if "part_2_exam_macro_scorecard" in report:
+        report["part_2_exam_macro_scorecard"]["ai_cognitive_insights"] = mentorship_insight
+        if ai_tasks:
+            report["part_2_exam_macro_scorecard"]["actionable_tasks"] = ai_tasks
+    if "part_3_aggregated_user_report" in report:
+        report["part_3_aggregated_user_report"]["ai_cognitive_insights"] = mentorship_insight
+        if ai_tasks:
+            report["part_3_aggregated_user_report"]["actionable_tasks"] = ai_tasks
+    report["ai_cognitive_insights"] = mentorship_insight
+
+    # 9. Bulk Persist Report 1 (Per-Question Diagnostics) in DB (Zero S3 Upload)
     part_1_items = report.get("part_1_per_question_analysis", [])
-    q_reports_data = []
     
-    # Bulk load existing question reports in 1 query
     existing_q_reps = await session.exec(select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == attempt.id))
     q_rep_map = {r.question_id: r for r in existing_q_reps.all()}
 
@@ -1027,23 +1135,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             existing_q_rep.is_correct = q_item.get("is_correct", False)
             existing_q_rep.final_score = float(q_item.get("marks_awarded", 0.0))
             session.add(existing_q_rep)
-        
-        q_reports_data.append({**q_item, "explanation": expl_dict})
 
-    # Save Report 1 JSON to storage
-    q_report_s3_key = f"exams/{exam.code}/reports/{attempt.id}_question_report.json"
-    try:
-        await storage.upload_json({
-            "attempt_id": str(attempt.id),
-            "exam_id": str(exam.id),
-            "user_id": str(user.id),
-            "total_questions": len(q_reports_data),
-            "questions": q_reports_data,
-        }, q_report_s3_key)
-    except Exception as q_s3_err:
-        logger.warning(f"Could not upload question report JSON: {q_s3_err}")
-
-    # 11. Persist Report 2 (Exam Macro Scorecard Report)
+    # 10. Persist Report 2 (Exam Macro Scorecard Report) in DB
     report["part_3_aggregated_user_report"]["llm_insight"] = mentorship_insight
     report["part_3_aggregated_user_report"]["mentorship_insight"] = mentorship_insight
     if "part_2_exam_macro_scorecard" in report:
@@ -1065,7 +1158,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             llm_insight_json=mentorship_insight,
             full_report_json=report,
             markdown_audit_text=markdown_audit,
-            s3_report_url=report_s3_key,
+            s3_report_url=None,
         )
         session.add(att_rep)
     else:
@@ -1074,9 +1167,10 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         existing_att_rep.llm_insight_json = mentorship_insight
         existing_att_rep.full_report_json = report
         existing_att_rep.markdown_audit_text = markdown_audit
+        existing_att_rep.s3_report_url = None
         session.add(existing_att_rep)
 
-    # 12. Persist Report 3 (User Progression Delta Report)
+    # 11. Persist Report 3 (User Progression Delta Report) in DB
     updated_profile_dict = {
         "cumulative_icrs": profile.cumulative_icrs,
         "cumulative_irt_theta": profile.cumulative_irt_theta,
@@ -1114,19 +1208,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         existing_user_prog.spaced_repetition_schedule_json = {"evaluated_at": now_t.isoformat()}
         session.add(existing_user_prog)
 
-    user_prog_s3_key = f"users/{user.id}/reports/progression_{attempt.id}.json"
-    try:
-        await storage.upload_json({
-            "user_id": str(user.id),
-            "attempt_id": str(attempt.id),
-            "previous_metrics": profile_dict,
-            "updated_metrics": updated_profile_dict,
-            "deltas": deltas,
-        }, user_prog_s3_key)
-    except Exception as up_s3_err:
-        logger.warning(f"Could not upload user progression report: {up_s3_err}")
-
-    # 13. Update attempt report_metadata_json and status = EVALUATED
+    # 12. Update attempt report_metadata_json and status = EVALUATED
     attempt.report_metadata_json = report
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)

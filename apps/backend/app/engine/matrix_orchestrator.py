@@ -21,6 +21,24 @@ from app.config.logger import setup_logger
 logger = setup_logger("MatrixOrchestrator")
 
 
+def is_placeholder_taxonomy(name: Optional[str]) -> bool:
+    if not name:
+        return True
+    low = name.strip().lower()
+    placeholders = [
+        "all subjects",
+        "all topics",
+        "all subtopics",
+        "entire exam",
+        "entire subject",
+        "entire topic",
+        "all_subjects",
+        "all_topics",
+        "all_subtopics",
+    ]
+    return any(p in low for p in placeholders)
+
+
 class MatrixOrchestrator:
     """
     Mode-Aware Psychometric Engine Orchestrator.
@@ -186,9 +204,17 @@ class MatrixOrchestrator:
                 }
             )
 
-            subj_name = r.get("subject") or sol.get("subject", "General Studies")
-            top_name = r.get("topic") or sol.get("topic", "General Knowledge")
-            sub_name = r.get("subtopic") or sol.get("subtopic", "Core Concepts")
+            raw_subj = r.get("subject") if not is_placeholder_taxonomy(r.get("subject")) else None
+            raw_top = r.get("topic") if not is_placeholder_taxonomy(r.get("topic")) else None
+            raw_sub = r.get("subtopic") if not is_placeholder_taxonomy(r.get("subtopic")) else None
+
+            sol_subj = sol.get("subject") if not is_placeholder_taxonomy(sol.get("subject")) else None
+            sol_top = sol.get("topic") if not is_placeholder_taxonomy(sol.get("topic")) else None
+            sol_sub = sol.get("subtopic") if not is_placeholder_taxonomy(sol.get("subtopic")) else None
+
+            subj_name = raw_subj or sol_subj or "General Studies"
+            top_name = raw_top or sol_top or "General Knowledge"
+            sub_name = raw_sub or sol_sub or "Core Concepts"
 
             # Compute FSRS Topic Memory for this question
             mem_rec = mem_map.get(sub_name) or mem_map.get(top_name) or {}
@@ -227,6 +253,21 @@ class MatrixOrchestrator:
 
             time_score_pct = round((exp_time / max(1.0, time_taken)) * 100.0, 1)
 
+            # Unattempted behavioral classification
+            if not is_attempted:
+                if time_taken >= 35.0:
+                    unatt_behavior = "HESITATED_ABANDONED"
+                    unatt_label = "Hesitated & Abandoned (Time Lost)"
+                elif time_taken <= 5.0:
+                    unatt_behavior = "TIME_STARVED"
+                    unatt_label = "Time-Starved (Ran Out of Time)"
+                else:
+                    unatt_behavior = "STRATEGIC_SKIP"
+                    unatt_label = "Strategic Safe Skip"
+            else:
+                unatt_behavior = "ATTEMPTED"
+                unatt_label = "Attempted"
+
             part_1_questions.append(
                 {
                     "question_number": q_num,
@@ -244,6 +285,9 @@ class MatrixOrchestrator:
                     "correct_option": sol.get("correct_option_label", "A"),
                     "correct_option_id": sol.get("correct_option_id"),
                     "is_correct": is_corr,
+                    "is_attempted": is_attempted,
+                    "unattempted_behavior": unatt_behavior,
+                    "unattempted_label": unatt_label,
                     "closeness_score": round(c_score, 2),
                     "distractor_classification": c_class,
                     "closeness_classification": c_class,
@@ -275,25 +319,34 @@ class MatrixOrchestrator:
                 ("TOPIC", top_name),
                 ("SUBTOPIC", sub_name),
             ]:
+                if is_placeholder_taxonomy(tax_name):
+                    continue
                 if tax_name not in taxonomy_acc[tax_type]:
                     taxonomy_acc[tax_type][tax_name] = {
                         "name": tax_name,
+                        "subject": subj_name,
+                        "topic": top_name,
                         "total": 0,
                         "correct": 0,
                         "incorrect": 0,
                         "unattempted": 0,
                         "total_time": 0.0,
                         "expected_time": 0.0,
+                        "blooms": {"REMEMBER": 0, "UNDERSTAND": 0, "APPLY": 0, "ANALYZE": 0, "EVALUATE": 0},
+                        "blooms_correct": {"REMEMBER": 0, "UNDERSTAND": 0, "APPLY": 0, "ANALYZE": 0, "EVALUATE": 0},
                     }
                 entry = taxonomy_acc[tax_type][tax_name]
                 entry["total"] += 1
                 entry["total_time"] += time_taken
                 entry["expected_time"] += exp_time
+                b_lbl = blooms_lbl if blooms_lbl in entry["blooms"] else "ANALYZE"
+                entry["blooms"][b_lbl] = entry["blooms"].get(b_lbl, 0) + 1
 
                 if r.get("selected_option_id") is None:
                     entry["unattempted"] += 1
                 elif is_corr:
                     entry["correct"] += 1
+                    entry["blooms_correct"][b_lbl] = entry["blooms_correct"].get(b_lbl, 0) + 1
                 else:
                     entry["incorrect"] += 1
 
@@ -319,6 +372,8 @@ class MatrixOrchestrator:
             ("SUBTOPIC", "by_subtopic"),
         ]:
             for name, stats in taxonomy_acc[tax_type].items():
+                if is_placeholder_taxonomy(name):
+                    continue
                 tot = stats["total"]
                 corr = stats["correct"]
                 inc = stats["incorrect"]
@@ -385,22 +440,43 @@ class MatrixOrchestrator:
                     r_health = "CRITICAL_MEMORY_DECAY"
                     r_health_label = "Critical Decay - Revise Immediately"
 
+                blooms_data = {}
+                for b_k, b_tot in stats.get("blooms", {}).items():
+                    if b_tot > 0:
+                        b_c = stats.get("blooms_correct", {}).get(b_k, 0)
+                        blooms_data[b_k] = {
+                            "total": b_tot,
+                            "correct": b_c,
+                            "accuracy": round((b_c / max(1, b_tot)) * 100.0, 1),
+                        }
+
+                p_status = "OPTIMAL" if 0.7 <= eff_avg <= 1.35 else ("BOTTLENECK" if eff_avg > 1.35 else "RUSHED")
+                p_label = "Optimal Pace" if p_status == "OPTIMAL" else ("Time Bottleneck" if p_status == "BOTTLENECK" else "Rushed Pace")
+
                 part_3_taxonomy[key_name].append(
                     {
                         "taxonomy_name": name,
                         "taxonomy_type": tax_type,
+                        "subject": stats.get("subject", subj_name),
+                        "topic": stats.get("topic", top_name),
                         "total_questions": tot,
+                        "attempted_questions": corr + inc,
                         "correct": corr,
                         "incorrect": inc,
                         "unattempted": unatt,
                         "accuracy_percentage": acc_pct,
                         "avg_time_per_question": avg_time,
+                        "expected_time_per_question": round(exp_t / max(1, tot), 1),
                         "total_time_spent": round(tot_t, 1),
                         "time_efficiency_avg": eff_avg,
+                        "pacing_status": p_status,
+                        "pacing_label": p_label,
                         "strength_status": status,
                         "strength_label": status_label,
+                        "blooms_breakdown": blooms_data,
                         "topic_retention_pct": r_pct,
                         "fsrs_retention_pct": r_pct,
+                        "fsrs_stability_days": round(stab, 1),
                         "retention_health": r_health,
                         "retention_health_label": r_health_label,
                     }
@@ -475,6 +551,23 @@ class MatrixOrchestrator:
                 qualifying_cutoff=92.0,
             )
 
+        # Unattempted Behavioral Aggregation
+        time_starved_cnt = sum(1 for q in part_1_questions if q.get("unattempted_behavior") == "TIME_STARVED")
+        hesitated_cnt = sum(1 for q in part_1_questions if q.get("unattempted_behavior") == "HESITATED_ABANDONED")
+        strategic_cnt = sum(1 for q in part_1_questions if q.get("unattempted_behavior") == "STRATEGIC_SKIP")
+        wasted_abandoned_time = sum(q.get("time_taken_seconds", 0.0) for q in part_1_questions if q.get("unattempted_behavior") == "HESITATED_ABANDONED")
+        missed_easy_cnt = sum(1 for q in part_1_questions if not q.get("is_attempted") and str(q.get("difficulty", "")).upper() == "EASY")
+
+        unattempted_summary = {
+            "total_unattempted": tot_unatt,
+            "time_starved_count": time_starved_cnt,
+            "hesitated_abandoned_count": hesitated_cnt,
+            "strategic_skip_count": strategic_cnt,
+            "wasted_time_on_abandoned_seconds": round(wasted_abandoned_time, 1),
+            "missed_easy_questions_count": missed_easy_cnt,
+            "potential_marks_left_on_table": round(missed_easy_cnt * 2.0, 2),
+        }
+
         # Human-friendly Readiness tier labels
         icrs_tier_labels = {
             "EXCEPTIONAL_PRELIMS_READY": "Prelims Ready - Top Rank Contender",
@@ -498,14 +591,13 @@ class MatrixOrchestrator:
             "incorrect_count": sum(1 for r in response_payloads if not r["is_correct"] and r.get("selected_option_id") is not None),
         }
 
-        # 4. Instant Deterministic Rule-Based Mentorship Insights (Zero LLM Call)
+        # 4. Instant Deterministic Rule-Based Mentorship Insights
         strong_subjs = [s["taxonomy_name"] for s in part_3_taxonomy.get("by_subject", []) if s.get("strength_status") in ("STRONG", "EXCEPTIONAL_MASTERY")]
         weak_subjs = [s["taxonomy_name"] for s in part_3_taxonomy.get("by_subject", []) if s.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT")]
         weak_topics = [s["taxonomy_name"] for s in part_3_taxonomy.get("by_topic", []) if s.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT")][:3]
 
         strengths_list = []
         weaknesses_list = []
-        recommendations_list = []
 
         if strong_subjs:
             strengths_list.append(f"Demonstrated solid concept command in {', '.join(strong_subjs)}.")
@@ -527,19 +619,67 @@ class MatrixOrchestrator:
         if not weaknesses_list:
             weaknesses_list.append("Minor accuracy drop on higher-order analytical statement questions.")
 
-        if weak_topics:
-            recommendations_list.append(f"Schedule prioritized revision for high-yield weak areas: {', '.join(weak_topics)}.")
-        recommendations_list.append("Enforce a minimum 20-second reading buffer to eliminate unforced distractor errors.")
-        recommendations_list.append("Maintain steady pacing by flagging complex questions for second-pass review.")
+        # Generate Concrete Actionable Revision Tasks
+        actionable_tasks = []
+        for idx, wt in enumerate(part_3_taxonomy.get("by_topic", [])[:5], start=1):
+            if wt.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE"):
+                t_name = wt.get("taxonomy_name", "General Studies")
+                t_acc = wt.get("accuracy_percentage", 40.0)
+                missed_q_nums = [q["question_number"] for q in part_1_questions if (q.get("topic") == t_name or q.get("subject") == t_name) and not q.get("is_correct")]
+                
+                actionable_tasks.append({
+                    "task_id": f"task_{idx}_{uuid.uuid4().hex[:6]}",
+                    "title": f"Targeted Concept Revision: {t_name}",
+                    "subject": wt.get("subject") or "General Studies",
+                    "topic": t_name,
+                    "subtopic": wt.get("subtopic"),
+                    "activity_type": "CONCEPT_REVISION" if t_acc < 45.0 else "TARGETED_MCQ_PRACTICE",
+                    "priority": "CRITICAL" if t_acc < 40.0 else ("HIGH" if t_acc < 55.0 else "MEDIUM"),
+                    "allocated_time_minutes": 45 if t_acc < 40.0 else 30,
+                    "due_in_days": min(7, idx + 1),
+                    "reasoning": f"Scored {t_acc}% accuracy with {len(missed_q_nums)} incorrect/near-miss selections.",
+                    "action_checklist": [
+                        f"Review core textbook notes & syllabus chapter for {t_name}",
+                        f"Review step-by-step solution breakdowns for missed questions in this test",
+                        f"Practice 15 high-yield MCQs focusing on option elimination in {t_name}",
+                    ],
+                    "linked_question_numbers": missed_q_nums,
+                    "is_added_to_plan": False,
+                })
+
+        if not actionable_tasks:
+            actionable_tasks.append({
+                "task_id": f"task_1_{uuid.uuid4().hex[:6]}",
+                "title": "Comprehensive Mock Error Log Review",
+                "subject": "General Studies",
+                "topic": "Comprehensive Review",
+                "subtopic": "Distractor Traps",
+                "activity_type": "ERROR_LOG_AUDIT",
+                "priority": "HIGH",
+                "allocated_time_minutes": 30,
+                "due_in_days": 2,
+                "reasoning": "Consolidate learning from this attempt before the next mock test.",
+                "action_checklist": [
+                    "Review step-by-step solutions for all questions where options were switched or flagged",
+                    "Note high-yield traps into your personal revision notebook",
+                    "Schedule your next full-length benchmark mock test in 4 days",
+                ],
+                "linked_question_numbers": [],
+                "is_added_to_plan": False,
+            })
 
         instant_mentorship_insight = {
-            "strengths": strengths_list,
-            "weaknesses": weaknesses_list,
-            "recommendations": recommendations_list,
-            "closing": "Consistent targeted practice will steadily elevate your exam readiness benchmark!",
+            "executive_summary": f"Completed test with {tot_score:.2f} net marks ({round((tot_corr_count / max(1, tot_attempted)) * 100.0, 1)}% accuracy). Pacing was {pacing_eval.get('pacing_status', 'BALANCED').replace('_', ' ').title()}.",
+            "benchmark_verdict": f"Score: {tot_score:.2f} / {max_score:.2f} Marks",
+            "tactical_strengths": strengths_list,
+            "critical_vulnerabilities": weaknesses_list,
+            "pacing_and_unattempted_diagnosis": f"Paced at {pacing_eval.get('avg_time_per_question_sec', 60.0):.1f}s/question. Of {tot_unatt} unattempted questions, {time_starved_cnt} were time-starved and {hesitated_cnt} were hesitated & abandoned.",
+            "distractor_trap_critique": f"Distractor resistance index at {round((1.0 - (closeness_counts.get('Misleading Distractor (Cognitive Trap)', 0)/max(1, total_q))) * 100.0, 1)}%. Second-guess switches resulted in {switch_eval.get('net_score_impact', 0.0):+.2f} marks impact.",
+            "study_plan_tasks": actionable_tasks,
+            "closing_mentorship_advice": "Execute the recommended tasks in your study planner to steadily elevate your score benchmark!",
         }
 
-        # 5. Synthesize 7-Dimension Categorization of Weak & Strong Spots (5 to 7 tiers)
+        # 5. Synthesize 7-Dimension Categorization of Weak & Strong Spots
         weak_spots_categorized = {
             "techniques": [],
             "subject": [s["taxonomy_name"] for s in part_3_taxonomy["by_subject"] if s["strength_status"] in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT")],
@@ -569,45 +709,6 @@ class MatrixOrchestrator:
             strong_spots_categorized["techniques"].append("Disciplined Instinct & Minimal Guessing")
         if oeei_eval.get("oeei_score", 0) >= 0.70:
             strong_spots_categorized["techniques"].append("Tactical Option Elimination")
-
-        # Generate Concrete Actionable Revision Tasks (Not placeholders)
-        actionable_tasks = []
-        for idx, wt in enumerate(part_3_taxonomy.get("by_topic", [])[:5], start=1):
-            if wt.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE"):
-                t_name = wt.get("taxonomy_name", "General Studies")
-                t_acc = wt.get("accuracy_percentage", 40.0)
-                actionable_tasks.append({
-                    "task_id": f"task_{idx}_{uuid.uuid4().hex[:6]}",
-                    "title": f"Targeted Concept Revision: {t_name}",
-                    "topic": t_name,
-                    "accuracy_achieved": f"{t_acc}%",
-                    "priority": "HIGH" if t_acc < 50.0 else "MEDIUM",
-                    "due_in_days": 2 if t_acc < 50.0 else 4,
-                    "reason": f"Scored {t_acc}% accuracy with {wt.get('incorrect', 1)} incorrect/near-miss trap selections.",
-                    "action_checklist": [
-                        f"Review core textbook notes & syllabus chapter for {t_name}",
-                        f"Review step-by-step solution breakdowns for missed questions in this test",
-                        f"Practice 15 high-yield MCQs focusing on option elimination in {t_name}",
-                    ],
-                    "completed": False,
-                })
-
-        if not actionable_tasks:
-            actionable_tasks.append({
-                "task_id": f"task_1_{uuid.uuid4().hex[:6]}",
-                "title": "Comprehensive Mock Error Log Review",
-                "topic": "General Studies",
-                "accuracy_achieved": f"{score_summary['accuracy_percentage']}%",
-                "priority": "MEDIUM",
-                "due_in_days": 3,
-                "reason": "Consolidate learning from this attempt before the next full-length mock.",
-                "action_checklist": [
-                    "Review step-by-step solutions for all questions where options were switched or flagged",
-                    "Note high-yield traps into your personal revision notebook",
-                    "Schedule your next full-length benchmark mock test in 4 days",
-                ],
-                "completed": False,
-            })
 
         # Mode-Aware Benchmark Analysis (Full Mock vs Practice / Guest Exam)
         corr_marks = round(tot_corr_count * 2.0, 2)
@@ -691,6 +792,8 @@ class MatrixOrchestrator:
             "blooms_mastery": blooms_eval,
             "distractor_trap_distribution": closeness_counts,
             "closeness_distribution": closeness_counts,
+            "unattempted_summary": unattempted_summary,
+            "unattempted_analysis": unattempted_summary,
             "mentorship_insight": instant_mentorship_insight,
             "llm_insight": instant_mentorship_insight,
             "weak_spots_categorized": weak_spots_categorized,

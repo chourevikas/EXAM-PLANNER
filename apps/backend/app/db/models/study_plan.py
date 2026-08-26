@@ -2,8 +2,8 @@ import uuid
 import datetime as dt
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
-from app.db.models.types import DateTimeTZ
+from sqlmodel import SQLModel, Field, Relationship, Column
+from app.db.models.types import DateTimeTZ, PortableJSON
 from app.db.models.enums import StudyActivityType, ActivitySource
 
 if TYPE_CHECKING:

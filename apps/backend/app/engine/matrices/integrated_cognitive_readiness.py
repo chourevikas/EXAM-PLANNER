@@ -10,9 +10,9 @@ class IntegratedCognitiveReadinessEngine:
         oeei_score: float,
         pacing_skew: float,
         satoi_score: float,
-        net_score: float = 0.0,
+        net_score: float = None,
         max_score: float = 200.0,
-        attempted_count: int = 0,
+        attempted_count: int = None,
         total_questions: int = 100,
         qualifying_cutoff: float = 92.0,
     ) -> Dict[str, Any]:
@@ -32,19 +32,21 @@ class IntegratedCognitiveReadinessEngine:
             + (0.10 * pacing_component)
         )
 
-        # 2. Realistic Grounding Multiplier against UPSC Prelims Cutoff & Coverage
-        tot_q = max(1, total_questions)
-        att_cnt = max(0, min(tot_q, attempted_count))
-        coverage_ratio = att_cnt / float(tot_q)
-        
-        cutoff_target = max(1.0, qualifying_cutoff)
-        cutoff_ratio = max(0.0, min(1.2, float(net_score) / cutoff_target))
+        # 2. Grounding against Exam Benchmark Cutoff & Coverage if provided
+        if net_score is None and attempted_count is None:
+            coverage_factor = 1.0
+            icrs = round(raw_composite, 1)
+        else:
+            tot_q = max(1, total_questions or 100)
+            att_cnt = max(0, min(tot_q, attempted_count or 0))
+            coverage_ratio = att_cnt / float(tot_q)
+            
+            cutoff_target = max(1.0, qualifying_cutoff or 92.0)
+            cutoff_ratio = max(0.0, min(1.2, float(net_score or 0.0) / cutoff_target))
 
-        # Weighting: 40% base mastery + 35% net score achievement + 25% test coverage
-        coverage_factor = 0.20 + (0.80 * (0.60 * cutoff_ratio + 0.40 * coverage_ratio))
-        coverage_factor = max(0.12, min(1.0, coverage_factor))
-
-        icrs = round(raw_composite * coverage_factor, 1)
+            coverage_factor = 0.20 + (0.80 * (0.60 * cutoff_ratio + 0.40 * coverage_ratio))
+            coverage_factor = max(0.12, min(1.0, coverage_factor))
+            icrs = round(raw_composite * coverage_factor, 1)
 
         # 3. Direct, Clear UPSC Prelims Preparedness Scale
         if icrs >= 85.0:

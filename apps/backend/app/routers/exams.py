@@ -206,7 +206,7 @@ async def get_question_from_db_fallback(
     cache_key = build_cache_key("exams:q_fallback", str(exam_id), question_number)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return JSONResponse(content=cached_data)
+        return cached_data
 
     from app.db.models import Exam, Question, QuestionOption, QuestionTranslation, OptionTranslation
     from sqlmodel import select
@@ -288,7 +288,7 @@ async def get_question_from_db_fallback(
         "source": "DATABASE_FALLBACK",
     }
     await cache.set(cache_key, res_data, ttl_seconds=3600)
-    return JSONResponse(content=res_data)
+    return res_data
 
 
 @router.get("/{exam_id}/solution-artifact/{question_number}")
@@ -354,7 +354,7 @@ async def get_solution_from_db_fallback(
     cache_key = build_cache_key("exams:sol_fallback", str(exam_id), question_number)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
-        return JSONResponse(content=cached_data)
+        return cached_data
 
     from app.db.models import Exam, Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionMetadata
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
@@ -478,7 +478,7 @@ async def get_solution_from_db_fallback(
         "source": "DATABASE_FALLBACK",
     }
     await cache.set(cache_key, res_data, ttl_seconds=3600)
-    return JSONResponse(content=jsonable_encoder(res_data))
+    return jsonable_encoder(res_data)
 
 
 

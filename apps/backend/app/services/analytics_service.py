@@ -322,6 +322,14 @@ class AnalyticsService:
                     "strength_status": t.strength_status,
                 }
                 for t in tax_rows
+                if not any(
+                    kw in (t.taxonomy_name or '').lower() or kw in (t.taxonomy_id_code or '').lower()
+                    for kw in [
+                        "all subjects", "all topics", "all subtopics",
+                        "entire exam", "entire subject", "entire topic",
+                        "all_subjects", "all_topics", "all_subtopics"
+                    ]
+                )
             ],
         }
         await cache.set(cache_key, res_data, ttl_seconds=1800)
@@ -336,6 +344,29 @@ class AnalyticsService:
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if not attempt:
             raise HTTPException(status_code=404, detail="Attempt not found.")
+
+        # Check for explicit failure state
+        is_failed = (
+            (isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("status") == "FAILED")
+        )
+        if is_failed:
+            err_msg = (
+                attempt.report_metadata_json.get("error_message") 
+                if isinstance(attempt.report_metadata_json, dict) 
+                else "Psychometric evaluation failed. Please click Retry."
+            )
+            return {
+                "attempt_id": str(attempt_id),
+                "status": "FAILED",
+                "is_ready": False,
+                "is_failed": True,
+                "can_retry": True,
+                "progress_percentage": 0,
+                "message": err_msg or "Psychometric evaluation encountered an error. Click Retry to recalculate.",
+                "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
+                "raw_score": attempt.total_score,
+                "total_questions": attempt.total_questions,
+            }
 
         # Check if actual full 12-matrix evaluated report exists
         has_evaluated_report = False
@@ -371,11 +402,39 @@ class AnalyticsService:
             "attempt_id": str(attempt_id),
             "status": status_str,
             "is_ready": is_ready,
+            "is_failed": False,
+            "can_retry": False,
             "progress_percentage": progress,
             "message": message,
             "submitted_at": attempt.submitted_at.isoformat() if attempt.submitted_at else None,
             "raw_score": attempt.total_score,
             "total_questions": attempt.total_questions,
+        }
+
+    async def retry_attempt_evaluation(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+        """Manually retries evaluation for a failed or pending attempt."""
+        import asyncio
+        from app.engine.post_submission_pipeline import run_post_submission_pipeline, _IN_FLIGHT_PIPELINES
+        attempt = await self.session.get(ExamAttempt, attempt_id)
+        if not attempt:
+            raise HTTPException(status_code=404, detail="Attempt not found.")
+
+        attempt.status = AttemptStatus.SUBMITTED
+        attempt.report_metadata_json = None
+        self.session.add(attempt)
+        await self.session.commit()
+
+        # Remove from in-flight caches to allow immediate re-run
+        _IN_FLIGHT_PIPELINES.discard(attempt_id)
+        _RETRIGGERED_ATTEMPTS.discard(attempt_id)
+
+        # Launch pipeline
+        asyncio.create_task(run_post_submission_pipeline(attempt.id))
+
+        return {
+            "attempt_id": str(attempt_id),
+            "status": "SUBMITTED",
+            "message": "Evaluation re-triggered successfully. Processing in progress."
         }
 
     async def get_user_cumulative_aggregate_report(

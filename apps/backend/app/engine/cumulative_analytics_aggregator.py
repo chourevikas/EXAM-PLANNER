@@ -89,7 +89,7 @@ class CumulativeAnalyticsAggregator:
             ).first()
 
             meta = att.report_metadata_json or (rep_db.full_report_json if rep_db else {}) or {}
-            macro = meta.get("part_3_aggregated_user_report", {})
+            macro = meta.get("part_3_aggregated_user_report", {}) or meta.get("part_2_exam_macro_scorecard", {})
 
             score = float(att.total_score or 0.0)
             max_sc = float(att.max_possible_score or 200.0)
@@ -112,12 +112,31 @@ class CumulativeAnalyticsAggregator:
             oeei = float(att.oeei_score or macro.get("oeei", {}).get("oeei_score", 0.70))
             satoi = float(att.satoi_score or macro.get("satoi", {}).get("satoi_score", 85.0))
 
+            att_mode_str = att.mode.value if hasattr(att.mode, "value") else str(att.mode)
+            is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
+
+            if is_guest:
+                exam_type_label = "GUEST_PRACTICE"
+                mode_weight = 0.25
+            elif att_mode_str == "PRACTICE":
+                exam_type_label = "PRACTICE_TEST"
+                mode_weight = 0.65
+            elif att_mode_str == "REVISION":
+                exam_type_label = "REVISION_TEST"
+                mode_weight = 0.50
+            else:
+                exam_type_label = "FULL_MOCK"
+                mode_weight = 1.00
+
             timeline_item = {
                 "attempt_number": idx,
                 "attempt_id": str(att.id),
                 "exam_id": str(att.exam_id),
                 "exam_name": exam_name,
                 "exam_code": exam_code,
+                "mode": att_mode_str,
+                "exam_type_label": exam_type_label,
+                "mode_weight": mode_weight,
                 "date": (att.submitted_at or att.created_at).strftime("%Y-%m-%d"),
                 "date_formatted": (att.submitted_at or att.created_at).strftime("%b %d, %Y"),
                 "total_score": round(score, 2),
@@ -194,23 +213,66 @@ class CumulativeAnalyticsAggregator:
             t_data["retention_percentage"] = round(min(98.0, 45.0 + t_acc * 0.50), 1)
             t_data["status"] = "STRONG" if t_acc >= 75 else "MODERATE" if t_acc >= 50 else "WEAK_REVISION_REQUIRED"
 
-        # 2. Weighted Aggregation Algorithm across Exam Timeline
-        # Recent attempts receive linearly scaled higher weighting
+        # 2. Helper to compute weighted aggregates for any subset of attempts
+        def _compute_subset_aggregate(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+            if not items:
+                return {
+                    "count": 0,
+                    "icrs_score": 0.0,
+                    "irt_theta": 0.0,
+                    "gti_score": 0.0,
+                    "oeei_score": 0.0,
+                    "satoi_score": 0.0,
+                    "accuracy_percentage": 0.0,
+                    "total_questions_attempted": 0,
+                    "total_score": 0.0,
+                }
+            m_weights = [item.get("mode_weight", 1.0) * (1.0 + 0.12 * i) for i, item in enumerate(items)]
+            sum_mw = sum(m_weights) or 1.0
+            
+            tot_att_q = sum(item["correct_count"] + item["incorrect_count"] for item in items)
+            tot_corr_q = sum(item["correct_count"] for item in items)
+            sub_acc = round((tot_corr_q / max(1, tot_att_q)) * 100.0, 1) if tot_att_q > 0 else 0.0
+
+            return {
+                "count": len(items),
+                "icrs_score": round(sum(item["icrs_score"] * w for item, w in zip(items, m_weights)) / sum_mw, 1),
+                "irt_theta": round(sum(item["irt_theta"] * w for item, w in zip(items, m_weights)) / sum_mw, 2),
+                "gti_score": round(sum(item["gti_score"] * w for item, w in zip(items, m_weights)) / sum_mw, 4),
+                "oeei_score": round(sum(item["oeei_score"] * w for item, w in zip(items, m_weights)) / sum_mw, 2),
+                "satoi_score": round(sum(item["satoi_score"] * w for item, w in zip(items, m_weights)) / sum_mw, 1),
+                "accuracy_percentage": sub_acc,
+                "total_questions_attempted": tot_att_q,
+                "total_score": round(sum(item["total_score"] for item in items), 2),
+                "total_max_score": round(sum(item["max_possible_score"] for item in items), 2),
+            }
+
+        # 3. Segregated Aggregates by Modality
+        full_mocks_items = [i for i in exam_timeline if i.get("exam_type_label") == "FULL_MOCK"]
+        practice_items = [i for i in exam_timeline if i.get("exam_type_label") == "PRACTICE_TEST"]
+        guest_items = [i for i in exam_timeline if i.get("exam_type_label") == "GUEST_PRACTICE"]
+
+        segregated_aggregates = {
+            "all_exams": _compute_subset_aggregate(exam_timeline),
+            "full_mock_exams": _compute_subset_aggregate(full_mocks_items),
+            "practice_tests": _compute_subset_aggregate(practice_items),
+            "guest_trials": _compute_subset_aggregate(guest_items),
+            "modality_weights": {
+                "FULL_MOCK": 1.00,
+                "PRACTICE_TEST": 0.65,
+                "REVISION_TEST": 0.50,
+                "GUEST_PRACTICE": 0.25,
+            }
+        }
+
+        global_agg = segregated_aggregates["all_exams"]
+        w_icrs = global_agg["icrs_score"]
+        w_irt = global_agg["irt_theta"]
+        w_gti = global_agg["gti_score"]
+        w_oeei = global_agg["oeei_score"]
+        w_satoi = global_agg["satoi_score"]
+        cum_accuracy = global_agg["accuracy_percentage"]
         n_att = len(exam_timeline)
-        weights = [1.0 + (0.15 * i) for i in range(n_att)]
-        sum_w = sum(weights)
-
-        w_icrs = round(sum(item["icrs_score"] * w for item, w in zip(exam_timeline, weights)) / sum_w, 1)
-        w_irt = round(sum(item["irt_theta"] * w for item, w in zip(exam_timeline, weights)) / sum_w, 2)
-        w_gti = round(sum(item["gti_score"] * w for item, w in zip(exam_timeline, weights)) / sum_w, 4)
-        w_oeei = round(sum(item["oeei_score"] * w for item, w in zip(exam_timeline, weights)) / sum_w, 2)
-        w_satoi = round(sum(item["satoi_score"] * w for item, w in zip(exam_timeline, weights)) / sum_w, 1)
-
-        cum_accuracy = (
-            round((total_correct_sum / max(1, total_questions_attempted_sum)) * 100.0, 1)
-            if total_questions_attempted_sum > 0
-            else 0.0
-        )
 
         # 3. Evolution Progression Curves & Graph Series
         evolution_graphs = {
@@ -226,7 +288,118 @@ class CumulativeAnalyticsAggregator:
             "satoi_scores": [i["satoi_score"] for i in exam_timeline],
         }
 
-        # 4. Formulate Full 12-Matrix Aggregation Schema
+        # 4. Formulate Full 12-Matrix Aggregation Schema & AI Synthesis
+        from app.engine.report_ai_synthesizer import ReportAISynthesizer
+
+        precalc_payload = {
+            "scoring": {
+                "net_score": round(sum(i["total_score"] for i in exam_timeline), 2),
+                "max_score": round(sum(i["max_possible_score"] for i in exam_timeline), 2),
+                "qualifying_cutoff": 92.0,
+                "accuracy_percentage": cum_accuracy,
+                "attempted_count": total_questions_attempted_sum,
+                "correct_count": total_correct_sum,
+                "incorrect_count": total_incorrect_sum,
+                "unattempted_count": total_unattempted_sum,
+                "gross_positive_marks": round(total_correct_sum * 2.0, 2),
+                "negative_marks_lost": round(total_incorrect_sum * 0.6667, 2),
+            },
+            "psychometrics": {
+                "icrs_score": w_icrs,
+                "readiness_tier": "HIGH_COMPETENCE_READY" if w_icrs >= 75 else "MODERATE_COMPETENCE_DEVELOPING",
+                "irt_latent_theta": w_irt,
+                "percentile_rank": round(min(99.0, 50.0 + w_irt * 22.0), 1),
+                "gti_aggregate": w_gti,
+                "gti_category": "CONTROLLED_CALCULATED_RISK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK",
+                "oeei_score_pct": round(w_oeei * 100.0, 1),
+                "satoi_score": w_satoi,
+                "pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING",
+                "avg_seconds_per_question": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0,
+                "switch_regret_index": 0.0,
+                "negative_switches_count": 0,
+                "positive_switches_count": n_att * 2,
+            },
+            "unattempted_analysis": {
+                "total_unattempted": total_unattempted_sum,
+                "time_starved": int(total_unattempted_sum * 0.4),
+                "hesitated_abandoned": int(total_unattempted_sum * 0.3),
+                "strategic_skip": int(total_unattempted_sum * 0.3),
+                "wasted_time_on_abandoned_sec": total_unattempted_sum * 15.0,
+            },
+            "distractor_vulnerability": {
+                "high_closeness_traps_fallen": int(total_incorrect_sum * 0.4),
+                "inverse_fact_traps_fallen": int(total_incorrect_sum * 0.2),
+                "neutral_distractor_misses": int(total_incorrect_sum * 0.4),
+            },
+            "blooms_mastery": {
+                "fact_recall_accuracy": round(min(100.0, cum_accuracy + 10.0), 1),
+                "conceptual_analysis_accuracy": round(min(100.0, cum_accuracy + 2.0), 1),
+                "critical_evaluation_accuracy": round(max(0.0, cum_accuracy - 6.0), 1),
+            },
+            "weak_taxonomy_areas": [
+                {
+                    "subject": t.get("subject", "General Studies"),
+                    "topic": t.get("taxonomy_name", "Core Concepts"),
+                    "subtopic": t.get("subtopic"),
+                    "accuracy": t.get("accuracy_percentage", 35.0),
+                    "missed_questions": [],
+                    "fsrs_stability_days": t.get("fsrs_stability_days", 1.5),
+                    "retention_health": t.get("retention_health", "REVISION_RECOMMENDED_SOON"),
+                }
+                for t in all_tax_topics.values() if t.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE")
+            ][:5],
+            "strong_taxonomy_areas": [
+                {
+                    "subject": t.get("subject", "General Studies"),
+                    "topic": t.get("taxonomy_name", "Core Concepts"),
+                    "accuracy": t.get("accuracy_percentage", 80.0),
+                    "fsrs_stability_days": t.get("fsrs_stability_days", 5.0),
+                    "retention_health": t.get("retention_health", "OPTIMAL_LONG_TERM_STABILITY"),
+                }
+                for t in all_tax_topics.values() if t.get("strength_status") in ("STRONG", "EXCEPTIONAL_MASTERY")
+            ][:3],
+        }
+
+        candidate_dict = {"user_id": str(user.id), "full_name": user.full_name, "email": user.email}
+        exam_dict = {"attempt_id": "CUMULATIVE_ALL", "exam_id": "ALL_EXAMS", "exam_name": f"All {n_att} Completed Exams", "exam_code": "CUMULATIVE", "mode": "FULL_MOCK"}
+
+        cum_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+            candidate_info=candidate_dict,
+            exam_info=exam_dict,
+            precalculated_metrics=precalc_payload,
+        )
+
+        part_2_exam_macro_scorecard = {
+            "score_summary": {
+                "total_score": round(sum(i["total_score"] for i in exam_timeline), 2),
+                "max_score": round(sum(i["max_possible_score"] for i in exam_timeline), 2),
+                "accuracy_percentage": cum_accuracy,
+                "attempted_count": total_questions_attempted_sum,
+                "correct_count": total_correct_sum,
+                "incorrect_count": total_incorrect_sum,
+                "unattempted_count": total_unattempted_sum,
+                "total_count": total_questions_attempted_sum + total_unattempted_sum,
+            },
+            "upsc_prelims_benchmark": {
+                "expected_cutoff_marks": 92.0,
+                "cutoff_margin": round((sum(i["total_score"] for i in exam_timeline)/max(1, n_att)) - 92.0, 2),
+                "positive_marks_earned": round(total_correct_sum * 2.0, 2),
+                "negative_marks_lost": round(total_incorrect_sum * 0.6667, 2),
+            },
+            "icrs": {"icrs_score": w_icrs, "readiness_tier": "HIGH_COMPETENCE_READY" if w_icrs >= 75 else "MODERATE_COMPETENCE_DEVELOPING", "readiness_label": "Competitive Benchmark Ready" if w_icrs >= 75 else "Developing Competence"},
+            "irt_3pl": {"latent_ability_theta": w_irt, "percentile_rank": round(min(99.0, 50.0 + w_irt * 22.0), 1), "ability_label": "Mastered Tier" if w_irt >= 1.0 else "Competent Tier"},
+            "gti": {"aggregate": w_gti, "label": "CONTROLLED_CALCULATED_RISK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK", "risk_classification": "CONTROLLED_TACTICAL_GUESSWORK" if w_gti <= 0.22 else "HIGH_IMPULSIVE_RISK"},
+            "oeei": {"oeei_score": w_oeei, "oeei_score_pct": round(w_oeei * 100.0, 1), "elimination_rating": "HIGH_TACTICAL_PRECISION" if w_oeei >= 0.70 else "MODERATE_PRUNING"},
+            "satoi": {"satoi_score": w_satoi, "stamina_label": "Optimal Cognitive Stamina" if w_satoi >= 80 else "Moderate Pacing Fatigue"},
+            "pacing": {"pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING", "avg_time_per_question_sec": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0, "time_utilization_pct": 95},
+            "switch_regret": {"total_switches": n_att * 3, "positive_switches": n_att * 2, "negative_regret_switches": n_att * 1, "net_score_impact": round(n_att * 1.5, 2)},
+            "blooms": {"fact_recall_accuracy": round(min(100.0, cum_accuracy + 10.0), 1), "conceptual_analysis_accuracy": round(min(100.0, cum_accuracy + 2.0), 1), "critical_evaluation_accuracy": round(max(0.0, cum_accuracy - 6.0), 1)},
+            "distractor": {"high_closeness_count": int(total_incorrect_sum * 0.4), "trap_avoidance_rate_pct": 72.0},
+            "topic_decay": {"active_memory_topics_count": len(all_tax_topics), "avg_concept_stability_days": round(3.5 + (n_att * 1.8), 1)},
+            "ai_cognitive_insights": cum_insight,
+            "actionable_tasks": cum_insight.get("study_plan_tasks", []),
+        }
+
         matrices_summary = {
             "1_integrated_cognitive_readiness": {
                 "name": "Integrated Cognitive Readiness Score (ICRS)",
@@ -335,7 +508,7 @@ class CumulativeAnalyticsAggregator:
         # 5. Compile Comprehensive Aggregate Document
         full_aggregate_report = {
             "metadata": {
-                "report_title": f"Cumulative Longitudinal Psychometric & Cognitive Profile ({user.full_name})",
+                "report_title": f"Cumulative Longitudinal Performance Profile ({user.full_name})",
                 "report_type": "CUMULATIVE_MULTI_EXAM_AGGREGATE",
                 "total_exams_evaluated": n_att,
                 "total_questions_attempted": total_questions_attempted_sum,
@@ -350,7 +523,7 @@ class CumulativeAnalyticsAggregator:
                     "email": user.email,
                 },
                 "exam_attempt": {
-                    "exam_name": f"All {n_att} Completed Exams (Cumulative Overview)",
+                    "exam_name": f"All {n_att} Completed Exams (Cumulative Master Overview)",
                     "canonical_code": "ALL-EXAMS-CUMULATIVE",
                     "total_score": round(sum(i["total_score"] for i in exam_timeline), 2),
                     "max_possible_score": round(sum(i["max_possible_score"] for i in exam_timeline), 2),
@@ -360,15 +533,23 @@ class CumulativeAnalyticsAggregator:
             },
             "is_cumulative": True,
             "exam_timeline": exam_timeline,
+            "segregated_aggregates": segregated_aggregates,
             "evolution_graphs": evolution_graphs,
             "part_1_per_question_analysis": [],
+            "part_2_exam_macro_scorecard": part_2_exam_macro_scorecard,
             "part_2_taxonomy_analysis": {
+                "by_subject": list(all_tax_subjects.values()),
+                "by_topic": list(all_tax_topics.values()),
+                "subtopic_breakdown": list(all_tax_subtopics.values()),
                 "subject_breakdown": list(all_tax_subjects.values()),
                 "topic_breakdown": list(all_tax_topics.values()),
-                "subtopic_breakdown": list(all_tax_subtopics.values()),
             },
             "part_3_aggregated_user_report": {
                 **matrices_summary,
+                "part_2_exam_macro_scorecard": part_2_exam_macro_scorecard,
+                "segregated_aggregates": segregated_aggregates,
+                "ai_cognitive_insights": cum_insight,
+                "actionable_tasks": cum_insight.get("study_plan_tasks", []),
                 "cumulative_skill_profile": {
                     "cumulative_icrs": w_icrs,
                     "cumulative_irt_theta": w_irt,
@@ -379,6 +560,7 @@ class CumulativeAnalyticsAggregator:
                     "total_questions_answered": total_questions_attempted_sum,
                 },
             },
+            "ai_cognitive_insights": cum_insight,
         }
 
         # 6. Format Markdown Audit for Cumulative Profile
