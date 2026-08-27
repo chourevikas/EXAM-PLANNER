@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, Check, Search } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2 } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
@@ -54,8 +54,167 @@ export function StudentPracticeExamPage() {
   // Modal & Popup States
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showNoMoreQuestionsModal, setShowNoMoreQuestionsModal] = useState(false);
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
   const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
+
+  // Dynamic Recommended Questions Pool
+  const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
+  const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
+
+  // Background prefetch function for dynamic recommended questions
+  const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
+    if (isPrefetchingRecs) return;
+    setIsPrefetchingRecs(true);
+
+    try {
+      const existingIds = new Set<string>();
+      currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+      currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+      Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
+      Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
+
+      const excludeIdsParam = Array.from(existingIds).join(',');
+
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      let querySubject = rawSubject;
+      let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+      if (querySubject || queryTopic) {
+        try {
+          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic });
+          if (verifyRes && verifyRes.is_valid) {
+            if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
+            if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
+          }
+        } catch (err) {
+          // ignore verification fallback
+        }
+      }
+
+      // Step 1: Exact subject + topic with exclude_ids
+      const params = new URLSearchParams({ limit: '5' });
+      if (querySubject) params.append('subject_name', querySubject);
+      if (queryTopic) params.append('topic_name', queryTopic);
+      if (targetExam) params.append('exam_name', targetExam);
+      if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
+
+      let res = await fetch(`/api/v1/questions?${params.toString()}`);
+      let newFetched: any[] = [];
+      if (res.ok) {
+        const data = await res.json();
+        newFetched = data.items || [];
+      }
+
+      // Step 2: Fallback - relax topic while preserving subject
+      if (newFetched.length === 0 && querySubject) {
+        const fallbackParams = new URLSearchParams({ limit: '5' });
+        fallbackParams.append('subject_name', querySubject);
+        if (targetExam) fallbackParams.append('exam_name', targetExam);
+        if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
+
+        res = await fetch(`/api/v1/questions?${fallbackParams.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          newFetched = data.items || [];
+        }
+      }
+
+      if (newFetched.length > 0) {
+        const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
+          const rawOptions = item.options || [];
+          const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+            option_id: o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+            option_label: o.option_label || String.fromCharCode(65 + oIdx),
+            text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+            is_correct: Boolean(o.is_correct),
+          }));
+          return {
+            question_id: item.question_id,
+            question_number: 0,
+            text: item.question_text || item.text || '',
+            options: optionsList,
+            section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
+            topic_name: item.topic_name || queryTopic,
+            subtopic_name: item.subtopic_name,
+            difficulty: item.difficulty || 'MEDIUM',
+            marks: item.marks || 2.0,
+            negative_marks: item.negative_marks || 0.66,
+            expected_time_seconds: item.expected_time_seconds || 60,
+            explanation: item.explanation || item.explanation_text || '',
+          } as any;
+        });
+
+        setRecommendedPool((prev) => {
+          const combinedMap = new Map<string, QuestionOut>();
+          prev.forEach((q) => combinedMap.set(q.question_id, q));
+          formatted.forEach((q) => {
+            if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
+              combinedMap.set(q.question_id, q);
+            }
+          });
+          return Array.from(combinedMap.values()).slice(0, 5);
+        });
+      }
+    } catch (err) {
+      console.warn('Background recommendation prefetch error:', err);
+    } finally {
+      setIsPrefetchingRecs(false);
+    }
+  }, [gSubject, gTopic, gExam, isPrefetchingRecs]);
+
+  useEffect(() => {
+    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs) {
+      prefetchRecommendations(allQuestions, recommendedPool);
+    }
+  }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
+
+  // Handler to jump to or queue a recommended question
+  const handleSelectRecommendation = (recQ: QuestionOut) => {
+    const existingIdx = allQuestions.findIndex((q) => q.question_id === recQ.question_id);
+    if (existingIdx !== -1) {
+      setCurrentQIndex(existingIdx);
+      setActiveQuestion(allQuestions[existingIdx]);
+      return;
+    }
+
+    const newQNumber = allQuestions.length + 1;
+    const newQ: QuestionOut = {
+      ...recQ,
+      question_number: newQNumber,
+    };
+
+    const updatedQuestions = [...allQuestions, newQ];
+    setAllQuestions(updatedQuestions);
+    setTotalQuestions(updatedQuestions.length);
+    setCurrentQIndex(updatedQuestions.length - 1);
+    setActiveQuestion(newQ);
+
+    setPalette((prev) => [
+      ...prev,
+      {
+        question_number: newQNumber,
+        question_id: newQ.question_id,
+        question_status: 'VISITED' as any,
+      },
+    ]);
+
+    setRecommendedPool((prev) => prev.filter((q) => q.question_id !== recQ.question_id));
+  };
+
+  // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
+  const displayRecs = useMemo(() => {
+    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
+    const combinedMap = new Map<string, QuestionOut>();
+    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
+    recommendedPool.forEach((q) => {
+      if (!combinedMap.has(q.question_id)) {
+        combinedMap.set(q.question_id, q);
+      }
+    });
+    return Array.from(combinedMap.values()).slice(0, 5);
+  }, [allQuestions, currentQIndex, recommendedPool]);
 
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -190,7 +349,7 @@ export function StudentPracticeExamPage() {
         const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
 
         // 1. Try with subject + topic + year + selected exam
-        const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+        const p1 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
         if (reqSubject) p1.append('subject_name', reqSubject);
         if (reqTopic) p1.append('topic_name', reqTopic);
         if (numericYear) p1.append('exam_year', numericYear);
@@ -200,7 +359,7 @@ export function StudentPracticeExamPage() {
 
         // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
         if (fetchedMap.size === 0 && reqTopic) {
-          const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          const p2 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           if (reqSubject) p2.append('subject_name', reqSubject);
           p2.append('topic_name', reqTopic);
           if (targetExam) p2.append('exam_name', targetExam);
@@ -209,7 +368,7 @@ export function StudentPracticeExamPage() {
 
         // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
         if (fetchedMap.size === 0 && reqSubject) {
-          const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          const p3 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           p3.append('subject_name', reqSubject);
           if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
@@ -217,7 +376,7 @@ export function StudentPracticeExamPage() {
 
         // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
         if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject) {
-          const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          const p4 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           p4.append('subject_name', rawSubject);
           if (targetExam) p4.append('exam_name', targetExam);
           await fetchWithParams(p4);
@@ -225,14 +384,14 @@ export function StudentPracticeExamPage() {
 
         // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
         if (fetchedMap.size === 0 && (reqSubject || rawSubject)) {
-          const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          const p5 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           p5.append('subject_name', reqSubject || rawSubject);
           await fetchWithParams(p5);
         }
 
         // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
         if (fetchedMap.size === 0 && !rawSubject) {
-          const p6 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          const p6 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
           if (targetExam) p6.append('exam_name', targetExam);
           await fetchWithParams(p6);
         }
@@ -241,12 +400,6 @@ export function StudentPracticeExamPage() {
       }
 
       let fetchedList = Array.from(fetchedMap.values());
-      
-      // Cap at user-selected question count
-      if (fetchedList.length > gCount) {
-        fetchedList = fetchedList.slice(0, gCount);
-      }
-
       const questionsList: QuestionOut[] = fetchedList.map((item, idx) => formatQuestion(item, idx));
 
       setAllQuestions(questionsList);
@@ -1177,6 +1330,93 @@ export function StudentPracticeExamPage() {
           backgroundColor: '#F8FAFC',
         }}
       >
+        {/* Left Side Recommended Questions Sidebar */}
+        {!isMobile && (
+          <aside
+            style={{
+              width: 270,
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 18,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '16px 14px',
+              gap: 14,
+              overflowY: 'auto',
+              flexShrink: 0,
+              height: 'calc(100% - 40px)',
+              maxHeight: 'calc(100% - 40px)',
+              marginLeft: 24,
+              marginTop: 12,
+              marginBottom: 28,
+              boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+            }}
+          >
+            {/* Header */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#1E3A8A' }} />
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    RECOMMENDED FOR YOU
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
+                  {displayRecs.length} Qs
+                </span>
+              </div>
+              <p style={{ fontSize: 11.5, color: '#64748B', margin: 0, lineHeight: 1.35 }}>
+                Matched questions for {gSubject || 'your focus area'}.
+              </p>
+            </div>
+
+            {/* Stacked Dynamic Recommendation Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {displayRecs.length === 0 ? (
+                <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
+                  Loading recommendations...
+                </div>
+              ) : (
+                displayRecs.map((rec, idx) => {
+                  return (
+                    <div
+                      key={rec.question_id || idx}
+                      onClick={() => handleSelectRecommendation(rec)}
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 10,
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.borderColor = '#E2E8F0';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
+                        {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </aside>
+        )}
+
         {/* Center Reading Canvas */}
         <ExamQuestionCard
           question={activeQuestion}
@@ -1194,7 +1434,15 @@ export function StudentPracticeExamPage() {
           onShowSolution={() => handleShowSolution()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
-          onNext={() => currentQIndex < totalQuestions - 1 && handleSelectQuestion(currentQIndex + 1)}
+          onNext={() => {
+            if (currentQIndex < totalQuestions - 1) {
+              handleSelectQuestion(currentQIndex + 1);
+            } else if (recommendedPool.length > 0) {
+              handleSelectRecommendation(recommendedPool[0]);
+            } else {
+              setShowNoMoreQuestionsModal(true);
+            }
+          }}
         />
 
       </div>
@@ -1357,6 +1605,130 @@ export function StudentPracticeExamPage() {
                 }}
               >
                 Leave Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No More Questions Available Pop-up Modal */}
+      {showNoMoreQuestionsModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 22,
+              padding: '32px 28px',
+              border: '1.5px solid #E2E8F0',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+              textAlign: 'center',
+              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                backgroundColor: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                color: '#059669',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+              }}
+            >
+              <CheckCircle2 size={28} color="#059669" />
+            </div>
+
+            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Subject Practice Complete
+            </div>
+
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+              No More Questions Available
+            </h3>
+
+            <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 24px 0' }}>
+              You've completed all available practice questions for <strong>{gSubject || 'this subject'}</strong>. Try selecting a different subject or topic to continue practicing!
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNoMoreQuestionsModal(false);
+                  navigate('/practice-tests');
+                }}
+                style={{
+                  width: '100%',
+                  height: 46,
+                  borderRadius: 14,
+                  border: 'none',
+                  backgroundColor: '#1E3A8A',
+                  color: '#FFFFFF',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(30, 58, 138, 0.3)',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1D4ED8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1E3A8A';
+                }}
+              >
+                Select Another Subject &rsaquo;
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowNoMoreQuestionsModal(false)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1.5px solid #E2E8F0',
+                  backgroundColor: '#FFFFFF',
+                  color: '#64748B',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.color = '#334155';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.color = '#64748B';
+                }}
+              >
+                Review Attempted Questions
               </button>
             </div>
           </div>

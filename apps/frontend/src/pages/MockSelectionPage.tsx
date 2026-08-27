@@ -47,7 +47,6 @@ export function MockSelectionPage() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
-  const [questionCount, setQuestionCount] = useState<number>(10);
 
   // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
   useEffect(() => {
@@ -194,7 +193,6 @@ export function MockSelectionPage() {
       year: finalYear,
       subject: finalSubject,
       topic: finalTopic,
-      count: questionCount.toString(),
     });
 
     navigate(`/practice-exam?${queryParams.toString()}`);
@@ -447,40 +445,14 @@ export function MockSelectionPage() {
           </div>
 
 
-          {/* Question Count and CTA Button Row */}
+          {/* CTA Button Row */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 16,
+            justifyContent: 'flex-end',
             paddingTop: 20,
             borderTop: '1px dashed #E2E8F0'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#64748B' }}>Questions:</span>
-              {[10, 15, 20, 30].map((count) => (
-                <button
-                  key={count}
-                  type="button"
-                  onClick={() => setQuestionCount(count)}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: 8,
-                    border: questionCount === count ? '1.5px solid #3B82F6' : '1px solid #E2E8F0',
-                    backgroundColor: '#FFFFFF',
-                    color: questionCount === count ? '#2563EB' : '#475569',
-                    fontWeight: questionCount === count ? 700 : 500,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {count} Qs
-                </button>
-              ))}
-            </div>
-
             <button
               type="submit"
               style={{
