@@ -365,6 +365,9 @@ async def _generate_and_save_single_question_explanation(
             elif "EVALUATE" in blooms_str:
                 blooms_time = 110
                 blooms_enum = BloomsLevel.EVALUATE
+            elif "CREATE" in blooms_str:
+                blooms_time = 120
+                blooms_enum = BloomsLevel.CREATE
             else:
                 blooms_time = 90
                 blooms_enum = BloomsLevel.ANALYZE

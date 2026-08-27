@@ -88,10 +88,18 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name and subject_name != "All Subjects" and subject_name.strip():
             clean_s = subject_name.strip().lower()
-            id_stmt = id_stmt.where(or_(
+            tokens = [t for t in clean_s.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in ("and", "the", "for", "all")]
+            
+            subject_conditions = [
                 func.lower(Subject.name).contains(clean_s),
                 func.lower(Question.section_code).contains(clean_s)
-            ))
+            ]
+            for token in tokens:
+                subject_conditions.append(func.lower(Subject.name).contains(token))
+                subject_conditions.append(func.lower(Question.section_code).contains(token))
+                subject_conditions.append(func.lower(Topic.name).contains(token))
+            
+            id_stmt = id_stmt.where(or_(*subject_conditions))
         if subject_code:
             id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
 

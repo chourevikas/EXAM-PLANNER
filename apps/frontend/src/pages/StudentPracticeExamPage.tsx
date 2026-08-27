@@ -145,21 +145,18 @@ export function StudentPracticeExamPage() {
         } as any;
       };
 
-      // 2. Validate / Normalize taxonomy node via backend syllabus verification (/api/v1/syllabus/verify)
-      let reqSubject = gSubject !== 'All Subjects' ? gSubject : '';
-      let reqTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic : '';
-      let reqSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '';
+      const rawSubject = gSubject !== 'All Subjects' ? gSubject.trim() : '';
+      let reqSubject = rawSubject;
+      let reqTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
 
       try {
         const verified = await verifySyllabusNode({
           subject: reqSubject,
           topic: reqTopic,
-          subtopic: reqSubtopic,
         });
         if (verified && verified.is_valid) {
           if (verified.resolved_node?.subject) reqSubject = verified.resolved_node.subject;
           if (verified.resolved_node?.topic) reqTopic = verified.resolved_node.topic;
-          if (verified.resolved_node?.subtopic) reqSubtopic = verified.resolved_node.subtopic;
         }
       } catch (err) {
         console.warn('Practice exam verifySyllabusNode warning:', err);
@@ -190,37 +187,54 @@ export function StudentPracticeExamPage() {
       };
 
       try {
-        // 1. Try with full specificity (subject + topic + subtopic + year)
+        const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+        // 1. Try with subject + topic + year + selected exam
         const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (reqSubject) p1.append('subject_name', reqSubject);
         if (reqTopic) p1.append('topic_name', reqTopic);
-        if (reqSubtopic) p1.append('subtopic_name', reqSubtopic);
         if (numericYear) p1.append('exam_year', numericYear);
-        if (gExam) p1.append('exam_name', gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase());
+        if (targetExam) p1.append('exam_name', targetExam);
 
         await fetchWithParams(p1);
 
-        // 2. Fallback: Relax subtopic & year if 0 questions found
+        // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
         if (fetchedMap.size === 0 && reqTopic) {
           const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
           if (reqSubject) p2.append('subject_name', reqSubject);
           p2.append('topic_name', reqTopic);
-          p2.append('exam_name', 'upsc');
+          if (targetExam) p2.append('exam_name', targetExam);
           await fetchWithParams(p2);
         }
 
-        // 3. Fallback: Relax topic if still 0 questions found
+        // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
         if (fetchedMap.size === 0 && reqSubject) {
           const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
           p3.append('subject_name', reqSubject);
-          p3.append('exam_name', 'upsc');
+          if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
         }
 
-        // 4. Fallback: General authentic questions pool if specific combination returned 0
-        if (fetchedMap.size === 0) {
+        // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
+        if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject) {
           const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          p4.append('subject_name', rawSubject);
+          if (targetExam) p4.append('exam_name', targetExam);
           await fetchWithParams(p4);
+        }
+
+        // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
+        if (fetchedMap.size === 0 && (reqSubject || rawSubject)) {
+          const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          p5.append('subject_name', reqSubject || rawSubject);
+          await fetchWithParams(p5);
+        }
+
+        // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
+        if (fetchedMap.size === 0 && !rawSubject) {
+          const p6 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (targetExam) p6.append('exam_name', targetExam);
+          await fetchWithParams(p6);
         }
       } catch (err) {
         console.warn('Practice questions fetch warning:', err);
@@ -632,7 +646,7 @@ export function StudentPracticeExamPage() {
         <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, padding: '40px 32px', maxWidth: 480, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>No Practice Questions Found</h2>
           <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
-            No practice questions mapped to <strong>{gSubtopic && gSubtopic !== 'Choose Subtopic' ? gSubtopic : gTopic}</strong> were found.
+            No practice questions mapped to <strong>{gTopic || gSubject}</strong> were found.
           </p>
           <button
             onClick={() => navigate('/mocks')}
@@ -648,7 +662,7 @@ export function StudentPracticeExamPage() {
               boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
             }}
           >
-            Select Another Topic / Subtopic
+            Select Another Topic
           </button>
         </div>
       </div>
@@ -669,13 +683,13 @@ export function StudentPracticeExamPage() {
       {/* Top Header Bar */}
       <ExamHeader
         examTitle={gExam}
-        paperSubtitle={`${gExam} · ${gYear} · ${gSubtopic}`}
+        paperSubtitle={`${gExam} · ${gYear}${gTopic ? ' · ' + gTopic : ''}`}
         timeLeft={timeLeft}
         language={language}
         showSubmitButton={true}
         showTimer={false}
         topicName={gTopic}
-        subtopicName={gSubtopic}
+        subtopicName={''}
         parentBreadcrumb="Student Dashboard"
         onBack={() => setShowLeaveModal(true)}
         onLanguageChange={(lang) => setLanguage(lang)}

@@ -197,25 +197,25 @@ export function GuestExamPage() {
         }
       };
 
-      // Optional pre-query canonical alignment via POST /api/v1/syllabus/verify
-      let querySubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      let querySubject = rawSubject;
       let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-      let querySubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
 
-      if (querySubject || queryTopic || querySubtopic) {
+      if (querySubject || queryTopic) {
         try {
-          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic, subtopic: querySubtopic });
+          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic });
           if (verifyRes && verifyRes.is_valid) {
             if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
             if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
-            if (verifyRes.canonical_subtopic) querySubtopic = verifyRes.canonical_subtopic;
           }
         } catch (err) {
           console.warn('Syllabus node verification check failed, using raw query params:', err);
         }
       }
 
-      // 1. Try with full specificity (subject + topic + subtopic + year)
+      const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+      // 1. Try with subject + topic + year + selected exam
       const p1 = new URLSearchParams({ limit: gCount.toString() });
       if (querySubject) {
         p1.append('subject_name', querySubject);
@@ -223,42 +223,62 @@ export function GuestExamPage() {
       if (queryTopic) {
         p1.append('topic_name', queryTopic);
       }
-      if (querySubtopic) {
-        p1.append('subtopic_name', querySubtopic);
-      }
       const rawYearDigits = gYear.replace(/\D/g, '');
       if (rawYearDigits && !isNaN(Number(rawYearDigits)) && Number(rawYearDigits) >= 2000 && Number(rawYearDigits) <= 2024) {
         p1.append('exam_year', rawYearDigits);
       }
-      if (gExam && gExam.toLowerCase().includes('upsc')) {
-        p1.append('exam_name', 'upsc');
+      if (targetExam) {
+        p1.append('exam_name', targetExam);
       }
       await fetchWithParams(p1);
 
-      // 2. Fallback: Relax subtopic & year if 0 questions found
+      // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
       if (fetchedMap.size === 0 && queryTopic) {
         const p2 = new URLSearchParams({ limit: gCount.toString() });
         if (querySubject) {
           p2.append('subject_name', querySubject);
         }
         p2.append('topic_name', queryTopic);
-        p2.append('exam_name', 'upsc');
+        if (targetExam) {
+          p2.append('exam_name', targetExam);
+        }
         await fetchWithParams(p2);
       }
 
-      // 3. Fallback: Relax topic if still 0 questions found
+      // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
       if (fetchedMap.size === 0 && querySubject) {
         const p3 = new URLSearchParams({ limit: gCount.toString() });
         p3.append('subject_name', querySubject);
-        p3.append('exam_name', 'upsc');
+        if (targetExam) {
+          p3.append('exam_name', targetExam);
+        }
         await fetchWithParams(p3);
       }
 
-
-      // 4. Fallback: General authentic UPSC questions pool
-      if (fetchedMap.size === 0) {
-        const p4 = new URLSearchParams({ limit: gCount.toString(), exam_name: 'upsc' });
+      // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
+      if (fetchedMap.size === 0 && rawSubject && rawSubject !== querySubject) {
+        const p4 = new URLSearchParams({ limit: gCount.toString() });
+        p4.append('subject_name', rawSubject);
+        if (targetExam) {
+          p4.append('exam_name', targetExam);
+        }
         await fetchWithParams(p4);
+      }
+
+      // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
+      if (fetchedMap.size === 0 && (querySubject || rawSubject)) {
+        const p5 = new URLSearchParams({ limit: gCount.toString() });
+        p5.append('subject_name', querySubject || rawSubject);
+        await fetchWithParams(p5);
+      }
+
+      // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
+      if (fetchedMap.size === 0 && !rawSubject) {
+        const p6 = new URLSearchParams({ limit: gCount.toString() });
+        if (targetExam) {
+          p6.append('exam_name', targetExam);
+        }
+        await fetchWithParams(p6);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
@@ -270,6 +290,9 @@ export function GuestExamPage() {
         if (filteredByDiff.length > 0) {
           questionsList = filteredByDiff;
         }
+      }
+      if (questionsList.length > gCount) {
+        questionsList = questionsList.slice(0, gCount);
       }
 
       setAllQuestions(questionsList);

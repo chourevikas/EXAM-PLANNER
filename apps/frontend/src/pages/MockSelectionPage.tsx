@@ -47,7 +47,6 @@ export function MockSelectionPage() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
-  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('All Subtopics (Entire Topic)');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
   // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
@@ -112,37 +111,6 @@ export function MockSelectionPage() {
 
     return defaultList;
   }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
-
-  // Compute available subtopics for the chosen subject & topic directly from DB taxonomy API
-  const availableSubtopics = useMemo(() => {
-    const defaultList = ['All Subtopics (Entire Topic)'];
-    if (!selectedSubject || !selectedTopic || selectedTopic.startsWith('All Topics')) {
-      return defaultList;
-    }
-
-    const currentSubj = masterSubjects.find(
-      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
-    );
-    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics)) {
-      const currentTopic = currentSubj.topics.find(
-        (t: any) => t.name === selectedTopic || t.name.toLowerCase().includes(selectedTopic.toLowerCase())
-      );
-      if (currentTopic && currentTopic.subtopics && Array.isArray(currentTopic.subtopics) && currentTopic.subtopics.length > 0) {
-        const subtopicNames = currentTopic.subtopics
-          .map((st: any) => (typeof st === 'string' ? st : st.name))
-          .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Subtopics'));
-        if (subtopicNames.length > 0) return [...defaultList, ...subtopicNames];
-      }
-    }
-
-    const rawSubs = threeLevelHierarchy[selectedSubject]?.[selectedTopic];
-    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
-      const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
-      if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
-    }
-
-    return defaultList;
-  }, [selectedSubject, selectedTopic, masterSubjects, threeLevelHierarchy]);
 
 
   useEffect(() => {
@@ -219,7 +187,6 @@ export function MockSelectionPage() {
     e.preventDefault();
     const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : '');
     const finalTopic = selectedTopic || 'All Topics (Entire Subject)';
-    const finalSubtopic = selectedSubtopic || 'All Subtopics (Entire Topic)';
     const finalYear = selectedYear || (yearOptions.length > 0 ? yearOptions[0] : '');
 
     const queryParams = new URLSearchParams({
@@ -227,7 +194,6 @@ export function MockSelectionPage() {
       year: finalYear,
       subject: finalSubject,
       topic: finalTopic,
-      subtopic: finalSubtopic,
       count: questionCount.toString(),
     });
 
@@ -430,7 +396,6 @@ export function MockSelectionPage() {
                 onChange={(e) => {
                   setSelectedSubject(e.target.value);
                   setSelectedTopic('All Topics (Entire Subject)');
-                  setSelectedSubtopic('All Subtopics (Entire Topic)');
                 }}
                 style={{
                   width: '100%',
@@ -460,7 +425,6 @@ export function MockSelectionPage() {
                 value={selectedTopic}
                 onChange={(e) => {
                   setSelectedTopic(e.target.value);
-                  setSelectedSubtopic('All Subtopics (Entire Topic)');
                 }}
                 style={{
                   width: '100%',
@@ -477,33 +441,6 @@ export function MockSelectionPage() {
               >
                 {availableTopics.map((t) => (
                   <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Subtopic */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
-                Subtopic
-              </label>
-              <select
-                value={selectedSubtopic}
-                onChange={(e) => setSelectedSubtopic(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 10,
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FAFAFC',
-                  color: '#1E293B',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  outline: 'none',
-                }}
-              >
-                {availableSubtopics.map((sub) => (
-                  <option key={sub} value={sub}>{sub}</option>
                 ))}
               </select>
             </div>

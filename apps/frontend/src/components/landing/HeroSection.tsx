@@ -27,12 +27,11 @@ export function HeroSection({ }: HeroSectionProps) {
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
-  // Form selections (Subject is required, Topic & Subtopic are optional)
+  // Form selections (Subject is required, Topic is optional)
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
-  const [selectedSubtopic, setSelectedSubtopic] = useState<string>('All Subtopics (Entire Topic)');
   const [questionCount, setQuestionCount] = useState<number>(10);
 
   // Fetch Dynamic 3-level Taxonomy from Backend API (/api/v1/syllabus) and Exams By Year (/api/v1/exams/by-year)
@@ -100,62 +99,19 @@ export function HeroSection({ }: HeroSectionProps) {
     return defaultList;
   }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
 
-  // Compute available subtopics for the chosen subject and topic directly from DB taxonomy API
-  const availableSubtopics = useMemo(() => {
-    const defaultList = ['All Subtopics (Entire Topic)'];
-    if (!selectedSubject || !selectedTopic || selectedTopic.startsWith('All Topics')) {
-      return defaultList;
-    }
-
-    // 1. Check nested masterSubjects array
-    const currentSubj = masterSubjects.find(
-      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
-    );
-    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics)) {
-      const currentTopic = currentSubj.topics.find(
-        (t: any) => t.name === selectedTopic || t.name.toLowerCase().includes(selectedTopic.toLowerCase())
-      );
-      if (currentTopic && currentTopic.subtopics && Array.isArray(currentTopic.subtopics) && currentTopic.subtopics.length > 0) {
-        const subtopicNames = currentTopic.subtopics
-          .map((st: any) => (typeof st === 'string' ? st : st.name))
-          .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Subtopics'));
-        if (subtopicNames.length > 0) return [...defaultList, ...subtopicNames];
-      }
-    }
-
-    // 2. Check threeLevelHierarchy object dictionary
-    const rawSubs = threeLevelHierarchy[selectedSubject]?.[selectedTopic];
-    if (Array.isArray(rawSubs) && rawSubs.length > 0) {
-      const cleanSubs = rawSubs.filter((s) => !s.startsWith('All Subtopics') && s.trim() !== '');
-      if (cleanSubs.length > 0) return [...defaultList, ...cleanSubs];
-    }
-
-    return defaultList;
-  }, [selectedSubject, selectedTopic, masterSubjects, threeLevelHierarchy]);
-
-
-
-
   const handleSubjectChange = (newSubject: string) => {
     setSelectedSubject(newSubject);
     setSelectedTopic('All Topics (Entire Subject)');
-    setSelectedSubtopic('All Subtopics (Entire Topic)');
   };
 
   const handleTopicChange = (newTopic: string) => {
     setSelectedTopic(newTopic);
-    setSelectedSubtopic('All Subtopics (Entire Topic)');
-  };
-
-  const handleSubtopicChange = (newSubtopic: string) => {
-    setSelectedSubtopic(newSubtopic);
   };
 
   const handleStartGuestExam = (e: React.FormEvent) => {
     e.preventDefault();
 
     const cleanTopic = selectedTopic.startsWith('All Topics') ? '' : selectedTopic;
-    const cleanSubtopic = selectedSubtopic.startsWith('All Subtopics') ? '' : selectedSubtopic;
     const cleanYear = selectedYear.startsWith('All Years') ? '' : (selectedYear.match(/\d{4}/)?.[0] || '');
 
     const queryParams = new URLSearchParams({
@@ -163,7 +119,6 @@ export function HeroSection({ }: HeroSectionProps) {
       year: cleanYear,
       subject: selectedSubject,
       topic: cleanTopic,
-      subtopic: cleanSubtopic,
       count: questionCount.toString(),
     });
 
@@ -469,91 +424,45 @@ export function HeroSection({ }: HeroSectionProps) {
                 </div>
               </div>
 
-              {/* Form Row 3: Subtopic & Primary CTA Button */}
+              {/* Form Row 3: Primary CTA Button */}
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 14,
                   marginBottom: 14,
                 }}
               >
-                {/* Subtopic Select */}
-                <div>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#0F172A',
-                      marginBottom: 5,
-                    }}
-                  >
-                    <Target size={13} style={{ color: '#2563EB' }} /> Subtopic
-                  </label>
-                  <select
-                    value={selectedSubtopic}
-                    onChange={(e) => handleSubtopicChange(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      borderRadius: 9,
-                      border: '1px solid #E2E8F0',
-                      backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
-                      fontSize: 13,
-                      fontWeight: 500,
-                      outline: 'none',
-                      cursor: 'pointer',
-                      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                    }}
-                  >
-                    {availableSubtopics.map((sub) => (
-                      <option key={sub} value={sub}>
-                        {sub}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Start Free Mock CTA Button in empty right column beside Subtopic */}
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <button
-                    type="submit"
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      borderRadius: 9,
-                      border: 'none',
-                      backgroundColor: '#2563EB',
-                      color: '#FFFFFF',
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 7,
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1D4ED8';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.32)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#2563EB';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.22)';
-                    }}
-                  >
-                    Start Free Mock
-                    <ArrowRight size={16} strokeWidth={2.2} />
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  style={{
+                    width: '100%',
+                    height: 42,
+                    borderRadius: 9,
+                    border: 'none',
+                    backgroundColor: '#2563EB',
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1D4ED8';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.32)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#2563EB';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.22)';
+                  }}
+                >
+                  Start Free Mock
+                  <ArrowRight size={16} strokeWidth={2.2} />
+                </button>
               </div>
 
               {/* Contextual Mock Summary Bar */}
@@ -573,7 +482,7 @@ export function HeroSection({ }: HeroSectionProps) {
               >
                 <span style={{ fontWeight: 600, color: '#0F172A' }}>Your practice session:</span>
                 <span style={{ color: '#0F172A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedSubject} · {selectedTopic} · {selectedSubtopic} ({questionCount} Qs)
+                  {selectedSubject} · {selectedTopic} ({questionCount} Qs)
                 </span>
               </div>
 
