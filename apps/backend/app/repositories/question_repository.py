@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List, Tuple
-from sqlmodel import select, func, col, or_
+from sqlmodel import select, func, col, or_, not_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -43,6 +43,7 @@ class QuestionRepository:
         paper_set_code: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,
+        exclude_ids: Optional[str] = None,
         skip: int = 0,
         limit: int = 20,
     ) -> Tuple[List[Question], int]:
@@ -67,6 +68,22 @@ class QuestionRepository:
             id_stmt = id_stmt.outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
             id_stmt = id_stmt.outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
 
+        # Exclude IDs filter
+        if exclude_ids:
+            raw_ids = [i.strip() for i in exclude_ids.split(",") if i.strip()]
+            valid_targets = []
+            for r in raw_ids:
+                valid_targets.append(r)
+                try:
+                    u = uuid.UUID(r)
+                    valid_targets.append(u)
+                    valid_targets.append(str(u))
+                    valid_targets.append(u.hex)
+                except Exception:
+                    pass
+            if valid_targets:
+                id_stmt = id_stmt.where(not_(Question.id.in_(valid_targets)))
+
         # Filters
         if exam_id:
             id_stmt = id_stmt.where(or_(Question.exam_id == exam_id, Exam.id == exam_id))
@@ -88,17 +105,30 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
         if subject_name and subject_name != "All Subjects" and subject_name.strip():
             clean_s = subject_name.strip().lower()
-            tokens = [t for t in clean_s.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in ("and", "the", "for", "all")]
+            # Generic stop words that must not be used as broad tokens across section_code/topic
+            stop_words = ("and", "the", "for", "all", "general", "studies", "paper", "indian", "science", "technology")
+            tokens = [t for t in clean_s.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in stop_words]
             
             subject_conditions = [
                 func.lower(Subject.name).contains(clean_s),
-                func.lower(Question.section_code).contains(clean_s)
+                func.lower(Question.section_code) == clean_s
             ]
+            # Exact word tokens for subject name matching only
             for token in tokens:
                 subject_conditions.append(func.lower(Subject.name).contains(token))
                 subject_conditions.append(func.lower(Question.section_code).contains(token))
-                subject_conditions.append(func.lower(Topic.name).contains(token))
             
+            # If clean_s contains science/biology/chemistry/physics, match Subject name or section_code containing science/chem/bio/phys
+            if any(k in clean_s for k in ["science", "biology", "chemistry", "physics"]):
+                subject_conditions.extend([
+                    func.lower(Subject.name).contains("science"),
+                    func.lower(Subject.name).contains("biology"),
+                    func.lower(Subject.name).contains("chemistry"),
+                    func.lower(Subject.name).contains("physics"),
+                ])
+                # Exclude explicit non-science section codes (e.g. POLITY, ECONOMY, AGRICULTURE) when science is requested
+                id_stmt = id_stmt.where(not_(func.lower(Question.section_code).in_(["polity", "economy", "economics", "history", "agriculture"])))
+
             id_stmt = id_stmt.where(or_(*subject_conditions))
         if subject_code:
             id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
@@ -107,11 +137,23 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
         if topic_name and topic_name != "All Topics" and topic_name.strip():
             clean_t = topic_name.strip().lower()
-            id_stmt = id_stmt.where(or_(
+            topic_conds = [
                 func.lower(Topic.name).contains(clean_t),
                 func.lower(Question.section_code).contains(clean_t),
                 func.lower(QuestionHierarchyLink.concept_name).contains(clean_t)
-            ))
+            ]
+            id_stmt = id_stmt.where(or_(*topic_conds))
+
+            # Exclude corrupt hierarchy concept links that belong to law/finance/politics when science topics are requested
+            if any(k in clean_t for k in ["biology", "chemistry", "physics", "botany", "zoology", "science"]):
+                id_stmt = id_stmt.where(not_(or_(
+                    func.lower(QuestionHierarchyLink.concept_name).contains("tax"),
+                    func.lower(QuestionHierarchyLink.concept_name).contains("constitutional"),
+                    func.lower(QuestionHierarchyLink.concept_name).contains("finance"),
+                    func.lower(QuestionHierarchyLink.concept_name).contains("bar council"),
+                    func.lower(QuestionHierarchyLink.concept_name).contains("crises"),
+                    func.lower(QuestionHierarchyLink.concept_name).contains("political")
+                )))
         if topic_code:
             id_stmt = id_stmt.where(func.lower(Topic.code) == topic_code.lower())
 

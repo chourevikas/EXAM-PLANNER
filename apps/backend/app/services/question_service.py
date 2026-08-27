@@ -75,6 +75,7 @@ class QuestionService:
         status: Optional[QuestionStatus] = None,
         language: LanguageCode = LanguageCode.ENGLISH,
         include_solutions: bool = False,
+        exclude_ids: Optional[str] = None,
         page: int = 1,
         limit: int = 20,
     ) -> QuestionPaginatedResponse:
@@ -100,6 +101,7 @@ class QuestionService:
             status=str(status.value if hasattr(status, "value") else status) if status else None,
             language=str(language.value if hasattr(language, "value") else language),
             include_solutions=include_solutions,
+            exclude=exclude_ids.strip() if exclude_ids else None,
             page=page,
             limit=limit,
         )
@@ -128,6 +130,7 @@ class QuestionService:
             paper_set_code=paper_set_code,
             stage=stage,
             status=status,
+            exclude_ids=exclude_ids,
             skip=skip,
             limit=limit,
         )

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
-
+from fastapi import HTTPException
 from app.db.session import get_async_session
 from app.db.models import QuestionStatus, QuestionSourceType, LanguageCode
 from app.schemas.question import (
@@ -39,6 +39,7 @@ async def list_questions(
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language for response text"),
     include_solutions: bool = Query(default=False, description="Whether to include full solution explanations and option distractor analyses"),
+    exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=20, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
@@ -71,6 +72,7 @@ async def list_questions(
         status=str(status.value if hasattr(status, "value") else status) if status else None,
         lang=str(language.value if hasattr(language, "value") else language),
         sols=include_solutions,
+        exclude=exclude_ids.strip() if exclude_ids else None,
         page=page,
         limit=limit,
     )
@@ -98,6 +100,7 @@ async def list_questions(
         status=status,
         language=language,
         include_solutions=include_solutions,
+        exclude_ids=exclude_ids,
         page=page,
         limit=limit,
     )

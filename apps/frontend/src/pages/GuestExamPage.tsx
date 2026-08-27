@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GradCap } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
@@ -107,8 +107,13 @@ export function GuestExamPage() {
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showScoreModal, setShowScoreModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [guestScoreData, setGuestScoreData] = useState<any>(null);
   const [scoreCountdown, setScoreCountdown] = useState<number | null>(null);
+
+  // Dynamic Recommended Questions Pool
+  const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
+  const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -123,6 +128,106 @@ export function GuestExamPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Background prefetch function for dynamic recommended questions
+  const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
+    if (isPrefetchingRecs) return;
+    setIsPrefetchingRecs(true);
+
+    try {
+      const existingIds = new Set<string>();
+      currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+      currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+
+      const excludeIdsParam = Array.from(existingIds).join(',');
+
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      let querySubject = rawSubject;
+      let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+      if (querySubject || queryTopic) {
+        try {
+          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic });
+          if (verifyRes && verifyRes.is_valid) {
+            if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
+            if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
+          }
+        } catch (err) {
+          // ignore verification fallback
+        }
+      }
+
+      // Step 1: Exact subject + topic with exclude_ids
+      const params = new URLSearchParams({ limit: '10' });
+      if (querySubject) params.append('subject_name', querySubject);
+      if (queryTopic) params.append('topic_name', queryTopic);
+      if (targetExam) params.append('exam_name', targetExam);
+      if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
+
+      let res = await fetch(`/api/v1/questions?${params.toString()}`);
+      let newFetched: any[] = [];
+      if (res.ok) {
+        const data = await res.json();
+        newFetched = data.items || [];
+      }
+
+      // Step 2: Fallback - relax topic while preserving subject
+      if (newFetched.length === 0 && querySubject) {
+        const fallbackParams = new URLSearchParams({ limit: '10' });
+        fallbackParams.append('subject_name', querySubject);
+        if (targetExam) fallbackParams.append('exam_name', targetExam);
+        if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
+
+        res = await fetch(`/api/v1/questions?${fallbackParams.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          newFetched = data.items || [];
+        }
+      }
+
+      if (newFetched.length > 0) {
+        const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
+          const rawOptions = item.options || [];
+          const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+            option_id: o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+            option_label: o.option_label || String.fromCharCode(65 + oIdx),
+            text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+            is_correct: Boolean(o.is_correct),
+          }));
+          return {
+            question_id: item.question_id,
+            question_number: 0,
+            text: item.question_text || item.text || '',
+            options: optionsList,
+            section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
+            topic_name: item.topic_name || queryTopic,
+            subtopic_name: item.subtopic_name,
+            difficulty: item.difficulty || 'MEDIUM',
+            marks: item.marks || 2.0,
+            negative_marks: item.negative_marks || 0.66,
+            expected_time_seconds: item.expected_time_seconds || 60,
+            explanation: item.explanation || item.explanation_text || '',
+          } as any;
+        });
+
+        setRecommendedPool((prev) => {
+          const combinedMap = new Map<string, QuestionOut>();
+          prev.forEach((q) => combinedMap.set(q.question_id, q));
+          formatted.forEach((q) => {
+            if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
+              combinedMap.set(q.question_id, q);
+            }
+          });
+          return Array.from(combinedMap.values());
+        });
+      }
+    } catch (err) {
+      console.warn('Background recommendation prefetch error:', err);
+    } finally {
+      setIsPrefetchingRecs(false);
+    }
+  }, [gSubject, gTopic, gExam, isPrefetchingRecs]);
+
   // Timer countdown
   useEffect(() => {
     const timer = setInterval(() => {
@@ -130,8 +235,6 @@ export function GuestExamPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-
 
   // Post-Exam Score Modal 10s Countdown Effect
   useEffect(() => {
@@ -374,6 +477,38 @@ export function GuestExamPage() {
     }
   }, [userResponses, revealedMap, markedForReview, bookmarkedQs, currentQIndex, isLoading, allQuestions]);
 
+  // Auto-prefetch background recommendations whenever pool has fewer than 5 items
+  useEffect(() => {
+    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs) {
+      prefetchRecommendations(allQuestions, recommendedPool);
+    }
+  }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
+
+  // Handler to jump to or prompt login for recommended question outside 10 Q limit
+  const handleSelectRecommendation = (recQ: QuestionOut) => {
+    const existingIdx = allQuestions.findIndex((q) => q.question_id === recQ.question_id);
+    if (existingIdx !== -1) {
+      setCurrentQIndex(existingIdx);
+      setActiveQuestion(allQuestions[existingIdx]);
+      return;
+    }
+
+    // Guest user limit reached (10 questions max) -> Show Login Pop-up Modal
+    setShowLoginModal(true);
+  };
+
+  // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
+  const displayRecs = useMemo(() => {
+    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
+    const combinedMap = new Map<string, QuestionOut>();
+    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
+    recommendedPool.forEach((q) => {
+      if (!combinedMap.has(q.question_id)) {
+        combinedMap.set(q.question_id, q);
+      }
+    });
+    return Array.from(combinedMap.values()).slice(0, 5);
+  }, [allQuestions, currentQIndex, recommendedPool]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1372,195 +1507,76 @@ export function GuestExamPage() {
                   </span>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
-                  5 Sets
+                  {displayRecs.length} Qs
                 </span>
               </div>
               <p style={{ fontSize: 11.5, color: '#64748B', margin: 0, lineHeight: 1.35 }}>
-                Targeted PYQ sets matched with your focus area.
+                Matched questions for {gSubject || 'your focus area'}.
               </p>
             </div>
 
-            {/* Stacked Recommendation Cards */}
+            {/* Stacked Dynamic Recommendation Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Card 1 */}
-              <div
-                onClick={() => navigate(`/guest-exam?subject=Polity&topic=Fundamental%20Rights&count=10`)}
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2020 - 2024 • Polity</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#1E3A8A', backgroundColor: '#EFF6FF', padding: '1px 5px', borderRadius: 4, border: '1px solid #DBEAFE' }}>
-                    CROSS YEAR
-                  </span>
+              {displayRecs.length === 0 ? (
+                <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
+                  Loading recommendations...
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
-                  Fundamental Rights & Writs
-                </div>
-                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> 5 high-frequency questions.
-                </div>
-              </div>
+              ) : (
+                displayRecs.map((rec, idx) => {
+                  const isInTest = allQuestions.some((q) => q.question_id === rec.question_id);
+                  const testIndex = allQuestions.findIndex((q) => q.question_id === rec.question_id);
 
-              {/* Card 2 */}
-              <div
-                onClick={() => navigate(`/guest-exam?subject=History&topic=Modern%20History&count=10`)}
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2021 - 2023 • History</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 5px', borderRadius: 4, border: '1px solid #FDE68A' }}>
-                    CHALLENGE
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
-                  Governor General Acts
-                </div>
-                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> 42% accuracy topic.
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div
-                onClick={() => navigate(`/guest-exam?subject=Economy&count=10`)}
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2019 - 2024 • Economy</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#047857', backgroundColor: '#ECFDF5', padding: '1px 5px', borderRadius: 4, border: '1px solid #A7F3D0' }}>
-                    HIGH YIELD
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
-                  Monetary Policy & Banking
-                </div>
-                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> High frequency conceptual tests.
-                </div>
-              </div>
-
-              {/* Card 4 */}
-              <div
-                onClick={() => navigate(`/guest-exam?subject=Environment&count=10`)}
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2018 - 2024 • Environment</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#4338CA', backgroundColor: '#EEF2FF', padding: '1px 5px', borderRadius: 4, border: '1px solid #C7D2FE' }}>
-                    BIODIVERSITY
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
-                  Western Ghats & Conservation
-                </div>
-                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> Frequently asked species & hotspot trends.
-                </div>
-              </div>
-
-              {/* Card 5 */}
-              <div
-                onClick={() => navigate(`/guest-exam?subject=Geography&count=10`)}
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: 10,
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#CBD5E1';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                  e.currentTarget.style.borderColor = '#E2E8F0';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569' }}>2020 - 2024 • Geography</span>
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#0D9488', backgroundColor: '#F0FDFA', padding: '1px 5px', borderRadius: 4, border: '1px solid #99F6E4' }}>
-                    MAP BASED
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
-                  River Systems & Drainage
-                </div>
-                <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                  <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> High frequency map-based questions.
-                </div>
-              </div>
+                  return (
+                    <div
+                      key={rec.question_id || idx}
+                      onClick={() => handleSelectRecommendation(rec)}
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 10,
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.borderColor = '#E2E8F0';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            color: isInTest ? '#047857' : '#1E3A8A',
+                            backgroundColor: isInTest ? '#ECFDF5' : '#EFF6FF',
+                            padding: '1px 5px',
+                            borderRadius: 4,
+                            border: isInTest ? '1px solid #A7F3D0' : '1px solid #DBEAFE',
+                          }}
+                        >
+                          {isInTest ? `IN TEST (Q${testIndex + 1})` : 'HIGH YIELD'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                        {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
+                      </div>
+                      <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
+                        <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> {isInTest ? `Jump straight to Q${testIndex + 1}` : 'Target topic match'}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </aside>
         )}
@@ -1780,6 +1796,131 @@ export function GuestExamPage() {
                 }}
               >
                 Leave Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Question Limit Reached / Log In Modal */}
+      {showLoginModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 22,
+              padding: '32px 28px',
+              border: '1.5px solid #E2E8F0',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+              textAlign: 'center',
+              fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                backgroundColor: '#EFF6FF',
+                border: '1px solid #BFDBFE',
+                color: '#1E3A8A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px auto',
+              }}
+            >
+              <Sparkles size={26} color="#1E3A8A" />
+            </div>
+
+            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Guest Limit Reached (10 Questions)
+            </div>
+
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+              Log in to Unlock More Questions
+            </h3>
+
+            <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 24px 0' }}>
+              You've experienced your 10 free practice questions limit for guest users. Log in or create your free account to access 10,000+ PYQs, subtopic filters, detailed explanations, and unlimited test series!
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLoginModal(false);
+                  navigate('/login');
+                }}
+                style={{
+                  width: '100%',
+                  height: 46,
+                  borderRadius: 14,
+                  border: 'none',
+                  backgroundColor: '#1E3A8A',
+                  color: '#FFFFFF',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(30, 58, 138, 0.3)',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1D4ED8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#1E3A8A';
+                }}
+              >
+                <GraduationCap size={18} color="#FFFFFF" />
+                Log In / Sign Up Now &rsaquo;
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowLoginModal(false)}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  borderRadius: 14,
+                  border: '1.5px solid #E2E8F0',
+                  backgroundColor: '#FFFFFF',
+                  color: '#64748B',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.color = '#334155';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.color = '#64748B';
+                }}
+              >
+                Review Current 10 Questions
               </button>
             </div>
           </div>
