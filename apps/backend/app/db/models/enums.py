@@ -68,6 +68,7 @@ class BloomsLevel(str, enum.Enum):
     APPLY = "APPLY"
     ANALYZE = "ANALYZE"
     EVALUATE = "EVALUATE"
+    CREATE = "CREATE"
 
 
 class MemoryType(str, enum.Enum):

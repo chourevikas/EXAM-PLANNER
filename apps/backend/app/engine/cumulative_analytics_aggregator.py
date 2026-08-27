@@ -12,6 +12,14 @@ from app.db.models import (
     UserSkillProfile,
     UserTaxonomyMastery,
     UserConceptRetention,
+    Question,
+    QuestionMetadata,
+    ExamQuestionResponse,
+    ExamQuestionReport,
+    Subject,
+    Topic,
+    Subtopic,
+    BloomsLevel,
 )
 from app.db.models.enums import AttemptStatus
 from app.formatters.report_markdown_formatter import format_report_to_markdown
@@ -44,7 +52,11 @@ class CumulativeAnalyticsAggregator:
         )
         profile = prof_res.first()
         if not force_recompute and profile and profile.aggregate_report_json:
-            return profile.aggregate_report_json
+            cached_rep = profile.aggregate_report_json
+            cached_subjs = cached_rep.get("part_2_taxonomy_analysis", {}).get("by_subject", [])
+            # If cache has valid subjects, return it
+            if cached_subjs and len(cached_subjs) > 0:
+                return cached_rep
 
         # Fetch all evaluated exam attempts chronologically
         stmt = (
@@ -61,8 +73,7 @@ class CumulativeAnalyticsAggregator:
         now_iso = datetime.now(timezone.utc).isoformat()
 
         if not attempts:
-            empty_report = cls._build_empty_cumulative_report(user, now_iso)
-            return empty_report
+            return cls._build_empty_cumulative_report(user, now_iso)
 
         # 1. Process Timeline & Collect Attempt Reports
         exam_timeline: List[Dict[str, Any]] = []
@@ -75,6 +86,15 @@ class CumulativeAnalyticsAggregator:
         total_incorrect_sum = 0
         total_unattempted_sum = 0
         total_time_spent_sum = 0.0
+
+        all_blooms_totals: Dict[str, Dict[str, int]] = {
+            "REMEMBER": {"total": 0, "correct": 0},
+            "UNDERSTAND": {"total": 0, "correct": 0},
+            "APPLY": {"total": 0, "correct": 0},
+            "ANALYZE": {"total": 0, "correct": 0},
+            "EVALUATE": {"total": 0, "correct": 0},
+            "CREATE": {"total": 0, "correct": 0},
+        }
 
         for idx, att in enumerate(attempts, 1):
             exam = await session.get(Exam, att.exam_id)
@@ -156,62 +176,402 @@ class CumulativeAnalyticsAggregator:
             }
             exam_timeline.append(timeline_item)
 
-            # Aggregate Taxonomy Breakdown from Part 2 if available
+            # 1.1 Process questions directly from attempt per-question analysis or ExamQuestionReport
+            q_list = meta.get("part_1_per_question_analysis") or meta.get("questions") or []
+            if not q_list and rep_db and rep_db.full_report_json:
+                q_list = rep_db.full_report_json.get("part_1_per_question_analysis") or []
+
+            if not q_list:
+                eqr_res = await session.exec(
+                    select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == att.id)
+                )
+                eqr_rows = eqr_res.all()
+                for eqr in eqr_rows:
+                    q_model = await session.get(Question, eqr.question_id) if eqr.question_id else None
+                    q_subj = getattr(q_model, "subject", None) or getattr(q_model, "subject_name", None) or "General Studies"
+                    q_top = getattr(q_model, "topic", None) or getattr(q_model, "topic_name", None) or "Core Concepts"
+                    q_sub = getattr(q_model, "subtopic", None) or getattr(q_model, "subtopic_name", None) or "Foundations"
+                    q_blm = (eqr.blooms_level or getattr(q_model, "blooms_level", None) or "ANALYZE").upper()
+                    q_list.append({
+                        "subject": q_subj,
+                        "topic": q_top,
+                        "subtopic": q_sub,
+                        "is_correct": eqr.is_correct,
+                        "blooms_level": q_blm,
+                    })
+
+            for q in q_list:
+                s_name = q.get("subject") or q.get("subject_name") or "General Studies"
+                t_name = q.get("topic") or q.get("topic_name") or "Core Concepts"
+                sub_name = q.get("subtopic") or q.get("subtopic_name") or "Foundations"
+                is_c = bool(q.get("is_correct") or (q.get("score_awarded", 0) > 0))
+                b_level = (q.get("blooms_level") or q.get("bloom_level") or "ANALYZE").upper()
+
+                if s_name not in all_tax_subjects:
+                    all_tax_subjects[s_name] = {
+                        "name": s_name,
+                        "taxonomy_name": s_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                        "topics": {},
+                    }
+                all_tax_subjects[s_name]["total_questions"] += 1
+                all_tax_subjects[s_name]["attempted"] += 1
+                if is_c:
+                    all_tax_subjects[s_name]["correct"] += 1
+                else:
+                    all_tax_subjects[s_name]["incorrect"] += 1
+
+                if t_name not in all_tax_subjects[s_name]["topics"]:
+                    all_tax_subjects[s_name]["topics"][t_name] = {
+                        "name": t_name,
+                        "taxonomy_name": t_name,
+                        "subject": s_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                        "subtopics": {},
+                    }
+                t_obj = all_tax_subjects[s_name]["topics"][t_name]
+                t_obj["total_questions"] += 1
+                t_obj["attempted"] += 1
+                if is_c:
+                    t_obj["correct"] += 1
+                else:
+                    t_obj["incorrect"] += 1
+
+                if sub_name not in t_obj["subtopics"]:
+                    t_obj["subtopics"][sub_name] = {
+                        "name": sub_name,
+                        "subject": s_name,
+                        "topic": t_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                    }
+                sub_obj = t_obj["subtopics"][sub_name]
+                sub_obj["total_questions"] += 1
+                sub_obj["attempted"] += 1
+                if is_c:
+                    sub_obj["correct"] += 1
+                else:
+                    sub_obj["incorrect"] += 1
+
+                # Track global topic list
+                if t_name not in all_tax_topics:
+                    all_tax_topics[t_name] = {
+                        "name": t_name,
+                        "taxonomy_name": t_name,
+                        "subject": s_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                    }
+                all_tax_topics[t_name]["total_questions"] += 1
+                all_tax_topics[t_name]["attempted"] += 1
+                if is_c:
+                    all_tax_topics[t_name]["correct"] += 1
+                else:
+                    all_tax_topics[t_name]["incorrect"] += 1
+
+                # Track global subtopic list
+                if sub_name not in all_tax_subtopics:
+                    all_tax_subtopics[sub_name] = {
+                        "name": sub_name,
+                        "subject": s_name,
+                        "topic": t_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                    }
+                all_tax_subtopics[sub_name]["total_questions"] += 1
+                all_tax_subtopics[sub_name]["attempted"] += 1
+                if is_c:
+                    all_tax_subtopics[sub_name]["correct"] += 1
+                else:
+                    all_tax_subtopics[sub_name]["incorrect"] += 1
+
+                # Bloom count
+                match_b = next((k for k in all_blooms_totals if k in b_level), "ANALYZE")
+                all_blooms_totals[match_b]["total"] += 1
+                if is_c:
+                    all_blooms_totals[match_b]["correct"] += 1
+
+            # Also incorporate summary taxonomy from part 2 if present
             tax_part = meta.get("part_2_taxonomy_analysis", {})
-            for subj in tax_part.get("subject_breakdown", []):
-                s_name = subj.get("subject_name") or subj.get("name")
-                if s_name:
-                    if s_name not in all_tax_subjects:
-                        all_tax_subjects[s_name] = {
-                            "name": s_name,
-                            "total_questions": 0,
-                            "attempted": 0,
-                            "correct": 0,
-                            "incorrect": 0,
-                            "accuracy_percentage": 0.0,
-                            "retention_percentage": 80.0,
-                            "status": "MODERATE",
-                        }
-                    all_tax_subjects[s_name]["total_questions"] += int(subj.get("total_questions", 0))
-                    all_tax_subjects[s_name]["attempted"] += int(subj.get("attempted", 0))
-                    all_tax_subjects[s_name]["correct"] += int(subj.get("correct", 0))
-                    all_tax_subjects[s_name]["incorrect"] += int(subj.get("incorrect", 0))
+            for subj in (tax_part.get("subject_breakdown", []) or tax_part.get("by_subject", [])):
+                s_name = subj.get("subject_name") or subj.get("name") or subj.get("taxonomy_name")
+                if s_name and s_name not in all_tax_subjects:
+                    all_tax_subjects[s_name] = {
+                        "name": s_name,
+                        "taxonomy_name": s_name,
+                        "total_questions": int(subj.get("total_questions", 0) or subj.get("total", 0)),
+                        "attempted": int(subj.get("attempted", 0) or subj.get("attempted_questions", 0)),
+                        "correct": int(subj.get("correct", 0)),
+                        "incorrect": int(subj.get("incorrect", 0)),
+                        "topics": {},
+                    }
 
-            for top in tax_part.get("topic_breakdown", []):
-                t_name = top.get("topic_name") or top.get("name")
-                if t_name:
-                    if t_name not in all_tax_topics:
-                        all_tax_topics[t_name] = {
-                            "name": t_name,
-                            "total_questions": 0,
-                            "attempted": 0,
-                            "correct": 0,
-                            "incorrect": 0,
-                            "accuracy_percentage": 0.0,
-                            "retention_percentage": 75.0,
-                            "status": "MODERATE",
-                        }
-                    all_tax_topics[t_name]["total_questions"] += int(top.get("total_questions", 0))
-                    all_tax_topics[t_name]["attempted"] += int(top.get("attempted", 0))
-                    all_tax_topics[t_name]["correct"] += int(top.get("correct", 0))
-                    all_tax_topics[t_name]["incorrect"] += int(top.get("incorrect", 0))
+        # Direct DB aggregation from all recorded ExamQuestionResponse rows if all_blooms_totals is still empty
+        if sum(b["total"] for b in all_blooms_totals.values()) == 0:
+            db_resp_stmt = (
+                select(ExamQuestionResponse.is_correct, QuestionMetadata.blooms_level, ExamQuestionReport.blooms_level)
+                .join(ExamAttempt, col(ExamQuestionResponse.attempt_id) == col(ExamAttempt.id))
+                .outerjoin(QuestionMetadata, col(ExamQuestionResponse.question_id) == col(QuestionMetadata.question_id))
+                .outerjoin(
+                    ExamQuestionReport,
+                    (col(ExamQuestionResponse.attempt_id) == col(ExamQuestionReport.attempt_id))
+                    & (col(ExamQuestionResponse.question_id) == col(ExamQuestionReport.question_id)),
+                )
+                .where(col(ExamAttempt.user_id) == user_id)
+                .where(col(ExamQuestionResponse.selected_option_id).is_not(None))
+            )
+            db_resps = (await session.exec(db_resp_stmt)).all()
+            for is_c, qm_blm, eqr_blm in db_resps:
+                raw_b = str(qm_blm.value if (qm_blm and hasattr(qm_blm, "value")) else qm_blm or eqr_blm or "ANALYZE").upper()
+                match_b = next((k for k in all_blooms_totals if k in raw_b), "ANALYZE")
+                all_blooms_totals[match_b]["total"] += 1
+                if is_c:
+                    all_blooms_totals[match_b]["correct"] += 1
 
-        # Recompute Taxonomy Accuracies
+        # Query UserTaxonomyMastery for all subjects, topics, subtopics, and bloom metrics
+        db_tax_res = await session.exec(
+            select(UserTaxonomyMastery).where(UserTaxonomyMastery.user_id == user_id)
+        )
+        db_tax_list = db_tax_res.all()
+
+        has_blooms_already = sum(b["total"] for b in all_blooms_totals.values()) > 0
+
+        for tax_item in db_tax_list:
+            t_type = (tax_item.taxonomy_type or "").upper()
+            if t_type == "BLOOMS" and not has_blooms_already:
+                b_code = (tax_item.taxonomy_id_code or tax_item.taxonomy_name or "").upper()
+                match_b = next((k for k in all_blooms_totals if k in b_code), None)
+                if match_b:
+                    all_blooms_totals[match_b]["total"] += int(tax_item.total_attempts or 0)
+                    all_blooms_totals[match_b]["correct"] += int(tax_item.correct_attempts or 0)
+            elif t_type == "SUBJECT":
+                s_name = tax_item.taxonomy_name or tax_item.taxonomy_id_code
+                if s_name not in all_tax_subjects:
+                    all_tax_subjects[s_name] = {
+                        "name": s_name,
+                        "taxonomy_name": s_name,
+                        "total_questions": tax_item.total_attempts,
+                        "attempted": tax_item.total_attempts,
+                        "correct": tax_item.correct_attempts,
+                        "incorrect": max(0, tax_item.total_attempts - tax_item.correct_attempts),
+                        "topics": {},
+                    }
+            elif t_type == "TOPIC":
+                t_name = tax_item.taxonomy_name or tax_item.taxonomy_id_code
+                if t_name not in all_tax_topics:
+                    all_tax_topics[t_name] = {
+                        "name": t_name,
+                        "taxonomy_name": t_name,
+                        "subject": "General Studies",
+                        "total_questions": tax_item.total_attempts,
+                        "attempted": tax_item.total_attempts,
+                        "correct": tax_item.correct_attempts,
+                        "incorrect": max(0, tax_item.total_attempts - tax_item.correct_attempts),
+                    }
+
+        # Persist / Sync real Bloom statistics into UserTaxonomyMastery in DB with atomic ON CONFLICT DO UPDATE
+        for b_name, b_counts in all_blooms_totals.items():
+            tot = b_counts["total"]
+            corr = b_counts["correct"]
+            b_acc = round((corr / max(1, tot)) * 100.0, 1) if tot > 0 else 0.0
+            st_status = "STRONG" if b_acc >= 75.0 else ("MODERATE" if b_acc >= 50.0 else "WEAK_REVISION_REQUIRED")
+
+            try:
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+                stmt = pg_insert(UserTaxonomyMastery).values(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    taxonomy_type="BLOOMS",
+                    taxonomy_id_code=b_name,
+                    taxonomy_name=f"Bloom's {b_name.capitalize()} Thinking",
+                    total_attempts=tot,
+                    correct_attempts=corr,
+                    mastery_percentage=b_acc,
+                    strength_status=st_status,
+                    updated_at=datetime.now(timezone.utc),
+                ).on_conflict_do_update(
+                    index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
+                    set_={
+                        "taxonomy_name": f"Bloom's {b_name.capitalize()} Thinking",
+                        "total_attempts": tot,
+                        "correct_attempts": corr,
+                        "mastery_percentage": b_acc,
+                        "strength_status": st_status,
+                        "updated_at": datetime.now(timezone.utc),
+                    },
+                )
+                await session.exec(stmt)
+            except Exception:
+                existing_tax_res = await session.exec(
+                    select(UserTaxonomyMastery).where(
+                        UserTaxonomyMastery.user_id == user_id,
+                        UserTaxonomyMastery.taxonomy_type == "BLOOMS",
+                        UserTaxonomyMastery.taxonomy_id_code == b_name,
+                    )
+                )
+                tax_m = existing_tax_res.first()
+                if not tax_m:
+                    tax_m = UserTaxonomyMastery(
+                        user_id=user_id,
+                        taxonomy_type="BLOOMS",
+                        taxonomy_id_code=b_name,
+                        taxonomy_name=f"Bloom's {b_name.capitalize()} Thinking",
+                        total_attempts=tot,
+                        correct_attempts=corr,
+                        mastery_percentage=b_acc,
+                        strength_status=st_status,
+                    )
+                    session.add(tax_m)
+                else:
+                    tax_m.total_attempts = tot
+                    tax_m.correct_attempts = corr
+                    tax_m.mastery_percentage = b_acc
+                    tax_m.strength_status = st_status
+                    tax_m.updated_at = datetime.now(timezone.utc)
+                    session.add(tax_m)
+
+        # If all_tax_subjects is still empty, seed default syllabus subjects so reports are NEVER blank
+        if not all_tax_subjects:
+            default_subjects = [
+                ("Indian Polity & Governance", ["Constitution & Preamble", "Fundamental Rights & DPSP", "Union & State Executive"]),
+                ("History & Art of India", ["Ancient India", "Medieval India", "Modern National Movement"]),
+                ("Geography & Environment", ["Physical Geography", "Indian Geography", "Ecology & Climate Change"]),
+                ("Indian Economy & Social Development", ["Macroeconomics & GDP", "Fiscal & Monetary Policy", "Inclusive Growth"]),
+                ("General Science & Technology", ["Space & Defense", "Biotechnology", "Information Technology"]),
+                ("Current Affairs & International Relations", ["Bilateral Summits", "Global Treaties", "National Initiatives"]),
+            ]
+            for s_name, def_topics in default_subjects:
+                s_topics_map = {}
+                for t_name in def_topics:
+                    s_topics_map[t_name] = {
+                        "name": t_name,
+                        "taxonomy_name": t_name,
+                        "subject": s_name,
+                        "total_questions": 0,
+                        "attempted": 0,
+                        "correct": 0,
+                        "incorrect": 0,
+                        "accuracy_percentage": 0.0,
+                        "positive_marks": 0.0,
+                        "negative_marks": 0.0,
+                        "net_marks": 0.0,
+                        "mean_score": 0.0,
+                        "subtopics": {},
+                    }
+                    all_tax_topics[t_name] = s_topics_map[t_name]
+
+                all_tax_subjects[s_name] = {
+                    "name": s_name,
+                    "taxonomy_name": s_name,
+                    "total_questions": 0,
+                    "attempted": 0,
+                    "correct": 0,
+                    "incorrect": 0,
+                    "accuracy_percentage": 0.0,
+                    "positive_marks": 0.0,
+                    "negative_marks": 0.0,
+                    "net_marks": 0.0,
+                    "mean_score": 0.0,
+                    "mean_score_per_exam": 0.0,
+                    "retention_percentage": 75.0,
+                    "status": "MODERATE",
+                    "status_label": "Focus Area",
+                    "topics": s_topics_map,
+                }
+
+        n_att = max(1, len(exam_timeline))
+        # Finalize Subject, Topic, Subtopic calculations
         for s_name, s_data in all_tax_subjects.items():
             att_cnt = s_data["attempted"]
             corr_cnt = s_data["correct"]
+            inc_cnt = s_data.get("incorrect", max(0, att_cnt - corr_cnt))
             s_acc = round((corr_cnt / max(1, att_cnt)) * 100.0, 1) if att_cnt > 0 else 0.0
+            pos_marks = round(corr_cnt * 2.0, 2)
+            neg_marks = round(inc_cnt * 0.6667, 2)
+            net_marks = round(pos_marks - neg_marks, 2)
+            mean_score = round(net_marks / n_att, 2)
+
             s_data["accuracy_percentage"] = s_acc
+            s_data["positive_marks"] = pos_marks
+            s_data["negative_marks"] = neg_marks
+            s_data["net_marks"] = net_marks
+            s_data["mean_score"] = mean_score
+            s_data["mean_score_per_exam"] = mean_score
             s_data["retention_percentage"] = round(min(98.0, 50.0 + s_acc * 0.48), 1)
             s_data["status"] = "STRONG" if s_acc >= 75 else "MODERATE" if s_acc >= 50 else "WEAK_REVISION_REQUIRED"
+            s_data["status_label"] = "Mastered" if s_acc >= 75 else "Competent" if s_acc >= 50 else "Focus Area"
+
+            # Finalize nested topics
+            t_map = s_data.get("topics", {})
+            if isinstance(t_map, dict):
+                for t_name, t_obj in t_map.items():
+                    t_att = t_obj["attempted"]
+                    t_corr = t_obj["correct"]
+                    t_inc = t_obj.get("incorrect", max(0, t_att - t_corr))
+                    t_acc = round((t_corr / max(1, t_att)) * 100.0, 1) if t_att > 0 else 0.0
+                    t_pos = round(t_corr * 2.0, 2)
+                    t_neg = round(t_inc * 0.6667, 2)
+                    t_net = round(t_pos - t_neg, 2)
+                    t_mean = round(t_net / n_att, 2)
+
+                    t_obj["accuracy_percentage"] = t_acc
+                    t_obj["positive_marks"] = t_pos
+                    t_obj["negative_marks"] = t_neg
+                    t_obj["net_marks"] = t_net
+                    t_obj["mean_score"] = t_mean
+                    t_obj["retention_percentage"] = round(min(98.0, 45.0 + t_acc * 0.50), 1)
+                    t_obj["status"] = "STRONG" if t_acc >= 75 else "MODERATE" if t_acc >= 50 else "WEAK_REVISION_REQUIRED"
+                    t_obj["status_label"] = "Mastered" if t_acc >= 75 else "Competent" if t_acc >= 50 else "Focus Area"
+
+                    sub_map = t_obj.get("subtopics", {})
+                    if isinstance(sub_map, dict):
+                        for sub_name, sub_obj in sub_map.items():
+                            sub_att = sub_obj["attempted"]
+                            sub_corr = sub_obj["correct"]
+                            sub_inc = sub_obj.get("incorrect", max(0, sub_att - sub_corr))
+                            sub_acc = round((sub_corr / max(1, sub_att)) * 100.0, 1) if sub_att > 0 else 0.0
+                            sub_pos = round(sub_corr * 2.0, 2)
+                            sub_neg = round(sub_inc * 0.6667, 2)
+                            sub_net = round(sub_pos - sub_neg, 2)
+                            sub_obj["accuracy_percentage"] = sub_acc
+                            sub_obj["positive_marks"] = sub_pos
+                            sub_obj["negative_marks"] = sub_neg
+                            sub_obj["net_marks"] = sub_net
+                            sub_obj["mean_score"] = round(sub_net / n_att, 2)
+                            sub_obj["status"] = "STRONG" if sub_acc >= 75 else "MODERATE" if sub_acc >= 50 else "WEAK_REVISION_REQUIRED"
+
+                s_data["topics_list"] = list(t_map.values())
 
         for t_name, t_data in all_tax_topics.items():
             att_cnt = t_data["attempted"]
             corr_cnt = t_data["correct"]
+            inc_cnt = t_data.get("incorrect", max(0, att_cnt - corr_cnt))
             t_acc = round((corr_cnt / max(1, att_cnt)) * 100.0, 1) if att_cnt > 0 else 0.0
+            pos_marks = round(corr_cnt * 2.0, 2)
+            neg_marks = round(inc_cnt * 0.6667, 2)
+            net_marks = round(pos_marks - neg_marks, 2)
+            mean_score = round(net_marks / n_att, 2)
+
             t_data["accuracy_percentage"] = t_acc
+            t_data["positive_marks"] = pos_marks
+            t_data["negative_marks"] = neg_marks
+            t_data["net_marks"] = net_marks
+            t_data["mean_score"] = mean_score
             t_data["retention_percentage"] = round(min(98.0, 45.0 + t_acc * 0.50), 1)
             t_data["status"] = "STRONG" if t_acc >= 75 else "MODERATE" if t_acc >= 50 else "WEAK_REVISION_REQUIRED"
+            t_data["status_label"] = "Mastered" if t_acc >= 75 else "Competent" if t_acc >= 50 else "Focus Area"
 
         # 2. Helper to compute weighted aggregates for any subset of attempts
         def _compute_subset_aggregate(items: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -274,6 +634,46 @@ class CumulativeAnalyticsAggregator:
         cum_accuracy = global_agg["accuracy_percentage"]
         n_att = len(exam_timeline)
 
+        # Dynamic Bloom calculation with exact counts
+        blooms_computed: Dict[str, float] = {}
+        for b_name, b_data in all_blooms_totals.items():
+            if b_data["total"] > 0:
+                blooms_computed[b_name] = round((b_data["correct"] / b_data["total"]) * 100.0, 1)
+            else:
+                blooms_computed[b_name] = 0.0
+
+        blooms_mastery_payload = {
+            "REMEMBER": blooms_computed["REMEMBER"],
+            "UNDERSTAND": blooms_computed["UNDERSTAND"],
+            "APPLY": blooms_computed["APPLY"],
+            "ANALYZE": blooms_computed["ANALYZE"],
+            "EVALUATE": blooms_computed["EVALUATE"],
+            "CREATE": blooms_computed["CREATE"],
+            "remember_total": all_blooms_totals["REMEMBER"]["total"],
+            "remember_correct": all_blooms_totals["REMEMBER"]["correct"],
+            "understand_total": all_blooms_totals["UNDERSTAND"]["total"],
+            "understand_correct": all_blooms_totals["UNDERSTAND"]["correct"],
+            "apply_total": all_blooms_totals["APPLY"]["total"],
+            "apply_correct": all_blooms_totals["APPLY"]["correct"],
+            "analyze_total": all_blooms_totals["ANALYZE"]["total"],
+            "analyze_correct": all_blooms_totals["ANALYZE"]["correct"],
+            "evaluate_total": all_blooms_totals["EVALUATE"]["total"],
+            "evaluate_correct": all_blooms_totals["EVALUATE"]["correct"],
+            "create_total": all_blooms_totals["CREATE"]["total"],
+            "create_correct": all_blooms_totals["CREATE"]["correct"],
+            "breakdown": {
+                b_k: {
+                    "accuracy": blooms_computed[b_k],
+                    "total": all_blooms_totals[b_k]["total"],
+                    "correct": all_blooms_totals[b_k]["correct"],
+                }
+                for b_k in all_blooms_totals
+            },
+            "fact_recall_accuracy": blooms_computed["REMEMBER"],
+            "conceptual_analysis_accuracy": blooms_computed["ANALYZE"],
+            "critical_evaluation_accuracy": blooms_computed["EVALUATE"],
+        }
+
         # 3. Evolution Progression Curves & Graph Series
         evolution_graphs = {
             "labels": [f"Exam {i['attempt_number']}: {i['exam_name'][:18]}" for i in exam_timeline],
@@ -331,22 +731,16 @@ class CumulativeAnalyticsAggregator:
                 "inverse_fact_traps_fallen": int(total_incorrect_sum * 0.2),
                 "neutral_distractor_misses": int(total_incorrect_sum * 0.4),
             },
-            "blooms_mastery": {
-                "fact_recall_accuracy": round(min(100.0, cum_accuracy + 10.0), 1),
-                "conceptual_analysis_accuracy": round(min(100.0, cum_accuracy + 2.0), 1),
-                "critical_evaluation_accuracy": round(max(0.0, cum_accuracy - 6.0), 1),
-            },
+            "blooms_mastery": blooms_mastery_payload,
             "weak_taxonomy_areas": [
                 {
                     "subject": t.get("subject", "General Studies"),
                     "topic": t.get("taxonomy_name", "Core Concepts"),
                     "subtopic": t.get("subtopic"),
                     "accuracy": t.get("accuracy_percentage", 35.0),
-                    "missed_questions": [],
-                    "fsrs_stability_days": t.get("fsrs_stability_days", 1.5),
-                    "retention_health": t.get("retention_health", "REVISION_RECOMMENDED_SOON"),
                 }
-                for t in all_tax_topics.values() if t.get("strength_status") in ("WEAK_REVISION_REQUIRED", "CRITICAL_DEFICIT", "MODERATE")
+                for t in all_tax_topics.values()
+                if t.get("accuracy_percentage", 0) < 50
             ][:5],
             "strong_taxonomy_areas": [
                 {
@@ -393,11 +787,13 @@ class CumulativeAnalyticsAggregator:
             "satoi": {"satoi_score": w_satoi, "stamina_label": "Optimal Cognitive Stamina" if w_satoi >= 80 else "Moderate Pacing Fatigue"},
             "pacing": {"pacing_status": exam_timeline[-1]["pacing_status"] if exam_timeline else "BALANCED_PACING", "avg_time_per_question_sec": round(total_time_spent_sum / max(1, total_questions_attempted_sum), 1) if total_questions_attempted_sum > 0 else 60.0, "time_utilization_pct": 95},
             "switch_regret": {"total_switches": n_att * 3, "positive_switches": n_att * 2, "negative_regret_switches": n_att * 1, "net_score_impact": round(n_att * 1.5, 2)},
-            "blooms": {"fact_recall_accuracy": round(min(100.0, cum_accuracy + 10.0), 1), "conceptual_analysis_accuracy": round(min(100.0, cum_accuracy + 2.0), 1), "critical_evaluation_accuracy": round(max(0.0, cum_accuracy - 6.0), 1)},
+            "blooms": blooms_mastery_payload,
             "distractor": {"high_closeness_count": int(total_incorrect_sum * 0.4), "trap_avoidance_rate_pct": 72.0},
             "topic_decay": {"active_memory_topics_count": len(all_tax_topics), "avg_concept_stability_days": round(3.5 + (n_att * 1.8), 1)},
             "ai_cognitive_insights": cum_insight,
             "actionable_tasks": cum_insight.get("study_plan_tasks", []),
+            "subject_cumulative_mean_scoreboard": list(all_tax_subjects.values()),
+            "subjects": list(all_tax_subjects.values()),
         }
 
         matrices_summary = {
@@ -543,6 +939,7 @@ class CumulativeAnalyticsAggregator:
                 "subtopic_breakdown": list(all_tax_subtopics.values()),
                 "subject_breakdown": list(all_tax_subjects.values()),
                 "topic_breakdown": list(all_tax_topics.values()),
+                "syllabus_hierarchy": list(all_tax_subjects.values()),
             },
             "part_3_aggregated_user_report": {
                 **matrices_summary,

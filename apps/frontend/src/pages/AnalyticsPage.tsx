@@ -23,6 +23,8 @@ export function AnalyticsPage() {
   const attemptIdParam = searchParams.get('attemptId');
 
   const [attemptsHistory, setAttemptsHistory] = useState<AttemptHistoryItem[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyPageSize = 10;
   // Default to CUMULATIVE_ALL unless a specific attemptId is requested
   const [selectedAttemptId, setSelectedAttemptId] = useState<string>(attemptIdParam || 'CUMULATIVE_ALL');
   const [report, setReport] = useState<PsychometricReport | null>(null);
@@ -437,90 +439,181 @@ export function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {attemptsHistory.map((att, idx) => {
-                  const sameExamList = attemptsHistory.filter((a) => a.exam_id === att.exam_id || a.exam_name === att.exam_name);
-                  const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
-                  const attemptNum = sameExamList.length - attemptIndex;
+                {(() => {
+                  const totalPages = Math.ceil(attemptsHistory.length / historyPageSize) || 1;
+                  const validPage = Math.min(Math.max(1, historyPage), totalPages);
+                  const startIndex = (validPage - 1) * historyPageSize;
+                  const paginated = attemptsHistory.slice(startIndex, startIndex + historyPageSize);
 
-                  return (
-                    <tr
-                      key={att.attempt_id}
-                      style={{
-                        borderBottom: '1px solid var(--border-default)',
-                      }}
-                    >
-                      <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{idx + 1}</td>
-                      <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span>{att.exam_name}</span>
-                          {sameExamList.length > 1 && (
-                            <span
-                              style={{
-                                fontSize: 10.5,
-                                fontWeight: 800,
-                                padding: '2px 7px',
-                                borderRadius: 6,
-                                backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                                color: '#2563eb',
-                                border: '1px solid rgba(37, 99, 235, 0.25)',
-                              }}
-                            >
-                              Attempt #{attemptNum}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '3px 8px',
-                            borderRadius: 8,
-                            backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                            color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
-                          }}
-                        >
-                          {att.mode.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                        {new Date(att.started_at).toLocaleDateString()}
-                      </td>
-                      <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        <span style={{ color: Number(att.total_score) >= 92 ? '#10b981' : '#2563eb' }}>
-                          {att.total_score}
-                        </span>{' '}
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                        {att.total_questions} Questions
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleViewSingleExam(att.attempt_id)}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: 10,
-                            backgroundColor: '#2563eb',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          View Exam Report →
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                  return paginated.map((att, idx) => {
+                    const globalIdx = startIndex + idx;
+                    const sameExamList = attemptsHistory.filter((a) => a.exam_id === att.exam_id || a.exam_name === att.exam_name);
+                    const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
+                    const attemptNum = sameExamList.length - attemptIndex;
+
+                    return (
+                      <tr
+                        key={att.attempt_id}
+                        style={{
+                          borderBottom: '1px solid var(--border-default)',
+                        }}
+                      >
+                        <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{globalIdx + 1}</td>
+                        <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span>{att.exam_name}</span>
+                            {sameExamList.length > 1 && (
+                              <span
+                                style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 800,
+                                  padding: '2px 7px',
+                                  borderRadius: 6,
+                                  backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                                  color: '#2563eb',
+                                  border: '1px solid rgba(37, 99, 235, 0.25)',
+                                }}
+                              >
+                                Attempt #{attemptNum}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: 8,
+                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
+                            }}
+                          >
+                            {att.mode.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                          {new Date(att.started_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                          <span style={{ color: Number(att.total_score) >= 92 ? '#10b981' : '#2563eb' }}>
+                            {att.total_score}
+                          </span>{' '}
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                          {att.total_questions} Questions
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => handleViewSingleExam(att.attempt_id)}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: 10,
+                              backgroundColor: '#2563eb',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            View Exam Report →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {attemptsHistory.length > historyPageSize && (() => {
+            const totalPages = Math.ceil(attemptsHistory.length / historyPageSize);
+            const startItem = (historyPage - 1) * historyPageSize + 1;
+            const endItem = Math.min(historyPage * historyPageSize, attemptsHistory.length);
+
+            return (
+              <div
+                style={{
+                  marginTop: 18,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  paddingTop: 14,
+                  borderTop: '1px solid var(--border-default)',
+                }}
+              >
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                  Showing <strong style={{ color: 'var(--text-primary)' }}>{startItem} - {endItem}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{attemptsHistory.length}</strong> attempts
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    disabled={historyPage <= 1}
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-default)',
+                      backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
+                      color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                      cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      opacity: historyPage <= 1 ? 0.5 : 1,
+                    }}
+                  >
+                    ← Previous
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={`page_${pageNum}`}
+                      onClick={() => setHistoryPage(pageNum)}
+                      style={{
+                        padding: '6px 11px',
+                        borderRadius: 8,
+                        border: pageNum === historyPage ? '1px solid #2563eb' : '1px solid var(--border-default)',
+                        backgroundColor: pageNum === historyPage ? '#2563eb' : 'var(--bg-subtle)',
+                        color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  <button
+                    disabled={historyPage >= totalPages}
+                    onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-default)',
+                      backgroundColor: historyPage >= totalPages ? 'transparent' : 'var(--bg-subtle)',
+                      color: historyPage >= totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                      cursor: historyPage >= totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      opacity: historyPage >= totalPages ? 0.5 : 1,
+                    }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </section>
       )}
 

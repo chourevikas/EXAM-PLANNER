@@ -50,15 +50,17 @@ async def retry_attempt_evaluation(
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
 async def get_attempt_question_report(
     attempt_id: uuid.UUID,
+    page: Optional[int] = None,
+    page_size: Optional[int] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Report 1: Detailed question cards with explanations, core concepts, step-by-step solutions,
-    distractor traps, time window, and question-level scores.
+    distractor traps, time window, and question-level scores with optional pagination.
     """
     service = AnalyticsService(session)
-    res = await service.get_attempt_question_report(attempt_id=attempt_id)
+    res = await service.get_attempt_question_report(attempt_id=attempt_id, page=page, page_size=page_size)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 

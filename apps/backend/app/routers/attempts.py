@@ -33,7 +33,7 @@ router = APIRouter(prefix="/attempts", tags=["Student Exam-Taking Sessions"])
 @router.get("", summary="List Candidate's Exam Attempts History")
 async def list_candidate_attempts(
     skip: int = 0,
-    limit: int = 20,
+    limit: int = 500,
     exam_id: Optional[uuid.UUID] = None,
     status_filter: Optional[AttemptStatus] = None,
     session: AsyncSession = Depends(get_async_session),

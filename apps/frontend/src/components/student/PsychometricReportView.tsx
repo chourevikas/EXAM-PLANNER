@@ -49,6 +49,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   ResponsiveContainer,
+  ComposedChart,
   BarChart,
   Bar,
   LineChart,
@@ -78,9 +79,21 @@ export function PsychometricReportView({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  const isCumulative =
+    report?.is_cumulative ||
+    report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
+
   const [activeTab, setActiveTab] = useState<
     'questions' | 'exam-matrices' | 'topics' | 'user-aggregate' | 'markdown'
-  >('questions');
+  >(isCumulative ? 'exam-matrices' : 'questions');
+
+  useEffect(() => {
+    if (isCumulative && activeTab === 'questions') {
+      setActiveTab('exam-matrices');
+    } else if (!isCumulative && activeTab === 'user-aggregate') {
+      setActiveTab('questions');
+    }
+  }, [isCumulative]);
 
   const [openInfoKeys, setOpenInfoKeys] = useState<Record<string, boolean>>({});
   const [questionFilter, setQuestionFilter] = useState<
@@ -96,6 +109,12 @@ export function PsychometricReportView({
   const [selectedModality, setSelectedModality] = useState<
     'all_exams' | 'full_mock_exams' | 'practice_tests' | 'guest_trials'
   >('all_exams');
+
+  const [questionPage, setQuestionPage] = useState<number>(1);
+  const questionPageSize = 10;
+
+  const [matrixPage, setMatrixPage] = useState<number>(1);
+  const matrixPageSize = 10;
 
   const attemptId =
     (report as any)?.metadata?.exam_attempt?.attempt_id ||
@@ -172,14 +191,60 @@ export function PsychometricReportView({
     per_question_diagnostic_report = [],
   } = report || {};
 
-  const timelineData =
-    report?.exam_timeline ||
-    (report as any)?.metadata?.exam_timeline ||
-    (report as any)?.evolution_graphs?.exam_timeline ||
-    [];
-  const isCumulative =
-    report?.is_cumulative ||
-    report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
+  const rawTimelineData = React.useMemo(() => {
+    if (report?.exam_timeline && Array.isArray(report.exam_timeline) && report.exam_timeline.length > 0) {
+      return report.exam_timeline;
+    }
+    if ((report as any)?.metadata?.exam_timeline && Array.isArray((report as any).metadata.exam_timeline)) {
+      return (report as any).metadata.exam_timeline;
+    }
+    const evo = (report as any)?.evolution_graphs;
+    if (evo && Array.isArray(evo.labels) && evo.labels.length > 0) {
+      return evo.labels.map((lbl: string, idx: number) => ({
+        attempt_number: idx + 1,
+        exam_name: lbl,
+        total_score: evo.scores?.[idx] ?? 0,
+        max_possible_score: evo.max_scores?.[idx] ?? 200,
+        accuracy_percentage: evo.accuracies?.[idx] ?? 0,
+        icrs_score: evo.icrs_scores?.[idx] ?? 65,
+        irt_theta: evo.irt_thetas?.[idx] ?? 0,
+        gti_score: (evo.gti_percentages?.[idx] ?? 20) / 100,
+        oeei_score: (evo.oeei_percentages?.[idx] ?? 70) / 100,
+        satoi_score: evo.satoi_scores?.[idx] ?? 80,
+        date_formatted: evo.dates?.[idx] ?? `Session ${idx + 1}`,
+      }));
+    }
+    return [];
+  }, [report]);
+
+  const timelineData = React.useMemo(() => {
+    return rawTimelineData.map((item: any, idx: number) => {
+      const rawScore = Number(item.total_score ?? item.score ?? 0);
+      const maxScore = Number(item.max_possible_score ?? item.max_score ?? 200);
+      const acc = Number(item.accuracy_percentage ?? item.accuracy ?? 0);
+      const icrsVal = Number(item.icrs_score ?? 65);
+      const satoiVal = Number(item.satoi_score ?? 80);
+      const gtiVal = Number(item.gti_score ?? item.gti ?? 0.2);
+      const oeeiVal = Number(item.oeei_score ?? item.oeei ?? 0.7);
+      const irtVal = Number(item.irt_theta ?? item.irt ?? 0.0);
+      const exName = item.exam_name || item.name || `Exam #${item.attempt_number || idx + 1}`;
+      const dispLabel = `Exam ${item.attempt_number || idx + 1}`;
+
+      return {
+        ...item,
+        display_label: dispLabel,
+        exam_name: exName,
+        total_score: Math.round(rawScore * 10) / 10,
+        max_possible_score: Math.round(maxScore * 10) / 10,
+        accuracy_percentage: Math.round(acc * 10) / 10,
+        icrs_score: Math.round(icrsVal * 10) / 10,
+        satoi_score: Math.round(satoiVal * 10) / 10,
+        gti_pct: Math.round((gtiVal <= 1.0 ? gtiVal * 100 : gtiVal) * 10) / 10,
+        oeei_pct: Math.round((oeeiVal <= 1.0 ? oeeiVal * 100 : oeeiVal) * 10) / 10,
+        irt_theta: Math.round(irtVal * 100) / 100,
+      };
+    });
+  }, [rawTimelineData]);
 
   const macroAnalytics: Record<string, any> =
     (report as any)?.part_2_exam_macro_scorecard ||
@@ -565,6 +630,11 @@ export function PsychometricReportView({
 
       const finalizeNode = (node: any) => {
         const acc = node.attempted > 0 ? Math.round((node.correct / node.attempted) * 100) : 0;
+        const posMarks = Math.round(node.correct * 2.0 * 100) / 100;
+        const negMarks = Math.round(node.incorrect * 0.6667 * 100) / 100;
+        const netMarks = Math.round((posMarks - negMarks) * 100) / 100;
+        const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+        const meanScore = Math.round((netMarks / numExams) * 100) / 100;
         const avgTime = Math.round(node.total_time / Math.max(1, node.total));
         const expTime = Math.round(node.total_expected_time / Math.max(1, node.total));
         const effRatio = node.total_time / Math.max(1, node.total_expected_time);
@@ -610,6 +680,10 @@ export function PsychometricReportView({
         return {
           ...node,
           accuracy: acc,
+          positive_marks: posMarks,
+          negative_marks: negMarks,
+          net_marks: netMarks,
+          mean_score: meanScore,
           avg_time: avgTime,
           expected_time: expTime,
           pacing_status: pStatus,
@@ -634,33 +708,75 @@ export function PsychometricReportView({
 
     // Fallback: Build tree from part_2_taxonomy_analysis if questionsList is empty (cumulative mode)
     const part2Tax = (report as any)?.part_2_taxonomy_analysis || {};
-    const subjs = part2Tax.by_subject || part2Tax.subject_breakdown || [];
+    const subjs = part2Tax.by_subject || part2Tax.subject_breakdown || (report as any)?.part_2_exam_macro_scorecard?.subject_cumulative_mean_scoreboard || (report as any)?.part_2_exam_macro_scorecard?.subjects || (report as any)?.syllabus_hierarchy || [];
     const tops = part2Tax.by_topic || part2Tax.topic_breakdown || [];
+    const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
 
     const subjMap: Record<string, any> = {};
 
     subjs.forEach((s: any) => {
-      const sName = s.taxonomy_name || s.subject || 'General Studies';
+      const sName = s.taxonomy_name || s.subject_name || s.name || s.subject || 'General Studies';
+      const tot = Number(s.total_questions || s.total || s.total_attempts || 0);
+      const att = Number(s.attempted_questions || s.attempted || s.total_attempts || 0);
+      const corr = Number(s.correct || s.correct_attempts || 0);
+      const inc = Number(s.incorrect || Math.max(0, att - corr));
+      const acc = Math.round(Number(s.accuracy_percentage ?? s.accuracy ?? (att > 0 ? (corr / att) * 100 : 0)));
+      const posMarks = Number(s.positive_marks ?? Math.round(corr * 2.0 * 100) / 100);
+      const negMarks = Number(s.negative_marks ?? Math.round(inc * 0.6667 * 100) / 100);
+      const netMarks = Number(s.net_marks ?? Math.round((posMarks - negMarks) * 100) / 100);
+      const meanScore = Number(s.mean_score ?? s.mean_score_per_exam ?? Math.round((netMarks / numExams) * 100) / 100);
+
+      const nestedTopics = s.topics_list || (s.topics && Array.isArray(s.topics) ? s.topics : s.topics && typeof s.topics === 'object' ? Object.values(s.topics) : []);
+
       subjMap[sName] = {
         name: sName,
-        total: s.total_questions || s.total || 0,
-        attempted: s.attempted_questions || s.attempted || s.total_questions || 0,
-        correct: s.correct || 0,
-        incorrect: s.incorrect || 0,
-        unattempted: s.unattempted || 0,
-        accuracy: Math.round(s.accuracy_percentage || s.accuracy || 0),
+        total: tot,
+        attempted: att,
+        correct: corr,
+        incorrect: inc,
+        unattempted: Math.max(0, tot - att),
+        accuracy: acc,
+        positive_marks: posMarks,
+        negative_marks: negMarks,
+        net_marks: netMarks,
+        mean_score: meanScore,
         avg_time: Math.round(s.avg_time_per_question || 60),
         expected_time: Math.round(s.expected_time_per_question || 60),
         pacing_status: s.pacing_status || 'OPTIMAL',
         pacing_label: s.pacing_label || '⚡ Optimal Pace',
-        status: s.strength_status || 'STRONG',
-        status_label: s.strength_label || 'Strong',
-        retention_pct: Math.round(s.topic_retention_pct || s.fsrs_retention_pct || 75),
+        status: s.strength_status || s.status || (acc >= 75 ? 'STRONG' : acc >= 50 ? 'COMPETENT' : 'WEAK_REVISION_REQUIRED'),
+        status_label: s.strength_label || (acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'),
+        retention_pct: Math.round(s.topic_retention_pct || s.retention_percentage || 75),
         stability_days: s.fsrs_stability_days || 3.5,
         retention_health: s.retention_health_label || 'Healthy Active',
         blooms: s.blooms_breakdown || {},
         question_numbers: [],
-        topics: [],
+        topics: nestedTopics.map((t: any) => ({
+          name: t.name || t.taxonomy_name || 'Core Concepts',
+          subject: sName,
+          total: t.total_questions || t.total || 0,
+          attempted: t.attempted || 0,
+          correct: t.correct || 0,
+          incorrect: t.incorrect || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted || 0)),
+          accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || 0,
+          negative_marks: t.negative_marks || 0,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
+          avg_time: 60,
+          expected_time: 60,
+          pacing_status: 'OPTIMAL',
+          pacing_label: '⚡ Optimal Pace',
+          status: t.status || 'STRONG',
+          status_label: t.status_label || 'Mastered',
+          retention_pct: t.retention_percentage || 75,
+          stability_days: 3.5,
+          retention_health: 'Healthy Active',
+          blooms: {},
+          question_numbers: [],
+          subtopics: Array.isArray(t.subtopics) ? t.subtopics : typeof t.subtopics === 'object' && t.subtopics ? Object.values(t.subtopics) : [],
+        })),
       };
     });
 
@@ -674,8 +790,12 @@ export function PsychometricReportView({
           attempted: t.attempted_questions || t.total_questions || 0,
           correct: t.correct || 0,
           incorrect: t.incorrect || 0,
-          unattempted: t.unattempted || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted_questions || 0)),
           accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || Math.round((t.correct || 0) * 2.0 * 100) / 100,
+          negative_marks: t.negative_marks || Math.round((t.incorrect || 0) * 0.6667 * 100) / 100,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
           avg_time: Math.round(t.avg_time_per_question || 60),
           expected_time: 60,
           pacing_status: t.pacing_status || 'OPTIMAL',
@@ -691,31 +811,100 @@ export function PsychometricReportView({
         };
       }
 
-      const tNode = {
-        name: tName,
-        subject: sName,
-        total: t.total_questions || 0,
-        attempted: t.attempted_questions || t.total_questions || 0,
-        correct: t.correct || 0,
-        incorrect: t.incorrect || 0,
-        unattempted: t.unattempted || 0,
-        accuracy: Math.round(t.accuracy_percentage || 0),
-        avg_time: Math.round(t.avg_time_per_question || 60),
-        expected_time: 60,
-        pacing_status: t.pacing_status || 'OPTIMAL',
-        pacing_label: t.pacing_label || '⚡ Optimal Pace',
-        status: t.strength_status || 'STRONG',
-        status_label: t.strength_label || 'Strong',
-        retention_pct: Math.round(t.topic_retention_pct || 75),
-        stability_days: t.fsrs_stability_days || 3.5,
-        retention_health: t.retention_health_label || 'Healthy Active',
-        blooms: t.blooms_breakdown || {},
-        question_numbers: [],
-        subtopics: [],
-      };
-
-      subjMap[sName].topics.push(tNode);
+      const alreadyHasTopic = subjMap[sName].topics.some((existingT: any) => existingT.name === tName);
+      if (!alreadyHasTopic) {
+        const tNode = {
+          name: tName,
+          subject: sName,
+          total: t.total_questions || 0,
+          attempted: t.attempted_questions || t.total_questions || 0,
+          correct: t.correct || 0,
+          incorrect: t.incorrect || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted_questions || 0)),
+          accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || Math.round((t.correct || 0) * 2.0 * 100) / 100,
+          negative_marks: t.negative_marks || Math.round((t.incorrect || 0) * 0.6667 * 100) / 100,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
+          avg_time: Math.round(t.avg_time_per_question || 60),
+          expected_time: 60,
+          pacing_status: t.pacing_status || 'OPTIMAL',
+          pacing_label: t.pacing_label || '⚡ Optimal Pace',
+          status: t.strength_status || 'STRONG',
+          status_label: t.strength_label || 'Strong',
+          retention_pct: Math.round(t.topic_retention_pct || 75),
+          stability_days: t.fsrs_stability_days || 3.5,
+          retention_health: t.retention_health_label || 'Healthy Active',
+          blooms: t.blooms_breakdown || {},
+          question_numbers: [],
+          subtopics: Array.isArray(t.subtopics) ? t.subtopics : typeof t.subtopics === 'object' && t.subtopics ? Object.values(t.subtopics) : [],
+        };
+        subjMap[sName].topics.push(tNode);
+      }
     });
+
+    if (Object.keys(subjMap).length === 0) {
+      const defSubjects = [
+        { name: 'Indian Polity & Governance', topics: ['Constitution & Preamble', 'Fundamental Rights & DPSP', 'Union & State Executive'] },
+        { name: 'History & Art of India', topics: ['Ancient India', 'Medieval India', 'Modern National Movement'] },
+        { name: 'Geography & Environment', topics: ['Physical Geography', 'Indian Geography', 'Ecology & Climate Change'] },
+        { name: 'Indian Economy & Social Development', topics: ['Macroeconomics & GDP', 'Fiscal & Monetary Policy', 'Inclusive Growth'] },
+        { name: 'General Science & Technology', topics: ['Space & Defense', 'Biotechnology', 'Information Technology'] },
+        { name: 'Current Affairs & International Relations', topics: ['Bilateral Summits', 'Global Treaties', 'National Initiatives'] },
+      ];
+      defSubjects.forEach((s) => {
+        subjMap[s.name] = {
+          name: s.name,
+          total: 0,
+          attempted: 0,
+          correct: 0,
+          incorrect: 0,
+          unattempted: 0,
+          accuracy: 0,
+          positive_marks: 0,
+          negative_marks: 0,
+          net_marks: 0,
+          mean_score: 0,
+          avg_time: 60,
+          expected_time: 60,
+          pacing_status: 'OPTIMAL',
+          pacing_label: '⚡ Optimal Pace',
+          status: 'COMPETENT',
+          status_label: 'Focus Area',
+          retention_pct: 75,
+          stability_days: 3.5,
+          retention_health: 'Healthy Active',
+          blooms: {},
+          question_numbers: [],
+          topics: s.topics.map((t) => ({
+            name: t,
+            subject: s.name,
+            total: 0,
+            attempted: 0,
+            correct: 0,
+            incorrect: 0,
+            unattempted: 0,
+            accuracy: 0,
+            positive_marks: 0,
+            negative_marks: 0,
+            net_marks: 0,
+            mean_score: 0,
+            avg_time: 60,
+            expected_time: 60,
+            pacing_status: 'OPTIMAL',
+            pacing_label: '⚡ Optimal Pace',
+            status: 'COMPETENT',
+            status_label: 'Focus Area',
+            retention_pct: 75,
+            stability_days: 3.5,
+            retention_health: 'Healthy Active',
+            blooms: {},
+            question_numbers: [],
+            subtopics: [],
+          })),
+        };
+      });
+    }
 
     return Object.values(subjMap);
   }, [questionsList, report]);
@@ -723,8 +912,11 @@ export function PsychometricReportView({
   const handleJumpToQuestion = (qNum: number) => {
     setActiveTab('questions');
     setQuestionFilter('all');
-    const matchedQ = questionsList.find((q, idx) => Number(q.question_number || idx + 1) === qNum);
-    if (matchedQ) {
+    const matchedIndex = questionsList.findIndex((q, idx) => Number(q.question_number || idx + 1) === qNum);
+    if (matchedIndex >= 0) {
+      const targetPage = Math.floor(matchedIndex / questionPageSize) + 1;
+      setQuestionPage(targetPage);
+      const matchedQ = questionsList[matchedIndex];
       const qId = matchedQ.question_id || matchedQ.question_number || qNum;
       setExpandedQuestionId(qId);
       setTimeout(() => {
@@ -2923,6 +3115,128 @@ export function PsychometricReportView({
             </div>
           </div>
 
+          {/* Subject-Wise Cumulative Performance & Mean Scoreboard */}
+          {hierarchyData && hierarchyData.length > 0 && (
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Layers size={20} color="#2563eb" />
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                  Subject Cumulative Performance & Mean Scoreboard
+                </h3>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
+                {hierarchyData.map((subj: any) => {
+                  const bStyle = getBadgeStyle(subj.status);
+                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
+
+                  return (
+                    <div
+                      key={`user_agg_subj_${subj.name}`}
+                      style={{
+                        padding: '16px',
+                        borderRadius: 14,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                        borderLeft: `4px solid ${subj.accuracy >= 70 ? '#10b981' : subj.accuracy >= 50 ? '#f59e0b' : '#ef4444'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {subj.name}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
+                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 8,
+                            backgroundColor: bStyle.bg,
+                            color: bStyle.color,
+                            border: `1px solid ${bStyle.border}`,
+                          }}
+                        >
+                          {subj.accuracy}% Acc
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff', borderRadius: 8 }}>
+                        <span>Cumulative Mean: <strong style={{ color: '#2563eb' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
+                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
+                      </div>
+
+                      {/* Hierarchical Categorization: Topics and Subtopics */}
+                      {subj.topics && subj.topics.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Syllabus Topics & Subtopics:
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {subj.topics.slice(0, 4).map((t: any) => (
+                              <div
+                                key={`user_agg_top_${subj.name}_${t.name}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 3,
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
+                                  <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
+                                    • {t.name}
+                                  </span>
+                                  <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#10b981' : t.accuracy >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                    {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
+                                  </span>
+                                </div>
+                                {t.subtopics && t.subtopics.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
+                                    {t.subtopics.slice(0, 3).map((sub: any) => (
+                                      <span
+                                        key={`user_agg_sub_${sub.name}`}
+                                        style={{
+                                          fontSize: 10,
+                                          padding: '1px 6px',
+                                          borderRadius: 6,
+                                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        ↳ {sub.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {subj.topics.length > 4 && (
+                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
+                                + {subj.topics.length - 4} more topics in full syllabus hierarchy
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Multi-Exam Evolution & Progression Visualizers (Cross-Exam Comparison) */}
           {timelineData && timelineData.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -2939,10 +3253,11 @@ export function PsychometricReportView({
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                      <ComposedChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
-                        <YAxis domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <YAxis yAxisId="left" domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} unit="m" />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: isDark ? '#1e293b' : '#ffffff',
@@ -2950,12 +3265,16 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [name === 'total_score' ? `${value} Marks` : `${value}%`, name === 'total_score' ? 'Total Score' : 'Accuracy %']}
+                          formatter={(value: any, name: any) => [name === 'Total Score' ? `${value} Marks` : `${value}%`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="total_score" name="Total Score" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                        <Line type="monotone" dataKey="accuracy_percentage" name="Accuracy %" stroke="#10b981" strokeWidth={3} />
-                      </BarChart>
+                        <Bar yAxisId="left" dataKey="total_score" name="Total Score" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                        <Line yAxisId="right" type="monotone" dataKey="accuracy_percentage" name="Accuracy %" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -2974,7 +3293,7 @@ export function PsychometricReportView({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="/100" />
                         <Tooltip
                           contentStyle={{
@@ -2983,11 +3302,15 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [`${value} / 100`, name === 'icrs_score' ? 'ICRS Score' : name]}
+                          formatter={(value: any, name: any) => [`${value} / 100`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Line type="monotone" dataKey="icrs_score" name="ICRS Readiness" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 5 }} />
-                        <Line type="monotone" dataKey="satoi_score" name="SATOI Stamina" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" />
+                        <Line type="monotone" dataKey="satoi_score" name="SATOI Stamina" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 4 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -3005,9 +3328,9 @@ export function PsychometricReportView({
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={timelineData.map((i: any) => ({ ...i, gti_pct: Math.round(i.gti_score * 100), oeei_pct: Math.round(i.oeei_score * 100) }))} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                      <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
                         <Tooltip
                           contentStyle={{
@@ -3016,7 +3339,11 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [`${value}%`, name === 'oeei_pct' ? 'Elimination Efficiency' : 'Guessing Impulse']}
+                          formatter={(value: any, name: any) => [`${value}%`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="oeei_pct" name="Elimination Precision (OEEI %)" fill="#10b981" radius={[6, 6, 0, 0]} />
@@ -3040,7 +3367,7 @@ export function PsychometricReportView({
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[-1, 3]} />
                         <Tooltip
                           contentStyle={{
@@ -3050,6 +3377,10 @@ export function PsychometricReportView({
                             fontSize: 12,
                           }}
                           formatter={(value: any) => [`+${Number(value).toFixed(2)} θ`, 'Latent Ability']}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Area type="monotone" dataKey="irt_theta" name="IRT Ability (θ)" stroke="#2563eb" fill="rgba(37,99,235,0.2)" strokeWidth={3} dot={{ r: 5 }} />
@@ -3082,38 +3413,131 @@ export function PsychometricReportView({
                       </tr>
                     </thead>
                     <tbody>
-                      {timelineData.map((item: any, idx: number) => (
-                        <tr
-                          key={item.attempt_id || idx}
-                          style={{
-                            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
-                            backgroundColor: idx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                          }}
-                        >
-                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{item.attempt_number || idx + 1}</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
-                          <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 800 }}>
-                            {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
-                          </td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#10b981' : item.accuracy_percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
-                            {item.accuracy_percentage}%
-                          </td>
-                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>+{Number(item.irt_theta).toFixed(2)} θ</td>
-                          <td style={{ padding: '10px 12px', color: item.gti_score <= 0.22 ? '#10b981' : '#f59e0b' }}>{(item.gti_score * 100).toFixed(1)}%</td>
-                          <td style={{ padding: '10px 12px', color: item.oeei_score >= 0.70 ? '#10b981' : '#8b5cf6' }}>{(item.oeei_score * 100).toFixed(1)}%</td>
-                          <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
-                              {item.pacing_status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const totalPages = Math.ceil(timelineData.length / matrixPageSize) || 1;
+                        const validPage = Math.min(Math.max(1, matrixPage), totalPages);
+                        const startIndex = (validPage - 1) * matrixPageSize;
+                        const paginatedItems = timelineData.slice(startIndex, startIndex + matrixPageSize);
+
+                        return paginatedItems.map((item: any, idx: number) => {
+                          const globalIdx = startIndex + idx;
+                          return (
+                            <tr
+                              key={item.attempt_id || globalIdx}
+                              style={{
+                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+                                backgroundColor: globalIdx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                              }}
+                            >
+                              <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{item.attempt_number || globalIdx + 1}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
+                              <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 800 }}>
+                                {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#10b981' : item.accuracy_percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                {item.accuracy_percentage}%
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>+{Number(item.irt_theta).toFixed(2)} θ</td>
+                              <td style={{ padding: '10px 12px', color: item.gti_score <= 0.22 ? '#10b981' : '#f59e0b' }}>{(item.gti_score * 100).toFixed(1)}%</td>
+                              <td style={{ padding: '10px 12px', color: item.oeei_score >= 0.70 ? '#10b981' : '#8b5cf6' }}>{(item.oeei_score * 100).toFixed(1)}%</td>
+                              <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
+                                  {item.pacing_status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Longitudinal Matrix Pagination Controls */}
+                {timelineData.length > matrixPageSize && (() => {
+                  const totalPages = Math.ceil(timelineData.length / matrixPageSize);
+                  const startItem = (matrixPage - 1) * matrixPageSize + 1;
+                  const endItem = Math.min(matrixPage * matrixPageSize, timelineData.length);
+
+                  return (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                        paddingTop: 12,
+                        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: '#64748b' }}>
+                        Showing <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{startItem} - {endItem}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{timelineData.length}</strong> exams
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          disabled={matrixPage <= 1}
+                          onClick={() => setMatrixPage((p) => Math.max(1, p - 1))}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                            backgroundColor: matrixPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                            color: matrixPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                            cursor: matrixPage <= 1 ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            opacity: matrixPage <= 1 ? 0.5 : 1,
+                          }}
+                        >
+                          ← Previous
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={`matrix_page_${pageNum}`}
+                            onClick={() => setMatrixPage(pageNum)}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: 8,
+                              border: pageNum === matrixPage ? '1px solid #2563eb' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                              backgroundColor: pageNum === matrixPage ? '#2563eb' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                              color: pageNum === matrixPage ? '#ffffff' : isDark ? '#ffffff' : '#0f172a',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+
+                        <button
+                          disabled={matrixPage >= totalPages}
+                          onClick={() => setMatrixPage((p) => Math.min(totalPages, p + 1))}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                            backgroundColor: matrixPage >= totalPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                            color: matrixPage >= totalPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                            cursor: matrixPage >= totalPages ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            opacity: matrixPage >= totalPages ? 0.5 : 1,
+                          }}
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -3121,71 +3545,125 @@ export function PsychometricReportView({
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          TAB 3: PER-QUESTION DEEP ANALYSIS & SOLUTIONS
+          TAB 1: PER-QUESTION DEEP ANALYSIS & SOLUTIONS
       ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'questions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Question Filter Bar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 12,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {[
-                { id: 'all', label: `All (${questionsList.length})` },
-                {
-                  id: 'attempted',
-                  label: `Attempted (${questionsList.filter((q) => getQuestionState(q).isAtt).length})`,
-                },
-                {
-                  id: 'correct',
-                  label: `Correct (${questionsList.filter((q) => getQuestionState(q).isCorr).length})`,
-                },
-                {
-                  id: 'incorrect',
-                  label: `Incorrect (${questionsList.filter((q) => getQuestionState(q).isInc).length})`,
-                },
-                {
-                  id: 'unattempted',
-                  label: `Unattempted (${questionsList.filter((q) => getQuestionState(q).isUnatt).length})`,
-                },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setQuestionFilter(f.id as any)}
+          {(() => {
+            const totalQuestionPages = Math.ceil(filteredQuestions.length / questionPageSize) || 1;
+            const validQuestionPage = Math.min(Math.max(1, questionPage), totalQuestionPages);
+            const startQuestionIdx = (validQuestionPage - 1) * questionPageSize;
+            const paginatedQuestions = filteredQuestions.slice(startQuestionIdx, startQuestionIdx + questionPageSize);
+
+            return (
+              <>
+                {/* Question Filter Bar & Top Quick-Pagination */}
+                <div
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: 10,
-                    border:
-                      questionFilter === f.id
-                        ? '1px solid #2563eb'
-                        : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                    backgroundColor:
-                      questionFilter === f.id
-                        ? '#2563eb'
-                        : isDark
-                        ? 'rgba(255,255,255,0.04)'
-                        : '#ffffff',
-                    color: questionFilter === f.id ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 12,
                   }}
                 >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'all', label: `All (${questionsList.length})` },
+                      {
+                        id: 'attempted',
+                        label: `Attempted (${questionsList.filter((q) => getQuestionState(q).isAtt).length})`,
+                      },
+                      {
+                        id: 'correct',
+                        label: `Correct (${questionsList.filter((q) => getQuestionState(q).isCorr).length})`,
+                      },
+                      {
+                        id: 'incorrect',
+                        label: `Incorrect (${questionsList.filter((q) => getQuestionState(q).isInc).length})`,
+                      },
+                      {
+                        id: 'unattempted',
+                        label: `Unattempted (${questionsList.filter((q) => getQuestionState(q).isUnatt).length})`,
+                      },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          setQuestionFilter(f.id as any);
+                          setQuestionPage(1);
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: 10,
+                          border:
+                            questionFilter === f.id
+                              ? '1px solid #2563eb'
+                              : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor:
+                            questionFilter === f.id
+                              ? '#2563eb'
+                              : isDark
+                              ? 'rgba(255,255,255,0.04)'
+                              : '#ffffff',
+                          color: questionFilter === f.id ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
 
-          {/* Questions Detailed Accordion List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filteredQuestions.map((q, idx) => {
+                  {filteredQuestions.length > questionPageSize && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b' }}>
+                      <span>
+                        Showing <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{startQuestionIdx + 1}-{Math.min(startQuestionIdx + questionPageSize, filteredQuestions.length)}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{filteredQuestions.length}</strong>
+                      </span>
+                      <button
+                        disabled={validQuestionPage <= 1}
+                        onClick={() => setQuestionPage((p) => Math.max(1, p - 1))}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        ←
+                      </button>
+                      <span style={{ fontWeight: 800, color: '#2563eb' }}>
+                        {validQuestionPage} / {totalQuestionPages}
+                      </span>
+                      <button
+                        disabled={validQuestionPage >= totalQuestionPages}
+                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages, p + 1))}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        →
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Questions Detailed Accordion List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {paginatedQuestions.map((q, idx) => {
               const qId = q.question_id || q.question_number || idx;
               const isExpanded = expandedQuestionId === qId;
               const state = getQuestionState(q);
@@ -3947,8 +4425,110 @@ export function PsychometricReportView({
               );
             })}
           </div>
-        </div>
-      )}
+
+          {/* Bottom Full Question Pagination Bar */}
+          {filteredQuestions.length > questionPageSize && (
+            <div
+              style={{
+                marginTop: 18,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 12,
+                padding: 16,
+                borderRadius: 16,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+              }}
+            >
+              <div style={{ fontSize: 13, color: '#64748b' }}>
+                Page <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{validQuestionPage}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{totalQuestionPages}</strong> ({filteredQuestions.length} Total Questions)
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  disabled={validQuestionPage <= 1}
+                  onClick={() => {
+                    setQuestionPage((p) => Math.max(1, p - 1));
+                    window.scrollTo({ top: 300, behavior: 'smooth' });
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                    backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                    color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                    cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    opacity: validQuestionPage <= 1 ? 0.5 : 1,
+                  }}
+                >
+                  ← Previous
+                </button>
+
+                {Array.from({ length: totalQuestionPages }, (_, i) => i + 1)
+                  .filter((pageNum) => {
+                    if (totalQuestionPages <= 8) return true;
+                    return Math.abs(pageNum - validQuestionPage) <= 2 || pageNum === 1 || pageNum === totalQuestionPages;
+                  })
+                  .map((pageNum, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    const showEllipsis = prev && pageNum - prev > 1;
+                    return (
+                      <React.Fragment key={`qpage_${pageNum}`}>
+                        {showEllipsis && <span style={{ padding: '0 4px', color: '#64748b' }}>...</span>}
+                        <button
+                          onClick={() => {
+                            setQuestionPage(pageNum);
+                            window.scrollTo({ top: 300, behavior: 'smooth' });
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 8,
+                            border: pageNum === validQuestionPage ? '1px solid #2563eb' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                            backgroundColor: pageNum === validQuestionPage ? '#2563eb' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                            color: pageNum === validQuestionPage ? '#ffffff' : isDark ? '#ffffff' : '#0f172a',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+
+                <button
+                  disabled={validQuestionPage >= totalQuestionPages}
+                  onClick={() => {
+                    setQuestionPage((p) => Math.min(totalQuestionPages, p + 1));
+                    window.scrollTo({ top: 300, behavior: 'smooth' });
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                    backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                    color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                    cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    opacity: validQuestionPage >= totalQuestionPages ? 0.5 : 1,
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    })()}
+  </div>
+)}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           TAB 3: SUBJECT, TOPIC & COGNITIVE PERFORMANCE MATRIX
@@ -4060,9 +4640,9 @@ export function PsychometricReportView({
                     CREATE: { label: 'Synthesis', icon: '🚀', color: '#06b6d4' },
                   };
 
-                  const statsMap: { [key: string]: { total: number; correct: number } } = {};
+                  const statsMap: { [key: string]: { total: number; correct: number; accuracy: number } } = {};
                   Object.keys(bloomKeys).forEach((k) => {
-                    statsMap[k] = { total: 0, correct: 0 };
+                    statsMap[k] = { total: 0, correct: 0, accuracy: 0 };
                   });
 
                   if (questionsList && questionsList.length > 0) {
@@ -4074,17 +4654,55 @@ export function PsychometricReportView({
                         statsMap[matchKey].correct += 1;
                       }
                     });
-                  } else {
-                    const bObj = (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels || (report as any)?.blooms_mastery || {};
                     Object.keys(bloomKeys).forEach((k) => {
-                      const acc = Number(bObj[k] ?? bObj[k.toLowerCase()] ?? 70);
-                      statsMap[k] = { total: 10, correct: Math.round(acc / 10) };
+                      const s = statsMap[k];
+                      s.accuracy = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+                    });
+                  } else {
+                    const bObj =
+                      (report as any)?.part_2_exam_macro_scorecard?.blooms ||
+                      (report as any)?.blooms_mastery ||
+                      (report as any)?.part_3_aggregated_user_report?.['8_blooms_cognitive_mastery']?.value ||
+                      (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels ||
+                      {};
+
+                    const bBreakdown = bObj.breakdown || bObj;
+
+                    Object.keys(bloomKeys).forEach((k) => {
+                      const bData = bBreakdown[k] || bBreakdown[k.toLowerCase()] || {};
+                      let acc = 0;
+                      let tot = 0;
+                      let corr = 0;
+
+                      if (typeof bData === 'number') {
+                        acc = Math.round(bData);
+                      } else if (typeof bData === 'object' && bData !== null) {
+                        acc = Math.round(Number(bData.accuracy ?? bData.accuracy_percentage ?? 0));
+                        tot = Number(bData.total_attempts ?? bData.total ?? 0);
+                        corr = Number(bData.correct_attempts ?? bData.correct ?? 0);
+                      }
+
+                      // Check named keys e.g. remember_total, remember_correct
+                      const kTot = Number(bObj[`${k.toLowerCase()}_total`]);
+                      const kCorr = Number(bObj[`${k.toLowerCase()}_correct`]);
+                      if (!isNaN(kTot) && kTot > 0) {
+                        tot = kTot;
+                        corr = !isNaN(kCorr) ? kCorr : corr;
+                        acc = Math.round((corr / tot) * 100);
+                      }
+
+                      if (tot === 0 && acc > 0) {
+                        tot = 1;
+                        corr = acc >= 50 ? 1 : 0;
+                      }
+
+                      statsMap[k] = { total: tot, correct: corr, accuracy: acc };
                     });
                   }
 
                   return Object.entries(bloomKeys).map(([k, meta]) => {
                     const s = statsMap[k];
-                    const acc = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+                    const acc = s.accuracy;
                     return (
                       <div
                         key={k}
@@ -4108,7 +4726,7 @@ export function PsychometricReportView({
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
-                          <span>{s.correct}/{s.total} Correct</span>
+                          <span>{s.total > 0 ? `${s.correct}/${s.total} Correct` : '0 Evaluated'}</span>
                           <span>{acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'}</span>
                         </div>
                         <div style={{ width: '100%', height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', overflow: 'hidden' }}>
@@ -4121,45 +4739,49 @@ export function PsychometricReportView({
               </div>
             </div>
 
-            {/* Cumulative Subject Mastery Overview Scoreboard */}
+            {/* Subject Cumulative Mean Score & Performance Scoreboard (with Hierarchical Breakdown) */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <Layers size={18} color="#10b981" />
                 <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
-                  Subject-Wise Performance & Marks Scoreboard
+                  Subject Cumulative Mean Score & Hierarchical Performance Scoreboard
                 </h4>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
                 {hierarchyData.map((subj: any) => {
                   const bStyle = getBadgeStyle(subj.status);
-                  const netMarks = Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.66) * 100) / 100;
+                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
+
                   return (
                     <div
-                      key={`card_${subj.name}`}
+                      key={`subj_board_${subj.name}`}
                       style={{
-                        padding: '14px 16px',
-                        borderRadius: 12,
+                        padding: '16px',
+                        borderRadius: 14,
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
                         borderLeft: `4px solid ${subj.accuracy >= 70 ? '#10b981' : subj.accuracy >= 50 ? '#f59e0b' : '#ef4444'}`,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
+                      {/* Subject Top Row */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
+                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
                             {subj.name}
                           </div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>
-                            {subj.topics?.length || 0} Topics • {subj.total} Questions
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
+                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
                           </div>
                         </div>
                         <span
                           style={{
-                            fontSize: 11,
-                            fontWeight: 700,
+                            fontSize: 11.5,
+                            fontWeight: 800,
                             padding: '2px 8px',
                             borderRadius: 8,
                             backgroundColor: bStyle.bg,
@@ -4171,10 +4793,71 @@ export function PsychometricReportView({
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155' }}>
-                        <span>Correct: <strong>{subj.correct}/{subj.attempted}</strong></span>
-                        <span>Net Score: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} Marks</strong></span>
+                      {/* Cumulative Mean Score & Net Marks */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 8 }}>
+                        <span>Avg Mean: <strong style={{ color: '#2563eb' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
+                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
                       </div>
+
+                      {/* Hierarchical Categorization: Topics and Subtopics */}
+                      {subj.topics && subj.topics.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Syllabus Topics & Subtopics:
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {subj.topics.slice(0, 4).map((t: any) => {
+                              const tNet = t.net_marks !== undefined ? t.net_marks : Math.round((t.correct * 2.0 - (t.attempted - t.correct) * 0.6667) * 100) / 100;
+                              return (
+                                <div
+                                  key={`board_top_${subj.name}_${t.name}`}
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: 8,
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 3,
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
+                                    <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
+                                      • {t.name}
+                                    </span>
+                                    <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#10b981' : t.accuracy >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                      {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
+                                    </span>
+                                  </div>
+                                  {t.subtopics && t.subtopics.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
+                                      {t.subtopics.slice(0, 3).map((sub: any) => (
+                                        <span
+                                          key={`board_sub_${sub.name}`}
+                                          style={{
+                                            fontSize: 10,
+                                            padding: '1px 6px',
+                                            borderRadius: 6,
+                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                            color: '#64748b',
+                                          }}
+                                        >
+                                          ↳ {sub.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {subj.topics.length > 4 && (
+                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
+                                + {subj.topics.length - 4} more topics in full syllabus hierarchy below
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -4186,6 +4869,9 @@ export function PsychometricReportView({
               {hierarchyData.map((subj: any) => {
                 const isSubjExpanded = !!expandedHierarchyNodes[`subj_${subj.name}`];
                 const bSubj = getBadgeStyle(subj.status);
+                const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
 
                 return (
                   <div
@@ -4252,7 +4938,36 @@ export function PsychometricReportView({
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {/* Mean Score and Net Marks Badges */}
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                            color: '#2563eb',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Avg: {meanScore >= 0 ? `+${meanScore}` : meanScore} m/exam
+                        </span>
+
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            backgroundColor: netMarks >= 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2'),
+                            color: netMarks >= 0 ? '#10b981' : '#ef4444',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Net: {netMarks >= 0 ? `+${netMarks}` : netMarks} m
+                        </span>
+
                         {/* Question stats */}
                         <div style={{ fontSize: 12.5, color: '#64748b' }}>
                           <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
@@ -4318,7 +5033,7 @@ export function PsychometricReportView({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          🧠 {subj.retention_pct}% Memory ({subj.stability_days}d stab)
+                          🧠 {subj.retention_pct}% Memory
                         </span>
 
                         {/* Strength Badge */}

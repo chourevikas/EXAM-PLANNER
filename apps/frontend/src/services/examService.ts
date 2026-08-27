@@ -325,7 +325,7 @@ export interface AttemptHistoryItem {
 /** 12. Fetch Candidate Attempts History */
 export async function listCandidateAttempts(customToken?: string): Promise<AttemptHistoryItem[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/attempts`, {
+    const response = await fetch(`${API_BASE_URL}/attempts?limit=500`, {
       method: 'GET',
       headers: getAuthHeaders(customToken),
     });
