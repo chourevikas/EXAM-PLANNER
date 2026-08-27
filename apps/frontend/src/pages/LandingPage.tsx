@@ -24,13 +24,8 @@ export function LandingPage({ initialAuthMode }: LandingPageProps) {
   useEffect(() => {
     const hasCustomToken = !!localStorage.getItem('access_token');
     if (isLoaded && (isSignedIn || hasCustomToken)) {
-      const syncedId = sessionStorage.getItem('latest_synced_attempt_id');
-      if (syncedId) {
-        sessionStorage.removeItem('latest_synced_attempt_id');
-        navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      sessionStorage.removeItem('latest_synced_attempt_id');
+      navigate('/dashboard', { replace: true });
     }
   }, [isLoaded, isSignedIn, navigate]);
 

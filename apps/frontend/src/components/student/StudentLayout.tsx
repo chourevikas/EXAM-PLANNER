@@ -25,17 +25,10 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
         if (token) {
           localStorage.setItem('access_token', token);
 
-          // Auto-sync guest exam attempts for Clerk OAuth user
-          const latestId = await syncGuestSessionsOnAuth(token);
-          const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
-          const isPending = sessionStorage.getItem('pending_guest_sync');
-          if (syncedId || isPending) {
-            sessionStorage.removeItem('pending_guest_sync');
-            if (syncedId && window.location.pathname !== '/analytics') {
-              sessionStorage.removeItem('latest_synced_attempt_id');
-              navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
-            }
-          }
+          // Auto-sync guest exam attempts silently for Clerk OAuth user
+          await syncGuestSessionsOnAuth(token);
+          sessionStorage.removeItem('pending_guest_sync');
+          sessionStorage.removeItem('latest_synced_attempt_id');
         }
       }).catch(err => console.error("Failed to sync Clerk token:", err));
 

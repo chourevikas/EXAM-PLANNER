@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2 } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2, Sparkles } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
@@ -215,6 +215,129 @@ export function StudentPracticeExamPage() {
     });
     return Array.from(combinedMap.values()).slice(0, 5);
   }, [allQuestions, currentQIndex, recommendedPool]);
+
+  // Subject-Wide Fallback Pool & Topic Completion Banner
+  const [subjectFallbackPool, setSubjectFallbackPool] = useState<QuestionOut[]>([]);
+  const [isPrefetchingSubjectFallback, setIsPrefetchingSubjectFallback] = useState(false);
+  const [hasFetchedSubjectFallback, setHasFetchedSubjectFallback] = useState(false);
+  const [topicCompletionBanner, setTopicCompletionBanner] = useState<string | null>(null);
+
+  // Auto-prefetch broader subject questions immediately if topic questions count <= 3, or when getting close to end (2 questions left)
+  useEffect(() => {
+    const isNearEnd = currentQIndex >= allQuestions.length - 2;
+    const hasSmallQuestionCount = allQuestions.length <= 3;
+
+    if (
+      gTopic &&
+      gTopic !== 'All Topics' &&
+      allQuestions.length > 0 &&
+      (hasSmallQuestionCount || isNearEnd) &&
+      !hasFetchedSubjectFallback &&
+      !isPrefetchingSubjectFallback
+    ) {
+      const fetchSubjectFallback = async () => {
+        setIsPrefetchingSubjectFallback(true);
+        try {
+          const existingIds = new Set<string>();
+          allQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+          recommendedPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+          subjectFallbackPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+          Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
+          Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
+
+          const excludeIdsParam = Array.from(existingIds).join(',');
+          const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+          const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+          const params = new URLSearchParams({ limit: '15' });
+          if (rawSubject) params.append('subject_name', rawSubject);
+          if (targetExam) params.append('exam_name', targetExam);
+          if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
+
+          const res = await fetch(`/api/v1/questions?${params.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            const items = (data.items || []).filter((item: any) => !existingIds.has(item.question_id));
+            if (items.length > 0) {
+              const formatted: QuestionOut[] = items.map((item: any, idx: number) => {
+                const rawOptions = item.options || [];
+                const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+                  option_id: o.option_id || `opt-sub-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                  option_label: o.option_label || String.fromCharCode(65 + oIdx),
+                  text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                  is_correct: Boolean(o.is_correct),
+                }));
+                return {
+                  question_id: item.question_id,
+                  question_number: 0,
+                  text: item.question_text || item.text || '',
+                  options: optionsList,
+                  section_code: item.topic_name || item.subject_name || rawSubject || 'Subject Practice',
+                  topic_name: item.topic_name || 'Subject Practice',
+                  subtopic_name: item.subtopic_name,
+                  difficulty: item.difficulty || 'MEDIUM',
+                  marks: item.marks || 2.0,
+                  negative_marks: item.negative_marks || 0.66,
+                  expected_time_seconds: item.expected_time_seconds || 60,
+                  explanation: item.explanation || item.explanation_text || '',
+                } as any;
+              });
+
+              setSubjectFallbackPool(formatted);
+            }
+          }
+        } catch (err) {
+          console.warn('Subject fallback prefetch error:', err);
+        } finally {
+          setHasFetchedSubjectFallback(true);
+          setIsPrefetchingSubjectFallback(false);
+        }
+      };
+
+      fetchSubjectFallback();
+    }
+  }, [
+    gTopic,
+    gSubject,
+    gExam,
+    allQuestions,
+    currentQIndex,
+    hasFetchedSubjectFallback,
+    isPrefetchingSubjectFallback,
+    recommendedPool,
+    subjectFallbackPool,
+    userResponses,
+    revealedMap,
+  ]);
+
+  // Handler to append prefetched subject fallback questions when topic questions finish
+  const handleLoadSubjectFallbackQuestions = useCallback(() => {
+    if (subjectFallbackPool.length === 0) return false;
+
+    const startNum = allQuestions.length;
+    const newQuestions = subjectFallbackPool.map((q, idx) => ({
+      ...q,
+      question_number: startNum + idx + 1,
+    }));
+
+    const updatedQuestions = [...allQuestions, ...newQuestions];
+    const newPaletteItems: QuestionPaletteItem[] = newQuestions.map((q) => ({
+      question_number: q.question_number,
+      question_id: q.question_id,
+      question_status: 'NOT_VISITED' as any,
+    }));
+
+    setAllQuestions(updatedQuestions);
+    setTotalQuestions(updatedQuestions.length);
+    setPalette((prev) => [...prev, ...newPaletteItems]);
+
+    // Show popup notification banner
+    setTopicCompletionBanner(`Questions finished for "${gTopic}"! Now loading similar questions from ${gSubject || 'this subject'}.`);
+
+    // Clear subject fallback pool after appending
+    setSubjectFallbackPool([]);
+    return true;
+  }, [allQuestions, subjectFallbackPool, gTopic, gSubject]);
 
   // Mobile Responsiveness
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -518,6 +641,92 @@ export function StudentPracticeExamPage() {
     handleRevealAnswer(qId, optionId, optionLabel);
   };
 
+  // Helper to expand subject questions when current topic questions are finished
+  const checkAndExpandSubjectQuestions = useCallback(async (): Promise<boolean> => {
+    if (subjectFallbackPool.length > 0) {
+      return handleLoadSubjectFallbackQuestions();
+    }
+
+    if (gTopic && gTopic !== 'All Topics') {
+      try {
+        const existingIds = new Set<string>();
+        allQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+        recommendedPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+        Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
+        Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
+
+        const excludeIdsParam = Array.from(existingIds).join(',');
+        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+        const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
+
+        const params = new URLSearchParams({ limit: '15' });
+        if (rawSubject) params.append('subject_name', rawSubject);
+        if (targetExam) params.append('exam_name', targetExam);
+        if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
+
+        const res = await fetch(`/api/v1/questions?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.items || []).filter((item: any) => !existingIds.has(item.question_id));
+          if (items.length > 0) {
+            const formatted: QuestionOut[] = items.map((item: any, idx: number) => {
+              const rawOptions = item.options || [];
+              const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+                option_id: o.option_id || `opt-sub-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                option_label: o.option_label || String.fromCharCode(65 + oIdx),
+                text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                is_correct: Boolean(o.is_correct),
+              }));
+              return {
+                question_id: item.question_id,
+                question_number: 0,
+                text: item.question_text || item.text || '',
+                options: optionsList,
+                section_code: item.topic_name || item.subject_name || rawSubject || 'Subject Practice',
+                topic_name: item.topic_name || 'Subject Practice',
+                subtopic_name: item.subtopic_name,
+                difficulty: item.difficulty || 'MEDIUM',
+                marks: item.marks || 2.0,
+                negative_marks: item.negative_marks || 0.66,
+                expected_time_seconds: item.expected_time_seconds || 60,
+                explanation: item.explanation || item.explanation_text || '',
+              } as any;
+            });
+
+            const startNum = allQuestions.length;
+            const newQuestions = formatted.map((q, idx) => ({
+              ...q,
+              question_number: startNum + idx + 1,
+            }));
+
+            const updatedQuestions = [...allQuestions, ...newQuestions];
+            const newPaletteItems: QuestionPaletteItem[] = newQuestions.map((q) => ({
+              question_number: q.question_number,
+              question_id: q.question_id,
+              question_status: 'NOT_VISITED' as any,
+            }));
+
+            setAllQuestions(updatedQuestions);
+            setTotalQuestions(updatedQuestions.length);
+            setPalette((prev) => [...prev, ...newPaletteItems]);
+
+            setTopicCompletionBanner(`Questions finished for "${gTopic}"! Now loading similar questions from ${gSubject || 'this subject'}.`);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn('Direct subject expansion fetch warning:', err);
+      }
+    }
+
+    if (recommendedPool.length > 0) {
+      handleSelectRecommendation(recommendedPool[0]);
+      return true;
+    }
+
+    return false;
+  }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, recommendedPool, userResponses, revealedMap, handleSelectRecommendation]);
+
   // Reveal Instant Per-Question Answer & Description with Full Solution
   const handleRevealAnswer = async (qId?: string, overrideOptId?: string, overrideOptLbl?: string) => {
     const targetId = qId || activeQuestion?.question_id;
@@ -590,10 +799,13 @@ export function StudentPracticeExamPage() {
       })
     );
 
-    // Check if ALL questions are finished (revealed)
+    // Check if ALL currently loaded questions are finished (revealed)
     const numQuestions = allQuestions.length;
     if (Object.keys(updatedRevealedMap).length >= numQuestions && numQuestions > 0) {
-      handleFinishPracticeExam(updatedRevealedMap);
+      const expanded = await checkAndExpandSubjectQuestions();
+      if (!expanded) {
+        handleFinishPracticeExam(updatedRevealedMap);
+      }
     }
   };
 
@@ -629,9 +841,12 @@ export function StudentPracticeExamPage() {
 
     const rMap = passedRevealedMap || revealedMap;
     const numQuestions = allQuestions.length;
-    const isCompleted = Object.keys(rMap).length >= numQuestions || numQuestions === 1;
+    const isCompleted = Object.keys(rMap).length >= numQuestions && numQuestions > 0;
     if (isCompleted && scoreCountdown === null && !showScoreModal) {
-      handleFinishPracticeExam(rMap);
+      const expanded = await checkAndExpandSubjectQuestions();
+      if (!expanded) {
+        handleFinishPracticeExam(rMap);
+      }
     }
   };
 
@@ -1434,9 +1649,28 @@ export function StudentPracticeExamPage() {
           onShowSolution={() => handleShowSolution()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
-          onNext={() => {
+          onNext={async () => {
             if (currentQIndex < totalQuestions - 1) {
               handleSelectQuestion(currentQIndex + 1);
+            } else if (subjectFallbackPool.length > 0) {
+              const loaded = handleLoadSubjectFallbackQuestions();
+              if (loaded) handleSelectQuestion(currentQIndex + 1);
+            } else if (isPrefetchingSubjectFallback) {
+              setIsLoading(true);
+              let attempts = 0;
+              while (isPrefetchingSubjectFallback && attempts < 10) {
+                await new Promise((r) => setTimeout(r, 200));
+                attempts++;
+              }
+              setIsLoading(false);
+              if (subjectFallbackPool.length > 0) {
+                const loaded = handleLoadSubjectFallbackQuestions();
+                if (loaded) handleSelectQuestion(currentQIndex + 1);
+              } else if (recommendedPool.length > 0) {
+                handleSelectRecommendation(recommendedPool[0]);
+              } else {
+                setShowNoMoreQuestionsModal(true);
+              }
             } else if (recommendedPool.length > 0) {
               handleSelectRecommendation(recommendedPool[0]);
             } else {
@@ -1446,6 +1680,72 @@ export function StudentPracticeExamPage() {
         />
 
       </div>
+
+      {/* Topic Completion & Subject Question Expansion Pop-up Banner */}
+      {topicCompletionBanner && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 24,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 99999,
+            backgroundColor: '#0F172A',
+            color: '#FFFFFF',
+            borderRadius: 16,
+            padding: '14px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            maxWidth: 520,
+            width: '90%',
+            animation: 'fadeIn 0.25s ease-out',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              backgroundColor: '#2563EB',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Sparkles size={20} color="#FFFFFF" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+              Topic Complete &bull; Questions Expanded
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', lineHeight: 1.35 }}>
+              {topicCompletionBanner}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTopicCompletionBanner(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#94A3B8',
+              cursor: 'pointer',
+              fontSize: 18,
+              fontWeight: 700,
+              padding: 4,
+              lineHeight: 1,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
       {scoreCountdown !== null && (

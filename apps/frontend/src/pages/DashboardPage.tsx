@@ -85,13 +85,8 @@ export function DashboardPage() {
     const token = (await getToken()) || localStorage.getItem('access_token');
     if (token) {
       // Auto-sync any guest attempts stored in localStorage to backend DB first
-      const latestId = await syncGuestSessionsOnAuth(token);
-      const syncedId = latestId || sessionStorage.getItem('latest_synced_attempt_id');
-      if (syncedId && window.location.pathname !== '/analytics') {
-        sessionStorage.removeItem('latest_synced_attempt_id');
-        navigate(`/analytics?attemptId=${syncedId}`, { replace: true });
-        return;
-      }
+      await syncGuestSessionsOnAuth(token);
+      sessionStorage.removeItem('latest_synced_attempt_id');
 
       try {
         const res = await fetch('/api/v1/attempts/student-dashboard-stats', {
