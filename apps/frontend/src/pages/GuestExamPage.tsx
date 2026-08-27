@@ -158,7 +158,7 @@ export function GuestExamPage() {
       }
 
       // Step 1: Exact subject + topic with exclude_ids
-      const params = new URLSearchParams({ limit: '10' });
+      const params = new URLSearchParams({ limit: '5' });
       if (querySubject) params.append('subject_name', querySubject);
       if (queryTopic) params.append('topic_name', queryTopic);
       if (targetExam) params.append('exam_name', targetExam);
@@ -173,7 +173,7 @@ export function GuestExamPage() {
 
       // Step 2: Fallback - relax topic while preserving subject
       if (newFetched.length === 0 && querySubject) {
-        const fallbackParams = new URLSearchParams({ limit: '10' });
+        const fallbackParams = new URLSearchParams({ limit: '5' });
         fallbackParams.append('subject_name', querySubject);
         if (targetExam) fallbackParams.append('exam_name', targetExam);
         if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
@@ -218,7 +218,7 @@ export function GuestExamPage() {
               combinedMap.set(q.question_id, q);
             }
           });
-          return Array.from(combinedMap.values());
+          return Array.from(combinedMap.values()).slice(0, 5);
         });
       }
     } catch (err) {
@@ -577,25 +577,13 @@ export function GuestExamPage() {
     const correctOptIndex = targetQuestion.options?.findIndex((o) => o.is_correct) ?? 0;
     const correctLabel = correctOpt ? cleanOptionLabel(correctOpt.option_label || '', correctOptIndex) : 'A';
 
-    // Fetch rich solution metadata & distractor analyses
-    let solPayload: any = null;
-    try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
-      if (solRes.ok) {
-        solPayload = await solRes.json();
-      }
-    } catch (err) {
-      console.warn('Failed to fetch full solution artifact:', err);
-    }
-
-    const expContent = solPayload?.explanation || (targetQuestion as any).explanation || `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
-    const distScores = solPayload?.distractor_scores || {};
+    const expContent = (targetQuestion as any).explanation || `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
 
     const revealObj: RevealAnswerResponse & { presigned_url?: string } = {
       question_id: targetId,
       question_number: targetQuestion.question_number,
-      correct_option_id: solPayload?.correct_option_id || correctOpt?.option_id || '',
-      correct_option_label: solPayload?.correct_option_label || correctLabel,
+      correct_option_id: correctOpt?.option_id || '',
+      correct_option_label: correctLabel,
       is_user_correct: isUserCorrect,
       user_selected_option_id: userResp?.optionId || null,
       user_selected_label: userResp?.optionLabel || null,
@@ -603,8 +591,7 @@ export function GuestExamPage() {
       closeness_score: isUserCorrect ? 1.0 : 0.0,
       closeness_classification: isUserCorrect ? 'Correct Response' : 'Incorrect Response',
       explanation: expContent,
-      distractor_scores: distScores,
-      presigned_url: solPayload?.presigned_url,
+      distractor_scores: {},
     };
 
     const updatedRevealedMap = {
@@ -629,7 +616,38 @@ export function GuestExamPage() {
     );
   };
 
-  const handleShowSolution = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+  // Lazy-fetch full detailed solution metadata when user clicks 'Show Solution'
+  const handleShowSolution = async (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+    const targetId = activeQuestion?.question_id;
+    if (targetId) {
+      const existingRevealed = revealedMap[targetId];
+      // Lazy fetch detailed explanation artifact from solution API if not already enriched
+      if (!existingRevealed || !existingRevealed.distractor_scores || Object.keys(existingRevealed.distractor_scores).length === 0) {
+        try {
+          const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+          if (solRes.ok) {
+            const solPayload = await solRes.json();
+            setRevealedMap((prev) => {
+              const current = prev[targetId] || {};
+              return {
+                ...prev,
+                [targetId]: {
+                  ...current,
+                  correct_option_id: solPayload.correct_option_id || current.correct_option_id,
+                  correct_option_label: solPayload.correct_option_label || current.correct_option_label,
+                  explanation: solPayload.explanation || current.explanation,
+                  distractor_scores: solPayload.distractor_scores || current.distractor_scores,
+                  presigned_url: solPayload.presigned_url || (current as any).presigned_url,
+                },
+              };
+            });
+          }
+        } catch (err) {
+          console.warn('Lazy solution fetch error:', err);
+        }
+      }
+    }
+
     const rMap = passedRevealedMap || revealedMap;
     const numQuestions = allQuestions.length;
     // When Show Solution is clicked, if test is completed (or 1 question), start 10s countdown to feedback modal
@@ -1553,25 +1571,9 @@ export function GuestExamPage() {
                         <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
                           {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
                         </span>
-                        <span
-                          style={{
-                            fontSize: 9.5,
-                            fontWeight: 700,
-                            color: isInTest ? '#047857' : '#1E3A8A',
-                            backgroundColor: isInTest ? '#ECFDF5' : '#EFF6FF',
-                            padding: '1px 5px',
-                            borderRadius: 4,
-                            border: isInTest ? '1px solid #A7F3D0' : '1px solid #DBEAFE',
-                          }}
-                        >
-                          {isInTest ? `IN TEST (Q${testIndex + 1})` : 'HIGH YIELD'}
-                        </span>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', marginBottom: 4, lineHeight: 1.3 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
                         {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                      </div>
-                      <div style={{ fontSize: 10.5, color: '#64748B', lineHeight: 1.35 }}>
-                        <strong style={{ fontWeight: 600, color: '#475569' }}>Why:</strong> {isInTest ? `Jump straight to Q${testIndex + 1}` : 'Target topic match'}
                       </div>
                     </div>
                   );

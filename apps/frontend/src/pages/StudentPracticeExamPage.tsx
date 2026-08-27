@@ -400,24 +400,13 @@ export function StudentPracticeExamPage() {
     const correctOptIndex = targetQuestion.options?.findIndex((o) => o.is_correct) ?? 0;
     const correctLabel = correctOpt ? cleanOptionLabel(correctOpt.option_label || '', correctOptIndex) : 'A';
 
-    // Fetch rich solution metadata & distractor analyses if available
-    let solPayload: any = null;
-    try {
-      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
-      if (solRes.ok) {
-        solPayload = await solRes.json();
-      }
-    } catch (err) {
-      console.warn('Failed to fetch full solution artifact:', err);
-    }
-
-    const expContent = solPayload?.explanation || (targetQuestion as any).explanation || (targetQuestion as any).description || (targetQuestion as any).solution || (targetQuestion as any).solution_text || `Option (${correctLabel}) is correct.`;
+    const expContent = (targetQuestion as any).explanation || (targetQuestion as any).description || (targetQuestion as any).solution || (targetQuestion as any).solution_text || `Option (${correctLabel}) is correct.`;
 
     const revealObj: RevealAnswerResponse = {
       question_id: targetId,
       question_number: targetQuestion.question_number,
-      correct_option_id: solPayload?.correct_option_id || correctOpt?.option_id || '',
-      correct_option_label: solPayload?.correct_option_label || correctLabel,
+      correct_option_id: correctOpt?.option_id || '',
+      correct_option_label: correctLabel,
       is_user_correct: isUserCorrect,
       user_selected_option_id: userResp?.optionId || null,
       user_selected_label: userResp?.optionLabel || null,
@@ -425,7 +414,7 @@ export function StudentPracticeExamPage() {
       closeness_score: isUserCorrect ? 100 : 0,
       closeness_classification: isUserCorrect ? 'EXACT' : 'INCORRECT',
       explanation: expContent,
-      distractor_scores: solPayload?.distractor_scores || {},
+      distractor_scores: {},
     };
 
     const updatedRevealedMap = {
@@ -455,7 +444,36 @@ export function StudentPracticeExamPage() {
     }
   };
 
-  const handleShowSolution = (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+  const handleShowSolution = async (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
+    const targetId = activeQuestion?.question_id;
+    if (targetId) {
+      const existingRevealed = revealedMap[targetId];
+      if (!existingRevealed || !existingRevealed.distractor_scores || Object.keys(existingRevealed.distractor_scores).length === 0) {
+        try {
+          const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+          if (solRes.ok) {
+            const solPayload = await solRes.json();
+            setRevealedMap((prev) => {
+              const current = prev[targetId] || {};
+              return {
+                ...prev,
+                [targetId]: {
+                  ...current,
+                  correct_option_id: solPayload.correct_option_id || current.correct_option_id,
+                  correct_option_label: solPayload.correct_option_label || current.correct_option_label,
+                  explanation: solPayload.explanation || current.explanation,
+                  distractor_scores: solPayload.distractor_scores || current.distractor_scores,
+                  presigned_url: solPayload.presigned_url || (current as any).presigned_url,
+                },
+              };
+            });
+          }
+        } catch (err) {
+          console.warn('Lazy solution fetch error:', err);
+        }
+      }
+    }
+
     const rMap = passedRevealedMap || revealedMap;
     const numQuestions = allQuestions.length;
     const isCompleted = Object.keys(rMap).length >= numQuestions || numQuestions === 1;

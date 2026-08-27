@@ -386,7 +386,7 @@ export function ExamQuestionCard({
                   border: '1px solid #DBEAFE',
                 }}
               >
-                QUESTION {String(questionIndex + 1).padStart(2, '0')} / {String(totalQuestions).padStart(2, '0')}
+                QUESTION {questionIndex + 1}
               </span>
             </div>
 
