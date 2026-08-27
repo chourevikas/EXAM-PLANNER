@@ -107,78 +107,97 @@ class AnalyticsService:
             )
             raise HTTPException(status_code=500, detail=str(exc))
 
-    async def get_attempt_question_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
-        """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report."""
+    async def get_attempt_question_report(
+        self,
+        attempt_id: uuid.UUID,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Fetches Report 1: Question-Level Detailed Diagnostic & Explanation Report with optional pagination."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         cache_key = build_cache_key("analytics:attempt_q", str(attempt_id))
         cached_data = await cache.get(cache_key)
-        if cached_data is not None:
-            return cached_data
+        
+        all_questions = []
 
-        attempt = await self.session.get(ExamAttempt, attempt_id)
-        if not attempt:
-            raise HTTPException(status_code=404, detail="Attempt not found.")
+        if cached_data is not None and isinstance(cached_data, dict) and "questions" in cached_data:
+            all_questions = cached_data["questions"]
+        else:
+            attempt = await self.session.get(ExamAttempt, attempt_id)
+            if not attempt:
+                raise HTTPException(status_code=404, detail="Attempt not found.")
 
-        # 1. Instant DB Cache from attempt.report_metadata_json (contains full per-question analysis & explanations)
-        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
-            part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
-            if part_1 and len(part_1) > 0:
-                res_data = {
-                    "attempt_id": str(attempt_id),
-                    "total_questions": len(part_1),
-                    "questions": part_1,
-                }
-                await cache.set(cache_key, res_data, ttl_seconds=86400)
-                return res_data
+            # 1. Instant DB Cache from attempt.report_metadata_json (contains full per-question analysis & explanations)
+            if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
+                if part_1 and len(part_1) > 0:
+                    all_questions = part_1
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(part_1), "questions": part_1}, ttl_seconds=86400)
 
-        # 2. Database ExamQuestionReport Rows
-        stmt = (
-            select(ExamQuestionReport)
-            .where(ExamQuestionReport.attempt_id == attempt_id)
-            .order_by(col(ExamQuestionReport.question_number).asc())
-        )
-        res = await self.session.exec(stmt)
-        rows = res.all()
-        if rows:
-            res_data = {
+            # 2. Database ExamQuestionReport Rows
+            if not all_questions:
+                stmt = (
+                    select(ExamQuestionReport)
+                    .where(ExamQuestionReport.attempt_id == attempt_id)
+                    .order_by(col(ExamQuestionReport.question_number).asc())
+                )
+                res = await self.session.exec(stmt)
+                rows = res.all()
+                if rows:
+                    all_questions = [
+                        {
+                            "question_number": r.question_number,
+                            "question_id": str(r.question_id),
+                            "is_correct": r.is_correct,
+                            "final_score": r.final_score,
+                            "time_taken_seconds": r.time_taken_seconds,
+                            "expected_time_seconds": r.expected_time_seconds,
+                            "time_window": r.time_window,
+                            "closeness_score": r.closeness_score,
+                            "closeness_classification": r.closeness_classification,
+                            "gti_item_score": r.gti_item_score,
+                            "is_option_switched": r.is_option_switched,
+                            "blooms_level": r.blooms_level,
+                            "explanation": r.explanation_json,
+                        }
+                        for r in rows
+                    ]
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+
+            # 3. Synchronously evaluate report
+            if not all_questions:
+                rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
+                if rep and rep.get("part_1_per_question_analysis"):
+                    all_questions = rep["part_1_per_question_analysis"]
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+
+        if not all_questions:
+            raise HTTPException(status_code=404, detail="Question-level diagnostic report not available.")
+
+        total_q = len(all_questions)
+
+        if page is not None and page >= 1:
+            p_size = page_size if page_size and page_size >= 1 else 10
+            import math
+            total_pages = max(1, math.ceil(total_q / p_size))
+            start_idx = (page - 1) * p_size
+            end_idx = start_idx + p_size
+            paged_questions = all_questions[start_idx:end_idx]
+            return {
                 "attempt_id": str(attempt_id),
-                "total_questions": len(rows),
-                "questions": [
-                    {
-                        "question_number": r.question_number,
-                        "question_id": str(r.question_id),
-                        "is_correct": r.is_correct,
-                        "final_score": r.final_score,
-                        "time_taken_seconds": r.time_taken_seconds,
-                        "expected_time_seconds": r.expected_time_seconds,
-                        "time_window": r.time_window,
-                        "closeness_score": r.closeness_score,
-                        "closeness_classification": r.closeness_classification,
-                        "gti_item_score": r.gti_item_score,
-                        "is_option_switched": r.is_option_switched,
-                        "blooms_level": r.blooms_level,
-                        "explanation": r.explanation_json,
-                    }
-                    for r in rows
-                ],
+                "total_questions": total_q,
+                "page": page,
+                "page_size": p_size,
+                "total_pages": total_pages,
+                "questions": paged_questions,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
-            return res_data
 
-        # 3. Synchronously evaluate report
-        rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
-        if rep and rep.get("part_1_per_question_analysis"):
-            part_1 = rep["part_1_per_question_analysis"]
-            res_data = {
-                "attempt_id": str(attempt_id),
-                "total_questions": len(part_1),
-                "questions": part_1,
-            }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
-            return res_data
-
-        raise HTTPException(status_code=404, detail="Question-level diagnostic report not available.")
+        return {
+            "attempt_id": str(attempt_id),
+            "total_questions": total_q,
+            "questions": all_questions,
+        }
 
     async def get_attempt_exam_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
         """Fetches Report 2: Exam-Level 12-Matrix Aggregated Performance Report."""
@@ -517,11 +536,11 @@ class AnalyticsService:
         # 2. Aggregate from ExamQuestionResponses
         eq_stmt = (
             select(ExamQuestionResponse, Question, Exam.subject_code)
-            .join(ExamAttempt, ExamQuestionResponse.attempt_id == ExamAttempt.id)
-            .join(Question, ExamQuestionResponse.question_id == Question.id)
-            .join(Exam, ExamAttempt.exam_id == Exam.id)
-            .where(ExamAttempt.user_id == user_id)
-            .where(ExamQuestionResponse.selected_option_id.is_not(None))
+            .join(ExamAttempt, col(ExamQuestionResponse.attempt_id) == col(ExamAttempt.id))
+            .join(Question, col(ExamQuestionResponse.question_id) == col(Question.id))
+            .join(Exam, col(ExamAttempt.exam_id) == col(Exam.id))
+            .where(col(ExamAttempt.user_id) == user_id)
+            .where(col(ExamQuestionResponse.selected_option_id).is_not(None))
         )
         eq_results = (await self.session.exec(eq_stmt)).all()
 
@@ -533,9 +552,9 @@ class AnalyticsService:
         if question_ids:
             links_stmt = (
                 select(QuestionHierarchyLink.question_id, Subject.name)
-                .join(Subject, QuestionHierarchyLink.subject_id == Subject.id)
-                .where(QuestionHierarchyLink.question_id.in_(question_ids))
-                .order_by(QuestionHierarchyLink.is_primary.desc())
+                .join(Subject, col(QuestionHierarchyLink.subject_id) == col(Subject.id))
+                .where(col(QuestionHierarchyLink.question_id).in_(question_ids))
+                .order_by(col(QuestionHierarchyLink.is_primary).desc())
             )
             link_rows = (await self.session.exec(links_stmt)).all()
             for q_id, subj_name in link_rows:
@@ -546,9 +565,9 @@ class AnalyticsService:
         if subtopic_ids:
             subt_stmt = (
                 select(Subtopic.id, Subject.name)
-                .join(Topic, Subtopic.topic_id == Topic.id)
-                .join(Subject, Topic.subject_id == Subject.id)
-                .where(Subtopic.id.in_(subtopic_ids))
+                .join(Topic, col(Subtopic.topic_id) == col(Topic.id))
+                .join(Subject, col(Topic.subject_id) == col(Subject.id))
+                .where(col(Subtopic.id).in_(subtopic_ids))
             )
             subt_rows = (await self.session.exec(subt_stmt)).all()
             for s_id, subj_name in subt_rows:
@@ -624,7 +643,7 @@ class AnalyticsService:
         stmt = (
             select(ExamAttempt)
             .where(ExamAttempt.user_id == user_id)
-            .where(ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
+            .where(col(ExamAttempt.status).in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
             .order_by(col(ExamAttempt.submitted_at).desc())
             .limit(5)
         )

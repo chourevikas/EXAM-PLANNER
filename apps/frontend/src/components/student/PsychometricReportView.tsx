@@ -48,6 +48,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   ResponsiveContainer,
+  ComposedChart,
   BarChart,
   Bar,
   LineChart,
@@ -75,9 +76,22 @@ export function PsychometricReportView({
   userProgressionData,
 }: PsychometricReportViewProps) {
   const isDark = false;
+
+  const isCumulative =
+    report?.is_cumulative ||
+    report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
+
   const [activeTab, setActiveTab] = useState<
     'questions' | 'exam-matrices' | 'topics' | 'user-aggregate' | 'markdown'
-  >('questions');
+  >(isCumulative ? 'exam-matrices' : 'questions');
+
+  useEffect(() => {
+    if (isCumulative && activeTab === 'questions') {
+      setActiveTab('exam-matrices');
+    } else if (!isCumulative && activeTab === 'user-aggregate') {
+      setActiveTab('questions');
+    }
+  }, [isCumulative]);
 
   const [openInfoKeys, setOpenInfoKeys] = useState<Record<string, boolean>>({});
   const [questionFilter, setQuestionFilter] = useState<
@@ -94,6 +108,12 @@ export function PsychometricReportView({
     'all_exams' | 'full_mock_exams' | 'practice_tests' | 'guest_trials'
   >('all_exams');
 
+  const [questionPage, setQuestionPage] = useState<number>(1);
+  const questionPageSize = 10;
+
+  const [matrixPage, setMatrixPage] = useState<number>(1);
+  const matrixPageSize = 10;
+
   const attemptId =
     (report as any)?.metadata?.exam_attempt?.attempt_id ||
     (report as any)?.attempt_id ||
@@ -108,7 +128,7 @@ export function PsychometricReportView({
             setScheduledTaskTitles(new Set(res.scheduled_task_titles));
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [attemptId]);
 
@@ -169,14 +189,60 @@ export function PsychometricReportView({
     per_question_diagnostic_report = [],
   } = report || {};
 
-  const timelineData =
-    report?.exam_timeline ||
-    (report as any)?.metadata?.exam_timeline ||
-    (report as any)?.evolution_graphs?.exam_timeline ||
-    [];
-  const isCumulative =
-    report?.is_cumulative ||
-    report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
+  const rawTimelineData = React.useMemo(() => {
+    if (report?.exam_timeline && Array.isArray(report.exam_timeline) && report.exam_timeline.length > 0) {
+      return report.exam_timeline;
+    }
+    if ((report as any)?.metadata?.exam_timeline && Array.isArray((report as any).metadata.exam_timeline)) {
+      return (report as any).metadata.exam_timeline;
+    }
+    const evo = (report as any)?.evolution_graphs;
+    if (evo && Array.isArray(evo.labels) && evo.labels.length > 0) {
+      return evo.labels.map((lbl: string, idx: number) => ({
+        attempt_number: idx + 1,
+        exam_name: lbl,
+        total_score: evo.scores?.[idx] ?? 0,
+        max_possible_score: evo.max_scores?.[idx] ?? 200,
+        accuracy_percentage: evo.accuracies?.[idx] ?? 0,
+        icrs_score: evo.icrs_scores?.[idx] ?? 65,
+        irt_theta: evo.irt_thetas?.[idx] ?? 0,
+        gti_score: (evo.gti_percentages?.[idx] ?? 20) / 100,
+        oeei_score: (evo.oeei_percentages?.[idx] ?? 70) / 100,
+        satoi_score: evo.satoi_scores?.[idx] ?? 80,
+        date_formatted: evo.dates?.[idx] ?? `Session ${idx + 1}`,
+      }));
+    }
+    return [];
+  }, [report]);
+
+  const timelineData = React.useMemo(() => {
+    return rawTimelineData.map((item: any, idx: number) => {
+      const rawScore = Number(item.total_score ?? item.score ?? 0);
+      const maxScore = Number(item.max_possible_score ?? item.max_score ?? 200);
+      const acc = Number(item.accuracy_percentage ?? item.accuracy ?? 0);
+      const icrsVal = Number(item.icrs_score ?? 65);
+      const satoiVal = Number(item.satoi_score ?? 80);
+      const gtiVal = Number(item.gti_score ?? item.gti ?? 0.2);
+      const oeeiVal = Number(item.oeei_score ?? item.oeei ?? 0.7);
+      const irtVal = Number(item.irt_theta ?? item.irt ?? 0.0);
+      const exName = item.exam_name || item.name || `Exam #${item.attempt_number || idx + 1}`;
+      const dispLabel = `Exam ${item.attempt_number || idx + 1}`;
+
+      return {
+        ...item,
+        display_label: dispLabel,
+        exam_name: exName,
+        total_score: Math.round(rawScore * 10) / 10,
+        max_possible_score: Math.round(maxScore * 10) / 10,
+        accuracy_percentage: Math.round(acc * 10) / 10,
+        icrs_score: Math.round(icrsVal * 10) / 10,
+        satoi_score: Math.round(satoiVal * 10) / 10,
+        gti_pct: Math.round((gtiVal <= 1.0 ? gtiVal * 100 : gtiVal) * 10) / 10,
+        oeei_pct: Math.round((oeeiVal <= 1.0 ? oeeiVal * 100 : oeeiVal) * 10) / 10,
+        irt_theta: Math.round(irtVal * 100) / 100,
+      };
+    });
+  }, [rawTimelineData]);
 
   const macroAnalytics: Record<string, any> =
     (report as any)?.part_2_exam_macro_scorecard ||
@@ -389,8 +455,8 @@ export function PsychometricReportView({
     (report as any)?.part_1_per_question_analysis && (report as any).part_1_per_question_analysis.length > 0
       ? (report as any).part_1_per_question_analysis
       : (questionReportData && questionReportData.length > 0)
-      ? questionReportData
-      : per_question_diagnostic_report;
+        ? questionReportData
+        : per_question_diagnostic_report;
 
   // Enrich with questionReportData if needed
   const questionsList = React.useMemo(() => {
@@ -562,6 +628,11 @@ export function PsychometricReportView({
 
       const finalizeNode = (node: any) => {
         const acc = node.attempted > 0 ? Math.round((node.correct / node.attempted) * 100) : 0;
+        const posMarks = Math.round(node.correct * 2.0 * 100) / 100;
+        const negMarks = Math.round(node.incorrect * 0.6667 * 100) / 100;
+        const netMarks = Math.round((posMarks - negMarks) * 100) / 100;
+        const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+        const meanScore = Math.round((netMarks / numExams) * 100) / 100;
         const avgTime = Math.round(node.total_time / Math.max(1, node.total));
         const expTime = Math.round(node.total_expected_time / Math.max(1, node.total));
         const effRatio = node.total_time / Math.max(1, node.total_expected_time);
@@ -607,6 +678,10 @@ export function PsychometricReportView({
         return {
           ...node,
           accuracy: acc,
+          positive_marks: posMarks,
+          negative_marks: negMarks,
+          net_marks: netMarks,
+          mean_score: meanScore,
           avg_time: avgTime,
           expected_time: expTime,
           pacing_status: pStatus,
@@ -631,33 +706,75 @@ export function PsychometricReportView({
 
     // Fallback: Build tree from part_2_taxonomy_analysis if questionsList is empty (cumulative mode)
     const part2Tax = (report as any)?.part_2_taxonomy_analysis || {};
-    const subjs = part2Tax.by_subject || part2Tax.subject_breakdown || [];
+    const subjs = part2Tax.by_subject || part2Tax.subject_breakdown || (report as any)?.part_2_exam_macro_scorecard?.subject_cumulative_mean_scoreboard || (report as any)?.part_2_exam_macro_scorecard?.subjects || (report as any)?.syllabus_hierarchy || [];
     const tops = part2Tax.by_topic || part2Tax.topic_breakdown || [];
+    const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
 
     const subjMap: Record<string, any> = {};
 
     subjs.forEach((s: any) => {
-      const sName = s.taxonomy_name || s.subject || 'General Studies';
+      const sName = s.taxonomy_name || s.subject_name || s.name || s.subject || 'General Studies';
+      const tot = Number(s.total_questions || s.total || s.total_attempts || 0);
+      const att = Number(s.attempted_questions || s.attempted || s.total_attempts || 0);
+      const corr = Number(s.correct || s.correct_attempts || 0);
+      const inc = Number(s.incorrect || Math.max(0, att - corr));
+      const acc = Math.round(Number(s.accuracy_percentage ?? s.accuracy ?? (att > 0 ? (corr / att) * 100 : 0)));
+      const posMarks = Number(s.positive_marks ?? Math.round(corr * 2.0 * 100) / 100);
+      const negMarks = Number(s.negative_marks ?? Math.round(inc * 0.6667 * 100) / 100);
+      const netMarks = Number(s.net_marks ?? Math.round((posMarks - negMarks) * 100) / 100);
+      const meanScore = Number(s.mean_score ?? s.mean_score_per_exam ?? Math.round((netMarks / numExams) * 100) / 100);
+
+      const nestedTopics = s.topics_list || (s.topics && Array.isArray(s.topics) ? s.topics : s.topics && typeof s.topics === 'object' ? Object.values(s.topics) : []);
+
       subjMap[sName] = {
         name: sName,
-        total: s.total_questions || s.total || 0,
-        attempted: s.attempted_questions || s.attempted || s.total_questions || 0,
-        correct: s.correct || 0,
-        incorrect: s.incorrect || 0,
-        unattempted: s.unattempted || 0,
-        accuracy: Math.round(s.accuracy_percentage || s.accuracy || 0),
+        total: tot,
+        attempted: att,
+        correct: corr,
+        incorrect: inc,
+        unattempted: Math.max(0, tot - att),
+        accuracy: acc,
+        positive_marks: posMarks,
+        negative_marks: negMarks,
+        net_marks: netMarks,
+        mean_score: meanScore,
         avg_time: Math.round(s.avg_time_per_question || 60),
         expected_time: Math.round(s.expected_time_per_question || 60),
         pacing_status: s.pacing_status || 'OPTIMAL',
         pacing_label: s.pacing_label || '⚡ Optimal Pace',
-        status: s.strength_status || 'STRONG',
-        status_label: s.strength_label || 'Strong',
-        retention_pct: Math.round(s.topic_retention_pct || s.fsrs_retention_pct || 75),
+        status: s.strength_status || s.status || (acc >= 75 ? 'STRONG' : acc >= 50 ? 'COMPETENT' : 'WEAK_REVISION_REQUIRED'),
+        status_label: s.strength_label || (acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'),
+        retention_pct: Math.round(s.topic_retention_pct || s.retention_percentage || 75),
         stability_days: s.fsrs_stability_days || 3.5,
         retention_health: s.retention_health_label || 'Healthy Active',
         blooms: s.blooms_breakdown || {},
         question_numbers: [],
-        topics: [],
+        topics: nestedTopics.map((t: any) => ({
+          name: t.name || t.taxonomy_name || 'Core Concepts',
+          subject: sName,
+          total: t.total_questions || t.total || 0,
+          attempted: t.attempted || 0,
+          correct: t.correct || 0,
+          incorrect: t.incorrect || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted || 0)),
+          accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || 0,
+          negative_marks: t.negative_marks || 0,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
+          avg_time: 60,
+          expected_time: 60,
+          pacing_status: 'OPTIMAL',
+          pacing_label: '⚡ Optimal Pace',
+          status: t.status || 'STRONG',
+          status_label: t.status_label || 'Mastered',
+          retention_pct: t.retention_percentage || 75,
+          stability_days: 3.5,
+          retention_health: 'Healthy Active',
+          blooms: {},
+          question_numbers: [],
+          subtopics: Array.isArray(t.subtopics) ? t.subtopics : typeof t.subtopics === 'object' && t.subtopics ? Object.values(t.subtopics) : [],
+        })),
       };
     });
 
@@ -671,8 +788,12 @@ export function PsychometricReportView({
           attempted: t.attempted_questions || t.total_questions || 0,
           correct: t.correct || 0,
           incorrect: t.incorrect || 0,
-          unattempted: t.unattempted || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted_questions || 0)),
           accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || Math.round((t.correct || 0) * 2.0 * 100) / 100,
+          negative_marks: t.negative_marks || Math.round((t.incorrect || 0) * 0.6667 * 100) / 100,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
           avg_time: Math.round(t.avg_time_per_question || 60),
           expected_time: 60,
           pacing_status: t.pacing_status || 'OPTIMAL',
@@ -688,31 +809,100 @@ export function PsychometricReportView({
         };
       }
 
-      const tNode = {
-        name: tName,
-        subject: sName,
-        total: t.total_questions || 0,
-        attempted: t.attempted_questions || t.total_questions || 0,
-        correct: t.correct || 0,
-        incorrect: t.incorrect || 0,
-        unattempted: t.unattempted || 0,
-        accuracy: Math.round(t.accuracy_percentage || 0),
-        avg_time: Math.round(t.avg_time_per_question || 60),
-        expected_time: 60,
-        pacing_status: t.pacing_status || 'OPTIMAL',
-        pacing_label: t.pacing_label || '⚡ Optimal Pace',
-        status: t.strength_status || 'STRONG',
-        status_label: t.strength_label || 'Strong',
-        retention_pct: Math.round(t.topic_retention_pct || 75),
-        stability_days: t.fsrs_stability_days || 3.5,
-        retention_health: t.retention_health_label || 'Healthy Active',
-        blooms: t.blooms_breakdown || {},
-        question_numbers: [],
-        subtopics: [],
-      };
-
-      subjMap[sName].topics.push(tNode);
+      const alreadyHasTopic = subjMap[sName].topics.some((existingT: any) => existingT.name === tName);
+      if (!alreadyHasTopic) {
+        const tNode = {
+          name: tName,
+          subject: sName,
+          total: t.total_questions || 0,
+          attempted: t.attempted_questions || t.total_questions || 0,
+          correct: t.correct || 0,
+          incorrect: t.incorrect || 0,
+          unattempted: Math.max(0, (t.total_questions || 0) - (t.attempted_questions || 0)),
+          accuracy: Math.round(t.accuracy_percentage || 0),
+          positive_marks: t.positive_marks || Math.round((t.correct || 0) * 2.0 * 100) / 100,
+          negative_marks: t.negative_marks || Math.round((t.incorrect || 0) * 0.6667 * 100) / 100,
+          net_marks: t.net_marks || 0,
+          mean_score: t.mean_score || 0,
+          avg_time: Math.round(t.avg_time_per_question || 60),
+          expected_time: 60,
+          pacing_status: t.pacing_status || 'OPTIMAL',
+          pacing_label: t.pacing_label || '⚡ Optimal Pace',
+          status: t.strength_status || 'STRONG',
+          status_label: t.strength_label || 'Strong',
+          retention_pct: Math.round(t.topic_retention_pct || 75),
+          stability_days: t.fsrs_stability_days || 3.5,
+          retention_health: t.retention_health_label || 'Healthy Active',
+          blooms: t.blooms_breakdown || {},
+          question_numbers: [],
+          subtopics: Array.isArray(t.subtopics) ? t.subtopics : typeof t.subtopics === 'object' && t.subtopics ? Object.values(t.subtopics) : [],
+        };
+        subjMap[sName].topics.push(tNode);
+      }
     });
+
+    if (Object.keys(subjMap).length === 0) {
+      const defSubjects = [
+        { name: 'Indian Polity & Governance', topics: ['Constitution & Preamble', 'Fundamental Rights & DPSP', 'Union & State Executive'] },
+        { name: 'History & Art of India', topics: ['Ancient India', 'Medieval India', 'Modern National Movement'] },
+        { name: 'Geography & Environment', topics: ['Physical Geography', 'Indian Geography', 'Ecology & Climate Change'] },
+        { name: 'Indian Economy & Social Development', topics: ['Macroeconomics & GDP', 'Fiscal & Monetary Policy', 'Inclusive Growth'] },
+        { name: 'General Science & Technology', topics: ['Space & Defense', 'Biotechnology', 'Information Technology'] },
+        { name: 'Current Affairs & International Relations', topics: ['Bilateral Summits', 'Global Treaties', 'National Initiatives'] },
+      ];
+      defSubjects.forEach((s) => {
+        subjMap[s.name] = {
+          name: s.name,
+          total: 0,
+          attempted: 0,
+          correct: 0,
+          incorrect: 0,
+          unattempted: 0,
+          accuracy: 0,
+          positive_marks: 0,
+          negative_marks: 0,
+          net_marks: 0,
+          mean_score: 0,
+          avg_time: 60,
+          expected_time: 60,
+          pacing_status: 'OPTIMAL',
+          pacing_label: '⚡ Optimal Pace',
+          status: 'COMPETENT',
+          status_label: 'Focus Area',
+          retention_pct: 75,
+          stability_days: 3.5,
+          retention_health: 'Healthy Active',
+          blooms: {},
+          question_numbers: [],
+          topics: s.topics.map((t) => ({
+            name: t,
+            subject: s.name,
+            total: 0,
+            attempted: 0,
+            correct: 0,
+            incorrect: 0,
+            unattempted: 0,
+            accuracy: 0,
+            positive_marks: 0,
+            negative_marks: 0,
+            net_marks: 0,
+            mean_score: 0,
+            avg_time: 60,
+            expected_time: 60,
+            pacing_status: 'OPTIMAL',
+            pacing_label: '⚡ Optimal Pace',
+            status: 'COMPETENT',
+            status_label: 'Focus Area',
+            retention_pct: 75,
+            stability_days: 3.5,
+            retention_health: 'Healthy Active',
+            blooms: {},
+            question_numbers: [],
+            subtopics: [],
+          })),
+        };
+      });
+    }
 
     return Object.values(subjMap);
   }, [questionsList, report]);
@@ -720,8 +910,11 @@ export function PsychometricReportView({
   const handleJumpToQuestion = (qNum: number) => {
     setActiveTab('questions');
     setQuestionFilter('all');
-    const matchedQ = questionsList.find((q, idx) => Number(q.question_number || idx + 1) === qNum);
-    if (matchedQ) {
+    const matchedIndex = questionsList.findIndex((q, idx) => Number(q.question_number || idx + 1) === qNum);
+    if (matchedIndex >= 0) {
+      const targetPage = Math.floor(matchedIndex / questionPageSize) + 1;
+      setQuestionPage(targetPage);
+      const matchedQ = questionsList[matchedIndex];
       const qId = matchedQ.question_id || matchedQ.question_number || qNum;
       setExpandedQuestionId(qId);
       setTimeout(() => {
@@ -810,8 +1003,8 @@ export function PsychometricReportView({
               {metadata?.exam_attempt?.total_score_awarded !== undefined
                 ? metadata.exam_attempt.total_score_awarded.toFixed(2)
                 : (metadata?.exam_attempt as any)?.total_score !== undefined
-                ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
-                : '0.00'}
+                  ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
+                  : '0.00'}
               <span style={{ fontSize: 13, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
             </div>
           </div>
@@ -1919,768 +2112,765 @@ export function PsychometricReportView({
             </div>
           )}
 
-            {/* Personalized Actionable Revision Tasks (Interactive Recommendation Board with Study Plan Sync) */}
-            {(() => {
-              const rawTasksList = (
-                (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
-                (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
-                (report as any)?.llm_insight?.study_plan_tasks ||
-                (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
-                []
-              ).slice(0, 4);
+          {/* Personalized Actionable Revision Tasks (Interactive Recommendation Board with Study Plan Sync) */}
+          {(() => {
+            const rawTasksList = (
+              (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
+              (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
+              (report as any)?.llm_insight?.study_plan_tasks ||
+              (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
+              []
+            ).slice(0, 4);
 
-              if (!rawTasksList || rawTasksList.length === 0) return null;
+            if (!rawTasksList || rawTasksList.length === 0) return null;
 
-              const unaddedCount = rawTasksList.filter(
-                (t: any) =>
-                  !scheduledTaskTitles.has(t.title) &&
-                  !scheduledTaskTitles.has(`[${t.subject || 'Core'}] ${t.title}`) &&
-                  !addedTaskPlanSuccess[t.task_id || t.title]
-              ).length;
+            const unaddedCount = rawTasksList.filter(
+              (t: any) =>
+                !scheduledTaskTitles.has(t.title) &&
+                !scheduledTaskTitles.has(`[${t.subject || 'Core'}] ${t.title}`) &&
+                !addedTaskPlanSuccess[t.task_id || t.title]
+            ).length;
 
-              return (
+            return (
+              <div
+                style={{
+                  ...cardStyle,
+                  gridColumn: '1 / -1',
+                  padding: 24,
+                  border: '1px solid rgba(37,99,235,0.3)',
+                  background: isDark
+                    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                    : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                }}
+              >
                 <div
                   style={{
-                    ...cardStyle,
-                    gridColumn: '1 / -1',
-                    padding: 24,
-                    border: '1px solid rgba(37,99,235,0.3)',
-                    background: isDark
-                      ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                      : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 18,
+                    flexWrap: 'wrap',
+                    gap: 12,
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 18,
-                      flexWrap: 'wrap',
-                      gap: 12,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div
-                        style={{
-                          padding: 10,
-                          borderRadius: 12,
-                          backgroundColor: 'rgba(37,99,235,0.15)',
-                          color: '#2563eb',
-                        }}
-                      >
-                        <CalendarPlus size={24} />
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <h3
-                            style={{
-                              fontSize: 19,
-                              fontWeight: 800,
-                              margin: 0,
-                              color: isDark ? '#ffffff' : '#0f172a',
-                            }}
-                          >
-                            AI-Recommended Study Plan Tasks (4 Priorities)
-                          </h3>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              backgroundColor: 'rgba(37,99,235,0.1)',
-                              color: '#2563eb',
-                            }}
-                          >
-                            4 Action Steps
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
-                          Targeted study interventions generated from your test errors. Click to add or remove from your personal study planner.
-                        </div>
-                      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                      style={{
+                        padding: 10,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(37,99,235,0.15)',
+                        color: '#2563eb',
+                      }}
+                    >
+                      <CalendarPlus size={24} />
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: isDark ? '#94a3b8' : '#64748b',
-                        }}
-                      >
-                        {rawTasksList.length - unaddedCount}/{rawTasksList.length} Scheduled
-                      </span>
-                      {unaddedCount > 0 ? (
-                        <button
-                          disabled={isBulkAdding}
-                          onClick={() => handleScheduleAllTasks(rawTasksList)}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <h3
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '8px 16px',
-                            borderRadius: 10,
-                            backgroundColor: '#2563eb',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontSize: 12.5,
+                            fontSize: 19,
                             fontWeight: 800,
-                            cursor: isBulkAdding ? 'not-allowed' : 'pointer',
-                            boxShadow: '0 2px 10px rgba(37,99,235,0.3)',
-                            transition: 'all 0.2s ease',
+                            margin: 0,
+                            color: isDark ? '#ffffff' : '#0f172a',
                           }}
                         >
-                          <Sparkles size={15} />
-                          {isBulkAdding ? 'Scheduling All...' : `⚡ Add All (${unaddedCount}) to Study Plan`}
-                        </button>
-                      ) : (
-                        <div
+                          AI-Recommended Study Plan Tasks (4 Priorities)
+                        </h3>
+                        <span
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 14px',
-                            borderRadius: 10,
-                            backgroundColor: 'rgba(16,185,129,0.15)',
-                            color: '#10b981',
-                            fontSize: 12,
-                            fontWeight: 800,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            backgroundColor: 'rgba(37,99,235,0.1)',
+                            color: '#2563eb',
                           }}
                         >
-                          <CheckCircle2 size={16} /> All 4 Tasks Added
-                        </div>
-                      )}
+                          4 Action Steps
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
+                        Targeted study interventions generated from your test errors. Click to add or remove from your personal study planner.
+                      </div>
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-                      gap: 18,
-                    }}
-                  >
-                    {rawTasksList.map((t: any, idx: number) => {
-                      const taskId = t.task_id || `task_${idx}`;
-                      const fullTitle = `[${t.subject || 'Core'}] ${t.title}`;
-                      const isAdded =
-                        scheduledTaskTitles.has(t.title) ||
-                        scheduledTaskTitles.has(fullTitle) ||
-                        addedTaskPlanSuccess[taskId] === 'ADDED';
-                      const isDone = !!completedTasks[taskId];
-                      const loading = !!isAddingTask[taskId];
-                      const priority = (t.priority || 'HIGH').toUpperCase();
-                      const isCritical = priority === 'CRITICAL';
-                      const isHigh = priority === 'HIGH';
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: isDark ? '#94a3b8' : '#64748b',
+                      }}
+                    >
+                      {rawTasksList.length - unaddedCount}/{rawTasksList.length} Scheduled
+                    </span>
+                    {unaddedCount > 0 ? (
+                      <button
+                        disabled={isBulkAdding}
+                        onClick={() => handleScheduleAllTasks(rawTasksList)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 16px',
+                          borderRadius: 10,
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontSize: 12.5,
+                          fontWeight: 800,
+                          cursor: isBulkAdding ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 2px 10px rgba(37,99,235,0.3)',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Sparkles size={15} />
+                        {isBulkAdding ? 'Scheduling All...' : `⚡ Add All (${unaddedCount}) to Study Plan`}
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 14px',
+                          borderRadius: 10,
+                          backgroundColor: 'rgba(16,185,129,0.15)',
+                          color: '#10b981',
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <CheckCircle2 size={16} /> All 4 Tasks Added
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                      return (
-                        <div
-                          key={taskId}
-                          style={{
-                            padding: 20,
-                            borderRadius: 16,
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-                            border: `1px solid ${
-                              isAdded
-                                ? 'rgba(16,185,129,0.35)'
-                                : isCritical
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+                    gap: 18,
+                  }}
+                >
+                  {rawTasksList.map((t: any, idx: number) => {
+                    const taskId = t.task_id || `task_${idx}`;
+                    const fullTitle = `[${t.subject || 'Core'}] ${t.title}`;
+                    const isAdded =
+                      scheduledTaskTitles.has(t.title) ||
+                      scheduledTaskTitles.has(fullTitle) ||
+                      addedTaskPlanSuccess[taskId] === 'ADDED';
+                    const isDone = !!completedTasks[taskId];
+                    const loading = !!isAddingTask[taskId];
+                    const priority = (t.priority || 'HIGH').toUpperCase();
+                    const isCritical = priority === 'CRITICAL';
+                    const isHigh = priority === 'HIGH';
+
+                    return (
+                      <div
+                        key={taskId}
+                        style={{
+                          padding: 20,
+                          borderRadius: 16,
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                          border: `1px solid ${isAdded
+                              ? 'rgba(16,185,129,0.35)'
+                              : isCritical
                                 ? 'rgba(239,68,68,0.3)'
                                 : isDark
-                                ? 'rgba(255,255,255,0.08)'
-                                : '#e2e8f0'
+                                  ? 'rgba(255,255,255,0.08)'
+                                  : '#e2e8f0'
                             }`,
-                            boxShadow: isAdded
-                              ? '0 2px 12px rgba(16,185,129,0.08)'
-                              : '0 2px 8px rgba(0,0,0,0.03)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            gap: 14,
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
-                          <div>
-                            {/* Badges Bar */}
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: 8,
-                                marginBottom: 10,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <span
-                                  style={{
-                                    fontSize: 10.5,
-                                    fontWeight: 900,
-                                    padding: '2px 7px',
-                                    borderRadius: 6,
-                                    backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
-                                    color: '#2563eb',
-                                    textTransform: 'uppercase',
-                                  }}
-                                >
-                                  Task 0{idx + 1}
-                                </span>
-
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    padding: '2px 8px',
-                                    borderRadius: 8,
-                                    backgroundColor: isCritical
-                                      ? 'rgba(239,68,68,0.15)'
-                                      : isHigh
-                                      ? 'rgba(245,158,11,0.15)'
-                                      : 'rgba(37,99,235,0.15)',
-                                    color: isCritical
-                                      ? '#ef4444'
-                                      : isHigh
-                                      ? '#f59e0b'
-                                      : '#2563eb',
-                                  }}
-                                >
-                                  {priority} PRIORITY
-                                </span>
-
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    padding: '2px 8px',
-                                    borderRadius: 8,
-                                    backgroundColor: isDark
-                                      ? 'rgba(255,255,255,0.06)'
-                                      : 'rgba(0,0,0,0.05)',
-                                    color: isDark ? '#cbd5e1' : '#475569',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3,
-                                  }}
-                                >
-                                  <Clock size={12} /> {t.allocated_time_minutes || 30} Mins
-                                </span>
-
-                                {t.activity_type && (
-                                  <span
-                                    style={{
-                                      fontSize: 10.5,
-                                      fontWeight: 700,
-                                      padding: '2px 8px',
-                                      borderRadius: 8,
-                                      backgroundColor: 'rgba(139,92,246,0.12)',
-                                      color: '#8b5cf6',
-                                    }}
-                                  >
-                                    {t.activity_type.replace(/_/g, ' ')}
-                                  </span>
-                                )}
-                              </div>
-
-                              <span style={{ fontSize: 11, color: '#64748b' }}>
-                                Due in {t.due_in_days || 2}d
-                              </span>
-                            </div>
-
-                            {/* Task Title */}
-                            <h4
-                              style={{
-                                fontSize: 15.5,
-                                fontWeight: 800,
-                                margin: '0 0 6px 0',
-                                textDecoration: isDone ? 'line-through' : 'none',
-                                color: isDark ? '#ffffff' : '#0f172a',
-                                lineHeight: 1.35,
-                              }}
-                            >
-                              {t.title}
-                            </h4>
-
-                            {/* Reasoning */}
-                            {t.reasoning && (
-                              <div
-                                style={{
-                                  fontSize: 12.5,
-                                  color: isDark ? '#94a3b8' : '#64748b',
-                                  marginBottom: 10,
-                                  lineHeight: 1.45,
-                                }}
-                              >
-                                {t.reasoning}
-                              </div>
-                            )}
-
-                            {/* Action Checklist */}
-                            {t.action_checklist && t.action_checklist.length > 0 && (
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 6,
-                                  borderTop: `1px solid ${
-                                    isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'
-                                  }`,
-                                  paddingTop: 10,
-                                  marginTop: 6,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    color: isDark ? '#64748b' : '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                  }}
-                                >
-                                  Action Checklist:
-                                </div>
-                                {t.action_checklist.map((step: string, sIdx: number) => (
-                                  <div
-                                    key={sIdx}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'flex-start',
-                                      gap: 6,
-                                      fontSize: 12,
-                                      color: isDark ? '#cbd5e1' : '#334155',
-                                      lineHeight: 1.4,
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        width: 5,
-                                        height: 5,
-                                        borderRadius: '50%',
-                                        backgroundColor: '#2563eb',
-                                        marginTop: 6,
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                    <span>{step}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Linked Questions */}
-                            {t.linked_question_numbers && t.linked_question_numbers.length > 0 && (
-                              <div
-                                style={{
-                                  marginTop: 10,
-                                  fontSize: 11.5,
-                                  color: '#64748b',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                }}
-                              >
-                                <span>Linked Exam Questions:</span>
-                                <strong style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>
-                                  Q{t.linked_question_numbers.join(', Q')}
-                                </strong>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action Footer */}
+                          boxShadow: isAdded
+                            ? '0 2px 12px rgba(16,185,129,0.08)'
+                            : '0 2px 8px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: 14,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div>
+                          {/* Badges Bar */}
                           <div
                             style={{
-                              borderTop: `1px solid ${
-                                isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
-                              }`,
-                              paddingTop: 12,
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
+                              gap: 8,
+                              marginBottom: 10,
+                              flexWrap: 'wrap',
                             }}
                           >
-                            {isAdded ? (
-                              <div
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  color: '#10b981',
+                                  fontSize: 10.5,
+                                  fontWeight: 900,
+                                  padding: '2px 7px',
+                                  borderRadius: 6,
+                                  backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                                  color: '#2563eb',
+                                  textTransform: 'uppercase',
                                 }}
                               >
-                                <CheckCircle2 size={16} /> Scheduled in Study Plan
-                              </div>
-                            ) : (
-                              <button
-                                disabled={loading}
-                                onClick={() => handleScheduleSingleTask(t)}
+                                Task 0{idx + 1}
+                              </span>
+
+                              <span
                                 style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  padding: '7px 14px',
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  padding: '2px 8px',
+                                  borderRadius: 8,
+                                  backgroundColor: isCritical
+                                    ? 'rgba(239,68,68,0.15)'
+                                    : isHigh
+                                      ? 'rgba(245,158,11,0.15)'
+                                      : 'rgba(37,99,235,0.15)',
+                                  color: isCritical
+                                    ? '#ef4444'
+                                    : isHigh
+                                      ? '#f59e0b'
+                                      : '#2563eb',
+                                }}
+                              >
+                                {priority} PRIORITY
+                              </span>
+
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 8px',
                                   borderRadius: 8,
                                   backgroundColor: isDark
-                                    ? 'rgba(37,99,235,0.15)'
-                                    : '#eff6ff',
-                                  color: '#2563eb',
-                                  border: '1px solid rgba(37,99,235,0.3)',
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  cursor: loading ? 'not-allowed' : 'pointer',
-                                  transition: 'all 0.2s ease',
+                                    ? 'rgba(255,255,255,0.06)'
+                                    : 'rgba(0,0,0,0.05)',
+                                  color: isDark ? '#cbd5e1' : '#475569',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
                                 }}
                               >
-                                <CalendarPlus size={14} />
-                                {loading ? 'Adding...' : '+ Add to Study Plan'}
-                              </button>
-                            )}
+                                <Clock size={12} /> {t.allocated_time_minutes || 30} Mins
+                              </span>
 
-                            <button
-                              onClick={() => toggleTaskCompleted(taskId)}
+                              {t.activity_type && (
+                                <span
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: 8,
+                                    backgroundColor: 'rgba(139,92,246,0.12)',
+                                    color: '#8b5cf6',
+                                  }}
+                                >
+                                  {t.activity_type.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                            </div>
+
+                            <span style={{ fontSize: 11, color: '#64748b' }}>
+                              Due in {t.due_in_days || 2}d
+                            </span>
+                          </div>
+
+                          {/* Task Title */}
+                          <h4
+                            style={{
+                              fontSize: 15.5,
+                              fontWeight: 800,
+                              margin: '0 0 6px 0',
+                              textDecoration: isDone ? 'line-through' : 'none',
+                              color: isDark ? '#ffffff' : '#0f172a',
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {t.title}
+                          </h4>
+
+                          {/* Reasoning */}
+                          {t.reasoning && (
+                            <div
                               style={{
-                                padding: '4px 10px',
-                                borderRadius: 6,
-                                backgroundColor: isDone
-                                  ? '#10b981'
-                                  : isDark
-                                  ? 'rgba(255,255,255,0.06)'
-                                  : '#f1f5f9',
-                                color: isDone ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
-                                border: 'none',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
+                                fontSize: 12.5,
+                                color: isDark ? '#94a3b8' : '#64748b',
+                                marginBottom: 10,
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {t.reasoning}
+                            </div>
+                          )}
+
+                          {/* Action Checklist */}
+                          {t.action_checklist && t.action_checklist.length > 0 && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 6,
+                                borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'
+                                  }`,
+                                paddingTop: 10,
+                                marginTop: 6,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: isDark ? '#64748b' : '#94a3b8',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                }}
+                              >
+                                Action Checklist:
+                              </div>
+                              {t.action_checklist.map((step: string, sIdx: number) => (
+                                <div
+                                  key={sIdx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    fontSize: 12,
+                                    color: isDark ? '#cbd5e1' : '#334155',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 5,
+                                      height: 5,
+                                      borderRadius: '50%',
+                                      backgroundColor: '#2563eb',
+                                      marginTop: 6,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  <span>{step}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Linked Questions */}
+                          {t.linked_question_numbers && t.linked_question_numbers.length > 0 && (
+                            <div
+                              style={{
+                                marginTop: 10,
+                                fontSize: 11.5,
+                                color: '#64748b',
+                                display: 'flex',
                                 alignItems: 'center',
                                 gap: 4,
                               }}
                             >
-                              <CheckCircle2 size={12} /> {isDone ? 'Completed' : 'Mark Done'}
-                            </button>
-                          </div>
+                              <span>Linked Exam Questions:</span>
+                              <strong style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>
+                                Q{t.linked_question_numbers.join(', Q')}
+                              </strong>
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
 
-            {/* AI Cognitive Diagnostic Insights Section (Structured LLM Synthesis) */}
-            <div
-              style={{
-                ...cardStyle,
-                gridColumn: '1 / -1',
-                background: isDark
-                  ? 'linear-gradient(135deg, #131d36 0%, #0f172a 100%)'
-                  : 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                padding: 24,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-                <div
-                  style={{
-                    padding: 10,
-                    borderRadius: 12,
-                    backgroundColor: 'rgba(59,130,246,0.2)',
-                    color: '#3b82f6',
-                  }}
-                >
-                  <Brain size={24} />
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 800,
-                      margin: 0,
-                      color: isDark ? '#ffffff' : '#0f172a',
-                    }}
-                  >
-                    AI Cognitive Diagnostic Report
-                  </h3>
-                  <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
-                    Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
-                  </div>
+                        {/* Action Footer */}
+                        <div
+                          style={{
+                            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
+                              }`,
+                            paddingTop: 12,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          {isAdded ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                color: '#10b981',
+                              }}
+                            >
+                              <CheckCircle2 size={16} /> Scheduled in Study Plan
+                            </div>
+                          ) : (
+                            <button
+                              disabled={loading}
+                              onClick={() => handleScheduleSingleTask(t)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '7px 14px',
+                                borderRadius: 8,
+                                backgroundColor: isDark
+                                  ? 'rgba(37,99,235,0.15)'
+                                  : '#eff6ff',
+                                color: '#2563eb',
+                                border: '1px solid rgba(37,99,235,0.3)',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <CalendarPlus size={14} />
+                              {loading ? 'Adding...' : '+ Add to Study Plan'}
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => toggleTaskCompleted(taskId)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              backgroundColor: isDone
+                                ? '#10b981'
+                                : isDark
+                                  ? 'rgba(255,255,255,0.06)'
+                                  : '#f1f5f9',
+                              color: isDone ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
+                              border: 'none',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <CheckCircle2 size={12} /> {isDone ? 'Completed' : 'Mark Done'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            );
+          })()}
 
-              {(() => {
-                const insightObj: Record<string, any> =
-                  (report as any)?.llm_insight ||
-                  (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
-                  (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
-                  (report as any)?.part_3_aggregated_user_report?.llm_insight ||
-                  {};
+          {/* AI Cognitive Diagnostic Insights Section (Structured LLM Synthesis) */}
+          <div
+            style={{
+              ...cardStyle,
+              gridColumn: '1 / -1',
+              background: isDark
+                ? 'linear-gradient(135deg, #131d36 0%, #0f172a 100%)'
+                : 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              padding: 24,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+              <div
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(59,130,246,0.2)',
+                  color: '#3b82f6',
+                }}
+              >
+                <Brain size={24} />
+              </div>
+              <div>
+                <h3
+                  style={{
+                    fontSize: 19,
+                    fontWeight: 800,
+                    margin: 0,
+                    color: isDark ? '#ffffff' : '#0f172a',
+                  }}
+                >
+                  AI Cognitive Diagnostic Report
+                </h3>
+                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                  Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
+                </div>
+              </div>
+            </div>
 
-                const execSummary =
-                  insightObj.executive_summary ||
-                  'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
-                const benchmarkVerdict =
-                  insightObj.benchmark_verdict ||
-                  'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
-                const strengths: string[] =
-                  insightObj.tactical_strengths ||
-                  insightObj.strengths || [
-                    'High accuracy on conceptual elimination questions.',
-                    'Controlled guessing tendency on high-uncertainty items.',
-                  ];
-                const weaknesses: string[] =
-                  insightObj.critical_vulnerabilities ||
-                  insightObj.weaknesses || [
-                    'Susceptibility to extreme qualifier statement traps.',
-                    'Negative switch regret on revised answers in final section.',
-                  ];
-                const pacingDiag =
-                  insightObj.pacing_and_unattempted_diagnosis ||
-                  'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
-                const distractorCritique =
-                  insightObj.distractor_trap_critique ||
-                  'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
-                const closingAdvice =
-                  insightObj.closing_mentorship_advice ||
-                  insightObj.closing ||
-                  'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+            {(() => {
+              const insightObj: Record<string, any> =
+                (report as any)?.llm_insight ||
+                (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
+                (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
+                (report as any)?.part_3_aggregated_user_report?.llm_insight ||
+                {};
 
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {/* Executive Summary & Benchmark Verdict Callout */}
+              const execSummary =
+                insightObj.executive_summary ||
+                'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
+              const benchmarkVerdict =
+                insightObj.benchmark_verdict ||
+                'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
+              const strengths: string[] =
+                insightObj.tactical_strengths ||
+                insightObj.strengths || [
+                  'High accuracy on conceptual elimination questions.',
+                  'Controlled guessing tendency on high-uncertainty items.',
+                ];
+              const weaknesses: string[] =
+                insightObj.critical_vulnerabilities ||
+                insightObj.weaknesses || [
+                  'Susceptibility to extreme qualifier statement traps.',
+                  'Negative switch regret on revised answers in final section.',
+                ];
+              const pacingDiag =
+                insightObj.pacing_and_unattempted_diagnosis ||
+                'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
+              const distractorCritique =
+                insightObj.distractor_trap_critique ||
+                'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
+              const closingAdvice =
+                insightObj.closing_mentorship_advice ||
+                insightObj.closing ||
+                'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Executive Summary & Benchmark Verdict Callout */}
+                  <div
+                    style={{
+                      padding: 16,
+                      borderRadius: 14,
+                      backgroundColor: isDark
+                        ? 'rgba(59,130,246,0.1)'
+                        : 'rgba(59,130,246,0.08)',
+                      border: '1px solid rgba(59,130,246,0.25)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 800,
+                        color: '#2563eb',
+                        textTransform: 'uppercase',
+                        marginBottom: 4,
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      🎯 Executive Summary & UPSC Benchmark Verdict
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: isDark ? '#ffffff' : '#0f172a',
+                        marginBottom: 8,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {benchmarkVerdict}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: isDark ? '#cbd5e1' : '#334155',
+                        lineHeight: 1.55,
+                      }}
+                    >
+                      {execSummary}
+                    </div>
+                  </div>
+
+                  {/* Strengths & Critical Vulnerabilities Grid */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: 16,
+                    }}
+                  >
+                    {/* Strengths */}
+                    <div
+                      style={{
+                        padding: 16,
+                        borderRadius: 14,
+                        backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
+                        border: '1px solid rgba(16,185,129,0.25)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: '#10b981',
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <CheckCircle2 size={18} /> Tactical Strengths Observed
+                      </div>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 18,
+                          fontSize: 12.5,
+                          color: isDark ? '#e2e8f0' : '#166534',
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        {strengths.map((s: string, sIdx: number) => (
+                          <li key={sIdx} style={{ margin: '4px 0' }}>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Critical Vulnerabilities */}
+                    <div
+                      style={{
+                        padding: 16,
+                        borderRadius: 14,
+                        backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
+                        border: '1px solid rgba(239,68,68,0.25)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: '#ef4444',
+                          marginBottom: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
+                      </div>
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: 18,
+                          fontSize: 12.5,
+                          color: isDark ? '#e2e8f0' : '#991b1b',
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        {weaknesses.map((w: string, wIdx: number) => (
+                          <li key={wIdx} style={{ margin: '4px 0' }}>
+                            {w}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Behavioral Pacing & Distractor Critique */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: 16,
+                    }}
+                  >
                     <div
                       style={{
                         padding: 16,
                         borderRadius: 14,
                         backgroundColor: isDark
-                          ? 'rgba(59,130,246,0.1)'
-                          : 'rgba(59,130,246,0.08)',
-                        border: '1px solid rgba(59,130,246,0.25)',
+                          ? 'rgba(139,92,246,0.08)'
+                          : 'rgba(139,92,246,0.05)',
+                        border: '1px solid rgba(139,92,246,0.2)',
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 12,
-                          fontWeight: 800,
-                          color: '#2563eb',
-                          textTransform: 'uppercase',
-                          marginBottom: 4,
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        🎯 Executive Summary & UPSC Benchmark Verdict
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: isDark ? '#ffffff' : '#0f172a',
-                          marginBottom: 8,
-                          lineHeight: 1.45,
-                        }}
-                      >
-                        {benchmarkVerdict}
-                      </div>
-                      <div
-                        style={{
                           fontSize: 13,
+                          fontWeight: 800,
+                          color: '#8b5cf6',
+                          marginBottom: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12.5,
                           color: isDark ? '#cbd5e1' : '#334155',
                           lineHeight: 1.55,
                         }}
                       >
-                        {execSummary}
+                        {pacingDiag}
                       </div>
                     </div>
 
-                    {/* Strengths & Critical Vulnerabilities Grid */}
                     <div
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                        gap: 16,
-                      }}
-                    >
-                      {/* Strengths */}
-                      <div
-                        style={{
-                          padding: 16,
-                          borderRadius: 14,
-                          backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
-                          border: '1px solid rgba(16,185,129,0.25)',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#10b981',
-                            marginBottom: 10,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <CheckCircle2 size={18} /> Tactical Strengths Observed
-                        </div>
-                        <ul
-                          style={{
-                            margin: 0,
-                            paddingLeft: 18,
-                            fontSize: 12.5,
-                            color: isDark ? '#e2e8f0' : '#166534',
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {strengths.map((s: string, sIdx: number) => (
-                            <li key={sIdx} style={{ margin: '4px 0' }}>
-                              {s}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Critical Vulnerabilities */}
-                      <div
-                        style={{
-                          padding: 16,
-                          borderRadius: 14,
-                          backgroundColor: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
-                          border: '1px solid rgba(239,68,68,0.25)',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#ef4444',
-                            marginBottom: 10,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
-                        </div>
-                        <ul
-                          style={{
-                            margin: 0,
-                            paddingLeft: 18,
-                            fontSize: 12.5,
-                            color: isDark ? '#e2e8f0' : '#991b1b',
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {weaknesses.map((w: string, wIdx: number) => (
-                            <li key={wIdx} style={{ margin: '4px 0' }}>
-                              {w}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Behavioral Pacing & Distractor Critique */}
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                        gap: 16,
+                        padding: 16,
+                        borderRadius: 14,
+                        backgroundColor: isDark
+                          ? 'rgba(245,158,11,0.08)'
+                          : 'rgba(245,158,11,0.05)',
+                        border: '1px solid rgba(245,158,11,0.2)',
                       }}
                     >
                       <div
                         style={{
-                          padding: 16,
-                          borderRadius: 14,
-                          backgroundColor: isDark
-                            ? 'rgba(139,92,246,0.08)'
-                            : 'rgba(139,92,246,0.05)',
-                          border: '1px solid rgba(139,92,246,0.2)',
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: '#f59e0b',
+                          marginBottom: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
                         }}
                       >
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#8b5cf6',
-                            marginBottom: 6,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12.5,
-                            color: isDark ? '#cbd5e1' : '#334155',
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {pacingDiag}
-                        </div>
+                        <ShieldAlert size={16} /> Distractor & Option Revision Critique
                       </div>
-
                       <div
                         style={{
-                          padding: 16,
-                          borderRadius: 14,
-                          backgroundColor: isDark
-                            ? 'rgba(245,158,11,0.08)'
-                            : 'rgba(245,158,11,0.05)',
-                          border: '1px solid rgba(245,158,11,0.2)',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 800,
-                            color: '#f59e0b',
-                            marginBottom: 6,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                          }}
-                        >
-                          <ShieldAlert size={16} /> Distractor & Option Revision Critique
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12.5,
-                            color: isDark ? '#cbd5e1' : '#334155',
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {distractorCritique}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Closing Advice */}
-                    {closingAdvice && (
-                      <div
-                        style={{
-                          padding: '12px 18px',
-                          borderRadius: 12,
-                          backgroundColor: isDark
-                            ? 'rgba(255,255,255,0.03)'
-                            : 'rgba(0,0,0,0.02)',
-                          borderLeft: '4px solid #3b82f6',
                           fontSize: 12.5,
-                          fontStyle: 'italic',
-                          color: isDark ? '#93c5fd' : '#1e40af',
-                          lineHeight: 1.5,
+                          color: isDark ? '#cbd5e1' : '#334155',
+                          lineHeight: 1.55,
                         }}
                       >
-                        💡 Mentor's Guidance: "{closingAdvice}"
+                        {distractorCritique}
                       </div>
-                    )}
+                    </div>
                   </div>
-                );
-              })()}
+
+                  {/* Closing Advice */}
+                  {closingAdvice && (
+                    <div
+                      style={{
+                        padding: '12px 18px',
+                        borderRadius: 12,
+                        backgroundColor: isDark
+                          ? 'rgba(255,255,255,0.03)'
+                          : 'rgba(0,0,0,0.02)',
+                        borderLeft: '4px solid #3b82f6',
+                        fontSize: 12.5,
+                        fontStyle: 'italic',
+                        color: isDark ? '#93c5fd' : '#1e40af',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      💡 Mentor's Guidance: "{closingAdvice}"
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -2749,8 +2939,8 @@ export function PsychometricReportView({
                     backgroundColor: isSelected
                       ? '#2563eb'
                       : isDark
-                      ? 'rgba(255,255,255,0.05)'
-                      : '#f1f5f9',
+                        ? 'rgba(255,255,255,0.05)'
+                        : '#f1f5f9',
                     color: isSelected ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
                     border: `1px solid ${isSelected ? '#2563eb' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
                     fontSize: 12,
@@ -2913,12 +3103,134 @@ export function PsychometricReportView({
                   {userProfile.cumulative_icrs_score >= 80
                     ? 'Prelims Ready Benchmark'
                     : userProfile.cumulative_icrs_score >= 65
-                    ? 'Competitive Contender'
-                    : 'Developing Foundation'}
+                      ? 'Competitive Contender'
+                      : 'Developing Foundation'}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Subject-Wise Cumulative Performance & Mean Scoreboard */}
+          {hierarchyData && hierarchyData.length > 0 && (
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Layers size={20} color="#2563eb" />
+                <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+                  Subject Cumulative Performance & Mean Scoreboard
+                </h3>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
+                {hierarchyData.map((subj: any) => {
+                  const bStyle = getBadgeStyle(subj.status);
+                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
+
+                  return (
+                    <div
+                      key={`user_agg_subj_${subj.name}`}
+                      style={{
+                        padding: '16px',
+                        borderRadius: 14,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                        borderLeft: `4px solid ${subj.accuracy >= 70 ? '#10b981' : subj.accuracy >= 50 ? '#f59e0b' : '#ef4444'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
+                            {subj.name}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
+                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: 8,
+                            backgroundColor: bStyle.bg,
+                            color: bStyle.color,
+                            border: `1px solid ${bStyle.border}`,
+                          }}
+                        >
+                          {subj.accuracy}% Acc
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff', borderRadius: 8 }}>
+                        <span>Cumulative Mean: <strong style={{ color: '#2563eb' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
+                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
+                      </div>
+
+                      {/* Hierarchical Categorization: Topics and Subtopics */}
+                      {subj.topics && subj.topics.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Syllabus Topics & Subtopics:
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {subj.topics.slice(0, 4).map((t: any) => (
+                              <div
+                                key={`user_agg_top_${subj.name}_${t.name}`}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 8,
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 3,
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
+                                  <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
+                                    • {t.name}
+                                  </span>
+                                  <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#10b981' : t.accuracy >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                    {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
+                                  </span>
+                                </div>
+                                {t.subtopics && t.subtopics.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
+                                    {t.subtopics.slice(0, 3).map((sub: any) => (
+                                      <span
+                                        key={`user_agg_sub_${sub.name}`}
+                                        style={{
+                                          fontSize: 10,
+                                          padding: '1px 6px',
+                                          borderRadius: 6,
+                                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        ↳ {sub.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {subj.topics.length > 4 && (
+                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
+                                + {subj.topics.length - 4} more topics in full syllabus hierarchy
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Multi-Exam Evolution & Progression Visualizers (Cross-Exam Comparison) */}
           {timelineData && timelineData.length > 0 && (
@@ -2936,10 +3248,11 @@ export function PsychometricReportView({
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                      <ComposedChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
-                        <YAxis domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <YAxis yAxisId="left" domain={[0, 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} unit="m" />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: isDark ? '#1e293b' : '#ffffff',
@@ -2947,12 +3260,16 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [name === 'total_score' ? `${value} Marks` : `${value}%`, name === 'total_score' ? 'Total Score' : 'Accuracy %']}
+                          formatter={(value: any, name: any) => [name === 'Total Score' ? `${value} Marks` : `${value}%`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="total_score" name="Total Score" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                        <Line type="monotone" dataKey="accuracy_percentage" name="Accuracy %" stroke="#10b981" strokeWidth={3} />
-                      </BarChart>
+                        <Bar yAxisId="left" dataKey="total_score" name="Total Score" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                        <Line yAxisId="right" type="monotone" dataKey="accuracy_percentage" name="Accuracy %" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -2971,7 +3288,7 @@ export function PsychometricReportView({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="/100" />
                         <Tooltip
                           contentStyle={{
@@ -2980,11 +3297,15 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [`${value} / 100`, name === 'icrs_score' ? 'ICRS Score' : name]}
+                          formatter={(value: any, name: any) => [`${value} / 100`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Line type="monotone" dataKey="icrs_score" name="ICRS Readiness" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 5 }} />
-                        <Line type="monotone" dataKey="satoi_score" name="SATOI Stamina" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" />
+                        <Line type="monotone" dataKey="satoi_score" name="SATOI Stamina" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 4 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -3002,9 +3323,9 @@ export function PsychometricReportView({
                   </div>
                   <div style={{ height: 260, width: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={timelineData.map((i: any) => ({ ...i, gti_pct: Math.round(i.gti_score * 100), oeei_pct: Math.round(i.oeei_score * 100) }))} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                      <BarChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} unit="%" />
                         <Tooltip
                           contentStyle={{
@@ -3013,7 +3334,11 @@ export function PsychometricReportView({
                             borderRadius: 12,
                             fontSize: 12,
                           }}
-                          formatter={(value: any, name: any) => [`${value}%`, name === 'oeei_pct' ? 'Elimination Efficiency' : 'Guessing Impulse']}
+                          formatter={(value: any, name: any) => [`${value}%`, name]}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="oeei_pct" name="Elimination Precision (OEEI %)" fill="#10b981" radius={[6, 6, 0, 0]} />
@@ -3037,7 +3362,7 @@ export function PsychometricReportView({
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'} />
-                        <XAxis dataKey="exam_name" tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v: string) => v.length > 14 ? `${v.slice(0, 12)}...` : v} />
+                        <XAxis dataKey="display_label" tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[-1, 3]} />
                         <Tooltip
                           contentStyle={{
@@ -3047,6 +3372,10 @@ export function PsychometricReportView({
                             fontSize: 12,
                           }}
                           formatter={(value: any) => [`+${Number(value).toFixed(2)} θ`, 'Latent Ability']}
+                          labelFormatter={(_: any, items: any) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.display_label}: ${item.exam_name}` : '';
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Area type="monotone" dataKey="irt_theta" name="IRT Ability (θ)" stroke="#2563eb" fill="rgba(37,99,235,0.2)" strokeWidth={3} dot={{ r: 5 }} />
@@ -3079,38 +3408,131 @@ export function PsychometricReportView({
                       </tr>
                     </thead>
                     <tbody>
-                      {timelineData.map((item: any, idx: number) => (
-                        <tr
-                          key={item.attempt_id || idx}
-                          style={{
-                            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
-                            backgroundColor: idx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                          }}
-                        >
-                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{item.attempt_number || idx + 1}</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
-                          <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 800 }}>
-                            {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
-                          </td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#10b981' : item.accuracy_percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
-                            {item.accuracy_percentage}%
-                          </td>
-                          <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
-                          <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>+{Number(item.irt_theta).toFixed(2)} θ</td>
-                          <td style={{ padding: '10px 12px', color: item.gti_score <= 0.22 ? '#10b981' : '#f59e0b' }}>{(item.gti_score * 100).toFixed(1)}%</td>
-                          <td style={{ padding: '10px 12px', color: item.oeei_score >= 0.70 ? '#10b981' : '#8b5cf6' }}>{(item.oeei_score * 100).toFixed(1)}%</td>
-                          <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
-                              {item.pacing_status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const totalPages = Math.ceil(timelineData.length / matrixPageSize) || 1;
+                        const validPage = Math.min(Math.max(1, matrixPage), totalPages);
+                        const startIndex = (validPage - 1) * matrixPageSize;
+                        const paginatedItems = timelineData.slice(startIndex, startIndex + matrixPageSize);
+
+                        return paginatedItems.map((item: any, idx: number) => {
+                          const globalIdx = startIndex + idx;
+                          return (
+                            <tr
+                              key={item.attempt_id || globalIdx}
+                              style={{
+                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`,
+                                backgroundColor: globalIdx % 2 === 0 ? 'transparent' : isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                              }}
+                            >
+                              <td style={{ padding: '10px 12px', fontWeight: 800, color: '#2563eb' }}>{item.attempt_number || globalIdx + 1}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700 }}>{item.exam_name}</td>
+                              <td style={{ padding: '10px 12px', color: '#64748b' }}>{item.date_formatted || item.date}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 800 }}>
+                                {item.total_score} <span style={{ fontSize: 11, color: '#64748b' }}>/ {item.max_possible_score}</span>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: item.accuracy_percentage >= 65 ? '#10b981' : item.accuracy_percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                {item.accuracy_percentage}%
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 800, color: '#8b5cf6' }}>{item.icrs_score}/100</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#2563eb' }}>+{Number(item.irt_theta).toFixed(2)} θ</td>
+                              <td style={{ padding: '10px 12px', color: item.gti_score <= 0.22 ? '#10b981' : '#f59e0b' }}>{(item.gti_score * 100).toFixed(1)}%</td>
+                              <td style={{ padding: '10px 12px', color: item.oeei_score >= 0.70 ? '#10b981' : '#8b5cf6' }}>{(item.oeei_score * 100).toFixed(1)}%</td>
+                              <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, backgroundColor: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>
+                                  {item.pacing_status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Longitudinal Matrix Pagination Controls */}
+                {timelineData.length > matrixPageSize && (() => {
+                  const totalPages = Math.ceil(timelineData.length / matrixPageSize);
+                  const startItem = (matrixPage - 1) * matrixPageSize + 1;
+                  const endItem = Math.min(matrixPage * matrixPageSize, timelineData.length);
+
+                  return (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                        paddingTop: 12,
+                        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: '#64748b' }}>
+                        Showing <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{startItem} - {endItem}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{timelineData.length}</strong> exams
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          disabled={matrixPage <= 1}
+                          onClick={() => setMatrixPage((p) => Math.max(1, p - 1))}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                            backgroundColor: matrixPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                            color: matrixPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                            cursor: matrixPage <= 1 ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            opacity: matrixPage <= 1 ? 0.5 : 1,
+                          }}
+                        >
+                          ← Previous
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={`matrix_page_${pageNum}`}
+                            onClick={() => setMatrixPage(pageNum)}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: 8,
+                              border: pageNum === matrixPage ? '1px solid #2563eb' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                              backgroundColor: pageNum === matrixPage ? '#2563eb' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                              color: pageNum === matrixPage ? '#ffffff' : isDark ? '#ffffff' : '#0f172a',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+
+                        <button
+                          disabled={matrixPage >= totalPages}
+                          onClick={() => setMatrixPage((p) => Math.min(totalPages, p + 1))}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                            backgroundColor: matrixPage >= totalPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                            color: matrixPage >= totalPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                            cursor: matrixPage >= totalPages ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            opacity: matrixPage >= totalPages ? 0.5 : 1,
+                          }}
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -3118,832 +3540,985 @@ export function PsychometricReportView({
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          TAB 3: PER-QUESTION DEEP ANALYSIS & SOLUTIONS
+          TAB 1: PER-QUESTION DEEP ANALYSIS & SOLUTIONS
       ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'questions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Question Filter Bar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 12,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {[
-                { id: 'all', label: `All (${questionsList.length})` },
-                {
-                  id: 'attempted',
-                  label: `Attempted (${questionsList.filter((q) => getQuestionState(q).isAtt).length})`,
-                },
-                {
-                  id: 'correct',
-                  label: `Correct (${questionsList.filter((q) => getQuestionState(q).isCorr).length})`,
-                },
-                {
-                  id: 'incorrect',
-                  label: `Incorrect (${questionsList.filter((q) => getQuestionState(q).isInc).length})`,
-                },
-                {
-                  id: 'unattempted',
-                  label: `Unattempted (${questionsList.filter((q) => getQuestionState(q).isUnatt).length})`,
-                },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setQuestionFilter(f.id as any)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: 10,
-                    border:
-                      questionFilter === f.id
-                        ? '1px solid #2563eb'
-                        : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-                    backgroundColor:
-                      questionFilter === f.id
-                        ? '#2563eb'
-                        : isDark
-                        ? 'rgba(255,255,255,0.04)'
-                        : '#ffffff',
-                    color: questionFilter === f.id ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {(() => {
+            const totalQuestionPages = Math.ceil(filteredQuestions.length / questionPageSize) || 1;
+            const validQuestionPage = Math.min(Math.max(1, questionPage), totalQuestionPages);
+            const startQuestionIdx = (validQuestionPage - 1) * questionPageSize;
+            const paginatedQuestions = filteredQuestions.slice(startQuestionIdx, startQuestionIdx + questionPageSize);
 
-          {/* Questions Detailed Accordion List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filteredQuestions.map((q, idx) => {
-              const qId = q.question_id || q.question_number || idx;
-              const isExpanded = expandedQuestionId === qId;
-              const state = getQuestionState(q);
-              const qNum = q.question_number || idx + 1;
-              const expl = q.explanation || null;
-
-              // Chosen and correct option labels
-              const userOptLabel = q.user_selected_option || q.user_selected_label || 'Unattempted';
-              const correctOptLabel = q.correct_option || q.correct_option_label || 'A';
-
-              const cardBorderColor = state.isCorr
-                ? '#10b981'
-                : state.isInc
-                ? '#ef4444'
-                : '#94a3b8';
-
-              return (
+            return (
+              <>
+                {/* Question Filter Bar & Top Quick-Pagination */}
                 <div
-                  key={qId}
-                  id={`question_card_${qNum}`}
                   style={{
-                    ...cardStyle,
-                    padding: 20,
-                    borderLeft: `5px solid ${cardBorderColor}`,
-                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 12,
                   }}
                 >
-                  {/* Question Card Header (Clickable) */}
-                  <div
-                    onClick={() => setExpandedQuestionId(isExpanded ? null : qId)}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'all', label: `All (${questionsList.length})` },
+                      {
+                        id: 'attempted',
+                        label: `Attempted (${questionsList.filter((q) => getQuestionState(q).isAtt).length})`,
+                      },
+                      {
+                        id: 'correct',
+                        label: `Correct (${questionsList.filter((q) => getQuestionState(q).isCorr).length})`,
+                      },
+                      {
+                        id: 'incorrect',
+                        label: `Incorrect (${questionsList.filter((q) => getQuestionState(q).isInc).length})`,
+                      },
+                      {
+                        id: 'unattempted',
+                        label: `Unattempted (${questionsList.filter((q) => getQuestionState(q).isUnatt).length})`,
+                      },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          setQuestionFilter(f.id as any);
+                          setQuestionPage(1);
+                        }}
                         style={{
-                          fontSize: 14,
-                          fontWeight: 900,
-                          color: '#2563eb',
-                          backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
-                          padding: '4px 10px',
-                          borderRadius: 8,
+                          padding: '8px 16px',
+                          borderRadius: 10,
+                          border:
+                            questionFilter === f.id
+                              ? '1px solid #2563eb'
+                              : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor:
+                            questionFilter === f.id
+                              ? '#2563eb'
+                              : isDark
+                                ? 'rgba(255,255,255,0.04)'
+                                : '#ffffff',
+                          color: questionFilter === f.id ? '#ffffff' : isDark ? '#cbd5e1' : '#475569',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: 'pointer',
                         }}
                       >
-                        Q{qNum}
-                      </span>
-
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: isDark ? '#ffffff' : '#0f172a',
-                          }}
-                        >
-                          {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>
-                          Time Spent: {q.time_taken_seconds || 60}s • Bloom's Level:{' '}
-                          {q.blooms_taxonomy_level || q.blooms_level || 'ANALYZE'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      {/* Result Badge */}
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 12,
-                          fontWeight: 800,
-                          padding: '4px 12px',
-                          borderRadius: 14,
-                          backgroundColor: state.isCorr
-                            ? 'rgba(16,185,129,0.15)'
-                            : state.isInc
-                            ? 'rgba(239,68,68,0.15)'
-                            : 'rgba(148,163,184,0.15)',
-                          color: state.isCorr
-                            ? '#10b981'
-                            : state.isInc
-                            ? '#ef4444'
-                            : '#94a3b8',
-                        }}
-                      >
-                        {state.isCorr ? (
-                          <CheckCircle2 size={14} />
-                        ) : state.isInc ? (
-                          <XCircle size={14} />
-                        ) : (
-                          <MinusCircle size={14} />
-                        )}
-                        <span>
-                          {state.isCorr
-                            ? 'Correct (+2.0)'
-                            : state.isInc
-                            ? 'Incorrect (-0.67)'
-                            : 'Unattempted (0.0)'}
-                        </span>
-                      </span>
-
-                      {isExpanded ? (
-                        <ChevronUp size={18} color="#64748b" />
-                      ) : (
-                        <ChevronDown size={18} color="#64748b" />
-                      )}
-                    </div>
+                        {f.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Expanded Solution & Option Feedback */}
-                  {isExpanded && (
-                    <div
-                      style={{
-                        marginTop: 20,
-                        paddingTop: 16,
-                        borderTop: `1px solid ${
-                          isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
-                        }`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                      }}
-                    >
-                      {/* Per-Question 12-Matrix Diagnostic Badges */}
-                      <div
+                  {filteredQuestions.length > questionPageSize && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b' }}>
+                      <span>
+                        Showing <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{startQuestionIdx + 1}-{Math.min(startQuestionIdx + questionPageSize, filteredQuestions.length)}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{filteredQuestions.length}</strong>
+                      </span>
+                      <button
+                        disabled={validQuestionPage <= 1}
+                        onClick={() => setQuestionPage((p) => Math.max(1, p - 1))}
                         style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                          gap: 10,
-                          padding: '12px 16px',
-                          borderRadius: 12,
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
                         }}
                       >
-                        {/* 1. Time Score & Pacing */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>⏱️ Time Score & Pacing</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            {(() => {
-                              const pBadge = q.pacing_efficiency || q.time_window || 'OPTIMAL';
-                              const b = getBadgeStyle(pBadge);
-                              const speedIdx = q.time_efficiency_score || Math.round(((q.expected_time_seconds || 60) / Math.max(1, q.time_taken_seconds || 60)) * 100);
-                              return (
-                                <>
-                                  <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                                    {q.pacing_efficiency || b.label}
-                                  </span>
-                                  <span style={{ fontSize: 11.5, fontWeight: 700, color: isDark ? '#cbd5e1' : '#334155' }}>
-                                    {q.time_taken_seconds || 60}s / {q.expected_time_seconds || 60}s ({speedIdx}% Speed)
-                                  </span>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* 2. FSRS Topic Retention & Memory */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🧠 FSRS Concept Memory</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)' }}>
-                              {q.fsrs_retention_pct || 75}% Retention
-                            </span>
-                            <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>
-                              Stability: <strong>{q.fsrs_stability_days ? `${q.fsrs_stability_days} Days` : '3.0 Days'}</strong>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 3. OSRI (Answer Revision Safety) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🔄 OSRI Answer Revision</span>
-                          <div>
-                            {(() => {
-                              const isSwitched = q.is_option_switched;
-                              const osriStatus = q.osri_status || (isSwitched ? (state.isCorr ? 'Rewarding Switch (+2.67 Marks)' : 'Costly Second-Guess (-2.67 Marks)') : 'Initial Selection Retained');
-                              const isPositive = osriStatus.includes('Rewarding');
-                              const isNegative = osriStatus.includes('Costly');
-                              return (
-                                <span
-                                  style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 8,
-                                    fontSize: 11,
-                                    fontWeight: 800,
-                                    backgroundColor: isPositive
-                                      ? 'rgba(16,185,129,0.15)'
-                                      : isNegative
-                                      ? 'rgba(239,68,68,0.15)'
-                                      : isDark
-                                      ? 'rgba(255,255,255,0.06)'
-                                      : '#e2e8f0',
-                                    color: isPositive ? '#10b981' : isNegative ? '#ef4444' : '#64748b',
-                                    border: isPositive
-                                      ? '1px solid rgba(16,185,129,0.35)'
-                                      : isNegative
-                                      ? '1px solid rgba(239,68,68,0.35)'
-                                      : '1px solid transparent',
-                                  }}
-                                >
-                                  {osriStatus}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* 4. Cognitive Thinking Level (Bloom's) */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>💡 Cognitive Thinking Level</span>
-                          <div>
-                            <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.35)' }}>
-                              {q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 5. Distractor Trap Classification */}
-                        {q.distractor_classification || q.closeness_classification ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🎯 Distractor Trap Analysis</span>
-                            <div>
-                              {(() => {
-                                const dClass = q.distractor_classification || q.closeness_classification;
-                                const b = getBadgeStyle(dClass.includes('Near') || dClass.includes('High') ? 'VULNERABLE' : 'COMPETENT');
-                                return (
-                                  <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                                    {dClass}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Question Statement */}
-                      {q.question_text && (
-                        <div
-                          style={{
-                            fontSize: 14.5,
-                            fontWeight: 600,
-                            lineHeight: 1.6,
-                            color: isDark ? '#ffffff' : '#0f172a',
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                            padding: 16,
-                            borderRadius: 12,
-                            border: `1px solid ${
-                              isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'
-                            }`,
-                          }}
-                        >
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {q.question_text}
-                          </ReactMarkdown>
-                        </div>
-                      )}
-
-                      {/* Options List */}
-                      {q.options && q.options.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              color: '#64748b',
-                            }}
-                          >
-                            Options & Choices
-                          </div>
-                          {q.options.map((opt: any, optIdx: number) => {
-                            const optLabel = opt.option_label || String.fromCharCode(65 + optIdx);
-                            const isSelected =
-                              q.selected_option_id === opt.option_id ||
-                              userOptLabel === optLabel;
-                            const isOptCorrect =
-                              opt.is_correct ||
-                              correctOptLabel === optLabel;
-
-                            // Lookup distractor analysis for this option
-                            const distScores = q.distractor_scores || q.distractor_analysis || {};
-                            let optDistAnalysis: string | null = null;
-                            if (distScores && typeof distScores === 'object') {
-                              if (opt.option_id && distScores[opt.option_id]) {
-                                const entry = distScores[opt.option_id];
-                                optDistAnalysis = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
-                              }
-                              if (!optDistAnalysis) {
-                                const cleanOptLabel = String(optLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
-                                for (const [k, v] of Object.entries(distScores)) {
-                                  const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
-                                  let vLabel = '';
-                                  if (typeof v === 'object' && v !== null) {
-                                    vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                                  }
-                                  if (cleanK === cleanOptLabel || vLabel === cleanOptLabel) {
-                                    optDistAnalysis = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
-                                    if (optDistAnalysis) break;
-                                  }
-                                }
-                              }
-                            }
-
-                            let optBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
-                            let optBg = isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc';
-                            if (isSelected && isOptCorrect) {
-                              optBorder = '#10b981';
-                              optBg = isDark ? 'rgba(16,185,129,0.12)' : '#ecfdf5';
-                            } else if (isSelected && !isOptCorrect) {
-                              optBorder = '#ef4444';
-                              optBg = isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2';
-                            } else if (isOptCorrect) {
-                              optBorder = '#10b981';
-                              optBg = isDark ? 'rgba(16,185,129,0.08)' : '#f0fdf4';
-                            }
-
-                            return (
-                              <div
-                                key={opt.option_id || optIdx}
-                                style={{
-                                  padding: '12px 16px',
-                                  borderRadius: 10,
-                                  border: `1.5px solid ${optBorder}`,
-                                  backgroundColor: optBg,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 6,
-                                  fontSize: 13.5,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 10,
-                                      flex: 1,
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        fontWeight: 800,
-                                        color: isOptCorrect
-                                          ? '#10b981'
-                                          : isSelected
-                                          ? '#ef4444'
-                                          : '#64748b',
-                                      }}
-                                    >
-                                      {optLabel}.
-                                    </span>
-                                    <div style={{ display: 'inline', margin: 0 }}>
-                                      <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                          p: ({ node, ...props }: any) => (
-                                            <span
-                                              style={{ display: 'inline', margin: 0 }}
-                                              {...props}
-                                            />
-                                          ),
-                                        }}
-                                      >
-                                        {opt.text || opt.option_text || `Option ${optLabel}`}
-                                      </ReactMarkdown>
-                                    </div>
-                                  </div>
-
-                                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                                    {isSelected && (
-                                      <span
-                                        style={{
-                                          fontSize: 11,
-                                          fontWeight: 800,
-                                          padding: '2px 8px',
-                                          borderRadius: 8,
-                                          backgroundColor: isOptCorrect ? '#10b981' : '#ef4444',
-                                          color: '#ffffff',
-                                        }}
-                                      >
-                                        Your Choice
-                                      </span>
-                                    )}
-                                    {isOptCorrect && !isSelected && (
-                                      <span
-                                        style={{
-                                          fontSize: 11,
-                                          fontWeight: 800,
-                                          padding: '2px 8px',
-                                          borderRadius: 8,
-                                          backgroundColor: '#10b981',
-                                          color: '#ffffff',
-                                        }}
-                                      >
-                                        Correct Option
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Per-Option Distractor Analysis */}
-                                {optDistAnalysis && (
-                                  <div
-                                    style={{
-                                      marginTop: 4,
-                                      paddingLeft: 24,
-                                      fontSize: 12.5,
-                                      lineHeight: 1.45,
-                                      color: isOptCorrect
-                                        ? (isDark ? '#86efac' : '#166534')
-                                        : isSelected
-                                        ? (isDark ? '#fca5a5' : '#991b1b')
-                                        : '#64748b',
-                                      borderLeft: `2px solid ${isOptCorrect ? '#10b981' : isSelected ? '#ef4444' : (isDark ? '#475569' : '#cbd5e1')}`,
-                                    }}
-                                  >
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                      {optDistAnalysis}
-                                    </ReactMarkdown>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Option Chosen Feedback & Distractor Explanation Box */}
-                      {(() => {
-                        const distScores = q.distractor_scores || q.distractor_analysis || {};
-                        let chosenFeedback: string | null = null;
-                        if (distScores && typeof distScores === 'object') {
-                          if (q.selected_option_id && distScores[q.selected_option_id]) {
-                            const entry = distScores[q.selected_option_id];
-                            chosenFeedback = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
-                          }
-                          if (!chosenFeedback && userOptLabel && userOptLabel !== 'Unattempted') {
-                            const cleanUserLbl = String(userOptLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
-                            for (const [k, v] of Object.entries(distScores)) {
-                              const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
-                              let vLabel = '';
-                              if (typeof v === 'object' && v !== null) {
-                                vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                              }
-                              if (cleanK === cleanUserLbl || vLabel === cleanUserLbl) {
-                                chosenFeedback = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
-                                if (chosenFeedback) break;
-                              }
-                            }
-                          }
-                        }
-
-                        const optionsList = q.options || [];
-
-                        return (
-                          <div
-                            style={{
-                              padding: 16,
-                              borderRadius: 12,
-                              backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
-                              border: '1px solid rgba(245, 158, 11, 0.25)',
-                              fontSize: 13,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color: '#d97706',
-                                marginBottom: 8,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                              }}
-                            >
-                              <Lightbulb size={18} />
-                              <span>
-                                {state.isUnatt
-                                  ? 'Unattempted Question — Full Option Distractor & Trap Analysis:'
-                                  : `Option (${userOptLabel}) Selected — Diagnostic Feedback:`}
-                              </span>
-                            </div>
-
-                            <div style={{ color: isDark ? '#e2e8f0' : '#451a03', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              <div>
-                                <strong>Trap / Choice Classification:</strong>{' '}
-                                <span style={{ color: '#d97706', fontWeight: 600 }}>
-                                  {q.closeness_classification || 'Standard Conceptual Distractor'}
-                                </span>
-                              </div>
-
-                              {state.isUnatt ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                                  <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#78350f' }}>
-                                    You left this question unattempted. Below is why each incorrect option is a distractor trap and why Option ({correctOptLabel}) is correct:
-                                  </div>
-                                  {optionsList.map((opt: any, optIdx: number) => {
-                                    const optLabel = opt.option_label || String.fromCharCode(65 + optIdx);
-                                    const isCorrectOpt = opt.is_correct || correctOptLabel === optLabel;
-
-                                    let optDistText: string | null = null;
-                                    if (distScores && typeof distScores === 'object') {
-                                      const entry = distScores[opt.option_id] || distScores[optLabel] || distScores[optLabel.toLowerCase()];
-                                      if (entry) {
-                                        optDistText = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.explanation || null);
-                                      }
-                                    }
-
-                                    return (
-                                      <div
-                                        key={opt.option_id || optIdx}
-                                        style={{
-                                          padding: '8px 12px',
-                                          borderRadius: 8,
-                                          backgroundColor: isCorrectOpt
-                                            ? (isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4')
-                                            : (isDark ? 'rgba(255,255,255,0.03)' : '#fef2f2'),
-                                          border: `1px solid ${isCorrectOpt ? '#10b981' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(239,68,68,0.2)')}`,
-                                        }}
-                                      >
-                                        <div style={{ fontWeight: 700, fontSize: 12.5, color: isCorrectOpt ? '#10b981' : '#ef4444', marginBottom: 2 }}>
-                                          Option {optLabel}: {isCorrectOpt ? '🟢 Correct Answer' : '🔴 Incorrect Distractor Trap'}
-                                        </div>
-                                        <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569' }}>
-                                          {optDistText ? (
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{optDistText}</ReactMarkdown>
-                                          ) : isCorrectOpt ? (
-                                            `Option (${optLabel}) is the uniquely correct statement based on core concepts.`
-                                          ) : (
-                                            `Option (${optLabel}) is a plausible distractor designed to test precise factual understanding.`
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : chosenFeedback ? (
-                                <div style={{ marginTop: 2 }}>
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {chosenFeedback}
-                                  </ReactMarkdown>
-                                </div>
-                              ) : state.isInc ? (
-                                <div>
-                                  Option ({userOptLabel}) was selected because it represents a common distractor trap. Option ({correctOptLabel}) is the correct choice.
-                                </div>
-                              ) : (
-                                <div>
-                                  You successfully identified Option ({correctOptLabel}) as correct and avoided the deceptive distractor traps in this question.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Comprehensive Solution Breakdown */}
-                      {expl && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {/* Core Concept */}
-                          {expl.core_concept && (
-                            <div
-                              style={{
-                                padding: 14,
-                                borderRadius: 12,
-                                backgroundColor: isDark
-                                  ? 'rgba(37,99,235,0.08)'
-                                  : '#eff6ff',
-                                border: '1px solid rgba(37,99,235,0.2)',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  color: '#2563eb',
-                                  textTransform: 'uppercase',
-                                  marginBottom: 4,
-                                }}
-                              >
-                                💡 Core Concept Behind Question
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 13.5,
-                                  color: isDark ? '#e2e8f0' : '#1e3a8a',
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {expl.core_concept}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Step-by-Step Detailed Solution */}
-                          {expl.detailed_solution && (
-                            <div
-                              style={{
-                                padding: 14,
-                                borderRadius: 12,
-                                backgroundColor: isDark
-                                  ? 'rgba(255,255,255,0.03)'
-                                  : '#f8fafc',
-                                border: `1px solid ${
-                                  isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
-                                }`,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  color: '#64748b',
-                                  textTransform: 'uppercase',
-                                  marginBottom: 6,
-                                }}
-                              >
-                                📝 Step-by-Step Authoritative Solution
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 13.5,
-                                  color: isDark ? '#e2e8f0' : '#334155',
-                                  lineHeight: 1.6,
-                                }}
-                              >
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {expl.detailed_solution}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Common Traps */}
-                          {expl.common_traps && (
-                            <div
-                              style={{
-                                padding: 14,
-                                borderRadius: 12,
-                                backgroundColor: isDark
-                                  ? 'rgba(245,158,11,0.08)'
-                                  : '#fffbeb',
-                                border: '1px solid rgba(245,158,11,0.25)',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  color: '#d97706',
-                                  textTransform: 'uppercase',
-                                  marginBottom: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                }}
-                              >
-                                <AlertTriangle size={16} /> Common Examiner Traps
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 13,
-                                  color: isDark ? '#e2e8f0' : '#78350f',
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                {Array.isArray(expl.common_traps) ? (
-                                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                                    {expl.common_traps.map((item: string, tIdx: number) => (
-                                      <li key={tIdx} style={{ margin: '3px 0' }}>
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                          {item}
-                                        </ReactMarkdown>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {String(expl.common_traps)}
-                                  </ReactMarkdown>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Key Takeaways / Points to Remember */}
-                          {expl.key_takeaways && (
-                            <div
-                              style={{
-                                padding: 14,
-                                borderRadius: 12,
-                                background: isDark
-                                  ? 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.12) 100%)'
-                                  : 'linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%)',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 800,
-                                  color: '#10b981',
-                                  textTransform: 'uppercase',
-                                  marginBottom: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                }}
-                              >
-                                <Check size={16} /> Key Takeaways & Points to Remember
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 13,
-                                  color: isDark ? '#e2e8f0' : '#065f46',
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                {Array.isArray(expl.key_takeaways) ? (
-                                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                                    {expl.key_takeaways.map((item: string, kIdx: number) => (
-                                      <li key={kIdx} style={{ margin: '3px 0' }}>
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                          {item}
-                                        </ReactMarkdown>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {String(expl.key_takeaways)}
-                                  </ReactMarkdown>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                        ←
+                      </button>
+                      <span style={{ fontWeight: 800, color: '#2563eb' }}>
+                        {validQuestionPage} / {totalQuestionPages}
+                      </span>
+                      <button
+                        disabled={validQuestionPage >= totalQuestionPages}
+                        onClick={() => setQuestionPage((p) => Math.min(totalQuestionPages, p + 1))}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        →
+                      </button>
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Questions Detailed Accordion List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {paginatedQuestions.map((q, idx) => {
+                    const qId = q.question_id || q.question_number || idx;
+                    const isExpanded = expandedQuestionId === qId;
+                    const state = getQuestionState(q);
+                    const qNum = q.question_number || idx + 1;
+                    const expl = q.explanation || null;
+
+                    // Chosen and correct option labels
+                    const userOptLabel = q.user_selected_option || q.user_selected_label || 'Unattempted';
+                    const correctOptLabel = q.correct_option || q.correct_option_label || 'A';
+
+                    const cardBorderColor = state.isCorr
+                      ? '#10b981'
+                      : state.isInc
+                        ? '#ef4444'
+                        : '#94a3b8';
+
+                    return (
+                      <div
+                        key={qId}
+                        id={`question_card_${qNum}`}
+                        style={{
+                          ...cardStyle,
+                          padding: 20,
+                          borderLeft: `5px solid ${cardBorderColor}`,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        {/* Question Card Header (Clickable) */}
+                        <div
+                          onClick={() => setExpandedQuestionId(isExpanded ? null : qId)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 900,
+                                color: '#2563eb',
+                                backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                                padding: '4px 10px',
+                                borderRadius: 8,
+                              }}
+                            >
+                              Q{qNum}
+                            </span>
+
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: 700,
+                                  color: isDark ? '#ffffff' : '#0f172a',
+                                }}
+                              >
+                                {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#64748b' }}>
+                                Time Spent: {q.time_taken_seconds || 60}s • Bloom's Level:{' '}
+                                {q.blooms_taxonomy_level || q.blooms_level || 'ANALYZE'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {/* Result Badge */}
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontSize: 12,
+                                fontWeight: 800,
+                                padding: '4px 12px',
+                                borderRadius: 14,
+                                backgroundColor: state.isCorr
+                                  ? 'rgba(16,185,129,0.15)'
+                                  : state.isInc
+                                    ? 'rgba(239,68,68,0.15)'
+                                    : 'rgba(148,163,184,0.15)',
+                                color: state.isCorr
+                                  ? '#10b981'
+                                  : state.isInc
+                                    ? '#ef4444'
+                                    : '#94a3b8',
+                              }}
+                            >
+                              {state.isCorr ? (
+                                <CheckCircle2 size={14} />
+                              ) : state.isInc ? (
+                                <XCircle size={14} />
+                              ) : (
+                                <MinusCircle size={14} />
+                              )}
+                              <span>
+                                {state.isCorr
+                                  ? 'Correct (+2.0)'
+                                  : state.isInc
+                                    ? 'Incorrect (-0.67)'
+                                    : 'Unattempted (0.0)'}
+                              </span>
+                            </span>
+
+                            {isExpanded ? (
+                              <ChevronUp size={18} color="#64748b" />
+                            ) : (
+                              <ChevronDown size={18} color="#64748b" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expanded Solution & Option Feedback */}
+                        {isExpanded && (
+                          <div
+                            style={{
+                              marginTop: 20,
+                              paddingTop: 16,
+                              borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
+                                }`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 16,
+                            }}
+                          >
+                            {/* Per-Question 12-Matrix Diagnostic Badges */}
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                gap: 10,
+                                padding: '12px 16px',
+                                borderRadius: 12,
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'}`,
+                              }}
+                            >
+                              {/* 1. Time Score & Pacing */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>⏱️ Time Score & Pacing</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  {(() => {
+                                    const pBadge = q.pacing_efficiency || q.time_window || 'OPTIMAL';
+                                    const b = getBadgeStyle(pBadge);
+                                    const speedIdx = q.time_efficiency_score || Math.round(((q.expected_time_seconds || 60) / Math.max(1, q.time_taken_seconds || 60)) * 100);
+                                    return (
+                                      <>
+                                        <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
+                                          {q.pacing_efficiency || b.label}
+                                        </span>
+                                        <span style={{ fontSize: 11.5, fontWeight: 700, color: isDark ? '#cbd5e1' : '#334155' }}>
+                                          {q.time_taken_seconds || 60}s / {q.expected_time_seconds || 60}s ({speedIdx}% Speed)
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+
+                              {/* 2. FSRS Topic Retention & Memory */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🧠 FSRS Concept Memory</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)' }}>
+                                    {q.fsrs_retention_pct || 75}% Retention
+                                  </span>
+                                  <span style={{ fontSize: 11.5, fontWeight: 600, color: '#64748b' }}>
+                                    Stability: <strong>{q.fsrs_stability_days ? `${q.fsrs_stability_days} Days` : '3.0 Days'}</strong>
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 3. OSRI (Answer Revision Safety) */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🔄 OSRI Answer Revision</span>
+                                <div>
+                                  {(() => {
+                                    const isSwitched = q.is_option_switched;
+                                    const osriStatus = q.osri_status || (isSwitched ? (state.isCorr ? 'Rewarding Switch (+2.67 Marks)' : 'Costly Second-Guess (-2.67 Marks)') : 'Initial Selection Retained');
+                                    const isPositive = osriStatus.includes('Rewarding');
+                                    const isNegative = osriStatus.includes('Costly');
+                                    return (
+                                      <span
+                                        style={{
+                                          padding: '2px 8px',
+                                          borderRadius: 8,
+                                          fontSize: 11,
+                                          fontWeight: 800,
+                                          backgroundColor: isPositive
+                                            ? 'rgba(16,185,129,0.15)'
+                                            : isNegative
+                                              ? 'rgba(239,68,68,0.15)'
+                                              : isDark
+                                                ? 'rgba(255,255,255,0.06)'
+                                                : '#e2e8f0',
+                                          color: isPositive ? '#10b981' : isNegative ? '#ef4444' : '#64748b',
+                                          border: isPositive
+                                            ? '1px solid rgba(16,185,129,0.35)'
+                                            : isNegative
+                                              ? '1px solid rgba(239,68,68,0.35)'
+                                              : '1px solid transparent',
+                                        }}
+                                      >
+                                        {osriStatus}
+                                      </span>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+
+                              {/* 4. Cognitive Thinking Level (Bloom's) */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>💡 Cognitive Thinking Level</span>
+                                <div>
+                                  <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.35)' }}>
+                                    {q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 5. Distractor Trap Classification */}
+                              {q.distractor_classification || q.closeness_classification ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>🎯 Distractor Trap Analysis</span>
+                                  <div>
+                                    {(() => {
+                                      const dClass = q.distractor_classification || q.closeness_classification;
+                                      const b = getBadgeStyle(dClass.includes('Near') || dClass.includes('High') ? 'VULNERABLE' : 'COMPETENT');
+                                      return (
+                                        <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
+                                          {dClass}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {/* Question Statement */}
+                            {q.question_text && (
+                              <div
+                                style={{
+                                  fontSize: 14.5,
+                                  fontWeight: 600,
+                                  lineHeight: 1.6,
+                                  color: isDark ? '#ffffff' : '#0f172a',
+                                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                  padding: 16,
+                                  borderRadius: 12,
+                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'
+                                    }`,
+                                }}
+                              >
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {q.question_text}
+                                </ReactMarkdown>
+                              </div>
+                            )}
+
+                            {/* Options List */}
+                            {q.options && q.options.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    color: '#64748b',
+                                  }}
+                                >
+                                  Options & Choices
+                                </div>
+                                {q.options.map((opt: any, optIdx: number) => {
+                                  const optLabel = opt.option_label || String.fromCharCode(65 + optIdx);
+                                  const isSelected =
+                                    q.selected_option_id === opt.option_id ||
+                                    userOptLabel === optLabel;
+                                  const isOptCorrect =
+                                    opt.is_correct ||
+                                    correctOptLabel === optLabel;
+
+                                  // Lookup distractor analysis for this option
+                                  const distScores = q.distractor_scores || q.distractor_analysis || {};
+                                  let optDistAnalysis: string | null = null;
+                                  if (distScores && typeof distScores === 'object') {
+                                    if (opt.option_id && distScores[opt.option_id]) {
+                                      const entry = distScores[opt.option_id];
+                                      optDistAnalysis = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
+                                    }
+                                    if (!optDistAnalysis) {
+                                      const cleanOptLabel = String(optLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                      for (const [k, v] of Object.entries(distScores)) {
+                                        const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                        let vLabel = '';
+                                        if (typeof v === 'object' && v !== null) {
+                                          vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                        }
+                                        if (cleanK === cleanOptLabel || vLabel === cleanOptLabel) {
+                                          optDistAnalysis = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
+                                          if (optDistAnalysis) break;
+                                        }
+                                      }
+                                    }
+                                  }
+
+                                  let optBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
+                                  let optBg = isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc';
+                                  if (isSelected && isOptCorrect) {
+                                    optBorder = '#10b981';
+                                    optBg = isDark ? 'rgba(16,185,129,0.12)' : '#ecfdf5';
+                                  } else if (isSelected && !isOptCorrect) {
+                                    optBorder = '#ef4444';
+                                    optBg = isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2';
+                                  } else if (isOptCorrect) {
+                                    optBorder = '#10b981';
+                                    optBg = isDark ? 'rgba(16,185,129,0.08)' : '#f0fdf4';
+                                  }
+
+                                  return (
+                                    <div
+                                      key={opt.option_id || optIdx}
+                                      style={{
+                                        padding: '12px 16px',
+                                        borderRadius: 10,
+                                        border: `1.5px solid ${optBorder}`,
+                                        backgroundColor: optBg,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 6,
+                                        fontSize: 13.5,
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'space-between',
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            flex: 1,
+                                          }}
+                                        >
+                                          <span
+                                            style={{
+                                              fontWeight: 800,
+                                              color: isOptCorrect
+                                                ? '#10b981'
+                                                : isSelected
+                                                  ? '#ef4444'
+                                                  : '#64748b',
+                                            }}
+                                          >
+                                            {optLabel}.
+                                          </span>
+                                          <div style={{ display: 'inline', margin: 0 }}>
+                                            <ReactMarkdown
+                                              remarkPlugins={[remarkGfm]}
+                                              components={{
+                                                p: ({ node, ...props }: any) => (
+                                                  <span
+                                                    style={{ display: 'inline', margin: 0 }}
+                                                    {...props}
+                                                  />
+                                                ),
+                                              }}
+                                            >
+                                              {opt.text || opt.option_text || `Option ${optLabel}`}
+                                            </ReactMarkdown>
+                                          </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                          {isSelected && (
+                                            <span
+                                              style={{
+                                                fontSize: 11,
+                                                fontWeight: 800,
+                                                padding: '2px 8px',
+                                                borderRadius: 8,
+                                                backgroundColor: isOptCorrect ? '#10b981' : '#ef4444',
+                                                color: '#ffffff',
+                                              }}
+                                            >
+                                              Your Choice
+                                            </span>
+                                          )}
+                                          {isOptCorrect && !isSelected && (
+                                            <span
+                                              style={{
+                                                fontSize: 11,
+                                                fontWeight: 800,
+                                                padding: '2px 8px',
+                                                borderRadius: 8,
+                                                backgroundColor: '#10b981',
+                                                color: '#ffffff',
+                                              }}
+                                            >
+                                              Correct Option
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Per-Option Distractor Analysis */}
+                                      {optDistAnalysis && (
+                                        <div
+                                          style={{
+                                            marginTop: 4,
+                                            paddingLeft: 24,
+                                            fontSize: 12.5,
+                                            lineHeight: 1.45,
+                                            color: isOptCorrect
+                                              ? (isDark ? '#86efac' : '#166534')
+                                              : isSelected
+                                                ? (isDark ? '#fca5a5' : '#991b1b')
+                                                : '#64748b',
+                                            borderLeft: `2px solid ${isOptCorrect ? '#10b981' : isSelected ? '#ef4444' : (isDark ? '#475569' : '#cbd5e1')}`,
+                                          }}
+                                        >
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {optDistAnalysis}
+                                          </ReactMarkdown>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Option Chosen Feedback & Distractor Explanation Box */}
+                            {(() => {
+                              const distScores = q.distractor_scores || q.distractor_analysis || {};
+                              let chosenFeedback: string | null = null;
+                              if (distScores && typeof distScores === 'object') {
+                                if (q.selected_option_id && distScores[q.selected_option_id]) {
+                                  const entry = distScores[q.selected_option_id];
+                                  chosenFeedback = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.distractor_analysis_translations?.ENGLISH || null);
+                                }
+                                if (!chosenFeedback && userOptLabel && userOptLabel !== 'Unattempted') {
+                                  const cleanUserLbl = String(userOptLabel).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                  for (const [k, v] of Object.entries(distScores)) {
+                                    const cleanK = String(k).toLowerCase().replace(/[^a-z0-9]/g, '');
+                                    let vLabel = '';
+                                    if (typeof v === 'object' && v !== null) {
+                                      vLabel = String((v as any).label || (v as any).option_label || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                    }
+                                    if (cleanK === cleanUserLbl || vLabel === cleanUserLbl) {
+                                      chosenFeedback = typeof v === 'string' ? v : ((v as any).distractor_analysis || (v as any).distractor_analysis_translations?.ENGLISH || null);
+                                      if (chosenFeedback) break;
+                                    }
+                                  }
+                                }
+                              }
+
+                              const optionsList = q.options || [];
+
+                              return (
+                                <div
+                                  style={{
+                                    padding: 16,
+                                    borderRadius: 12,
+                                    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
+                                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                                    fontSize: 13,
+                                    lineHeight: 1.5,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: 700,
+                                      color: '#d97706',
+                                      marginBottom: 8,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <Lightbulb size={18} />
+                                    <span>
+                                      {state.isUnatt
+                                        ? 'Unattempted Question — Full Option Distractor & Trap Analysis:'
+                                        : `Option (${userOptLabel}) Selected — Diagnostic Feedback:`}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ color: isDark ? '#e2e8f0' : '#451a03', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div>
+                                      <strong>Trap / Choice Classification:</strong>{' '}
+                                      <span style={{ color: '#d97706', fontWeight: 600 }}>
+                                        {q.closeness_classification || 'Standard Conceptual Distractor'}
+                                      </span>
+                                    </div>
+
+                                    {state.isUnatt ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                        <div style={{ fontSize: 12.5, color: isDark ? '#cbd5e1' : '#78350f' }}>
+                                          You left this question unattempted. Below is why each incorrect option is a distractor trap and why Option ({correctOptLabel}) is correct:
+                                        </div>
+                                        {optionsList.map((opt: any, optIdx: number) => {
+                                          const optLabel = opt.option_label || String.fromCharCode(65 + optIdx);
+                                          const isCorrectOpt = opt.is_correct || correctOptLabel === optLabel;
+
+                                          let optDistText: string | null = null;
+                                          if (distScores && typeof distScores === 'object') {
+                                            const entry = distScores[opt.option_id] || distScores[optLabel] || distScores[optLabel.toLowerCase()];
+                                            if (entry) {
+                                              optDistText = typeof entry === 'string' ? entry : (entry.distractor_analysis || entry.explanation || null);
+                                            }
+                                          }
+
+                                          return (
+                                            <div
+                                              key={opt.option_id || optIdx}
+                                              style={{
+                                                padding: '8px 12px',
+                                                borderRadius: 8,
+                                                backgroundColor: isCorrectOpt
+                                                  ? (isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4')
+                                                  : (isDark ? 'rgba(255,255,255,0.03)' : '#fef2f2'),
+                                                border: `1px solid ${isCorrectOpt ? '#10b981' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(239,68,68,0.2)')}`,
+                                              }}
+                                            >
+                                              <div style={{ fontWeight: 700, fontSize: 12.5, color: isCorrectOpt ? '#10b981' : '#ef4444', marginBottom: 2 }}>
+                                                Option {optLabel}: {isCorrectOpt ? '🟢 Correct Answer' : '🔴 Incorrect Distractor Trap'}
+                                              </div>
+                                              <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569' }}>
+                                                {optDistText ? (
+                                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{optDistText}</ReactMarkdown>
+                                                ) : isCorrectOpt ? (
+                                                  `Option (${optLabel}) is the uniquely correct statement based on core concepts.`
+                                                ) : (
+                                                  `Option (${optLabel}) is a plausible distractor designed to test precise factual understanding.`
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : chosenFeedback ? (
+                                      <div style={{ marginTop: 2 }}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {chosenFeedback}
+                                        </ReactMarkdown>
+                                      </div>
+                                    ) : state.isInc ? (
+                                      <div>
+                                        Option ({userOptLabel}) was selected because it represents a common distractor trap. Option ({correctOptLabel}) is the correct choice.
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        You successfully identified Option ({correctOptLabel}) as correct and avoided the deceptive distractor traps in this question.
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Comprehensive Solution Breakdown */}
+                            {expl && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {/* Core Concept */}
+                                {expl.core_concept && (
+                                  <div
+                                    style={{
+                                      padding: 14,
+                                      borderRadius: 12,
+                                      backgroundColor: isDark
+                                        ? 'rgba(37,99,235,0.08)'
+                                        : '#eff6ff',
+                                      border: '1px solid rgba(37,99,235,0.2)',
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        color: '#2563eb',
+                                        textTransform: 'uppercase',
+                                        marginBottom: 4,
+                                      }}
+                                    >
+                                      💡 Core Concept Behind Question
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: 13.5,
+                                        color: isDark ? '#e2e8f0' : '#1e3a8a',
+                                        lineHeight: 1.5,
+                                      }}
+                                    >
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {expl.core_concept}
+                                      </ReactMarkdown>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Step-by-Step Detailed Solution */}
+                                {expl.detailed_solution && (
+                                  <div
+                                    style={{
+                                      padding: 14,
+                                      borderRadius: 12,
+                                      backgroundColor: isDark
+                                        ? 'rgba(255,255,255,0.03)'
+                                        : '#f8fafc',
+                                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
+                                        }`,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        color: '#64748b',
+                                        textTransform: 'uppercase',
+                                        marginBottom: 6,
+                                      }}
+                                    >
+                                      📝 Step-by-Step Authoritative Solution
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: 13.5,
+                                        color: isDark ? '#e2e8f0' : '#334155',
+                                        lineHeight: 1.6,
+                                      }}
+                                    >
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {expl.detailed_solution}
+                                      </ReactMarkdown>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Common Traps */}
+                                {expl.common_traps && (
+                                  <div
+                                    style={{
+                                      padding: 14,
+                                      borderRadius: 12,
+                                      backgroundColor: isDark
+                                        ? 'rgba(245,158,11,0.08)'
+                                        : '#fffbeb',
+                                      border: '1px solid rgba(245,158,11,0.25)',
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        color: '#d97706',
+                                        textTransform: 'uppercase',
+                                        marginBottom: 6,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                      }}
+                                    >
+                                      <AlertTriangle size={16} /> Common Examiner Traps
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: 13,
+                                        color: isDark ? '#e2e8f0' : '#78350f',
+                                        lineHeight: 1.5,
+                                      }}
+                                    >
+                                      {Array.isArray(expl.common_traps) ? (
+                                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                          {expl.common_traps.map((item: string, tIdx: number) => (
+                                            <li key={tIdx} style={{ margin: '3px 0' }}>
+                                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {item}
+                                              </ReactMarkdown>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      ) : (
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {String(expl.common_traps)}
+                                        </ReactMarkdown>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Key Takeaways / Points to Remember */}
+                                {expl.key_takeaways && (
+                                  <div
+                                    style={{
+                                      padding: 14,
+                                      borderRadius: 12,
+                                      background: isDark
+                                        ? 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.12) 100%)'
+                                        : 'linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%)',
+                                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 800,
+                                        color: '#10b981',
+                                        textTransform: 'uppercase',
+                                        marginBottom: 6,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                      }}
+                                    >
+                                      <Check size={16} /> Key Takeaways & Points to Remember
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: 13,
+                                        color: isDark ? '#e2e8f0' : '#065f46',
+                                        lineHeight: 1.5,
+                                      }}
+                                    >
+                                      {Array.isArray(expl.key_takeaways) ? (
+                                        <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                          {expl.key_takeaways.map((item: string, kIdx: number) => (
+                                            <li key={kIdx} style={{ margin: '3px 0' }}>
+                                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {item}
+                                              </ReactMarkdown>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      ) : (
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {String(expl.key_takeaways)}
+                                        </ReactMarkdown>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Full Question Pagination Bar */}
+                {filteredQuestions.length > questionPageSize && (
+                  <div
+                    style={{
+                      marginTop: 18,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                      padding: 16,
+                      borderRadius: 16,
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: '#64748b' }}>
+                      Page <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{validQuestionPage}</strong> of <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>{totalQuestionPages}</strong> ({filteredQuestions.length} Total Questions)
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        disabled={validQuestionPage <= 1}
+                        onClick={() => {
+                          setQuestionPage((p) => Math.max(1, p - 1));
+                          window.scrollTo({ top: 300, behavior: 'smooth' });
+                        }}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage <= 1 ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage <= 1 ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: validQuestionPage <= 1 ? 0.5 : 1,
+                        }}
+                      >
+                        ← Previous
+                      </button>
+
+                      {Array.from({ length: totalQuestionPages }, (_, i) => i + 1)
+                        .filter((pageNum) => {
+                          if (totalQuestionPages <= 8) return true;
+                          return Math.abs(pageNum - validQuestionPage) <= 2 || pageNum === 1 || pageNum === totalQuestionPages;
+                        })
+                        .map((pageNum, idx, arr) => {
+                          const prev = arr[idx - 1];
+                          const showEllipsis = prev && pageNum - prev > 1;
+                          return (
+                            <React.Fragment key={`qpage_${pageNum}`}>
+                              {showEllipsis && <span style={{ padding: '0 4px', color: '#64748b' }}>...</span>}
+                              <button
+                                onClick={() => {
+                                  setQuestionPage(pageNum);
+                                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 8,
+                                  border: pageNum === validQuestionPage ? '1px solid #2563eb' : `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                                  backgroundColor: pageNum === validQuestionPage ? '#2563eb' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                                  color: pageNum === validQuestionPage ? '#ffffff' : isDark ? '#ffffff' : '#0f172a',
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+
+                      <button
+                        disabled={validQuestionPage >= totalQuestionPages}
+                        onClick={() => {
+                          setQuestionPage((p) => Math.min(totalQuestionPages, p + 1));
+                          window.scrollTo({ top: 300, behavior: 'smooth' });
+                        }}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 8,
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                          backgroundColor: validQuestionPage >= totalQuestionPages ? 'transparent' : isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+                          color: validQuestionPage >= totalQuestionPages ? '#64748b' : isDark ? '#ffffff' : '#0f172a',
+                          cursor: validQuestionPage >= totalQuestionPages ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: validQuestionPage >= totalQuestionPages ? 0.5 : 1,
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -4057,9 +4632,9 @@ export function PsychometricReportView({
                     CREATE: { label: 'Synthesis', icon: '🚀', color: '#06b6d4' },
                   };
 
-                  const statsMap: { [key: string]: { total: number; correct: number } } = {};
+                  const statsMap: { [key: string]: { total: number; correct: number; accuracy: number } } = {};
                   Object.keys(bloomKeys).forEach((k) => {
-                    statsMap[k] = { total: 0, correct: 0 };
+                    statsMap[k] = { total: 0, correct: 0, accuracy: 0 };
                   });
 
                   if (questionsList && questionsList.length > 0) {
@@ -4071,17 +4646,55 @@ export function PsychometricReportView({
                         statsMap[matchKey].correct += 1;
                       }
                     });
-                  } else {
-                    const bObj = (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels || (report as any)?.blooms_mastery || {};
                     Object.keys(bloomKeys).forEach((k) => {
-                      const acc = Number(bObj[k] ?? bObj[k.toLowerCase()] ?? 70);
-                      statsMap[k] = { total: 10, correct: Math.round(acc / 10) };
+                      const s = statsMap[k];
+                      s.accuracy = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+                    });
+                  } else {
+                    const bObj =
+                      (report as any)?.part_2_exam_macro_scorecard?.blooms ||
+                      (report as any)?.blooms_mastery ||
+                      (report as any)?.part_3_aggregated_user_report?.['8_blooms_cognitive_mastery']?.value ||
+                      (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels ||
+                      {};
+
+                    const bBreakdown = bObj.breakdown || bObj;
+
+                    Object.keys(bloomKeys).forEach((k) => {
+                      const bData = bBreakdown[k] || bBreakdown[k.toLowerCase()] || {};
+                      let acc = 0;
+                      let tot = 0;
+                      let corr = 0;
+
+                      if (typeof bData === 'number') {
+                        acc = Math.round(bData);
+                      } else if (typeof bData === 'object' && bData !== null) {
+                        acc = Math.round(Number(bData.accuracy ?? bData.accuracy_percentage ?? 0));
+                        tot = Number(bData.total_attempts ?? bData.total ?? 0);
+                        corr = Number(bData.correct_attempts ?? bData.correct ?? 0);
+                      }
+
+                      // Check named keys e.g. remember_total, remember_correct
+                      const kTot = Number(bObj[`${k.toLowerCase()}_total`]);
+                      const kCorr = Number(bObj[`${k.toLowerCase()}_correct`]);
+                      if (!isNaN(kTot) && kTot > 0) {
+                        tot = kTot;
+                        corr = !isNaN(kCorr) ? kCorr : corr;
+                        acc = Math.round((corr / tot) * 100);
+                      }
+
+                      if (tot === 0 && acc > 0) {
+                        tot = 1;
+                        corr = acc >= 50 ? 1 : 0;
+                      }
+
+                      statsMap[k] = { total: tot, correct: corr, accuracy: acc };
                     });
                   }
 
                   return Object.entries(bloomKeys).map(([k, meta]) => {
                     const s = statsMap[k];
-                    const acc = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+                    const acc = s.accuracy;
                     return (
                       <div
                         key={k}
@@ -4105,7 +4718,7 @@ export function PsychometricReportView({
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
-                          <span>{s.correct}/{s.total} Correct</span>
+                          <span>{s.total > 0 ? `${s.correct}/${s.total} Correct` : '0 Evaluated'}</span>
                           <span>{acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'}</span>
                         </div>
                         <div style={{ width: '100%', height: 4, borderRadius: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', overflow: 'hidden' }}>
@@ -4118,45 +4731,49 @@ export function PsychometricReportView({
               </div>
             </div>
 
-            {/* Cumulative Subject Mastery Overview Scoreboard */}
+            {/* Subject Cumulative Mean Score & Performance Scoreboard (with Hierarchical Breakdown) */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <Layers size={18} color="#10b981" />
                 <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
-                  Subject-Wise Performance & Marks Scoreboard
+                  Subject Cumulative Mean Score & Hierarchical Performance Scoreboard
                 </h4>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
                 {hierarchyData.map((subj: any) => {
                   const bStyle = getBadgeStyle(subj.status);
-                  const netMarks = Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.66) * 100) / 100;
+                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
+
                   return (
                     <div
-                      key={`card_${subj.name}`}
+                      key={`subj_board_${subj.name}`}
                       style={{
-                        padding: '14px 16px',
-                        borderRadius: 12,
+                        padding: '16px',
+                        borderRadius: 14,
                         backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
                         borderLeft: `4px solid ${subj.accuracy >= 70 ? '#10b981' : subj.accuracy >= 50 ? '#f59e0b' : '#ef4444'}`,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
+                      {/* Subject Top Row */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
+                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#0f172a' }}>
                             {subj.name}
                           </div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>
-                            {subj.topics?.length || 0} Topics • {subj.total} Questions
+                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
+                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
                           </div>
                         </div>
                         <span
                           style={{
-                            fontSize: 11,
-                            fontWeight: 700,
+                            fontSize: 11.5,
+                            fontWeight: 800,
                             padding: '2px 8px',
                             borderRadius: 8,
                             backgroundColor: bStyle.bg,
@@ -4168,10 +4785,71 @@ export function PsychometricReportView({
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155' }}>
-                        <span>Correct: <strong>{subj.correct}/{subj.attempted}</strong></span>
-                        <span>Net Score: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} Marks</strong></span>
+                      {/* Cumulative Mean Score & Net Marks */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 8 }}>
+                        <span>Avg Mean: <strong style={{ color: '#2563eb' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
+                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#10b981' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
                       </div>
+
+                      {/* Hierarchical Categorization: Topics and Subtopics */}
+                      {subj.topics && subj.topics.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Syllabus Topics & Subtopics:
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {subj.topics.slice(0, 4).map((t: any) => {
+                              const tNet = t.net_marks !== undefined ? t.net_marks : Math.round((t.correct * 2.0 - (t.attempted - t.correct) * 0.6667) * 100) / 100;
+                              return (
+                                <div
+                                  key={`board_top_${subj.name}_${t.name}`}
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: 8,
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 3,
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
+                                    <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
+                                      • {t.name}
+                                    </span>
+                                    <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#10b981' : t.accuracy >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                      {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
+                                    </span>
+                                  </div>
+                                  {t.subtopics && t.subtopics.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
+                                      {t.subtopics.slice(0, 3).map((sub: any) => (
+                                        <span
+                                          key={`board_sub_${sub.name}`}
+                                          style={{
+                                            fontSize: 10,
+                                            padding: '1px 6px',
+                                            borderRadius: 6,
+                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                            color: '#64748b',
+                                          }}
+                                        >
+                                          ↳ {sub.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {subj.topics.length > 4 && (
+                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
+                                + {subj.topics.length - 4} more topics in full syllabus hierarchy below
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -4183,15 +4861,17 @@ export function PsychometricReportView({
               {hierarchyData.map((subj: any) => {
                 const isSubjExpanded = !!expandedHierarchyNodes[`subj_${subj.name}`];
                 const bSubj = getBadgeStyle(subj.status);
+                const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
+                const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
+                const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
 
                 return (
                   <div
                     key={subj.name}
                     style={{
                       borderRadius: 14,
-                      border: `1px solid ${
-                        isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'
-                      }`,
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'
+                        }`,
                       backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
                       overflow: 'hidden',
                     }}
@@ -4249,7 +4929,36 @@ export function PsychometricReportView({
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {/* Mean Score and Net Marks Badges */}
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#eff6ff',
+                            color: '#2563eb',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Avg: {meanScore >= 0 ? `+${meanScore}` : meanScore} m/exam
+                        </span>
+
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: 8,
+                            backgroundColor: netMarks >= 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#f0fdf4') : (isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2'),
+                            color: netMarks >= 0 ? '#10b981' : '#ef4444',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Net: {netMarks >= 0 ? `+${netMarks}` : netMarks} m
+                        </span>
+
                         {/* Question stats */}
                         <div style={{ fontSize: 12.5, color: '#64748b' }}>
                           <strong style={{ color: isDark ? '#ffffff' : '#0f172a' }}>
@@ -4267,10 +4976,10 @@ export function PsychometricReportView({
                               subj.accuracy >= 85
                                 ? '#10b981'
                                 : subj.accuracy >= 70
-                                ? '#3b82f6'
-                                : subj.accuracy >= 50
-                                ? '#f59e0b'
-                                : '#ef4444',
+                                  ? '#3b82f6'
+                                  : subj.accuracy >= 50
+                                    ? '#f59e0b'
+                                    : '#ef4444',
                             minWidth: 48,
                             textAlign: 'right',
                           }}
@@ -4288,14 +4997,14 @@ export function PsychometricReportView({
                               subj.pacing_status === 'OPTIMAL'
                                 ? 'rgba(16,185,129,0.12)'
                                 : subj.pacing_status === 'BOTTLENECK'
-                                ? 'rgba(239,68,68,0.12)'
-                                : 'rgba(139,92,246,0.12)',
+                                  ? 'rgba(239,68,68,0.12)'
+                                  : 'rgba(139,92,246,0.12)',
                             color:
                               subj.pacing_status === 'OPTIMAL'
                                 ? '#10b981'
                                 : subj.pacing_status === 'BOTTLENECK'
-                                ? '#ef4444'
-                                : '#8b5cf6',
+                                  ? '#ef4444'
+                                  : '#8b5cf6',
                             fontWeight: 700,
                             whiteSpace: 'nowrap',
                           }}
@@ -4315,7 +5024,7 @@ export function PsychometricReportView({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          🧠 {subj.retention_pct}% Memory ({subj.stability_days}d stab)
+                          🧠 {subj.retention_pct}% Memory
                         </span>
 
                         {/* Strength Badge */}
@@ -4428,9 +5137,8 @@ export function PsychometricReportView({
                             <div
                               key={top.name}
                               style={{
-                                borderBottom: `1px solid ${
-                                  isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
-                                }`,
+                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
+                                  }`,
                               }}
                             >
                               {/* TOPIC ROW */}
@@ -4452,8 +5160,8 @@ export function PsychometricReportView({
                                       ? 'rgba(255,255,255,0.03)'
                                       : 'transparent'
                                     : isTopExpanded
-                                    ? '#f8fafc'
-                                    : 'transparent',
+                                      ? '#f8fafc'
+                                      : 'transparent',
                                 }}
                               >
                                 <div
@@ -4511,10 +5219,10 @@ export function PsychometricReportView({
                                         top.accuracy >= 85
                                           ? '#10b981'
                                           : top.accuracy >= 70
-                                          ? '#3b82f6'
-                                          : top.accuracy >= 50
-                                          ? '#f59e0b'
-                                          : '#ef4444',
+                                            ? '#3b82f6'
+                                            : top.accuracy >= 50
+                                              ? '#f59e0b'
+                                              : '#ef4444',
                                       minWidth: 45,
                                       textAlign: 'right',
                                     }}
@@ -4532,14 +5240,14 @@ export function PsychometricReportView({
                                         top.pacing_status === 'OPTIMAL'
                                           ? 'rgba(16,185,129,0.12)'
                                           : top.pacing_status === 'BOTTLENECK'
-                                          ? 'rgba(239,68,68,0.12)'
-                                          : 'rgba(139,92,246,0.12)',
+                                            ? 'rgba(239,68,68,0.12)'
+                                            : 'rgba(139,92,246,0.12)',
                                       color:
                                         top.pacing_status === 'OPTIMAL'
                                           ? '#10b981'
                                           : top.pacing_status === 'BOTTLENECK'
-                                          ? '#ef4444'
-                                          : '#8b5cf6',
+                                            ? '#ef4444'
+                                            : '#8b5cf6',
                                       fontWeight: 700,
                                     }}
                                   >
@@ -4653,11 +5361,10 @@ export function PsychometricReportView({
                                       <div
                                         key={sub.name}
                                         style={{
-                                          borderBottom: `1px solid ${
-                                            isDark
+                                          borderBottom: `1px solid ${isDark
                                               ? 'rgba(255,255,255,0.03)'
                                               : '#f1f5f9'
-                                          }`,
+                                            }`,
                                         }}
                                       >
                                         <div
@@ -4709,10 +5416,10 @@ export function PsychometricReportView({
                                                   sub.accuracy >= 85
                                                     ? '#10b981'
                                                     : sub.accuracy >= 70
-                                                    ? '#3b82f6'
-                                                    : sub.accuracy >= 50
-                                                    ? '#f59e0b'
-                                                    : '#ef4444',
+                                                      ? '#3b82f6'
+                                                      : sub.accuracy >= 50
+                                                        ? '#f59e0b'
+                                                        : '#ef4444',
                                                 minWidth: 42,
                                                 textAlign: 'right',
                                               }}

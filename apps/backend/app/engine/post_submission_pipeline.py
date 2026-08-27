@@ -666,6 +666,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             "topic": topic_name,
             "subtopic": subtopic_name,
             "difficulty": diff_val,
+            "blooms_level": blooms_val,
+            "cognitive_skill": cognitive_skill,
             "selected_option_id": str(r.selected_option_id) if r.selected_option_id else None,
             "user_selected_label": user_sel_label,
             "is_correct": r.is_correct,
@@ -856,21 +858,35 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
 
     # 7. Bulk Update UserTaxonomyMastery (Filtering out synthetic wildcard/placeholder labels)
     t_db_start = datetime.now(timezone.utc)
+    tax_by_blooms = [
+        {
+            "taxonomy_name": f"Bloom's {b_k.upper()} Thinking",
+            "taxonomy_id_code": b_k.upper(),
+            "total_questions": b_v.get("total", 0),
+            "correct": b_v.get("correct", 0),
+            "accuracy_percentage": b_v.get("accuracy", 0.0),
+            "strength_status": "STRONG" if b_v.get("accuracy", 0.0) >= 75.0 else ("MODERATE" if b_v.get("accuracy", 0.0) >= 50.0 else "WEAK_REVISION_REQUIRED"),
+        }
+        for b_k, b_v in (blooms_obj.get("breakdown", {}) or {}).items()
+        if b_v.get("total", 0) > 0
+    ]
     all_tax_items = [
         (t_type, x)
         for (t_type, items) in [
             ("SUBJECT", tax_by_subj),
             ("TOPIC", tax_by_top),
-            ("SUBTOPIC", tax_by_sub)
+            ("SUBTOPIC", tax_by_sub),
+            ("BLOOMS", tax_by_blooms),
         ]
         for x in items
         if not is_placeholder_taxonomy(x.get("taxonomy_name") or x.get("name"))
     ]
     aggregated_tax: Dict[tuple, Dict[str, Any]] = {}
     for tax_type, item in all_tax_items:
-        code_name = (item.get("taxonomy_name") or "General").strip()
+        code_id = (item.get("taxonomy_id_code") or item.get("taxonomy_name") or "General").strip()
+        disp_name = (item.get("taxonomy_name") or item.get("taxonomy_id_code") or code_id).strip()
         norm_type = str(tax_type).strip().upper()
-        norm_code = code_name.strip().upper()[:100]
+        norm_code = code_id.strip().upper()[:100]
         t_key = (norm_type, norm_code)
         if t_key in aggregated_tax:
             aggregated_tax[t_key]["total_questions"] += item.get("total_questions", 0)
@@ -882,7 +898,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             aggregated_tax[t_key] = {
                 "taxonomy_type": norm_type,
                 "taxonomy_id_code": norm_code,
-                "taxonomy_name": code_name,
+                "taxonomy_name": disp_name,
                 "total_questions": item.get("total_questions", 0),
                 "correct": item.get("correct", 0),
                 "accuracy_percentage": item.get("accuracy_percentage", 0.0),
@@ -903,26 +919,61 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     for (norm_type, norm_code), item in aggregated_tax.items():
         m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"].strip().upper()))
         if not m_obj:
-            m_obj = UserTaxonomyMastery(
+            tot = item["total_questions"]
+            cor = item["correct"]
+            acc = item["accuracy_percentage"]
+            st = item["strength_status"]
+        else:
+            tot = m_obj.total_attempts + item["total_questions"]
+            cor = m_obj.correct_attempts + item["correct"]
+            acc = round((cor / max(1, tot)) * 100.0, 1)
+            st = "STRONG" if acc >= 75.0 else ("MODERATE" if acc >= 50.0 else "WEAK_REVISION_REQUIRED")
+
+        try:
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            stmt = pg_insert(UserTaxonomyMastery).values(
+                id=uuid.uuid4(),
                 user_id=user.id,
                 taxonomy_type=norm_type,
                 taxonomy_id_code=norm_code,
                 taxonomy_name=item["taxonomy_name"],
-                total_attempts=item["total_questions"],
-                correct_attempts=item["correct"],
-                mastery_percentage=item["accuracy_percentage"],
-                strength_status=item["strength_status"],
+                total_attempts=tot,
+                correct_attempts=cor,
+                mastery_percentage=acc,
+                strength_status=st,
+                updated_at=datetime.now(timezone.utc),
+            ).on_conflict_do_update(
+                index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
+                set_={
+                    "taxonomy_name": item["taxonomy_name"],
+                    "total_attempts": tot,
+                    "correct_attempts": cor,
+                    "mastery_percentage": acc,
+                    "strength_status": st,
+                    "updated_at": datetime.now(timezone.utc),
+                },
             )
-            session.add(m_obj)
-            tax_map[(norm_type, norm_code)] = m_obj
-            tax_map[(norm_type, item["taxonomy_name"].strip().upper())] = m_obj
-        else:
-            m_obj.total_attempts += item["total_questions"]
-            m_obj.correct_attempts += item["correct"]
-            m_obj.mastery_percentage = round((m_obj.correct_attempts / max(1, m_obj.total_attempts)) * 100.0, 1)
-            m_obj.strength_status = "STRONG" if m_obj.mastery_percentage >= 75.0 else ("MODERATE" if m_obj.mastery_percentage >= 50.0 else "WEAK_REVISION_REQUIRED")
-            m_obj.updated_at = datetime.now(timezone.utc)
-            session.add(m_obj)
+            await session.exec(stmt)
+        except Exception:
+            if not m_obj:
+                m_obj = UserTaxonomyMastery(
+                    user_id=user.id,
+                    taxonomy_type=norm_type,
+                    taxonomy_id_code=norm_code,
+                    taxonomy_name=item["taxonomy_name"],
+                    total_attempts=tot,
+                    correct_attempts=cor,
+                    mastery_percentage=acc,
+                    strength_status=st,
+                )
+                session.add(m_obj)
+            else:
+                m_obj.total_attempts = tot
+                m_obj.correct_attempts = cor
+                m_obj.mastery_percentage = acc
+                m_obj.strength_status = st
+                m_obj.updated_at = datetime.now(timezone.utc)
+                session.add(m_obj)
 
     # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
     now_t = datetime.now(timezone.utc)
