@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useTheme } from '../../hooks/useTheme';
 import {
   Copy,
   Check,
@@ -26,9 +25,7 @@ export function MarkdownPreviewer({
   title = 'Markdown Audit Report',
   filename = 'diagnostic_audit_report.md',
 }: MarkdownPreviewerProps) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
+  const isDark = false;
   const [mode, setMode] = useState<'preview' | 'raw'>('preview');
   const [copied, setCopied] = useState(false);
 

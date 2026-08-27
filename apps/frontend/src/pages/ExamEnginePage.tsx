@@ -8,7 +8,6 @@ import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
 import {
   startExamAttempt,
   getExamAttemptStatus,
@@ -42,8 +41,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const isDark = false;
 
   const isGuestMode = isGuest || location.pathname === '/guest-exam';
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Award, Loader2 } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme';
 
 interface ExamSubmitModalProps {
   isOpen: boolean;
@@ -32,9 +31,7 @@ export function ExamSubmitModal({
   onConfirmSubmit,
   onConfirm,
 }: ExamSubmitModalProps) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
+  const isDark = false;
   const ans = answeredCount ?? summary?.answered_count ?? 0;
   const mrk = markedCount ?? summary?.marked_for_review_count ?? 0;
   const unatt = unattemptedCount ?? summary?.unattempted_count ?? 0;

@@ -2,13 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { Logo } from '../common/Logo';
-import { useTheme } from '../../hooks/useTheme';
 import { logoutUser } from '../../services/authService';
 
 export function AdminHeader() {
   const navigate = useNavigate();
   const clerk = useClerk();
-  const { theme, toggleTheme } = useTheme();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (

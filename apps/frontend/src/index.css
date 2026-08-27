@@ -103,45 +103,7 @@
   --shadow-color-accent: rgba(37,99,235,0.15);
 }
 
-.dark, [data-theme="dark"] {
-  --bg-page: #F4F6F9;
-  --bg-card: #FFFFFF;
-  --bg-card-alt: #FAFAFA;
-  --bg-hover: #F8FAFC;
-  --bg-hover-accent: #EFF6FF;
-  --bg-subtle: #F1F5F9;
-  
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
-  --text-disabled: #94A3B8;
-  --text-inverse: #FFFFFF;
-  --text-accent-dark: #1E293B;
-  
-  --border-default: #E2E8F0;
-  --border-disabled: #CBD5E1;
-  
-  --accent-primary: #2563EB;
-  --accent-bg: #EFF6FF;
-  --accent-border: #93C5FD;
-  --accent-border-hover: #60A5FA;
-  --accent-hover: #1D4ED8;
-  --accent-dark: #1E40AF;
 
-  --success-primary: #059669;
-  --success-bg: #ECFDF5;
-
-  --warning-primary: #D97706;
-  --warning-bg: #FEF3C7;
-
-  --danger-primary: #DC2626;
-  --danger-bg: #FEF2F2;
-
-  --info-primary: #2563EB;
-  --info-bg: #DBEAFE;
-
-  --shadow-color-base: rgba(15,23,42,0.04);
-}
 
 @keyframes fadeIn {
   from { opacity: 0; }

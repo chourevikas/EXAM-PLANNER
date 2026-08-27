@@ -17,7 +17,6 @@ import {
   Zap
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
-import { useTheme } from '../../hooks/useTheme';
 
 interface StudentTopHeaderProps {
   user: any;

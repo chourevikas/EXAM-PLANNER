@@ -32,7 +32,6 @@ import {
   ArrowRight,
   Filter,
 } from 'lucide-react';
-import { useTheme } from '../../hooks/useTheme';
 import {
   PsychometricReport,
   QuestionReportItem,
@@ -75,9 +74,7 @@ export function PsychometricReportView({
   questionReportData,
   userProgressionData,
 }: PsychometricReportViewProps) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
+  const isDark = false;
   const [activeTab, setActiveTab] = useState<
     'questions' | 'exam-matrices' | 'topics' | 'user-aggregate' | 'markdown'
   >('questions');

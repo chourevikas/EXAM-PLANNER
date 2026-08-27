@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { Ico } from '../components/common/Icons';
-import { useTheme } from '../hooks/useTheme';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
 import { listExams } from '../services/examService';
@@ -36,7 +35,6 @@ export function DashboardPage() {
     }
   }, [user, navigate]);
 
-  const { theme, toggleTheme } = useTheme();
   const { user: clerkUser } = useUser();
   const { getToken } = useAuth();
 
