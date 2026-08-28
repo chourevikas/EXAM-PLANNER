@@ -153,3 +153,18 @@ export async function updateUserProfile(updateData: { full_name?: string; profil
   window.dispatchEvent(new Event('user_profile_updated'));
   return data;
 }
+
+export async function verifyEmail(token: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Email verification failed' }));
+    throw new Error(errorData.detail || 'Verification token is invalid or expired.');
+  }
+
+  return await res.json();
+}

@@ -402,8 +402,76 @@ export function AnalyticsPage() {
         );
       })()}
 
-      {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
-      {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
+      {/* No Exams Taken Empty State Screen */}
+      {!isHistoryLoading && attemptsHistory.length === 0 ? (
+        <div
+          style={{
+            padding: '64px 32px',
+            textAlign: 'center',
+            backgroundColor: 'var(--bg-card)',
+            borderRadius: 24,
+            border: '1px solid var(--border-default)',
+            boxShadow: 'var(--shadow-color-base)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 20,
+            maxWidth: 640,
+            margin: '40px auto',
+          }}
+        >
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              border: '1px solid rgba(37, 99, 235, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 36,
+            }}
+          >
+            📊
+          </div>
+
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            No Exam Analytics Available Yet
+          </h2>
+
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 500, margin: 0 }}>
+            You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep AI Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
+          </p>
+
+          <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => (window.location.href = '/practice-exam')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '14px 28px',
+                borderRadius: 14,
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>✍️ Take Practice Exam Now</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
+          {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
         <section
           style={{
             marginBottom: 24,
@@ -824,11 +892,13 @@ export function AnalyticsPage() {
                   transition: 'all 0.15s ease',
                 }}
               >
-                Take a Practice Exam &rarr;
+                Take a Practice Exam →
               </button>
             </div>
           </div>
         )
+      )}
+        </>
       )}
     </StudentLayout>
   );

@@ -122,7 +122,7 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            email_service.send_verification_email(user_out.email, verification_token)
+            await email_service.send_verification_email(user_out.email, verification_token)
         except Exception as e:
             logger.error(f"Failed to send verification email: {e}")
 
@@ -211,7 +211,7 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            email_service.send_password_reset_email(user.email, reset_token)
+            await email_service.send_password_reset_email(user.email, reset_token)
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
         return True
