@@ -16,6 +16,15 @@ class StudyTask(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     title: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
+    
+    subject: Optional[str] = Field(default=None, index=True)
+    topic: Optional[str] = Field(default=None)
+    subtopic: Optional[str] = Field(default=None)
+    
+    priority: str = Field(default="MEDIUM")  # HIGH, MEDIUM, LOW
+    allocated_time_minutes: int = Field(default=30)
+    activity_type: str = Field(default="CONCEPT_REVISION")  # CONCEPT_REVISION, PRACTICE_MCQS, PYQ_SOLVING, MOCK_TEST, NOTES_REVIEW
+    
     scheduled_date: dt.date = Field(
         default_factory=lambda: datetime.now(timezone.utc).date(),
         index=True
@@ -26,6 +35,9 @@ class StudyTask(SQLModel, table=True):
         sa_type=DateTimeTZ,
     )
     completed_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
+    
+    is_ai_recommended: bool = Field(default=False)
+    source_attempt_id: Optional[uuid.UUID] = Field(default=None)
 
     user: Optional["User"] = Relationship(back_populates="study_tasks")
 

@@ -63,6 +63,65 @@ async def send_subscription_confirmation(email: EmailStr, user_name: str):
         return False
 
 
+async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pending_tasks: list):
+    """Sends an end-of-day email notification listing all pending uncompleted tasks for the day."""
+    if not pending_tasks:
+        return True
+
+    task_list_items = "".join([
+        f"<li style='margin-bottom: 8px;'><strong>{t.get('title', 'Task')}</strong> ({t.get('subject', 'General')} — {t.get('allocated_time_minutes', 30)} mins)</li>"
+        for t in pending_tasks
+    ])
+
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #FEF3C7; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #F59E0B;">
+                <h2 style="color: #B45309; margin: 0;">📅 Daily Study Reminder: {len(pending_tasks)} Pending Task(s)</h2>
+            </div>
+            
+            <p>Hi <strong>{user_name}</strong>,</p>
+            <p>You have <strong>{len(pending_tasks)} study task(s)</strong> remaining for today. Keep up the momentum for your target exam!</p>
+            
+            <div style="background-color: #F9FAFB; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #E5E7EB;">
+                <h4 style="margin-top: 0; color: #374151;">Pending Tasks List:</h4>
+                <ul style="padding-left: 20px; color: #4B5563;">
+                    {task_list_items}
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://examplanner.in/planner" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Open Study Planner</a>
+            </div>
+            
+            <p>Stay consistent and crush your goals!</p>
+            <br>
+            <p style="color: #666; font-size: 14px;">The ExamPlanner Team</p>
+        </body>
+    </html>
+    """
+
+    message = MessageSchema(
+        subject=f"Daily Study Summary: {len(pending_tasks)} Pending Tasks for Today 🎯",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    try:
+        if not settings.MAIL_USERNAME:
+            logger.warning(f"MAIL_USERNAME not configured. Logging pending tasks for {email}: {len(pending_tasks)} tasks.")
+            return True
+
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        logger.info(f"Pending tasks email sent successfully to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send pending tasks email: {e}")
+        return False
+
+
 async def send_admin_notification_subscription(user_email: str, user_name: str):
     """Sends a notification email to the admin when a user successfully upgrades to premium."""
     

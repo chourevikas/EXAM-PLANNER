@@ -71,6 +71,7 @@ from app.db.models.answer_key import (
 )
 from app.db.models.gamification import Badge, UserBadge, XPLog
 from app.db.models.study_plan import StudyTask, StudyActivity
+from app.db.models.notification import Notification
 
 __all__ = [
     "UserRole",
@@ -140,4 +141,5 @@ __all__ = [
     "StudyTask",
     "StudyActivity",
     "ExamStatus",
+    "Notification",
 ]

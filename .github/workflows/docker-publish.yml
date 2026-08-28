@@ -2,9 +2,9 @@ name: Build and Publish Docker Images
 
 on:
   push:
-    branches: [ "main", "master", "feature/docker-cicd", "release/0.0.1", "feature/clerk-integration", "feature/email-service" ]
+    branches: [ "main", "master", "feature/docker-cicd", "release/0.0.1", "feature/clerk-integration", "feature/email-service", "feature/study-planner-logger" ]
   pull_request:
-    branches: [ "main", "master", "feature/docker-cicd", "feature/clerk-integration", "feature/email-service" ]
+    branches: [ "main", "master", "feature/docker-cicd", "feature/clerk-integration", "feature/email-service", "feature/study-planner-logger" ]
 
 env:
   REGISTRY: ghcr.io

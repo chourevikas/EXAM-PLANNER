@@ -8,6 +8,7 @@ import { listExams } from '../services/examService';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
+import { LogStudyModal } from '../components/student/LogStudyModal';
 
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
@@ -912,134 +913,16 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Study Log Drawer */}
-      {showLogModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'flex-end',
-          animation: 'fadeIn 0.2s ease-out'
-        }} onClick={() => setShowLogModal(false)}>
-          <div style={{
-            backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: 600,
-            height: '100vh', padding: '40px 32px', boxShadow: '-10px 0 40px rgba(0,0,0,0.4)',
-            borderLeft: '1px solid var(--border-default)', overflowY: 'auto',
-            animation: 'slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-          }} onClick={e => e.stopPropagation()}>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Log Study Activity</h2>
-              <button onClick={() => setShowLogModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
-            </div>
-
-            {/* Activity Type Pill Selector */}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-              {['REVISION', 'PYQ', 'MOCK_TEST', 'NEW_TOPIC', 'ANSWER_WRITING', 'CURRENT_AFFAIRS'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => setStudyLog({ ...studyLog, activity_type: type })}
-                  style={{
-                    padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    border: studyLog.activity_type === type ? '1px solid var(--accent-primary)' : '1px solid var(--border-default)',
-                    backgroundColor: studyLog.activity_type === type ? 'var(--accent-primary)' : 'var(--bg-subtle)',
-                    color: studyLog.activity_type === type ? '#fff' : 'var(--text-secondary)'
-                  }}>
-                  {type.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Common Fields */}
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Subject</label>
-                  <input type="text" placeholder="e.g. Polity" value={studyLog.subject} onChange={e => setStudyLog({ ...studyLog, subject: e.target.value })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Topic</label>
-                  <input type="text" placeholder="e.g. Fundamental Rights" value={studyLog.topic} onChange={e => setStudyLog({ ...studyLog, topic: e.target.value })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Duration (Minutes)</label>
-                <input type="number" min="0" value={studyLog.duration_minutes} onChange={e => setStudyLog({ ...studyLog, duration_minutes: parseInt(e.target.value) || 0 })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-              </div>
-
-              {/* Dynamic Fields based on Type */}
-              {(studyLog.activity_type === 'MOCK_TEST' || studyLog.activity_type === 'PYQ') && (
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Questions Attempted</label>
-                    <input type="number" min="0" value={studyLog.questions_attempted} onChange={e => setStudyLog({ ...studyLog, questions_attempted: parseInt(e.target.value) || 0 })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                  </div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Questions Correct</label>
-                    <input type="number" min="0" value={studyLog.questions_correct} onChange={e => setStudyLog({ ...studyLog, questions_correct: parseInt(e.target.value) || 0 })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                  </div>
-                </div>
-              )}
-
-              {studyLog.activity_type === 'REVISION' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Confidence After Revision (1-10)</label>
-                  <input type="range" min="1" max="10" value={studyLog.confidence_rating} onChange={e => setStudyLog({ ...studyLog, confidence_rating: parseInt(e.target.value) })} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
-                  <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{studyLog.confidence_rating} / 10</div>
-                </div>
-              )}
-
-              {studyLog.activity_type === 'ANSWER_WRITING' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Answers Written</label>
-                  <input type="number" min="1" value={studyLog.questions_attempted} onChange={e => setStudyLog({ ...studyLog, questions_attempted: parseInt(e.target.value) || 0 })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Notes (Optional)</label>
-                <input type="text" placeholder="e.g. Revised Articles 12-35" value={studyLog.notes} onChange={e => setStudyLog({ ...studyLog, notes: e.target.value })} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} />
-              </div>
-            </div>
-
-            <button
-              disabled={isSubmittingLog}
-              onClick={async () => {
-                setIsSubmittingLog(true);
-                try {
-                  const token = await getToken();
-                  const res = await fetch('/api/v1/analytics/activity', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(studyLog)
-                  });
-                  if (res.ok) {
-                    setShowLogModal(false);
-                    fetchActivities();
-                  } else {
-                    console.error('Failed to log activity');
-                  }
-                } catch (err) {
-                  console.error(err);
-                } finally {
-                  setIsSubmittingLog(false);
-                }
-              }}
-              style={{
-                width: '100%', marginTop: 32, padding: 16,
-                backgroundColor: 'var(--accent-primary)', color: '#fff',
-                border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
-                cursor: isSubmittingLog ? 'not-allowed' : 'pointer', opacity: isSubmittingLog ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
-              }}>
-              {isSubmittingLog ? 'Saving...' : 'Save Activity'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Unified Log Study Modal */}
+      <LogStudyModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSuccess={() => {
+          fetchActivities();
+          fetchDashboardStats();
+          fetchSubjectPerformance();
+        }}
+      />
     </StudentLayout>
   );
 }
