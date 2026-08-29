@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ico } from '../common/Icons';
 import { UserRole } from '../../types/auth';
@@ -34,12 +34,36 @@ export function AuthModal({
   const clerk = useClerk();
   const { isSignedIn } = clerk;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isSignedIn && isOpen) {
       onClose();
       navigate('/dashboard');
     }
   }, [isSignedIn, isOpen, navigate, onClose]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
+    return () => {
+      document.body.classList.remove('scroll-lock');
+    };
+  }, [isOpen]);
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -93,54 +117,32 @@ export function AuthModal({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(15, 23, 42, 0.55)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        padding: '24px 16px',
-        fontFamily: "'Manrope', -apple-system, system-ui, sans-serif",
-      }}
+      className="auth-modal-overlay"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
     >
       <div
-        style={{
-          background: '#FFFFFF',
-          borderRadius: 0,
-          padding: '36px 32px 32px 32px',
-          width: '100%',
-          maxWidth: 420,
-          boxShadow: '0 20px 40px -15px rgba(23, 37, 84, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8)',
-          position: 'relative',
-          border: '1px solid #E2E8F0',
-          boxSizing: 'border-box',
-        }}
+        className="auth-modal-card"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           type="button"
           aria-label="Close"
+          className="touch-target"
           style={{
             position: 'absolute',
-            top: 20,
-            right: 20,
+            top: 16,
+            right: 16,
             background: 'transparent',
             border: 'none',
             borderRadius: 0,
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             cursor: 'pointer',
             color: '#64748B',
             transition: 'all 0.15s ease',
+            zIndex: 10,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#F1F5F9';
@@ -173,7 +175,7 @@ export function AuthModal({
             >
               ⌛
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: '#172033', marginBottom: 10, letterSpacing: '-0.02em' }}>
+            <h2 id="auth-modal-title" style={{ fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700, color: '#172033', marginBottom: 10, letterSpacing: '-0.02em' }}>
               Registration submitted
             </h2>
             <p style={{ fontSize: 14, color: '#64748B', lineHeight: '1.55', marginBottom: 24, fontWeight: 400 }}>
@@ -185,6 +187,7 @@ export function AuthModal({
                 onSwitchMode('login');
               }}
               type="button"
+              className="touch-target"
               style={{
                 width: '100%',
                 height: 52,
@@ -209,10 +212,11 @@ export function AuthModal({
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: 26 }}>
+            <div style={{ marginBottom: 24 }}>
               <h2
+                id="auth-modal-title"
                 style={{
-                  fontSize: 30,
+                  fontSize: 'clamp(24px, 5vw, 30px)',
                   fontWeight: 700,
                   color: '#172033',
                   marginBottom: 6,
@@ -224,7 +228,7 @@ export function AuthModal({
               </h2>
               <p
                 style={{
-                  fontSize: 15,
+                  fontSize: 'clamp(13.5px, 2.5vw, 15px)',
                   color: '#64748B',
                   margin: 0,
                   fontWeight: 400,
@@ -278,10 +282,11 @@ export function AuthModal({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {mode === 'signup' && (
                 <div>
                   <label
+                    htmlFor="auth-fullname-input"
                     style={{
                       display: 'block',
                       fontSize: 13.5,
@@ -294,8 +299,10 @@ export function AuthModal({
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
+                      id="auth-fullname-input"
                       type="text"
                       required
+                      autoComplete="name"
                       placeholder="e.g. Arjun Sharma"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
@@ -331,6 +338,7 @@ export function AuthModal({
 
               <div>
                 <label
+                  htmlFor="auth-email-input"
                   style={{
                     display: 'block',
                     fontSize: 13.5,
@@ -343,7 +351,10 @@ export function AuthModal({
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
+                    id="auth-email-input"
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     required
                     placeholder="you@example.com"
                     value={email}
@@ -379,6 +390,7 @@ export function AuthModal({
 
               <div>
                 <label
+                  htmlFor="auth-password-input"
                   style={{
                     display: 'block',
                     fontSize: 13.5,
@@ -391,7 +403,9 @@ export function AuthModal({
                 </label>
                 <div style={{ position: 'relative' }}>
                   <input
+                    id="auth-password-input"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                     required
                     placeholder="••••••••"
                     value={password}
@@ -425,9 +439,10 @@ export function AuthModal({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    className="touch-target"
                     style={{
                       position: 'absolute',
-                      right: 14,
+                      right: 4,
                       top: '50%',
                       transform: 'translateY(-50%)',
                       background: 'none',
@@ -437,9 +452,10 @@ export function AuthModal({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      padding: 2,
+                      padding: 8,
                     }}
                     title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     <Ico.Eye show={showPassword} />
                   </button>
@@ -449,6 +465,7 @@ export function AuthModal({
               <button
                 type="submit"
                 disabled={loading}
+                className="touch-target"
                 style={{
                   width: '100%',
                   height: 52,
@@ -493,7 +510,7 @@ export function AuthModal({
               </button>
             </form>
 
-            <div style={{ margin: '22px 0', textAlign: 'center', position: 'relative' }}>
+            <div style={{ margin: '20px 0', textAlign: 'center', position: 'relative' }}>
               <div style={{ borderTop: '1px solid #E2E8F0' }} />
               <span
                 style={{
@@ -516,6 +533,7 @@ export function AuthModal({
 
             <button
               type="button"
+              className="touch-target"
               style={{
                 width: '100%',
                 height: 52,
@@ -555,7 +573,7 @@ export function AuthModal({
               <span>Continue with Google</span>
             </button>
 
-            <div style={{ marginTop: 24, textAlign: 'center', fontSize: 14, color: '#64748B', fontWeight: 400 }}>
+            <div style={{ marginTop: 22, textAlign: 'center', fontSize: 14, color: '#64748B', fontWeight: 400 }}>
               {mode === 'login' ? (
                 <>
                   Don't have an account?{' '}
@@ -569,7 +587,7 @@ export function AuthModal({
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",
-                      padding: 0,
+                      padding: '4px 0',
                     }}
                   >
                     Sign up
@@ -588,7 +606,7 @@ export function AuthModal({
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",
-                      padding: 0,
+                      padding: '4px 0',
                     }}
                   >
                     Log in

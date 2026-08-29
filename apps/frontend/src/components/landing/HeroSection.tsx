@@ -131,8 +131,8 @@ export function HeroSection({ }: HeroSectionProps) {
         position: 'relative',
         overflow: 'hidden',
         background: '#F8FAFC',
-        paddingTop: '96px',
-        paddingBottom: '48px',
+        paddingTop: 'clamp(76px, 9vw, 104px)',
+        paddingBottom: 'clamp(36px, 5vw, 56px)',
         transition: 'background-color 0.3s ease',
       }}
     >
@@ -149,7 +149,7 @@ export function HeroSection({ }: HeroSectionProps) {
           top: '5%',
           left: '45%',
           transform: 'translateX(-50%)',
-          width: 750,
+          width: 'min(750px, 90vw)',
           height: 400,
           background: 'radial-gradient(ellipse at center, rgba(227,27,35,0.045) 0%, transparent 70%)',
           pointerEvents: 'none',
@@ -162,11 +162,11 @@ export function HeroSection({ }: HeroSectionProps) {
           style={{
             display: 'grid',
             alignItems: 'center',
-            gap: 36,
+            gap: 'clamp(24px, 4vw, 40px)',
           }}
         >
           {/* Left Column: Headline & Premium Builder Form Card */}
-          <div style={{ maxWidth: 560 }}>
+          <div style={{ maxWidth: 560, width: '100%' }}>
             {/* Eyebrow */}
             <div
               style={{
@@ -189,7 +189,7 @@ export function HeroSection({ }: HeroSectionProps) {
             {/* Main Heading */}
             <h1
               style={{
-                fontSize: 'clamp(2rem, 3.5vw, 2.8rem)',
+                fontSize: 'clamp(1.75rem, 4vw, 2.8rem)',
                 fontWeight: 800,
                 color: '#172033',
                 lineHeight: 1.15,
@@ -213,7 +213,7 @@ export function HeroSection({ }: HeroSectionProps) {
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
                 borderRadius: 0,
-                padding: '24px 26px',
+                padding: 'clamp(18px, 4vw, 26px)',
                 boxShadow: '0 10px 28px -4px rgba(15, 23, 42, 0.05), 0 3px 10px -2px rgba(15, 23, 42, 0.02)',
                 transition: 'all 0.2s ease',
               }}
@@ -232,7 +232,7 @@ export function HeroSection({ }: HeroSectionProps) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
                   gap: 14,
                   marginBottom: 14,
                 }}
@@ -257,7 +257,7 @@ export function HeroSection({ }: HeroSectionProps) {
                     onChange={(e) => setSelectedExam(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '9px 12px',
+                      padding: '10px 12px',
                       borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
@@ -266,6 +266,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       fontWeight: 500,
                       outline: 'none',
                       cursor: 'pointer',
+                      minHeight: 44,
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                     onFocus={(e) => {
@@ -305,7 +306,7 @@ export function HeroSection({ }: HeroSectionProps) {
                     onChange={(e) => setSelectedYear(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '9px 12px',
+                      padding: '10px 12px',
                       borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
@@ -314,6 +315,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       fontWeight: 500,
                       outline: 'none',
                       cursor: 'pointer',
+                      minHeight: 44,
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                     onFocus={(e) => {
@@ -338,7 +340,7 @@ export function HeroSection({ }: HeroSectionProps) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
                   gap: 14,
                   marginBottom: 14,
                 }}
@@ -363,7 +365,7 @@ export function HeroSection({ }: HeroSectionProps) {
                     onChange={(e) => handleSubjectChange(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '9px 12px',
+                      padding: '10px 12px',
                       borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
@@ -372,6 +374,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       fontWeight: 500,
                       outline: 'none',
                       cursor: 'pointer',
+                      minHeight: 44,
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                   >
@@ -403,7 +406,7 @@ export function HeroSection({ }: HeroSectionProps) {
                     onChange={(e) => handleTopicChange(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '9px 12px',
+                      padding: '10px 12px',
                       borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
@@ -412,6 +415,7 @@ export function HeroSection({ }: HeroSectionProps) {
                       fontWeight: 500,
                       outline: 'none',
                       cursor: 'pointer',
+                      minHeight: 44,
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                   >
@@ -434,7 +438,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   type="submit"
                   style={{
                     width: '100%',
-                    height: 42,
+                    height: 46,
                     borderRadius: 0,
                     border: 'none',
                     backgroundColor: '#E31B23',
@@ -447,6 +451,7 @@ export function HeroSection({ }: HeroSectionProps) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 7,
+                    minHeight: 44,
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
@@ -475,13 +480,14 @@ export function HeroSection({ }: HeroSectionProps) {
                   marginBottom: 16,
                   display: 'flex',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
                   gap: 6,
                   fontSize: 12,
                   color: '#64748B',
                 }}
               >
                 <span style={{ fontWeight: 600, color: '#172033' }}>Your practice session:</span>
-                <span style={{ color: '#172033', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: '#172033', fontWeight: 500, wordBreak: 'break-word' }}>
                   {selectedSubject} · {selectedTopic} ({questionCount} Qs)
                 </span>
               </div>
@@ -493,7 +499,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 16,
+                  gap: 'clamp(10px, 3vw, 16px)',
                   fontSize: 12,
                   color: '#64748B',
                   fontWeight: 500,
@@ -514,7 +520,7 @@ export function HeroSection({ }: HeroSectionProps) {
           </div>
 
           {/* Right Column: Hero Illustration Animation */}
-          <div className="hero-illustration-wrap" style={{ paddingTop: 90 }}>
+          <div className="hero-illustration-wrap" style={{ paddingTop: 'clamp(0px, 4vw, 90px)' }}>
             <HeroIllustration />
           </div>
         </div>
@@ -522,5 +528,3 @@ export function HeroSection({ }: HeroSectionProps) {
     </section>
   );
 }
-
-

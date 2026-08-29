@@ -4,7 +4,6 @@ import { fetchApprovedTestimonials, submitTestimonial, TestimonialItem } from '.
 import { Star, MessageSquarePlus, CheckCircle2, X } from 'lucide-react';
 
 const DEFAULT_STORIES: TestimonialItem[] = [
-
   {
     id: 'default-2',
     user_name: 'Priya Nair',
@@ -58,6 +57,30 @@ export function Testimonials() {
     loadTestimonials();
   }, []);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
+    return () => {
+      document.body.classList.remove('scroll-lock');
+    };
+  }, [isModalOpen]);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quoteText.trim()) {
@@ -97,7 +120,7 @@ export function Testimonials() {
       }}
     >
       <div className="landing-container">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 56, flexWrap: 'wrap', gap: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 'clamp(32px, 6vw, 56px)', flexWrap: 'wrap', gap: 20 }}>
           <div>
             <div className="section-label">
               Student Stories
@@ -112,6 +135,7 @@ export function Testimonials() {
 
           <button
             onClick={() => setIsModalOpen(true)}
+            className="touch-target"
             style={{
               padding: '12px 24px',
               borderRadius: 0,
@@ -138,11 +162,6 @@ export function Testimonials() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stories.map((d, index) => {
             const accentColor = colors[index % colors.length];
-            const initials = d.user_name
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase();
 
             return (
               <div
@@ -181,7 +200,7 @@ export function Testimonials() {
                 />
 
                 {/* Card body */}
-                <div style={{ padding: '28px 28px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: 'clamp(20px, 4vw, 28px)', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
                   {/* Stars */}
                   <div style={{ display: 'flex', gap: 4, marginBottom: 18 }}>
@@ -249,33 +268,19 @@ export function Testimonials() {
                             objectFit: 'cover',
                           }}
                           onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+                            (e.target as HTMLElement).style.display = 'none';
                           }}
                         />
-                      ) : null}
-                      <span>{initials}</span>
+                      ) : (
+                        d.user_name.slice(0, 2).toUpperCase()
+                      )}
                     </div>
 
-                    {/* Name + Exam */}
                     <div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: 'var(--text-main)',
-                          marginBottom: 2,
-                        }}
-                      >
+                      <div style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text-main)' }}>
                         {d.user_name}
                       </div>
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: accentColor,
-                          fontWeight: 600,
-                          letterSpacing: '0.2px',
-                        }}
-                      >
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
                         {d.user_exam}
                       </div>
                     </div>
@@ -287,50 +292,37 @@ export function Testimonials() {
         </div>
       </div>
 
-      {/* Submit Testimonial Modal */}
+      {/* Submission Modal */}
       {isModalOpen && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-          }}
+          className="auth-modal-overlay"
+          onClick={() => setIsModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
         >
           <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 0,
-              width: '100%',
-              maxWidth: 540,
-              padding: 32,
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              fontFamily: 'Inter, sans-serif',
-              position: 'relative',
-            }}
+            className="auth-modal-card"
+            style={{ maxWidth: 540 }}
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setIsModalOpen(false)}
+              className="touch-target"
               style={{
                 position: 'absolute',
-                top: 20,
-                right: 20,
+                top: 16,
+                right: 16,
                 background: 'transparent',
                 border: 'none',
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
               }}
+              aria-label="Close"
             >
               <X size={20} />
             </button>
 
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
+            <h3 style={{ fontSize: 'clamp(18px, 4vw, 20px)', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
               Share Your Success Story
             </h3>
             <p style={{ fontSize: 13.5, color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
@@ -388,6 +380,7 @@ export function Testimonials() {
                       color: 'var(--text-main)',
                       fontSize: 14,
                       outline: 'none',
+                      minHeight: 44,
                     }}
                   />
                 </div>
@@ -402,12 +395,14 @@ export function Testimonials() {
                         key={star}
                         type="button"
                         onClick={() => setRating(star)}
+                        className="touch-target"
                         style={{
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
-                          padding: 2,
+                          padding: 4,
                         }}
+                        aria-label={`Rate ${star} star`}
                       >
                         <Star
                           size={24}
@@ -443,10 +438,11 @@ export function Testimonials() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
+                    className="touch-target"
                     style={{
                       padding: '10px 18px',
                       borderRadius: 0,
@@ -463,6 +459,7 @@ export function Testimonials() {
                   <button
                     type="submit"
                     disabled={submitting}
+                    className="touch-target"
                     style={{
                       padding: '10px 22px',
                       borderRadius: 0,

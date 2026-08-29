@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Menu,
@@ -12,6 +12,7 @@ import {
   Crown,
   X
 } from 'lucide-react';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface StudentSidebarProps {
   user?: any;
@@ -30,15 +31,32 @@ export function StudentSidebar({
 }: StudentSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { isTabletOrBelow: isMobile } = useBreakpoint();
 
+  // Close sidebar on Escape key
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+    if (!mobileOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseMobile();
+      }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && mobileOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
+    return () => {
+      document.body.classList.remove('scroll-lock');
+    };
+  }, [isMobile, mobileOpen]);
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
@@ -53,6 +71,8 @@ export function StudentSidebar({
     { icon: Trophy, label: 'Performance Rank', to: '/reports/monthly' },
   ];
 
+  const isCollapsedDesktop = collapsed && !isMobile;
+
   const renderNavItem = (item: { icon: any, label: string, to: string }) => {
     const isActive = currentPath === item.to;
     const Icon = item.icon;
@@ -62,22 +82,23 @@ export function StudentSidebar({
         key={item.to}
         to={item.to}
         onClick={onCloseMobile}
-        title={collapsed && !isMobile ? item.label : undefined}
+        title={isCollapsedDesktop ? item.label : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
-          justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
+          padding: isCollapsedDesktop ? '10px 0' : '10px 14px',
+          justifyContent: isCollapsedDesktop ? 'center' : 'flex-start',
           borderRadius: 0,
           textDecoration: 'none',
           fontSize: 13.5,
           fontWeight: isActive ? 600 : 400,
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           backgroundColor: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
+          borderLeft: isActive && !isCollapsedDesktop ? '3px solid #E31B23' : '3px solid transparent',
           transition: 'all 0.15s ease',
-          position: 'relative'
+          position: 'relative',
+          minHeight: 44, /* Touch target */
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
@@ -93,61 +114,50 @@ export function StudentSidebar({
         }}
       >
         <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
-        {(!collapsed || isMobile) && <span>{item.label}</span>}
+        {!isCollapsedDesktop && <span>{item.label}</span>}
       </Link>
     );
   };
+
+  // Build sidebar CSS class
+  const sidebarClass = [
+    'app-sidebar',
+    isCollapsedDesktop ? 'collapsed' : '',
+    isMobile && mobileOpen ? 'mobile-open' : '',
+  ].filter(Boolean).join(' ');
 
   return (
     <>
       {/* Mobile Backdrop Overlay */}
       {isMobile && mobileOpen && (
         <div
+          className="sidebar-backdrop"
           onClick={onCloseMobile}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            top: 60,
-            background: 'rgba(23, 32, 51, 0.75)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 110
-          }}
+          aria-hidden="true"
         />
       )}
 
-      {/* Admin-Fading Gradient Sidebar Positioned Below Top Header */}
+      {/* Sidebar */}
       <aside
-        style={{
-          width: isMobile ? 260 : (collapsed ? 68 : 240),
-          minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: '#172033',
-          display: 'flex',
-          flexDirection: 'column',
-          height: 'calc(100vh - 60px)',
-          position: 'fixed',
-          top: 60,
-          left: 0,
-          bottom: 0,
-          zIndex: 120,
-          transform: isMobile ? (mobileOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
-          transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease, min-width 0.2s ease',
-          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-          overflow: 'hidden'
-        }}
+        className={sidebarClass}
+        role="navigation"
+        aria-label="Main navigation"
+        aria-hidden={isMobile && !mobileOpen ? 'true' : undefined}
       >
         {/* Top Header Row with Borderless Hamburger Icon Button */}
         <div
           style={{
-            padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
+            padding: isCollapsedDesktop ? '14px 0' : '16px 16px 6px 16px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: (collapsed && !isMobile) ? 'center' : 'space-between',
+            justifyContent: isCollapsedDesktop ? 'center' : 'space-between',
           }}
         >
-          {(!collapsed || isMobile) ? (
+          {!isCollapsedDesktop ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
                 onClick={onToggleCollapse}
+                className="touch-target"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -184,6 +194,7 @@ export function StudentSidebar({
           ) : (
             <button
               onClick={onToggleCollapse}
+              className="touch-target"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -208,6 +219,7 @@ export function StudentSidebar({
           {isMobile && (
             <button
               onClick={onCloseMobile}
+              className="touch-target"
               style={{
                 background: 'none',
                 border: 'none',
@@ -215,6 +227,7 @@ export function StudentSidebar({
                 cursor: 'pointer',
                 padding: 4
               }}
+              aria-label="Close navigation"
             >
               <X size={18} />
             </button>
@@ -227,7 +240,7 @@ export function StudentSidebar({
             display: 'flex',
             flexDirection: 'column',
             gap: 4,
-            padding: (collapsed && !isMobile) ? '8px' : '0 12px',
+            padding: isCollapsedDesktop ? '8px' : '0 12px',
             flex: 1,
             overflowY: 'auto'
           }}
@@ -237,12 +250,12 @@ export function StudentSidebar({
           <div
             style={{
               margin: '16px 0 8px 0',
-              padding: (collapsed && !isMobile) ? '0' : '0 8px',
+              padding: isCollapsedDesktop ? '0' : '0 8px',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
               paddingTop: 16
             }}
           >
-            {(!collapsed || isMobile) && (
+            {!isCollapsedDesktop && (
               <span
                 style={{
                   fontSize: 11,
@@ -265,7 +278,7 @@ export function StudentSidebar({
         </nav>
 
         {/* Upgrade to PRO Box preserved at bottom */}
-        {(!collapsed || isMobile) && (
+        {!isCollapsedDesktop && (
           <div style={{ padding: 12 }}>
             <div
               style={{
@@ -296,7 +309,8 @@ export function StudentSidebar({
                   fontSize: 12,
                   fontWeight: 600,
                   textDecoration: 'none',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  minHeight: 44, /* Touch target */
                 }}
               >
                 Explore PRO &rarr;

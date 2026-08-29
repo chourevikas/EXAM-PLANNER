@@ -178,19 +178,20 @@ export function DashboardPage() {
     <StudentLayout pageTitle="Dashboard">
 
       {/* 1. Personalized Welcome & AI Motivation */}
-      <section style={{ marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>
+      <section style={{ marginBottom: 'clamp(24px, 4vw, 40px)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+          <h1 style={{ fontSize: 'clamp(22px, 3.5vw, 32px)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em' }}>
             Welcome back, {clerkUser?.firstName || user.full_name?.split(' ')[0] || 'Aspirant'}! 👋
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 15 }}>
-            <div style={{ color: 'var(--accent-primary)' }}><Ico.Brain /></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: 'clamp(13px, 2.5vw, 15px)', flexWrap: 'wrap' }}>
+            <div style={{ color: 'var(--accent-primary)', flexShrink: 0 }}><Ico.Brain /></div>
             <span><strong style={{ color: 'var(--text-primary)' }}>Smart Insight:</strong> Your polity accuracy is up 12% this week. Keep up the momentum!</span>
           </div>
         </div>
 
         <button
           onClick={() => setShowLogModal(true)}
+          className="touch-target"
           style={{
             padding: '12px 20px',
             backgroundColor: 'var(--accent-primary)',
@@ -204,7 +205,8 @@ export function DashboardPage() {
             alignItems: 'center',
             gap: 8,
             boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
-            transition: 'transform 0.2s'
+            transition: 'transform 0.2s',
+            whiteSpace: 'nowrap',
           }}
           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -214,7 +216,7 @@ export function DashboardPage() {
       </section>
 
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 32 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 18, marginBottom: 32 }}>
         <StudentMetricCard
           title="Total Questions Solved"
           value={
@@ -276,7 +278,7 @@ export function DashboardPage() {
 
 
       {/* 3. Performance Analytics */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 32 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 20, marginBottom: 32 }}>
         {/* Subject Accuracy */}
         <div
           style={{
@@ -382,11 +384,11 @@ export function DashboardPage() {
 
 
       {/* 4. Deep AI Insights & Call to Action */}
-      <section style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 24, marginBottom: 32 }}>
 
         {/* The Psychometric Layer */}
         <div style={{
-          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 0,
+          backgroundColor: 'var(--bg-card)', padding: 'clamp(20px, 4vw, 32px)', borderRadius: 0,
           border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
           position: 'relative', overflow: 'hidden'
         }}>
@@ -395,16 +397,17 @@ export function DashboardPage() {
             <div style={{
               position: 'absolute', inset: 0, zIndex: 10,
               backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.1)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: 20,
             }}>
               <div style={{ padding: 16, backgroundColor: 'var(--bg-card)', borderRadius: 0, boxShadow: 'var(--shadow-color-base)', marginBottom: 16 }}>
                 <Ico.Shield />
               </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Premium Analytics Locked</h3>
+              <h3 style={{ fontSize: 'clamp(18px, 3.5vw, 20px)', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0', textAlign: 'center' }}>Premium Analytics Locked</h3>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, textAlign: 'center', maxWidth: 280 }}>
                 Unlock deep behavioral tracking and psychometric insights with the Pro Plan.
               </p>
-              <Link to="/pricing" style={{
+              <Link to="/pricing" className="touch-target" style={{
                 padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#FFF',
                 borderRadius: 0, fontSize: 14, fontWeight: 700, textDecoration: 'none',
                 boxShadow: '0 8px 16px var(--shadow-color-accent)'
@@ -428,7 +431,7 @@ export function DashboardPage() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 'clamp(16px, 3vw, 32px)' }}>
               {/* Decision Accuracy */}
               <div>
                 <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-disabled)', fontWeight: 700, marginBottom: 16 }}>Decision Accuracy</h4>
@@ -490,43 +493,47 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
+
         {/* 5. Call to Action / Next Up */}
         <div style={{
-          backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 0,
-          color: '#FFFFFF', display: 'flex', flexDirection: 'column',
+          backgroundColor: 'var(--accent-primary)', padding: 'clamp(20px, 4vw, 32px)', borderRadius: 0,
+          color: '#FFFFFF', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           boxShadow: '0 20px 40px var(--shadow-color-accent)',
           backgroundImage: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-darker) 100%)',
-          position: 'relative', overflow: 'hidden'
+          position: 'relative', overflow: 'hidden', minWidth: 0
         }}>
           <div style={{ position: 'absolute', top: -30, right: -30, opacity: 0.1 }}>
             <Ico.Target />
           </div>
 
-          <div style={{ marginBottom: 'auto', position: 'relative', zIndex: 1 }}>
+          <div style={{ marginBottom: 20, position: 'relative', zIndex: 1 }}>
             <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
               Up Next
             </div>
-            <h3 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px 0', lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 'clamp(18px, 3vw, 22px)', fontWeight: 800, margin: '0 0 12px 0', lineHeight: 1.3 }}>
               {activeExam ? `Practice ${activeExam.name}` : 'Resume UPSC CSE Practice'}
             </h3>
-            <p style={{ fontSize: 15, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 14, opacity: 0.9, margin: 0, lineHeight: 1.5 }}>
               Ready to test your concept retention? Start an active UPSC Prelims exam session now.
             </p>
           </div>
 
           <button
             onClick={() => window.location.href = activeExam ? `/exam/${activeExam.code}` : '/pyq'}
+            className="touch-target"
             style={{
-              width: '100%', padding: '16px', borderRadius: 0, border: 'none',
+              width: '100%', padding: '14px', borderRadius: 0, border: 'none',
               backgroundColor: '#FFFFFF', color: 'var(--accent-darker)',
-              fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              marginTop: 32, transition: 'transform 0.2s', position: 'relative', zIndex: 1
+              marginTop: 16, transition: 'transform 0.2s', position: 'relative', zIndex: 1,
+              whiteSpace: 'nowrap'
             }}
             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            Start Practice Exam <Ico.ArrowRight />
+            <span>Start Practice Exam</span>
+            <Ico.ArrowRight size={16} />
           </button>
         </div>
       </section>
@@ -612,7 +619,7 @@ export function DashboardPage() {
           const visibleSyncedGuestAttempts = syncedGuestAttempts.slice(guestSessionsPage * SESSIONS_PER_PAGE, (guestSessionsPage + 1) * SESSIONS_PER_PAGE);
 
           return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 24 }}>
               
               {/* Card 1: Recent Exam Attempts */}
               <div style={{

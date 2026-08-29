@@ -4,10 +4,11 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap, X } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -116,17 +117,12 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
 
   // Mobile Responsiveness & Custom Dropdown Search State
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
 
   const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
@@ -499,16 +495,19 @@ export function GuestExamPage() {
 
   // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
   const displayRecs = useMemo(() => {
-    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
     const combinedMap = new Map<string, QuestionOut>();
-    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
     recommendedPool.forEach((q) => {
-      if (!combinedMap.has(q.question_id)) {
+      if (q.question_id !== activeQuestion?.question_id) {
+        combinedMap.set(q.question_id, q);
+      }
+    });
+    allQuestions.forEach((q) => {
+      if (!combinedMap.has(q.question_id) && q.question_id !== activeQuestion?.question_id) {
         combinedMap.set(q.question_id, q);
       }
     });
     return Array.from(combinedMap.values()).slice(0, 5);
-  }, [allQuestions, currentQIndex, recommendedPool]);
+  }, [allQuestions, activeQuestion, recommendedPool]);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1024,10 +1023,10 @@ export function GuestExamPage() {
           </button>
         </div>
       </header>
-      {/* 2. Premium Floating Exam Filter Window (Below Navbar with generous spacing) */}
+      {/* 2. Premium Floating Exam Filter Window */}
       <div
         style={{
-          padding: '24px 28px 12px 28px',
+          padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 24px) 6px clamp(10px, 2.5vw, 24px)',
           backgroundColor: 'transparent',
           zIndex: 40,
           flexShrink: 0,
@@ -1038,10 +1037,11 @@ export function GuestExamPage() {
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
-            padding: '14px 24px',
+            padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 20,
+            gap: '8px 12px',
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             position: 'relative',
           }}
@@ -1052,8 +1052,9 @@ export function GuestExamPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              paddingRight: 16,
+              paddingRight: 12,
               borderRight: '1px solid #F1F5F9',
+              flexShrink: 0,
             }}
           >
             <div
@@ -1471,20 +1472,111 @@ export function GuestExamPage() {
         </div>
       </div>
 
+      {/* Mobile Recommended Questions Toggle Button */}
+      {isMobile && displayRecs.length > 0 && (
+        <div style={{ padding: '0 clamp(10px, 2.5vw, 24px) 8px', display: 'flex', justifyContent: 'flex-start' }}>
+          <button
+            type="button"
+            onClick={() => setShowMobileRecs(true)}
+            className="touch-target center-content"
+            style={{
+              padding: '6px 14px',
+              borderRadius: 0,
+              border: '1px solid #CBD5E1',
+              backgroundColor: '#FFFFFF',
+              color: '#1E3A8A',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <Sparkles size={14} color="#1E3A8A" />
+            <span>Recommended Questions ({displayRecs.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Recommended Questions Modal */}
+      {isMobile && showMobileRecs && (
+        <div
+          className="auth-modal-overlay"
+          onClick={() => setShowMobileRecs(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="auth-modal-card"
+            style={{ maxWidth: 440, maxHeight: '80vh', overflowY: 'auto', padding: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} color="#1E3A8A" />
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase' }}>
+                  RECOMMENDED FOR YOU ({displayRecs.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileRecs(false)}
+                className="touch-target center-content"
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+                aria-label="Close recommendations"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {displayRecs.map((rec, idx) => (
+                <div
+                  key={rec.question_id || idx}
+                  onClick={() => {
+                    handleSelectRecommendation(rec);
+                    setShowMobileRecs(false);
+                  }}
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 4 }}>
+                    {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
+                    {rec.text ? (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text) : `Practice Question ${idx + 1}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3. Main Workspace Container */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           paddingBottom: 28,
-          paddingRight: 24,
-          overflow: 'hidden',
+          paddingRight: isMobile ? 12 : 24,
+          paddingLeft: isMobile ? 12 : 0,
+          overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAF8',
           boxSizing: 'border-box',
+          minHeight: 'calc(100vh - 180px)',
+          gap: isMobile ? 0 : 20,
         }}
       >
-        {/* Left Recommended Floating Panel */}
+        {/* Left Recommended Floating Panel (Desktop) */}
         {!isMobile && (
           <aside
             style={{
@@ -1498,8 +1590,10 @@ export function GuestExamPage() {
               gap: 14,
               overflowY: 'auto',
               flexShrink: 0,
-              height: 'calc(100% - 40px)',
-              maxHeight: 'calc(100% - 40px)',
+              alignSelf: 'flex-start',
+              position: 'sticky',
+              top: 12,
+              maxHeight: 'calc(100vh - 200px)',
               marginLeft: 24,
               marginTop: 12,
               marginBottom: 28,
@@ -1532,9 +1626,6 @@ export function GuestExamPage() {
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
-                  const isInTest = allQuestions.some((q) => q.question_id === rec.question_id);
-                  const testIndex = allQuestions.findIndex((q) => q.question_id === rec.question_id);
-
                   return (
                     <div
                       key={rec.question_id || idx}

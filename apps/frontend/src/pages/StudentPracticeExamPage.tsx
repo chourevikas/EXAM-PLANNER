@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2, Sparkles, X } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
-import { ExamSectionSidebar } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/examService';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
@@ -205,16 +205,19 @@ export function StudentPracticeExamPage() {
 
   // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
   const displayRecs = useMemo(() => {
-    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
     const combinedMap = new Map<string, QuestionOut>();
-    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
     recommendedPool.forEach((q) => {
-      if (!combinedMap.has(q.question_id)) {
+      if (q.question_id !== activeQuestion?.question_id) {
+        combinedMap.set(q.question_id, q);
+      }
+    });
+    allQuestions.forEach((q) => {
+      if (!combinedMap.has(q.question_id) && q.question_id !== activeQuestion?.question_id) {
         combinedMap.set(q.question_id, q);
       }
     });
     return Array.from(combinedMap.values()).slice(0, 5);
-  }, [allQuestions, currentQIndex, recommendedPool]);
+  }, [allQuestions, activeQuestion, recommendedPool]);
 
   // Subject-Wide Fallback Pool & Topic Completion Banner
   const [subjectFallbackPool, setSubjectFallbackPool] = useState<QuestionOut[]>([]);
@@ -340,15 +343,10 @@ export function StudentPracticeExamPage() {
   }, [allQuestions, subjectFallbackPool, gTopic, gSubject]);
 
   // Mobile Responsiveness
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const [showMobileRecs, setShowMobileRecs] = useState(false);
 
   const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Timer countdown
   useEffect(() => {
@@ -1073,31 +1071,13 @@ export function StudentPracticeExamPage() {
         onSubmitClick={() => handleFinishPracticeExam()}
       />
 
-      {/* Slide-out Drawer Left Sidebar */}
-      <ExamSectionSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        sections={[{ id: 'student-sec-1', label: gTopic || gSubject || 'General Studies', total: allQuestions.length, startQuestionNumber: 1, endQuestionNumber: allQuestions.length }]}
-        activeSectionId="student-sec-1"
-        palette={palette}
-        totalQuestions={totalQuestions}
-        currentQIndex={currentQIndex}
-        responseSummary={{
-          answered_count: answeredCount,
-          marked_for_review_count: markedCount,
-          unattempted_count: unattemptedCount,
-          total: totalQuestions,
-        }}
-        selectedOptions={selectedOptionsMap}
-        markedForReview={markedForReviewMap}
-        onSelectSection={() => handleSelectQuestion(0)}
-      />
+
 
       {/* Premium Floating Exam Filter Window (Same as Guest Exam Page) */}
       <div
         style={{
-          marginTop: 64,
-          padding: '16px 28px 8px 28px',
+          marginTop: 60,
+          padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 24px) 6px clamp(10px, 2.5vw, 24px)',
           backgroundColor: 'transparent',
           zIndex: 80,
           flexShrink: 0,
@@ -1108,10 +1088,11 @@ export function StudentPracticeExamPage() {
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
-            padding: '14px 24px',
+            padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 20,
+            gap: '8px 12px',
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             position: 'relative',
           }}
@@ -1122,8 +1103,9 @@ export function StudentPracticeExamPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              paddingRight: 16,
+              paddingRight: 12,
               borderRight: '1px solid #F1F5F9',
+              flexShrink: 0,
             }}
           >
             <div
@@ -1524,6 +1506,94 @@ export function StudentPracticeExamPage() {
         </div>
       </div>
 
+      {/* Mobile Recommended Questions Toggle Button */}
+      {isMobile && displayRecs.length > 0 && (
+        <div style={{ padding: '0 clamp(10px, 2.5vw, 24px) 8px', display: 'flex', justifyContent: 'flex-start' }}>
+          <button
+            type="button"
+            onClick={() => setShowMobileRecs(true)}
+            className="touch-target center-content"
+            style={{
+              padding: '6px 14px',
+              borderRadius: 0,
+              border: '1px solid #CBD5E1',
+              backgroundColor: '#FFFFFF',
+              color: '#1E3A8A',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <Sparkles size={14} color="#1E3A8A" />
+            <span>Recommended Questions ({displayRecs.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Recommended Questions Modal */}
+      {isMobile && showMobileRecs && (
+        <div
+          className="auth-modal-overlay"
+          onClick={() => setShowMobileRecs(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="auth-modal-card"
+            style={{ maxWidth: 440, maxHeight: '80vh', overflowY: 'auto', padding: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} color="#1E3A8A" />
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase' }}>
+                  RECOMMENDED FOR YOU ({displayRecs.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileRecs(false)}
+                className="touch-target center-content"
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+                aria-label="Close recommendations"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {displayRecs.map((rec, idx) => (
+                <div
+                  key={rec.question_id || idx}
+                  onClick={() => {
+                    handleSelectRecommendation(rec);
+                    setShowMobileRecs(false);
+                  }}
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 4 }}>
+                    {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
+                    {rec.text ? (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text) : `Practice Question ${idx + 1}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Console Workspace */}
       <div
         style={{
@@ -1531,12 +1601,16 @@ export function StudentPracticeExamPage() {
           flex: 1,
           marginTop: 0,
           marginBottom: 0,
-          overflow: 'hidden',
+          overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAFC',
+          minHeight: 'calc(100vh - 180px)',
+          gap: isMobile ? 0 : 20,
+          paddingRight: isMobile ? 12 : 24,
+          paddingLeft: isMobile ? 12 : 0,
         }}
       >
-        {/* Left Side Recommended Questions Sidebar */}
+        {/* Left Side Recommended Questions Sidebar (Desktop) */}
         {!isMobile && (
           <aside
             style={{
@@ -1550,8 +1624,10 @@ export function StudentPracticeExamPage() {
               gap: 14,
               overflowY: 'auto',
               flexShrink: 0,
-              height: 'calc(100% - 40px)',
-              maxHeight: 'calc(100% - 40px)',
+              alignSelf: 'flex-start',
+              position: 'sticky',
+              top: 12,
+              maxHeight: 'calc(100vh - 200px)',
               marginLeft: 24,
               marginTop: 12,
               marginBottom: 28,

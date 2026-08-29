@@ -701,20 +701,19 @@ export function StudyPlannerPage() {
                       )
                     )}
                   </div>
-
                 </div>
               );
             })()}
 
             {/* TAB 2: TODAY'S FOCUS CHECKLIST */}
             {activeTab === 'daily' && (
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 28px)', borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
                 <div style={{ marginBottom: 20 }}>
                   <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Today's Scheduled Targets</h3>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Date: {todayStr}</div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   {todayTasks.length === 0 ? (
                     <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                       No targets scheduled for today!
@@ -726,25 +725,46 @@ export function StudyPlannerPage() {
                         <div
                           key={t.id}
                           style={{
-                            padding: 20, borderRadius: 0, border: '1px solid var(--border-default)',
+                            padding: 'clamp(12px, 2.5vw, 18px)',
+                            borderRadius: 0,
+                            border: '1px solid var(--border-default)',
                             backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--bg-card)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 14,
+                            boxSizing: 'border-box',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flex: '1 1 240px', minWidth: 0 }}>
                             <button
+                              type="button"
                               onClick={(e) => handleToggleComplete(t.id, e)}
+                              className="touch-target center-content"
                               style={{
-                                width: 26, height: 26, borderRadius: 0, border: t.is_completed ? 'none' : '2px solid var(--border-disabled)',
+                                width: 24,
+                                height: 24,
+                                minWidth: 24,
+                                minHeight: 24,
+                                borderRadius: 0,
+                                border: t.is_completed ? 'none' : '2px solid var(--border-disabled)',
                                 backgroundColor: t.is_completed ? 'var(--success-primary)' : 'transparent',
-                                color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0
+                                color: '#FFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                marginTop: 2,
                               }}
+                              aria-label={t.is_completed ? 'Mark incomplete' : 'Mark complete'}
                             >
-                              {t.is_completed && <Ico.Check size={16} />}
+                              {t.is_completed && <Ico.Check size={14} />}
                             </button>
 
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
                                   {t.subject || 'General'}
                                 </span>
@@ -756,25 +776,35 @@ export function StudyPlannerPage() {
                                   {t.priority || 'MEDIUM'} PRIORITY
                                 </span>
                               </div>
-                              <div style={{ fontSize: 15, fontWeight: 700, color: t.is_completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.is_completed ? 'line-through' : 'none' }}>
+                              <div style={{ fontSize: 14.5, fontWeight: 700, color: t.is_completed ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: t.is_completed ? 'line-through' : 'none', lineHeight: 1.4 }}>
                                 {t.title}
                               </div>
-                              {t.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{t.description}</div>}
+                              {t.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>{t.description}</div>}
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>{t.allocated_time_minutes} mins</span>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t.allocated_time_minutes} mins</span>
                             <button
+                              type="button"
                               onClick={(e) => handleToggleComplete(t.id, e)}
+                              className="touch-target center-content"
                               style={{
-                                padding: '8px 16px', borderRadius: 0,
+                                padding: '8px 16px',
+                                borderRadius: 0,
                                 border: t.is_completed ? '1px solid var(--border-default)' : 'none',
                                 backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--accent-primary)',
                                 color: t.is_completed ? 'var(--text-muted)' : '#FFF',
-                                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: 700,
+                                cursor: 'pointer',
                                 boxShadow: t.is_completed ? 'none' : '0 2px 6px var(--shadow-color-accent)',
-                                display: 'flex', alignItems: 'center', gap: 6
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                minHeight: 38,
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               {t.is_completed ? (

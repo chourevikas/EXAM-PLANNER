@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
-import { ExamSectionSidebar, Section, Question } from '../components/exam/ExamSectionSidebar';
+import { Section, Question } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 import {
   startExamAttempt,
@@ -85,10 +86,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   });
 
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
-
-  // Mobile Responsiveness State
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [mobileTab, setMobileTab] = useState<'question' | 'sections' | 'palette'>('question');
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const [mobileTab, setMobileTab] = useState<'question' | 'palette'>('question');
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -209,11 +208,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return () => clearInterval(interval);
   }, [attemptId, activeQuestion, selectedOptionId, isMarkedForReview]);
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
 
   // ─── 1. Session Initialization / Resume ─────────────────────────────────────
   useEffect(() => {
@@ -891,16 +886,17 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       />
 
       {/* Mobile Tab Switcher Bar (< 1024px) */}
-      {isMobile && (
+      {isMobile && isPYQ && (
         <div
           style={{
-            marginTop: 64,
+            marginTop: 60,
             height: 44,
             backgroundColor: isDark ? '#0f1e3c' : '#ffffff',
             borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
+            gap: 12,
             padding: '0 8px',
             position: 'fixed',
             top: 0,
@@ -911,8 +907,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         >
           {[
             { id: 'question', label: 'Question', icon: FileText },
-            { id: 'sections', label: 'Sections', icon: Layers },
-            ...(isPYQ ? [{ id: 'palette', label: 'Palette', icon: Grid }] : []),
+            { id: 'palette', label: 'Palette', icon: Grid },
           ].map((tab) => {
             const TabIcon = tab.icon;
             const isActive = mobileTab === tab.id;
@@ -920,18 +915,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               <button
                 key={tab.id}
                 onClick={() => setMobileTab(tab.id as any)}
+                className="touch-target center-content"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '6px 14px',
+                  padding: '6px 16px',
                   borderRadius: 0,
                   border: 'none',
                   backgroundColor: isActive ? '#E31B23' : 'transparent',
                   color: isActive ? '#ffffff' : isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
-                  fontSize: 12,
+                  fontSize: 12.5,
                   fontWeight: 700,
                   cursor: 'pointer',
+                  minHeight: 36,
                 }}
               >
                 <TabIcon size={14} />
@@ -941,25 +938,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           })}
         </div>
       )}
-
-      {/* Slide-out Drawer Left Sidebar */}
-      <ExamSectionSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        sections={subjectSections}
-        activeSectionId={activeSectionId}
-        palette={palette}
-        totalQuestions={totalQuestions}
-        currentQIndex={currentQIndex}
-        responseSummary={liveResponseSummary}
-        onSelectSection={(secId, startQ) => {
-          setActiveSectionId(secId);
-          if (startQ && startQ >= 1 && startQ <= totalQuestions) {
-            handleSelectQuestionFromPalette(startQ - 1);
-          }
-        }}
-        onSelectQuestion={handleSelectQuestionFromPalette}
-      />
 
       {/* Main Viewport Body */}
       <div

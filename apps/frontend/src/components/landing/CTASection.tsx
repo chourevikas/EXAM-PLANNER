@@ -24,8 +24,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%,-50%)',
-          width: '100%',
-          maxWidth: 800,
+          width: 'min(800px, 90vw)',
           height: 500,
           background:
             'radial-gradient(ellipse,rgba(227, 27, 35,0.18) 0%,transparent 65%)',
@@ -104,7 +103,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             margin: '0 auto 40px',
           }}
         >
-          Join thousands of aspirants using diagnostics to rank higher.
+          Join thousands of aspirants using adaptive diagnostics to rank higher.
           Start free — no credit card, no commitment.
         </p>
         <div
@@ -116,13 +115,13 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           }}
         >
           <button
-            className="btn btn-primary anim-glow"
-            style={{ fontSize: 16, padding: '15px 32px' }}
+            className="btn btn-primary anim-glow touch-target"
+            style={{ fontSize: 16, padding: '14px 32px' }}
             onClick={onSignup}
           >
             Start Preparing Free <Ico.Arrow />
           </button>
-          <button className="btn-dark" onClick={onLogin}>
+          <button className="btn-dark touch-target" style={{ padding: '14px 28px' }} onClick={onLogin}>
             Login to Continue
           </button>
         </div>
@@ -130,4 +129,3 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
     </section>
   );
 }
-

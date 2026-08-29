@@ -14,10 +14,12 @@ import {
   Target,
   Trophy,
   Menu,
-  Zap
+  Zap,
+  X
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
-import { Logo } from '../common/Logo';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+
 interface StudentTopHeaderProps {
   user: any;
   pageTitle: string;
@@ -40,15 +42,16 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const clerk = useClerk();
   const { user: clerkUser } = useUser();
+  const { isMobile, isXs, isTabletOrBelow } = useBreakpoint();
 
   const avatarUser = {
     ...currentUser,
@@ -105,26 +108,35 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         setShowNotifications(false);
         setShowProfileMenu(false);
         setSearchResults(null);
+        setSearchExpanded(false);
       }
     }
-    const handleResize = () => setWindowWidth(window.innerWidth);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        searchInputRef.current?.focus();
+        if (isMobile) {
+          setSearchExpanded(true);
+          setTimeout(() => searchInputRef.current?.focus(), 100);
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowProfileMenu(false);
+        setSearchExpanded(false);
+        setSearchResults(null);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', handleResize);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (searchQuery.trim().length === 0) {
@@ -177,9 +189,6 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const isMobile = windowWidth <= 768;
-  const isSmallMobile = windowWidth <= 480;
-
   const handleMarkAllRead = async () => {
     setUnreadCount(0);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -212,34 +221,82 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     }
   };
 
+  // Show search bar inline on desktop/tablet landscape, or as an icon-only on mobile
+  const showInlineSearch = !isMobile;
+
   return (
     <header
       ref={headerRef}
-      style={{
-        height: 60,
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
-        zIndex: 100,
-        background: '#172033',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(17, 17, 17, 0.25)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: isMobile ? '0 16px' : '0 24px',
-        boxSizing: 'border-box'
-      }}
+      className="app-top-header"
     >
-      {/* Left: Brand Logo & Page Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <Logo inverted={true} />
+      {/* Left: Hamburger menu (mobile), Brand Logo & Page Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="touch-target"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 6,
+              borderRadius: 0,
+              marginRight: -4,
+            }}
+            title="Toggle Navigation Menu"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu size={22} />
+          </button>
+        )}
+
+        <Link
+          to="/dashboard"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            textDecoration: 'none',
+            flexShrink: 0
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              color: '#ffffff',
+              fontSize: 14,
+            }}
+          >
+            EP
+          </div>
+          {!isMobile && (
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: '#ffffff',
+                letterSpacing: '-0.02em',
+                fontFamily: 'Inter, sans-serif'
+              }}
+            >
+              ExamPlanner
+            </span>
+          )}
         </Link>
 
-        {!isMobile && (
+        {!isTabletOrBelow && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
             <span style={{ color: '#ffffff', fontWeight: 600 }}>
               {pageTitle}
@@ -248,8 +305,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         )}
       </div>
 
-      {/* Center: Quick Search Bar with ⌘K Badge */}
-      {!isSmallMobile && (
+      {/* Center: Quick Search Bar with ⌘K Badge (Desktop only) */}
+      {showInlineSearch && (
         <div
           style={{
             display: 'flex',
@@ -257,7 +314,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             position: 'relative',
             maxWidth: 380,
             width: '100%',
-            margin: '0 16px'
+            margin: '0 16px',
           }}
         >
           <div
@@ -291,7 +348,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               fontSize: 13,
               outline: 'none',
               transition: 'all 0.2s ease',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              minHeight: 40,
             }}
           />
 
@@ -347,7 +405,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Practice Tests</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.mocks.map((mock: any) => (
-                          <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                          <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
                             <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E31B23' }}><Trophy size={14} /></div>
                             <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{mock.title}</span>
                           </Link>
@@ -361,7 +419,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.pyqs.map((pyq: any) => (
-                          <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                          <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
                             <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F2B623' }}><Target size={14} /></div>
                             <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{pyq.title}</span>
                           </Link>
@@ -375,7 +433,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Syllabus & Topics</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.topics.map((topic: any) => (
-                          <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                          <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
                             <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><Sparkles size={14} /></div>
                             <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{topic.title}</span>
                           </Link>
@@ -390,8 +448,142 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         </div>
       )}
 
-      {/* Right Controls: Notification Bell, PRO Badge, User Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16, position: 'relative' }}>
+      {/* Right Controls: Search icon (mobile), Notification Bell, User Avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, position: 'relative', flexShrink: 0 }}>
+
+        {/* Search icon button on mobile (opens search modal on tap) */}
+        {isMobile && (
+          <button
+            onClick={() => {
+              setSearchExpanded(true);
+              setTimeout(() => searchInputRef.current?.focus(), 100);
+            }}
+            className="touch-target center-content"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 8,
+              minWidth: 40,
+              minHeight: 40,
+            }}
+            aria-label="Open search"
+          >
+            <Search size={20} />
+          </button>
+        )}
+
+        {/* Mobile Full-Screen Search Modal */}
+        {isMobile && searchExpanded && (
+          <div
+            className="auth-modal-overlay"
+            onClick={() => setSearchExpanded(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="auth-modal-card"
+              style={{ maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', padding: 16 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Search size={18} color="#64748B" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search PYQs, mocks, topics..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 0,
+                    border: '1px solid #E2E8F0',
+                    fontSize: 14,
+                    outline: 'none',
+                    backgroundColor: '#F8FAFC',
+                    minHeight: 40,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSearchExpanded(false)}
+                  className="touch-target center-content"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    padding: 6,
+                  }}
+                  aria-label="Close search"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Mobile Search Results */}
+              {isSearching ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                  Searching database...
+                </div>
+              ) : searchResults ? (
+                (searchResults.mocks.length === 0 && searchResults.pyqs.length === 0 && searchResults.topics.length === 0) ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                    No results found for "{searchQuery}".
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {searchResults.mocks?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>Practice Tests</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {searchResults.mocks.map((mock: any) => (
+                            <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); setSearchExpanded(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
+                              <Trophy size={16} color="#E31B23" />
+                              <span style={{ fontSize: 13, color: '#172033', fontWeight: 600 }}>{mock.title}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {searchResults.pyqs?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>PYQs</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {searchResults.pyqs.map((pyq: any) => (
+                            <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); setSearchExpanded(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
+                              <Target size={16} color="#F2B623" />
+                              <span style={{ fontSize: 13, color: '#172033', fontWeight: 600 }}>{pyq.title}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {searchResults.topics?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 6 }}>Topics</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {searchResults.topics.map((topic: any) => (
+                            <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); setSearchExpanded(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
+                              <Sparkles size={16} color="#16A34A" />
+                              <span style={{ fontSize: 13, color: '#172033', fontWeight: 600 }}>{topic.title}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* Notification Bell */}
         <div style={{ position: 'relative' }}>
@@ -400,10 +592,9 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               setShowNotifications(!showNotifications);
               setShowProfileMenu(false);
             }}
+            className="touch-target"
             style={{
               position: 'relative',
-              width: 36,
-              height: 36,
               borderRadius: 0,
               border: 'none',
               backgroundColor: 'transparent',
@@ -412,17 +603,19 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               justifyContent: 'center',
               cursor: 'pointer',
               color: '#FFFFFF',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              padding: 8,
             }}
             title="Notifications"
+            aria-label="Notifications"
           >
             <Bell size={19} color="#FFFFFF" />
             {unreadCount > 0 && (
               <span
                 style={{
                   position: 'absolute',
-                  top: 5,
-                  right: 5,
+                  top: 4,
+                  right: 4,
                   width: 14,
                   height: 14,
                   borderRadius: 0,
@@ -443,11 +636,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           {/* Notifications Popover */}
           {showNotifications && (
             <div
+              className={isMobile ? 'popover-panel' : ''}
               style={{
-                position: 'absolute',
-                top: 48,
-                right: 0,
-                width: 320,
+                ...(isMobile ? {} : {
+                  position: 'absolute',
+                  top: 48,
+                  right: 0,
+                  width: 320,
+                }),
                 backgroundColor: '#FFFFFF',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
@@ -459,7 +655,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #F1F5F9', marginBottom: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#E31B23', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#E31B23', fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center' }}>
                     Mark all read
                   </button>
                 )}
@@ -480,7 +676,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                         backgroundColor: n.is_read ? '#FFFFFF' : '#F8FAFC',
                         borderLeft: n.is_read ? '3px solid transparent' : '3px solid #E31B23',
                         cursor: 'pointer',
-                        transition: 'background 0.15s ease'
+                        transition: 'background 0.15s ease',
+                        minHeight: 44,
                       }}
                     >
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -498,13 +695,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           )}
         </div>
 
-        {/* Profile Avatar Circle (RT) */}
+        {/* Profile Avatar Circle */}
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
             }}
+            className="touch-target"
             style={{
               padding: 0,
               borderRadius: 0,
@@ -516,6 +714,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
               backgroundColor: 'transparent'
             }}
+            aria-label="User menu"
           >
             <UserAvatar userOrImage={avatarUser} size={36} fullName={avatarUser.full_name} />
           </button>
@@ -523,11 +722,14 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           {/* Profile Dropdown Menu */}
           {showProfileMenu && (
             <div
+              className={isMobile ? 'popover-panel' : ''}
               style={{
-                position: 'absolute',
-                top: 48,
-                right: 0,
-                width: 200,
+                ...(isMobile ? {} : {
+                  position: 'absolute',
+                  top: 48,
+                  right: 0,
+                  width: 200,
+                }),
                 backgroundColor: '#FFFFFF',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
@@ -540,10 +742,10 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>{user?.full_name || 'Student Account'}</div>
                 <div style={{ fontSize: 11, color: '#64748B' }}>{user?.email || 'student@examplanner.ai'}</div>
               </div>
-              <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+              <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <User size={15} /> Profile Settings
               </Link>
-              <Link to="/pricing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+              <Link to="/pricing" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500, minHeight: 44 }}>
                 <CreditCard size={15} /> Subscription Plan
               </Link>
               <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 4, paddingTop: 4 }}>
@@ -574,6 +776,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                     fontSize: 13,
                     fontWeight: 600,
                     textAlign: 'left',
+                    minHeight: 44,
                   }}
                 >
                   <LogOut size={15} /> Sign Out

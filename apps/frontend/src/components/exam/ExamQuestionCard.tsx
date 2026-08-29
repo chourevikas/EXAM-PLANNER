@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamQuestionCardProps {
   question: QuestionOut | {
@@ -242,12 +243,14 @@ export function ExamQuestionCard({
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
   };
 
+  const { isMobile, isSmallScreen } = useBreakpoint();
+
   return (
     <main
       style={{
         flex: 1,
         width: '100%',
-        padding: isPYQ ? '16px 36px 28px 36px' : '12px 24px 28px 24px',
+        padding: 'clamp(8px, 2vw, 24px)',
         overflow: 'hidden',
         boxSizing: 'border-box',
         backgroundColor: '#F8FAF8',
@@ -267,7 +270,7 @@ export function ExamQuestionCard({
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
+          gap: 12,
           height: '100%',
           maxHeight: '100%',
           boxSizing: 'border-box',
@@ -278,11 +281,11 @@ export function ExamQuestionCard({
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              padding: '16px 20px',
+              padding: 'clamp(12px, 2.5vw, 18px)',
               borderRadius: 0,
               border: '1px solid #E2E8F0',
               borderLeft: '4px solid #E31B23',
-              fontSize: 15,
+              fontSize: 'clamp(13px, 2vw, 15px)',
               color: '#334155',
               lineHeight: 1.55,
               fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -302,7 +305,7 @@ export function ExamQuestionCard({
             borderTop: '4px solid #1E3A8A',
             borderRadius: 0,
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
-            padding: '20px 24px',
+            padding: 'clamp(12px, 2.5vw, 20px)',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
@@ -316,38 +319,103 @@ export function ExamQuestionCard({
           <div
             style={{
               display: 'flex',
+              flexDirection: isSmallScreen ? 'column' : 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 16,
+              alignItems: isSmallScreen ? 'stretch' : 'center',
+              marginBottom: 14,
               paddingBottom: 12,
               borderBottom: '1.5px solid #F1F5F9',
               flexShrink: 0,
-              gap: 12,
+              gap: isSmallScreen ? 10 : 12,
             }}
           >
-            {/* Left: Previous Question Button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Prominent Previous Question Button */}
+            {/* Row 1 / Left: Question Number Counter + Section & Difficulty Badge */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 800,
+                    color: '#1E3A8A',
+                    letterSpacing: '0.04em',
+                    fontVariantNumeric: 'tabular-nums',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    backgroundColor: '#F8FAFC',
+                    padding: '5px 12px',
+                    borderRadius: 0,
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  QUESTION {questionIndex + 1} {totalQuestions > 0 ? `OF ${totalQuestions}` : ''}
+                </span>
+
+                {sectionLabel && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#64748B',
+                      maxWidth: 160,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: isSmallScreen ? 'none' : 'inline-block',
+                    }}
+                    title={sectionLabel}
+                  >
+                    {sectionLabel}
+                  </span>
+                )}
+              </div>
+
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#B45309',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                  padding: '4px 10px',
+                  borderRadius: 0,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
+                {difficultyLabel}
+              </span>
+            </div>
+
+            {/* Navigation Controls: Previous & Next Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: isSmallScreen ? 'space-between' : 'flex-end', gap: 8 }}>
+              {/* Previous Question Button */}
               {onPrev && (
                 <button
                   type="button"
                   onClick={onPrev}
                   disabled={questionIndex === 0}
+                  className="touch-target"
                   style={{
+                    flex: isSmallScreen ? 1 : 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '7px 14px',
                     borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
                     color: questionIndex === 0 ? '#94A3B8' : '#172033',
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: 700,
                     cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
                     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    minHeight: 38,
                   }}
                   onMouseEnter={(e) => {
                     if (questionIndex > 0) {
@@ -364,55 +432,36 @@ export function ExamQuestionCard({
                     }
                   }}
                 >
-                  <ChevronLeft size={15} />
-                  <span>Prev</span>
+                  <ChevronLeft size={16} />
+                  <span>Previous</span>
                 </button>
               )}
-            </div>
 
-            {/* Center: Question Counter Pill */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 800,
-                  color: '#1E3A8A',
-                  letterSpacing: '0.04em',
-                  fontVariantNumeric: 'tabular-nums',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#F8FAFC',
-                  padding: '5px 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                }}
-              >
-                QUESTION {questionIndex + 1}
-              </span>
-            </div>
-
-            {/* Right: Next Question Button & Difficulty Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Prominent Next Question Button */}
+              {/* Next Question Button */}
               {onNext && (
                 <button
                   type="button"
                   onClick={onNext}
                   disabled={questionIndex >= totalQuestions - 1}
+                  className="touch-target"
                   style={{
+                    flex: isSmallScreen ? 1 : 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '7px 14px',
                     borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
                     color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
-                    fontSize: 12,
+                    fontSize: 12.5,
                     fontWeight: 700,
                     cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
                     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    minHeight: 38,
                   }}
                   onMouseEnter={(e) => {
                     if (questionIndex < totalQuestions - 1) {
@@ -430,29 +479,9 @@ export function ExamQuestionCard({
                   }}
                 >
                   <span>Next</span>
-                  <ChevronRight size={15} />
+                  <ChevronRight size={16} />
                 </button>
               )}
-
-              <span
-                style={{
-                  fontSize: 11,
-                  color: '#F2B623',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#FEF3C7',
-                  border: '1px solid #FDE68A',
-                  padding: '4px 10px',
-                  borderRadius: 0,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
-                {difficultyLabel}
-              </span>
             </div>
           </div>
 
@@ -517,11 +546,12 @@ export function ExamQuestionCard({
                   key={opt.id}
                   type="button"
                   onClick={() => onSelectOption(opt.id, opt.cleanLabel)}
+                  className="touch-target"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    padding: '9px 12px',
+                    gap: 12,
+                    padding: '10px 14px',
                     borderRadius: 0,
                     border: borderStyle,
                     backgroundColor: bgStyle,
@@ -530,19 +560,20 @@ export function ExamQuestionCard({
                     textAlign: 'left',
                     transition: 'all 0.18s ease-out',
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    minHeight: 44,
                   }}
                 >
                   {/* Option Label Badge ([A], [B], [C], [D]) */}
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 28,
+                      height: 28,
                       borderRadius: 0,
                       backgroundColor: badgeBg,
                       color: badgeColor,
                       border: badgeBorder,
                       fontWeight: 700,
-                      fontSize: 12,
+                      fontSize: 13,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -557,7 +588,7 @@ export function ExamQuestionCard({
                   {/* Option Text */}
                   <div
                     style={{
-                      fontSize: 13.5,
+                      fontSize: 14,
                       color: '#172033',
                       fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
                       lineHeight: 1.45,
@@ -626,12 +657,13 @@ export function ExamQuestionCard({
 
           {/* Action Buttons: Submit & Show Solution aligned to the right side */}
           {onRevealAnswer && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
               {/* Button 1: Submit */}
               <button
                 type="button"
                 onClick={onRevealAnswer}
                 disabled={!selectedOptionId || !!revealResult}
+                className="touch-target"
                 style={{
                   padding: '8px 18px',
                   borderRadius: 0,
@@ -647,6 +679,7 @@ export function ExamQuestionCard({
                   gap: 6,
                   transition: 'all 0.15s ease',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  minHeight: 40,
                 }}
                 onMouseEnter={(e) => {
                   if (!revealResult && selectedOptionId) {
@@ -675,6 +708,7 @@ export function ExamQuestionCard({
                     onShowSolution();
                   }
                 }}
+                className="touch-target"
                 style={{
                   padding: '8px 18px',
                   borderRadius: 0,
@@ -690,6 +724,7 @@ export function ExamQuestionCard({
                   gap: 6,
                   transition: 'all 0.15s ease',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  minHeight: 40,
                 }}
                 onMouseEnter={(e) => {
                   if (!showDetailedSolution) {

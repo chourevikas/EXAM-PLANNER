@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import {
-  Menu,
   Search,
   Bell,
   ChevronRight,
@@ -17,9 +16,10 @@ import {
   ClipboardCheck,
   CreditCard,
   BarChart2,
-  BookOpen
+  BookOpen,
+  X
 } from 'lucide-react';
-import { Logo } from '../common/Logo';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface TopNavProps {
   user?: any;
@@ -48,8 +48,9 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [unreadCount, setUnreadCount] = useState(3);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const { isMobile, isSmallScreen } = useBreakpoint();
 
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -60,18 +61,20 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         setShowProfileMenu(false);
       }
     }
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+        setShowProfileMenu(false);
+      }
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('resize', handleResize);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
-  const isMobile = windowWidth <= 768;
-  const isSmallMobile = windowWidth <= 540;
 
   const currentViewLabel = breadcrumbMap[activeView] || 'Overview';
 
@@ -147,19 +150,31 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           onClick={() => onNavigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
         >
-          <Logo inverted={true} />
-          {!isSmallMobile && (
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 0,
+              background: '#E31B23',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <Shield size={16} color="#ffffff" />
+          </div>
+          {!isSmallScreen && (
             <span
               style={{
                 fontWeight: 700,
                 fontSize: 15,
                 color: '#ffffff',
                 letterSpacing: '-0.01em',
-                fontFamily: 'Inter, sans-serif',
-                marginLeft: 10
+                fontFamily: 'Inter, sans-serif'
               }}
             >
-              Admin
+              ExamPlanner Admin
             </span>
           )}
         </div>
@@ -177,7 +192,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
       </div>
 
       {/* Center: Search Bar */}
-      {!isSmallMobile && (
+      {!isSmallScreen && (
         <div
           style={{
             position: 'relative',
@@ -252,6 +267,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         onNavigate(opt.id);
                         setSearchQuery('');
                       }}
+                      className="touch-target"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -283,18 +299,130 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         </div>
       )}
 
-      {/* Right: Notifications & User Profile */}
+      {/* Right: Search (mobile), Notifications & User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, position: 'relative' }}>
+        {/* Mobile Search Icon */}
+        {isSmallScreen && (
+          <button
+            type="button"
+            onClick={() => setShowMobileSearch(true)}
+            className="touch-target center-content"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 0,
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#ffffff',
+            }}
+            aria-label="Open search"
+          >
+            <Search size={16} />
+          </button>
+        )}
+
+        {/* Mobile Search Modal */}
+        {isSmallScreen && showMobileSearch && (
+          <div
+            className="auth-modal-overlay"
+            onClick={() => setShowMobileSearch(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="auth-modal-card"
+              style={{ maxWidth: 440, padding: 16 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Search size={16} color="#64748B" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search admin views, questions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 0,
+                    border: '1px solid #E2E8F0',
+                    fontSize: 14,
+                    outline: 'none',
+                    backgroundColor: '#F8FAFC',
+                    minHeight: 40,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMobileSearch(false)}
+                  className="touch-target center-content"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    padding: 6,
+                  }}
+                  aria-label="Close search"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' }}>
+                {quickSearchOptions.map(opt => {
+                  const OptIcon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        onNavigate(opt.id);
+                        setSearchQuery('');
+                        setShowMobileSearch(false);
+                      }}
+                      className="touch-target"
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 0,
+                        border: 'none',
+                        backgroundColor: '#F8FAFC',
+                        color: '#172033',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        textAlign: 'left',
+                        minHeight: 44,
+                      }}
+                    >
+                      <OptIcon size={16} color="#1E3A8A" />
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => {
               setShowNotifications(!showNotifications);
               setShowProfileMenu(false);
             }}
+            className="touch-target"
             style={{
               position: 'relative',
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               borderRadius: 0,
               border: `1px solid ${showNotifications ? '#3B6EA8' : 'rgba(255, 255, 255, 0.12)'}`,
               backgroundColor: showNotifications ? 'rgba(59, 110, 168, 0.2)' : 'rgba(255, 255, 255, 0.04)',
@@ -306,8 +434,9 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               transition: 'all 0.15s ease'
             }}
             title="Notifications"
+            aria-label="Notifications"
           >
-            <Bell size={15} />
+            <Bell size={16} />
             {unreadCount > 0 && (
               <span
                 style={{
@@ -325,11 +454,14 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
 
           {showNotifications && (
             <div
+              className={isMobile ? 'popover-panel' : ''}
               style={{
-                position: 'absolute',
-                top: 44,
-                right: isMobile ? -60 : 0,
-                width: isMobile ? 290 : 320,
+                ...(isMobile ? {} : {
+                  position: 'absolute',
+                  top: 44,
+                  right: 0,
+                  width: 320,
+                }),
                 backgroundColor: '#FFFFFF',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
@@ -378,6 +510,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                         alignItems: 'flex-start',
                         cursor: 'pointer',
                         transition: 'background-color 150ms ease-out',
+                        minHeight: 44,
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
@@ -405,9 +538,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
             }}
+            className="touch-target"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.2)',
               backgroundColor: '#E31B23',
@@ -421,17 +555,21 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               padding: 0
             }}
             title="User Menu"
+            aria-label="User Menu"
           >
             {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
           </button>
 
           {showProfileMenu && (
             <div
+              className={isMobile ? 'popover-panel' : ''}
               style={{
-                position: 'absolute',
-                top: 44,
-                right: 0,
-                width: 230,
+                ...(isMobile ? {} : {
+                  position: 'absolute',
+                  top: 44,
+                  right: 0,
+                  width: 230,
+                }),
                 backgroundColor: '#FFFFFF',
                 borderRadius: 0,
                 border: '1px solid #E2E8F0',
@@ -458,6 +596,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     onNavigate('dashboard');
                     setShowProfileMenu(false);
                   }}
+                  className="touch-target"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -486,6 +625,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     onNavigate('questions');
                     setShowProfileMenu(false);
                   }}
+                  className="touch-target"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -525,13 +665,14 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                     }
                     window.location.href = '/';
                   }}
+                  className="touch-target"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 6,
                     width: '100%',
-                    padding: '7px 10px',
+                    padding: '8px 10px',
                     borderRadius: 0,
                     color: '#DC2626',
                     backgroundColor: '#FEF2F2',

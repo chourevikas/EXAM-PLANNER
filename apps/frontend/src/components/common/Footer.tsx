@@ -20,10 +20,11 @@ export function Footer() {
   return (
     <footer
       id="footer"
+      className="safe-area-bottom"
       style={{
         background: '#07112a',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '36px 0 24px',
+        padding: 'clamp(28px, 5vw, 48px) 0 clamp(20px, 4vw, 32px)',
         color: '#94a3b8',
       }}
     >
@@ -36,13 +37,13 @@ export function Footer() {
             flexWrap: 'wrap',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
-            gap: 32,
+            gap: 'clamp(24px, 4vw, 40px)',
             paddingBottom: 28,
             borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
           {/* Brand Info */}
-          <div style={{ maxWidth: 280 }}>
+          <div style={{ maxWidth: 320, width: '100%' }}>
             <Logo inverted />
             <p
               style={{
@@ -59,9 +60,10 @@ export function Footer() {
           {/* Links Grid */}
           <div
             style={{
-              display: 'flex',
-              gap: '48px',
-              flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+              gap: 'clamp(20px, 3vw, 48px)',
+              flex: '1 1 300px',
             }}
           >
             {cols.map((col) => (
@@ -79,7 +81,7 @@ export function Footer() {
                 >
                   {col.h}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {col.links.map((l) => {
                     const handleFooterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
                       e.preventDefault();
@@ -107,6 +109,9 @@ export function Footer() {
                           color: '#94a3b8',
                           textDecoration: 'none',
                           transition: 'color 0.2s ease',
+                          padding: '6px 0',
+                          display: 'inline-block',
+                          minHeight: 32,
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
@@ -136,7 +141,7 @@ export function Footer() {
           <div style={{ fontSize: 12, color: '#64748b' }}>
             © {new Date().getFullYear()} ExamPlanner. All rights reserved.
           </div>
-          <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ display: 'flex', gap: 'clamp(12px, 3vw, 24px)', flexWrap: 'wrap' }}>
             {['Twitter', 'LinkedIn', 'YouTube', 'Telegram'].map((s) => (
               <a
                 key={s}
@@ -146,6 +151,10 @@ export function Footer() {
                   color: '#94a3b8',
                   textDecoration: 'none',
                   transition: 'color 0.2s ease',
+                  padding: '6px 0',
+                  minHeight: 32,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}

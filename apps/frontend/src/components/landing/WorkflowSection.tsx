@@ -34,7 +34,7 @@ export function WorkflowSection() {
           position: 'absolute',
           bottom: 0,
           right: '10%',
-          width: 600,
+          width: 'min(600px, 90vw)',
           height: 400,
           background: 'radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 70%)',
           pointerEvents: 'none',
@@ -42,7 +42,7 @@ export function WorkflowSection() {
       />
 
       <div className="landing-container" style={{ position: 'relative' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(36px, 6vw, 56px)' }}>
           <div
             style={{
               display: 'inline-flex',
@@ -163,8 +163,15 @@ export function WorkflowSection() {
           })}
         </div>
 
-        {/* Mobile Vertical Layout */}
-        <div className="flex flex-col lg:hidden gap-4">
+        {/* Mobile & Tablet Vertical Layout */}
+        <div
+          className="flex flex-col lg:hidden"
+          style={{
+            gap: 12,
+            maxWidth: 640,
+            margin: '0 auto',
+          }}
+        >
           {steps.map((s, i) => {
             const palette = stepColors[i];
             return (
@@ -173,8 +180,8 @@ export function WorkflowSection() {
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: 16,
-                  padding: '20px 24px',
+                  gap: 'clamp(12px, 3vw, 18px)',
+                  padding: 'clamp(14px, 3vw, 20px) clamp(16px, 4vw, 24px)',
                   borderRadius: 0,
                   background: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(255,255,255,0.08)',
@@ -182,8 +189,8 @@ export function WorkflowSection() {
               >
                 <div
                   style={{
-                    width: 52,
-                    height: 52,
+                    width: 'clamp(44px, 10vw, 52px)',
+                    height: 'clamp(44px, 10vw, 52px)',
                     borderRadius: 0,
                     flexShrink: 0,
                     background: palette.bg,
@@ -196,7 +203,7 @@ export function WorkflowSection() {
                 >
                   {s.icon}
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
                       fontSize: 10,
@@ -210,11 +217,11 @@ export function WorkflowSection() {
                     STEP {s.n}
                   </div>
                   <div
-                    style={{ fontSize: 16, fontWeight: 700, color: '#F8FAFC', marginBottom: 4 }}
+                    style={{ fontSize: 'clamp(14px, 3vw, 16px)', fontWeight: 700, color: '#F8FAFC', marginBottom: 4 }}
                   >
                     {s.title}
                   </div>
-                  <div style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 'clamp(12.5px, 2.5vw, 14px)', color: '#94A3B8', lineHeight: 1.6 }}>
                     {s.desc}
                   </div>
                 </div>

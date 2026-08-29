@@ -9,11 +9,11 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
   const attempted = user?.free_questions_attempted ?? 42;
 
   return (
-    <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, marginBottom: 32 }}>
+    <section className="responsive-grid" style={{ marginBottom: 32 }}>
       
       {/* Metric 1: Questions Attempted */}
       <div style={{ 
-        backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, 
+        backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 24px)', borderRadius: 0, 
         border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
       }}>
@@ -24,7 +24,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
+          <div style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
             {attempted} <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>/ 100 quota</span>
           </div>
           <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, overflow: 'hidden' }}>
@@ -35,7 +35,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
 
       {/* Metric 2: Study Streak */}
       <div style={{ 
-        backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, 
+        backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 24px)', borderRadius: 0, 
         border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
       }}>
@@ -46,7 +46,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+          <div style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
             14 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>Days</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--success-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -57,7 +57,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
 
       {/* Metric 3: Total XP & Level */}
       <div style={{ 
-        backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, 
+        backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 24px)', borderRadius: 0, 
         border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
       }}>
@@ -68,7 +68,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+          <div style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
             2,450 <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>XP</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--accent-primary)', fontWeight: 600 }}>
@@ -79,7 +79,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
 
       {/* Metric 4: Predicted Percentile */}
       <div style={{ 
-        backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, 
+        backgroundColor: 'var(--bg-card)', padding: 'clamp(16px, 3vw, 24px)', borderRadius: 0, 
         border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
       }}>
@@ -90,7 +90,7 @@ export function StudentMetricsGrid({ user }: StudentMetricsGridProps) {
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+          <div style={{ fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
             Top 8%
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
