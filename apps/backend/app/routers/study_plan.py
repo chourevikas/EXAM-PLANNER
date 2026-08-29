@@ -22,7 +22,7 @@ router = APIRouter(prefix="/study-plan", tags=["Study Plan & Gamification"])
 
 @router.post("/tasks/{task_id}/complete")
 async def complete_study_task(
-    task_id: uuid.UUID,
+    task_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -136,7 +136,7 @@ class UpdateTaskRequest(SQLModel):
 
 @router.put("/tasks/{task_id}")
 async def update_study_task(
-    task_id: uuid.UUID,
+    task_id: int,
     req: UpdateTaskRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
@@ -175,7 +175,7 @@ async def update_study_task(
 
 @router.delete("/tasks/{task_id}")
 async def delete_study_task(
-    task_id: uuid.UUID,
+    task_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -206,7 +206,7 @@ class BulkTaskItem(SQLModel):
     linked_question_numbers: Optional[List[int]] = []
 
 class BulkAddFromReportRequest(SQLModel):
-    attempt_id: uuid.UUID
+    attempt_id: int | str
     tasks: List[BulkTaskItem]
 
 @router.post("/tasks/bulk-from-report")
@@ -282,7 +282,7 @@ async def bulk_add_tasks_from_report(
 
 @router.get("/tasks/attempt/{attempt_id}/status")
 async def get_attempt_tasks_status(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -828,7 +828,7 @@ async def list_study_activities(
 
 @router.delete("/activities/{activity_id}")
 async def delete_study_activity(
-    activity_id: uuid.UUID,
+    activity_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):

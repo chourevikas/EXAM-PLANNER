@@ -1,9 +1,8 @@
-import uuid
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON, DateTimeTZ
+from sqlmodel import SQLModel, Field, Relationship, Index
+from app.db.models.types import DateTimeTZ
 
 if TYPE_CHECKING:
     from app.db.models.hierarchy import Exam
@@ -28,10 +27,8 @@ class AnswerKeyBatch(SQLModel, table=True):
     __tablename__ = "answer_key_batches"
     __table_args__ = (Index("ix_ak_batch_exam_status", "exam_id", "set_match_status"),)
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
-    exam_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     pdf_path: str = Field(description="Path or S3 key of uploaded answer key PDF/image")
     target_set_code: str = Field(
         default="SET_A",
@@ -69,16 +66,13 @@ class AnswerKeyMapping(SQLModel, table=True):
         Index("ix_ak_mapping_status", "mapping_status"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    batch_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    batch_id: int = Field(
         foreign_key="answer_key_batches.id", ondelete="CASCADE", index=True
     )
-    batch_int_id: Optional[int] = Field(default=None, index=True)
-    question_id: Optional[uuid.UUID] = Field(
+    question_id: Optional[int] = Field(
         default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     printed_question_number: int = Field(index=True)
     detected_option_label: str = Field(max_length=10, description="'A', 'B', 'C', 'D'")
     paper_set_code: str = Field(default="SET_A", max_length=20, index=True)

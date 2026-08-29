@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
@@ -17,18 +16,14 @@ class HumanReviewTask(SQLModel, table=True):
         Index("ix_review_tasks_flagged", "is_flagged_by_validator", "review_status"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
-    exam_int_id: Optional[int] = Field(default=None, index=True)
-    assigned_admin_id: Optional[uuid.UUID] = Field(
+    exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    assigned_admin_id: Optional[int] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL", index=True
     )
-    assigned_admin_int_id: Optional[int] = Field(default=None, index=True)
 
     review_status: str = Field(
         default="PENDING_REVIEW",

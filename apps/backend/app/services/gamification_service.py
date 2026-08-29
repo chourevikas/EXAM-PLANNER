@@ -12,7 +12,7 @@ class GamificationService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def check_and_update_daily_goal(self, user_id: uuid.UUID) -> dict:
+    async def check_and_update_daily_goal(self, user_id: int) -> dict:
         # Get today's date
         today = datetime.now(timezone.utc).date()
         
@@ -90,7 +90,7 @@ class GamificationService:
             "new_badges": new_unlocked_badges if 'new_unlocked_badges' in locals() else []
         }
 
-    async def _check_and_award_badges(self, user_id: uuid.UUID, profile: StudentProfile) -> list[str]:
+    async def _check_and_award_badges(self, user_id: int, profile: StudentProfile) -> list[str]:
         # Get all badges
         stmt = select(Badge)
         badges = (await self.session.execute(stmt)).scalars().all()

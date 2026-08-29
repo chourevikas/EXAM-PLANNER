@@ -51,7 +51,7 @@ class ExplanationPipelineState(TypedDict):
 
 
 async def _get_or_create_subtopic(
-    session, syl_id: uuid.UUID, subj_name: str, topic_name: str, subtopic_name: str
+    session, syl_id: int, subj_name: str, topic_name: str, subtopic_name: str
 ) -> Tuple[Subtopic, Topic, Subject]:
     """Helper to upsert Subject -> Topic -> Subtopic hierarchy and return Subtopic, Topic, and Subject records."""
     try:
@@ -74,13 +74,13 @@ async def _get_or_create_subtopic(
         subtopic_name = subtopic_name.strip() if subtopic_name and subtopic_name.strip() else topic_name
 
     subj_stmt = select(Subject).where(
-        Subject.syllabus_version_id == syl_id,
+        Subject.version_id == syl_id,
         func.lower(Subject.name) == subj_name.lower(),
     )
     subj = (await session.exec(subj_stmt)).first()
     if not subj:
         subj = Subject(
-            syllabus_version_id=syl_id,
+            version_id=syl_id,
             code=subj_name.upper().replace(" ", "_")[:50],
             name=subj_name,
         )
@@ -131,7 +131,11 @@ async def node_load_exam_questions(
     state: ExplanationPipelineState,
 ) -> Dict[str, Any]:
     """Loads all questions for target exam from DB and updates PipelineRun progress."""
-    exam_id = uuid.UUID(state["exam_id"])
+    exam_id = (
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
+        else state["exam_id"]
+    )
     target_q_ids = state.get("question_ids")
     lang_str = (state.get("language") or "ENGLISH").upper()
     t_id = state.get("task_id", "N/A")
@@ -153,8 +157,8 @@ async def node_load_exam_questions(
 
         stmt = select(Question).where(Question.exam_id == exam_id)
         if target_q_ids:
-            q_uuids = [uuid.UUID(qid) for qid in target_q_ids]
-            stmt = stmt.where(col(Question.id).in_(q_uuids))
+            q_ids_parsed = [int(qid) for qid in target_q_ids]
+            stmt = stmt.where(col(Question.id).in_(q_ids_parsed))
 
         res = await session.exec(stmt)
         questions = res.all()
@@ -164,7 +168,7 @@ async def node_load_exam_questions(
 
 
 async def _generate_and_save_single_question_explanation(
-    q_id: uuid.UUID,
+    q_id: int,
     default_lang_enum: LanguageCode,
     log: TaskLoggerAdapter,
 ) -> bool:
@@ -309,7 +313,7 @@ async def _generate_and_save_single_question_explanation(
                 )
 
                 if target_opt:
-                    o_id = uuid.UUID(str(target_opt["option_id"]))
+                    o_id = int(str(target_opt["option_id"]))
 
                     # Save OptionTranslation
                     ot_stmt = select(OptionTranslation).where(
@@ -543,7 +547,7 @@ async def _generate_and_save_single_question_explanation(
                     )
                 concepts_list.extend(raw_concepts)
 
-                processed_links: Dict[uuid.UUID, QuestionHierarchyLink] = {}
+                processed_links: Dict[int, QuestionHierarchyLink] = {}
                 for concept in concepts_list:
                     c_subj = concept.subject.strip()
                     c_top = concept.topic.strip()
@@ -604,7 +608,11 @@ async def node_generate_and_save_explanations(
     state: ExplanationPipelineState,
 ) -> Dict[str, Any]:
     """Generates explanations, distractor analyses, multi-concepts, and progress metrics."""
-    exam_id = uuid.UUID(state["exam_id"])
+    exam_id = (
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
+        else state["exam_id"]
+    )
     target_q_ids = state.get("question_ids")
     lang_str = (state.get("language") or "ENGLISH").upper()
     t_id = state.get("task_id", "N/A")
@@ -622,8 +630,8 @@ async def node_generate_and_save_explanations(
             .order_by(col(Question.question_number_in_paper))
         )
         if target_q_ids:
-            q_uuids = [uuid.UUID(qid) for qid in target_q_ids]
-            stmt = stmt.where(col(Question.id).in_(q_uuids))
+            q_ids_parsed = [int(qid) for qid in target_q_ids]
+            stmt = stmt.where(col(Question.id).in_(q_ids_parsed))
 
         res = await session.exec(stmt)
         q_ids = res.all()
@@ -699,7 +707,11 @@ async def node_explanation_validator_and_hitl(
     state: ExplanationPipelineState,
 ) -> Dict[str, Any]:
     """Validates question status, normalizes time budget exactly, and updates PipelineRun status to COMPLETED."""
-    exam_id = uuid.UUID(state["exam_id"])
+    exam_id = (
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
+        else state["exam_id"]
+    )
     t_id = state.get("task_id", "N/A")
     log = TaskLoggerAdapter(logger, task_id=t_id)
 

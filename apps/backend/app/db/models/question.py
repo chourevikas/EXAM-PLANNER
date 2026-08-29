@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
@@ -38,24 +37,19 @@ class Question(SQLModel, table=True):
         Index("ix_questions_passage", "passage_id"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    exam_id: Optional[uuid.UUID] = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: Optional[int] = Field(
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
     )
-    exam_int_id: Optional[int] = Field(default=None, index=True)
-    subtopic_id: Optional[uuid.UUID] = Field(
+    subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
-    subtopic_int_id: Optional[int] = Field(default=None, index=True)
-    passage_id: Optional[uuid.UUID] = Field(
+    passage_id: Optional[int] = Field(
         default=None, foreign_key="passages.id", ondelete="SET NULL", index=True
     )
-    passage_int_id: Optional[int] = Field(default=None, index=True)
-    canonical_question_id: Optional[uuid.UUID] = Field(
+    canonical_question_id: Optional[int] = Field(
         default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
-    canonical_question_int_id: Optional[int] = Field(default=None, index=True)
 
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
     paper_set_code: str = Field(
@@ -127,7 +121,6 @@ class Question(SQLModel, table=True):
     )
     page_number_in_pdf: Optional[int] = Field(default=None)
 
-
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -181,12 +174,10 @@ class QuestionTranslation(SQLModel, table=True):
         Index("ix_q_trans_unique", "question_id", "language", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     language: LanguageCode = Field(index=True)
     question_text: str
     parent_context_override: Optional[str] = Field(default=None)
@@ -201,12 +192,10 @@ class QuestionOption(SQLModel, table=True):
         Index("ix_options_question_order", "question_id", "display_order"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     option_label: str = Field(description="'A', 'B', 'C', 'D'", max_length=10)
     display_order: int
     is_correct: bool = Field(default=False, index=True)
@@ -229,12 +218,10 @@ class OptionTranslation(SQLModel, table=True):
         Index("ix_opt_trans_unique", "option_id", "language", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    option_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    option_id: int = Field(
         foreign_key="question_options.id", ondelete="CASCADE", index=True
     )
-    option_int_id: Optional[int] = Field(default=None, index=True)
     language: LanguageCode = Field(index=True)
     option_text: str
     distractor_analysis: Optional[str] = Field(default=None)
@@ -248,12 +235,10 @@ class QuestionAsset(SQLModel, table=True):
         Index("ix_assets_question_order", "question_id", "display_order"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     asset_path: str
     asset_type: AssetType = Field(default=AssetType.DIAGRAM, index=True)
     caption: Optional[str] = Field(default=None)

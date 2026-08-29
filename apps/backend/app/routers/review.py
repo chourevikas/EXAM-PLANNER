@@ -1,12 +1,10 @@
-import uuid
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
-
 
 from app.db.models import LanguageCode, QuestionStatus
 from app.schemas.question import ExamReviewQuestionsResponse
@@ -36,7 +34,7 @@ class ApproveQuestionRequest(BaseModel):
     summary="Get Exam Questions with Full Solution Knowledge Base for Review",
 )
 async def get_exam_questions_review(
-    exam_id: uuid.UUID,
+    exam_id: int,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -75,7 +73,7 @@ async def get_exam_questions_review(
 
 @router.get("/tasks")
 async def get_pending_tasks(
-    exam_id: Optional[uuid.UUID] = Query(default=None),
+    exam_id: Optional[int] = Query(default=None),
     only_flagged: bool = Query(default=False),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -100,7 +98,7 @@ async def get_pending_tasks(
 
 @router.get("/tasks/{question_id}")
 async def get_question_detail(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
@@ -122,7 +120,7 @@ async def get_question_detail(
 
 @router.post("/tasks/{question_id}/approve")
 async def approve_question(
-    question_id: uuid.UUID,
+    question_id: int,
     req: ApproveQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -169,7 +167,7 @@ class UpdateExplanationRequest(BaseModel):
 
 @router.post("/tasks/{question_id}/reextract")
 async def trigger_reextraction(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     """Triggers sequential LLM re-extraction retry targeting the specific pages of the flawed question/passage."""
     from app.cache import invalidate_question_cache
@@ -184,7 +182,7 @@ async def trigger_reextraction(
 
 @router.post("/tasks/{question_id}/reject")
 async def reject_question(
-    question_id: uuid.UUID,
+    question_id: int,
     req: RejectQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -209,7 +207,7 @@ async def reject_question(
 
 @router.post("/tasks/{question_id}/update-explanation")
 async def update_explanation(
-    question_id: uuid.UUID,
+    question_id: int,
     req: UpdateExplanationRequest,
     session: AsyncSession = Depends(get_async_session),
 ):

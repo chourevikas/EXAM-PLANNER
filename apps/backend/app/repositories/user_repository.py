@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlmodel import select, func, col
@@ -32,8 +31,8 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return res.first()
 
-    async def get_by_id(self, user_id: uuid.UUID | str) -> Optional[User]:
-        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+    async def get_by_id(self, user_id: int | str) -> Optional[User]:
+        uid = int(user_id) if isinstance(user_id, (str, int)) else user_id
         stmt = (
             select(User)
             .where(User.id == uid)
@@ -54,7 +53,6 @@ class UserRepository:
         organization_name: Optional[str] = None,
         department: Optional[str] = None,
     ) -> User:
-        # Students and Super Admins are directly ACTIVE on registration; institutional ADMINs require pending approval
         status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
         new_user = User(
@@ -63,60 +61,67 @@ class UserRepository:
             password_hash=password_hash,
             role=role,
             status=status,
+            is_active=True,
+            is_verified=False,
+            email_verified=False,
         )
-        user_id = new_user.id
         self.session.add(new_user)
         await self.session.commit()
+        await self.session.refresh(new_user)
+        new_uid = new_user.id
 
         if role == UserRole.STUDENT:
-            student_prof = StudentProfile(user_id=user_id)
-            self.session.add(student_prof)
+            profile = StudentProfile(user_id=new_uid)
+            self.session.add(profile)
+            await self.session.commit()
         elif role == UserRole.ADMIN:
-            admin_prof = AdminProfile(
-                user_id=user_id,
+            admin_profile = AdminProfile(
+                user_id=new_uid,
                 organization_name=organization_name,
                 department=department,
             )
-            self.session.add(admin_prof)
+            self.session.add(admin_profile)
+            await self.session.commit()
 
-        await self.session.commit()
-        user_obj = await self.get_by_id(user_id)
-        if user_obj:
-            await self.session.refresh(user_obj)
-        return user_obj
+        return await self.get_by_id(new_uid)
+
+    async def get_user_count(self) -> int:
+        res = await self.session.exec(select(func.count(User.id)))
+        return res.one()
 
     async def get_pending_admins(self) -> List[User]:
         stmt = (
             select(User)
-            .where(User.status == UserStatus.PENDING)
-            .options(
-                selectinload(User.student_profile),
-                selectinload(User.admin_profile),
-            )
+            .where(User.role == UserRole.ADMIN, User.status == UserStatus.PENDING)
+            .options(selectinload(User.admin_profile))
             .order_by(col(User.created_at).desc())
         )
         res = await self.session.exec(stmt)
         return list(res.all())
 
-    async def get_active_admins(self) -> List[User]:
-        stmt = (
-            select(User)
-            .where(
-                User.role == UserRole.ADMIN,
-                User.status.in_([UserStatus.ACTIVE, UserStatus.SUSPENDED]),
+    async def get_all_users_for_superadmin(
+        self,
+        role: Optional[UserRole] = None,
+        status: Optional[UserStatus] = None,
+        search: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[User]:
+        stmt = select(User)
+        if role:
+            stmt = stmt.where(User.role == role)
+        if status:
+            stmt = stmt.where(User.status == status)
+        if search:
+            search_filter = f"%{search.lower()}%"
+            stmt = stmt.where(
+                (func.lower(User.email).like(search_filter))
+                | (func.lower(User.full_name).like(search_filter))
             )
-            .options(
-                selectinload(User.student_profile),
-                selectinload(User.admin_profile),
-            )
-            .order_by(col(User.created_at).desc())
-        )
-        res = await self.session.exec(stmt)
-        return list(res.all())
 
-    async def get_all_users(self) -> List[User]:
         stmt = (
-            select(User)
+            stmt.limit(limit)
+            .offset(offset)
             .options(
                 selectinload(User.student_profile),
                 selectinload(User.admin_profile),
@@ -127,7 +132,7 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return list(res.all())
 
-    async def update_user_role(self, user_id: uuid.UUID | str, new_role: UserRole) -> Optional[User]:
+    async def update_user_role(self, user_id: int | str, new_role: UserRole) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
             return None
@@ -138,7 +143,7 @@ class UserRepository:
         await self.session.commit()
         return await self.get_by_id(user.id)
 
-    async def suspend_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
+    async def suspend_admin(self, admin_id: int | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user or user.role == UserRole.SUPER_ADMIN:
             return None
@@ -150,7 +155,7 @@ class UserRepository:
         await self.session.commit()
         return await self.get_by_id(user.id)
 
-    async def reactivate_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
+    async def reactivate_admin(self, admin_id: int | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user:
             return None
@@ -164,26 +169,22 @@ class UserRepository:
         return await self.get_by_id(user.id)
 
     async def approve_admin(
-        self, admin_id: uuid.UUID | str, super_admin_id: uuid.UUID | str
+        self, admin_id: int | str, super_admin_id: int | str
     ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user:
             return None
 
-        super_admin_uuid = (
-            uuid.UUID(str(super_admin_id))
-            if isinstance(super_admin_id, str)
-            else super_admin_id
-        )
+        super_admin_id_int = int(super_admin_id)
 
         user.status = UserStatus.ACTIVE
         if user.admin_profile:
-            user.admin_profile.approved_by_id = super_admin_uuid
-            user.admin_profile.approved_at = datetime.utcnow()
+            user.admin_profile.approved_by_id = super_admin_id_int
+            user.admin_profile.approved_at = datetime.now(timezone.utc)
             self.session.add(user.admin_profile)
 
         log = AdminApprovalLog(
-            admin_user_id=user.id, reviewed_by_id=super_admin_uuid, action="APPROVED"
+            admin_user_id=user.id, reviewed_by_id=super_admin_id_int, action="APPROVED"
         )
         self.session.add(user)
         self.session.add(log)
@@ -192,100 +193,88 @@ class UserRepository:
 
     async def reject_admin(
         self,
-        admin_id: uuid.UUID | str,
-        super_admin_id: uuid.UUID | str,
+        admin_id: int | str,
+        super_admin_id: int | str,
         reason: Optional[str] = None,
     ) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user:
             return None
 
-
-        super_admin_uuid = (
-            uuid.UUID(str(super_admin_id))
-            if isinstance(super_admin_id, str)
-            else super_admin_id
-        )
+        super_admin_id_int = int(super_admin_id)
 
         user.status = UserStatus.REJECTED
         if user.admin_profile:
-            user.admin_profile.rejected_by_id = super_admin_uuid
-            user.admin_profile.rejected_at = datetime.utcnow()
+            user.admin_profile.rejected_by_id = super_admin_id_int
+            user.admin_profile.rejected_at = datetime.now(timezone.utc)
             user.admin_profile.rejection_reason = reason
             self.session.add(user.admin_profile)
 
         log = AdminApprovalLog(
             admin_user_id=user.id,
-            reviewed_by_id=super_admin_uuid,
+            reviewed_by_id=super_admin_id_int,
             action="REJECTED",
-            reason=reason,
+            rejection_reason=reason,
         )
         self.session.add(user)
         self.session.add(log)
         await self.session.commit()
         return await self.get_by_id(user.id)
 
-    async def get_approval_logs(self) -> List[AdminApprovalLog]:
-        stmt = select(AdminApprovalLog).order_by(col(AdminApprovalLog.created_at).desc())
+    async def get_approval_audit_logs(self, limit: int = 50) -> List[AdminApprovalLog]:
+        stmt = (
+            select(AdminApprovalLog)
+            .order_by(col(AdminApprovalLog.created_at).desc())
+            .limit(limit)
+        )
         res = await self.session.exec(stmt)
         return list(res.all())
 
-    async def get_system_stats(self) -> Dict[str, Any]:
-        pending = (
+    async def get_system_audit_stats(self) -> Dict[str, Any]:
+        total_users = (await self.session.exec(select(func.count(User.id)))).one()
+        active_users = (
+            await self.session.exec(
+                select(func.count(User.id)).where(User.status == UserStatus.ACTIVE)
+            )
+        ).one()
+        suspended_users = (
+            await self.session.exec(
+                select(func.count(User.id)).where(User.status == UserStatus.SUSPENDED)
+            )
+        ).one()
+        pending_admins = (
             await self.session.exec(
                 select(func.count(User.id)).where(
                     User.role == UserRole.ADMIN, User.status == UserStatus.PENDING
                 )
             )
         ).one()
-        active = (
-            await self.session.exec(
-                select(func.count(User.id)).where(
-                    User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE
-                )
-            )
-        ).one()
-        students = (
-            await self.session.exec(
-                select(func.count(User.id)).where(
-                    User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE
-                )
-            )
-        ).one()
-        rejected = (
-            await self.session.exec(
-                select(func.count(User.id)).where(
-                    User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED
-                )
-            )
-        ).one()
 
         return {
-            "pending_admins_count": pending,
-            "active_admins_count": active,
-            "active_students_count": students,
-            "rejected_admins_count": rejected,
-            "aws_rds_status": "Healthy & Connected",
-            "database_name": "sqlite/postgres",
+            "total_users": total_users,
+            "active_users": active_users,
+            "suspended_users": suspended_users,
+            "pending_admins": pending_admins,
+            "db_status": "ONLINE",
             "db_host": "localhost",
         }
 
-    async def update_last_login(self, user_id: uuid.UUID | str) -> None:
+    async def update_last_login(self, user_id: int | str) -> None:
         user = await self.get_by_id(user_id)
         if user:
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(timezone.utc)
             self.session.add(user)
             await self.session.commit()
 
     async def save_refresh_token(
         self,
-        user_id: uuid.UUID | str,
+        user_id: int | str,
         token_hash: str,
         expires_at: datetime,
         device_name: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> RefreshToken:
-        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+        uid = int(user_id)
         token_record = RefreshToken(
             user_id=uid,
             token_hash=token_hash,
@@ -298,14 +287,14 @@ class UserRepository:
         await self.session.refresh(token_record)
         return token_record
 
-    async def revoke_user_refresh_tokens(self, user_id: uuid.UUID | str) -> None:
-        uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+    async def revoke_user_refresh_tokens(self, user_id: int | str) -> None:
+        uid = int(user_id)
         stmt = select(RefreshToken).where(
             RefreshToken.user_id == uid, RefreshToken.revoked_at.is_(None)
         )
         res = await self.session.exec(stmt)
         tokens = res.all()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for tok in tokens:
             tok.revoked_at = now
             self.session.add(tok)

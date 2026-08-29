@@ -102,7 +102,11 @@ async def node_validate_set_code_and_map_db(
     Validates detected paper set code against target exam set code, and maps correct answers into DB.
     Auto-registers Exam DB record if missing to guarantee robustness.
     """
-    exam_id = uuid.UUID(state["exam_id"])
+    exam_id = (
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
+        else state["exam_id"]
+    )
     target_set_code = state.get("target_set_code", "SET_A").upper()
     raw_payloads = state.get("raw_page_payloads", [])
     t_id = state.get("task_id", "N/A")

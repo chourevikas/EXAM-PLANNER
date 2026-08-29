@@ -66,15 +66,15 @@ async def async_sync_exam_s3(
     from app.db.models.pipeline_run import PipelineRun
     from app.services.task_registry import task_registry
 
-    exam_uuid = uuid.UUID(exam_id_str)
-    run_uuid = uuid.UUID(run_id_str)
+    exam_id = int(exam_id_str)
+    run_id = int(run_id_str)
 
-    task_registry.register_current_task(str(exam_uuid))
-    task_registry.register_current_task(f"sync_{exam_uuid}")
+    task_registry.register_current_task(str(exam_id))
+    task_registry.register_current_task(f"sync_{exam_id}")
 
     async def _do_sync(sess):
         # Step 1: Initialize status to RUNNING
-        run = await sess.get(PipelineRun, run_uuid)
+        run = await sess.get(PipelineRun, run_id)
         if run:
             run.status = "RUNNING"
             run.current_step = f"GENERATING_JSON_ARTIFACTS_({scope_str.upper()})"
@@ -85,10 +85,10 @@ async def async_sync_exam_s3(
 
         # Step 2: Run JSON build & S3 uploads
         builder = ExamJsonBuilder(sess)
-        sync_res = await builder.generate_and_upload(exam_uuid, sync_all=sync_all, sync_target=sync_target)
+        sync_res = await builder.generate_and_upload(exam_id, sync_all=sync_all, sync_target=sync_target)
 
         # Step 3: Record completion in PipelineRun
-        run = await sess.get(PipelineRun, run_uuid)
+        run = await sess.get(PipelineRun, run_id)
         if run:
             run.status = "COMPLETED"
             run.current_step = "PUBLISHED_TO_S3"
@@ -127,16 +127,16 @@ async def async_sync_exam_s3(
             exc_info=True,
         )
         try:
-            async with managed_async_session() as session:
-                run = await session.get(PipelineRun, run_uuid)
+            async with managed_async_session() as err_sess:
+                run = await err_sess.get(PipelineRun, run_id)
                 if run:
                     run.status = "FAILED"
                     run.current_step = "S3_SYNC_FAILED"
                     run.error_log = str(e)
                     run.completed_at = datetime.now(timezone.utc)
-                    session.add(run)
-                    await session.commit()
-                    log.info(f"📊 [PIPELINE_RUN] Recorded failure state in PipelineRun {run_uuid}")
+                    err_sess.add(run)
+                    await err_sess.commit()
+                    log.info(f"📊 [PIPELINE_RUN] Recorded failure state in PipelineRun {run_id}")
         except Exception as inner_e:
             log.error(f"Failed to record failure for exam {exam_id_str}: {inner_e}")
         raise e

@@ -1,6 +1,5 @@
-import uuid
 from typing import Optional, List, Tuple
-from sqlmodel import select, func, col, or_, not_
+from sqlmodel import select, func, or_, not_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -21,22 +20,22 @@ class QuestionRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_id(self, question_id: uuid.UUID | str) -> Optional[Question]:
-        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
-        return await self.session.get(Question, q_uuid)
+    async def get_by_id(self, question_id: int | str) -> Optional[Question]:
+        q_id = int(question_id) if isinstance(question_id, (str, int)) else question_id
+        return await self.session.get(Question, q_id)
 
     async def list_questions_filtered(
         self,
-        subject_id: Optional[uuid.UUID] = None,
+        subject_id: Optional[int] = None,
         subject_name: Optional[str] = None,
         subject_code: Optional[str] = None,
-        topic_id: Optional[uuid.UUID] = None,
+        topic_id: Optional[int] = None,
         topic_name: Optional[str] = None,
         topic_code: Optional[str] = None,
-        subtopic_id: Optional[uuid.UUID] = None,
+        subtopic_id: Optional[int] = None,
         subtopic_name: Optional[str] = None,
         subtopic_code: Optional[str] = None,
-        exam_id: Optional[uuid.UUID] = None,
+        exam_id: Optional[int] = None,
         exam_name: Optional[str] = None,
         exam_type: Optional[QuestionSourceType] = None,
         exam_year: Optional[int] = None,
@@ -73,12 +72,8 @@ class QuestionRepository:
             raw_ids = [i.strip() for i in exclude_ids.split(",") if i.strip()]
             valid_targets = []
             for r in raw_ids:
-                valid_targets.append(r)
                 try:
-                    u = uuid.UUID(r)
-                    valid_targets.append(u)
-                    valid_targets.append(str(u))
-                    valid_targets.append(u.hex)
+                    valid_targets.append(int(r))
                 except Exception:
                     pass
             if valid_targets:
@@ -194,4 +189,3 @@ class QuestionRepository:
         questions = res.all()
 
         return questions, total
-

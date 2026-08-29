@@ -16,9 +16,9 @@ logger = setup_logger("ReportCompiler")
 
 async def compile_comprehensive_psychometric_report(
     session: AsyncSession,
-    user_id: Optional[uuid.UUID] = None,
-    exam_id: Optional[uuid.UUID] = None,
-    attempt_id: Optional[uuid.UUID] = None,
+    user_id: Optional[int] = None,
+    exam_id: Optional[int] = None,
+    attempt_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Compiles or retrieves a comprehensive 4-part psychometric diagnostic report.

@@ -601,35 +601,35 @@ async def resume_interrupted_pipeline(
     from app.services.task_registry import task_registry
 
     try:
-        exam_uuid = uuid.UUID(exam_id)
+        exam_id_int = int(exam_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    exam = await session.get(Exam, exam_uuid)
+    exam = await session.get(Exam, exam_id_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam '{exam_id}' not found.")
 
     pm = PipelineManagementService(session)
 
-    q_count = (await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam_uuid))).first() or 0
+    q_count = (await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam_id_int))).first() or 0
     key_count = (await session.exec(
         select(func.count(func.distinct(Question.id)))
         .select_from(Question)
         .join(QuestionOption, Question.id == QuestionOption.question_id)
-        .where(Question.exam_id == exam_uuid, QuestionOption.is_correct == True)
+        .where(Question.exam_id == exam_id_int, QuestionOption.is_correct == True)
     )).first() or 0
     exp_count = (await session.exec(
         select(func.count(func.distinct(QuestionExplanation.question_id)))
         .select_from(Question)
         .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
         .where(
-            Question.exam_id == exam_uuid,
+            Question.exam_id == exam_id_int,
             QuestionExplanation.detailed_solution != None,
             QuestionExplanation.detailed_solution != "",
         )
     )).first() or 0
 
-    key = str(exam_uuid)
+    key = str(exam_id_int)
 
     from app.tasks.celery_app import has_active_celery_workers
     use_celery = has_active_celery_workers()
@@ -638,7 +638,7 @@ async def resume_interrupted_pipeline(
     if q_count == 0 and exam.pdf_path:
         from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
         await pm.update_pipeline_status(
-            exam_id=exam_uuid,
+            exam_id=exam_id_int,
             pipeline_type="QUESTION_EXTRACTION",
             status="RUNNING",
             current_step="RESUMING_QUESTION_EXTRACTION",
@@ -646,14 +646,14 @@ async def resume_interrupted_pipeline(
         )
         task_id = f"resume_p1_{uuid.uuid4().hex[:8]}"
         if use_celery:
-            task_res = process_exam_pdf_task.delay(str(exam_uuid), exam.pdf_path, exam.name, task_id)
+            task_res = process_exam_pdf_task.delay(str(exam_id_int), exam.pdf_path, exam.name, task_id)
             task_registry.register_celery_task(key, getattr(task_res, "id", task_id))
         else:
             background_tasks.add_task(
                 async_process_exam_pdf,
                 pdf_path_or_storage_key=exam.pdf_path,
                 exam_title=exam.name,
-                exam_id_str=str(exam_uuid),
+                exam_id_str=str(exam_id_int),
                 task_id=task_id,
             )
         return {
@@ -663,7 +663,7 @@ async def resume_interrupted_pipeline(
         }
 
     # Case 2: Stage 2 (Answer Key Mapping) incomplete
-    ak_batch = (await session.exec(select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_uuid))).first()
+    ak_batch = (await session.exec(select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id_int))).first()
     if ak_batch and key_count < q_count:
         async def _resume_stage_2():
             from app.db.session import managed_async_session
@@ -672,8 +672,8 @@ async def resume_interrupted_pipeline(
             async with managed_async_session() as bg_session:
                 bg_ak = AnswerKeyService(bg_session)
                 bg_pm = PipelineManagementService(bg_session)
-                await bg_ak.map_stored_answers_from_db(exam_uuid)
-                await bg_pm.on_pipeline_2_completed(exam_id=exam_uuid, auto_trigger_pipeline_3=True)
+                await bg_ak.map_stored_answers_from_db(exam_id_int)
+                await bg_pm.on_pipeline_2_completed(exam_id=exam_id_int, auto_trigger_pipeline_3=True)
 
         background_tasks.add_task(_resume_stage_2)
         return {
@@ -685,7 +685,7 @@ async def resume_interrupted_pipeline(
     # Case 3: Stage 3 (Explanation Generation) incomplete
     from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
     await pm.update_pipeline_status(
-        exam_id=exam_uuid,
+        exam_id=exam_id_int,
         pipeline_type="EXPLANATION_INDEXING",
         status="RUNNING",
         current_step=f"RESUMING_EXPLANATIONS_FROM_({exp_count}/{q_count})",
@@ -693,12 +693,12 @@ async def resume_interrupted_pipeline(
     )
     task_id = f"resume_p3_{uuid.uuid4().hex[:8]}"
     if use_celery:
-        task_res = process_exam_explanations_task.delay(str(exam_uuid), None, "ENGLISH", task_id)
-        task_registry.register_celery_task(f"exp_{exam_uuid}", getattr(task_res, "id", task_id))
+        task_res = process_exam_explanations_task.delay(str(exam_id_int), None, "ENGLISH", task_id)
+        task_registry.register_celery_task(f"exp_{exam_id_int}", getattr(task_res, "id", task_id))
     else:
         background_tasks.add_task(
             async_process_exam_explanations,
-            exam_id_str=str(exam_uuid),
+            exam_id_str=str(exam_id_int),
             task_id=task_id,
         )
     return {
@@ -721,11 +721,11 @@ async def dismiss_stuck_pipeline(
     from app.db.models.pipeline_run import PipelineRun
 
     try:
-        exam_uuid = uuid.UUID(exam_id)
+        exam_id_int = int(exam_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    runs = (await session.exec(select(PipelineRun).where(PipelineRun.exam_id == exam_uuid, PipelineRun.status == "INTERRUPTED"))).all()
+    runs = (await session.exec(select(PipelineRun).where(PipelineRun.exam_id == exam_id_int, PipelineRun.status == "INTERRUPTED"))).all()
     for r in runs:
         r.status = "DISMISSED"
         session.add(r)
@@ -739,7 +739,7 @@ async def dismiss_stuck_pipeline(
     summary="Get Exam Questions with Full Solution Knowledge Base for Review",
 )
 async def get_exam_review_questions_admin(
-    exam_id: uuid.UUID,
+    exam_id: int,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -797,15 +797,15 @@ async def approve_and_publish_exam(
     from sqlmodel import select
 
     try:
-        exam_uuid = uuid.UUID(exam_id)
+        exam_id_int = int(exam_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    exam = await session.get(Exam, exam_uuid)
+    exam = await session.get(Exam, exam_id_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
-    q_res = await session.exec(select(Question).where(Question.exam_id == exam_uuid))
+    q_res = await session.exec(select(Question).where(Question.exam_id == exam_id_int))
     questions = q_res.all()
 
     if not questions:
@@ -839,7 +839,7 @@ async def approve_and_publish_exam(
         if not has_text:
             corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
             corrupt_run = PipelineRun(
-                exam_id=exam_uuid,
+                exam_id=exam_id_int,
                 pipeline_type="S3_PUBLISH",
                 status="CORRUPTED",
                 current_step="CORRUPTED_DATABASE_RECORD",
@@ -856,7 +856,7 @@ async def approve_and_publish_exam(
         if not q_opts:
             corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has 0 answer options in database."
             corrupt_run = PipelineRun(
-                exam_id=exam_uuid,
+                exam_id=exam_id_int,
                 pipeline_type="S3_PUBLISH",
                 status="CORRUPTED",
                 current_step="CORRUPTED_DATABASE_RECORD",
@@ -870,12 +870,12 @@ async def approve_and_publish_exam(
     # 1 & 2. Generate JSON files and upload to S3 folder paths with Retryable Error Handling
     builder = ExamJsonBuilder(session)
     try:
-        json_paths = await builder.generate_and_upload(exam_uuid, sync_all=True)
+        json_paths = await builder.generate_and_upload(exam_id_int, sync_all=True)
     except Exception as s3_err:
         logger.error(f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True)
         # Record retryable failed pipeline run
         failed_run = PipelineRun(
-            exam_id=exam_uuid,
+            exam_id=exam_id_int,
             pipeline_type="S3_PUBLISH",
             status="FAILED",
             current_step="S3_UPLOAD_FAILED",
@@ -895,7 +895,7 @@ async def approve_and_publish_exam(
     session.add(exam)
 
     success_run = PipelineRun(
-        exam_id=exam_uuid,
+        exam_id=exam_id_int,
         pipeline_type="S3_PUBLISH",
         status="COMPLETED",
         current_step="PUBLISHED_TO_S3",
@@ -951,15 +951,15 @@ async def sync_exam_s3_artifacts(
     from sqlmodel import select
 
     try:
-        exam_uuid = uuid.UUID(exam_id)
+        exam_id_int = int(exam_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    exam = await session.get(Exam, exam_uuid)
+    exam = await session.get(Exam, exam_id_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
-    q_res = await session.exec(select(Question).where(Question.exam_id == exam_uuid))
+    q_res = await session.exec(select(Question).where(Question.exam_id == exam_id_int))
     questions = q_res.all()
     if not questions:
         raise HTTPException(
@@ -974,7 +974,7 @@ async def sync_exam_s3_artifacts(
     existing_run_stmt = (
         select(PipelineRun)
         .where(
-            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.exam_id == exam_id_int,
             PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
             PipelineRun.status.in_(["RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"]),
         )
@@ -993,7 +993,7 @@ async def sync_exam_s3_artifacts(
 
     # Create new PipelineRun for S3_PUBLISH
     run = PipelineRun(
-        exam_id=exam_uuid,
+        exam_id=exam_id_int,
         pipeline_type="S3_PUBLISH",
         status="RUNNING",
         current_step=f"INITIALIZING_S3_SYNC_({sync_target.upper()})",
@@ -1015,20 +1015,20 @@ async def sync_exam_s3_artifacts(
 
     if use_celery:
         celery_res = sync_exam_s3_task.delay(
-            str(exam_uuid),
+            str(exam_id_int),
             str(run_id),
             sync_all=sync_all,
             sync_target=sync_target,
             task_id=task_id,
             execution_engine="Celery Worker",
         )
-        task_registry.register_celery_task(str(exam_uuid), getattr(celery_res, "id", task_id))
-        task_registry.register_celery_task(f"sync_{exam_uuid}", getattr(celery_res, "id", task_id))
+        task_registry.register_celery_task(str(exam_id_int), getattr(celery_res, "id", task_id))
+        task_registry.register_celery_task(f"sync_{exam_id_int}", getattr(celery_res, "id", task_id))
         execution_engine = "Celery Worker"
     else:
         background_tasks.add_task(
             async_sync_exam_s3,
-            exam_id_str=str(exam_uuid),
+            exam_id_str=str(exam_id_int),
             run_id_str=str(run_id),
             sync_all=sync_all,
             sync_target=sync_target,
@@ -1071,25 +1071,25 @@ async def get_exam_sync_status(
     Returns the current S3 sync status, whether a background sync task is currently running,
     progress info, error logs if failed, and sync timestamps.
     """
-    import uuid
     from fastapi import HTTPException
-    from app.db.models import Exam, ExamStatus
+    from app.db.models import Exam
     from app.db.models.pipeline_run import PipelineRun
     from sqlmodel import select
+    from datetime import datetime, timezone
 
     try:
-        exam_uuid = uuid.UUID(exam_id)
+        exam_id_int = int(exam_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Invalid exam_id UUID: '{exam_id}'")
+        raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    exam = await session.get(Exam, exam_uuid)
+    exam = await session.get(Exam, exam_id_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
     publish_run_stmt = (
         select(PipelineRun)
         .where(
-            PipelineRun.exam_id == exam_uuid,
+            PipelineRun.exam_id == exam_id_int,
             PipelineRun.pipeline_type.in_(["S3_PUBLISH", "S3_SYNC"]),
         )
         .order_by(PipelineRun.started_at.desc())
@@ -1145,7 +1145,7 @@ async def admin_create_question(
 
 @router.put("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Update Question")
 async def admin_update_question(
-    question_id: uuid.UUID,
+    question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
@@ -1160,7 +1160,7 @@ async def admin_update_question(
 
 @router.patch("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Partial Update Question")
 async def admin_patch_question(
-    question_id: uuid.UUID,
+    question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),

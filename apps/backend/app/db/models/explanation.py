@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from sqlmodel import SQLModel, Field, Relationship, Index, Column
@@ -17,12 +16,10 @@ class QuestionExplanation(SQLModel, table=True):
         Index("ix_q_expl_question_lang", "question_id", "language", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     language: LanguageCode = Field(default=LanguageCode.ENGLISH, index=True)
 
     core_concept: str = Field(

@@ -118,7 +118,7 @@ class CognitiveDiagnosticInsight(BaseModel):
 
 
 class BulkAddTasksRequest(BaseModel):
-    attempt_id: uuid.UUID
+    attempt_id: int | str
     tasks: List[ActionableStudyTask]
 
 

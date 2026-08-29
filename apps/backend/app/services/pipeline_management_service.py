@@ -1,7 +1,6 @@
-import uuid
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -18,7 +17,7 @@ class PipelineManagementService:
         self.session = session
 
     async def get_or_create_pipeline_run(
-        self, exam_id: uuid.UUID, pipeline_type: str
+        self, exam_id: int, pipeline_type: str
     ) -> PipelineRun:
         """Retrieves or creates a PipelineRun tracking record for an exam."""
         query = select(PipelineRun).where(
@@ -42,7 +41,7 @@ class PipelineManagementService:
 
     async def update_pipeline_status(
         self,
-        exam_id: uuid.UUID,
+        exam_id: int,
         pipeline_type: str,
         status: str,
         current_step: str,
@@ -69,7 +68,7 @@ class PipelineManagementService:
 
         return run
 
-    async def on_pipeline_1_completed(self, exam_id: uuid.UUID) -> PipelineRun:
+    async def on_pipeline_1_completed(self, exam_id: int) -> PipelineRun:
         """Called when Pipeline 1 (Question Extraction) finishes."""
         # Check if any questions failed completeness validation
         flagged_res = await self.session.exec(
@@ -135,7 +134,7 @@ class PipelineManagementService:
         return run
 
     async def on_pipeline_2_completed(
-        self, exam_id: uuid.UUID, auto_trigger_pipeline_3: bool = True
+        self, exam_id: int, auto_trigger_pipeline_3: bool = True
     ) -> PipelineRun:
         """Called when Pipeline 2 (Answer Key Matching) finishes."""
         run = await self.update_pipeline_status(
@@ -154,7 +153,7 @@ class PipelineManagementService:
 
         return run
 
-    async def on_pipeline_3_completed(self, exam_id: uuid.UUID) -> PipelineRun:
+    async def on_pipeline_3_completed(self, exam_id: int) -> PipelineRun:
         """Called when Pipeline 3 (Explanation & Knowledge Base) finishes."""
         run = await self.update_pipeline_status(
             exam_id=exam_id,
@@ -167,7 +166,7 @@ class PipelineManagementService:
         await invalidate_exam_cache(str(exam_id))
         return run
 
-    async def check_and_trigger_pipeline_3_if_ready(self, exam_id: uuid.UUID) -> bool:
+    async def check_and_trigger_pipeline_3_if_ready(self, exam_id: int) -> bool:
         """
         Checks if both Pipeline 1 (Question Extraction) AND Pipeline 2 (Answer Key Matching)
         have completed for the exam. If both are complete and Pipeline 3 has not run yet,
@@ -220,7 +219,7 @@ class PipelineManagementService:
                 return True
         return False
 
-    async def get_exam_pipeline_overview(self, exam_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_exam_pipeline_overview(self, exam_id: int) -> Dict[str, Any]:
         """Provides full pipeline status overview for frontend dashboard."""
         query = select(PipelineRun).where(PipelineRun.exam_id == exam_id)
         runs = (await self.session.exec(query)).all()

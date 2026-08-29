@@ -139,9 +139,9 @@ async def get_current_user(
             user_id_str: str = payload.get("sub")
             if user_id_str:
                 try:
-                    user_uuid = uuid.UUID(user_id_str) if isinstance(user_id_str, str) else user_id_str
+                    user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str
                     user_repo = UserRepository(session)
-                    user = await user_repo.get_by_id(user_uuid)
+                    user = await user_repo.get_by_id(user_id_val)
                     if user and user.status == UserStatus.ACTIVE:
                         return user
                 except (ValueError, TypeError):

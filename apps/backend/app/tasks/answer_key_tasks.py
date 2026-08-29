@@ -106,7 +106,7 @@ async def async_process_answer_key_pdf(
         async with managed_async_session() as session:
             pm_service = PipelineManagementService(session)
             await pm_service.on_pipeline_2_completed(
-                uuid.UUID(exam_id_str), auto_trigger_pipeline_3=True
+                int(exam_id_str), auto_trigger_pipeline_3=True
             )
 
         return {**result, "task_id": t_id, "execution_engine": execution_engine}

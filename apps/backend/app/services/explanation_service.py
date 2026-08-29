@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List, Dict, Any
-from fastapi import HTTPException, BackgroundTasks
+from fastapi import BackgroundTasks, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import LanguageCode
@@ -11,9 +11,7 @@ from app.tasks.explanation_tasks import (
 )
 from app.tasks.celery_app import has_active_celery_workers
 from app.config.settings import get_settings
-from app.config.logger import setup_logger
-
-logger = setup_logger("ExplanationService")
+from app.services.task_registry import task_registry
 
 
 class ExplanationService:
@@ -25,8 +23,8 @@ class ExplanationService:
 
     async def generate_explanations_for_exam(
         self,
-        exam_id: uuid.UUID,
-        question_ids: Optional[List[str]] = None,
+        exam_id: int,
+        question_ids: Optional[List[int | str]] = None,
         language: str = "ENGLISH",
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
@@ -49,48 +47,70 @@ class ExplanationService:
                 engine_name = "Celery Worker"
                 task_res = process_exam_explanations_task.delay(
                     str(exam_id),
-                    question_ids,
-                    language,
-                    task_id,
+                    question_ids=[str(q) for q in question_ids] if question_ids else None,
+                    language=language,
+                    task_id=task_id,
                 )
-                task_id = task_res.id if hasattr(task_res, "id") else task_id
-                execution_msg = (
-                    f"Explanation task enqueued to {engine_name} (Task ID: {task_id})."
-                )
-            except Exception as exc:
+                task_registry.register_celery_task(str(exam_id), task_res.id)
+            except Exception:
                 engine_name = "FastAPI BackgroundTasks (Fallback)"
-                logger.warning(
-                    f"Celery broker dispatch failed: {exc}. Falling back to BackgroundTasks...",
-                    exc_info=True,
-                )
-                if background_tasks is not None:
+                if background_tasks:
                     background_tasks.add_task(
                         async_process_exam_explanations,
-                        str(exam_id),
-                        question_ids,
-                        language,
-                        task_id,
-                        "FastAPI BackgroundTasks (Fallback)",
+                        exam_id_str=str(exam_id),
+                        question_ids_str=[str(q) for q in question_ids]
+                        if question_ids
+                        else None,
+                        language=language,
+                        task_id=task_id,
+                        execution_engine=engine_name,
                     )
-                execution_msg = f"Celery broker unavailable; explanation pipeline started via {engine_name} (Task ID: {task_id})."
+                else:
+                    import asyncio
+
+                    t = asyncio.create_task(
+                        async_process_exam_explanations(
+                            exam_id_str=str(exam_id),
+                            question_ids_str=[str(q) for q in question_ids]
+                            if question_ids
+                            else None,
+                            language=language,
+                            task_id=task_id,
+                            execution_engine=engine_name,
+                        )
+                    )
+                    task_registry.register_async_task(str(exam_id), t)
         else:
             engine_name = "FastAPI BackgroundTasks"
-            logger.info(
-                f"Dispatching Explanation generation via {engine_name} (Task ID: {task_id})..."
-            )
-            if background_tasks is not None:
+            if background_tasks:
                 background_tasks.add_task(
                     async_process_exam_explanations,
-                    str(exam_id),
-                    question_ids,
-                    language,
-                    task_id,
-                    "FastAPI BackgroundTasks",
+                    exam_id_str=str(exam_id),
+                    question_ids_str=[str(q) for q in question_ids]
+                    if question_ids
+                    else None,
+                    language=language,
+                    task_id=task_id,
+                    execution_engine=engine_name,
                 )
-            execution_msg = f"Explanation generation pipeline started via {engine_name} (Task ID: {task_id})."
+            else:
+                import asyncio
+
+                t = asyncio.create_task(
+                    async_process_exam_explanations(
+                        exam_id_str=str(exam_id),
+                        question_ids_str=[str(q) for q in question_ids]
+                        if question_ids
+                        else None,
+                        language=language,
+                        task_id=task_id,
+                        execution_engine=engine_name,
+                    )
+                )
+                task_registry.register_async_task(str(exam_id), t)
 
         return {
-            "message": execution_msg,
+            "status": "PROCESSING_STARTED",
             "exam_id": str(exam_id),
             "language": language,
             "task_id": task_id,
@@ -98,7 +118,7 @@ class ExplanationService:
         }
 
     async def get_question_explanation_report(
-        self, question_id: uuid.UUID, language: str = "ENGLISH"
+        self, question_id: int, language: str = "ENGLISH"
     ) -> Dict[str, Any]:
         try:
             lang_enum = LanguageCode(language.upper())
@@ -119,7 +139,7 @@ class ExplanationService:
         return kb
 
     async def set_canonical_question_link(
-        self, question_id: uuid.UUID, canonical_question_id: uuid.UUID
+        self, question_id: int, canonical_question_id: int
     ) -> Dict[str, Any]:
         success = await self.repo.set_canonical_question(question_id, canonical_question_id)
         if not success:

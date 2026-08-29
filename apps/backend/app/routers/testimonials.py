@@ -26,7 +26,7 @@ class TestimonialRejectPayload(BaseModel):
 
 
 class TestimonialOut(BaseModel):
-    id: uuid.UUID | str
+    id: int | str
     user_name: str
     user_exam: str
     user_photo: Optional[str] = None
@@ -143,7 +143,7 @@ async def list_all_testimonials_for_admin(
 
 @router.post("/admin/{testimonial_id}/approve", response_model=TestimonialOut)
 async def approve_testimonial(
-    testimonial_id: uuid.UUID,
+    testimonial_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
@@ -161,7 +161,7 @@ async def approve_testimonial(
 
 @router.post("/admin/{testimonial_id}/reject", response_model=TestimonialOut)
 async def reject_testimonial(
-    testimonial_id: uuid.UUID,
+    testimonial_id: int,
     payload: TestimonialRejectPayload,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
@@ -180,7 +180,7 @@ async def reject_testimonial(
 
 @router.delete("/admin/{testimonial_id}")
 async def delete_testimonial(
-    testimonial_id: uuid.UUID,
+    testimonial_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):

@@ -70,10 +70,10 @@ class ExamExportService:
         if exam:
             return exam
 
-        # 4. Try matching UUID
+        # 4. Try matching integer ID
         try:
-            exam_uuid = uuid.UUID(clean_id)
-            exam = await self.session.get(Exam, exam_uuid)
+            exam_id_int = int(clean_id)
+            exam = await self.session.get(Exam, exam_id_int)
             if exam:
                 return exam
         except ValueError:

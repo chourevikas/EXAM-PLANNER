@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field
@@ -7,10 +6,8 @@ from app.db.models.types import DateTimeTZ
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
-    user_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", index=True)
     title: str = Field(..., max_length=255)
     message: str = Field(...)
     notification_type: str = Field(default="GENERAL", max_length=50) # PENDING_TASKS, TEST_REPORT_READY, REMEDIAL_TASKS_ADDED, STREAK_MILESTONE

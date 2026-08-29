@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
@@ -24,12 +23,9 @@ class ExamAttempt(SQLModel, table=True):
         Index("ix_exam_attempts_user_status", "user_id", "status"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
-    user_int_id: Optional[int] = Field(default=None, index=True)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
-    exam_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
 
     status: AttemptStatus = Field(default=AttemptStatus.IN_PROGRESS, index=True)
     mode: AttemptMode = Field(default=AttemptMode.EXAM, index=True)
@@ -96,25 +92,20 @@ class ExamQuestionResponse(SQLModel, table=True):
         Index("ix_eq_responses_question", "question_id"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    attempt_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: int = Field(
         foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
-    attempt_int_id: Optional[int] = Field(default=None, index=True)
-    question_id: uuid.UUID = Field(
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
 
-    selected_option_id: Optional[uuid.UUID] = Field(
+    selected_option_id: Optional[int] = Field(
         default=None, foreign_key="question_options.id", ondelete="SET NULL"
     )
-    selected_option_int_id: Optional[int] = Field(default=None)
-    initial_option_id: Optional[uuid.UUID] = Field(
+    initial_option_id: Optional[int] = Field(
         default=None, foreign_key="question_options.id", ondelete="SET NULL"
     )
-    initial_option_int_id: Optional[int] = Field(default=None)
 
     question_status: QuestionResponseStatus = Field(
         default=QuestionResponseStatus.UNVISITED, index=True
@@ -163,18 +154,14 @@ class UserMemoryState(SQLModel, table=True):
         Index("ix_memory_next_review", "user_id", "next_scheduled_review"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
-    user_int_id: Optional[int] = Field(default=None, index=True)
-    question_id: Optional[uuid.UUID] = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    question_id: Optional[int] = Field(
         default=None, foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
-    subtopic_id: Optional[uuid.UUID] = Field(
+    subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="CASCADE", index=True
     )
-    subtopic_int_id: Optional[int] = Field(default=None, index=True)
 
     fsrs_difficulty: float = Field(default=5.0)
     fsrs_stability: float = Field(default=2.0)
@@ -196,11 +183,9 @@ class UserMemoryState(SQLModel, table=True):
 class UserSkillProfile(SQLModel, table=True):
     __tablename__ = "user_skill_profiles"
 
-    user_id: uuid.UUID = Field(
+    user_id: int = Field(
         foreign_key="users.id", primary_key=True, ondelete="CASCADE"
     )
-    user_int_id: Optional[int] = Field(default=None, index=True)
-    int_id: Optional[int] = Field(default=None)
     cumulative_irt_theta: float = Field(default=0.0)
     cumulative_gti: float = Field(default=0.20)
     cumulative_oeei: float = Field(default=0.70)
@@ -232,10 +217,8 @@ class UserTaxonomyMastery(SQLModel, table=True):
         ),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
-    user_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     taxonomy_type: str = Field(
         index=True,
         max_length=50,
@@ -268,16 +251,13 @@ class ExamQuestionReport(SQLModel, table=True):
         Index("ix_eq_reports_attempt_num", "attempt_id", "question_number"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    attempt_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: int = Field(
         foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
-    attempt_int_id: Optional[int] = Field(default=None, index=True)
-    question_id: uuid.UUID = Field(
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
     question_number: int = Field(index=True)
     is_correct: bool = Field(default=False, index=True)
     final_score: float = Field(default=0.0)
@@ -306,16 +286,12 @@ class ExamQuestionReport(SQLModel, table=True):
 class ExamAttemptReport(SQLModel, table=True):
     __tablename__ = "exam_attempt_reports"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    attempt_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: int = Field(
         foreign_key="exam_attempts.id", unique=True, index=True, ondelete="CASCADE"
     )
-    attempt_int_id: Optional[int] = Field(default=None, unique=True, index=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
-    user_int_id: Optional[int] = Field(default=None, index=True)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", index=True, ondelete="CASCADE")
-    exam_int_id: Optional[int] = Field(default=None, index=True)
+    user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    exam_id: int = Field(foreign_key="exams.id", index=True, ondelete="CASCADE")
 
     matrices_summary_json: dict = Field(
         default_factory=dict, sa_column=Column(PortableJSON)
@@ -347,14 +323,11 @@ class UserSkillProgressionReport(SQLModel, table=True):
         Index("ix_skill_prog_user_created", "user_id", "created_at"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    attempt_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    attempt_id: int = Field(
         foreign_key="exam_attempts.id", index=True, ondelete="CASCADE"
     )
-    attempt_int_id: Optional[int] = Field(default=None, index=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
-    user_int_id: Optional[int] = Field(default=None, index=True)
+    user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
 
     previous_metrics_json: dict = Field(
         default_factory=dict, sa_column=Column(PortableJSON)

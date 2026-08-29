@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from enum import Enum
@@ -14,10 +13,8 @@ class TestimonialStatus(str, Enum):
 class Testimonial(SQLModel, table=True):
     __tablename__ = "testimonials"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True, index=True)
-    user_int_id: Optional[int] = Field(default=None, nullable=True, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id", nullable=True, index=True)
     user_name: str
     user_exam: str
     user_photo: Optional[str] = None

@@ -52,7 +52,7 @@ class SyllabusService:
         self.session = session
 
     async def get_complete_syllabus(
-        self, exam_id: Optional[uuid.UUID] = None
+        self, exam_id: Optional[int] = None
     ) -> CompleteSyllabusResponse:
         """
         Returns the complete Subject -> Topic -> Subtopic syllabus tree.
@@ -79,7 +79,7 @@ class SyllabusService:
             return CompleteSyllabusResponse(**master)
 
         # Query DB subjects, topics, and subtopics for this version
-        subj_stmt = select(Subject).where(Subject.syllabus_version_id == syl_ver.id)
+        subj_stmt = select(Subject).where(Subject.version_id == syl_ver.id)
         db_subjects = (await self.session.exec(subj_stmt)).all()
         subj_id_map = {s.name.strip().lower(): str(s.id) for s in db_subjects if s.name}
 
@@ -169,7 +169,7 @@ class SyllabusService:
         )
 
     async def sync_or_create_exam_syllabus(
-        self, exam_id: uuid.UUID
+        self, exam_id: int
     ) -> SyllabusVersion:
         """
         Ensures a SyllabusVersion and canonical DB entries exist for exam_id.
@@ -180,7 +180,6 @@ class SyllabusService:
 
         if not syl_ver:
             syl_ver = SyllabusVersion(
-                id=uuid.uuid4(),
                 exam_id=exam_id,
                 title="UPSC Prelims Master Syllabus (GS Micro-Topics)",
                 version_code="UPSC_PRELIMS_MASTER_V1",
@@ -190,7 +189,7 @@ class SyllabusService:
             await self.session.flush()
 
         # Check existing subjects for this version
-        subj_stmt = select(Subject).where(Subject.syllabus_version_id == syl_ver.id)
+        subj_stmt = select(Subject).where(Subject.version_id == syl_ver.id)
         existing_subjects = {
             s.name.strip().lower(): s for s in (await self.session.exec(subj_stmt)).all()
         }
@@ -227,13 +226,13 @@ class SyllabusService:
             if not subject:
                 code_s = subject_name.strip().upper().replace(" ", "_").replace("&", "AND")[:20]
                 subject = Subject(
-                    id=uuid.uuid4(),
-                    syllabus_version_id=syl_ver.id,
+                    version_id=syl_ver.id,
                     name=subject_name.strip(),
                     code=code_s,
                     display_order=s_order,
                 )
                 self.session.add(subject)
+                await self.session.flush()
                 existing_subjects[s_key] = subject
                 s_order += 1
 
@@ -243,13 +242,13 @@ class SyllabusService:
                 if not topic:
                     code_t = topic_name.strip().upper().replace(" ", "_").replace("&", "AND")[:50]
                     topic = Topic(
-                        id=uuid.uuid4(),
                         subject_id=subject.id,
                         name=topic_name.strip(),
                         code=code_t,
                         display_order=t_order,
                     )
                     self.session.add(topic)
+                    await self.session.flush()
                     existing_topics[t_key] = topic
                     t_order += 1
 
@@ -259,7 +258,6 @@ class SyllabusService:
                     if not subtopic:
                         code_st = subtopic_name.strip().upper().replace(" ", "_").replace("&", "AND")[:50]
                         subtopic = Subtopic(
-                            id=uuid.uuid4(),
                             topic_id=topic.id,
                             name=subtopic_name.strip(),
                             code=code_st,
@@ -370,7 +368,7 @@ class SyllabusService:
 
     async def get_exam_question_integrity(
         self,
-        exam_id: uuid.UUID,
+        exam_id: int,
         issue_type: Optional[str] = None,
         page: int = 1,
         limit: int = 10,
@@ -399,9 +397,9 @@ class SyllabusService:
 
         # Batch fetch translations, options, and subtopics for display preview
         q_ids = [q.id for q in questions]
-        translations_map: Dict[uuid.UUID, List[QuestionTranslation]] = {}
-        options_map: Dict[uuid.UUID, List[QuestionOption]] = {}
-        subtopic_map: Dict[uuid.UUID, Tuple[str, str, str]] = {}
+        translations_map: Dict[int, List[QuestionTranslation]] = {}
+        options_map: Dict[int, List[QuestionOption]] = {}
+        subtopic_map: Dict[int, Tuple[str, str, str]] = {}
 
         if q_ids:
             t_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))

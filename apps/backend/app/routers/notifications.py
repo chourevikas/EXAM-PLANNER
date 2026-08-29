@@ -103,7 +103,7 @@ async def get_user_notifications(
 
 @router.post("/{notification_id}/read", summary="Mark single notification as read")
 async def mark_notification_read(
-    notification_id: uuid.UUID,
+    notification_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):

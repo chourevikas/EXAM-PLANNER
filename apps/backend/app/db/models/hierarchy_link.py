@@ -1,4 +1,3 @@
-import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
 
@@ -17,24 +16,19 @@ class QuestionHierarchyLink(SQLModel, table=True):
         Index("ix_qhl_subject", "subject_id"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    question_int_id: Optional[int] = Field(default=None, index=True)
-    subtopic_id: uuid.UUID = Field(
+    subtopic_id: int = Field(
         foreign_key="subtopics.id", ondelete="CASCADE", index=True
     )
-    subtopic_int_id: Optional[int] = Field(default=None, index=True)
-    topic_id: Optional[uuid.UUID] = Field(
+    topic_id: Optional[int] = Field(
         default=None, foreign_key="topics.id", ondelete="CASCADE", index=True
     )
-    topic_int_id: Optional[int] = Field(default=None, index=True)
-    subject_id: Optional[uuid.UUID] = Field(
+    subject_id: Optional[int] = Field(
         default=None, foreign_key="subjects.id", ondelete="CASCADE", index=True
     )
-    subject_int_id: Optional[int] = Field(default=None, index=True)
 
     is_primary: bool = Field(
         default=False,

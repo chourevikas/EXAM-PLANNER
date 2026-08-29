@@ -1,8 +1,6 @@
-import uuid
 from datetime import datetime
 from typing import Optional
 
-# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, EmailStr, ConfigDict
 from app.db.models.user import UserRole, UserStatus, SubscriptionTier
 
@@ -27,7 +25,7 @@ class UserUpdate(BaseModel):
 
 
 class UserRead(UserBase):
-    id: uuid.UUID | str
+    id: int
     status: UserStatus
     subscription_tier: SubscriptionTier
     free_questions_attempted: int

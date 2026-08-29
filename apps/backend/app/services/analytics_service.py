@@ -35,9 +35,9 @@ class AnalyticsService:
 
     async def get_psychometric_report_json(
         self,
-        user_id: Optional[uuid.UUID] = None,
-        exam_id: Optional[uuid.UUID] = None,
-        attempt_id: Optional[uuid.UUID] = None,
+        user_id: Optional[int] = None,
+        exam_id: Optional[int] = None,
+        attempt_id: Optional[int] = None,
     ) -> Response:
         try:
             report_data = await compile_comprehensive_psychometric_report(
@@ -58,9 +58,9 @@ class AnalyticsService:
 
     async def get_psychometric_report_yaml(
         self,
-        user_id: Optional[uuid.UUID] = None,
-        exam_id: Optional[uuid.UUID] = None,
-        attempt_id: Optional[uuid.UUID] = None,
+        user_id: Optional[int] = None,
+        exam_id: Optional[int] = None,
+        attempt_id: Optional[int] = None,
     ) -> Response:
         try:
             report_data = await compile_comprehensive_psychometric_report(
@@ -81,9 +81,9 @@ class AnalyticsService:
 
     async def get_psychometric_report_markdown(
         self,
-        user_id: Optional[uuid.UUID] = None,
-        exam_id: Optional[uuid.UUID] = None,
-        attempt_id: Optional[uuid.UUID] = None,
+        user_id: Optional[int] = None,
+        exam_id: Optional[int] = None,
+        attempt_id: Optional[int] = None,
     ) -> Response:
         try:
             if attempt_id:
@@ -110,7 +110,7 @@ class AnalyticsService:
 
     async def get_attempt_question_report(
         self,
-        attempt_id: uuid.UUID,
+        attempt_id: int,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
     ) -> Dict[str, Any]:
@@ -200,7 +200,7 @@ class AnalyticsService:
             "questions": all_questions,
         }
 
-    async def get_attempt_exam_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_attempt_exam_report(self, attempt_id: int) -> Dict[str, Any]:
         """Fetches Report 2: Exam-Level 12-Matrix Aggregated Performance Report."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
@@ -256,7 +256,7 @@ class AnalyticsService:
         await cache.set(cache_key, res_data, ttl_seconds=86400)
         return res_data
 
-    async def get_attempt_user_progression_report(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_attempt_user_progression_report(self, attempt_id: int) -> Dict[str, Any]:
         """Fetches Report 3: Cumulative User Skill Progression Delta Report."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
@@ -302,7 +302,7 @@ class AnalyticsService:
 
         raise HTTPException(status_code=404, detail="User skill progression report not available.")
 
-    async def get_user_skill_profile(self, user_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_user_skill_profile(self, user_id: int) -> Dict[str, Any]:
         """Fetches the user's cumulative psychometric profile and taxonomy mastery grid."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
@@ -355,7 +355,7 @@ class AnalyticsService:
         await cache.set(cache_key, res_data, ttl_seconds=1800)
         return res_data
 
-    async def get_attempt_evaluation_status(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_attempt_evaluation_status(self, attempt_id: int) -> Dict[str, Any]:
         """Checks if the psychometric post-submission pipeline evaluation has completed for an attempt."""
         import asyncio
         from datetime import datetime, timezone
@@ -431,7 +431,7 @@ class AnalyticsService:
             "total_questions": attempt.total_questions,
         }
 
-    async def retry_attempt_evaluation(self, attempt_id: uuid.UUID) -> Dict[str, Any]:
+    async def retry_attempt_evaluation(self, attempt_id: int) -> Dict[str, Any]:
         """Manually retries evaluation for a failed or pending attempt."""
         import asyncio
         from app.engine.post_submission_pipeline import run_post_submission_pipeline, _IN_FLIGHT_PIPELINES
@@ -458,7 +458,7 @@ class AnalyticsService:
         }
 
     async def get_user_cumulative_aggregate_report(
-        self, user_id: uuid.UUID, force_recompute: bool = False
+        self, user_id: int, force_recompute: bool = False
     ) -> Dict[str, Any]:
         """Synthesizes or retrieves the multi-exam cumulative psychometric report with cross-exam progression charts."""
         from app.cache import get_cache, build_cache_key
@@ -481,7 +481,7 @@ class AnalyticsService:
         return report
 
     async def get_user_cumulative_aggregate_markdown(
-        self, user_id: uuid.UUID
+        self, user_id: int
     ) -> Response:
         """Retrieves the formatted Markdown audit report for all evaluated exams cumulatively."""
         from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
@@ -492,7 +492,7 @@ class AnalyticsService:
         md_content = rep.get("markdown_audit") or "# Cumulative Psychometric Audit Report"
         return Response(content=md_content, media_type="text/markdown")
 
-    async def get_user_subject_performance(self, user_id: uuid.UUID) -> list[dict]:
+    async def get_user_subject_performance(self, user_id: int) -> list[dict]:
         """Calculates subject accuracy percentages for a user from study activities and exam responses."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
@@ -549,7 +549,7 @@ class AnalyticsService:
         question_ids = list({q.id for _, q, _ in eq_results if q and q.id})
         subtopic_ids = list({q.subtopic_id for _, q, _ in eq_results if q and q.subtopic_id})
 
-        q_to_subject: dict[uuid.UUID, str] = {}
+        q_to_subject: dict[int, str] = {}
         if question_ids:
             links_stmt = (
                 select(QuestionHierarchyLink.question_id, Subject.name)
@@ -562,7 +562,7 @@ class AnalyticsService:
                 if q_id not in q_to_subject:
                     q_to_subject[q_id] = subj_name
 
-        subt_to_subject: dict[uuid.UUID, str] = {}
+        subt_to_subject: dict[int, str] = {}
         if subtopic_ids:
             subt_stmt = (
                 select(Subtopic.id, Subject.name)
@@ -626,7 +626,7 @@ class AnalyticsService:
         await cache.set(cache_key, result, ttl_seconds=900)
         return result
 
-    async def get_predicted_rank(self, user_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_predicted_rank(self, user_id: int) -> Dict[str, Any]:
         """
         Calculates the candidate's All India Rank (AIR) and Percentile prediction
         for UPSC CSE Prelims using Weighted Moving Average (WMA) and UPSC historical cutoffs.
@@ -723,7 +723,7 @@ class AnalyticsService:
         await cache.set(cache_key, result, ttl_seconds=900)
         return result
 
-    async def get_monthly_benchmark(self, user_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_monthly_benchmark(self, user_id: int) -> Dict[str, Any]:
         """
         Synthesizes the National Benchmarking & Monthly Performance Report.
         Calculates dynamic predicted AIR, overall percentile, percentile growth delta,

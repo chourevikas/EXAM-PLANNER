@@ -186,7 +186,7 @@ async def seed_database():
         for subj_name, topics in SYLLABUS_HIERARCHY.items():
             subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
             subj_obj = Subject(
-                syllabus_version_id=syllabus.id,
+                version_id=syllabus.id,
                 code=subj_code,
                 name=subj_name,
                 display_order=subj_order,

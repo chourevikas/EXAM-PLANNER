@@ -29,9 +29,9 @@ router = APIRouter(prefix="/syllabus", tags=["Syllabus & Taxonomy"])
     summary="Get Complete Syllabus Hierarchy (Alias)",
 )
 async def get_complete_syllabus(
-    exam_id: Optional[uuid.UUID] = Query(
+    exam_id: Optional[int] = Query(
         default=None,
-        description="Optional Exam ID to enrich with exam-specific database UUIDs and metrics",
+        description="Optional Exam ID to enrich with exam-specific database IDs and metrics",
     ),
     session: AsyncSession = Depends(get_async_session),
 ):

@@ -1,23 +1,20 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from typing import List
+from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_async_session
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.user_service import UserService
-from app.db.models.user import User, UserRole
+from app.db.models.user import User, UserRole, QuestionBookmark
+from app.db.models.question import Question
 from app.core.deps import get_current_user, require_roles
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-from app.db.models.user import QuestionBookmark
-from app.db.models.question import Question
-from sqlmodel import select
-from sqlalchemy.orm import selectinload
-from fastapi import HTTPException
-import uuid
 
 @router.get("/me/bookmarks")
 async def list_bookmarks(
@@ -34,7 +31,6 @@ async def list_bookmarks(
     result = await session.exec(stmt)
     rows = result.all()
     
-    # We return basic info to the frontend for now
     out = []
     for bk, q in rows:
         text = ""
@@ -54,26 +50,22 @@ async def list_bookmarks(
         })
     return out
 
+
 @router.post("/me/bookmarks/{question_id}")
 async def add_bookmark(
-    question_id: str,
+    question_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        q_uuid = uuid.UUID(question_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid question ID format")
-    
     # Check if question exists
-    q = await session.get(Question, q_uuid)
+    q = await session.get(Question, question_id)
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")
         
     # Check if already bookmarked
     stmt = select(QuestionBookmark).where(
         QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == q_uuid
+        QuestionBookmark.question_id == question_id
     )
     result = await session.exec(stmt)
     if result.first():
@@ -81,26 +73,22 @@ async def add_bookmark(
         
     bk = QuestionBookmark(
         user_id=current_user.id,
-        question_id=q_uuid
+        question_id=question_id
     )
     session.add(bk)
     await session.commit()
     return {"message": "Bookmark added", "bookmark_id": str(bk.id)}
 
+
 @router.delete("/me/bookmarks/{question_id}")
 async def remove_bookmark(
-    question_id: str,
+    question_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
-    try:
-        q_uuid = uuid.UUID(question_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid question ID format")
-        
     stmt = select(QuestionBookmark).where(
         QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == q_uuid
+        QuestionBookmark.question_id == question_id
     )
     result = await session.exec(stmt)
     bk = result.first()
@@ -154,7 +142,7 @@ async def create_user(
 
 @router.get("/{user_id}", response_model=UserRead)
 async def get_user(
-    user_id: str,
+    user_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -176,7 +164,7 @@ async def get_user(
 
 @router.put("/{user_id}", response_model=UserRead)
 async def update_user(
-    user_id: str,
+    user_id: int | str,
     user_in: UserUpdate,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
@@ -189,7 +177,7 @@ async def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: str,
+    user_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
@@ -197,4 +185,3 @@ async def delete_user(
     await user_service.delete_user(user_id)
     await invalidate_user_cache(str(user_id))
     return None
-

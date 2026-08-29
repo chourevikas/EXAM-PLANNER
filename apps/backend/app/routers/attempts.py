@@ -1,9 +1,7 @@
-import uuid
 from typing import Optional, Any
 from fastapi import APIRouter, Depends, status, BackgroundTasks, Body
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
-
 
 from app.db.session import get_async_session
 from app.core.deps import get_current_user
@@ -34,13 +32,13 @@ router = APIRouter(prefix="/attempts", tags=["Student Exam-Taking Sessions"])
 async def list_candidate_attempts(
     skip: int = 0,
     limit: int = 500,
-    exam_id: Optional[uuid.UUID] = None,
+    exam_id: Optional[int] = None,
     status_filter: Optional[AttemptStatus] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Parameter 13: Lists candidate's exam attempts history with optional filtering by exam_id or status.
+    Lists candidate's exam attempts history with optional filtering by exam_id or status.
     """
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
@@ -88,7 +86,7 @@ async def start_exam_attempt(
 
 @router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
 async def get_all_attempt_questions_bulk(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     language: Optional[str] = "ENGLISH",
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -104,14 +102,14 @@ async def get_all_attempt_questions_bulk(
 
 @router.get("/{attempt_id}/questions/{question_number}", response_model=QuestionNavResponse)
 async def get_question_by_number(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     question_number: int,
     language: Optional[str] = "ENGLISH",
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Parameter 8: Fetches a specific question by its 1-indexed number within the exam paper.
+    Fetches a specific question by its 1-indexed number within the exam paper.
     Supports optional `?language=` parameter (e.g., ENGLISH, HINDI).
     """
     service = ExamSessionService(session)
@@ -125,7 +123,7 @@ async def get_question_by_number(
 
 @router.post("/{attempt_id}/responses", response_model=SaveResponseResponse)
 async def save_question_response(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     req: SaveResponseRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -139,7 +137,7 @@ async def save_question_response(
 
 @router.post("/{attempt_id}/responses/batch", response_model=BatchSaveResponseAck)
 async def save_question_responses_batch(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     req: BatchSaveResponseRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -155,7 +153,7 @@ async def save_question_responses_batch(
 
 @router.get("/{attempt_id}/responses/batch/{batch_id}", response_model=BatchStatusResponse)
 async def get_response_batch_status(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     batch_id: str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -169,8 +167,8 @@ async def get_response_batch_status(
 
 @router.post("/{attempt_id}/reveal/{question_id}", response_model=RevealAnswerResponse)
 async def reveal_question_answer(
-    attempt_id: uuid.UUID,
-    question_id: uuid.UUID,
+    attempt_id: int,
+    question_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -186,7 +184,7 @@ async def reveal_question_answer(
 
 @router.post("/{attempt_id}/heartbeat", response_model=HeartbeatResponse)
 async def sync_exam_heartbeat(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     req: HeartbeatRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -200,7 +198,7 @@ async def sync_exam_heartbeat(
 
 @router.get("/{attempt_id}/status", response_model=ExamStatusResponse)
 async def get_exam_attempt_status(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -214,14 +212,14 @@ async def get_exam_attempt_status(
 
 @router.post("/{attempt_id}/submit", response_model=SubmitExamResponse)
 async def submit_exam_attempt(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     req: SubmitExamRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Parameter 7 & 12: Finalizes the exam attempt with idempotency check and server-side timer validation.
+    Finalizes the exam attempt with idempotency check and server-side timer validation.
     Synchronously calculates raw scores and enqueues the async post-submission psychometric analysis pipeline.
     """
     service = ExamSessionService(session)
@@ -238,12 +236,12 @@ async def submit_exam_attempt(
 
 @router.get("/{attempt_id}/result", summary="Dedicated Result View for Submitted/Evaluated Attempt")
 async def get_attempt_result(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Parameter 14: Dedicated result view for a submitted/evaluated attempt once status is SUBMITTED or EVALUATED.
+    Dedicated result view for a submitted/evaluated attempt once status is SUBMITTED or EVALUATED.
     """
     service = ExamSessionService(session)
     return await service.get_attempt_result(attempt_id=attempt_id, user_id=current_user.id)
@@ -262,7 +260,6 @@ async def sync_guest_sessions(
     return await service.sync_guest_sessions(user_id=current_user.id, sessions_list=sessions_payload)
 
 
-
 @router.get("/student-dashboard-stats", summary="Get merged student dashboard statistics")
 async def get_student_dashboard_stats(
     session: AsyncSession = Depends(get_async_session),
@@ -273,4 +270,3 @@ async def get_student_dashboard_stats(
     """
     service = ExamSessionService(session)
     return await service.get_student_dashboard_stats(user_id=current_user.id)
-

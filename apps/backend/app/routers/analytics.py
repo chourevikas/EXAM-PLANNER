@@ -1,9 +1,10 @@
-import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, col
+from datetime import datetime, timezone
 
 from app.db.session import get_async_session
 from app.services.analytics_service import AnalyticsService
@@ -11,8 +12,6 @@ from app.core.deps import get_current_user
 from app.db.models.user import User, UserRole
 from app.schemas.analytics import StudyActivityCreate, StudyActivityOut
 from app.db.models.study_plan import StudyActivity
-from sqlmodel import select, col
-from datetime import datetime, timezone
 
 
 router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytics"])
@@ -20,7 +19,7 @@ router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytic
 
 @router.get("/reports/attempts/{attempt_id}/status", summary="Check Post-Submission Evaluation Status (Long-Polling)")
 async def get_attempt_evaluation_status(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -35,7 +34,7 @@ async def get_attempt_evaluation_status(
 
 @router.post("/reports/attempts/{attempt_id}/retry", summary="Retry Failed Post-Submission Evaluation")
 async def retry_attempt_evaluation(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -49,7 +48,7 @@ async def retry_attempt_evaluation(
 
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
 async def get_attempt_question_report(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     page: Optional[int] = None,
     page_size: Optional[int] = None,
     session: AsyncSession = Depends(get_async_session),
@@ -66,7 +65,7 @@ async def get_attempt_question_report(
 
 @router.get("/reports/attempts/{attempt_id}/exam", summary="Report 2: Exam-Level 12-Matrix Aggregated Report")
 async def get_attempt_exam_report(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -80,7 +79,7 @@ async def get_attempt_exam_report(
 
 @router.get("/reports/attempts/{attempt_id}/user-delta", summary="Report 3: Cumulative User Skill Progression Delta Report")
 async def get_attempt_user_progression_report(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -95,7 +94,7 @@ async def get_attempt_user_progression_report(
 
 @router.get("/reports/user/{user_id}/skill-profile", summary="User Cumulative Psychometric Skill Profile")
 async def get_user_cumulative_skill_profile(
-    user_id: uuid.UUID,
+    user_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -120,11 +119,11 @@ async def get_user_cumulative_aggregate_report(
     Synthesizes the complete longitudinal multi-exam performance report for all evaluated exams,
     including cross-exam comparison trajectories, 12-matrix aggregates, and universal taxonomy mastery.
     """
-    target_uuid = current_user.id if user_id == "me" else uuid.UUID(user_id)
-    if current_user.id != target_uuid and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+    target_id = current_user.id if user_id == "me" else int(user_id)
+    if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative report.")
     service = AnalyticsService(session)
-    res = await service.get_user_cumulative_aggregate_report(user_id=target_uuid, force_recompute=force_recompute)
+    res = await service.get_user_cumulative_aggregate_report(user_id=target_id, force_recompute=force_recompute)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
@@ -137,16 +136,16 @@ async def get_user_cumulative_aggregate_markdown(
     """
     Returns the complete cumulative multi-exam psychometric report rendered as a Markdown audit document.
     """
-    target_uuid = current_user.id if user_id == "me" else uuid.UUID(user_id)
-    if current_user.id != target_uuid and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+    target_id = current_user.id if user_id == "me" else int(user_id)
+    if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative audit.")
     service = AnalyticsService(session)
-    return await service.get_user_cumulative_aggregate_markdown(user_id=target_uuid)
+    return await service.get_user_cumulative_aggregate_markdown(user_id=target_id)
 
 
 @router.get("/reports/attempts/{attempt_id}/json")
 async def get_attempt_report_json(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -157,7 +156,7 @@ async def get_attempt_report_json(
 
 @router.get("/reports/attempts/{attempt_id}/yaml")
 async def get_attempt_report_yaml(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -168,13 +167,14 @@ async def get_attempt_report_yaml(
 
 @router.get("/reports/attempts/{attempt_id}/markdown")
 async def get_attempt_report_markdown(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in Markdown format directly by attempt_id."""
     service = AnalyticsService(session)
     return await service.get_psychometric_report_markdown(attempt_id=attempt_id)
+
 
 @router.post("/activity", response_model=StudyActivityOut)
 async def create_study_activity(
@@ -191,6 +191,7 @@ async def create_study_activity(
     await session.commit()
     await session.refresh(db_activity)
     return db_activity
+
 
 @router.get("/activity/today", response_model=list[StudyActivityOut])
 async def get_todays_activities(
@@ -240,8 +241,8 @@ async def get_user_subject_performance(
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/json")
 async def get_exam_psychometric_report_json(
-    user_id: uuid.UUID,
-    exam_id: uuid.UUID,
+    user_id: int,
+    exam_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -253,8 +254,8 @@ async def get_exam_psychometric_report_json(
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/yaml")
 async def get_exam_psychometric_report_yaml(
-    user_id: uuid.UUID,
-    exam_id: uuid.UUID,
+    user_id: int,
+    exam_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -266,8 +267,8 @@ async def get_exam_psychometric_report_yaml(
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/markdown")
 async def get_exam_psychometric_report_markdown(
-    user_id: uuid.UUID,
-    exam_id: uuid.UUID,
+    user_id: int,
+    exam_id: int,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -277,7 +278,7 @@ async def get_exam_psychometric_report_markdown(
     return await service.get_psychometric_report_markdown(user_id=user_id, exam_id=exam_id)
 
 
-def _validate_user_ownership(current_user: User, target_user_id: uuid.UUID):
+def _validate_user_ownership(current_user: User, target_user_id: int):
     if current_user.id != target_user_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

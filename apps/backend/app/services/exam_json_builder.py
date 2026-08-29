@@ -54,7 +54,7 @@ class ExamJsonBuilder:
         trans_res = await self.session.exec(
             select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
         )
-        trans_map: Dict[uuid.UUID, list[QuestionTranslation]] = {}
+        trans_map: Dict[int, list[QuestionTranslation]] = {}
         for t in trans_res.all():
             trans_map.setdefault(t.question_id, []).append(t)
 
@@ -65,13 +65,13 @@ class ExamJsonBuilder:
             .order_by(col(QuestionOption.display_order).asc())
         )
         options_list = opt_res.all()
-        options_map: Dict[uuid.UUID, list[QuestionOption]] = {}
+        options_map: Dict[int, list[QuestionOption]] = {}
         opt_ids = []
         for opt in options_list:
             options_map.setdefault(opt.question_id, []).append(opt)
             opt_ids.append(opt.id)
 
-        opt_trans_map: Dict[uuid.UUID, list[OptionTranslation]] = {}
+        opt_trans_map: Dict[int, list[OptionTranslation]] = {}
         if opt_ids:
             ot_res = await self.session.exec(
                 select(OptionTranslation).where(col(OptionTranslation.option_id).in_(opt_ids))
@@ -83,7 +83,7 @@ class ExamJsonBuilder:
         meta_res = await self.session.exec(
             select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
         )
-        meta_map: Dict[uuid.UUID, QuestionMetadata] = {
+        meta_map: Dict[int, QuestionMetadata] = {
             m.question_id: m for m in meta_res.all()
         }
 
@@ -91,7 +91,7 @@ class ExamJsonBuilder:
         expl_res = await self.session.exec(
             select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
         )
-        expl_map: Dict[uuid.UUID, list[QuestionExplanation]] = {}
+        expl_map: Dict[int, list[QuestionExplanation]] = {}
         for e in expl_res.all():
             expl_map.setdefault(e.question_id, []).append(e)
 
@@ -99,7 +99,7 @@ class ExamJsonBuilder:
         h_res = await self.session.exec(
             select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
         )
-        h_map: Dict[uuid.UUID, list[QuestionHierarchyLink]] = {}
+        h_map: Dict[int, list[QuestionHierarchyLink]] = {}
         h_links = h_res.all()
         subtopic_ids = set()
         topic_ids = set()
@@ -120,7 +120,7 @@ class ExamJsonBuilder:
 
         # 6. Passages & Passage Translations
         passage_ids = [q.passage_id for q in questions if q.passage_id]
-        pass_trans_map: Dict[uuid.UUID, list[PassageTranslation]] = {}
+        pass_trans_map: Dict[int, list[PassageTranslation]] = {}
         if passage_ids:
             pt_res = await self.session.exec(
                 select(PassageTranslation).where(col(PassageTranslation.passage_id).in_(passage_ids))
@@ -129,7 +129,7 @@ class ExamJsonBuilder:
                 pass_trans_map.setdefault(pt.passage_id, []).append(pt)
 
         # 7. Preload Subtopics, Topics, Subjects
-        subtopics_map: Dict[uuid.UUID, Subtopic] = {}
+        subtopics_map: Dict[int, Subtopic] = {}
         if subtopic_ids:
             st_res = await self.session.exec(
                 select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids))
@@ -139,7 +139,7 @@ class ExamJsonBuilder:
                 if st.topic_id:
                     topic_ids.add(st.topic_id)
 
-        topics_map: Dict[uuid.UUID, Topic] = {}
+        topics_map: Dict[int, Topic] = {}
         if topic_ids:
             top_res = await self.session.exec(
                 select(Topic).where(col(Topic.id).in_(topic_ids))
@@ -149,7 +149,7 @@ class ExamJsonBuilder:
                 if top.subject_id:
                     subject_ids.add(top.subject_id)
 
-        subjects_map: Dict[uuid.UUID, Subject] = {}
+        subjects_map: Dict[int, Subject] = {}
         if subject_ids:
             sb_res = await self.session.exec(
                 select(Subject).where(col(Subject.id).in_(subject_ids))
@@ -436,7 +436,7 @@ class ExamJsonBuilder:
 
         return q_card, sol_card
 
-    async def sync_single_question_artifacts(self, question_id: uuid.UUID) -> Optional[Dict[str, str]]:
+    async def sync_single_question_artifacts(self, question_id: int) -> Optional[Dict[str, str]]:
         """
         Uploads or updates the individual Q{num}.json question and solution artifacts to S3 in real-time.
         """
@@ -504,7 +504,7 @@ class ExamJsonBuilder:
 
     async def generate_and_upload(
         self,
-        exam_id: uuid.UUID,
+        exam_id: int,
         sync_all: bool = False,
         sync_target: str = "MASTERS_ONLY",
     ) -> Dict[str, Any]:

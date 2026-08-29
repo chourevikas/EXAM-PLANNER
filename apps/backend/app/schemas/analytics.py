@@ -18,8 +18,8 @@ class StudyActivityCreate(BaseModel):
     notes: Optional[str] = None
 
 class StudyActivityOut(BaseModel):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: int
+    user_id: int
     date: dt.date
     activity_type: StudyActivityType
     activity_source: ActivitySource

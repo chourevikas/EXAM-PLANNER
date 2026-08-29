@@ -1,4 +1,3 @@
-import uuid
 from typing import List, Optional
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -16,7 +15,7 @@ class UserService:
         self.session = session
         self.user_repo = UserRepository(session)
 
-    async def get_user_by_id(self, user_id: uuid.UUID | str) -> Optional[User]:
+    async def get_user_by_id(self, user_id: int | str) -> Optional[User]:
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         cache_key = build_cache_key("users:detail", str(user_id))
@@ -77,7 +76,7 @@ class UserService:
         await cache.delete_pattern("ep:users:list*")
         return new_user
 
-    async def update_user(self, user_id: uuid.UUID | str, user_in: UserUpdate, current_user: Optional[User] = None) -> User:
+    async def update_user(self, user_id: int | str, user_in: UserUpdate, current_user: Optional[User] = None) -> User:
         user = await self.get_user_by_id(user_id)
         if not user:
             raise BaseAppException(
@@ -108,8 +107,7 @@ class UserService:
         await invalidate_user_cache(str(user_id))
         return user
 
-
-    async def delete_user(self, user_id: uuid.UUID | str) -> None:
+    async def delete_user(self, user_id: int | str) -> None:
         user = await self.get_user_by_id(user_id)
         if not user:
             raise BaseAppException(

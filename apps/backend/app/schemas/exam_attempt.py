@@ -1,29 +1,28 @@
-import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from app.db.models.enums import AttemptMode, QuestionResponseStatus, AttemptStatus
 
 
 # --- Request Schemas ---
 
 class StartExamRequest(BaseModel):
-    exam_id: uuid.UUID | str
+    exam_id: int | str
     mode: AttemptMode = AttemptMode.EXAM
     force_new: bool = False
 
 
 class SaveResponseRequest(BaseModel):
-    question_id: uuid.UUID | str
-    selected_option_id: Optional[uuid.UUID | str] = None
+    question_id: int | str
+    selected_option_id: Optional[int | str] = None
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
     option_switch_count: int = 0
 
 
 class BatchSaveItem(BaseModel):
-    question_id: uuid.UUID | str
-    selected_option_id: Optional[uuid.UUID | str] = None
+    question_id: int | str
+    selected_option_id: Optional[int | str] = None
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
     is_switched: bool = False
@@ -32,7 +31,7 @@ class BatchSaveItem(BaseModel):
 
 
 class BatchSaveResponseRequest(BaseModel):
-    batch_id: uuid.UUID | str = Field(default_factory=uuid.uuid4)
+    batch_id: Optional[str] = None
     responses: List[BatchSaveItem]
 
 
@@ -65,14 +64,14 @@ class SubmitExamRequest(BaseModel):
 
 class HeartbeatRequest(BaseModel):
     remaining_time_seconds: int
-    active_question_id: Optional[uuid.UUID | str] = None
+    active_question_id: Optional[int | str] = None
 
 
 
 # --- Response Schemas ---
 
 class OptionOut(BaseModel):
-    option_id: uuid.UUID | str
+    option_id: int | str
     option_label: str
     text: str
     display_order: int = 1
@@ -81,7 +80,7 @@ class OptionOut(BaseModel):
 
 
 class QuestionOut(BaseModel):
-    question_id: uuid.UUID | str
+    question_id: int | str
     question_number: int
     text: str
     options: List[OptionOut]
@@ -110,7 +109,7 @@ class NavigationMeta(BaseModel):
 
 
 class ResponseState(BaseModel):
-    selected_option_id: Optional[uuid.UUID | str] = None
+    selected_option_id: Optional[int | str] = None
     is_marked_for_review: bool = False
     time_spent_seconds: float = 0.0
     question_status: QuestionResponseStatus = QuestionResponseStatus.UNVISITED
@@ -126,14 +125,14 @@ class QuestionNavResponse(BaseModel):
 
 class QuestionPaletteItem(BaseModel):
     question_number: int
-    question_id: uuid.UUID | str
+    question_id: int | str
     question_status: QuestionResponseStatus
     total: int = 0
 
 
 class StartExamResponse(BaseModel):
-    attempt_id: uuid.UUID | str
-    exam_id: uuid.UUID | str
+    attempt_id: int | str
+    exam_id: int | str
     status: AttemptStatus
     mode: AttemptMode
     started_at: datetime
@@ -152,12 +151,12 @@ class SaveResponseResponse(BaseModel):
 
 
 class RevealAnswerResponse(BaseModel):
-    question_id: uuid.UUID | str
+    question_id: int | str
     question_number: int
-    correct_option_id: uuid.UUID | str
+    correct_option_id: int | str
     correct_option_label: str
     is_user_correct: bool
-    user_selected_option_id: Optional[uuid.UUID | str] = None
+    user_selected_option_id: Optional[int | str] = None
     user_selected_label: Optional[str] = None
     marks_awarded: float = 0.0
     closeness_score: float = 0.0
@@ -167,7 +166,7 @@ class RevealAnswerResponse(BaseModel):
 
 
 class SubmitExamResponse(BaseModel):
-    attempt_id: uuid.UUID | str
+    attempt_id: int | str
     status: AttemptStatus
     submitted_at: datetime
     submission_reason: str
@@ -187,8 +186,8 @@ class SubmitExamResponse(BaseModel):
 
 
 class ExamStatusResponse(BaseModel):
-    attempt_id: uuid.UUID | str
-    exam_id: uuid.UUID | str
+    attempt_id: int | str
+    exam_id: int | str
     exam_name: str
     status: AttemptStatus
     mode: AttemptMode

@@ -21,16 +21,16 @@ router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
 
 @router.get("", response_model=QuestionPaginatedResponse, summary="Get Questions with Multi-Filtering & Pagination")
 async def list_questions(
-    subject_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Subject ID"),
+    subject_id: Optional[int] = Query(default=None, description="Filter by Subject ID"),
     subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
     subject_code: Optional[str] = Query(default=None, description="Filter by Subject Code"),
-    topic_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Topic ID"),
+    topic_id: Optional[int] = Query(default=None, description="Filter by Topic ID"),
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
     topic_code: Optional[str] = Query(default=None, description="Filter by Topic Code"),
-    subtopic_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Subtopic ID"),
+    subtopic_id: Optional[int] = Query(default=None, description="Filter by Subtopic ID"),
     subtopic_name: Optional[str] = Query(default=None, description="Filter by Subtopic Name (substring match)"),
     subtopic_code: Optional[str] = Query(default=None, description="Filter by Subtopic Code"),
-    exam_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Exam ID"),
+    exam_id: Optional[int] = Query(default=None, description="Filter by Exam ID"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
     exam_type: Optional[QuestionSourceType] = Query(default=None, description="Filter by Exam Type e.g. PYQ or STATIC_MOCK"),
     exam_year: Optional[int] = Query(default=None, description="Filter by Exam Year e.g. 2023"),
@@ -248,7 +248,7 @@ async def create_question(
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
 async def get_question(
-    question_id: uuid.UUID,
+    question_id: int,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -278,7 +278,7 @@ async def get_question(
 
 @router.put("/{question_id}", response_model=QuestionDetailResponse, summary="Update Question & Publish")
 async def update_question(
-    question_id: uuid.UUID,
+    question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -295,7 +295,7 @@ async def update_question(
 
 @router.patch("/{question_id}", response_model=QuestionDetailResponse, summary="Partial Update Question & Publish")
 async def patch_question(
-    question_id: uuid.UUID,
+    question_id: int,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -312,7 +312,7 @@ async def patch_question(
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete Question")
 async def delete_question(
-    question_id: uuid.UUID,
+    question_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Deletes a question entity by ID."""
@@ -325,7 +325,7 @@ async def delete_question(
 
 @router.get("/{question_id}/formatted/yaml", response_class=PlainTextResponse, summary="Export Question to YAML")
 async def get_question_yaml_file(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     service = QuestionService(session)
     return await service.get_question_yaml_file(question_id)
@@ -333,7 +333,7 @@ async def get_question_yaml_file(
 
 @router.get("/{question_id}/formatted/markdown", response_class=PlainTextResponse, summary="Export Question to Markdown")
 async def get_question_markdown_file(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     service = QuestionService(session)
     return await service.get_question_markdown_file(question_id)
@@ -341,7 +341,7 @@ async def get_question_markdown_file(
 
 @router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question")
 async def get_question_solution(
-    question_id: uuid.UUID,
+    question_id: int,
     language: LanguageCode = LanguageCode.ENGLISH,
     session: AsyncSession = Depends(get_async_session),
 ):

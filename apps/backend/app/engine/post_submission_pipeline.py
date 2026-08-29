@@ -185,7 +185,7 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
 _IN_FLIGHT_PIPELINES: set = set()
 
 
-async def run_post_submission_pipeline(attempt_id: uuid.UUID, session: Optional[AsyncSession] = None) -> None:
+async def run_post_submission_pipeline(attempt_id: int, session: Optional[AsyncSession] = None) -> None:
     """
     Asynchronous, non-blocking post-submission pipeline:
     1. Executes mode-aware mathematical matrix engine via `MatrixOrchestrator` (zero LLM).
@@ -228,7 +228,7 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID, session: Optional[
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
 
 
-async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> None:
+async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     # 1. Fetch Attempt
     attempt = await session.get(ExamAttempt, attempt_id)
     if not attempt:
@@ -1161,7 +1161,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     q_rep_map = {r.question_id: r for r in existing_q_reps.all()}
 
     for q_item in part_1_items:
-        q_uid = uuid.UUID(q_item["question_id"]) if isinstance(q_item["question_id"], str) else q_item["question_id"]
+        q_raw = q_item.get("question_id")
+        q_uid = int(q_raw) if q_raw is not None else None
         expl_dict = q_item.get("explanation")
 
         existing_q_rep = q_rep_map.get(q_uid)

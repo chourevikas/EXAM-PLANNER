@@ -172,14 +172,14 @@ async def seed_psychometric_environment():
                 subj_code = subj_name.upper().replace(" ", "_").replace("&", "AND")[:50]
                 subj_res = await session.exec(
                     select(Subject).where(
-                        Subject.syllabus_version_id == syll.id,
+                        Subject.version_id == syll.id,
                         Subject.name == subj_name,
                     )
                 )
                 subj = subj_res.first()
                 if not subj:
                     subj = Subject(
-                        syllabus_version_id=syll.id,
+                        version_id=syll.id,
                         code=subj_code,
                         name=subj_name,
                     )

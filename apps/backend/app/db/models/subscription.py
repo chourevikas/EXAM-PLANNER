@@ -1,4 +1,3 @@
-import uuid
 from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
@@ -26,8 +25,7 @@ class PlatformFeature(SQLModel, table=True):
     __tablename__ = "platform_features"
     __table_args__ = (Index("ix_platform_features_code", "feature_code", unique=True),)
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
+    id: Optional[int] = Field(default=None, primary_key=True)
     feature_code: str = Field(
         index=True,
         max_length=100,
@@ -52,8 +50,7 @@ class SubscriptionPlan(SQLModel, table=True):
         Index("ix_subscription_plans_active_display", "is_active", "display_order"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
+    id: Optional[int] = Field(default=None, primary_key=True)
     plan_code: str = Field(
         index=True,
         max_length=100,
@@ -87,12 +84,9 @@ class PlanFeatureLink(SQLModel, table=True):
         Index("ix_plan_feature_unique", "plan_id", "feature_id", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
-    plan_int_id: Optional[int] = Field(default=None, index=True)
-    feature_id: uuid.UUID = Field(foreign_key="platform_features.id", index=True)
-    feature_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    plan_id: int = Field(foreign_key="subscription_plans.id", index=True)
+    feature_id: int = Field(foreign_key="platform_features.id", index=True)
     usage_limit: Optional[int] = Field(
         default=None, description="Null means unlimited usage"
     )
@@ -110,12 +104,9 @@ class UserSubscription(SQLModel, table=True):
         Index("ix_user_subs_period_end", "current_period_end"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    int_id: Optional[int] = Field(default=None)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
-    user_int_id: Optional[int] = Field(default=None, index=True)
-    plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
-    plan_int_id: Optional[int] = Field(default=None, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", index=True)
+    plan_id: int = Field(foreign_key="subscription_plans.id", index=True)
     status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE, index=True)
     current_period_start: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

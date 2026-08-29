@@ -63,7 +63,7 @@ async def list_answer_key_batches(session: AsyncSession = Depends(get_async_sess
 
 @router.get("/answer-key/batches/{batch_id}")
 async def get_answer_key_batch_detail(
-    batch_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    batch_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     """Fetches detailed answer key mapping log for a batch."""
     cache = get_cache()

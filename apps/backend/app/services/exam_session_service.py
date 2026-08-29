@@ -73,18 +73,15 @@ class ExamSessionService:
 
         raw_exam_id = req.exam_id if hasattr(req, "exam_id") else req
 
-        # Resolve Exam by UUID or string code/slug
+        # Resolve Exam by integer ID or string code/slug
         exam = None
         req_exam_str = str(raw_exam_id)
 
-        if isinstance(raw_exam_id, uuid.UUID):
-            exam = await self.session.get(Exam, raw_exam_id)
-        else:
-            try:
-                parsed_uuid = uuid.UUID(req_exam_str)
-                exam = await self.session.get(Exam, parsed_uuid)
-            except (ValueError, TypeError):
-                pass
+        try:
+            parsed_id = int(req_exam_str)
+            exam = await self.session.get(Exam, parsed_id)
+        except (ValueError, TypeError):
+            pass
 
         if not exam:
             exam_res = await self.session.exec(select(Exam).where(Exam.code == req_exam_str))
@@ -296,8 +293,8 @@ class ExamSessionService:
 
     async def get_question(
         self,
-        attempt_id: uuid.UUID,
-        user_id: uuid.UUID,
+        attempt_id: int,
+        user_id: int,
         question_number: int,
         language: Optional[str] = "ENGLISH",
     ) -> QuestionNavResponse:
@@ -409,7 +406,7 @@ class ExamSessionService:
                 detail=f"QUESTION_NOT_FOUND: Question #{question_number} could not be retrieved from S3 or database.",
             )
 
-        q_id = uuid.UUID(str(q_payload["question_id"]))
+        q_id = int(q_payload["question_id"]) if str(q_payload.get("question_id", "")).isdigit() else q_payload.get("question_id")
 
         # Fetch DB response record
         r_stmt = select(ExamQuestionResponse).where(
@@ -517,8 +514,8 @@ class ExamSessionService:
 
     async def get_all_questions_bulk(
         self,
-        attempt_id: uuid.UUID,
-        user_id: uuid.UUID,
+        attempt_id: int,
+        user_id: int,
         language: Optional[str] = "ENGLISH",
     ) -> Dict[str, Any]:
         """
@@ -594,7 +591,7 @@ class ExamSessionService:
         }
 
     async def save_response(
-        self, attempt_id: uuid.UUID, user_id: uuid.UUID, req: SaveResponseRequest
+        self, attempt_id: int, user_id: int, req: SaveResponseRequest
     ) -> SaveResponseResponse:
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         if attempt.status != AttemptStatus.IN_PROGRESS:
@@ -602,32 +599,27 @@ class ExamSessionService:
                 status_code=403, detail="ATTEMPT_ALREADY_SUBMITTED: Attempt is no longer in progress."
             )
 
-        # Resolve question_id UUID
-        q_uuid = None
-        if isinstance(req.question_id, uuid.UUID):
-            q_uuid = req.question_id
-        else:
+        # Resolve question_id
+        q_id = None
+        if req.question_id is not None:
             try:
-                q_uuid = uuid.UUID(str(req.question_id))
+                q_id = int(req.question_id)
             except (ValueError, TypeError):
-                q_uuid = None
+                q_id = None
 
-        # Resolve selected_option_id UUID
-        opt_uuid = None
+        # Resolve selected_option_id
+        opt_id = None
         if req.selected_option_id is not None:
-            if isinstance(req.selected_option_id, uuid.UUID):
-                opt_uuid = req.selected_option_id
-            else:
-                try:
-                    opt_uuid = uuid.UUID(str(req.selected_option_id))
-                except (ValueError, TypeError):
-                    opt_uuid = None
+            try:
+                opt_id = int(req.selected_option_id)
+            except (ValueError, TypeError):
+                opt_id = None
 
         r_stmt = select(ExamQuestionResponse).where(
             ExamQuestionResponse.attempt_id == attempt.id
         )
-        if q_uuid:
-            r_stmt = r_stmt.where(ExamQuestionResponse.question_id == q_uuid)
+        if q_id:
+            r_stmt = r_stmt.where(ExamQuestionResponse.question_id == q_id)
 
         r_res = await self.session.exec(r_stmt)
         resp = r_res.first()
@@ -652,10 +644,10 @@ class ExamSessionService:
         # Update options and tracking
         if req.selected_option_id is not None:
             if resp.selected_option_id is None:
-                resp.initial_option_id = opt_uuid
-                resp.selected_option_id = opt_uuid
-            elif resp.selected_option_id != opt_uuid:
-                resp.selected_option_id = opt_uuid
+                resp.initial_option_id = opt_id
+                resp.selected_option_id = opt_id
+            elif resp.selected_option_id != opt_id:
+                resp.selected_option_id = opt_id
                 resp.is_switched = True
                 resp.option_switch_count += 1
         else:
@@ -761,8 +753,8 @@ class ExamSessionService:
 
     async def save_responses_batch(
         self,
-        attempt_id: uuid.UUID,
-        user_id: uuid.UUID,
+        attempt_id: int,
+        user_id: int,
         req: BatchSaveResponseRequest,
     ) -> BatchSaveResponseAck:
         """
@@ -789,8 +781,11 @@ class ExamSessionService:
 
         try:
             for item in req.responses:
-                q_id = uuid.UUID(str(item.question_id))
-                opt_uuid = uuid.UUID(str(item.selected_option_id)) if item.selected_option_id else None
+                try:
+                    q_id = int(item.question_id)
+                except (ValueError, TypeError):
+                    continue
+                opt_id = int(item.selected_option_id) if item.selected_option_id else None
 
                 r_stmt = select(ExamQuestionResponse).where(
                     ExamQuestionResponse.attempt_id == attempt.id,
@@ -805,10 +800,10 @@ class ExamSessionService:
 
                 if item.selected_option_id is not None:
                     if resp.selected_option_id is None:
-                        resp.initial_option_id = opt_uuid
-                        resp.selected_option_id = opt_uuid
-                    elif resp.selected_option_id != opt_uuid:
-                        resp.selected_option_id = opt_uuid
+                        resp.initial_option_id = opt_id
+                        resp.selected_option_id = opt_id
+                    elif resp.selected_option_id != opt_id:
+                        resp.selected_option_id = opt_id
                         resp.is_switched = True
                         resp.option_switch_count += 1
                 else:
@@ -948,7 +943,7 @@ class ExamSessionService:
 
 
     async def reveal_answer(
-        self, attempt_id: uuid.UUID, user_id: uuid.UUID, question_id: uuid.UUID
+        self, attempt_id: int, user_id: int, question_id: int
     ) -> RevealAnswerResponse:
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         if attempt.status != AttemptStatus.IN_PROGRESS:
@@ -1090,7 +1085,7 @@ class ExamSessionService:
         )
 
     async def heartbeat(
-        self, attempt_id: uuid.UUID, user_id: uuid.UUID, req: HeartbeatRequest
+        self, attempt_id: int, user_id: int, req: HeartbeatRequest
     ) -> HeartbeatResponse:
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         if attempt.status != AttemptStatus.IN_PROGRESS:
@@ -1132,7 +1127,7 @@ class ExamSessionService:
         )
 
     async def get_exam_status(
-        self, attempt_id: uuid.UUID, user_id: uuid.UUID
+        self, attempt_id: int, user_id: int
     ) -> ExamStatusResponse:
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         exam = await self.session.get(Exam, attempt.exam_id)
@@ -1197,8 +1192,8 @@ class ExamSessionService:
 
     async def submit_exam(
         self,
-        attempt_id: uuid.UUID,
-        user_id: uuid.UUID,
+        attempt_id: int,
+        user_id: int,
         req: SubmitExamRequest,
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> SubmitExamResponse:
@@ -1245,25 +1240,25 @@ class ExamSessionService:
         if req.responses and len(req.responses) > 0:
             for item in req.responses:
                 try:
-                    q_uuid = uuid.UUID(str(item.question_id)) if item.question_id else None
-                    if not q_uuid:
+                    q_id = int(item.question_id) if item.question_id else None
+                    if not q_id:
                         continue
-                    opt_uuid = uuid.UUID(str(item.selected_option_id)) if item.selected_option_id else None
+                    opt_id = int(item.selected_option_id) if item.selected_option_id else None
                     r_stmt = select(ExamQuestionResponse).where(
                         ExamQuestionResponse.attempt_id == attempt.id,
-                        ExamQuestionResponse.question_id == q_uuid,
+                        ExamQuestionResponse.question_id == q_id,
                     )
                     r_res = await self.session.exec(r_stmt)
                     resp = r_res.first()
                     if not resp:
                         resp = ExamQuestionResponse(
                             attempt_id=attempt.id,
-                            question_id=q_uuid,
-                            question_status=QuestionResponseStatus.VISITED if opt_uuid else QuestionResponseStatus.UNVISITED,
+                            question_id=q_id,
+                            question_status=QuestionResponseStatus.VISITED if opt_id else QuestionResponseStatus.UNVISITED,
                             expected_time_seconds=60.0,
                         )
-                    if opt_uuid:
-                        resp.selected_option_id = opt_uuid
+                    if opt_id:
+                        resp.selected_option_id = opt_id
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
                     resp.is_marked_for_review = item.is_marked_for_review
                     resp.time_taken_seconds = max(resp.time_taken_seconds, float(item.time_spent_seconds or 0.0))
@@ -1311,10 +1306,14 @@ class ExamSessionService:
             elif sol_list:
                 for index, s_item in enumerate(sol_list, 1):
                     if s_item.get("question_id"):
+                        try:
+                            qid = int(s_item["question_id"])
+                        except (ValueError, TypeError):
+                            continue
                         seeded_resps.append(
                             ExamQuestionResponse(
                                 attempt_id=attempt.id,
-                                question_id=uuid.UUID(str(s_item["question_id"])),
+                                question_id=qid,
                                 question_status=QuestionResponseStatus.UNVISITED,
                                 expected_time_seconds=float(s_item.get("expected_time_seconds") or 60.0),
                                 time_taken_seconds=0.0,
@@ -1426,10 +1425,10 @@ class ExamSessionService:
 
     async def list_user_attempts(
         self,
-        user_id: uuid.UUID,
+        user_id: int,
         skip: int = 0,
         limit: int = 20,
-        exam_id: Optional[uuid.UUID] = None,
+        exam_id: Optional[int] = None,
         status_filter: Optional[AttemptStatus] = None,
     ) -> Dict[str, Any]:
         """Parameter 13: List candidate's exam attempts history."""
@@ -1492,7 +1491,7 @@ class ExamSessionService:
         await cache.set(cache_key, result_dict, ttl_seconds=120)
         return result_dict
 
-    async def get_attempt_result(self, attempt_id: uuid.UUID, user_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_attempt_result(self, attempt_id: int, user_id: int) -> Dict[str, Any]:
         """Parameter 14: Dedicated result view for a submitted/evaluated attempt."""
         attempt = await self._get_attempt_safe(attempt_id, user_id)
         if attempt.status == AttemptStatus.IN_PROGRESS:
@@ -1522,9 +1521,9 @@ class ExamSessionService:
 
     # --- Internal Helpers ---
 
-    async def _get_attempt_safe(self, attempt_id: uuid.UUID | str, user_id: uuid.UUID) -> ExamAttempt:
-        att_uuid = attempt_id if isinstance(attempt_id, uuid.UUID) else uuid.UUID(str(attempt_id))
-        attempt = await self.session.get(ExamAttempt, att_uuid)
+    async def _get_attempt_safe(self, attempt_id: int | str, user_id: int) -> ExamAttempt:
+        att_id = int(attempt_id)
+        attempt = await self.session.get(ExamAttempt, att_id)
         if not attempt or attempt.user_id != user_id:
             raise HTTPException(
                 status_code=404, detail="ATTEMPT_NOT_FOUND: Exam attempt not found or unauthorized."
@@ -1532,7 +1531,7 @@ class ExamSessionService:
         return attempt
 
 
-    async def _compute_response_summary(self, attempt_id: uuid.UUID) -> ResponseSummary:
+    async def _compute_response_summary(self, attempt_id: int) -> ResponseSummary:
         resp_res = await self.session.exec(
             select(ExamQuestionResponse).where(ExamQuestionResponse.attempt_id == attempt_id)
         )
@@ -1563,7 +1562,7 @@ class ExamSessionService:
             total=len(responses),
         )
 
-    async def sync_guest_sessions(self, user_id: uuid.UUID, sessions_list: Any) -> Dict[str, Any]:
+    async def sync_guest_sessions(self, user_id: int, sessions_list: Any) -> Dict[str, Any]:
         """
         Synchronizes guest exam attempts saved in frontend localStorage into backend ExamAttempt database rows,
         records individual question responses, and triggers the full 12-matrix psychometric diagnostic analysis.
@@ -1621,7 +1620,7 @@ class ExamSessionService:
 
             attempt = ExamAttempt(
                 user_id=user_id,
-                exam_id=active_exam.id if active_exam else uuid.uuid4(),
+                exam_id=active_exam.id if active_exam else None,
                 status=AttemptStatus.SUBMITTED,
                 mode=AttemptMode.EXAM,
                 total_score=score,
@@ -1646,18 +1645,22 @@ class ExamSessionService:
                     q_id_raw = r_item.get("question_id")
                     if not q_id_raw:
                         continue
-                    q_uuid = uuid.UUID(str(q_id_raw)) if not str(q_id_raw).startswith("q-") else uuid.uuid4()
+                    try:
+                        q_id_val = int(q_id_raw)
+                    except (ValueError, TypeError):
+                        continue
+
                     opt_raw = r_item.get("selected_option_id")
-                    opt_uuid = uuid.UUID(str(opt_raw)) if opt_raw and not str(opt_raw).startswith("opt-") else None
+                    opt_id_val = int(opt_raw) if opt_raw and str(opt_raw).isdigit() else None
                     is_corr = bool(r_item.get("is_correct", False))
 
                     resp_row = ExamQuestionResponse(
                         attempt_id=attempt.id,
-                        question_id=q_uuid,
-                        selected_option_id=opt_uuid,
-                        question_status=QuestionResponseStatus.ANSWERED if opt_uuid else QuestionResponseStatus.UNVISITED,
+                        question_id=q_id_val,
+                        selected_option_id=opt_id_val,
+                        question_status=QuestionResponseStatus.ANSWERED if opt_id_val else QuestionResponseStatus.UNVISITED,
                         is_correct=is_corr,
-                        final_score=2.0 if is_corr else (-0.66 if opt_uuid else 0.0),
+                        final_score=2.0 if is_corr else (-0.66 if opt_id_val else 0.0),
                         time_taken_seconds=float(r_item.get("time_taken_seconds") or 60.0),
                         expected_time_seconds=float(r_item.get("expected_time_seconds") or 60.0),
                         is_switched=bool(r_item.get("is_switched", False)),
@@ -1682,7 +1685,7 @@ class ExamSessionService:
             "latest_attempt_id": str(latest_attempt.id) if latest_attempt else None,
         }
 
-    async def get_student_dashboard_stats(self, user_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_student_dashboard_stats(self, user_id: int) -> Dict[str, Any]:
         """
         Retrieves aggregate statistics and recent exam attempts for the student dashboard.
         """

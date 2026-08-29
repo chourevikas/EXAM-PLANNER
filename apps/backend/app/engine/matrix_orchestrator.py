@@ -52,7 +52,7 @@ class MatrixOrchestrator:
     @classmethod
     def compute_full_report(
         cls,
-        attempt_id: uuid.UUID,
+        attempt_id: int | str,
         mode: AttemptMode,
         responses: List[Dict[str, Any]],
         solutions_data: Dict[str, Any],

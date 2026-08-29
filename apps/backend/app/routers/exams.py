@@ -99,7 +99,7 @@ async def list_exams(
     summary="Get All Exam Questions with Complete Solutions (Alias)",
 )
 async def get_exam_questions_for_review(
-    exam_id: uuid.UUID,
+    exam_id: int,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -143,7 +143,7 @@ async def get_exam_questions_for_review(
 
 @router.get("/{exam_id}/question-artifact/{question_number}")
 async def get_question_artifact(
-    exam_id: uuid.UUID,
+    exam_id: int,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -193,7 +193,7 @@ async def get_question_artifact(
 
 @router.get("/{exam_id}/question-db/{question_number}")
 async def get_question_from_db_fallback(
-    exam_id: uuid.UUID,
+    exam_id: int,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -293,7 +293,7 @@ async def get_question_from_db_fallback(
 
 @router.get("/{exam_id}/solution-artifact/{question_number}")
 async def get_solution_artifact(
-    exam_id: uuid.UUID,
+    exam_id: int,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -341,7 +341,7 @@ async def get_solution_artifact(
 
 @router.get("/{exam_id}/solution-db/{question_number}")
 async def get_solution_from_db_fallback(
-    exam_id: uuid.UUID,
+    exam_id: int,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -560,7 +560,7 @@ async def get_exams_by_year(
 
 @router.get("/{exam_id}", response_model=Exam)
 async def get_exam_detail(
-    exam_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    exam_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     """Fetches details of a specific exam by ID."""
     service = ExamService(session)
@@ -574,7 +574,7 @@ async def get_exam_detail(
     summary="Get Complete Syllabus for Specific Exam",
 )
 async def get_exam_syllabus(
-    exam_id: uuid.UUID,
+    exam_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -600,7 +600,7 @@ async def get_exam_syllabus(
     summary="Get Paginated Question Integrity & Issue Breakdown for Exam Review",
 )
 async def get_exam_integrity_questions(
-    exam_id: uuid.UUID,
+    exam_id: int,
     issue_type: Optional[str] = Query(
         default=None,
         description="Filter by issue type: 'ALL_ISSUES', 'CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID'",

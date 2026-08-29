@@ -36,7 +36,7 @@ async def preload_questions_export_data(
     trans_res = await session.exec(
         select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
     )
-    trans_map: Dict[uuid.UUID, List[QuestionTranslation]] = {}
+    trans_map: Dict[int, List[QuestionTranslation]] = {}
     for t in trans_res.all():
         trans_map.setdefault(t.question_id, []).append(t)
 
@@ -46,13 +46,13 @@ async def preload_questions_export_data(
         .where(col(QuestionOption.question_id).in_(q_ids))
         .order_by(col(QuestionOption.display_order).asc())
     )
-    options_map: Dict[uuid.UUID, List[QuestionOption]] = {}
+    options_map: Dict[int, List[QuestionOption]] = {}
     opt_ids = []
     for opt in opt_res.all():
         options_map.setdefault(opt.question_id, []).append(opt)
         opt_ids.append(opt.id)
 
-    opt_trans_map: Dict[uuid.UUID, List[OptionTranslation]] = {}
+    opt_trans_map: Dict[int, List[OptionTranslation]] = {}
     if opt_ids:
         ot_res = await session.exec(
             select(OptionTranslation).where(col(OptionTranslation.option_id).in_(opt_ids))
@@ -67,7 +67,7 @@ async def preload_questions_export_data(
             QuestionExplanation.language == LanguageCode.ENGLISH,
         )
     )
-    expl_map: Dict[uuid.UUID, QuestionExplanation] = {
+    expl_map: Dict[int, QuestionExplanation] = {
         e.question_id: e for e in expl_res.all()
     }
 
@@ -75,7 +75,7 @@ async def preload_questions_export_data(
     meta_res = await session.exec(
         select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
     )
-    meta_map: Dict[uuid.UUID, QuestionMetadata] = {
+    meta_map: Dict[int, QuestionMetadata] = {
         m.question_id: m for m in meta_res.all()
     }
 
@@ -85,7 +85,7 @@ async def preload_questions_export_data(
         .where(col(QuestionAsset.question_id).in_(q_ids))
         .order_by(col(QuestionAsset.display_order).asc())
     )
-    assets_map: Dict[uuid.UUID, List[QuestionAsset]] = {}
+    assets_map: Dict[int, List[QuestionAsset]] = {}
     for a in asset_res.all():
         assets_map.setdefault(a.question_id, []).append(a)
 
@@ -93,14 +93,14 @@ async def preload_questions_export_data(
     h_res = await session.exec(
         select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
     )
-    h_map: Dict[uuid.UUID, List[QuestionHierarchyLink]] = {}
+    h_map: Dict[int, List[QuestionHierarchyLink]] = {}
     subtopic_ids = set()
     for hl in h_res.all():
         h_map.setdefault(hl.question_id, []).append(hl)
         if hl.subtopic_id:
             subtopic_ids.add(hl.subtopic_id)
 
-    subtopics_map: Dict[uuid.UUID, Subtopic] = {}
+    subtopics_map: Dict[int, Subtopic] = {}
     if subtopic_ids:
         st_res = await session.exec(
             select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids))
@@ -110,8 +110,8 @@ async def preload_questions_export_data(
 
     # 7. Passages & Passage Translations
     passage_ids = [q.passage_id for q in questions if q.passage_id]
-    passages_map: Dict[uuid.UUID, Passage] = {}
-    pass_trans_map: Dict[uuid.UUID, List[PassageTranslation]] = {}
+    passages_map: Dict[int, Passage] = {}
+    pass_trans_map: Dict[int, List[PassageTranslation]] = {}
     if passage_ids:
         p_res = await session.exec(
             select(Passage).where(col(Passage.id).in_(passage_ids))
