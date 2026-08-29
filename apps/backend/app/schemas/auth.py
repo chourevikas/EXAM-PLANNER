@@ -171,8 +171,14 @@ class UserDirectoryItemOut(BaseModel):
     target_exam: Optional[str] = None
     target_year: Optional[str] = None
     created_at: datetime
+    suspended_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateRolePayload(BaseModel):
+    new_role: UserRole
 
 
 class UpdateRolePayload(BaseModel):

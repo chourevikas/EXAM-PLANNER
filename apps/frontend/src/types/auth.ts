@@ -98,4 +98,6 @@ export interface UserDirectoryItem {
   target_exam?: string;
   target_year?: string;
   created_at: string;
+  suspended_at?: string;
+  updated_at?: string;
 }

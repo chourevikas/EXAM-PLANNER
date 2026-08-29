@@ -155,7 +155,10 @@ async def reactivate_admin_user(
 ):
     from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    res = await service.reactivate_admin_user(user_id=user_id)
+    try:
+        res = await service.reactivate_admin_user(user_id=user_id)
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
     await invalidate_user_cache(str(user_id))
     await get_cache().delete_pattern("ep:admin:overview_stats*")
     return res

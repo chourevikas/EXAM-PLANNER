@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlmodel import select, func, col
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -139,18 +139,25 @@ class UserRepository:
 
     async def suspend_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
-        if not user or user.role != UserRole.ADMIN:
+        if not user or user.role == UserRole.SUPER_ADMIN:
             return None
+        now = datetime.now(timezone.utc)
         user.status = UserStatus.SUSPENDED
+        user.suspended_at = now
+        user.updated_at = now
         self.session.add(user)
         await self.session.commit()
         return await self.get_by_id(user.id)
 
     async def reactivate_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
-        if not user or user.role != UserRole.ADMIN:
+        if not user:
             return None
+        if user.cooling_period_expired:
+            raise ValueError("Cooling period (7 days) has expired for this suspended account. It can no longer be reactivated.")
         user.status = UserStatus.ACTIVE
+        user.suspended_at = None
+        user.updated_at = datetime.now(timezone.utc)
         self.session.add(user)
         await self.session.commit()
         return await self.get_by_id(user.id)

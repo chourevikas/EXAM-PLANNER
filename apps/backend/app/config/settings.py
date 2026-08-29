@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
-    FRONTEND_URL: str = Field(default="http://localhost:3000")
+    FRONTEND_URL: str = Field(default="https://examplanner.in")
     SUPERADMIN_EMAIL: str = Field(default="admin@examplanner.com")
     SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")
     SUPERADMIN_NAME: str = Field(default="System Super Admin")
