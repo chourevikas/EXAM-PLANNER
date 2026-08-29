@@ -21,7 +21,10 @@ class QuestionRepository:
         self.session = session
 
     async def get_by_id(self, question_id: int | str) -> Optional[Question]:
-        q_id = int(question_id) if isinstance(question_id, (str, int)) else question_id
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            return None
         return await self.session.get(Question, q_id)
 
     async def list_questions_filtered(

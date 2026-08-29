@@ -19,7 +19,7 @@ router = APIRouter(prefix="/analytics", tags=["Psychometric & Cognitive Analytic
 
 @router.get("/reports/attempts/{attempt_id}/status", summary="Check Post-Submission Evaluation Status (Long-Polling)")
 async def get_attempt_evaluation_status(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -27,28 +27,36 @@ async def get_attempt_evaluation_status(
     Long-polling status endpoint for post-submission psychometric pipeline evaluation.
     Guarantees zero proxy/deployment timeout errors by returning lightweight progress updates.
     """
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    res = await service.get_attempt_evaluation_status(attempt_id=attempt_id)
+    res = await service.get_attempt_evaluation_status(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.post("/reports/attempts/{attempt_id}/retry", summary="Retry Failed Post-Submission Evaluation")
 async def retry_attempt_evaluation(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Manually re-triggers the post-submission evaluation pipeline for a failed attempt.
     """
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    res = await service.retry_attempt_evaluation(attempt_id=attempt_id)
+    res = await service.retry_attempt_evaluation(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res))
 
 
 @router.get("/reports/attempts/{attempt_id}/questions", summary="Report 1: Question-Level Detailed Diagnostic & Explanation Report")
 async def get_attempt_question_report(
-    attempt_id: int,
+    attempt_id: int | str,
     page: Optional[int] = None,
     page_size: Optional[int] = None,
     session: AsyncSession = Depends(get_async_session),
@@ -58,28 +66,36 @@ async def get_attempt_question_report(
     Report 1: Detailed question cards with explanations, core concepts, step-by-step solutions,
     distractor traps, time window, and question-level scores with optional pagination.
     """
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    res = await service.get_attempt_question_report(attempt_id=attempt_id, page=page, page_size=page_size)
+    res = await service.get_attempt_question_report(attempt_id=aid_int, page=page, page_size=page_size)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/attempts/{attempt_id}/exam", summary="Report 2: Exam-Level 12-Matrix Aggregated Report")
 async def get_attempt_exam_report(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Report 2: Comprehensive 12-matrix aggregated exam diagnostic summary, taxonomy mastery grid, and AI insights.
     """
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    res = await service.get_attempt_exam_report(attempt_id=attempt_id)
+    res = await service.get_attempt_exam_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/attempts/{attempt_id}/user-delta", summary="Report 3: Cumulative User Skill Progression Delta Report")
 async def get_attempt_user_progression_report(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -87,24 +103,32 @@ async def get_attempt_user_progression_report(
     Report 3: Longitudinal user skill progression, tracking exact matrix score deltas (ICRS, IRT, GTI, OEEI, SATOI),
     taxonomy promotions, and spaced repetition review schedules.
     """
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    res = await service.get_attempt_user_progression_report(attempt_id=attempt_id)
+    res = await service.get_attempt_user_progression_report(attempt_id=aid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
 @router.get("/reports/user/{user_id}/skill-profile", summary="User Cumulative Psychometric Skill Profile")
 async def get_user_cumulative_skill_profile(
-    user_id: int,
+    user_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Retrieves the user's cumulative long-term skill profile and active taxonomy mastery grid.
     """
-    if current_user.id != user_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+    try:
+        uid_int = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="User not found")
+    if current_user.id != uid_int and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's skill profile.")
     service = AnalyticsService(session)
-    res = await service.get_user_skill_profile(user_id=user_id)
+    res = await service.get_user_skill_profile(user_id=uid_int)
     return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
 
 
@@ -119,7 +143,13 @@ async def get_user_cumulative_aggregate_report(
     Synthesizes the complete longitudinal multi-exam performance report for all evaluated exams,
     including cross-exam comparison trajectories, 12-matrix aggregates, and universal taxonomy mastery.
     """
-    target_id = current_user.id if user_id == "me" else int(user_id)
+    if user_id == "me":
+        target_id = current_user.id
+    else:
+        try:
+            target_id = int(user_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail="User not found")
     if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative report.")
     service = AnalyticsService(session)
@@ -136,7 +166,13 @@ async def get_user_cumulative_aggregate_markdown(
     """
     Returns the complete cumulative multi-exam psychometric report rendered as a Markdown audit document.
     """
-    target_id = current_user.id if user_id == "me" else int(user_id)
+    if user_id == "me":
+        target_id = current_user.id
+    else:
+        try:
+            target_id = int(user_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail="User not found")
     if current_user.id != target_id and current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="FORBIDDEN: You cannot view another user's cumulative audit.")
     service = AnalyticsService(session)
@@ -145,35 +181,47 @@ async def get_user_cumulative_aggregate_markdown(
 
 @router.get("/reports/attempts/{attempt_id}/json")
 async def get_attempt_report_json(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in JSON format directly by attempt_id."""
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_json(attempt_id=attempt_id)
+    return await service.get_psychometric_report_json(attempt_id=aid_int)
 
 
 @router.get("/reports/attempts/{attempt_id}/yaml")
 async def get_attempt_report_yaml(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in YAML format directly by attempt_id."""
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_yaml(attempt_id=attempt_id)
+    return await service.get_psychometric_report_yaml(attempt_id=aid_int)
 
 
 @router.get("/reports/attempts/{attempt_id}/markdown")
 async def get_attempt_report_markdown(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates/fetches full psychometric report in Markdown format directly by attempt_id."""
+    try:
+        aid_int = int(attempt_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_markdown(attempt_id=attempt_id)
+    return await service.get_psychometric_report_markdown(attempt_id=aid_int)
 
 
 @router.post("/activity", response_model=StudyActivityOut)
@@ -241,41 +289,56 @@ async def get_user_subject_performance(
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/json")
 async def get_exam_psychometric_report_json(
-    user_id: int,
-    exam_id: int,
+    user_id: int | str,
+    exam_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates latest attempt Psychometric Report for a specific user and exam in JSON format."""
-    _validate_user_ownership(current_user, user_id)
+    try:
+        uid_int = int(user_id)
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="User or exam not found")
+    _validate_user_ownership(current_user, uid_int)
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_json(user_id=user_id, exam_id=exam_id)
+    return await service.get_psychometric_report_json(user_id=uid_int, exam_id=eid_int)
 
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/yaml")
 async def get_exam_psychometric_report_yaml(
-    user_id: int,
-    exam_id: int,
+    user_id: int | str,
+    exam_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates latest attempt Psychometric Report for a specific user and exam in YAML format."""
-    _validate_user_ownership(current_user, user_id)
+    try:
+        uid_int = int(user_id)
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="User or exam not found")
+    _validate_user_ownership(current_user, uid_int)
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_yaml(user_id=user_id, exam_id=exam_id)
+    return await service.get_psychometric_report_yaml(user_id=uid_int, exam_id=eid_int)
 
 
 @router.get("/reports/user/{user_id}/exam/{exam_id}/markdown")
 async def get_exam_psychometric_report_markdown(
-    user_id: int,
-    exam_id: int,
+    user_id: int | str,
+    exam_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """Generates latest attempt Psychometric Report for a specific user and exam in Markdown format."""
-    _validate_user_ownership(current_user, user_id)
+    try:
+        uid_int = int(user_id)
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="User or exam not found")
+    _validate_user_ownership(current_user, uid_int)
     service = AnalyticsService(session)
-    return await service.get_psychometric_report_markdown(user_id=user_id, exam_id=exam_id)
+    return await service.get_psychometric_report_markdown(user_id=uid_int, exam_id=eid_int)
 
 
 def _validate_user_ownership(current_user: User, target_user_id: int):

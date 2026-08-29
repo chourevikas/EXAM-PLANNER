@@ -312,7 +312,11 @@ class QuestionService:
         self, question_id: int | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> QuestionDetailResponse:
         from app.cache import get_cache, build_cache_key
-        q_id = int(question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
         cache = get_cache()
         cache_key = build_cache_key(
             "questions:detail",
@@ -335,7 +339,11 @@ class QuestionService:
         self, question_id: int | str, payload: QuestionUpdatePayload
     ) -> QuestionDetailResponse:
         from app.cache import invalidate_question_cache
-        q_id = int(question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
         q = await self.repo.get_by_id(q_id)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")

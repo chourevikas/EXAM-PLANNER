@@ -22,13 +22,18 @@ router = APIRouter(prefix="/study-plan", tags=["Study Plan & Gamification"])
 
 @router.post("/tasks/{task_id}/complete")
 async def complete_study_task(
-    task_id: int,
+    task_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     # Fetch the task
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
     result = await session.execute(stmt)
@@ -136,13 +141,18 @@ class UpdateTaskRequest(SQLModel):
 
 @router.put("/tasks/{task_id}")
 async def update_study_task(
-    task_id: int,
+    task_id: int | str,
     req: UpdateTaskRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
     task = (await session.execute(stmt)).scalars().first()
@@ -175,12 +185,17 @@ async def update_study_task(
 
 @router.delete("/tasks/{task_id}")
 async def delete_study_task(
-    task_id: int,
+    task_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
     task = (await session.execute(stmt)).scalars().first()

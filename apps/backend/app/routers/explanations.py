@@ -29,15 +29,16 @@ class SetCanonicalLinkRequest(BaseModel):
 
 @router.post("/exams/{exam_id}/generate-explanations")
 async def generate_explanations_for_exam(
-    exam_id: int,
+    exam_id: int | str,
     req: GenerateExplanationsRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Triggers Phase 3 Explanation & Knowledge Base pipeline for an exam."""
+    parsed_exam_id = int(exam_id)
     service = ExplanationService(session)
     return await service.generate_explanations_for_exam(
-        exam_id,
+        parsed_exam_id,
         question_ids=req.question_ids,
         language=req.language,
         run_mode=req.run_mode,
@@ -47,25 +48,35 @@ async def generate_explanations_for_exam(
 
 @router.get("/questions/{question_id}")
 async def get_question_explanation(
-    question_id: int,
+    question_id: int | str,
     language: str = Query("ENGLISH", description="Language code e.g. ENGLISH"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Retrieves static question knowledge base and per-option distractor analysis for user reports."""
+    from fastapi import HTTPException
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found")
     service = ExplanationService(session)
-    return await service.get_question_explanation_report(question_id, language=language)
+    return await service.get_question_explanation_report(qid_int, language=language)
 
 
 @router.put("/questions/{question_id}/canonical-link")
 async def set_canonical_question_link(
-    question_id: int,
+    question_id: int | str,
     req: SetCanonicalLinkRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Links a question row to a primary canonical question row across languages or paper sets."""
+    from fastapi import HTTPException
+    try:
+        qid_int = int(question_id)
+        canonical_id = int(req.canonical_question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Invalid question ID format")
     service = ExplanationService(session)
-    canonical_id = int(req.canonical_question_id)
-    return await service.set_canonical_question_link(question_id, canonical_id)
+    return await service.set_canonical_question_link(qid_int, canonical_id)
 
 
 @router.get("/status/{task_id}")

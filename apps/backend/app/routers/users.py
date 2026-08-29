@@ -53,19 +53,24 @@ async def list_bookmarks(
 
 @router.post("/me/bookmarks/{question_id}")
 async def add_bookmark(
-    question_id: int,
+    question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found")
+
     # Check if question exists
-    q = await session.get(Question, question_id)
+    q = await session.get(Question, qid_int)
     if not q:
         raise HTTPException(status_code=404, detail="Question not found")
         
     # Check if already bookmarked
     stmt = select(QuestionBookmark).where(
         QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == question_id
+        QuestionBookmark.question_id == qid_int
     )
     result = await session.exec(stmt)
     if result.first():
@@ -73,7 +78,7 @@ async def add_bookmark(
         
     bk = QuestionBookmark(
         user_id=current_user.id,
-        question_id=question_id
+        question_id=qid_int
     )
     session.add(bk)
     await session.commit()
@@ -82,13 +87,18 @@ async def add_bookmark(
 
 @router.delete("/me/bookmarks/{question_id}")
 async def remove_bookmark(
-    question_id: int,
+    question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+
     stmt = select(QuestionBookmark).where(
         QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == question_id
+        QuestionBookmark.question_id == qid_int
     )
     result = await session.exec(stmt)
     bk = result.first()

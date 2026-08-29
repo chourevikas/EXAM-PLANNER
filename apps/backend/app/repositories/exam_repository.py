@@ -11,8 +11,12 @@ class ExamRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_id(self, exam_id: int) -> Optional[Exam]:
-        return await self.session.get(Exam, exam_id)
+    async def get_by_id(self, exam_id: int | str) -> Optional[Exam]:
+        try:
+            parsed_id = int(exam_id)
+        except (ValueError, TypeError):
+            return None
+        return await self.session.get(Exam, parsed_id)
 
     async def get_by_code(self, code: str) -> Optional[Exam]:
         stmt = select(Exam).where(Exam.code == code)

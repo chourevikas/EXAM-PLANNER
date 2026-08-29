@@ -22,20 +22,28 @@ class ExplanationRepository:
         self.session = session
 
     async def get_explanation_for_question(
-        self, question_id: int, language: LanguageCode = LanguageCode.ENGLISH
+        self, question_id: int | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> Optional[QuestionExplanation]:
+        try:
+            qid_int = int(question_id)
+        except (ValueError, TypeError):
+            return None
         stmt = select(QuestionExplanation).where(
-            QuestionExplanation.question_id == question_id,
+            QuestionExplanation.question_id == qid_int,
             QuestionExplanation.language == language,
         )
         res = await self.session.exec(stmt)
         return res.first()
 
     async def get_full_question_knowledge_base(
-        self, question_id: int, language: LanguageCode = LanguageCode.ENGLISH
+        self, question_id: int | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> Optional[Dict[str, Any]]:
         """Retrieves full per-question & per-option knowledge base and taxonomy hierarchy for reports."""
-        q = await self.session.get(Question, question_id)
+        try:
+            qid_int = int(question_id)
+        except (ValueError, TypeError):
+            return None
+        q = await self.session.get(Question, qid_int)
         if not q:
             return None
 

@@ -29,7 +29,7 @@ router = APIRouter(prefix="/syllabus", tags=["Syllabus & Taxonomy"])
     summary="Get Complete Syllabus Hierarchy (Alias)",
 )
 async def get_complete_syllabus(
-    exam_id: Optional[int] = Query(
+    exam_id: Optional[int | str] = Query(
         default=None,
         description="Optional Exam ID to enrich with exam-specific database IDs and metrics",
     ),
@@ -39,14 +39,21 @@ async def get_complete_syllabus(
     Returns the complete 3-level Syllabus hierarchy (Subjects -> Topics -> Subtopics)
     with total counts, clean dictionary mappings, and flat hierarchy for frontend consumers.
     """
+    parsed_exam_id = None
+    if exam_id is not None:
+        try:
+            parsed_exam_id = int(exam_id)
+        except (ValueError, TypeError):
+            parsed_exam_id = None
+
     cache = get_cache()
-    cache_key = build_cache_key("syllabus:complete", str(exam_id) if exam_id else "master")
+    cache_key = build_cache_key("syllabus:complete", str(parsed_exam_id) if parsed_exam_id else "master")
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=cached_data)
 
     service = SyllabusService(session)
-    response = await service.get_complete_syllabus(exam_id=exam_id)
+    response = await service.get_complete_syllabus(exam_id=parsed_exam_id)
     serialized = jsonable_encoder(response)
     await cache.set(cache_key, serialized, ttl_seconds=3600)
     return JSONResponse(content=serialized)

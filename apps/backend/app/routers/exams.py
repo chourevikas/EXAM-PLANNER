@@ -5,6 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
+from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
@@ -99,7 +100,7 @@ async def list_exams(
     summary="Get All Exam Questions with Complete Solutions (Alias)",
 )
 async def get_exam_questions_for_review(
-    exam_id: int,
+    exam_id: int | str,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -112,11 +113,17 @@ async def get_exam_questions_for_review(
     core concepts, option distractor analyses (option explanations),
     key takeaways, and points to remember/common traps, with real-time review progress counters.
     """
+    from fastapi import HTTPException
+    try:
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Exam not found")
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
         "exams:review",
-        str(exam_id),
+        str(eid_int),
         page=page,
         limit=limit,
         lang=str(language.value if hasattr(language, "value") else language),
@@ -128,7 +135,7 @@ async def get_exam_questions_for_review(
 
     q_service = QuestionService(session)
     review_res = await q_service.get_exam_questions_for_review(
-        exam_id=exam_id,
+        exam_id=eid_int,
         page=page,
         limit=limit,
         language=language,
@@ -143,7 +150,7 @@ async def get_exam_questions_for_review(
 
 @router.get("/{exam_id}/question-artifact/{question_number}")
 async def get_question_artifact(
-    exam_id: int,
+    exam_id: int | str,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -156,7 +163,12 @@ async def get_question_artifact(
     from sqlmodel import select
     from fastapi import HTTPException
 
-    exam = await session.get(Exam, exam_id)
+    try:
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    exam = await session.get(Exam, eid_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
@@ -193,7 +205,7 @@ async def get_question_artifact(
 
 @router.get("/{exam_id}/question-db/{question_number}")
 async def get_question_from_db_fallback(
-    exam_id: int,
+    exam_id: int | str,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -201,26 +213,31 @@ async def get_question_from_db_fallback(
     Dedicated Database Fallback endpoint: Directly queries PostgreSQL for question,
     options, translations, and metadata when direct S3 download fails.
     """
+    from fastapi import HTTPException
+    try:
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Exam not found")
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
-    cache_key = build_cache_key("exams:q_fallback", str(exam_id), question_number)
+    cache_key = build_cache_key("exams:q_fallback", str(eid_int), question_number)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return cached_data
 
     from app.db.models import Exam, Question, QuestionOption, QuestionTranslation, OptionTranslation
     from sqlmodel import select
-    from fastapi import HTTPException
 
     logger.info(f"[DB_FALLBACK:QUESTION] Invoked DB fallback for Question #{question_number}, Exam ID={exam_id}")
 
-    exam = await session.get(Exam, exam_id)
+    exam = await session.get(Exam, eid_int)
     if not exam:
         logger.warning(f"[DB_FALLBACK:QUESTION] Exam {exam_id} not found in database.")
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
     stmt = select(Question).where(
-        Question.exam_id == exam_id,
+        Question.exam_id == eid_int,
         Question.question_number_in_paper == question_number,
     )
     res = await session.exec(stmt)
@@ -233,7 +250,7 @@ async def get_question_from_db_fallback(
         )
 
     opts_res = await session.exec(
-        select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(QuestionOption.display_order)
+        select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order))
     )
     db_opts = opts_res.all()
 
@@ -293,7 +310,7 @@ async def get_question_from_db_fallback(
 
 @router.get("/{exam_id}/solution-artifact/{question_number}")
 async def get_solution_artifact(
-    exam_id: int,
+    exam_id: int | str,
     question_number: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -304,7 +321,12 @@ async def get_solution_artifact(
     from app.storage.factory import get_storage_provider
     from fastapi import HTTPException
 
-    exam = await session.get(Exam, exam_id)
+    try:
+        eid_int = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+
+    exam = await session.get(Exam, eid_int)
     if not exam:
         raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 

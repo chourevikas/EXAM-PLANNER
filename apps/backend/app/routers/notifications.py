@@ -103,18 +103,23 @@ async def get_user_notifications(
 
 @router.post("/{notification_id}/read", summary="Mark single notification as read")
 async def mark_notification_read(
-    notification_id: int,
+    notification_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    noti = await session.get(Notification, notification_id)
+    try:
+        nid = int(notification_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    noti = await session.get(Notification, nid)
     if not noti or noti.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Notification not found")
     
     noti.is_read = True
     session.add(noti)
     await session.commit()
-    return {"message": "Notification marked as read", "id": str(notification_id)}
+    return {"message": "Notification marked as read", "id": str(nid)}
 
 
 @router.post("/mark-all-read", summary="Mark all user notifications as read")

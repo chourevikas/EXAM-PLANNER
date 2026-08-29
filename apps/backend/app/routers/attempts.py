@@ -32,7 +32,7 @@ router = APIRouter(prefix="/attempts", tags=["Student Exam-Taking Sessions"])
 async def list_candidate_attempts(
     skip: int = 0,
     limit: int = 500,
-    exam_id: Optional[int] = None,
+    exam_id: Optional[int | str] = None,
     status_filter: Optional[AttemptStatus] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -40,6 +40,7 @@ async def list_candidate_attempts(
     """
     Lists candidate's exam attempts history with optional filtering by exam_id or status.
     """
+    parsed_exam_id = int(exam_id) if exam_id and str(exam_id).isdigit() else None
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
@@ -47,7 +48,7 @@ async def list_candidate_attempts(
         str(current_user.id),
         skip=skip,
         limit=limit,
-        exam_id=str(exam_id) if exam_id else None,
+        exam_id=str(parsed_exam_id) if parsed_exam_id else None,
         status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
     )
     cached_data = await cache.get(cache_key)
@@ -60,7 +61,7 @@ async def list_candidate_attempts(
         user_id=current_user.id,
         skip=skip,
         limit=limit,
-        exam_id=exam_id,
+        exam_id=parsed_exam_id,
         status_filter=status_filter,
     )
     if res is not None:
@@ -86,7 +87,7 @@ async def start_exam_attempt(
 
 @router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
 async def get_all_attempt_questions_bulk(
-    attempt_id: int,
+    attempt_id: int | str,
     language: Optional[str] = "ENGLISH",
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -102,7 +103,7 @@ async def get_all_attempt_questions_bulk(
 
 @router.get("/{attempt_id}/questions/{question_number}", response_model=QuestionNavResponse)
 async def get_question_by_number(
-    attempt_id: int,
+    attempt_id: int | str,
     question_number: int,
     language: Optional[str] = "ENGLISH",
     session: AsyncSession = Depends(get_async_session),
@@ -123,7 +124,7 @@ async def get_question_by_number(
 
 @router.post("/{attempt_id}/responses", response_model=SaveResponseResponse)
 async def save_question_response(
-    attempt_id: int,
+    attempt_id: int | str,
     req: SaveResponseRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -137,7 +138,7 @@ async def save_question_response(
 
 @router.post("/{attempt_id}/responses/batch", response_model=BatchSaveResponseAck)
 async def save_question_responses_batch(
-    attempt_id: int,
+    attempt_id: int | str,
     req: BatchSaveResponseRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -153,7 +154,7 @@ async def save_question_responses_batch(
 
 @router.get("/{attempt_id}/responses/batch/{batch_id}", response_model=BatchStatusResponse)
 async def get_response_batch_status(
-    attempt_id: int,
+    attempt_id: int | str,
     batch_id: str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -167,8 +168,8 @@ async def get_response_batch_status(
 
 @router.post("/{attempt_id}/reveal/{question_id}", response_model=RevealAnswerResponse)
 async def reveal_question_answer(
-    attempt_id: int,
-    question_id: int,
+    attempt_id: int | str,
+    question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -184,7 +185,7 @@ async def reveal_question_answer(
 
 @router.post("/{attempt_id}/heartbeat", response_model=HeartbeatResponse)
 async def sync_exam_heartbeat(
-    attempt_id: int,
+    attempt_id: int | str,
     req: HeartbeatRequest,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -198,7 +199,7 @@ async def sync_exam_heartbeat(
 
 @router.get("/{attempt_id}/status", response_model=ExamStatusResponse)
 async def get_exam_attempt_status(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -212,7 +213,7 @@ async def get_exam_attempt_status(
 
 @router.post("/{attempt_id}/submit", response_model=SubmitExamResponse)
 async def submit_exam_attempt(
-    attempt_id: int,
+    attempt_id: int | str,
     req: SubmitExamRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
@@ -236,7 +237,7 @@ async def submit_exam_attempt(
 
 @router.get("/{attempt_id}/result", summary="Dedicated Result View for Submitted/Evaluated Attempt")
 async def get_attempt_result(
-    attempt_id: int,
+    attempt_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):

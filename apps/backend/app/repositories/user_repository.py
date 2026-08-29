@@ -32,7 +32,10 @@ class UserRepository:
         return res.first()
 
     async def get_by_id(self, user_id: int | str) -> Optional[User]:
-        uid = int(user_id) if isinstance(user_id, (str, int)) else user_id
+        try:
+            uid = int(user_id)
+        except (ValueError, TypeError):
+            return None
         stmt = (
             select(User)
             .where(User.id == uid)
@@ -175,7 +178,10 @@ class UserRepository:
         if not user:
             return None
 
-        super_admin_id_int = int(super_admin_id)
+        try:
+            super_admin_id_int = int(super_admin_id)
+        except (ValueError, TypeError):
+            super_admin_id_int = None
 
         user.status = UserStatus.ACTIVE
         if user.admin_profile:
@@ -201,7 +207,10 @@ class UserRepository:
         if not user:
             return None
 
-        super_admin_id_int = int(super_admin_id)
+        try:
+            super_admin_id_int = int(super_admin_id)
+        except (ValueError, TypeError):
+            super_admin_id_int = None
 
         user.status = UserStatus.REJECTED
         if user.admin_profile:

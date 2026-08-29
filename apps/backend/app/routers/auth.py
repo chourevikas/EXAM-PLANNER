@@ -26,7 +26,14 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 async def _get_user_question_stats(session: AsyncSession, user_id: int | str) -> dict:
-    u_id = int(user_id)
+    try:
+        u_id = int(user_id)
+    except (ValueError, TypeError):
+        return {
+            "total_questions_solved": 0,
+            "streak_days": 0,
+            "today_questions_solved": 0,
+        }
     now_utc = datetime.now(timezone.utc)
     today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     today_date = today_start.date()

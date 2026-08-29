@@ -143,11 +143,16 @@ async def list_all_testimonials_for_admin(
 
 @router.post("/admin/{testimonial_id}/approve", response_model=TestimonialOut)
 async def approve_testimonial(
-    testimonial_id: int,
+    testimonial_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
-    t = await session.get(Testimonial, testimonial_id)
+    try:
+        tid = int(testimonial_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Testimonial not found.")
+
+    t = await session.get(Testimonial, tid)
     if not t:
         raise HTTPException(status_code=404, detail="Testimonial not found.")
     t.status = TestimonialStatus.APPROVED
@@ -161,12 +166,17 @@ async def approve_testimonial(
 
 @router.post("/admin/{testimonial_id}/reject", response_model=TestimonialOut)
 async def reject_testimonial(
-    testimonial_id: int,
+    testimonial_id: int | str,
     payload: TestimonialRejectPayload,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
-    t = await session.get(Testimonial, testimonial_id)
+    try:
+        tid = int(testimonial_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Testimonial not found.")
+
+    t = await session.get(Testimonial, tid)
     if not t:
         raise HTTPException(status_code=404, detail="Testimonial not found.")
     t.status = TestimonialStatus.REJECTED
@@ -180,11 +190,16 @@ async def reject_testimonial(
 
 @router.delete("/admin/{testimonial_id}")
 async def delete_testimonial(
-    testimonial_id: int,
+    testimonial_id: int | str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
-    t = await session.get(Testimonial, testimonial_id)
+    try:
+        tid = int(testimonial_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Testimonial not found.")
+
+    t = await session.get(Testimonial, tid)
     if not t:
         raise HTTPException(status_code=404, detail="Testimonial not found.")
     await session.delete(t)
