@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
 import { Logo } from '../common/Logo';
+
+
 interface StudentTopHeaderProps {
   user: any;
   pageTitle: string;
@@ -235,8 +237,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     >
       {/* Left: Brand Logo & Page Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <Logo inverted={true} />
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <Logo inverted />
         </Link>
 
         {!isMobile && (
@@ -507,7 +509,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             }}
             style={{
               padding: 0,
-              borderRadius: '50%',
+              borderRadius: 0,
               border: 'none',
               cursor: 'pointer',
               display: 'flex',

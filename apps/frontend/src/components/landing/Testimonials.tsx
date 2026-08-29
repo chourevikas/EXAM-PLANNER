@@ -4,7 +4,17 @@ import { fetchApprovedTestimonials, submitTestimonial, TestimonialItem } from '.
 import { Star, MessageSquarePlus, CheckCircle2, X } from 'lucide-react';
 
 const DEFAULT_STORIES: TestimonialItem[] = [
-
+  {
+    id: 'default-1',
+    user_name: 'Arjun Sharma',
+    user_exam: 'UPSC CSE 2024 · Rank 47',
+    user_photo: '/reviewer_arjun.png',
+    rating: 5,
+    quote:
+      'ExamPlanner completely changed how I prepared. The platform identified my weak spots in Polity within days — accuracy jumped from 54% to 83% in just two months.',
+    status: 'APPROVED',
+    created_at: new Date().toISOString(),
+  },
   {
     id: 'default-2',
     user_name: 'Priya Nair',

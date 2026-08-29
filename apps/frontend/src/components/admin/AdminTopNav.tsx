@@ -19,8 +19,6 @@ import {
   BarChart2,
   BookOpen
 } from 'lucide-react';
-import { Logo } from '../common/Logo';
-import { UserAvatar } from '../common/UserAvatar';
 
 interface TopNavProps {
   user?: any;
@@ -148,7 +146,20 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           onClick={() => onNavigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
         >
-          <Logo inverted={true} />
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 0,
+              background: '#E31B23',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <Shield size={16} color="#ffffff" />
+          </div>
           {!isSmallMobile && (
             <span
               style={{
@@ -156,11 +167,10 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 fontSize: 15,
                 color: '#ffffff',
                 letterSpacing: '-0.01em',
-                fontFamily: 'Inter, sans-serif',
-                marginLeft: 10
+                fontFamily: 'Inter, sans-serif'
               }}
             >
-              Admin
+              ExamPlanner Admin
             </span>
           )}
         </div>
@@ -407,19 +417,23 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               setShowNotifications(false);
             }}
             style={{
-              padding: 0,
-              borderRadius: '50%',
-              border: 'none',
-              backgroundColor: 'transparent',
+              width: 32,
+              height: 32,
+              borderRadius: 0,
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backgroundColor: '#E31B23',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#ffffff',
+              padding: 0
             }}
             title="User Menu"
           >
-            <UserAvatar userOrImage={user} size={32} fullName={user?.full_name} />
+            {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
           </button>
 
           {showProfileMenu && (

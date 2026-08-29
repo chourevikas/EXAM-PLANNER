@@ -3,7 +3,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Dict, Any
 
 from app.db.session import get_async_session
-from app.core.deps import get_current_user
 from app.db.models.user import User
 
 router = APIRouter(prefix="/search", tags=["Global Search"])
@@ -12,7 +11,6 @@ router = APIRouter(prefix="/search", tags=["Global Search"])
 @router.get("/")
 async def global_search(
     q: str = Query(..., min_length=1, description="The search query"),
-    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ) -> Dict[str, List[Dict[str, Any]]]:
     """

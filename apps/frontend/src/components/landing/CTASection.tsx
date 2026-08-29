@@ -104,7 +104,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             margin: '0 auto 40px',
           }}
         >
-          Join thousands of aspirants using diagnostics to rank higher.
+          Join thousands of aspirants using adaptive diagnostics to rank higher.
           Start free — no credit card, no commitment.
         </p>
         <div

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import { Logo } from '../common/Logo';
-import { UserAvatar } from '../common/UserAvatar';
 import { Search, LogOut, User } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 
@@ -176,24 +175,33 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           title="Super Admin Profile"
           aria-label="Super Admin Profile"
           style={{
-            padding: 0,
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: 'transparent',
+            width: 38,
+            height: 38,
+            borderRadius: 0,
+            background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
+            border: '2px solid rgba(255, 255, 255, 0.35)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            color: '#ffffff',
+            fontSize: 13.5,
+            fontWeight: 800,
+            fontFamily: 'Inter, sans-serif',
             cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+            flexShrink: 0,
+            boxShadow: '0 2px 10px rgba(249, 115, 22, 0.4)',
+            transition: 'transform 0.15s ease, border-color 0.15s ease',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.06)';
+            e.currentTarget.style.borderColor = '#ffffff';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)';
           }}
         >
-          <UserAvatar userOrImage={user} size={38} fullName={user?.full_name} />
+          {userInitials}
         </button>
 
         {/* Floating Profile & Sign Out Dropdown Card */}
@@ -215,8 +223,22 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           >
             {/* User Info */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ flexShrink: 0 }}>
-                <UserAvatar userOrImage={user} size={42} fullName={user?.full_name} />
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 0,
+                  background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  fontSize: 15,
+                  fontWeight: 800,
+                  flexShrink: 0,
+                }}
+              >
+                {userInitials}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div
