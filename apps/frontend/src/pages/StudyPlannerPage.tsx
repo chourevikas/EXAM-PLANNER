@@ -241,7 +241,20 @@ export function StudyPlannerPage() {
   const [tasks, setTasks] = useState<StudyTaskItem[]>([]);
   const [activities, setActivities] = useState<StudyActivityItem[]>([]);
   const [summary, setSummary] = useState<StudySummaryResponse | null>(null);
-  
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+
+  useEffect(() => {
+    const handleUserUpdate = () => {
+      setUser(JSON.parse(localStorage.getItem('user') || '{}'));
+    };
+    window.addEventListener('user_profile_updated', handleUserUpdate);
+    window.addEventListener('storage', handleUserUpdate);
+    return () => {
+      window.removeEventListener('user_profile_updated', handleUserUpdate);
+      window.removeEventListener('storage', handleUserUpdate);
+    };
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -501,8 +514,13 @@ export function StudyPlannerPage() {
         <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 16, border: '1px solid var(--border-default)' }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Target Exam Focus</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-            UPSC CSE 2025
+            {user.target_exam || 'UPSC CSE'} {user.target_year || '2026'}
           </div>
+          {user.optional_subject && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Optional: {user.optional_subject}
+            </div>
+          )}
         </div>
       </div>
 
