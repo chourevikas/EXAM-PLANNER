@@ -3,9 +3,18 @@ import { AdminApprovalRequest, AdminApprovalLog, SystemStats, User, UserDirector
 const API_BASE_URL = '/api/v1/admin';
 
 function getAuthHeader() {
-  const token = localStorage.getItem('access_token');
+  let token = localStorage.getItem('access_token');
+  if (!token) {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        token = parsed.access_token || parsed.token || null;
+      } catch (e) {}
+    }
+  }
   return {
-    'Authorization': `Bearer ${token}`,
+    'Authorization': `Bearer ${token || ''}`,
     'Content-Type': 'application/json',
   };
 }

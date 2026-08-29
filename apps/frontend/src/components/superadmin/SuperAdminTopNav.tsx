@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import { Logo } from '../common/Logo';
-import { Search, LogOut } from 'lucide-react';
+import { Search, LogOut, User } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 
 interface SuperAdminTopNavProps {
@@ -140,7 +140,35 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
       </div>
 
       {/* 3. Right Section: User Initial Avatar with Dropdown Card */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative' }} ref={cardRef}>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', gap: 10 }} ref={cardRef}>
+        {/* Quick Admin Profile Button */}
+        <button
+          onClick={() => navigate('/profile')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 14px',
+            fontSize: 12.5,
+            fontWeight: 700,
+            borderRadius: 8,
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+          }}
+        >
+          <User size={14} color="#ffffff" />
+          <span>Admin Profile</span>
+        </button>
+
         {/* User Initial Avatar Circle */}
         <button
           onClick={() => setShowProfileCard((prev) => !prev)}
@@ -261,6 +289,40 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             </div>
 
             <div style={{ height: 1, background: 'var(--border-color, #e2e8f0)', margin: '12px 0' }} />
+
+            {/* Profile Page Action Button */}
+            <button
+              onClick={() => {
+                setShowProfileCard(false);
+                navigate('/profile');
+              }}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border-color, #e2e8f0)',
+                background: 'var(--bg-body, #f8fafc)',
+                color: 'var(--text-main, #0f172a)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: 8,
+                marginBottom: 8,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e2e8f0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--bg-body, #f8fafc)';
+              }}
+            >
+              <User size={15} />
+              <span>Admin Profile</span>
+            </button>
 
             {/* Sign Out Action Button */}
             <button

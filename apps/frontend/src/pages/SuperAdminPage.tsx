@@ -377,12 +377,13 @@ export function SuperAdminPage() {
               {/* Executive Header Banner */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, #0A1128 0%, #0F1D38 40%, #162B4E 75%, #1F3D6E 100%)',
+                  background: 'var(--bg-card, #ffffff)',
                   borderRadius: 24,
-                  padding: '36px 40px',
-                  color: '#ffffff',
+                  padding: '32px 36px',
+                  color: 'var(--text-main, #0f172a)',
                   marginBottom: 32,
-                  boxShadow: '0 20px 45px -15px rgba(10, 17, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -392,32 +393,18 @@ export function SuperAdminPage() {
                   overflow: 'hidden',
                 }}
               >
-                {/* Decorative Background Lighting */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: -60,
-                    right: -60,
-                    width: 300,
-                    height: 300,
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0) 70%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-
                 <div style={{ position: 'relative', zIndex: 2 }}>
                   <div
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      color: '#fdba74',
+                      color: '#2563eb',
                       textTransform: 'uppercase',
                       letterSpacing: '0.12em',
                       padding: '4px 12px',
                       borderRadius: 99,
-                      background: 'rgba(249, 115, 22, 0.15)',
-                      border: '1px solid rgba(249, 115, 22, 0.3)',
+                      background: 'rgba(37, 99, 235, 0.1)',
+                      border: '1px solid rgba(37, 99, 235, 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -426,10 +413,10 @@ export function SuperAdminPage() {
                   >
                     👑 EXECUTIVE CONTROL CENTER
                   </div>
-                  <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+                  <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: 30, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.2, color: 'var(--text-main)' }}>
                     Super Admin Portal
                   </h1>
-                  <p style={{ fontSize: 14.5, color: 'rgba(255, 255, 255, 0.75)', marginTop: 8, maxWidth: 680, lineHeight: 1.5, margin: '8px 0 0 0' }}>
+                  <p style={{ fontSize: 14.5, color: 'var(--text-muted, #64748b)', marginTop: 8, maxWidth: 680, lineHeight: 1.5, margin: '8px 0 0 0' }}>
                     Central executive console for managing institutional admin access, monitoring platform health, and reviewing security audit records.
                   </p>
                 </div>
