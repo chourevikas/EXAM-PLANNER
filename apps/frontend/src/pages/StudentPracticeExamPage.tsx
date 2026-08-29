@@ -735,17 +735,8 @@ export function StudentPracticeExamPage() {
     const targetQuestion = allQuestions.find((q) => q.question_id === targetId) || activeQuestion;
     if (!targetQuestion) return;
 
-    // If user hasn't selected an option yet, default to the first option so they can view the solution
     let userResp = overrideOptId ? { optionId: overrideOptId, optionLabel: overrideOptLbl || '' } : userResponses[targetId];
-    if (!userResp && targetQuestion.options && targetQuestion.options.length > 0) {
-      const defaultOpt = targetQuestion.options[0];
-      const defaultLabel = cleanOptionLabel(defaultOpt.option_label || '', 0);
-      userResp = { optionId: defaultOpt.option_id, optionLabel: defaultLabel };
-      setUserResponses((prev) => ({
-        ...prev,
-        [targetId]: userResp!,
-      }));
-    }
+    if (!userResp) return;
 
     const correctOpt = targetQuestion.options?.find((o) => o.is_correct);
 

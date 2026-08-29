@@ -631,17 +631,17 @@ export function ExamQuestionCard({
               <button
                 type="button"
                 onClick={onRevealAnswer}
-                disabled={!!revealResult}
+                disabled={!selectedOptionId || !!revealResult}
                 style={{
                   padding: '8px 18px',
                   borderRadius: 8,
-                  border: revealResult ? '1px solid #CBD5E1' : '1px solid #2563EB',
-                  backgroundColor: revealResult ? '#F1F5F9' : '#2563EB',
-                  color: revealResult ? '#64748B' : '#FFFFFF',
+                  border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #2563EB',
+                  backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#2563EB',
+                  color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
                   fontSize: 12.5,
                   fontWeight: 700,
-                  cursor: revealResult ? 'default' : 'pointer',
-                  boxShadow: revealResult ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.22)',
+                  cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
+                  boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.22)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
@@ -649,12 +649,12 @@ export function ExamQuestionCard({
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                 }}
                 onMouseEnter={(e) => {
-                  if (!revealResult) {
+                  if (!revealResult && selectedOptionId) {
                     e.currentTarget.style.backgroundColor = '#1D4ED8';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!revealResult) {
+                  if (!revealResult && selectedOptionId) {
                     e.currentTarget.style.backgroundColor = '#2563EB';
                   }
                 }}
@@ -666,7 +666,7 @@ export function ExamQuestionCard({
               <button
                 type="button"
                 onClick={() => {
-                  if (!revealResult) {
+                  if (!revealResult && selectedOptionId) {
                     onRevealAnswer();
                   }
                   const nextState = !showDetailedSolution;
