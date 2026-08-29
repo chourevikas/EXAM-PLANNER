@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import { Logo } from '../common/Logo';
+import { UserAvatar } from '../common/UserAvatar';
 import { Search, LogOut, User, X } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 import { useBreakpoint } from '../../hooks/useBreakpoint';

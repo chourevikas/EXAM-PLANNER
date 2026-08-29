@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { UserAvatar } from '../common/UserAvatar';
 
 interface TopNavProps {
   user?: any;
@@ -549,15 +550,12 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#ffffff',
-              padding: 0
+              boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
             }}
             title="User Menu"
             aria-label="User Menu"
           >
-            {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
+            <UserAvatar userOrImage={user} size={32} fullName={user?.full_name} />
           </button>
 
           {showProfileMenu && (
