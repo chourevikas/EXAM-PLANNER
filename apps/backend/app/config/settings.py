@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     OPENAI_MODEL_NAME: str = Field(default="gpt-4.1")
     VISION_LLM_RATE_LIMIT_RPS: float = Field(default=0.5)
 
+    # Post-submission report synthesis LLM call: distinct budget from bulk PDF/vision ingestion.
+    # This call already has a deterministic fallback, so it should fail fast rather than retry for
+    # minutes - a slow/degraded provider must not block a student waiting on their exam report.
+    REPORT_LLM_TIMEOUT_SECONDS: int = Field(default=30)
+    REPORT_LLM_MAX_RETRIES: int = Field(default=2)
+    REPORT_LLM_RATE_LIMIT_RPS: float = Field(default=2.0)
+
     # Celery & Broker Settings
     CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0")
     CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/0")

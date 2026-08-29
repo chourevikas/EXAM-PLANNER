@@ -18,15 +18,17 @@ class GeminiProvider(BaseLLMProvider):
         self.settings = settings
         self.rate_limiter = rate_limiter
 
-    def get_chat_model(self) -> BaseChatModel:
+    def get_chat_model(
+        self, timeout: Optional[int] = None, max_retries: Optional[int] = None
+    ) -> BaseChatModel:
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         kwargs = {
             "model": self.settings.GEMINI_MODEL_NAME,
             "vertexai": True,
             "temperature": 0,
-            "max_retries": 10,
-            "timeout": 120,
+            "max_retries": max_retries if max_retries is not None else 10,
+            "timeout": timeout if timeout is not None else 120,
         }
         if self.rate_limiter:
             kwargs["rate_limiter"] = self.rate_limiter

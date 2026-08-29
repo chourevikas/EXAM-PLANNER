@@ -63,7 +63,16 @@ YOUR MANDATE:
 
         try:
             from app.llm.factory import get_vision_llm
-            chat_model = get_vision_llm()
+            from app.config.settings import get_settings
+
+            settings = get_settings()
+            # Fail fast: this call has a deterministic fallback below, so a degraded/slow provider
+            # should not block report generation for minutes via long retries/timeouts.
+            chat_model = get_vision_llm(
+                timeout=settings.REPORT_LLM_TIMEOUT_SECONDS,
+                max_retries=settings.REPORT_LLM_MAX_RETRIES,
+                rate_limit_rps=settings.REPORT_LLM_RATE_LIMIT_RPS,
+            )
 
             # Use with_structured_output if supported
             if hasattr(chat_model, "with_structured_output"):
