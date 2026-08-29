@@ -20,6 +20,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { Logo } from '../common/Logo';
+import { UserAvatar } from '../common/UserAvatar';
 
 interface TopNavProps {
   user?: any;
@@ -406,23 +407,19 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               setShowNotifications(false);
             }}
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 0,
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              backgroundColor: '#E31B23',
+              padding: 0,
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: 'transparent',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#ffffff',
-              padding: 0
+              boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
             }}
             title="User Menu"
           >
-            {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
+            <UserAvatar userOrImage={user} size={32} fullName={user?.full_name} />
           </button>
 
           {showProfileMenu && (

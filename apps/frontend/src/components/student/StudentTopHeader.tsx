@@ -507,7 +507,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             }}
             style={{
               padding: 0,
-              borderRadius: 0,
+              borderRadius: '50%',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',

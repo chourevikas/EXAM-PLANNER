@@ -23,8 +23,8 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
             lineHeight: 1.1,
           }}
         >
-          <span style={{ color: inverted ? '#ffffff' : '#111111' }}>exam</span>
-          <span style={{ color: '#E31B23' }}>planner</span>
+          <span style={{ color: inverted ? '#ffffff' : '#111111' }}>Exam</span>
+          <span style={{ color: '#E31B23' }}>Planner</span>
         </div>
       </div>
     </div>
