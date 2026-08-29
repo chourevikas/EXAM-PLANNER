@@ -27,6 +27,7 @@ class PlatformFeature(SQLModel, table=True):
     __table_args__ = (Index("ix_platform_features_code", "feature_code", unique=True),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     feature_code: str = Field(
         index=True,
         max_length=100,
@@ -52,6 +53,7 @@ class SubscriptionPlan(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     plan_code: str = Field(
         index=True,
         max_length=100,
@@ -86,8 +88,11 @@ class PlanFeatureLink(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
+    plan_int_id: Optional[int] = Field(default=None, index=True)
     feature_id: uuid.UUID = Field(foreign_key="platform_features.id", index=True)
+    feature_int_id: Optional[int] = Field(default=None, index=True)
     usage_limit: Optional[int] = Field(
         default=None, description="Null means unlimited usage"
     )
@@ -106,8 +111,11 @@ class UserSubscription(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+    user_int_id: Optional[int] = Field(default=None, index=True)
     plan_id: uuid.UUID = Field(foreign_key="subscription_plans.id", index=True)
+    plan_int_id: Optional[int] = Field(default=None, index=True)
     status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE, index=True)
     current_period_start: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

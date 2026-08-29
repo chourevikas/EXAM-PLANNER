@@ -38,15 +38,150 @@ class ExamJsonBuilder:
         self.session = session
         self.storage = get_storage_provider()
 
+    async def preload_batch_question_data(
+        self, questions: list[Question]
+    ) -> Dict[str, Any]:
+        """
+        Preloads all child tables, options, translations, taxonomies, and hierarchies
+        for a batch of questions in a minimal number of O(1) SQL roundtrips to eliminate N+1 queries.
+        """
+        if not questions:
+            return {}
+
+        q_ids = [q.id for q in questions]
+
+        # 1. Question Translations
+        trans_res = await self.session.exec(
+            select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
+        )
+        trans_map: Dict[uuid.UUID, list[QuestionTranslation]] = {}
+        for t in trans_res.all():
+            trans_map.setdefault(t.question_id, []).append(t)
+
+        # 2. Options & Option Translations
+        opt_res = await self.session.exec(
+            select(QuestionOption)
+            .where(col(QuestionOption.question_id).in_(q_ids))
+            .order_by(col(QuestionOption.display_order).asc())
+        )
+        options_list = opt_res.all()
+        options_map: Dict[uuid.UUID, list[QuestionOption]] = {}
+        opt_ids = []
+        for opt in options_list:
+            options_map.setdefault(opt.question_id, []).append(opt)
+            opt_ids.append(opt.id)
+
+        opt_trans_map: Dict[uuid.UUID, list[OptionTranslation]] = {}
+        if opt_ids:
+            ot_res = await self.session.exec(
+                select(OptionTranslation).where(col(OptionTranslation.option_id).in_(opt_ids))
+            )
+            for ot in ot_res.all():
+                opt_trans_map.setdefault(ot.option_id, []).append(ot)
+
+        # 3. Question Metadata
+        meta_res = await self.session.exec(
+            select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
+        )
+        meta_map: Dict[uuid.UUID, QuestionMetadata] = {
+            m.question_id: m for m in meta_res.all()
+        }
+
+        # 4. Question Explanations
+        expl_res = await self.session.exec(
+            select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
+        )
+        expl_map: Dict[uuid.UUID, list[QuestionExplanation]] = {}
+        for e in expl_res.all():
+            expl_map.setdefault(e.question_id, []).append(e)
+
+        # 5. Question Hierarchy Links
+        h_res = await self.session.exec(
+            select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
+        )
+        h_map: Dict[uuid.UUID, list[QuestionHierarchyLink]] = {}
+        h_links = h_res.all()
+        subtopic_ids = set()
+        topic_ids = set()
+        subject_ids = set()
+
+        for hl in h_links:
+            h_map.setdefault(hl.question_id, []).append(hl)
+            if hl.subtopic_id:
+                subtopic_ids.add(hl.subtopic_id)
+            if hl.topic_id:
+                topic_ids.add(hl.topic_id)
+            if hl.subject_id:
+                subject_ids.add(hl.subject_id)
+
+        for q in questions:
+            if q.subtopic_id:
+                subtopic_ids.add(q.subtopic_id)
+
+        # 6. Passages & Passage Translations
+        passage_ids = [q.passage_id for q in questions if q.passage_id]
+        pass_trans_map: Dict[uuid.UUID, list[PassageTranslation]] = {}
+        if passage_ids:
+            pt_res = await self.session.exec(
+                select(PassageTranslation).where(col(PassageTranslation.passage_id).in_(passage_ids))
+            )
+            for pt in pt_res.all():
+                pass_trans_map.setdefault(pt.passage_id, []).append(pt)
+
+        # 7. Preload Subtopics, Topics, Subjects
+        subtopics_map: Dict[uuid.UUID, Subtopic] = {}
+        if subtopic_ids:
+            st_res = await self.session.exec(
+                select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids))
+            )
+            for st in st_res.all():
+                subtopics_map[st.id] = st
+                if st.topic_id:
+                    topic_ids.add(st.topic_id)
+
+        topics_map: Dict[uuid.UUID, Topic] = {}
+        if topic_ids:
+            top_res = await self.session.exec(
+                select(Topic).where(col(Topic.id).in_(topic_ids))
+            )
+            for top in top_res.all():
+                topics_map[top.id] = top
+                if top.subject_id:
+                    subject_ids.add(top.subject_id)
+
+        subjects_map: Dict[uuid.UUID, Subject] = {}
+        if subject_ids:
+            sb_res = await self.session.exec(
+                select(Subject).where(col(Subject.id).in_(subject_ids))
+            )
+            for sb in sb_res.all():
+                subjects_map[sb.id] = sb
+
+        return {
+            "trans_map": trans_map,
+            "options_map": options_map,
+            "opt_trans_map": opt_trans_map,
+            "meta_map": meta_map,
+            "expl_map": expl_map,
+            "h_map": h_map,
+            "pass_trans_map": pass_trans_map,
+            "subtopics_map": subtopics_map,
+            "topics_map": topics_map,
+            "subjects_map": subjects_map,
+        }
+
     async def build_single_question_cards(
-        self, q: Question
+        self, q: Question, preloaded: Optional[Dict[str, Any]] = None
     ) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """Constructs standardized q_card and sol_card payloads for a single Question."""
         # 1. Question Translations
-        trans_res = await self.session.exec(
-            select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
-        )
-        trans_list = trans_res.all()
+        if preloaded is not None:
+            trans_list = preloaded.get("trans_map", {}).get(q.id, [])
+        else:
+            trans_res = await self.session.exec(
+                select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
+            )
+            trans_list = trans_res.all()
 
         question_translations = {}
         for t in trans_list:
@@ -65,10 +200,14 @@ class ExamJsonBuilder:
         passage_text = None
         passage_translations = {}
         if q.passage_id:
-            pass_res = await self.session.exec(
-                select(PassageTranslation).where(PassageTranslation.passage_id == q.passage_id)
-            )
-            pass_trans_list = pass_res.all()
+            if preloaded is not None:
+                pass_trans_list = preloaded.get("pass_trans_map", {}).get(q.passage_id, [])
+            else:
+                pass_res = await self.session.exec(
+                    select(PassageTranslation).where(PassageTranslation.passage_id == q.passage_id)
+                )
+                pass_trans_list = pass_res.all()
+
             for pt in pass_trans_list:
                 lang_str = pt.language.value if hasattr(pt.language, "value") else str(pt.language)
                 passage_translations[lang_str] = pt.passage_text
@@ -80,19 +219,28 @@ class ExamJsonBuilder:
                 passage_text = eng_pt.passage_text
 
         # 3. Taxonomy
-        subtopic = await self.session.get(Subtopic, q.subtopic_id) if q.subtopic_id else None
-        topic = await self.session.get(Topic, subtopic.topic_id) if subtopic and subtopic.topic_id else None
-        subject = await self.session.get(Subject, topic.subject_id) if topic and topic.subject_id else None
+        if preloaded is not None:
+            subtopic = preloaded.get("subtopics_map", {}).get(q.subtopic_id) if q.subtopic_id else None
+            topic = preloaded.get("topics_map", {}).get(subtopic.topic_id) if subtopic and subtopic.topic_id else None
+            subject = preloaded.get("subjects_map", {}).get(topic.subject_id) if topic and topic.subject_id else None
+        else:
+            subtopic = await self.session.get(Subtopic, q.subtopic_id) if q.subtopic_id else None
+            topic = await self.session.get(Topic, subtopic.topic_id) if subtopic and subtopic.topic_id else None
+            subject = await self.session.get(Subject, topic.subject_id) if topic and topic.subject_id else None
 
         subj_name = subject.name if subject else "General Knowledge"
         top_name = topic.name if topic else "General Studies"
         sub_name = subtopic.name if subtopic else "Core Concepts"
 
         # 4. Multi-Concept Hierarchy
-        h_stmt = select(QuestionHierarchyLink).where(
-            QuestionHierarchyLink.question_id == q.id
-        )
-        h_links = (await self.session.exec(h_stmt)).all()
+        if preloaded is not None:
+            h_links = preloaded.get("h_map", {}).get(q.id, [])
+        else:
+            h_stmt = select(QuestionHierarchyLink).where(
+                QuestionHierarchyLink.question_id == q.id
+            )
+            h_links = (await self.session.exec(h_stmt)).all()
+
         hierarchy_concepts = []
         for hl in h_links:
             subtop_freq = 0
@@ -100,16 +248,29 @@ class ExamJsonBuilder:
             topic_name = None
             subj_name_l = None
             if hl.subtopic_id:
-                subtop = await self.session.get(Subtopic, hl.subtopic_id)
-                if subtop:
-                    subtop_name = subtop.name
-                    subtop_freq = subtop.pyq_frequency
-                    top = await self.session.get(Topic, subtop.topic_id)
-                    if top:
-                        topic_name = top.name
-                        subj = await self.session.get(Subject, top.subject_id)
-                        if subj:
-                            subj_name_l = subj.name
+                if preloaded is not None:
+                    subtop = preloaded.get("subtopics_map", {}).get(hl.subtopic_id)
+                    if subtop:
+                        subtop_name = subtop.name
+                        subtop_freq = subtop.pyq_frequency
+                        top = preloaded.get("topics_map", {}).get(subtop.topic_id) if subtop.topic_id else None
+                        if top:
+                            topic_name = top.name
+                            subj = preloaded.get("subjects_map", {}).get(top.subject_id) if top.subject_id else None
+                            if subj:
+                                subj_name_l = subj.name
+                else:
+                    subtop = await self.session.get(Subtopic, hl.subtopic_id)
+                    if subtop:
+                        subtop_name = subtop.name
+                        subtop_freq = subtop.pyq_frequency
+                        top = await self.session.get(Topic, subtop.topic_id)
+                        if top:
+                            topic_name = top.name
+                            subj = await self.session.get(Subject, top.subject_id)
+                            if subj:
+                                subj_name_l = subj.name
+
             hierarchy_concepts.append({
                 "subject": subj_name_l or subj_name,
                 "topic": topic_name or top_name,
@@ -124,12 +285,15 @@ class ExamJsonBuilder:
             })
 
         # 5. Options
-        opt_res = await self.session.exec(
-            select(QuestionOption)
-            .where(QuestionOption.question_id == q.id)
-            .order_by(col(QuestionOption.display_order).asc())
-        )
-        options = opt_res.all()
+        if preloaded is not None:
+            options = preloaded.get("options_map", {}).get(q.id, [])
+        else:
+            opt_res = await self.session.exec(
+                select(QuestionOption)
+                .where(QuestionOption.question_id == q.id)
+                .order_by(col(QuestionOption.display_order).asc())
+            )
+            options = opt_res.all()
 
         public_options = []
         correct_option_id = None
@@ -137,10 +301,13 @@ class ExamJsonBuilder:
         distractor_scores = {}
 
         for opt in options:
-            opt_trans_res = await self.session.exec(
-                select(OptionTranslation).where(OptionTranslation.option_id == opt.id)
-            )
-            opt_trans_list = opt_trans_res.all()
+            if preloaded is not None:
+                opt_trans_list = preloaded.get("opt_trans_map", {}).get(opt.id, [])
+            else:
+                opt_trans_res = await self.session.exec(
+                    select(OptionTranslation).where(OptionTranslation.option_id == opt.id)
+                )
+                opt_trans_list = opt_trans_res.all()
 
             opt_translations = {}
             opt_distractor_analyses = {}
@@ -178,10 +345,14 @@ class ExamJsonBuilder:
             }
 
         # 6. Metadata
-        meta_res = await self.session.exec(
-            select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
-        )
-        q_meta = meta_res.first()
+        if preloaded is not None:
+            q_meta = preloaded.get("meta_map", {}).get(q.id)
+        else:
+            meta_res = await self.session.exec(
+                select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
+            )
+            q_meta = meta_res.first()
+
         blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
         cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
         primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
@@ -190,10 +361,13 @@ class ExamJsonBuilder:
         irt_c = q_meta.irt_pseudo_guessing_c if (q_meta and q_meta.irt_pseudo_guessing_c is not None) else 0.25
 
         # 7. Explanations
-        expl_res = await self.session.exec(
-            select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
-        )
-        expl_list = expl_res.all()
+        if preloaded is not None:
+            expl_list = preloaded.get("expl_map", {}).get(q.id, [])
+        else:
+            expl_res = await self.session.exec(
+                select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+            )
+            expl_list = expl_res.all()
 
         explanation_translations = {}
         for q_expl in expl_list:
@@ -393,8 +567,9 @@ class ExamJsonBuilder:
         solutions_payload = []
 
         card_build_start = time.perf_counter()
+        preloaded_data = await self.preload_batch_question_data(questions)
         for idx, q in enumerate(questions, start=1):
-            q_card, sol_card = await self.build_single_question_cards(q)
+            q_card, sol_card = await self.build_single_question_cards(q, preloaded=preloaded_data)
             questions_payload.append(q_card)
             solutions_payload.append(sol_card)
 

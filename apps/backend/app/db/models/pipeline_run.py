@@ -16,7 +16,9 @@ class PipelineRun(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    exam_int_id: Optional[int] = Field(default=None, index=True)
     
     pipeline_type: str = Field(
         description="'QUESTION_EXTRACTION', 'ANSWER_KEY', 'EXPLANATION_INDEXING'",

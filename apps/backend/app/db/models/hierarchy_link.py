@@ -18,18 +18,23 @@ class QuestionHierarchyLink(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     question_id: uuid.UUID = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
+    question_int_id: Optional[int] = Field(default=None, index=True)
     subtopic_id: uuid.UUID = Field(
         foreign_key="subtopics.id", ondelete="CASCADE", index=True
     )
+    subtopic_int_id: Optional[int] = Field(default=None, index=True)
     topic_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="topics.id", ondelete="CASCADE", index=True
     )
+    topic_int_id: Optional[int] = Field(default=None, index=True)
     subject_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="subjects.id", ondelete="CASCADE", index=True
     )
+    subject_int_id: Optional[int] = Field(default=None, index=True)
 
     is_primary: bool = Field(
         default=False,

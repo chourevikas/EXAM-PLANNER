@@ -18,9 +18,11 @@ class QuestionExplanation(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     question_id: uuid.UUID = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
+    question_int_id: Optional[int] = Field(default=None, index=True)
     language: LanguageCode = Field(default=LanguageCode.ENGLISH, index=True)
 
     core_concept: str = Field(

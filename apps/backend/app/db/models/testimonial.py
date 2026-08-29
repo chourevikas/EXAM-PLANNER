@@ -15,7 +15,9 @@ class Testimonial(SQLModel, table=True):
     __tablename__ = "testimonials"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True)
+    int_id: Optional[int] = Field(default=None)
+    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id", nullable=True, index=True)
+    user_int_id: Optional[int] = Field(default=None, nullable=True, index=True)
     user_name: str
     user_exam: str
     user_photo: Optional[str] = None

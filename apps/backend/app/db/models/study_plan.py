@@ -13,7 +13,9 @@ class StudyTask(SQLModel, table=True):
     __tablename__ = "study_tasks"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    user_int_id: Optional[int] = Field(default=None, index=True)
     title: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
     
@@ -38,6 +40,7 @@ class StudyTask(SQLModel, table=True):
     
     is_ai_recommended: bool = Field(default=False)
     source_attempt_id: Optional[uuid.UUID] = Field(default=None)
+    source_attempt_int_id: Optional[int] = Field(default=None, index=True)
 
     user: Optional["User"] = Relationship(back_populates="study_tasks")
 
@@ -45,7 +48,9 @@ class StudyActivity(SQLModel, table=True):
     __tablename__ = "study_activities"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    user_int_id: Optional[int] = Field(default=None, index=True)
     date: dt.date = Field(default_factory=lambda: datetime.now(timezone.utc).date(), index=True)
     
     activity_type: StudyActivityType

@@ -16,6 +16,7 @@ class Test(SQLModel, table=True):
     __table_args__ = (Index("ix_tests_type_created", "test_type", "created_at"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     title: str = Field(max_length=200)
     test_type: TestType = Field(index=True)
     total_questions: int = Field(default=0)
@@ -37,9 +38,11 @@ class TestQuestion(SQLModel, table=True):
     test_id: uuid.UUID = Field(
         foreign_key="tests.id", ondelete="CASCADE", primary_key=True, index=True
     )
+    test_int_id: Optional[int] = Field(default=None, index=True)
     question_id: uuid.UUID = Field(
         foreign_key="questions.id", primary_key=True, index=True
     )
+    question_int_id: Optional[int] = Field(default=None, index=True)
     question_order: int = Field(default=1)
 
 
@@ -51,11 +54,15 @@ class UserTestAttempt(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    user_int_id: Optional[int] = Field(default=None, index=True)
     test_id: uuid.UUID = Field(foreign_key="tests.id", index=True)
+    test_int_id: Optional[int] = Field(default=None, index=True)
     exam_attempt_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
+    exam_attempt_int_id: Optional[int] = Field(default=None, index=True)
     status: AttemptStatus = Field(default=AttemptStatus.IN_PROGRESS, index=True)
     mode: AttemptMode = Field(default=AttemptMode.EXAM, index=True)
     score_raw: Optional[float] = Field(default=None)
@@ -84,19 +91,25 @@ class UserQuestionResponse(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     attempt_id: uuid.UUID = Field(
         foreign_key="user_test_attempts.id", ondelete="CASCADE", index=True
     )
+    attempt_int_id: Optional[int] = Field(default=None, index=True)
     exam_response_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
     )
+    exam_response_int_id: Optional[int] = Field(default=None, index=True)
     question_id: uuid.UUID = Field(foreign_key="questions.id", index=True)
+    question_int_id: Optional[int] = Field(default=None, index=True)
     selected_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id", index=True
     )
+    selected_option_int_id: Optional[int] = Field(default=None, index=True)
     initial_selected_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id"
     )
+    initial_selected_option_int_id: Optional[int] = Field(default=None)
     option_switch_count: int = Field(default=0)
     time_taken_seconds: int = Field(default=0)
     closeness_score_awarded: Optional[float] = Field(default=None)
@@ -115,18 +128,23 @@ class QuestionSwitchLog(SQLModel, table=True):
     __table_args__ = (Index("ix_switch_logs_response", "response_id"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     response_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="user_question_responses.id", ondelete="CASCADE", index=True
     )
+    response_int_id: Optional[int] = Field(default=None, index=True)
     exam_response_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
     )
+    exam_response_int_id: Optional[int] = Field(default=None, index=True)
     from_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id"
     )
+    from_option_int_id: Optional[int] = Field(default=None)
     to_option_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="question_options.id"
     )
+    to_option_int_id: Optional[int] = Field(default=None)
     timestamp_offset_sec: int = Field(default=0)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -137,7 +155,6 @@ class QuestionSwitchLog(SQLModel, table=True):
     exam_response: Optional["ExamQuestionResponse"] = Relationship(back_populates="question_switch_logs")
 
 
-
 class UserConceptRetention(SQLModel, table=True):
     __tablename__ = "user_concept_retention"
     __table_args__ = (
@@ -146,10 +163,13 @@ class UserConceptRetention(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    user_int_id: Optional[int] = Field(default=None, index=True)
     subtopic_id: uuid.UUID = Field(
         foreign_key="subtopics.id", ondelete="CASCADE", index=True
     )
+    subtopic_int_id: Optional[int] = Field(default=None, index=True)
     fsrs_difficulty: float = Field(default=5.00)
     fsrs_stability: float = Field(default=1.00)
     fsrs_retrievability: float = Field(default=1.00)

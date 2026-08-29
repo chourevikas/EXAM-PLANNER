@@ -29,7 +29,9 @@ class AnswerKeyBatch(SQLModel, table=True):
     __table_args__ = (Index("ix_ak_batch_exam_status", "exam_id", "set_match_status"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    exam_int_id: Optional[int] = Field(default=None, index=True)
     pdf_path: str = Field(description="Path or S3 key of uploaded answer key PDF/image")
     target_set_code: str = Field(
         default="SET_A",
@@ -68,12 +70,15 @@ class AnswerKeyMapping(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     batch_id: uuid.UUID = Field(
         foreign_key="answer_key_batches.id", ondelete="CASCADE", index=True
     )
+    batch_int_id: Optional[int] = Field(default=None, index=True)
     question_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
+    question_int_id: Optional[int] = Field(default=None, index=True)
     printed_question_number: int = Field(index=True)
     detected_option_label: str = Field(max_length=10, description="'A', 'B', 'C', 'D'")
     paper_set_code: str = Field(default="SET_A", max_length=20, index=True)

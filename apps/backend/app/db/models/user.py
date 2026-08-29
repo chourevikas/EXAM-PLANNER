@@ -28,6 +28,7 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     full_name: str = Field(max_length=255)
     email: str = Field(unique=True, index=True, max_length=255)
     clerk_id: Optional[str] = Field(default=None, unique=True, index=True, max_length=255)
@@ -157,9 +158,11 @@ class StudentProfile(SQLModel, table=True):
     __tablename__ = "student_profiles"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(
         foreign_key="users.id", ondelete="CASCADE", unique=True, index=True
     )
+    user_int_id: Optional[int] = Field(default=None, index=True)
     subscription_tier: SubscriptionTier = Field(default=SubscriptionTier.FREE)
     free_questions_attempted: int = Field(default=0)
     current_streak: int = Field(default=0)
@@ -179,19 +182,23 @@ class AdminProfile(SQLModel, table=True):
     __tablename__ = "admin_profiles"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(
         foreign_key="users.id", ondelete="CASCADE", unique=True, index=True
     )
+    user_int_id: Optional[int] = Field(default=None, index=True)
     organization_name: Optional[str] = Field(default=None, max_length=255)
     department: Optional[str] = Field(default=None, max_length=255)
 
     approved_by_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
+    approved_by_int_id: Optional[int] = Field(default=None, index=True)
     approved_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     rejected_by_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
+    rejected_by_int_id: Optional[int] = Field(default=None, index=True)
     rejected_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     rejection_reason: Optional[str] = Field(default=None)
     created_at: datetime = Field(
@@ -215,12 +222,15 @@ class AdminApprovalLog(SQLModel, table=True):
     __tablename__ = "admin_approval_logs"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     admin_user_id: uuid.UUID = Field(
         foreign_key="users.id", ondelete="CASCADE", index=True
     )
+    admin_user_int_id: Optional[int] = Field(default=None, index=True)
     reviewed_by_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
+    reviewed_by_int_id: Optional[int] = Field(default=None, index=True)
     action: str = Field(max_length=50)
     reason: Optional[str] = Field(default=None)
     created_at: datetime = Field(
@@ -233,7 +243,9 @@ class RefreshToken(SQLModel, table=True):
     __tablename__ = "refresh_tokens"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    user_int_id: Optional[int] = Field(default=None, index=True)
     token_hash: str
     device_name: Optional[str] = Field(default=None, max_length=255)
     ip_address: Optional[str] = Field(default=None, max_length=45)

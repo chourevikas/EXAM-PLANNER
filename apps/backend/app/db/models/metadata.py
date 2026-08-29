@@ -15,9 +15,11 @@ class QuestionMetadata(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     question_id: uuid.UUID = Field(
         foreign_key="questions.id", ondelete="CASCADE", unique=True, index=True
     )
+    question_int_id: Optional[int] = Field(default=None, unique=True, index=True)
     blooms_level: BloomsLevel = Field(default=BloomsLevel.ANALYZE, index=True)
     cognitive_skill: Optional[str] = Field(default=None)
     primary_concept_tag: str = Field(default="GENERAL", index=True)

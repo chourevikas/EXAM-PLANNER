@@ -11,6 +11,7 @@ class Badge(SQLModel, table=True):
     __tablename__ = "badges"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     name: str = Field(max_length=255)
     description: str
     icon_url: Optional[str] = Field(default=None)
@@ -26,8 +27,11 @@ class UserBadge(SQLModel, table=True):
     __tablename__ = "user_badges"
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    user_int_id: Optional[int] = Field(default=None, index=True)
     badge_id: uuid.UUID = Field(foreign_key="badges.id", index=True, ondelete="CASCADE")
+    badge_int_id: Optional[int] = Field(default=None, index=True)
     unlocked_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -40,7 +44,9 @@ class XPLog(SQLModel, table=True):
     __tablename__ = "xp_logs"
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    user_int_id: Optional[int] = Field(default=None, index=True)
     amount: int
     source: str = Field(max_length=100)
     description: Optional[str] = Field(default=None)

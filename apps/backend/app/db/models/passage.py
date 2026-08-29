@@ -18,12 +18,15 @@ class Passage(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     subtopic_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
+    subtopic_int_id: Optional[int] = Field(default=None, index=True)
     exam_id: Optional[uuid.UUID] = Field(
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
     )
+    exam_int_id: Optional[int] = Field(default=None, index=True)
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
     memory_type: MemoryType = Field(default=MemoryType.PASSAGE, index=True)
     is_complete: bool = Field(default=True, index=True)
@@ -57,9 +60,11 @@ class PassageTranslation(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     passage_id: uuid.UUID = Field(
         foreign_key="passages.id", ondelete="CASCADE", index=True
     )
+    passage_int_id: Optional[int] = Field(default=None, index=True)
     language: LanguageCode = Field(index=True)
     passage_text: str
 

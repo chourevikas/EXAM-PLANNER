@@ -29,6 +29,7 @@ class Exam(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     code: str = Field(
         unique=True,
         index=True,
@@ -153,7 +154,9 @@ class SyllabusVersion(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    exam_int_id: Optional[int] = Field(default=None, index=True)
     version_code: str = Field(max_length=50)
     title: Optional[str] = Field(default=None)
     effective_from: datetime = Field(
@@ -175,9 +178,11 @@ class Subject(SQLModel, table=True):
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     syllabus_version_id: uuid.UUID = Field(
         foreign_key="syllabus_versions.id", ondelete="CASCADE", index=True
     )
+    syllabus_version_int_id: Optional[int] = Field(default=None, index=True)
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)
     display_order: int = Field(default=1)
@@ -193,9 +198,11 @@ class Topic(SQLModel, table=True):
     __table_args__ = (Index("ix_topics_subject_order", "subject_id", "display_order"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     subject_id: uuid.UUID = Field(
         foreign_key="subjects.id", ondelete="CASCADE", index=True
     )
+    subject_int_id: Optional[int] = Field(default=None, index=True)
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)
     display_order: int = Field(default=1)
@@ -211,7 +218,9 @@ class Subtopic(SQLModel, table=True):
     __table_args__ = (Index("ix_subtopics_topic_order", "topic_id", "display_order"),)
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    int_id: Optional[int] = Field(default=None)
     topic_id: uuid.UUID = Field(foreign_key="topics.id", ondelete="CASCADE", index=True)
+    topic_int_id: Optional[int] = Field(default=None, index=True)
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)
     display_order: int = Field(default=1)
