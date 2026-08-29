@@ -1020,8 +1020,8 @@ export function StudentPracticeExamPage() {
   if (allQuestions.length === 0 || !activeQuestion) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100vw', backgroundColor: '#F8FAFC', padding: 24, textAlign: 'center' }}>
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 16, padding: '40px 32px', maxWidth: 480, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>No Practice Questions Found</h2>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 0, padding: '40px 32px', maxWidth: 480, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', marginBottom: 8 }}>No Practice Questions Found</h2>
           <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
             No practice questions mapped to <strong>{gTopic || gSubject}</strong> were found.
           </p>
@@ -1029,14 +1029,14 @@ export function StudentPracticeExamPage() {
             onClick={() => navigate('/mocks')}
             style={{
               padding: '12px 24px',
-              borderRadius: 9,
-              backgroundColor: '#2563EB',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               fontWeight: 600,
               fontSize: 14,
               border: 'none',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)'
             }}
           >
             Select Another Topic
@@ -1107,7 +1107,7 @@ export function StudentPracticeExamPage() {
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 16,
+            borderRadius: 0,
             padding: '14px 24px',
             display: 'flex',
             alignItems: 'center',
@@ -1130,8 +1130,8 @@ export function StudentPracticeExamPage() {
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 8,
-                backgroundColor: '#EFF6FF',
+                borderRadius: 0,
+                backgroundColor: '#F8FAFC',
                 color: '#1E3A8A',
                 display: 'flex',
                 alignItems: 'center',
@@ -1164,17 +1164,17 @@ export function StudentPracticeExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1191,7 +1191,7 @@ export function StudentPracticeExamPage() {
                   width: 220,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1208,11 +1208,11 @@ export function StudentPracticeExamPage() {
                     }}
                     style={{
                       padding: '9px 12px',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       fontSize: 12.5,
                       fontWeight: gExam === opt ? 700 : 500,
                       color: gExam === opt ? '#1E3A8A' : '#334155',
-                      backgroundColor: gExam === opt ? '#EFF6FF' : 'transparent',
+                      backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1241,17 +1241,17 @@ export function StudentPracticeExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1268,7 +1268,7 @@ export function StudentPracticeExamPage() {
                   width: 250,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1285,7 +1285,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1315,11 +1315,11 @@ export function StudentPracticeExamPage() {
                         }}
                         style={{
                           padding: '8px 10px',
-                          borderRadius: 7,
+                          borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: gSubject === opt ? 700 : 500,
                           color: gSubject === opt ? '#1E3A8A' : '#334155',
-                          backgroundColor: gSubject === opt ? '#EFF6FF' : 'transparent',
+                          backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1349,17 +1349,17 @@ export function StudentPracticeExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1376,7 +1376,7 @@ export function StudentPracticeExamPage() {
                   width: 270,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1393,7 +1393,7 @@ export function StudentPracticeExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1420,11 +1420,11 @@ export function StudentPracticeExamPage() {
                           }}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 7,
+                            borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? '#1E3A8A' : '#334155',
-                            backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                            backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1455,17 +1455,17 @@ export function StudentPracticeExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1482,7 +1482,7 @@ export function StudentPracticeExamPage() {
                   width: 170,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1502,11 +1502,11 @@ export function StudentPracticeExamPage() {
                       }}
                       style={{
                         padding: '8px 10px',
-                        borderRadius: 7,
+                        borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: isSelected ? 700 : 500,
                         color: isSelected ? '#1E3A8A' : '#334155',
-                        backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                        backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1543,7 +1543,7 @@ export function StudentPracticeExamPage() {
               width: 270,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 18,
+              borderRadius: 0,
               display: 'flex',
               flexDirection: 'column',
               padding: '16px 14px',
@@ -1562,12 +1562,12 @@ export function StudentPracticeExamPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#1E3A8A' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }} />
                   <span style={{ fontSize: 10.5, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     RECOMMENDED FOR YOU
                   </span>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 0 }}>
                   {displayRecs.length} Qs
                 </span>
               </div>
@@ -1591,7 +1591,7 @@ export function StudentPracticeExamPage() {
                       style={{
                         backgroundColor: '#F8FAFC',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 10,
+                        borderRadius: 0,
                         padding: '10px 12px',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -1612,7 +1612,7 @@ export function StudentPracticeExamPage() {
                           {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
                         {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
                       </div>
                     </div>
@@ -1681,9 +1681,9 @@ export function StudentPracticeExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 99999,
-            backgroundColor: '#0F172A',
+            backgroundColor: '#172033',
             color: '#FFFFFF',
-            borderRadius: 16,
+            borderRadius: 0,
             padding: '14px 22px',
             display: 'flex',
             alignItems: 'center',
@@ -1700,8 +1700,8 @@ export function StudentPracticeExamPage() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: '50%',
-              backgroundColor: '#2563EB',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
@@ -1747,9 +1747,9 @@ export function StudentPracticeExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,
-            backgroundColor: '#0F172A',
+            backgroundColor: '#172033',
             color: '#FFFFFF',
-            borderRadius: 99,
+            borderRadius: 0,
             padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -1764,8 +1764,8 @@ export function StudentPracticeExamPage() {
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: '50%',
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1788,9 +1788,9 @@ export function StudentPracticeExamPage() {
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 20,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563EB',
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               fontSize: 12,
               fontWeight: 700,
@@ -1838,7 +1838,7 @@ export function StudentPracticeExamPage() {
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 20,
+              borderRadius: 0,
               padding: 32,
               maxWidth: 420,
               width: '100%',
@@ -1847,7 +1847,7 @@ export function StudentPracticeExamPage() {
               border: '1px solid #E2E8F0',
             }}
           >
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
@@ -1862,7 +1862,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   color: '#475569',
@@ -1884,7 +1884,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
@@ -1924,7 +1924,7 @@ export function StudentPracticeExamPage() {
               width: '100%',
               maxWidth: 440,
               backgroundColor: '#FFFFFF',
-              borderRadius: 22,
+              borderRadius: 0,
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
               boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
@@ -1936,24 +1936,24 @@ export function StudentPracticeExamPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#ECFDF5',
                 border: '1px solid #A7F3D0',
-                color: '#059669',
+                color: '#3A8B53',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px auto',
               }}
             >
-              <CheckCircle2 size={28} color="#059669" />
+              <CheckCircle2 size={28} color="#3A8B53" />
             </div>
 
-            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 0, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Subject Practice Complete
             </div>
 
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#172033', margin: '0 0 10px 0', lineHeight: 1.3 }}>
               No More Questions Available
             </h3>
 
@@ -1971,14 +1971,14 @@ export function StudentPracticeExamPage() {
                 style={{
                   width: '100%',
                   height: 46,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#1E3A8A',
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(30, 58, 138, 0.3)',
+                  boxShadow: '0 4px 14px rgba(23, 32, 51, 0.3)',
                   transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
@@ -1986,7 +1986,7 @@ export function StudentPracticeExamPage() {
                   gap: 8,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1D4ED8';
+                  e.currentTarget.style.backgroundColor = '#C1121F';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1E3A8A';
@@ -2001,7 +2001,7 @@ export function StudentPracticeExamPage() {
                 style={{
                   width: '100%',
                   height: 42,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: '1.5px solid #E2E8F0',
                   backgroundColor: '#FFFFFF',
                   color: '#64748B',

@@ -87,7 +87,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#172033', overflowX: 'hidden' }}>
       
       {/* Full-width Top Header (fixed at top 0, left 0, right 0) */}
       <StudentTopHeader 

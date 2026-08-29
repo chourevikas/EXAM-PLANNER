@@ -223,9 +223,9 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
         right: 0,
         width: '100%',
         zIndex: 100,
-        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        background: '#172033',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(15, 29, 56, 0.25)',
+        boxShadow: '0 4px 20px rgba(17, 17, 17, 0.25)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -240,13 +240,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             style={{
               width: 32,
               height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              borderRadius: 0,
+              background: '#E31B23',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.4)'
             }}
           >
             <Zap size={17} color="#fff" fill="#fff" />
@@ -310,7 +310,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               height: 36,
               paddingLeft: 36,
               paddingRight: 42,
-              borderRadius: 10,
+              borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.12)',
               backgroundColor: 'rgba(0, 0, 0, 0.2)',
               color: '#ffffff',
@@ -331,7 +331,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 color: 'rgba(255, 255, 255, 0.4)',
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 padding: '2px 6px',
-                borderRadius: 4,
+                borderRadius: 0,
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 pointerEvents: 'none'
               }}
@@ -349,7 +349,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 left: 0,
                 right: 0,
                 backgroundColor: '#FFFFFF',
-                borderRadius: 12,
+                borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
                 padding: 12,
@@ -373,9 +373,9 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Practice Tests</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.mocks.map((mock: any) => (
-                          <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563EB' }}><Trophy size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{mock.title}</span>
+                          <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E31B23' }}><Trophy size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{mock.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -387,9 +387,9 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Previous Year Papers</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.pyqs.map((pyq: any) => (
-                          <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706' }}><Target size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{pyq.title}</span>
+                          <Link key={pyq.id} to={pyq.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F2B623' }}><Target size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{pyq.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -401,9 +401,9 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 8 }}>Syllabus & Topics</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.topics.map((topic: any) => (
-                          <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><Sparkles size={14} /></div>
-                            <span style={{ fontSize: 13, color: '#0F172A', fontWeight: 500 }}>{topic.title}</span>
+                          <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC' }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><Sparkles size={14} /></div>
+                            <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{topic.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -430,7 +430,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               position: 'relative',
               width: 36,
               height: 36,
-              borderRadius: 8,
+              borderRadius: 0,
               border: 'none',
               backgroundColor: 'transparent',
               display: 'flex',
@@ -451,8 +451,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   right: 5,
                   width: 14,
                   height: 14,
-                  borderRadius: '50%',
-                  backgroundColor: '#EF4444',
+                  borderRadius: 0,
+                  backgroundColor: '#E31B23',
                   color: '#FFFFFF',
                   fontSize: 9,
                   fontWeight: 700,
@@ -475,17 +475,17 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 right: 0,
                 width: 320,
                 backgroundColor: '#FFFFFF',
-                borderRadius: 14,
+                borderRadius: 0,
                 border: '1px solid #E2E8F0',
-                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+                boxShadow: '0 12px 32px rgba(17, 17, 17, 0.12)',
                 padding: 16,
                 zIndex: 200
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #F1F5F9', marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Notifications</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#E31B23', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     Mark all read
                   </button>
                 )}
@@ -502,17 +502,17 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       onClick={() => handleNotificationClick(n)}
                       style={{
                         padding: '10px 12px',
-                        borderRadius: 8,
-                        backgroundColor: n.is_read ? '#FFFFFF' : '#EFF6FF',
-                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid #2563EB',
+                        borderRadius: 0,
+                        backgroundColor: n.is_read ? '#FFFFFF' : '#F8FAFC',
+                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid #E31B23',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{n.title}</span>
                         {!n.is_read && (
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#2563EB' }} />
+                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#E31B23' }} />
                         )}
                       </div>
                       <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{n.message}</div>
@@ -533,13 +533,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
             }}
             style={{
               padding: 0,
-              borderRadius: '50%',
+              borderRadius: 0,
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+              boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
               backgroundColor: 'transparent'
             }}
           >
@@ -555,7 +555,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                 right: 0,
                 width: 200,
                 backgroundColor: '#FFFFFF',
-                borderRadius: 12,
+                borderRadius: 0,
                 border: '1px solid #E2E8F0',
                 boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
                 padding: '8px 0',
@@ -563,7 +563,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               }}
             >
               <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{user?.full_name || 'Student Account'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>{user?.full_name || 'Student Account'}</div>
                 <div style={{ fontSize: 11, color: '#64748B' }}>{user?.email || 'student@examplanner.ai'}</div>
               </div>
               <Link to="/profile" onClick={() => setShowProfileMenu(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', color: '#334155', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>

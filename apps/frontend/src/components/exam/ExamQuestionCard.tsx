@@ -174,13 +174,13 @@ export function ExamQuestionCard({
           lineHeight: 1.5,
           fontSize: 15,
           fontWeight: 600,
-          color: '#0F172A',
+          color: '#172033',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         {...props}
       />
     ),
-    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#172033' }} {...props} />,
     table: ({ node, ...props }: any) => (
       <div style={{ overflowX: 'auto', margin: '10px 0' }}>
         <table
@@ -189,7 +189,7 @@ export function ExamQuestionCard({
             borderCollapse: 'collapse',
             fontSize: 12.5,
             border: '1px solid #E2E8F0',
-            borderRadius: 6,
+            borderRadius: 0,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
           {...props}
@@ -204,7 +204,7 @@ export function ExamQuestionCard({
           textAlign: 'left',
           backgroundColor: '#F1F5F9',
           borderBottom: '2px solid #E2E8F0',
-          color: '#0F172A',
+          color: '#172033',
         }}
         {...props}
       />
@@ -214,7 +214,7 @@ export function ExamQuestionCard({
         style={{
           padding: '6px 10px',
           borderBottom: '1px solid #F1F5F9',
-          color: '#0F172A',
+          color: '#172033',
         }}
         {...props}
       />
@@ -226,7 +226,7 @@ export function ExamQuestionCard({
         style={{
           margin: '3px 0',
           fontSize: 14,
-          color: '#0F172A',
+          color: '#172033',
           lineHeight: 1.45,
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
@@ -279,9 +279,9 @@ export function ExamQuestionCard({
             style={{
               backgroundColor: '#FFFFFF',
               padding: '16px 20px',
-              borderRadius: 8,
+              borderRadius: 0,
               border: '1px solid #E2E8F0',
-              borderLeft: '4px solid #2563EB',
+              borderLeft: '4px solid #E31B23',
               fontSize: 15,
               color: '#334155',
               lineHeight: 1.55,
@@ -300,7 +300,7 @@ export function ExamQuestionCard({
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderTop: '4px solid #1E3A8A',
-            borderRadius: 18,
+            borderRadius: 0,
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             padding: '20px 24px',
             display: 'flex',
@@ -338,10 +338,10 @@ export function ExamQuestionCard({
                     alignItems: 'center',
                     gap: 5,
                     padding: '6px 12px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex === 0 ? '#94A3B8' : '#1E293B',
+                    color: questionIndex === 0 ? '#94A3B8' : '#172033',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
@@ -351,16 +351,16 @@ export function ExamQuestionCard({
                   }}
                   onMouseEnter={(e) => {
                     if (questionIndex > 0) {
-                      e.currentTarget.style.backgroundColor = '#EFF6FF';
-                      e.currentTarget.style.borderColor = '#2563EB';
-                      e.currentTarget.style.color = '#2563EB';
+                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.color = '#E31B23';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (questionIndex > 0) {
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                       e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#1E293B';
+                      e.currentTarget.style.color = '#172033';
                     }
                   }}
                 >
@@ -380,10 +380,10 @@ export function ExamQuestionCard({
                   letterSpacing: '0.04em',
                   fontVariantNumeric: 'tabular-nums',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: '#F8FAFC',
                   padding: '5px 14px',
-                  borderRadius: 8,
-                  border: '1px solid #DBEAFE',
+                  borderRadius: 0,
+                  border: '1px solid #E2E8F0',
                 }}
               >
                 QUESTION {questionIndex + 1}
@@ -403,10 +403,10 @@ export function ExamQuestionCard({
                     alignItems: 'center',
                     gap: 5,
                     padding: '6px 12px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#1E293B',
+                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
@@ -416,16 +416,16 @@ export function ExamQuestionCard({
                   }}
                   onMouseEnter={(e) => {
                     if (questionIndex < totalQuestions - 1) {
-                      e.currentTarget.style.backgroundColor = '#EFF6FF';
-                      e.currentTarget.style.borderColor = '#2563EB';
-                      e.currentTarget.style.color = '#2563EB';
+                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.color = '#E31B23';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (questionIndex < totalQuestions - 1) {
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                       e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#1E293B';
+                      e.currentTarget.style.color = '#172033';
                     }
                   }}
                 >
@@ -437,7 +437,7 @@ export function ExamQuestionCard({
               <span
                 style={{
                   fontSize: 11,
-                  color: '#D97706',
+                  color: '#F2B623',
                   fontWeight: 700,
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -446,11 +446,11 @@ export function ExamQuestionCard({
                   backgroundColor: '#FEF3C7',
                   border: '1px solid #FDE68A',
                   padding: '4px 10px',
-                  borderRadius: 99,
+                  borderRadius: 0,
                   letterSpacing: '0.04em',
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706', display: 'inline-block' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
                 {difficultyLabel}
               </span>
             </div>
@@ -471,7 +471,7 @@ export function ExamQuestionCard({
               style={{
                 marginBottom: 14,
                 fontSize: 15,
-                color: '#0F172A',
+                color: '#172033',
                 fontWeight: 600,
                 lineHeight: 1.5,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -490,19 +490,19 @@ export function ExamQuestionCard({
               const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
               const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
 
-              let borderStyle = isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0';
-              let bgStyle = isSelected ? '#EFF6FF' : '#F8FAFC';
-              let badgeBg = isSelected ? '#2563EB' : '#FFFFFF';
+              let borderStyle = isSelected ? '1.5px solid #E31B23' : '1px solid #E2E8F0';
+              let bgStyle = isSelected ? '#F8FAFC' : '#F8FAFC';
+              let badgeBg = isSelected ? '#E31B23' : '#FFFFFF';
               let badgeColor = isSelected ? '#FFFFFF' : '#475569';
-              let badgeBorder = isSelected ? '1px solid #2563EB' : '1px solid #CBD5E1';
+              let badgeBorder = isSelected ? '1px solid #E31B23' : '1px solid #CBD5E1';
 
               if (revealResult) {
                 if (isCorrectOpt) {
-                  borderStyle = '1.5px solid #10B981';
+                  borderStyle = '1.5px solid #3A8B53';
                   bgStyle = '#ECFDF5';
-                  badgeBg = '#10B981';
+                  badgeBg = '#3A8B53';
                   badgeColor = '#FFFFFF';
-                  badgeBorder = '1px solid #10B981';
+                  badgeBorder = '1px solid #3A8B53';
                 } else if (isWrongSelectedOpt) {
                   borderStyle = '1.5px solid #EF4444';
                   bgStyle = '#FEF2F2';
@@ -522,10 +522,10 @@ export function ExamQuestionCard({
                     alignItems: 'center',
                     gap: 10,
                     padding: '9px 12px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: borderStyle,
                     backgroundColor: bgStyle,
-                    color: '#0F172A',
+                    color: '#172033',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'all 0.18s ease-out',
@@ -537,7 +537,7 @@ export function ExamQuestionCard({
                     style={{
                       width: 26,
                       height: 26,
-                      borderRadius: 6,
+                      borderRadius: 0,
                       backgroundColor: badgeBg,
                       color: badgeColor,
                       border: badgeBorder,
@@ -558,7 +558,7 @@ export function ExamQuestionCard({
                   <div
                     style={{
                       fontSize: 13.5,
-                      color: '#0F172A',
+                      color: '#172033',
                       fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
                       lineHeight: 1.45,
                       flex: 1,
@@ -572,7 +572,7 @@ export function ExamQuestionCard({
 
                   {/* Right Status Indicator */}
                   {isCorrectOpt ? (
-                    <CheckCircle2 size={18} style={{ color: '#10B981', flexShrink: 0 }} />
+                    <CheckCircle2 size={18} style={{ color: '#3A8B53', flexShrink: 0 }} />
                   ) : isWrongSelectedOpt ? (
                     <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
                   ) : (
@@ -580,8 +580,8 @@ export function ExamQuestionCard({
                       style={{
                         width: 16,
                         height: 16,
-                        borderRadius: '50%',
-                        border: isSelected ? '4.5px solid #2563EB' : '1.5px solid #CBD5E1',
+                        borderRadius: 0,
+                        border: isSelected ? '4.5px solid #E31B23' : '1.5px solid #CBD5E1',
                         backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
                         flexShrink: 0,
                         boxSizing: 'border-box',
@@ -634,14 +634,14 @@ export function ExamQuestionCard({
                 disabled={!selectedOptionId || !!revealResult}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 8,
-                  border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #2563EB',
-                  backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#2563EB',
+                  borderRadius: 0,
+                  border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #E31B23',
+                  backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#E31B23',
                   color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
                   fontSize: 12.5,
                   fontWeight: 700,
                   cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
-                  boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.22)',
+                  boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(227, 27, 35, 0.22)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
@@ -650,12 +650,12 @@ export function ExamQuestionCard({
                 }}
                 onMouseEnter={(e) => {
                   if (!revealResult && selectedOptionId) {
-                    e.currentTarget.style.backgroundColor = '#1D4ED8';
+                    e.currentTarget.style.backgroundColor = '#C1121F';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!revealResult && selectedOptionId) {
-                    e.currentTarget.style.backgroundColor = '#2563EB';
+                    e.currentTarget.style.backgroundColor = '#E31B23';
                   }
                 }}
               >
@@ -677,10 +677,10 @@ export function ExamQuestionCard({
                 }}
                 style={{
                   padding: '8px 18px',
-                  borderRadius: 8,
-                  border: showDetailedSolution ? '1px solid #2563EB' : '1px solid #CBD5E1',
-                  backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
-                  color: showDetailedSolution ? '#2563EB' : '#1E293B',
+                  borderRadius: 0,
+                  border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
+                  backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
+                  color: showDetailedSolution ? '#E31B23' : '#172033',
                   fontSize: 12.5,
                   fontWeight: 700,
                   cursor: 'pointer',

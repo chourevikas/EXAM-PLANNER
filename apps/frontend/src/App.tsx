@@ -70,7 +70,7 @@ function LoadingFallback() {
         justifyContent: 'center',
         background: '#FAFAF7',
         fontFamily: 'system-ui, sans-serif',
-        color: '#2563EB',
+        color: '#E31B23',
         fontSize: '18px',
         fontWeight: 600,
       }}

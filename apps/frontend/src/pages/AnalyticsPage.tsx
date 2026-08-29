@@ -235,16 +235,16 @@ export function AnalyticsPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 20px',
-            borderRadius: 16,
-            backgroundColor: 'rgba(37, 99, 235, 0.08)',
-            border: '1px solid rgba(37, 99, 235, 0.25)',
+            borderRadius: 0,
+            backgroundColor: 'rgba(227, 27, 35, 0.08)',
+            border: '1px solid rgba(227, 27, 35, 0.25)',
             flexWrap: 'wrap',
             gap: 12,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Viewing Individual Exam Report:</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb' }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#E31B23' }}>
               {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
             </span>
           </div>
@@ -256,14 +256,14 @@ export function AnalyticsPage() {
               alignItems: 'center',
               gap: 8,
               padding: '8px 16px',
-              borderRadius: 12,
-              backgroundColor: '#2563eb',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#ffffff',
               border: 'none',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
               transition: 'all 0.15s ease',
             }}
           >
@@ -278,11 +278,11 @@ export function AnalyticsPage() {
         style={{
           marginBottom: 24,
           padding: 32,
-          borderRadius: 24,
+          borderRadius: 0,
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-color-base)',
-          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(37,99,235,0.06) 100%)',
+          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(227, 27, 35,0.06) 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -298,7 +298,7 @@ export function AnalyticsPage() {
               gap: 6,
               padding: '4px 12px',
               backgroundColor: 'var(--accent-bg)',
-              borderRadius: 20,
+              borderRadius: 0,
               marginBottom: 10,
               border: '1px solid var(--accent-border)',
             }}
@@ -327,7 +327,7 @@ export function AnalyticsPage() {
               alignItems: 'center',
               gap: 8,
               padding: '10px 18px',
-              borderRadius: 14,
+              borderRadius: 0,
               backgroundColor: 'var(--bg-subtle)',
               border: '1px solid var(--accent-primary)',
               color: 'var(--text-primary)',
@@ -338,7 +338,7 @@ export function AnalyticsPage() {
               transition: 'all 0.2s ease',
             }}
           >
-            <BarChart3 size={16} color="#2563eb" />
+            <BarChart3 size={16} color="#E31B23" />
             ← Back to Master Cumulative Report
           </button>
         )}
@@ -359,7 +359,7 @@ export function AnalyticsPage() {
             style={{
               marginBottom: 20,
               padding: '14px 20px',
-              borderRadius: 16,
+              borderRadius: 0,
               backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
@@ -382,9 +382,9 @@ export function AnalyticsPage() {
                 onChange={(e) => handleViewSingleExam(e.target.value)}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   backgroundColor: 'var(--bg-subtle)',
-                  border: '1px solid #2563eb',
+                  border: '1px solid #E31B23',
                   color: 'var(--text-primary)',
                   fontSize: 12.5,
                   fontWeight: 700,
@@ -409,7 +409,7 @@ export function AnalyticsPage() {
             padding: '64px 32px',
             textAlign: 'center',
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 24,
+            borderRadius: 0,
             border: '1px solid var(--border-default)',
             boxShadow: 'var(--shadow-color-base)',
             display: 'flex',
@@ -425,9 +425,9 @@ export function AnalyticsPage() {
             style={{
               width: 80,
               height: 80,
-              borderRadius: '50%',
-              backgroundColor: 'rgba(37, 99, 235, 0.1)',
-              border: '1px solid rgba(37, 99, 235, 0.25)',
+              borderRadius: 0,
+              backgroundColor: 'rgba(227, 27, 35, 0.1)',
+              border: '1px solid rgba(227, 27, 35, 0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -453,14 +453,14 @@ export function AnalyticsPage() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '14px 28px',
-                borderRadius: 14,
-                backgroundColor: '#2563eb',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#ffffff',
                 border: 'none',
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.3)',
+                boxShadow: '0 4px 16px rgba(227, 27, 35, 0.3)',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -476,7 +476,7 @@ export function AnalyticsPage() {
           style={{
             marginBottom: 24,
             padding: 24,
-            borderRadius: 20,
+            borderRadius: 0,
             backgroundColor: 'var(--bg-card)',
             border: '1px solid var(--border-default)',
             boxShadow: 'var(--shadow-color-base)',
@@ -485,7 +485,7 @@ export function AnalyticsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BarChart3 size={18} color="#2563eb" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
+                <BarChart3 size={18} color="#E31B23" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
               </h3>
               <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
                 Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
@@ -526,7 +526,7 @@ export function AnalyticsPage() {
                           borderBottom: '1px solid var(--border-default)',
                         }}
                       >
-                        <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{globalIdx + 1}</td>
+                        <td style={{ padding: '12px', fontWeight: 800, color: '#E31B23' }}>{globalIdx + 1}</td>
                         <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span>{att.exam_name}</span>
@@ -536,10 +536,10 @@ export function AnalyticsPage() {
                                   fontSize: 10.5,
                                   fontWeight: 800,
                                   padding: '2px 7px',
-                                  borderRadius: 6,
-                                  backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                                  color: '#2563eb',
-                                  border: '1px solid rgba(37, 99, 235, 0.25)',
+                                  borderRadius: 0,
+                                  backgroundColor: 'rgba(227, 27, 35, 0.12)',
+                                  color: '#E31B23',
+                                  border: '1px solid rgba(227, 27, 35, 0.25)',
                                 }}
                               >
                                 Attempt #{attemptNum}
@@ -553,9 +553,9 @@ export function AnalyticsPage() {
                               fontSize: 11,
                               fontWeight: 700,
                               padding: '3px 8px',
-                              borderRadius: 8,
-                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                              color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
+                              borderRadius: 0,
+                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
                             }}
                           >
                             {att.mode.replace('_', ' ')}
@@ -565,7 +565,7 @@ export function AnalyticsPage() {
                           {new Date(att.started_at).toLocaleDateString()}
                         </td>
                         <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          <span style={{ color: Number(att.total_score) >= 92 ? '#10b981' : '#2563eb' }}>
+                          <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
                             {att.total_score}
                           </span>{' '}
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
@@ -578,14 +578,14 @@ export function AnalyticsPage() {
                             onClick={() => handleViewSingleExam(att.attempt_id)}
                             style={{
                               padding: '6px 14px',
-                              borderRadius: 10,
-                              backgroundColor: '#2563eb',
+                              borderRadius: 0,
+                              backgroundColor: '#E31B23',
                               color: '#ffffff',
                               border: 'none',
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: 'pointer',
-                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                              boxShadow: '0 2px 8px rgba(227, 27, 35, 0.2)',
                               transition: 'all 0.15s ease',
                             }}
                           >
@@ -629,7 +629,7 @@ export function AnalyticsPage() {
                     onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                     style={{
                       padding: '6px 12px',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       border: '1px solid var(--border-default)',
                       backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
                       color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -648,9 +648,9 @@ export function AnalyticsPage() {
                       onClick={() => setHistoryPage(pageNum)}
                       style={{
                         padding: '6px 11px',
-                        borderRadius: 8,
-                        border: pageNum === historyPage ? '1px solid #2563eb' : '1px solid var(--border-default)',
-                        backgroundColor: pageNum === historyPage ? '#2563eb' : 'var(--bg-subtle)',
+                        borderRadius: 0,
+                        border: pageNum === historyPage ? '1px solid #E31B23' : '1px solid var(--border-default)',
+                        backgroundColor: pageNum === historyPage ? '#E31B23' : 'var(--bg-subtle)',
                         color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
                         cursor: 'pointer',
                         fontSize: 12,
@@ -666,7 +666,7 @@ export function AnalyticsPage() {
                     onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))}
                     style={{
                       padding: '6px 12px',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       border: '1px solid var(--border-default)',
                       backgroundColor: historyPage >= totalPages ? 'transparent' : 'var(--bg-subtle)',
                       color: historyPage >= totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
@@ -691,10 +691,10 @@ export function AnalyticsPage() {
           style={{
             padding: 32,
             marginBottom: 28,
-            borderRadius: 20,
+            borderRadius: 0,
             backgroundColor: 'var(--bg-card)',
-            border: '2px solid rgba(37, 99, 235, 0.3)',
-            boxShadow: '0 8px 32px rgba(37, 99, 235, 0.12)',
+            border: '2px solid rgba(227, 27, 35, 0.3)',
+            boxShadow: '0 8px 32px rgba(227, 27, 35, 0.12)',
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
@@ -702,7 +702,7 @@ export function AnalyticsPage() {
             textAlign: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#E31B23' }}>
             <Cpu size={28} className="animate-spin" />
             <Sparkles size={24} color="#8b5cf6" />
           </div>
@@ -721,7 +721,7 @@ export function AnalyticsPage() {
               width: '100%',
               maxWidth: 480,
               height: 8,
-              borderRadius: 8,
+              borderRadius: 0,
               backgroundColor: 'var(--bg-subtle)',
               overflow: 'hidden',
               marginTop: 6,
@@ -731,8 +731,8 @@ export function AnalyticsPage() {
               style={{
                 height: '100%',
                 width: `${evalProgress}%`,
-                background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
-                borderRadius: 8,
+                background: 'linear-gradient(90deg, #E31B23, #8b5cf6)',
+                borderRadius: 0,
                 transition: 'width 0.4s ease',
               }}
             />
@@ -747,7 +747,7 @@ export function AnalyticsPage() {
       {/* Loading Spinner */}
       {isLoading && !isEvaluating && (
         <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Loader2 size={28} className="animate-spin" color="#2563eb" />
+          <Loader2 size={28} className="animate-spin" color="#E31B23" />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
             Loading 12 Psychometric Diagnostic Matrices...
           </span>
@@ -759,9 +759,9 @@ export function AnalyticsPage() {
         <div
           style={{
             padding: '20px 24px',
-            borderRadius: 16,
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: 0,
+            backgroundColor: 'rgba(227, 27, 35, 0.1)',
+            border: '1px solid rgba(227, 27, 35, 0.3)',
             color: 'var(--text-primary)',
             marginBottom: 24,
             display: 'flex',
@@ -788,15 +788,15 @@ export function AnalyticsPage() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '10px 20px',
-                borderRadius: 12,
-                backgroundColor: '#2563eb',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#ffffff',
                 border: 'none',
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: isRetrying ? 'not-allowed' : 'pointer',
                 opacity: isRetrying ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -821,7 +821,7 @@ export function AnalyticsPage() {
               padding: 48,
               textAlign: 'center',
               backgroundColor: 'var(--bg-card)',
-              borderRadius: 24,
+              borderRadius: 0,
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
               display: 'flex',
@@ -837,8 +837,8 @@ export function AnalyticsPage() {
               style={{
                 width: 64,
                 height: 64,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 0,
+                backgroundColor: 'rgba(227, 27, 35, 0.1)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -863,7 +863,7 @@ export function AnalyticsPage() {
                 onClick={() => window.location.reload()}
                 style={{
                   padding: '10px 20px',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -881,14 +881,14 @@ export function AnalyticsPage() {
                 onClick={() => (window.location.href = '/practice')}
                 style={{
                   padding: '10px 22px',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: 'none',
-                  backgroundColor: 'var(--accent-primary, #2563eb)',
+                  backgroundColor: 'var(--accent-primary, #E31B23)',
                   color: '#ffffff',
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                  boxShadow: '0 4px 14px rgba(227, 27, 35, 0.3)',
                   transition: 'all 0.15s ease',
                 }}
               >

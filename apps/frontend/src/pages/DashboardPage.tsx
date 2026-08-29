@@ -196,14 +196,14 @@ export function DashboardPage() {
             backgroundColor: 'var(--accent-primary)',
             color: '#fff',
             border: 'none',
-            borderRadius: 12,
+            borderRadius: 0,
             fontSize: 14,
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+            boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
             transition: 'transform 0.2s'
           }}
           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -227,7 +227,7 @@ export function DashboardPage() {
           icon={<Ico.Target size={18} />}
           showProgress={true}
           progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
-          accentColor="#2563EB"
+          accentColor="#E31B23"
         />
 
         <StudentMetricCard
@@ -240,7 +240,7 @@ export function DashboardPage() {
           }
           supportingText="Completed practice tests"
           icon={<Ico.Trophy size={18} />}
-          accentColor="#D97706"
+          accentColor="#F2B623"
         />
 
         <StudentMetricCard
@@ -252,7 +252,7 @@ export function DashboardPage() {
           }
           supportingText="Average correctness score"
           icon={<Ico.Chart size={18} />}
-          accentColor="#10B981"
+          accentColor="#3A8B53"
         />
 
         <StudentMetricCard
@@ -264,13 +264,13 @@ export function DashboardPage() {
             </span>
           }
           supportingText={
-            <span style={{ color: '#2563EB', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#E31B23', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               View Achievements <Ico.ArrowRight size={13} />
             </span>
           }
           icon={<Ico.Star filled />}
           onClick={() => setShowBadgesModal(true)}
-          accentColor="#3B82F6"
+          accentColor="#E31B23"
         />
       </section>
 
@@ -282,7 +282,7 @@ export function DashboardPage() {
           style={{
             backgroundColor: '#FFFFFF',
             padding: '22px 24px',
-            borderRadius: 14,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
@@ -290,11 +290,11 @@ export function DashboardPage() {
         >
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Subject Accuracy</h3>
               <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Your strong areas vs. areas needing improvement.</p>
             </div>
             {subjectData.length > 0 && subjectData.every(s => s.total_attempted === 0) && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, backgroundColor: '#FEF3C7', color: '#B45309' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 0, backgroundColor: '#FEF3C7', color: '#B45309' }}>
                 No Activity Recorded
               </span>
             )}
@@ -316,9 +316,9 @@ export function DashboardPage() {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', marginBottom: 4 }}>{data.subject}</div>
-                            <div style={{ fontSize: 12, color: '#2563EB', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
+                          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{data.subject}</div>
+                            <div style={{ fontSize: 12, color: '#E31B23', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
                             <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                               Attempted: {data.total_attempted} | Correct: {data.total_correct}
                             </div>
@@ -332,7 +332,7 @@ export function DashboardPage() {
                     {subjectData.map((entry: any, index: number) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#10B981' : entry.accuracy >= 60 ? '#2563EB' : '#D97706'}
+                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? '#E31B23' : '#F2B623'}
                       />
                     ))}
                   </Bar>
@@ -347,14 +347,14 @@ export function DashboardPage() {
           style={{
             backgroundColor: '#FFFFFF',
             padding: '22px 24px',
-            borderRadius: 14,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           }}
         >
           <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: '0 0 4px 0' }}>Time Management</h3>
+            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Time Management</h3>
             <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Study hours logged this week.</p>
           </div>
           <div style={{ height: 250, width: '100%' }}>
@@ -362,8 +362,8 @@ export function DashboardPage() {
               <AreaChart data={studyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#E31B23" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#E31B23" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
@@ -371,9 +371,9 @@ export function DashboardPage() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                 <Tooltip
                   cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 10, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#0F172A' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#172033' }}
                 />
-                <Area type="monotone" dataKey="hours" stroke="#2563EB" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
+                <Area type="monotone" dataKey="hours" stroke="#E31B23" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -386,7 +386,7 @@ export function DashboardPage() {
 
         {/* The Psychometric Layer */}
         <div style={{
-          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 24,
+          backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 0,
           border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)',
           position: 'relative', overflow: 'hidden'
         }}>
@@ -397,7 +397,7 @@ export function DashboardPage() {
               backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.1)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
             }}>
-              <div style={{ padding: 16, backgroundColor: 'var(--bg-card)', borderRadius: '50%', boxShadow: 'var(--shadow-color-base)', marginBottom: 16 }}>
+              <div style={{ padding: 16, backgroundColor: 'var(--bg-card)', borderRadius: 0, boxShadow: 'var(--shadow-color-base)', marginBottom: 16 }}>
                 <Ico.Shield />
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px 0' }}>Premium Analytics Locked</h3>
@@ -406,7 +406,7 @@ export function DashboardPage() {
               </p>
               <Link to="/pricing" style={{
                 padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#FFF',
-                borderRadius: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                borderRadius: 0, fontSize: 14, fontWeight: 700, textDecoration: 'none',
                 boxShadow: '0 8px 16px var(--shadow-color-accent)'
               }}>
                 Upgrade to Pro
@@ -419,7 +419,7 @@ export function DashboardPage() {
             <div style={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, background: 'radial-gradient(circle, var(--accent-bg) 0%, transparent 70%)', opacity: 0.7, pointerEvents: 'none' }} />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-              <div style={{ padding: 8, backgroundColor: 'var(--pink-bg)', color: 'var(--pink-primary)', borderRadius: 12 }}>
+              <div style={{ padding: 8, backgroundColor: 'var(--pink-bg)', color: 'var(--pink-primary)', borderRadius: 0 }}>
                 <Ico.Brain />
               </div>
               <div>
@@ -433,14 +433,14 @@ export function DashboardPage() {
               <div>
                 <h4 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-disabled)', fontWeight: 700, marginBottom: 16 }}>Decision Accuracy</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+                  <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Direct Hits</span>
                       <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--success-primary)' }}>68%</span>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Perfect accuracy on first attempt.</p>
                   </div>
-                  <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+                  <div style={{ padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Partial Understanding</span>
                       <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--warning-primary)' }}>22%</span>
@@ -460,8 +460,8 @@ export function DashboardPage() {
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Question Jumping</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-primary)' }}>Moderate (12 times)</span>
                     </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: '40%', height: '100%', backgroundColor: 'var(--warning-primary)', borderRadius: 3 }} />
+                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, overflow: 'hidden' }}>
+                      <div style={{ width: '40%', height: '100%', backgroundColor: 'var(--warning-primary)', borderRadius: 0 }} />
                     </div>
                   </div>
 
@@ -470,8 +470,8 @@ export function DashboardPage() {
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Option Hesitation</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--success-primary)' }}>Low (Avg 4s)</span>
                     </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: '15%', height: '100%', backgroundColor: 'var(--success-primary)', borderRadius: 3 }} />
+                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, overflow: 'hidden' }}>
+                      <div style={{ width: '15%', height: '100%', backgroundColor: 'var(--success-primary)', borderRadius: 0 }} />
                     </div>
                   </div>
 
@@ -480,8 +480,8 @@ export function DashboardPage() {
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>Avg Time / Question</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)' }}>1m 12s</span>
                     </div>
-                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ width: '60%', height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 3 }} />
+                    <div style={{ height: 6, width: '100%', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, overflow: 'hidden' }}>
+                      <div style={{ width: '60%', height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 0 }} />
                     </div>
                   </div>
 
@@ -492,7 +492,7 @@ export function DashboardPage() {
         </div>
         {/* 5. Call to Action / Next Up */}
         <div style={{
-          backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 24,
+          backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 0,
           color: '#FFFFFF', display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 40px var(--shadow-color-accent)',
           backgroundImage: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-darker) 100%)',
@@ -503,7 +503,7 @@ export function DashboardPage() {
           </div>
 
           <div style={{ marginBottom: 'auto', position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 16 }}>
               Up Next
             </div>
             <h3 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 12px 0', lineHeight: 1.3 }}>
@@ -517,7 +517,7 @@ export function DashboardPage() {
           <button
             onClick={() => window.location.href = activeExam ? `/exam/${activeExam.code}` : '/pyq'}
             style={{
-              width: '100%', padding: '16px', borderRadius: 14, border: 'none',
+              width: '100%', padding: '16px', borderRadius: 0, border: 'none',
               backgroundColor: '#FFFFFF', color: 'var(--accent-darker)',
               fontSize: 15, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -534,7 +534,7 @@ export function DashboardPage() {
 
       {/* 4. Today's Study Feed */}
       <section style={{ marginBottom: 40 }}>
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
           <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>Today's Study Log</h3>
@@ -542,7 +542,7 @@ export function DashboardPage() {
                 {todayActivities.length === 0 ? 'No activities logged today.' : `${todayActivities.length} activities logged`}
               </p>
             </div>
-            <div style={{ padding: '8px 16px', backgroundColor: 'var(--bg-subtle)', borderRadius: 12, border: '1px solid var(--border-default)' }}>
+            <div style={{ padding: '8px 16px', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                 Total: {Math.floor(todayActivities.reduce((acc, curr) => acc + curr.duration_minutes, 0) / 60)}h{' '}
                 {todayActivities.reduce((acc, curr) => acc + curr.duration_minutes, 0) % 60}m
@@ -557,15 +557,15 @@ export function DashboardPage() {
               </div>
             ) : (
               todayActivities.map((activity, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
                   <div style={{
-                    width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 44, height: 44, borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: activity.activity_type === 'MOCK_TEST' ? 'rgba(234, 179, 8, 0.1)' :
                       activity.activity_type === 'PYQ' ? 'rgba(168, 85, 247, 0.1)' :
-                        activity.activity_type === 'REVISION' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                        activity.activity_type === 'REVISION' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(227, 27, 35, 0.1)',
                     color: activity.activity_type === 'MOCK_TEST' ? '#EAB308' :
                       activity.activity_type === 'PYQ' ? '#A855F7' :
-                        activity.activity_type === 'REVISION' ? '#22C55E' : '#3B82F6'
+                        activity.activity_type === 'REVISION' ? '#22C55E' : '#E31B23'
                   }}>
                     {activity.activity_type === 'MOCK_TEST' || activity.activity_type === 'PYQ' ? <Ico.Trophy size={20} /> :
                       activity.activity_type === 'REVISION' ? <Ico.Refresh /> : <Ico.Book size={20} />}
@@ -618,7 +618,7 @@ export function DashboardPage() {
               <div style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 24,
+                borderRadius: 0,
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'flex',
@@ -631,18 +631,18 @@ export function DashboardPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
                       <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Trophy size={18} color="#2563EB" /> Recent Exam Attempts
+                        <Trophy size={18} color="#E31B23" /> Recent Exam Attempts
                       </h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Registered exam history</p>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23', border: '1px solid #BFDBFE' }}>
                       {registeredAttempts.length} Recorded
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {visibleRegisteredAttempts.length === 0 ? (
-                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, color: 'var(--text-muted)' }}>
                         <Trophy size={28} />
                         <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No main exam attempts recorded yet.</p>
                       </div>
@@ -656,15 +656,15 @@ export function DashboardPage() {
                             justifyContent: 'space-between',
                             padding: '10px 14px',
                             backgroundColor: 'var(--bg-subtle)',
-                            borderRadius: 14,
+                            borderRadius: 0,
                             border: '1px solid var(--border-default)',
                             gap: 12
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
-                              width: 36, height: 36, borderRadius: 10,
-                              backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#10B981',
+                              width: 36, height: 36, borderRadius: 0,
+                              backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#3A8B53',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontWeight: 800, fontSize: 14
                             }}>
@@ -706,7 +706,7 @@ export function DashboardPage() {
                       onClick={() => setAttemptsPage(p => Math.max(0, p - 1))}
                       disabled={attemptsPage === 0}
                       style={{
-                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        padding: '5px 9px', borderRadius: 0, border: '1px solid var(--border-default)',
                         backgroundColor: attemptsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
                         color: attemptsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
                         cursor: attemptsPage === 0 ? 'not-allowed' : 'pointer',
@@ -719,7 +719,7 @@ export function DashboardPage() {
                       onClick={() => setAttemptsPage(p => Math.min(attemptsTotalPages - 1, p + 1))}
                       disabled={attemptsPage >= attemptsTotalPages - 1}
                       style={{
-                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        padding: '5px 9px', borderRadius: 0, border: '1px solid var(--border-default)',
                         backgroundColor: attemptsPage >= attemptsTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
                         color: attemptsPage >= attemptsTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
                         cursor: attemptsPage >= attemptsTotalPages - 1 ? 'not-allowed' : 'pointer',
@@ -736,7 +736,7 @@ export function DashboardPage() {
               <div style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 24,
+                borderRadius: 0,
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'flex',
@@ -749,18 +749,18 @@ export function DashboardPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
                       <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <RefreshCw size={18} color="#059669" /> Synced Guest Sessions
+                        <RefreshCw size={18} color="#3A8B53" /> Synced Guest Sessions
                       </h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Auto-synced guest tests</p>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 12, backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: '#ECFDF5', color: '#3A8B53', border: '1px solid #A7F3D0' }}>
                       {syncedGuestAttempts.length} Synced
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {visibleSyncedGuestAttempts.length === 0 ? (
-                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 16, color: 'var(--text-muted)' }}>
+                      <div style={{ padding: '36px 16px', textAlign: 'center', backgroundColor: 'var(--bg-subtle)', borderRadius: 0, color: 'var(--text-muted)' }}>
                         <RefreshCw size={28} />
                         <p style={{ fontSize: 13, marginTop: 8, margin: 0 }}>No guest sessions synced yet.</p>
                       </div>
@@ -774,15 +774,15 @@ export function DashboardPage() {
                             justifyContent: 'space-between',
                             padding: '10px 14px',
                             backgroundColor: 'var(--bg-subtle)',
-                            borderRadius: 14,
+                            borderRadius: 0,
                             border: '1px solid var(--border-default)',
                             gap: 12
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
-                              width: 36, height: 36, borderRadius: 10,
-                              backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB',
+                              width: 36, height: 36, borderRadius: 0,
+                              backgroundColor: '#F8FAFC', border: '1px solid #BFDBFE', color: '#E31B23',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontWeight: 800, fontSize: 14
                             }}>
@@ -793,7 +793,7 @@ export function DashboardPage() {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                                   {attempt.topicName}
                                 </span>
-                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 8, backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23', border: '1px solid #BFDBFE' }}>
                                   SYNCED
                                 </span>
                               </div>
@@ -807,7 +807,7 @@ export function DashboardPage() {
                             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                               Score: {attempt.score} / {attempt.totalMarksPossible}
                             </div>
-                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#10B981' : '#D97706', fontWeight: 700 }}>
+                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#3A8B53' : '#F2B623', fontWeight: 700 }}>
                               {attempt.accuracy}% Acc
                             </div>
                           </div>
@@ -827,7 +827,7 @@ export function DashboardPage() {
                       onClick={() => setGuestSessionsPage(p => Math.max(0, p - 1))}
                       disabled={guestSessionsPage === 0}
                       style={{
-                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        padding: '5px 9px', borderRadius: 0, border: '1px solid var(--border-default)',
                         backgroundColor: guestSessionsPage === 0 ? 'var(--bg-subtle)' : 'var(--bg-card)',
                         color: guestSessionsPage === 0 ? 'var(--text-disabled)' : 'var(--text-primary)',
                         cursor: guestSessionsPage === 0 ? 'not-allowed' : 'pointer',
@@ -840,7 +840,7 @@ export function DashboardPage() {
                       onClick={() => setGuestSessionsPage(p => Math.min(guestTotalPages - 1, p + 1))}
                       disabled={guestSessionsPage >= guestTotalPages - 1}
                       style={{
-                        padding: '5px 9px', borderRadius: 6, border: '1px solid var(--border-default)',
+                        padding: '5px 9px', borderRadius: 0, border: '1px solid var(--border-default)',
                         backgroundColor: guestSessionsPage >= guestTotalPages - 1 ? 'var(--bg-subtle)' : 'var(--bg-card)',
                         color: guestSessionsPage >= guestTotalPages - 1 ? 'var(--text-disabled)' : 'var(--text-primary)',
                         cursor: guestSessionsPage >= guestTotalPages - 1 ? 'not-allowed' : 'pointer',
@@ -870,7 +870,7 @@ export function DashboardPage() {
         }} onClick={() => setShowBadgesModal(false)}>
           <div style={{
             backgroundColor: 'var(--bg-card)', width: '100%', maxWidth: 480,
-            borderRadius: 24, padding: 32, boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
+            borderRadius: 0, padding: 32, boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
             border: '1px solid var(--border-default)'
           }} onClick={e => e.stopPropagation()}>
 
@@ -882,7 +882,7 @@ export function DashboardPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
               {/* Earned Badges */}
               {badges?.unlocked?.map(badge => (
-                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', borderRadius: 16, border: '1px solid var(--success-primary)' }}>
+                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', borderRadius: 0, border: '1px solid var(--success-primary)' }}>
                   <div style={{ fontSize: 32 }}>{badge.icon_url}</div>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{badge.name}</div>
@@ -893,12 +893,12 @@ export function DashboardPage() {
 
               {/* Locked Badges */}
               {badges?.locked?.map(badge => (
-                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 16, border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
+                <div key={badge.id} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, border: '1px dashed var(--border-disabled)', opacity: 0.6 }}>
                   <div style={{ fontSize: 32, filter: 'grayscale(1)' }}>{badge.icon_url}</div>
                   <div>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                       {badge.name}
-                      {badge.required_xp && <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 4, marginLeft: 8 }}>Requires {badge.required_xp} XP</span>}
+                      {badge.required_xp && <span style={{ fontSize: 11, backgroundColor: 'var(--bg-card)', padding: '2px 6px', borderRadius: 0, marginLeft: 8 }}>Requires {badge.required_xp} XP</span>}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{badge.description}</div>
                   </div>
@@ -908,8 +908,8 @@ export function DashboardPage() {
 
             <div style={{ marginTop: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>Keep hitting your daily goals to unlock more!</div>
-              <div style={{ width: '100%', height: 8, backgroundColor: 'var(--bg-subtle)', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(((user.total_xp ?? 0) / 2500) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 4 }} />
+              <div style={{ width: '100%', height: 8, backgroundColor: 'var(--bg-subtle)', borderRadius: 0, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(((user.total_xp ?? 0) / 2500) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-primary)', borderRadius: 0 }} />
               </div>
             </div>
 

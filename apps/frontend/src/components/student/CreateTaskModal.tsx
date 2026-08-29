@@ -80,14 +80,14 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
     }}>
       <div style={{
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
-        borderRadius: 24, padding: 28, width: '100%', maxWidth: 520,
+        borderRadius: 0, padding: 28, width: '100%', maxWidth: 520,
         boxShadow: '0 20px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto'
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 36, height: 36, borderRadius: 0,
               backgroundColor: 'rgba(79, 70, 229, 0.1)', color: 'var(--accent-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
@@ -108,8 +108,8 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
 
         {errorMsg && (
           <div style={{
-            padding: '10px 14px', borderRadius: 10, backgroundColor: 'var(--danger-bg)',
-            color: 'var(--danger-primary)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(239,68,68,0.2)'
+            padding: '10px 14px', borderRadius: 0, backgroundColor: 'var(--danger-bg)',
+            color: 'var(--danger-primary)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(227, 27, 35,0.2)'
           }}>
             {errorMsg}
           </div>
@@ -127,7 +127,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               style={{
-                width: '100%', padding: '10px 12px', borderRadius: 10,
+                width: '100%', padding: '10px 12px', borderRadius: 0,
                 border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                 color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
               }}
@@ -144,7 +144,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none'
                 }}
@@ -161,7 +161,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={activityType}
                 onChange={(e) => setActivityType(e.target.value)}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none'
                 }}
@@ -183,7 +183,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                 }}
@@ -198,7 +198,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as any)}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none'
                 }}
@@ -220,7 +220,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={dueInDays}
                 onChange={(e) => setDueInDays(parseInt(e.target.value, 10))}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none'
                 }}
@@ -245,7 +245,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
                 value={allocatedMins}
                 onChange={(e) => setAllocatedMins(parseInt(e.target.value, 10) || 30)}
                 style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  width: '100%', padding: '10px 12px', borderRadius: 0,
                   border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-card)',
                   color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box'
                 }}
@@ -259,7 +259,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
               type="button"
               onClick={onClose}
               style={{
-                flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--border-default)',
+                flex: 1, padding: '12px', borderRadius: 0, border: '1px solid var(--border-default)',
                 backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700, cursor: 'pointer'
               }}
             >
@@ -269,7 +269,7 @@ export function CreateTaskModal({ isOpen, onClose, onSuccess }: CreateTaskModalP
               type="submit"
               disabled={loading}
               style={{
-                flex: 1, padding: '12px', borderRadius: 12, border: 'none',
+                flex: 1, padding: '12px', borderRadius: 0, border: 'none',
                 backgroundColor: 'var(--accent-primary)', color: '#FFF', fontSize: 14, fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
               }}

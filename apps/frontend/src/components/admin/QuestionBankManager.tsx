@@ -93,12 +93,12 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         padding: '7px 14px',
         fontSize: 12.5,
         fontWeight: 600,
-        color: isHovered ? '#2563EB' : '#0F172A',
-        backgroundColor: isHovered ? '#EFF6FF' : '#FFFFFF',
-        border: `1px solid ${isHovered ? '#2563EB' : '#CBD5E1'}`,
-        borderRadius: 6,
+        color: isHovered ? '#E31B23' : '#172033',
+        backgroundColor: isHovered ? '#F8FAFC' : '#FFFFFF',
+        border: `1px solid ${isHovered ? '#E31B23' : '#CBD5E1'}`,
+        borderRadius: 0,
         cursor: 'pointer',
-        boxShadow: isHovered ? '0 2px 6px rgba(37, 99, 235, 0.15)' : 'none',
+        boxShadow: isHovered ? '0 2px 6px rgba(227, 27, 35, 0.15)' : 'none',
         transition: 'all 150ms ease-out',
       }}
     >
@@ -108,7 +108,7 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
           transition: 'transform 150ms ease-out',
-          color: isHovered ? '#2563EB' : '#64748B',
+          color: isHovered ? '#E31B23' : '#64748B',
         }}
       />
     </button>
@@ -412,7 +412,7 @@ export function QuestionBankManager() {
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 8,
+            borderRadius: 0,
             marginBottom: 20,
             color: '#B42318',
             fontSize: 13.5,
@@ -433,7 +433,7 @@ export function QuestionBankManager() {
             padding: '12px 16px',
             background: '#DCFCE7',
             border: '1px solid #86EFAC',
-            borderRadius: 8,
+            borderRadius: 0,
             marginBottom: 20,
             color: '#15803D',
             fontSize: 13.5,
@@ -463,7 +463,7 @@ export function QuestionBankManager() {
             }}
           >
             <div>
-              <h1 style={{ fontSize: 30, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: 30, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
                 Question Bank
               </h1>
               <p style={{ fontSize: 14, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
@@ -476,11 +476,11 @@ export function QuestionBankManager() {
                     display: 'inline-block',
                     fontSize: 12.5,
                     fontWeight: 600,
-                    color: '#2563EB',
-                    backgroundColor: '#EFF6FF',
+                    color: '#E31B23',
+                    backgroundColor: '#F8FAFC',
                     border: '1px solid #BFDBFE',
                     padding: '3px 10px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                   }}
                 >
                   {subjectList.length} Subjects · {totalQuestionsSum.toLocaleString()} Questions · {totalSubtopicsSum} Subtopics
@@ -499,11 +499,11 @@ export function QuestionBankManager() {
                 style={{
                   width: '100%',
                   padding: '9px 12px 9px 36px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   fontSize: 13,
-                  color: '#0F172A',
+                  color: '#172033',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
@@ -516,7 +516,7 @@ export function QuestionBankManager() {
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 14,
+              borderRadius: 0,
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
               overflow: 'hidden',
             }}
@@ -554,7 +554,7 @@ export function QuestionBankManager() {
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderLeft = '3px solid #2563EB';
+                        e.currentTarget.style.borderLeft = '3px solid #E31B23';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -562,24 +562,24 @@ export function QuestionBankManager() {
                       }}
                     >
                       {/* Subject Column Anchor */}
-                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#172033', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <div
                             style={{
                               width: 34,
                               height: 34,
-                              borderRadius: 8,
-                              background: '#EFF6FF',
+                              borderRadius: 0,
+                              background: '#F8FAFC',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
                             }}
                           >
-                            <IconComponent size={17} color="#2563EB" />
+                            <IconComponent size={17} color="#E31B23" />
                           </div>
                           <div>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', lineHeight: 1.2 }}>
                               {sub.name}
                             </div>
                             <div style={{ fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: 400 }}>
@@ -596,7 +596,7 @@ export function QuestionBankManager() {
 
                       {/* Question Count */}
                       <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', lineHeight: 1 }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#172033', lineHeight: 1 }}>
                           {sub.questionsCount}
                         </div>
                         <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>questions</div>
@@ -612,13 +612,13 @@ export function QuestionBankManager() {
                             backgroundColor: '#FEF3C7',
                             border: '1px solid #FDE68A',
                             padding: '3px 9px',
-                            borderRadius: 12,
+                            borderRadius: 0,
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 5,
                           }}
                         >
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706' }} />
+                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623' }} />
                           {sub.pendingCount} Pending Review
                         </span>
                       </td>
@@ -651,7 +651,7 @@ export function QuestionBankManager() {
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 14,
+              borderRadius: 0,
               border: '1px solid #E2E8F0',
               padding: '20px 24px',
               marginBottom: 20,
@@ -666,7 +666,7 @@ export function QuestionBankManager() {
                     padding: '8px 14px',
                     backgroundColor: '#FFFFFF',
                     border: '1px solid #CBD5E1',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 13,
                     fontWeight: 600,
                     color: '#334155',
@@ -683,17 +683,17 @@ export function QuestionBankManager() {
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.015em' }}>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.015em' }}>
                       {selectedSubject.name} Questions
                     </h1>
                     <span
                       style={{
                         padding: '3px 9px',
-                        borderRadius: 6,
+                        borderRadius: 0,
                         fontSize: 11.5,
                         fontWeight: 600,
-                        backgroundColor: '#EFF6FF',
-                        color: '#2563EB',
+                        backgroundColor: '#F8FAFC',
+                        color: '#E31B23',
                         border: '1px solid #BFDBFE',
                       }}
                     >
@@ -722,7 +722,7 @@ export function QuestionBankManager() {
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 14,
+                borderRadius: 0,
                 padding: 16,
                 display: 'flex',
                 flexDirection: 'column',
@@ -732,12 +732,12 @@ export function QuestionBankManager() {
             >
               {/* List Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>Questions</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>Questions</span>
                 <span style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>{filteredQuestions.length} total</span>
               </div>
 
               {/* Status Filter Tabs */}
-              <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 8 }}>
+              <div style={{ display: 'flex', gap: 4, background: '#F1F5F9', padding: 3, borderRadius: 0 }}>
                 {(['ALL', 'PENDING', 'APPROVED'] as const).map((tab) => (
                   <button
                     key={tab}
@@ -748,9 +748,9 @@ export function QuestionBankManager() {
                       fontSize: 11.5,
                       fontWeight: statusFilter === tab ? 700 : 500,
                       border: 'none',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       background: statusFilter === tab ? '#FFFFFF' : 'transparent',
-                      color: statusFilter === tab ? '#0F172A' : '#64748B',
+                      color: statusFilter === tab ? '#172033' : '#64748B',
                       cursor: 'pointer',
                       boxShadow: statusFilter === tab ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
                     }}
@@ -771,10 +771,10 @@ export function QuestionBankManager() {
                   style={{
                     width: '100%',
                     padding: '7px 8px 7px 30px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     fontSize: 12.5,
-                    color: '#0F172A',
+                    color: '#172033',
                     outline: 'none',
                     boxSizing: 'border-box',
                   }}
@@ -798,22 +798,22 @@ export function QuestionBankManager() {
                         onClick={() => setSelectedQuestionIndex(idx)}
                         style={{
                           padding: '10px 12px',
-                          borderRadius: 8,
+                          borderRadius: 0,
                           cursor: 'pointer',
-                          backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                          backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
                           border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                          borderLeft: isSelected ? '3px solid #2563EB' : '1px solid #E2E8F0',
+                          borderLeft: isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           fontSize: 12.5,
-                          color: isSelected ? '#0F172A' : '#475569',
+                          color: isSelected ? '#172033' : '#475569',
                           fontWeight: isSelected ? 700 : 400,
                           transition: 'all 150ms ease-out',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isSelected ? '#2563EB' : '#0F172A' }}>
+                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isSelected ? '#E31B23' : '#172033' }}>
                             Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}
                           </span>
                           <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
@@ -825,8 +825,8 @@ export function QuestionBankManager() {
                           style={{
                             width: 7,
                             height: 7,
-                            borderRadius: '50%',
-                            backgroundColor: isApproved ? '#16A34A' : '#D97706',
+                            borderRadius: 0,
+                            backgroundColor: isApproved ? '#16A34A' : '#F2B623',
                           }}
                           title={isApproved ? 'Approved' : 'Pending Review'}
                         />
@@ -842,7 +842,7 @@ export function QuestionBankManager() {
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 14,
+                borderRadius: 0,
                 padding: 26,
                 display: 'flex',
                 flexDirection: 'column',
@@ -856,13 +856,13 @@ export function QuestionBankManager() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                     <div>
                       <div style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontWeight: 700, color: '#0F172A' }}>Q{selectedQuestion.question_number_in_paper}</span>
+                        <span style={{ fontWeight: 700, color: '#172033' }}>Q{selectedQuestion.question_number_in_paper}</span>
                         <span>•</span>
                         <span>{selectedQuestion.subject_name}</span>
                         <span>•</span>
                         <span>{selectedQuestion.subtopic_name}</span>
                         <span>•</span>
-                        <span style={{ fontWeight: 600, color: '#2563EB' }}>{selectedQuestion.difficulty}</span>
+                        <span style={{ fontWeight: 600, color: '#E31B23' }}>{selectedQuestion.difficulty}</span>
                       </div>
                     </div>
 
@@ -875,16 +875,16 @@ export function QuestionBankManager() {
                           alignItems: 'center',
                           gap: 5,
                           padding: '7px 14px',
-                          borderRadius: 6,
+                          borderRadius: 0,
                           border: '1px solid #CBD5E1',
                           background: '#FFFFFF',
-                          color: '#0F172A',
+                          color: '#172033',
                           fontSize: 12.5,
                           fontWeight: 600,
                           cursor: 'pointer',
                         }}
                       >
-                        <Edit3 size={14} color="#2563EB" />
+                        <Edit3 size={14} color="#E31B23" />
                         <span>Edit</span>
                       </button>
 
@@ -896,7 +896,7 @@ export function QuestionBankManager() {
                           alignItems: 'center',
                           gap: 5,
                           padding: '7px 16px',
-                          borderRadius: 6,
+                          borderRadius: 0,
                           border: 'none',
                           background: selectedQuestion.status === 'PUBLISHED' ? '#DCFCE7' : '#16A34A',
                           color: selectedQuestion.status === 'PUBLISHED' ? '#15803D' : '#FFFFFF',
@@ -918,7 +918,7 @@ export function QuestionBankManager() {
                           alignItems: 'center',
                           gap: 5,
                           padding: '7px 12px',
-                          borderRadius: 6,
+                          borderRadius: 0,
                           border: '1px solid #FECDCA',
                           background: '#FEF2F2',
                           color: '#B42318',
@@ -937,7 +937,7 @@ export function QuestionBankManager() {
 
                   {/* Question Stem */}
                   <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 600, color: '#172033', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
                       Q{selectedQuestion.question_number_in_paper} [{selectedQuestion.source_year}]: {selectedQuestion.question_text}
                     </h3>
                   </div>
@@ -949,25 +949,25 @@ export function QuestionBankManager() {
                         key={opt.option_label}
                         style={{
                           padding: '12px 16px',
-                          borderRadius: 8,
+                          borderRadius: 0,
                           backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
                           border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
                           fontSize: 14,
-                          color: '#0F172A',
+                          color: '#172033',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ fontWeight: 700, color: opt.is_correct ? '#15803D' : '#2563EB', width: 20 }}>
+                          <span style={{ fontWeight: 700, color: opt.is_correct ? '#15803D' : '#E31B23', width: 20 }}>
                             {opt.option_label}.
                           </span>
                           <span>{opt.option_text || <em>(Empty option text)</em>}</span>
                         </div>
 
                         {opt.is_correct && (
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 4, border: '1px solid #86EFAC' }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 0, border: '1px solid #86EFAC' }}>
                             ✓ Correct Answer
                           </span>
                         )}
@@ -977,7 +977,7 @@ export function QuestionBankManager() {
 
                   {/* Solution Explanation Box */}
                   {selectedQuestion.explanation?.detailed_solution && (
-                    <div style={{ padding: 16, borderRadius: 8, backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0' }}>
+                    <div style={{ padding: 16, borderRadius: 0, backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0' }}>
                       <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
                         Solution Explanation & Core Concept
                       </div>
@@ -999,7 +999,7 @@ export function QuestionBankManager() {
                         padding: '7px 14px',
                         fontSize: 13,
                         fontWeight: 600,
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #CBD5E1',
                         background: '#FFFFFF',
                         color: selectedQuestionIndex === 0 ? '#CBD5E1' : '#334155',
@@ -1023,7 +1023,7 @@ export function QuestionBankManager() {
                         padding: '7px 14px',
                         fontSize: 13,
                         fontWeight: 600,
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #CBD5E1',
                         background: '#FFFFFF',
                         color: selectedQuestionIndex >= filteredQuestions.length - 1 ? '#CBD5E1' : '#334155',
@@ -1053,7 +1053,7 @@ export function QuestionBankManager() {
               maxWidth: 680,
               maxHeight: '90vh',
               backgroundColor: '#FFFFFF',
-              borderRadius: 14,
+              borderRadius: 0,
               boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
               display: 'flex',
               flexDirection: 'column',
@@ -1062,7 +1062,7 @@ export function QuestionBankManager() {
             }}
           >
             {/* Header */}
-            <div style={{ padding: '16px 20px', backgroundColor: '#FAFAFA', borderBottom: '1px solid #E2E8F0', color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '16px 20px', backgroundColor: '#FAFAFA', borderBottom: '1px solid #E2E8F0', color: '#172033', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>
                 Edit Question Q{editingQuestion.question_number_in_paper} & Answer Choices
               </div>
@@ -1077,43 +1077,43 @@ export function QuestionBankManager() {
             {/* Body */}
             <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Question Stem Text</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#172033' }}>Question Stem Text</label>
                 <textarea
                   rows={3}
                   value={editFormText}
                   onChange={(e) => setEditFormText(e.target.value)}
-                  style={{ padding: 10, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13.5, outline: 'none' }}
+                  style={{ padding: 10, borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13.5, outline: 'none' }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Options & Correct Answer</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#172033' }}>Options & Correct Answer</label>
                 {editFormOptions.map((opt) => (
-                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 8, border: `1px solid ${opt.is_correct ? '#86EFAC' : '#CBD5E1'}`, backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF' }}>
+                  <div key={opt.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, borderRadius: 0, border: `1px solid ${opt.is_correct ? '#86EFAC' : '#CBD5E1'}`, backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF' }}>
                     <input
                       type="radio"
                       name="correctRadio"
                       checked={opt.is_correct}
                       onChange={() => setEditFormOptions((prev) => prev.map((o) => ({ ...o, is_correct: o.label === opt.label })))}
                     />
-                    <span style={{ fontWeight: 700, width: 16, color: '#0F172A' }}>{opt.label}.</span>
+                    <span style={{ fontWeight: 700, width: 16, color: '#172033' }}>{opt.label}.</span>
                     <input
                       type="text"
                       value={opt.text}
                       onChange={(e) => setEditFormOptions((prev) => prev.map((o) => (o.label === opt.label ? { ...o, text: e.target.value } : o)))}
-                      style={{ flex: 1, padding: 7, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                      style={{ flex: 1, padding: 7, borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
                     />
                   </div>
                 ))}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A' }}>Solution Explanation</label>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: '#172033' }}>Solution Explanation</label>
                 <textarea
                   rows={3}
                   value={editFormExplanation}
                   onChange={(e) => setEditFormExplanation(e.target.value)}
-                  style={{ padding: 10, borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                  style={{ padding: 10, borderRadius: 0, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
                 />
               </div>
             </div>
@@ -1122,14 +1122,14 @@ export function QuestionBankManager() {
             <div style={{ padding: '14px 20px', borderTop: '1px solid #E2E8F0', backgroundColor: '#FAFAFA', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
                 onClick={() => setEditingQuestion(null)}
-                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '8px 16px', borderRadius: 0, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 disabled={savingEdit}
                 onClick={handleSaveQuestionEdit}
-                style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: '#16A34A', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)' }}
+                style={{ padding: '8px 18px', borderRadius: 0, border: 'none', background: '#16A34A', color: '#FFFFFF', fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)' }}
               >
                 {savingEdit ? 'Saving...' : 'Save & Publish'}
               </button>

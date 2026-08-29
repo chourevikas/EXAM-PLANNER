@@ -24,12 +24,12 @@ function getActivityTypeBadge(activityType?: string, title?: string) {
   const titleLower = (title || '').toLowerCase();
 
   if (act === 'NEW_TOPIC' || (!act && !titleLower.includes('revision') && !titleLower.includes('mcq') && !titleLower.includes('test'))) {
-    return { label: '📘 New Topic', bg: 'rgba(59, 130, 246, 0.12)', color: '#2563EB', border: 'rgba(59, 130, 246, 0.25)' };
+    return { label: '📘 New Topic', bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
   }
   if (act === 'PRACTICE_MCQS' || act === 'MOCK_TEST' || act === 'PYQ_SOLVING' || titleLower.includes('mcq') || titleLower.includes('test') || titleLower.includes('pyq')) {
-    return { label: '✍️ Practice MCQs / PYQs', bg: 'rgba(16, 185, 129, 0.12)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)' };
+    return { label: '✍️ Practice MCQs / PYQs', bg: 'rgba(16, 185, 129, 0.12)', color: '#3A8B53', border: 'rgba(16, 185, 129, 0.25)' };
   }
-  return { label: '🔁 Weak Area Revision', bg: 'rgba(245, 158, 11, 0.12)', color: '#D97706', border: 'rgba(245, 158, 11, 0.25)' };
+  return { label: '🔁 Weak Area Revision', bg: 'rgba(245, 158, 11, 0.12)', color: '#F2B623', border: 'rgba(245, 158, 11, 0.25)' };
 }
 
 function renderActivityCategoryDropdowns(
@@ -68,10 +68,10 @@ function renderActivityCategoryDropdowns(
       id: 'new_topic',
       title: '📘 New Topics',
       tasks: newTopics,
-      bg: 'rgba(59, 130, 246, 0.04)',
-      borderColor: 'rgba(59, 130, 246, 0.25)',
-      badgeBg: 'rgba(59, 130, 246, 0.12)',
-      badgeColor: '#2563EB',
+      bg: 'rgba(227, 27, 35, 0.04)',
+      borderColor: 'rgba(227, 27, 35, 0.25)',
+      badgeBg: 'rgba(227, 27, 35, 0.12)',
+      badgeColor: '#E31B23',
     },
     {
       id: 'revision',
@@ -80,7 +80,7 @@ function renderActivityCategoryDropdowns(
       bg: 'rgba(245, 158, 11, 0.04)',
       borderColor: 'rgba(245, 158, 11, 0.25)',
       badgeBg: 'rgba(245, 158, 11, 0.12)',
-      badgeColor: '#D97706',
+      badgeColor: '#F2B623',
     },
     {
       id: 'practice',
@@ -89,7 +89,7 @@ function renderActivityCategoryDropdowns(
       bg: 'rgba(16, 185, 129, 0.04)',
       borderColor: 'rgba(16, 185, 129, 0.25)',
       badgeBg: 'rgba(16, 185, 129, 0.12)',
-      badgeColor: '#059669',
+      badgeColor: '#3A8B53',
     }
   ];
 
@@ -102,7 +102,7 @@ function renderActivityCategoryDropdowns(
           style={{
             backgroundColor: 'var(--bg-card)',
             border: `1.5px solid ${cat.borderColor}`,
-            borderRadius: 16,
+            borderRadius: 0,
             overflow: 'hidden',
             boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
           }}
@@ -124,7 +124,7 @@ function renderActivityCategoryDropdowns(
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span>{cat.title}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 10, backgroundColor: cat.badgeBg, color: cat.badgeColor }}>
+              <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 0, backgroundColor: cat.badgeBg, color: cat.badgeColor }}>
                 {cat.tasks.length} Sub-topics
               </span>
             </div>
@@ -147,7 +147,7 @@ function renderActivityCategoryDropdowns(
                   <div
                     key={t.id}
                     style={{
-                      padding: 14, borderRadius: 14,
+                      padding: 14, borderRadius: 0,
                       backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--bg-card)',
                       border: '1px solid var(--border-default)',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
@@ -163,7 +163,7 @@ function renderActivityCategoryDropdowns(
                         }}
                         title={isFuture ? "Upcoming task: Can only be completed on or after its scheduled date" : undefined}
                         style={{
-                          width: 22, height: 22, borderRadius: '50%',
+                          width: 22, height: 22, borderRadius: 0,
                           border: isFuture ? '2px dashed var(--border-disabled)' : (t.is_completed ? 'none' : '2px solid var(--border-disabled)'),
                           backgroundColor: isFuture ? 'var(--bg-subtle)' : (t.is_completed ? 'var(--success-primary)' : 'transparent'),
                           color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -182,11 +182,11 @@ function renderActivityCategoryDropdowns(
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {t.is_ai_recommended === false && (
-                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6, backgroundColor: 'rgba(168, 85, 247, 0.12)', color: '#9333EA', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 0, backgroundColor: 'rgba(168, 85, 247, 0.12)', color: '#9333EA', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
                           📌 Custom Task
                         </span>
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
                         {t.subject || 'General'}
                       </span>
                       <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -200,7 +200,7 @@ function renderActivityCategoryDropdowns(
                         }}
                         title={isFuture ? "Upcoming task: Can only be completed on or after its scheduled date" : undefined}
                         style={{
-                          padding: '5px 12px', borderRadius: 8,
+                          padding: '5px 12px', borderRadius: 0,
                           border: isFuture ? '1px solid var(--border-default)' : (t.is_completed ? '1px solid var(--border-default)' : 'none'),
                           backgroundColor: isFuture ? 'var(--bg-subtle)' : (t.is_completed ? 'var(--bg-subtle)' : 'var(--accent-primary)'),
                           color: isFuture ? 'var(--text-muted)' : (t.is_completed ? 'var(--text-muted)' : '#FFF'),
@@ -421,9 +421,9 @@ export function StudyPlannerPage() {
   // Color helper for subjects
   const getSubjectBadgeStyle = (subj?: string) => {
     const s = (subj || '').toLowerCase();
-    if (s.includes('polity')) return { bg: '#EFF6FF', color: '#2563EB', border: 'rgba(37,99,235,0.2)' };
-    if (s.includes('history')) return { bg: '#FEF3C7', color: '#D97706', border: 'rgba(217,119,6,0.2)' };
-    if (s.includes('economy')) return { bg: '#ECFDF5', color: '#059669', border: 'rgba(5,150,105,0.2)' };
+    if (s.includes('polity')) return { bg: '#F8FAFC', color: '#E31B23', border: 'rgba(227, 27, 35,0.2)' };
+    if (s.includes('history')) return { bg: '#FEF3C7', color: '#F2B623', border: 'rgba(217,119,6,0.2)' };
+    if (s.includes('economy')) return { bg: '#ECFDF5', color: '#3A8B53', border: 'rgba(5,150,105,0.2)' };
     if (s.includes('geography')) return { bg: '#F3E8FF', color: '#9333EA', border: 'rgba(147,51,234,0.2)' };
     if (s.includes('environment')) return { bg: '#F0FDF4', color: '#16A34A', border: 'rgba(22,163,74,0.2)' };
     if (s.includes('science') || s.includes('tech')) return { bg: '#F5F3FF', color: '#7C3AED', border: 'rgba(124,58,237,0.2)' };
@@ -457,14 +457,14 @@ export function StudyPlannerPage() {
 
       {/* Header Hero Banner */}
       <section style={{ 
-        marginBottom: 32, padding: 32, borderRadius: 24,
+        marginBottom: 32, padding: 32, borderRadius: 0,
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
         backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(34,197,94,0.06) 100%)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
       }}>
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 20, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
             <Ico.Cal size={14} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Weekly Schedule & Logger</span>
           </div>
@@ -481,7 +481,7 @@ export function StudyPlannerPage() {
             }}
             style={{
               padding: '12px 20px', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)',
-              borderRadius: 14, border: '1px solid var(--border-default)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              borderRadius: 0, border: '1px solid var(--border-default)', fontSize: 14, fontWeight: 700, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 8, boxShadow: 'var(--shadow-color-base)'
             }}
           >
@@ -497,21 +497,21 @@ export function StudyPlannerPage() {
         gap: 16,
         marginBottom: 24
       }}>
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 0, border: '1px solid var(--border-default)' }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Total Logged Study Time</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-primary)' }}>
             {summary?.total_logged_hours || 0} <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>hrs</span>
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 0, border: '1px solid var(--border-default)' }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Practice Questions Attempted</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>
             {summary?.total_questions_attempted || 0} <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Qs</span>
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 16, border: '1px solid var(--border-default)' }}>
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: '18px 20px', borderRadius: 0, border: '1px solid var(--border-default)' }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>Target Exam Focus</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
             {user.target_exam || 'UPSC CSE'} {user.target_year || '2026'}
@@ -535,7 +535,7 @@ export function StudyPlannerPage() {
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
             style={{
-              padding: '10px 18px', borderRadius: 12, border: 'none',
+              padding: '10px 18px', borderRadius: 0, border: 'none',
               backgroundColor: activeTab === tab.key ? 'var(--accent-bg)' : 'transparent',
               color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -584,7 +584,7 @@ export function StudyPlannerPage() {
 
                   {schedule.days.every(d => d.tasks.length === 0) && (
                     <div style={{
-                      padding: 24, borderRadius: 20,
+                      padding: 24, borderRadius: 0,
                       backgroundColor: 'rgba(91,92,235,0.05)', border: '1px solid var(--accent-border)',
                       textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
                     }}>
@@ -599,7 +599,7 @@ export function StudyPlannerPage() {
                   <div style={{
                     backgroundColor: 'var(--bg-card)',
                     border: '2px solid var(--accent-primary)',
-                    borderRadius: 22, padding: 24,
+                    borderRadius: 0, padding: 24,
                     boxShadow: '0 10px 30px rgba(79, 70, 229, 0.10)',
                     backgroundImage: 'linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(34, 197, 94, 0.02) 100%)'
                   }}>
@@ -621,7 +621,7 @@ export function StudyPlannerPage() {
                           value={currentSelectedDate}
                           onChange={(e) => setSelectedDayDate(e.target.value)}
                           style={{
-                            padding: '10px 16px', borderRadius: 12,
+                            padding: '10px 16px', borderRadius: 0,
                             backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)',
                             border: '1px solid var(--border-default)', fontSize: 13, fontWeight: 700,
                             cursor: 'pointer', outline: 'none'
@@ -645,7 +645,7 @@ export function StudyPlannerPage() {
                             key={d.date}
                             onClick={() => setSelectedDayDate(d.date)}
                             style={{
-                              padding: '8px 14px', borderRadius: 12,
+                              padding: '8px 14px', borderRadius: 0,
                               border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
                               backgroundColor: isSelected ? 'var(--accent-bg)' : 'var(--bg-subtle)',
                               color: isSelected ? 'var(--accent-primary)' : 'var(--text-secondary)',
@@ -654,7 +654,7 @@ export function StudyPlannerPage() {
                             }}
                           >
                             <span>{d.day_name.slice(0, 3)}</span>
-                            {d.is_today && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 4, backgroundColor: 'var(--accent-primary)', color: '#FFF' }}>NOW</span>}
+                            {d.is_today && <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 0, backgroundColor: 'var(--accent-primary)', color: '#FFF' }}>NOW</span>}
                             <span style={{ opacity: 0.7 }}>({d.tasks.length})</span>
                           </button>
                         );
@@ -663,19 +663,19 @@ export function StudyPlannerPage() {
 
                     {/* Selected Day Header & Summary Bar */}
                     <div style={{
-                      padding: '14px 18px', borderRadius: 16,
+                      padding: '14px 18px', borderRadius: 0,
                       backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid var(--border-default)',
                       marginBottom: 16,
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: selectedDayData.is_today ? '#22C55E' : 'var(--accent-primary)' }} />
+                        <div style={{ width: 10, height: 10, borderRadius: 0, backgroundColor: selectedDayData.is_today ? '#22C55E' : 'var(--accent-primary)' }} />
                         <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
                           {selectedDayData.day_name}'s Schedule <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({selectedDayData.date})</span>
                         </span>
                         {selectedDayData.is_today && (
-                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 6, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: '#16A34A' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 0, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: '#16A34A' }}>
                             TODAY
                           </span>
                         )}
@@ -708,7 +708,7 @@ export function StudyPlannerPage() {
 
             {/* TAB 2: TODAY'S FOCUS CHECKLIST */}
             {activeTab === 'daily' && (
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
                 <div style={{ marginBottom: 20 }}>
                   <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Today's Scheduled Targets</h3>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Date: {todayStr}</div>
@@ -726,7 +726,7 @@ export function StudyPlannerPage() {
                         <div
                           key={t.id}
                           style={{
-                            padding: 20, borderRadius: 18, border: '1px solid var(--border-default)',
+                            padding: 20, borderRadius: 0, border: '1px solid var(--border-default)',
                             backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--bg-card)',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16
                           }}
@@ -735,7 +735,7 @@ export function StudyPlannerPage() {
                             <button
                               onClick={(e) => handleToggleComplete(t.id, e)}
                               style={{
-                                width: 26, height: 26, borderRadius: '50%', border: t.is_completed ? 'none' : '2px solid var(--border-disabled)',
+                                width: 26, height: 26, borderRadius: 0, border: t.is_completed ? 'none' : '2px solid var(--border-disabled)',
                                 backgroundColor: t.is_completed ? 'var(--success-primary)' : 'transparent',
                                 color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0
                               }}
@@ -745,11 +745,11 @@ export function StudyPlannerPage() {
 
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}>
                                   {t.subject || 'General'}
                                 </span>
                                 <span style={{
-                                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 0,
                                   backgroundColor: t.priority === 'HIGH' ? 'var(--danger-bg)' : 'var(--warning-bg)',
                                   color: t.priority === 'HIGH' ? 'var(--danger-primary)' : 'var(--warning-primary)'
                                 }}>
@@ -768,7 +768,7 @@ export function StudyPlannerPage() {
                             <button
                               onClick={(e) => handleToggleComplete(t.id, e)}
                               style={{
-                                padding: '8px 16px', borderRadius: 10,
+                                padding: '8px 16px', borderRadius: 0,
                                 border: t.is_completed ? '1px solid var(--border-default)' : 'none',
                                 backgroundColor: t.is_completed ? 'var(--bg-subtle)' : 'var(--accent-primary)',
                                 color: t.is_completed ? 'var(--text-muted)' : '#FFF',
@@ -796,7 +796,7 @@ export function StudyPlannerPage() {
 
             {/* TAB 3: STUDY SESSION LOGS TABLE */}
             {activeTab === 'logs' && (
-              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+              <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Logged Study Sessions History</h3>
                   <button
@@ -806,7 +806,7 @@ export function StudyPlannerPage() {
                       setIsLogModalOpen(true);
                     }}
                     style={{
-                      padding: '8px 14px', borderRadius: 10, border: 'none',
+                      padding: '8px 14px', borderRadius: 0, border: 'none',
                       backgroundColor: 'var(--accent-primary)', color: '#FFF', fontSize: 13, fontWeight: 700, cursor: 'pointer'
                     }}
                   >
@@ -841,7 +841,7 @@ export function StudyPlannerPage() {
                               {a.topic && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.topic}</div>}
                             </td>
                             <td style={{ padding: '12px 10px' }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }}>
                                 {(a.activity_type || 'CONCEPT_REVISION').replace('_', ' ')}
                               </span>
                             </td>
@@ -851,7 +851,7 @@ export function StudyPlannerPage() {
                             <td style={{ padding: '12px 10px', color: 'var(--text-secondary)' }}>
                               {a.questions_attempted ? `${a.questions_correct || 0} / ${a.questions_attempted}` : '—'}
                             </td>
-                            <td style={{ padding: '12px 10px', color: '#F59E0B', fontWeight: 700 }}>
+                            <td style={{ padding: '12px 10px', color: '#F2B623', fontWeight: 700 }}>
                               {'★'.repeat(Math.min(5, Math.max(1, a.confidence_rating || 4)))}
                             </td>
                             <td style={{ padding: '12px 10px', textAlign: 'right' }}>

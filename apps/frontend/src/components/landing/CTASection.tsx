@@ -28,7 +28,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           maxWidth: 800,
           height: 500,
           background:
-            'radial-gradient(ellipse,rgba(37,99,235,0.18) 0%,transparent 65%)',
+            'radial-gradient(ellipse,rgba(227, 27, 35,0.18) 0%,transparent 65%)',
           pointerEvents: 'none',
         }}
       />
@@ -55,9 +55,9 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(37,99,235,0.15)',
-            border: '1px solid rgba(37,99,235,0.3)',
-            borderRadius: 99,
+            background: 'rgba(227, 27, 35,0.15)',
+            border: '1px solid rgba(227, 27, 35,0.3)',
+            borderRadius: 0,
             padding: '6px 18px',
             marginBottom: 24,
           }}
@@ -67,7 +67,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
               style={{
                 position: 'absolute',
                 inset: 0,
-                borderRadius: '50%',
+                borderRadius: 0,
                 background: C.emerald,
               }}
             />
@@ -75,7 +75,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
               style={{
                 position: 'absolute',
                 inset: -4,
-                borderRadius: '50%',
+                borderRadius: 0,
                 background: 'rgba(16,185,129,0.3)',
                 animation: 'pulse-ring 1.5s ease infinite',
               }}

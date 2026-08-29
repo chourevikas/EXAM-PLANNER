@@ -19,7 +19,7 @@ export function HeroIllustration() {
             right: 30,
             bottom: 40,
             background: '#fff',
-            borderRadius: 20,
+            borderRadius: 0,
             border: `1px solid ${C.border}`,
             boxShadow: '0 32px 80px rgba(15,23,42,0.13)',
             overflow: 'hidden',
@@ -42,7 +42,7 @@ export function HeroIllustration() {
                 style={{
                   width: 10,
                   height: 10,
-                  borderRadius: '50%',
+                  borderRadius: 0,
                   background: c,
                 }}
               />
@@ -72,7 +72,7 @@ export function HeroIllustration() {
                 key={s.l}
                 style={{
                   background: C.ivory,
-                  borderRadius: 10,
+                  borderRadius: 0,
                   padding: '10px 12px',
                   border: `1px solid ${C.border}`,
                 }}
@@ -162,7 +162,7 @@ export function HeroIllustration() {
                 marginTop: 16,
                 padding: '12px',
                 background: C.ivory,
-                borderRadius: 10,
+                borderRadius: 0,
                 border: `1px solid ${C.border}`,
               }}
             >
@@ -184,7 +184,7 @@ export function HeroIllustration() {
                     '#BFDBFE',
                     '#93C5FD',
                     '#60A5FA',
-                    '#2563EB',
+                    '#E31B23',
                   ][v];
                   return (
                     <div
@@ -192,7 +192,7 @@ export function HeroIllustration() {
                       style={{
                         width: 14,
                         height: 14,
-                        borderRadius: 3,
+                        borderRadius: 0,
                         background: bg,
                       }}
                     />
@@ -214,12 +214,12 @@ export function HeroIllustration() {
             background: `linear-gradient(135deg,${C.royal},${C.elec})`,
             color: '#fff',
             padding: '10px 16px',
-            borderRadius: 14,
+            borderRadius: 0,
             fontSize: 12,
             fontWeight: 700,
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 8px 24px rgba(37,99,235,0.4)',
+            boxShadow: '0 8px 24px rgba(227, 27, 35,0.4)',
             zIndex: 10,
           }}
         >
@@ -228,15 +228,15 @@ export function HeroIllustration() {
               style={{
                 position: 'absolute',
                 inset: 0,
-                borderRadius: '50%',
-                background: '#10B981',
+                borderRadius: 0,
+                background: '#3A8B53',
               }}
             />
             <div
               style={{
                 position: 'absolute',
                 inset: '-3px',
-                borderRadius: '50%',
+                borderRadius: 0,
                 background: 'rgba(16,185,129,0.4)',
                 animation: 'pulse-ring 1.5s ease infinite',
               }}
@@ -252,10 +252,10 @@ export function HeroIllustration() {
             top: -10,
             right: -50,
             background: '#fff',
-            borderRadius: 12,
+            borderRadius: 0,
             padding: '10px 14px',
             border: `1px solid ${C.blue100}`,
-            boxShadow: '0 8px 24px rgba(37,99,235,0.10)',
+            boxShadow: '0 8px 24px rgba(227, 27, 35,0.10)',
             maxWidth: 190,
             zIndex: 10,
           }}
@@ -273,7 +273,7 @@ export function HeroIllustration() {
               style={{
                 width: 20,
                 height: 20,
-                borderRadius: 6,
+                borderRadius: 0,
                 background: C.blue50,
                 display: 'flex',
                 alignItems: 'center',
@@ -301,7 +301,7 @@ export function HeroIllustration() {
             right: -50,
             width: 195,
             background: '#fff',
-            borderRadius: 14,
+            borderRadius: 0,
             padding: '14px 16px',
             border: `1px solid ${C.border}`,
             boxShadow: '0 12px 32px rgba(15,23,42,0.10)',

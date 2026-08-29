@@ -19,7 +19,7 @@ export function StudentMetricCard({
   showProgress = false,
   progressPercent = 0,
   onClick,
-  accentColor = '#2563EB',
+  accentColor = '#E31B23',
 }: StudentMetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -31,7 +31,7 @@ export function StudentMetricCard({
       style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
-        borderRadius: 14,
+        borderRadius: 0,
         position: 'relative',
         overflow: 'hidden',
         padding: '20px 22px',
@@ -69,7 +69,7 @@ export function StudentMetricCard({
           style={{
             fontSize: 13.5,
             fontWeight: 600,
-            color: '#0F172A',
+            color: '#172033',
             letterSpacing: '-0.01em',
           }}
         >
@@ -81,8 +81,8 @@ export function StudentMetricCard({
           style={{
             width: 34,
             height: 34,
-            borderRadius: 8,
-            backgroundColor: '#EFF6FF',
+            borderRadius: 0,
+            backgroundColor: '#F8FAFC',
             color: accentColor,
             display: 'flex',
             alignItems: 'center',
@@ -102,7 +102,7 @@ export function StudentMetricCard({
           style={{
             fontSize: 28,
             fontWeight: 700,
-            color: isHovered ? accentColor : '#0F172A',
+            color: isHovered ? accentColor : '#172033',
             lineHeight: 1.08,
             letterSpacing: '-0.025em',
             transition: 'color 200ms ease-out',
@@ -131,7 +131,7 @@ export function StudentMetricCard({
               height: 4,
               width: '100%',
               backgroundColor: '#F1F5F9',
-              borderRadius: 2,
+              borderRadius: 0,
               marginTop: 10,
               overflow: 'hidden',
             }}
@@ -141,7 +141,7 @@ export function StudentMetricCard({
                 height: '100%',
                 width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                 backgroundColor: accentColor,
-                borderRadius: 2,
+                borderRadius: 0,
                 transition: 'width 400ms ease-out',
               }}
             />

@@ -334,26 +334,26 @@ export function MockTestsView() {
     switch (status) {
       case 'Published':
         return (
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 4, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0', display: 'inline-block' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0', display: 'inline-block' }}>
             Published
           </span>
         );
       case 'Scheduled':
         return (
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 4, backgroundColor: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD', display: 'inline-block' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD', display: 'inline-block' }}>
             Scheduled
           </span>
         );
       case 'Archived':
         return (
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 4, backgroundColor: '#F7F7F5', color: '#667085', border: '1px solid #E4E7EC', display: 'inline-block' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: '#F7F7F5', color: '#667085', border: '1px solid #E4E7EC', display: 'inline-block' }}>
             Archived
           </span>
         );
       case 'Draft':
       default:
         return (
-          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 4, backgroundColor: '#F2F4F7', color: '#475467', border: '1px solid #E4E7EC', display: 'inline-block' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 8px', borderRadius: 0, backgroundColor: '#F2F4F7', color: '#475467', border: '1px solid #E4E7EC', display: 'inline-block' }}>
             Draft
           </span>
         );
@@ -372,7 +372,7 @@ export function MockTestsView() {
             backgroundColor: '#12233F',
             color: '#FFFFFF',
             padding: '12px 20px',
-            borderRadius: 6,
+            borderRadius: 0,
             boxShadow: '0 4px 12px rgba(16,24,40,0.15)',
             fontSize: 13.5,
             fontWeight: 500,
@@ -418,7 +418,7 @@ export function MockTestsView() {
             height: 42,
             fontSize: 13.5,
             fontWeight: 600,
-            borderRadius: 6,
+            borderRadius: 0,
             border: 'none',
             backgroundColor: '#12233F',
             color: '#FFFFFF',
@@ -465,7 +465,7 @@ export function MockTestsView() {
             style={{
               width: '100%',
               padding: '8px 12px 8px 36px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               backgroundColor: '#FFFFFF',
               fontSize: 13.5,
@@ -488,7 +488,7 @@ export function MockTestsView() {
             }}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -515,7 +515,7 @@ export function MockTestsView() {
             }}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -541,7 +541,7 @@ export function MockTestsView() {
             }}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -565,7 +565,7 @@ export function MockTestsView() {
             onChange={(e) => setSortBy(e.target.value)}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -588,7 +588,7 @@ export function MockTestsView() {
         style={{
           background: '#FFFFFF',
           border: '1px solid #E4E7EC',
-          borderRadius: 6,
+          borderRadius: 0,
           boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
           overflow: 'hidden',
         }}
@@ -610,7 +610,7 @@ export function MockTestsView() {
                 padding: '8px 16px',
                 fontSize: 13,
                 fontWeight: 600,
-                borderRadius: 6,
+                borderRadius: 0,
                 border: 'none',
                 backgroundColor: '#12233F',
                 color: '#FFFFFF',
@@ -712,7 +712,7 @@ export function MockTestsView() {
                           color: '#172033',
                           background: '#FFFFFF',
                           border: '1px solid #E4E7EC',
-                          borderRadius: 4,
+                          borderRadius: 0,
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -765,7 +765,7 @@ export function MockTestsView() {
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               style={{
                 padding: '5px 10px',
-                borderRadius: 4,
+                borderRadius: 0,
                 border: '1px solid #E4E7EC',
                 background: '#FFFFFF',
                 color: currentPage === 1 ? '#94A3B8' : '#172033',
@@ -785,7 +785,7 @@ export function MockTestsView() {
                 onClick={() => setCurrentPage(pg)}
                 style={{
                   padding: '5px 10px',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   border: '1px solid #E4E7EC',
                   background: currentPage === pg ? '#12233F' : '#FFFFFF',
                   color: currentPage === pg ? '#FFFFFF' : '#172033',
@@ -803,7 +803,7 @@ export function MockTestsView() {
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               style={{
                 padding: '5px 10px',
-                borderRadius: 4,
+                borderRadius: 0,
                 border: '1px solid #E4E7EC',
                 background: '#FFFFFF',
                 color: currentPage === totalPages ? '#94A3B8' : '#172033',
@@ -872,28 +872,28 @@ export function MockTestsView() {
 
             {/* Test Configuration Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              <div style={{ padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+              <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Examination</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
                   {selectedTest.exam} ({selectedTest.year})
                 </div>
               </div>
 
-              <div style={{ padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+              <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Test Type</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
                   {selectedTest.type}
                 </div>
               </div>
 
-              <div style={{ padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+              <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Questions</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
                   {selectedTest.questions} Qs
                 </div>
               </div>
 
-              <div style={{ padding: 12, borderRadius: 6, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+              <div style={{ padding: 12, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: '#667085', textTransform: 'uppercase' }}>Duration</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#172033', marginTop: 4 }}>
                   {selectedTest.duration} minutes
@@ -949,7 +949,7 @@ export function MockTestsView() {
                       style={{
                         fontSize: 12,
                         padding: '4px 8px',
-                        borderRadius: 4,
+                        borderRadius: 0,
                         backgroundColor: '#F7F7F5',
                         border: '1px solid #E4E7EC',
                         color: '#344054',
@@ -976,7 +976,7 @@ export function MockTestsView() {
                   padding: '9px 12px',
                   fontSize: 12.5,
                   fontWeight: 600,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #E4E7EC',
                   backgroundColor: '#FFFFFF',
                   color: '#172033',
@@ -997,7 +997,7 @@ export function MockTestsView() {
                   padding: '9px 12px',
                   fontSize: 12.5,
                   fontWeight: 600,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #E4E7EC',
                   backgroundColor: '#FFFFFF',
                   color: '#172033',
@@ -1019,7 +1019,7 @@ export function MockTestsView() {
                   padding: '9px 12px',
                   fontSize: 12.5,
                   fontWeight: 500,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #FECDCA',
                   backgroundColor: '#FEF2F2',
                   color: '#B42318',
@@ -1055,7 +1055,7 @@ export function MockTestsView() {
           <div
             style={{
               background: '#FFFFFF',
-              borderRadius: 8,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               width: '100%',
               maxWidth: 640,
@@ -1084,7 +1084,7 @@ export function MockTestsView() {
             </div>
 
             {/* Step Progress Bar */}
-            <div style={{ height: 4, background: '#F2F4F7', borderRadius: 2, marginBottom: 24, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: '#F2F4F7', borderRadius: 0, marginBottom: 24, overflow: 'hidden' }}>
               <div
                 style={{
                   height: '100%',
@@ -1110,7 +1110,7 @@ export function MockTestsView() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: '1px solid #E4E7EC',
                       fontSize: 13.5,
                       outline: 'none',
@@ -1130,7 +1130,7 @@ export function MockTestsView() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #E4E7EC',
                         fontSize: 13.5,
                         outline: 'none',
@@ -1155,7 +1155,7 @@ export function MockTestsView() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #E4E7EC',
                         fontSize: 13.5,
                         outline: 'none',
@@ -1179,7 +1179,7 @@ export function MockTestsView() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: '1px solid #E4E7EC',
                       fontSize: 13.5,
                       outline: 'none',
@@ -1211,7 +1211,7 @@ export function MockTestsView() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: '1px solid #E4E7EC',
                       fontSize: 13.5,
                       outline: 'none',
@@ -1229,7 +1229,7 @@ export function MockTestsView() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: '1px solid #E4E7EC',
                       fontSize: 13.5,
                       outline: 'none',
@@ -1263,7 +1263,7 @@ export function MockTestsView() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #E4E7EC',
                         fontSize: 13.5,
                         outline: 'none',
@@ -1283,7 +1283,7 @@ export function MockTestsView() {
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #E4E7EC',
                         fontSize: 13.5,
                         outline: 'none',
@@ -1292,7 +1292,7 @@ export function MockTestsView() {
                   </div>
                 </div>
 
-                <div style={{ padding: 14, border: '1px solid #E4E7EC', borderRadius: 6, backgroundColor: '#F7F7F5' }}>
+                <div style={{ padding: 14, border: '1px solid #E4E7EC', borderRadius: 0, backgroundColor: '#F7F7F5' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: '#172033' }}>
                     <input
                       type="checkbox"
@@ -1315,7 +1315,7 @@ export function MockTestsView() {
                         style={{
                           width: '100%',
                           padding: '7px 10px',
-                          borderRadius: 4,
+                          borderRadius: 0,
                           border: '1px solid #E4E7EC',
                           fontSize: 13,
                           outline: 'none',
@@ -1331,7 +1331,7 @@ export function MockTestsView() {
             {/* STEP 4: Review & Finalize */}
             {createStep === 4 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 16, borderRadius: 6, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
+                <div style={{ padding: 16, borderRadius: 0, border: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                   <h3 style={{ fontSize: 14, fontWeight: 700, color: '#172033', margin: '0 0 12px 0' }}>
                     Test Configuration Summary
                   </h3>
@@ -1355,7 +1355,7 @@ export function MockTestsView() {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       border: '1px solid #E4E7EC',
                       fontSize: 13.5,
                       outline: 'none',
@@ -1383,7 +1383,7 @@ export function MockTestsView() {
                   color: createStep === 1 ? '#94A3B8' : '#172033',
                   background: '#FFFFFF',
                   border: '1px solid #E4E7EC',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   cursor: createStep === 1 ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -1400,7 +1400,7 @@ export function MockTestsView() {
                     color: '#FFFFFF',
                     background: '#12233F',
                     border: 'none',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     cursor: 'pointer',
                   }}
                 >
@@ -1416,7 +1416,7 @@ export function MockTestsView() {
                     color: '#FFFFFF',
                     background: '#12233F',
                     border: 'none',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     cursor: 'pointer',
                   }}
                 >

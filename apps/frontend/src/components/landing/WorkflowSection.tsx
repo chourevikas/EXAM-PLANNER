@@ -2,11 +2,11 @@ import React from 'react';
 import { Ico } from '../common/Icons';
 
 const stepColors = [
-  { color: '#3b82f6', bg: 'rgba(59,130,246,0.18)',  border: '#3b82f6' },
-  { color: '#10b981', bg: 'rgba(16,185,129,0.18)', border: '#10b981' },
-  { color: '#8b5cf6', bg: 'rgba(139,92,246,0.22)', border: '#8b5cf6' },
-  { color: '#f59e0b', bg: 'rgba(245,158,11,0.18)', border: '#f59e0b' },
-  { color: '#ec4899', bg: 'rgba(236,72,153,0.18)', border: '#ec4899' },
+  { color: '#E31B23', bg: 'rgba(227,27,35,0.18)',  border: '#E31B23' },
+  { color: '#3A8B53', bg: 'rgba(58,139,83,0.18)', border: '#3A8B53' },
+  { color: '#199EAE', bg: 'rgba(25,158,174,0.22)', border: '#199EAE' },
+  { color: '#F2B623', bg: 'rgba(242,182,35,0.18)', border: '#F2B623' },
+  { color: '#F47B35', bg: 'rgba(244,123,53,0.18)', border: '#F47B35' },
 ];
 
 export function WorkflowSection() {
@@ -23,7 +23,7 @@ export function WorkflowSection() {
       id="how-it-works"
       className="landing-section-padding"
       style={{
-        background: 'linear-gradient(160deg, #0f1e3c 0%, #07112a 60%, #111827 100%)',
+        background: '#172033',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -109,7 +109,7 @@ export function WorkflowSection() {
                   style={{
                     width: 72,
                     height: 72,
-                    borderRadius: '50%',
+                    borderRadius: 0,
                     position: 'relative',
                     zIndex: 1,
                     background: palette.bg,
@@ -175,7 +175,7 @@ export function WorkflowSection() {
                   alignItems: 'flex-start',
                   gap: 16,
                   padding: '20px 24px',
-                  borderRadius: 16,
+                  borderRadius: 0,
                   background: 'rgba(255,255,255,0.04)',
                   border: '1px solid rgba(255,255,255,0.08)',
                 }}
@@ -184,7 +184,7 @@ export function WorkflowSection() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: '50%',
+                    borderRadius: 0,
                     flexShrink: 0,
                     background: palette.bg,
                     border: `2px solid ${palette.border}44`,

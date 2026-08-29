@@ -4,17 +4,7 @@ import { fetchApprovedTestimonials, submitTestimonial, TestimonialItem } from '.
 import { Star, MessageSquarePlus, CheckCircle2, X } from 'lucide-react';
 
 const DEFAULT_STORIES: TestimonialItem[] = [
-  {
-    id: 'default-1',
-    user_name: 'Arjun Sharma',
-    user_exam: 'UPSC CSE 2024 · Rank 47',
-    user_photo: '/reviewer_arjun.png',
-    rating: 5,
-    quote:
-      'ExamPlanner completely changed how I prepared. The platform identified my weak spots in Polity within days — accuracy jumped from 54% to 83% in just two months.',
-    status: 'APPROVED',
-    created_at: new Date().toISOString(),
-  },
+
   {
     id: 'default-2',
     user_name: 'Priya Nair',
@@ -95,7 +85,7 @@ export function Testimonials() {
     }
   };
 
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#7c3aed', '#ec4899'];
+  const colors = ['#E31B23', '#3A8B53', '#F2B623', '#199EAE', '#F47B35'];
 
   return (
     <section
@@ -124,17 +114,17 @@ export function Testimonials() {
             onClick={() => setIsModalOpen(true)}
             style={{
               padding: '12px 24px',
-              borderRadius: 14,
+              borderRadius: 0,
               fontSize: 14,
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              background: 'linear-gradient(135deg, #E31B23, #C1121F)',
               color: '#ffffff',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 8px 24px -6px rgba(37, 99, 235, 0.4)',
+              boxShadow: '0 8px 24px -6px rgba(227, 27, 35, 0.4)',
               transition: 'transform 0.2s ease',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
@@ -160,7 +150,7 @@ export function Testimonials() {
                 style={{
                   background: 'var(--bg-card)',
                   border: '1px solid var(--border-color)',
-                  borderRadius: 22,
+                  borderRadius: 0,
                   overflow: 'hidden',
                   boxShadow: 'var(--shadow-sm)',
                   transition: 'all 0.28s ease',
@@ -199,8 +189,8 @@ export function Testimonials() {
                       <Star
                         key={i}
                         size={16}
-                        fill={i < (d.rating || 5) ? '#f59e0b' : 'transparent'}
-                        color={i < (d.rating || 5) ? '#f59e0b' : 'var(--text-muted)'}
+                        fill={i < (d.rating || 5) ? '#F2B623' : 'transparent'}
+                        color={i < (d.rating || 5) ? '#F2B623' : 'var(--text-muted)'}
                       />
                     ))}
                   </div>
@@ -235,12 +225,12 @@ export function Testimonials() {
                       style={{
                         width: 48,
                         height: 48,
-                        borderRadius: '50%',
+                        borderRadius: 0,
                         overflow: 'hidden',
                         flexShrink: 0,
                         border: `2px solid ${accentColor}55`,
                         boxShadow: `0 4px 14px ${accentColor}30`,
-                        background: `linear-gradient(135deg, ${accentColor}, #0f172a)`,
+                        background: `linear-gradient(135deg, ${accentColor}, #172033)`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -316,7 +306,7 @@ export function Testimonials() {
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border-color)',
-              borderRadius: 24,
+              borderRadius: 0,
               width: '100%',
               maxWidth: 540,
               padding: 32,
@@ -351,9 +341,9 @@ export function Testimonials() {
               <div
                 style={{
                   padding: 20,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   background: 'rgba(16, 185, 129, 0.12)',
-                  color: '#10b981',
+                  color: '#3A8B53',
                   border: '1px solid rgba(16, 185, 129, 0.3)',
                   textAlign: 'center',
                   fontWeight: 600,
@@ -369,10 +359,10 @@ export function Testimonials() {
                   <div
                     style={{
                       padding: '10px 14px',
-                      borderRadius: 10,
-                      background: 'rgba(239, 68, 68, 0.12)',
+                      borderRadius: 0,
+                      background: 'rgba(227, 27, 35, 0.12)',
                       color: '#ef4444',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      border: '1px solid rgba(227, 27, 35, 0.25)',
                       fontSize: 13,
                     }}
                   >
@@ -392,7 +382,7 @@ export function Testimonials() {
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: 10,
+                      borderRadius: 0,
                       border: '1px solid var(--border-color)',
                       background: 'var(--bg-body)',
                       color: 'var(--text-main)',
@@ -421,8 +411,8 @@ export function Testimonials() {
                       >
                         <Star
                           size={24}
-                          fill={star <= rating ? '#f59e0b' : 'transparent'}
-                          color={star <= rating ? '#f59e0b' : 'var(--text-muted)'}
+                          fill={star <= rating ? '#F2B623' : 'transparent'}
+                          color={star <= rating ? '#F2B623' : 'var(--text-muted)'}
                         />
                       </button>
                     ))}
@@ -441,7 +431,7 @@ export function Testimonials() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      borderRadius: 12,
+                      borderRadius: 0,
                       border: '1px solid var(--border-color)',
                       background: 'var(--bg-body)',
                       color: 'var(--text-main)',
@@ -459,7 +449,7 @@ export function Testimonials() {
                     onClick={() => setIsModalOpen(false)}
                     style={{
                       padding: '10px 18px',
-                      borderRadius: 10,
+                      borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid var(--border-color)',
@@ -475,11 +465,11 @@ export function Testimonials() {
                     disabled={submitting}
                     style={{
                       padding: '10px 22px',
-                      borderRadius: 10,
+                      borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 700,
                       border: 'none',
-                      background: '#2563eb',
+                      background: '#E31B23',
                       color: '#ffffff',
                       cursor: submitting ? 'not-allowed' : 'pointer',
                     }}

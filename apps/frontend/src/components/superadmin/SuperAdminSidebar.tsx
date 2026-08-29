@@ -48,7 +48,7 @@ export function SuperAdminSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(16, 33, 61, 0.65)',
+            background: 'rgba(23, 32, 51, 0.75)',
             backdropFilter: 'blur(2px)',
             zIndex: 110,
           }}
@@ -59,7 +59,7 @@ export function SuperAdminSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          background: '#172033',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -97,7 +97,7 @@ export function SuperAdminSidebar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -132,7 +132,7 @@ export function SuperAdminSidebar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 4,
+                borderRadius: 0,
                 transition: 'color 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -164,10 +164,10 @@ export function SuperAdminSidebar({
                   gap: 12,
                   padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
                   justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-                  borderRadius: 6,
-                  background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  borderRadius: 0,
+                  background: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
                   border: 'none',
-                  borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #f97316' : '3px solid transparent',
+                  borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
                   color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                   cursor: 'pointer',
                   fontSize: 13.5,
@@ -191,7 +191,7 @@ export function SuperAdminSidebar({
                   }
                 }}
               >
-                <Icon size={17} color={isActive ? '#f97316' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+                <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
                 {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>}
                 {(!collapsed || isMobile) && badge !== undefined && badge > 0 && (
                   <span
@@ -199,8 +199,8 @@ export function SuperAdminSidebar({
                       fontSize: 10.5,
                       fontWeight: 700,
                       padding: '2px 8px',
-                      borderRadius: 99,
-                      background: '#f97316',
+                      borderRadius: 0,
+                      background: '#F47B35',
                       color: '#ffffff',
                     }}
                   >

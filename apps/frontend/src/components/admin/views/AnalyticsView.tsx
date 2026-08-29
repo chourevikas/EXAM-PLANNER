@@ -63,7 +63,7 @@ export function AnalyticsView() {
             onChange={(e) => setExamFilter(e.target.value)}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -83,7 +83,7 @@ export function AnalyticsView() {
             onChange={(e) => setTimeRange(e.target.value)}
             style={{
               padding: '8px 12px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               fontSize: 13,
               fontWeight: 500,
@@ -107,7 +107,7 @@ export function AnalyticsView() {
               padding: '8px 14px',
               fontSize: 13,
               fontWeight: 500,
-              borderRadius: 6,
+              borderRadius: 0,
               backgroundColor: '#FFFFFF',
               color: '#172033',
               border: '1px solid #E4E7EC',
@@ -126,7 +126,7 @@ export function AnalyticsView() {
         style={{
           background: '#FFFFFF',
           border: '1px solid #E4E7EC',
-          borderRadius: 6,
+          borderRadius: 0,
           padding: '12px 20px',
           marginBottom: 24,
           display: 'grid',
@@ -187,7 +187,7 @@ export function AnalyticsView() {
           style={{
             background: '#FFFFFF',
             border: '1px solid #E4E7EC',
-            borderRadius: 6,
+            borderRadius: 0,
             boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
             overflow: 'hidden',
           }}
@@ -246,7 +246,7 @@ export function AnalyticsView() {
                           style={{
                             width: 6,
                             height: 6,
-                            borderRadius: '50%',
+                            borderRadius: 0,
                             backgroundColor: isStrong ? '#15803D' : isWarning ? '#B42318' : '#B45309',
                           }}
                         />
@@ -274,7 +274,7 @@ export function AnalyticsView() {
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E4E7EC',
-                borderRadius: 6,
+                borderRadius: 0,
                 padding: 16,
                 boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
               }}

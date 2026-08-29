@@ -51,7 +51,7 @@ export function VerifyEmailPage() {
         width: '100%',
         backgroundColor: 'var(--bg-card)',
         padding: 40,
-        borderRadius: 24,
+        borderRadius: 0,
         border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
         textAlign: 'center'
@@ -80,7 +80,7 @@ export function VerifyEmailPage() {
                 backgroundColor: 'var(--accent-primary)',
                 color: '#fff',
                 border: 'none',
-                borderRadius: 12,
+                borderRadius: 0,
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: 'pointer'
@@ -105,7 +105,7 @@ export function VerifyEmailPage() {
                 backgroundColor: 'var(--bg-subtle)',
                 color: 'var(--text-primary)',
                 border: '1px solid var(--border-default)',
-                borderRadius: 12,
+                borderRadius: 0,
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: 'pointer'

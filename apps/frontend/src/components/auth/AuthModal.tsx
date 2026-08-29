@@ -111,7 +111,7 @@ export function AuthModal({
       <div
         style={{
           background: '#FFFFFF',
-          borderRadius: 24,
+          borderRadius: 0,
           padding: '36px 32px 32px 32px',
           width: '100%',
           maxWidth: 420,
@@ -132,7 +132,7 @@ export function AuthModal({
             right: 20,
             background: 'transparent',
             border: 'none',
-            borderRadius: 8,
+            borderRadius: 0,
             width: 32,
             height: 32,
             display: 'flex',
@@ -160,9 +160,9 @@ export function AuthModal({
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: '50%',
-                background: '#EFF6FF',
-                color: '#334EAC',
+                borderRadius: 0,
+                background: '#F8FAFC',
+                color: '#E31B23',
                 fontSize: 26,
                 display: 'flex',
                 alignItems: 'center',
@@ -188,8 +188,8 @@ export function AuthModal({
               style={{
                 width: '100%',
                 height: 52,
-                borderRadius: 12,
-                background: '#334EAC',
+                borderRadius: 0,
+                background: '#E31B23',
                 color: '#FFFFFF',
                 fontSize: 15,
                 fontWeight: 600,
@@ -198,10 +198,10 @@ export function AuthModal({
                 transition: 'background-color 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#273C87';
+                e.currentTarget.style.backgroundColor = '#C1121F';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#334EAC';
+                e.currentTarget.style.backgroundColor = '#E31B23';
               }}
             >
               Go to sign in
@@ -242,7 +242,7 @@ export function AuthModal({
               <div
                 style={{
                   padding: '12px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   background: '#FEF2F2',
                   border: '1px solid #FECACA',
                   color: '#DC2626',
@@ -262,10 +262,10 @@ export function AuthModal({
               <div
                 style={{
                   padding: '12px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   background: '#ECFDF5',
                   border: '1px solid #A7F3D0',
-                  color: '#059669',
+                  color: '#3A8B53',
                   fontSize: 13.5,
                   fontWeight: 500,
                   marginBottom: 20,
@@ -302,7 +302,7 @@ export function AuthModal({
                       style={{
                         width: '100%',
                         height: 52,
-                        borderRadius: 12,
+                        borderRadius: 0,
                         backgroundColor: '#F8FAFC',
                         border: '1px solid #E2E8F0',
                         padding: '0 16px',
@@ -315,8 +315,8 @@ export function AuthModal({
                         fontFamily: "'Manrope', sans-serif",
                       }}
                       onFocus={(e) => {
-                        e.currentTarget.style.borderColor = '#334EAC';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
+                        e.currentTarget.style.borderColor = '#E31B23';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
                         e.currentTarget.style.backgroundColor = '#FFFFFF';
                       }}
                       onBlur={(e) => {
@@ -351,7 +351,7 @@ export function AuthModal({
                     style={{
                       width: '100%',
                       height: 52,
-                      borderRadius: 12,
+                      borderRadius: 0,
                       backgroundColor: '#F8FAFC',
                       border: '1px solid #E2E8F0',
                       padding: '0 16px',
@@ -364,8 +364,8 @@ export function AuthModal({
                       fontFamily: "'Manrope', sans-serif",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#334EAC';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                     }}
                     onBlur={(e) => {
@@ -399,7 +399,7 @@ export function AuthModal({
                     style={{
                       width: '100%',
                       height: 52,
-                      borderRadius: 12,
+                      borderRadius: 0,
                       backgroundColor: '#F8FAFC',
                       border: '1px solid #E2E8F0',
                       padding: '0 44px 0 16px',
@@ -412,8 +412,8 @@ export function AuthModal({
                       fontFamily: "'Manrope', sans-serif",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#334EAC';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(51, 78, 172, 0.12)';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                     }}
                     onBlur={(e) => {
@@ -452,8 +452,8 @@ export function AuthModal({
                 style={{
                   width: '100%',
                   height: 52,
-                  borderRadius: 12,
-                  backgroundColor: '#334EAC',
+                  borderRadius: 0,
+                  backgroundColor: '#E31B23',
                   color: '#FFFFFF',
                   fontSize: 15,
                   fontWeight: 600,
@@ -470,13 +470,13 @@ export function AuthModal({
                 }}
                 onMouseEnter={(e) => {
                   if (!loading) {
-                    e.currentTarget.style.backgroundColor = '#273C87';
+                    e.currentTarget.style.backgroundColor = '#C1121F';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!loading) {
-                    e.currentTarget.style.backgroundColor = '#334EAC';
+                    e.currentTarget.style.backgroundColor = '#E31B23';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
@@ -519,7 +519,7 @@ export function AuthModal({
               style={{
                 width: '100%',
                 height: 52,
-                borderRadius: 12,
+                borderRadius: 0,
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #E2E8F0',
                 color: '#172033',
@@ -565,7 +565,7 @@ export function AuthModal({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#334EAC',
+                      color: '#E31B23',
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",
@@ -584,7 +584,7 @@ export function AuthModal({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#334EAC',
+                      color: '#E31B23',
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",

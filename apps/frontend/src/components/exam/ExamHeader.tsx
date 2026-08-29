@@ -56,7 +56,7 @@ export function ExamHeader({
         left: 0,
         right: 0,
         zIndex: 100,
-        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        background: 'linear-gradient(90deg, #111111 0%, #172033 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -75,8 +75,8 @@ export function ExamHeader({
           style={{
             width: 32,
             height: 32,
-            borderRadius: 6,
-            backgroundColor: '#2563EB',
+            borderRadius: 0,
+            backgroundColor: '#E31B23',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
@@ -84,7 +84,7 @@ export function ExamHeader({
             fontWeight: 700,
             fontSize: 15,
             flexShrink: 0,
-            boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+            boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
           }}
         >
           <Shield size={18} color="#FFFFFF" />
@@ -129,7 +129,7 @@ export function ExamHeader({
             {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
               <>
                 <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                <span style={{ color: '#93C5FD', fontWeight: 600 }}>{subtopicName}</span>
+                <span style={{ color: '#E31B23', fontWeight: 600 }}>{subtopicName}</span>
               </>
             )}
           </div>
@@ -147,7 +147,7 @@ export function ExamHeader({
             alignItems: 'center',
             gap: 10,
             padding: '5px 22px',
-            borderRadius: 8,
+            borderRadius: 0,
             backgroundColor: 'rgba(255, 255, 255, 0.07)',
             border: '1px solid rgba(255, 255, 255, 0.14)',
             boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(15, 29, 56, 0.3)',
@@ -195,7 +195,7 @@ export function ExamHeader({
             disabled={isSubmitting}
             style={{
               padding: '6px 16px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',

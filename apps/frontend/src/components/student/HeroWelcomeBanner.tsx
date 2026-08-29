@@ -11,7 +11,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
     <section style={{
       marginBottom: 32,
       padding: '24px',
-      borderRadius: 24,
+      borderRadius: 0,
       backgroundColor: 'var(--bg-card)',
       border: '1px solid var(--border-default)',
       boxShadow: 'var(--shadow-color-base)',
@@ -21,7 +21,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20, position: 'relative', zIndex: 1 }}>
         <div style={{ flex: 1, minWidth: 260 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: 20, marginBottom: 12 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: 0, marginBottom: 12 }}>
             <Ico.Sparkles size={14} />
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Target: UPSC CSE 2026 • 184 Days
@@ -40,7 +40,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%', maxWidth: 'max-content' }}>
           <Link to="/exam/pyq_2022" style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-            backgroundColor: 'var(--accent-primary)', color: '#FFF', borderRadius: 12,
+            backgroundColor: 'var(--accent-primary)', color: '#FFF', borderRadius: 0,
             textDecoration: 'none', fontSize: 13, fontWeight: 700,
             boxShadow: '0 4px 12px var(--shadow-color-accent)', transition: 'transform 0.2s',
             flex: '1 1 auto', justifyContent: 'center'
@@ -49,7 +49,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
           </Link>
           <Link to="/mocks" style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-            backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', borderRadius: 12,
+            backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', borderRadius: 0,
             border: '1px solid var(--border-default)', textDecoration: 'none', fontSize: 13, fontWeight: 600,
             flex: '1 1 auto', justifyContent: 'center'
           }}>
@@ -57,7 +57,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
           </Link>
           <Link to="/pyq" style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-            backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', borderRadius: 12,
+            backgroundColor: 'var(--bg-subtle)', color: 'var(--text-primary)', borderRadius: 0,
             border: '1px solid var(--border-default)', textDecoration: 'none', fontSize: 13, fontWeight: 600,
             flex: '1 1 auto', justifyContent: 'center'
           }}>

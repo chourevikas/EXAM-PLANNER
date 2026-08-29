@@ -19,7 +19,7 @@ export function UpNextQueueCard() {
 
   return (
     <div style={{ 
-      backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 24, 
+      backgroundColor: 'var(--accent-primary)', padding: 32, borderRadius: 0, 
       color: '#FFFFFF', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
       boxShadow: '0 16px 36px var(--shadow-color-accent)',
       backgroundImage: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-darker) 100%)',
@@ -30,7 +30,7 @@ export function UpNextQueueCard() {
       </div>
       
       <div>
-        <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+        <div style={{ display: 'inline-block', padding: '6px 12px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
           Up Next In Queue
         </div>
         <h3 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px 0', lineHeight: 1.3 }}>
@@ -44,7 +44,7 @@ export function UpNextQueueCard() {
       <Link 
         to={examTarget}
         style={{ 
-          width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+          width: '100%', padding: '14px', borderRadius: 0, border: 'none',
           backgroundColor: '#FFFFFF', color: 'var(--accent-darker)',
           fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,

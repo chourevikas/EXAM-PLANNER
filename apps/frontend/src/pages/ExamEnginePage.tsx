@@ -925,9 +925,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   alignItems: 'center',
                   gap: 6,
                   padding: '6px 14px',
-                  borderRadius: 8,
+                  borderRadius: 0,
                   border: 'none',
-                  backgroundColor: isActive ? '#2563eb' : 'transparent',
+                  backgroundColor: isActive ? '#E31B23' : 'transparent',
                   color: isActive ? '#ffffff' : isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
                   fontSize: 12,
                   fontWeight: 700,
@@ -979,7 +979,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
-                <Loader2 size={24} className="animate-spin" color="#2563eb" />
+                <Loader2 size={24} className="animate-spin" color="#E31B23" />
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#64748B' }}>Loading question #{currentQIndex + 1}...</span>
               </div>
             ) : activeQuestion ? (
@@ -1060,8 +1060,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             style={{
               width: '100%',
               maxWidth: 500,
-              backgroundColor: isDark ? '#1e293b' : '#ffffff',
-              borderRadius: 24,
+              backgroundColor: isDark ? '#172033' : '#ffffff',
+              borderRadius: 0,
               padding: '32px',
               border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
@@ -1072,9 +1072,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 28,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                color: '#2563eb',
+                borderRadius: 0,
+                backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                color: '#E31B23',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1084,7 +1084,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               <Trophy size={28} />
             </div>
 
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#0f172a', marginBottom: 4 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#172033', marginBottom: 4 }}>
               Guest Test Results
             </h2>
 
@@ -1095,20 +1095,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {/* Score Pill */}
             <div
               style={{
-                backgroundColor: isDark ? '#0f172a' : '#f0f6ff',
-                borderRadius: 16,
+                backgroundColor: isDark ? '#172033' : '#f0f6ff',
+                borderRadius: 0,
                 padding: '18px',
                 marginBottom: 20,
-                border: '1px solid rgba(37, 99, 235, 0.15)',
+                border: '1px solid rgba(227, 27, 35, 0.15)',
               }}
             >
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Your Estimated Score
               </div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#1e293b', margin: '4px 0' }}>
+              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#172033', margin: '4px 0' }}>
                 {guestScoreData.score} <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>/ {guestScoreData.totalScore}</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#3A8B53' }}>
                 Accuracy: {guestScoreData.accuracy}%
               </div>
             </div>
@@ -1122,15 +1122,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 marginBottom: 20,
               }}
             >
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>CORRECT</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{guestScoreData.correctCount}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{guestScoreData.correctCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>WRONG</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{guestScoreData.wrongCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>UNATTEMPTED</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#64748b' }}>{guestScoreData.unattemptedCount}</div>
               </div>
@@ -1139,15 +1139,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {/* CTA Box */}
             <div
               style={{
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
-                borderRadius: 16,
+                background: 'linear-gradient(135deg, rgba(227, 27, 35,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                borderRadius: 0,
                 padding: 16,
                 marginBottom: 20,
-                border: '1px solid rgba(37,99,235,0.2)',
+                border: '1px solid rgba(227, 27, 35,0.2)',
                 textAlign: 'left',
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#E31B23', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Sparkles size={15} /> Unlock Full 12-Matrix Psychometric Analysis
               </div>
               <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
@@ -1167,9 +1167,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   style={{
                     flex: 1,
                     padding: '12px 16px',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     border: 'none',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#E31B23',
                     color: '#ffffff',
                     fontSize: 14,
                     fontWeight: 800,
@@ -1187,7 +1187,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   onClick={() => navigate('/')}
                   style={{
                     padding: '12px 14px',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'transparent',
                     color: isDark ? '#cbd5e1' : '#475569',
@@ -1211,7 +1211,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#2563eb',
+                    color: '#E31B23',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -1251,7 +1251,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             gap: 16,
           }}
         >
-          <Loader2 size={44} className="animate-spin" color="#3b82f6" />
+          <Loader2 size={44} className="animate-spin" color="#E31B23" />
           <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-display, sans-serif)' }}>
             Submitting & Evaluating Test...
           </div>

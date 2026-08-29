@@ -82,7 +82,7 @@ export function QuestionSolutionMarkdownCard({
         style={{
           marginTop: 20,
           padding: '24px',
-          borderRadius: 12,
+          borderRadius: 0,
           backgroundColor: '#F8FAFC',
           border: '1px solid #E2E8F0',
           display: 'flex',
@@ -93,7 +93,7 @@ export function QuestionSolutionMarkdownCard({
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
       >
-        <Sparkles size={18} className="animate-spin text-blue-600" />
+        <Sparkles size={18} className="animate-spin" color="#E31B23" />
         <span style={{ fontSize: 14, fontWeight: 600 }}>Loading Comprehensive Solution & Distractor Analysis...</span>
       </div>
     );
@@ -138,7 +138,7 @@ export function QuestionSolutionMarkdownCard({
     <div
       style={{
         marginTop: 20,
-        borderRadius: 14,
+        borderRadius: 0,
         border: '1px solid #E2E8F0',
         backgroundColor: '#FFFFFF',
         boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.06)',
@@ -165,7 +165,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#DCFCE7',
                 display: 'flex',
                 alignItems: 'center',
@@ -180,7 +180,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#FEE2E2',
                 display: 'flex',
                 alignItems: 'center',
@@ -195,7 +195,7 @@ export function QuestionSolutionMarkdownCard({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#E0E7FF',
                 display: 'flex',
                 alignItems: 'center',
@@ -213,7 +213,7 @@ export function QuestionSolutionMarkdownCard({
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : '#1E293B',
+                  color: isUserCorrect ? '#15803D' : isUserCorrect === false ? '#B91C1C' : '#172033',
                 }}
               >
                 Option ({correctLabel}) is Correct
@@ -235,11 +235,11 @@ export function QuestionSolutionMarkdownCard({
           <span
             style={{
               padding: '4px 10px',
-              borderRadius: 20,
+              borderRadius: 0,
               fontSize: 11,
               fontWeight: 700,
-              backgroundColor: '#EFF6FF',
-              color: '#2563EB',
+              backgroundColor: '#F8FAFC',
+              color: '#E31B23',
               border: '1px solid #BFDBFE',
               display: 'inline-flex',
               alignItems: 'center',
@@ -252,13 +252,13 @@ export function QuestionSolutionMarkdownCard({
           <span
             style={{
               padding: '4px 10px',
-              borderRadius: 20,
+              borderRadius: 0,
               fontSize: 11,
               fontWeight: 700,
               backgroundColor:
                 difficulty === 'EASY' ? '#ECFDF5' : difficulty === 'HARD' ? '#FEF2F2' : '#FFFBEB',
               color:
-                difficulty === 'EASY' ? '#059669' : difficulty === 'HARD' ? '#DC2626' : '#D97706',
+                difficulty === 'EASY' ? '#3A8B53' : difficulty === 'HARD' ? '#DC2626' : '#F2B623',
               border: `1px solid ${
                 difficulty === 'EASY' ? '#A7F3D0' : difficulty === 'HARD' ? '#FECACA' : '#FDE68A'
               }`,
@@ -270,7 +270,7 @@ export function QuestionSolutionMarkdownCard({
             <span
               style={{
                 padding: '4px 10px',
-                borderRadius: 20,
+                borderRadius: 0,
                 fontSize: 11,
                 fontWeight: 600,
                 backgroundColor: '#F1F5F9',
@@ -295,17 +295,17 @@ export function QuestionSolutionMarkdownCard({
           <div
             style={{
               padding: '14px 18px',
-              borderRadius: 10,
-              backgroundColor: '#EFF6FF',
-              border: '1px solid #DBEAFE',
+              borderRadius: 0,
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #E2E8F0',
               display: 'flex',
               alignItems: 'flex-start',
               gap: 12,
             }}
           >
-            <Lightbulb size={20} style={{ color: '#2563EB', flexShrink: 0, marginTop: 2 }} />
+            <Lightbulb size={20} style={{ color: '#E31B23', flexShrink: 0, marginTop: 2 }} />
             <div>
-              <strong style={{ fontSize: 13, color: '#1E40AF', display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <strong style={{ fontSize: 13, color: '#A4161A', display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Core Conceptual Principle:
               </strong>
               <span style={{ fontSize: 13.5, color: '#1E3A8A', lineHeight: 1.55 }}>{coreConcept}</span>
@@ -322,11 +322,11 @@ export function QuestionSolutionMarkdownCard({
               gap: 6,
               fontSize: 14,
               fontWeight: 700,
-              color: '#0F172A',
+              color: '#172033',
               marginBottom: 10,
             }}
           >
-            <BookOpen size={16} style={{ color: '#2563EB' }} />
+            <BookOpen size={16} style={{ color: '#E31B23' }} />
             Detailed Explanation & Reference
           </div>
           <div
@@ -334,10 +334,10 @@ export function QuestionSolutionMarkdownCard({
             style={{
               fontSize: 14,
               lineHeight: 1.7,
-              color: '#1E293B',
+              color: '#172033',
               backgroundColor: '#FAFAFA',
               padding: '16px 18px',
-              borderRadius: 10,
+              borderRadius: 0,
               border: '1px solid #F1F5F9',
             }}
           >
@@ -357,11 +357,11 @@ export function QuestionSolutionMarkdownCard({
                 gap: 6,
                 fontSize: 14,
                 fontWeight: 700,
-                color: '#0F172A',
+                color: '#172033',
                 marginBottom: 10,
               }}
             >
-              <Target size={16} style={{ color: '#2563EB' }} />
+              <Target size={16} style={{ color: '#E31B23' }} />
               Option & Distractor Breakdown ({distractorsList.length} Options)
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -372,7 +372,7 @@ export function QuestionSolutionMarkdownCard({
                     key={idx}
                     style={{
                       padding: '12px 16px',
-                      borderRadius: 10,
+                      borderRadius: 0,
                       backgroundColor: isOptionCorrect ? '#F0FDF4' : '#F8FAFC',
                       border: `1px solid ${isOptionCorrect ? '#BBF7D0' : '#E2E8F0'}`,
                     }}
@@ -402,7 +402,7 @@ export function QuestionSolutionMarkdownCard({
                             style={{
                               width: 20,
                               height: 20,
-                              borderRadius: '50%',
+                              borderRadius: 0,
                               backgroundColor: '#E2E8F0',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -428,7 +428,7 @@ export function QuestionSolutionMarkdownCard({
                           fontSize: 11,
                           fontWeight: 700,
                           padding: '2px 8px',
-                          borderRadius: 12,
+                          borderRadius: 0,
                           backgroundColor: isOptionCorrect ? '#DCFCE7' : '#F1F5F9',
                           color: isOptionCorrect ? '#15803D' : '#64748B',
                         }}
@@ -462,7 +462,7 @@ export function QuestionSolutionMarkdownCard({
           <div
             style={{
               padding: '16px 18px',
-              borderRadius: 10,
+              borderRadius: 0,
               backgroundColor: '#F0F9FF',
               border: '1px solid #BAE6FD',
             }}
@@ -496,7 +496,7 @@ export function QuestionSolutionMarkdownCard({
           <div
             style={{
               padding: '16px 18px',
-              borderRadius: 10,
+              borderRadius: 0,
               backgroundColor: '#FFFBEB',
               border: '1px solid #FDE68A',
             }}
@@ -512,7 +512,7 @@ export function QuestionSolutionMarkdownCard({
                 marginBottom: 8,
               }}
             >
-              <AlertTriangle size={17} style={{ color: '#D97706' }} />
+              <AlertTriangle size={17} style={{ color: '#F2B623' }} />
               Common Exam Traps & Pitfalls
             </div>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, color: '#78350F', lineHeight: 1.6 }}>
@@ -549,7 +549,7 @@ export function QuestionSolutionMarkdownCard({
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              color: '#2563EB',
+              color: '#E31B23',
               fontSize: 11,
               fontWeight: 600,
               display: 'inline-flex',

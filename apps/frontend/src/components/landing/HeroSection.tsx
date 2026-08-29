@@ -151,7 +151,7 @@ export function HeroSection({ }: HeroSectionProps) {
           transform: 'translateX(-50%)',
           width: 750,
           height: 400,
-          background: 'radial-gradient(ellipse at center, rgba(37,99,235,0.045) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, rgba(227,27,35,0.045) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -173,15 +173,15 @@ export function HeroSection({ }: HeroSectionProps) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: '#EFF6FF',
-                border: '1px solid #DBEAFE',
-                borderRadius: 99,
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: 0,
                 padding: '5px 12px',
                 marginBottom: 14,
               }}
             >
-              <Zap size={13} strokeWidth={2.5} style={{ color: '#2563EB' }} />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563EB', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+              <Zap size={13} strokeWidth={2.5} style={{ color: '#E31B23' }} />
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                 INSTANT PYQ MOCK TEST
               </span>
             </div>
@@ -191,7 +191,7 @@ export function HeroSection({ }: HeroSectionProps) {
               style={{
                 fontSize: 'clamp(2rem, 3.5vw, 2.8rem)',
                 fontWeight: 800,
-                color: '#0F172A',
+                color: '#172033',
                 lineHeight: 1.15,
                 letterSpacing: '-0.02em',
                 marginBottom: 20,
@@ -203,7 +203,7 @@ export function HeroSection({ }: HeroSectionProps) {
               }}
             >
               Test your exam readiness. <br />
-              <span style={{ color: '#2563EB', fontWeight: 800 }}>Start in 60 seconds.</span>
+              <span style={{ color: '#E31B23', fontWeight: 800 }}>Start in 60 seconds.</span>
             </h1>
 
             {/* Premium Mock Builder Form Card */}
@@ -212,7 +212,7 @@ export function HeroSection({ }: HeroSectionProps) {
               style={{
                 background: '#FFFFFF',
                 border: '1px solid #E2E8F0',
-                borderRadius: 14,
+                borderRadius: 0,
                 padding: '24px 26px',
                 boxShadow: '0 10px 28px -4px rgba(15, 23, 42, 0.05), 0 3px 10px -2px rgba(15, 23, 42, 0.02)',
                 transition: 'all 0.2s ease',
@@ -220,7 +220,7 @@ export function HeroSection({ }: HeroSectionProps) {
             >
               {/* Card Header */}
               <div style={{ marginBottom: 16 }}>
-                <h2 style={{ fontSize: 16.5, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.25 }}>
+                <h2 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: 0, lineHeight: 1.25 }}>
                   Build your mock
                 </h2>
                 <p style={{ fontSize: 12.5, color: '#64748B', margin: '3px 0 0 0' }}>
@@ -246,11 +246,11 @@ export function HeroSection({ }: HeroSectionProps) {
                       gap: 5,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#0F172A',
+                      color: '#172033',
                       marginBottom: 5,
                     }}
                   >
-                    <BookOpen size={13} style={{ color: '#2563EB' }} /> Target exam
+                    <BookOpen size={13} style={{ color: '#E31B23' }} /> Target exam
                   </label>
                   <select
                     value={selectedExam}
@@ -258,10 +258,10 @@ export function HeroSection({ }: HeroSectionProps) {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 9,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
+                      color: '#172033',
                       fontSize: 13,
                       fontWeight: 500,
                       outline: 'none',
@@ -269,8 +269,8 @@ export function HeroSection({ }: HeroSectionProps) {
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#2563EB';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)';
+                      e.target.style.borderColor = '#E31B23';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(227,27,35,0.12)';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = '#E2E8F0';
@@ -294,11 +294,11 @@ export function HeroSection({ }: HeroSectionProps) {
                       gap: 5,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#0F172A',
+                      color: '#172033',
                       marginBottom: 5,
                     }}
                   >
-                    <Calendar size={13} style={{ color: '#2563EB' }} /> Target year
+                    <Calendar size={13} style={{ color: '#E31B23' }} /> Target year
                   </label>
                   <select
                     value={selectedYear}
@@ -306,10 +306,10 @@ export function HeroSection({ }: HeroSectionProps) {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 9,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
+                      color: '#172033',
                       fontSize: 13,
                       fontWeight: 500,
                       outline: 'none',
@@ -317,8 +317,8 @@ export function HeroSection({ }: HeroSectionProps) {
                       transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = '#2563EB';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)';
+                      e.target.style.borderColor = '#E31B23';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(227,27,35,0.12)';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = '#E2E8F0';
@@ -352,11 +352,11 @@ export function HeroSection({ }: HeroSectionProps) {
                       gap: 5,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#0F172A',
+                      color: '#172033',
                       marginBottom: 5,
                     }}
                   >
-                    <BookOpen size={13} style={{ color: '#2563EB' }} /> Subject
+                    <BookOpen size={13} style={{ color: '#E31B23' }} /> Subject
                   </label>
                   <select
                     value={selectedSubject}
@@ -364,10 +364,10 @@ export function HeroSection({ }: HeroSectionProps) {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 9,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
+                      color: '#172033',
                       fontSize: 13,
                       fontWeight: 500,
                       outline: 'none',
@@ -392,11 +392,11 @@ export function HeroSection({ }: HeroSectionProps) {
                       gap: 5,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#0F172A',
+                      color: '#172033',
                       marginBottom: 5,
                     }}
                   >
-                    <Layers size={13} style={{ color: '#2563EB' }} /> Topic
+                    <Layers size={13} style={{ color: '#E31B23' }} /> Topic
                   </label>
                   <select
                     value={selectedTopic}
@@ -404,10 +404,10 @@ export function HeroSection({ }: HeroSectionProps) {
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 9,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
+                      color: '#172033',
                       fontSize: 13,
                       fontWeight: 500,
                       outline: 'none',
@@ -435,14 +435,14 @@ export function HeroSection({ }: HeroSectionProps) {
                   style={{
                     width: '100%',
                     height: 42,
-                    borderRadius: 9,
+                    borderRadius: 0,
                     border: 'none',
-                    backgroundColor: '#2563EB',
+                    backgroundColor: '#E31B23',
                     color: '#FFFFFF',
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
+                    boxShadow: '0 4px 12px rgba(227, 27, 35, 0.22)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -450,14 +450,14 @@ export function HeroSection({ }: HeroSectionProps) {
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1D4ED8';
+                    e.currentTarget.style.backgroundColor = '#C1121F';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.32)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(227, 27, 35, 0.32)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2563EB';
+                    e.currentTarget.style.backgroundColor = '#E31B23';
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.22)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(227, 27, 35, 0.22)';
                   }}
                 >
                   Start Free Mock
@@ -470,7 +470,7 @@ export function HeroSection({ }: HeroSectionProps) {
                 style={{
                   background: '#F8FAFC',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 9,
+                  borderRadius: 0,
                   padding: '8px 12px',
                   marginBottom: 16,
                   display: 'flex',
@@ -480,8 +480,8 @@ export function HeroSection({ }: HeroSectionProps) {
                   color: '#64748B',
                 }}
               >
-                <span style={{ fontWeight: 600, color: '#0F172A' }}>Your practice session:</span>
-                <span style={{ color: '#0F172A', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 600, color: '#172033' }}>Your practice session:</span>
+                <span style={{ color: '#172033', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {selectedSubject} · {selectedTopic} ({questionCount} Qs)
                 </span>
               </div>
@@ -501,13 +501,13 @@ export function HeroSection({ }: HeroSectionProps) {
                 }}
               >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <CheckCircle2 size={13} style={{ color: '#059669' }} /> Authentic PYQs
+                  <CheckCircle2 size={13} style={{ color: '#3A8B53' }} /> Authentic PYQs
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Zap size={12.5} style={{ color: '#2563EB' }} /> Instant mock
+                  <Zap size={12.5} style={{ color: '#E31B23' }} /> Instant mock
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#64748B', display: 'inline-block' }} /> No login required
+                  <span style={{ width: 5, height: 5, borderRadius: 0, backgroundColor: '#64748B', display: 'inline-block' }} /> No login required
                 </span>
               </div>
             </form>

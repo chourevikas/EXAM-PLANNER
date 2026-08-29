@@ -335,7 +335,7 @@ export function SuperAdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
       {/* Full-Width Top Header (fixed at top: 0) */}
       <SuperAdminTopNav
         activeTab={activeTab}
@@ -378,9 +378,9 @@ export function SuperAdminPage() {
               <div
                 style={{
                   background: 'var(--bg-card, #ffffff)',
-                  borderRadius: 24,
+                  borderRadius: 0,
                   padding: '32px 36px',
-                  color: 'var(--text-main, #0f172a)',
+                  color: 'var(--text-main, #172033)',
                   marginBottom: 32,
                   border: '1px solid var(--border-color, #e2e8f0)',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
@@ -398,13 +398,13 @@ export function SuperAdminPage() {
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      color: '#2563eb',
+                      color: '#E31B23',
                       textTransform: 'uppercase',
                       letterSpacing: '0.12em',
                       padding: '4px 12px',
-                      borderRadius: 99,
-                      background: 'rgba(37, 99, 235, 0.1)',
-                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      borderRadius: 0,
+                      background: 'rgba(227, 27, 35, 0.1)',
+                      border: '1px solid rgba(227, 27, 35, 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -427,13 +427,13 @@ export function SuperAdminPage() {
                 <div
                   style={{
                     padding: '14px 20px',
-                    borderRadius: 14,
+                    borderRadius: 0,
                     fontSize: 14,
                     fontWeight: 600,
                     marginBottom: 24,
-                    background: toastMessage.isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                    color: toastMessage.isError ? '#ef4444' : '#10b981',
-                    border: `1px solid ${toastMessage.isError ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+                    background: toastMessage.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    color: toastMessage.isError ? '#ef4444' : '#3A8B53',
+                    border: `1px solid ${toastMessage.isError ? 'rgba(227, 27, 35, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,

@@ -168,7 +168,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             alignItems: 'center',
             gap: 5,
             padding: '3px 8px',
-            borderRadius: 4,
+            borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
             backgroundColor: '#DCFCE7',
@@ -188,7 +188,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             alignItems: 'center',
             gap: 5,
             padding: '3px 8px',
-            borderRadius: 4,
+            borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
             backgroundColor: '#FEF3C7',
@@ -208,7 +208,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             alignItems: 'center',
             gap: 5,
             padding: '3px 8px',
-            borderRadius: 4,
+            borderRadius: 0,
             fontSize: 11.5,
             fontWeight: 600,
             backgroundColor: '#E0F2FE',
@@ -227,7 +227,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
           alignItems: 'center',
           gap: 5,
           padding: '3px 8px',
-          borderRadius: 4,
+          borderRadius: 0,
           fontSize: 11.5,
           fontWeight: 600,
           backgroundColor: '#F2F4F7',
@@ -267,8 +267,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
           style={{
             marginBottom: 20,
             padding: '12px 16px',
-            borderRadius: 6,
-            backgroundColor: '#10B981',
+            borderRadius: 0,
+            backgroundColor: '#3A8B53',
             color: '#FFFFFF',
             fontWeight: 500,
             fontSize: 13.5,
@@ -318,7 +318,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             padding: '8px 14px',
             fontSize: 13,
             fontWeight: 500,
-            borderRadius: 6,
+            borderRadius: 0,
             background: '#FFFFFF',
             color: '#172033',
             border: '1px solid #E4E7EC',
@@ -354,7 +354,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             style={{
               width: '100%',
               padding: '8px 12px 8px 36px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid #E4E7EC',
               backgroundColor: '#FFFFFF',
               fontSize: 13.5,
@@ -371,7 +371,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
           onChange={(e) => setStatusFilter(e.target.value)}
           style={{
             padding: '8px 12px',
-            borderRadius: 6,
+            borderRadius: 0,
             border: '1px solid #E4E7EC',
             fontSize: 13,
             fontWeight: 500,
@@ -393,7 +393,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
           onChange={(e) => setStageFilter(e.target.value)}
           style={{
             padding: '8px 12px',
-            borderRadius: 6,
+            borderRadius: 0,
             border: '1px solid #E4E7EC',
             fontSize: 13,
             fontWeight: 500,
@@ -415,7 +415,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         style={{
           background: '#FFFFFF',
           border: '1px solid #E4E7EC',
-          borderRadius: 6,
+          borderRadius: 0,
           padding: '14px 20px',
           marginBottom: 24,
           display: 'grid',
@@ -452,7 +452,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 6,
+            borderRadius: 0,
             marginBottom: 20,
             color: '#B42318',
             display: 'flex',
@@ -474,7 +474,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               color: '#B42318',
               background: '#FFFFFF',
               border: '1px solid #FECDCA',
-              borderRadius: 4,
+              borderRadius: 0,
               cursor: 'pointer',
             }}
           >
@@ -488,7 +488,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         style={{
           background: '#FFFFFF',
           border: '1px solid #E4E7EC',
-          borderRadius: 6,
+          borderRadius: 0,
           boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
           overflow: 'hidden',
         }}
@@ -502,7 +502,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   style={{
                     height: 48,
                     background: '#F7F7F5',
-                    borderRadius: 4,
+                    borderRadius: 0,
                     animation: 'pulse 1.5s infinite ease-in-out',
                   }}
                 />
@@ -580,13 +580,13 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#172033', marginBottom: 4 }}>
                           <span>{pct}%</span>
                         </div>
-                        <div style={{ height: 5, background: '#F2F4F7', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: 5, background: '#F2F4F7', borderRadius: 0, overflow: 'hidden' }}>
                           <div
                             style={{
                               height: '100%',
                               width: `${pct}%`,
                               background: pct === 100 ? '#15803D' : '#3B6EA8',
-                              borderRadius: 2,
+                              borderRadius: 0,
                             }}
                           />
                         </div>
@@ -618,7 +618,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                             color: '#172033',
                             background: '#FFFFFF',
                             border: '1px solid #E4E7EC',
-                            borderRadius: 4,
+                            borderRadius: 0,
                             cursor: 'pointer',
                           }}
                         >
@@ -722,13 +722,13 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   <span>{selectedExam.extracted_questions_count} / {selectedExam.total_questions || 100} questions</span>
                   <span>{Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%</span>
                 </div>
-                <div style={{ height: 6, background: '#F2F4F7', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: 6, background: '#F2F4F7', borderRadius: 0, overflow: 'hidden' }}>
                   <div
                     style={{
                       height: '100%',
                       width: `${Math.min(100, Math.round((selectedExam.extracted_questions_count / (selectedExam.total_questions || 100)) * 100))}%`,
                       background: '#3B6EA8',
-                      borderRadius: 3,
+                      borderRadius: 0,
                     }}
                   />
                 </div>
@@ -742,19 +742,19 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   EXAM METADATA
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Year</div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.source_year}</div>
                   </div>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Stage</div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.stage}</div>
                   </div>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Subject Code</div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.subject_code}</div>
                   </div>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Paper Set Code</div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', marginTop: 2 }}>{selectedExam.paper_set_code}</div>
                   </div>
@@ -769,13 +769,13 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   QUESTION METRICS
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Extracted Questions</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#15803D', marginTop: 2 }}>
                       {selectedExam.extracted_questions_count} Questions
                     </div>
                   </div>
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Missing Questions</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085', marginTop: 2 }}>
                       {selectedExam.missing_questions_count} Missing
@@ -796,7 +796,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                 </div>
 
                 {selectedExam.questions_json_path && (
-                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 4, border: '1px solid #E4E7EC', fontFamily: 'monospace', fontSize: 11, color: '#344054', wordBreak: 'break-all' }}>
+                  <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC', fontFamily: 'monospace', fontSize: 11, color: '#344054', wordBreak: 'break-all' }}>
                     <div>questions: {selectedExam.questions_json_path}</div>
                     {selectedExam.solutions_json_path && <div style={{ marginTop: 4 }}>solutions: {selectedExam.solutions_json_path}</div>}
                   </div>
@@ -811,7 +811,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: '1px solid #BBF7D0',
                     backgroundColor: '#DCFCE7',
                     color: '#15803D',
@@ -831,7 +831,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#94A3B8',
                     color: '#FFFFFF',
@@ -854,7 +854,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   style={{
                     width: '100%',
                     padding: '10px 16px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: 'none',
                     backgroundColor: selectedExam.extracted_questions_count === 0 ? '#94A3B8' : '#12233F',
                     color: '#FFFFFF',

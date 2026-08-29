@@ -59,7 +59,7 @@ export function ExamQuestionPalette({
         width: 270,
         backgroundColor: '#FFFFFF',
         border: '1px solid #E2E8F0',
-        borderRadius: 18,
+        borderRadius: 0,
         display: 'flex',
         flexDirection: 'column',
         padding: '16px 14px',
@@ -105,7 +105,7 @@ export function ExamQuestionPalette({
             color: '#475569',
             backgroundColor: '#F8FAFC',
             padding: '2px 8px',
-            borderRadius: 6,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
           }}
         >
@@ -127,7 +127,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#F0FDF4',
             border: '1px solid #DCFCE7',
-            borderRadius: 10,
+            borderRadius: 0,
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -152,7 +152,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#FFFBEB',
             border: '1px solid #FEF3C7',
-            borderRadius: 10,
+            borderRadius: 0,
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -178,7 +178,7 @@ export function ExamQuestionPalette({
           marginBottom: 14,
           backgroundColor: '#F8FAFC',
           border: '1px solid #E2E8F0',
-          borderRadius: 8,
+          borderRadius: 0,
           padding: 3,
         }}
       >
@@ -192,7 +192,7 @@ export function ExamQuestionPalette({
               style={{
                 flex: 1,
                 padding: '4px 0',
-                borderRadius: 6,
+                borderRadius: 0,
                 border: 'none',
                 backgroundColor: isActive ? '#FFFFFF' : 'transparent',
                 color: isActive ? '#1E3A8A' : '#64748B',
@@ -245,8 +245,8 @@ export function ExamQuestionPalette({
             textColor = '#B45309';
             borderColor = '#FDE68A';
           } else if (status === 'ANSWERED_AND_MARKED') {
-            bgColor = '#DBEAFE';
-            textColor = '#1E40AF';
+            bgColor = '#E2E8F0';
+            textColor = '#A4161A';
             borderColor = '#93C5FD';
           }
 
@@ -265,7 +265,7 @@ export function ExamQuestionPalette({
               style={{
                 width: 38,
                 height: 38,
-                borderRadius: '50%',
+                borderRadius: 0,
                 border: `1px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 color: textColor,
@@ -279,7 +279,7 @@ export function ExamQuestionPalette({
                 transition: 'all 0.15s ease',
                 fontVariantNumeric: 'tabular-nums',
                 boxShadow: isCurrent
-                  ? '0 2px 8px rgba(30, 58, 138, 0.3)'
+                  ? '0 2px 8px rgba(23, 32, 51, 0.3)'
                   : '0 1px 2px rgba(15, 23, 42, 0.02)',
               }}
               onMouseEnter={(e) => {
@@ -311,25 +311,25 @@ export function ExamQuestionPalette({
             style={{
               width: '100%',
               padding: '9px 0',
-              borderRadius: 8,
-              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #2563EB',
-              backgroundColor: isRevealed ? '#F1F5F9' : '#2563EB',
+              borderRadius: 0,
+              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #E31B23',
+              backgroundColor: isRevealed ? '#F1F5F9' : '#E31B23',
               color: isRevealed ? '#64748B' : '#FFFFFF',
               fontSize: 12.5,
               fontWeight: 700,
               cursor: isRevealed ? 'default' : 'pointer',
-              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(37, 99, 235, 0.2)',
+              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(227, 27, 35, 0.2)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#1D4ED8';
+                e.currentTarget.style.backgroundColor = '#C1121F';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#2563EB';
+                e.currentTarget.style.backgroundColor = '#E31B23';
                 e.currentTarget.style.transform = 'translateY(0)';
               }
             }}
@@ -345,10 +345,10 @@ export function ExamQuestionPalette({
             style={{
               width: '100%',
               padding: '9px 0',
-              borderRadius: 8,
+              borderRadius: 0,
               border: '1px solid #CBD5E1',
               backgroundColor: '#FFFFFF',
-              color: '#1E293B',
+              color: '#172033',
               fontSize: 12.5,
               fontWeight: 700,
               cursor: 'pointer',

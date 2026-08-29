@@ -69,7 +69,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
         right: 0,
         width: '100%',
         zIndex: 130,
-        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        background: '#172033',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         alignItems: 'center',
@@ -95,7 +95,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             gap: 10,
             background: 'rgba(255, 255, 255, 0.08)',
             border: '1px solid rgba(255, 255, 255, 0.15)',
-            borderRadius: 10,
+            borderRadius: 0,
             padding: '7px 14px',
             width: 320,
             maxWidth: '100%',
@@ -130,7 +130,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               color: 'rgba(255, 255, 255, 0.45)',
               fontFamily: 'monospace',
               background: 'rgba(255, 255, 255, 0.12)',
-              borderRadius: 4,
+              borderRadius: 0,
               padding: '2px 6px',
             }}
           >
@@ -151,7 +151,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             padding: '6px 14px',
             fontSize: 12.5,
             fontWeight: 700,
-            borderRadius: 8,
+            borderRadius: 0,
             border: '1px solid rgba(255, 255, 255, 0.25)',
             background: 'rgba(255, 255, 255, 0.1)',
             color: '#ffffff',
@@ -177,8 +177,8 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           style={{
             width: 38,
             height: 38,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+            borderRadius: 0,
+            background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
             border: '2px solid rgba(255, 255, 255, 0.35)',
             display: 'flex',
             alignItems: 'center',
@@ -213,7 +213,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               right: 0,
               width: 260,
               background: 'var(--bg-card, #ffffff)',
-              borderRadius: 14,
+              borderRadius: 0,
               border: '1px solid var(--border-color, #e2e8f0)',
               boxShadow: '0 12px 32px rgba(15, 29, 56, 0.18)',
               padding: 16,
@@ -227,8 +227,8 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                 style={{
                   width: 42,
                   height: 42,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                  borderRadius: 0,
+                  background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -245,7 +245,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                   style={{
                     fontSize: 14,
                     fontWeight: 700,
-                    color: 'var(--text-main, #0f172a)',
+                    color: 'var(--text-main, #172033)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -277,9 +277,9 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                   letterSpacing: '1px',
                   textTransform: 'uppercase',
                   padding: '3px 10px',
-                  borderRadius: 99,
+                  borderRadius: 0,
                   background: 'rgba(249, 115, 22, 0.12)',
-                  color: '#f97316',
+                  color: '#F47B35',
                   border: '1px solid rgba(249, 115, 22, 0.25)',
                   display: 'inline-block',
                 }}
@@ -299,10 +299,10 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               style={{
                 width: '100%',
                 padding: '9px 12px',
-                borderRadius: 8,
+                borderRadius: 0,
                 border: '1px solid var(--border-color, #e2e8f0)',
                 background: 'var(--bg-body, #f8fafc)',
-                color: 'var(--text-main, #0f172a)',
+                color: 'var(--text-main, #172033)',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -330,9 +330,9 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
               style={{
                 width: '100%',
                 padding: '9px 12px',
-                borderRadius: 8,
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                background: 'rgba(239, 68, 68, 0.06)',
+                borderRadius: 0,
+                border: '1px solid rgba(227, 27, 35, 0.2)',
+                background: 'rgba(227, 27, 35, 0.06)',
                 color: '#ef4444',
                 fontSize: 13,
                 fontWeight: 600,
@@ -348,7 +348,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
                 e.currentTarget.style.color = '#ffffff';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+                e.currentTarget.style.background = 'rgba(227, 27, 35, 0.06)';
                 e.currentTarget.style.color = '#ef4444';
               }}
             >

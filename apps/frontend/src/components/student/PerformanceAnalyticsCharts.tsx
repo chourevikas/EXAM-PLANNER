@@ -29,7 +29,7 @@ export function PerformanceAnalyticsCharts() {
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginBottom: 32 }}>
       
       {/* Subject Accuracy Bar Chart */}
-      <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
@@ -45,7 +45,7 @@ export function PerformanceAnalyticsCharts() {
               background: showProficiencyInfo ? 'var(--accent-primary)' : 'var(--bg-hover)',
               color: showProficiencyInfo ? '#ffffff' : 'var(--text-muted)',
               border: 'none',
-              borderRadius: 20,
+              borderRadius: 0,
               padding: '4px 10px',
               fontSize: 12,
               fontWeight: 600,
@@ -67,7 +67,7 @@ export function PerformanceAnalyticsCharts() {
           <div
             style={{
               padding: 12,
-              borderRadius: 12,
+              borderRadius: 0,
               backgroundColor: 'var(--accent-bg, rgba(91,92,235,0.08))',
               border: '1px solid var(--accent-border, rgba(91,92,235,0.2))',
               fontSize: 12.5,
@@ -93,7 +93,7 @@ export function PerformanceAnalyticsCharts() {
                 contentStyle={{ 
                   backgroundColor: 'var(--bg-card)', 
                   borderColor: 'var(--border-default)', 
-                  borderRadius: 12, 
+                  borderRadius: 0, 
                   boxShadow: 'var(--shadow-color-base)', 
                   color: 'var(--text-primary)',
                   fontSize: 13
@@ -101,7 +101,7 @@ export function PerformanceAnalyticsCharts() {
               />
               <Bar dataKey="accuracy" radius={[8, 8, 0, 0]} maxBarSize={38}>
                 {subjectData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? 'var(--success-primary, #10b981)' : entry.accuracy >= 60 ? 'var(--accent-primary, #5b5ceb)' : 'var(--warning-primary, #f59e0b)'} />
+                  <Cell key={`cell-${index}`} fill={entry.accuracy >= 75 ? 'var(--success-primary, #3A8B53)' : entry.accuracy >= 60 ? 'var(--accent-primary, #5b5ceb)' : 'var(--warning-primary, #F2B623)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -110,7 +110,7 @@ export function PerformanceAnalyticsCharts() {
       </div>
 
       {/* Time Management Area Chart */}
-      <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-color-base)' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>
@@ -126,7 +126,7 @@ export function PerformanceAnalyticsCharts() {
               background: showHoursInfo ? 'var(--accent-primary)' : 'var(--bg-hover)',
               color: showHoursInfo ? '#ffffff' : 'var(--text-muted)',
               border: 'none',
-              borderRadius: 20,
+              borderRadius: 0,
               padding: '4px 10px',
               fontSize: 12,
               fontWeight: 600,
@@ -148,7 +148,7 @@ export function PerformanceAnalyticsCharts() {
           <div
             style={{
               padding: 12,
-              borderRadius: 12,
+              borderRadius: 0,
               backgroundColor: 'var(--accent-bg, rgba(91,92,235,0.08))',
               border: '1px solid var(--accent-border, rgba(91,92,235,0.2))',
               fontSize: 12.5,
@@ -178,7 +178,7 @@ export function PerformanceAnalyticsCharts() {
                 contentStyle={{ 
                   backgroundColor: 'var(--bg-card)', 
                   borderColor: 'var(--border-default)', 
-                  borderRadius: 12, 
+                  borderRadius: 0, 
                   boxShadow: 'var(--shadow-color-base)', 
                   color: 'var(--text-primary)',
                   fontSize: 13

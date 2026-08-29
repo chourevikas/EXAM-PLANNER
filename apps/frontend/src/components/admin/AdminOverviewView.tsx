@@ -40,7 +40,7 @@ function MetricCard({
   progressPercent = 96.3,
 }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const accentColor = '#2563EB';
+  const accentColor = '#E31B23';
 
   return (
     <div
@@ -49,7 +49,7 @@ function MetricCard({
       style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
-        borderRadius: 14,
+        borderRadius: 0,
         position: 'relative',
         overflow: 'hidden',
         padding: '20px 22px',
@@ -86,7 +86,7 @@ function MetricCard({
           style={{
             fontSize: 13.5,
             fontWeight: 600,
-            color: '#0F172A',
+            color: '#172033',
             letterSpacing: '-0.01em',
           }}
         >
@@ -98,8 +98,8 @@ function MetricCard({
           style={{
             width: 34,
             height: 34,
-            borderRadius: 8,
-            backgroundColor: '#EFF6FF',
+            borderRadius: 0,
+            backgroundColor: '#F8FAFC',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -118,7 +118,7 @@ function MetricCard({
           style={{
             fontSize: 32,
             fontWeight: 700,
-            color: isHovered ? accentColor : '#0F172A',
+            color: isHovered ? accentColor : '#172033',
             lineHeight: 1.05,
             letterSpacing: '-0.025em',
             transition: 'color 200ms ease-out',
@@ -145,7 +145,7 @@ function MetricCard({
               height: 4,
               width: '100%',
               backgroundColor: '#F1F5F9',
-              borderRadius: 2,
+              borderRadius: 0,
               marginTop: 10,
               overflow: 'hidden',
             }}
@@ -155,7 +155,7 @@ function MetricCard({
                 height: '100%',
                 width: `${Math.min(100, Math.max(0, progressPercent))}%`,
                 backgroundColor: accentColor,
-                borderRadius: 2,
+                borderRadius: 0,
                 transition: 'width 400ms ease-out',
               }}
             />
@@ -202,11 +202,11 @@ function TableRowItem({
       <td
         style={{
           padding: '14px 16px',
-          borderLeft: hovered ? '3px solid #2563EB' : '3px solid transparent',
+          borderLeft: hovered ? '3px solid #E31B23' : '3px solid transparent',
           transition: 'border-left 150ms ease-out',
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 13.5, color: '#0F172A', lineHeight: 1.3 }}>
+        <div style={{ fontWeight: 600, fontSize: 13.5, color: '#172033', lineHeight: 1.3 }}>
           {primaryTitle}
         </div>
         <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
@@ -222,9 +222,9 @@ function TableRowItem({
             padding: '3px 9px',
             fontSize: 12.5,
             fontWeight: 600,
-            color: '#0F172A',
+            color: '#172033',
             backgroundColor: '#F1F5F9',
-            borderRadius: 6,
+            borderRadius: 0,
           }}
         >
           {paper.questions}
@@ -244,12 +244,12 @@ function TableRowItem({
             alignItems: 'center',
             gap: 6,
             padding: '3px 10px',
-            borderRadius: 12,
+            borderRadius: 0,
             backgroundColor: '#F0FDF4',
             border: '1px solid #DCFCE7',
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#16A34A' }} />
+          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#16A34A' }} />
           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#15803D' }}>
             {paper.confidence || 99}% confidence
           </span>
@@ -275,12 +275,12 @@ function TableRowItem({
             padding: '5px 14px',
             fontSize: 12.5,
             fontWeight: 600,
-            color: hovered ? '#2563EB' : '#0F172A',
+            color: hovered ? '#E31B23' : '#172033',
             background: '#FFFFFF',
             border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
-            borderRadius: 6,
+            borderRadius: 0,
             cursor: 'pointer',
-            boxShadow: hovered ? '0 1px 2px rgba(37, 99, 235, 0.1)' : 'none',
+            boxShadow: hovered ? '0 1px 2px rgba(227, 27, 35, 0.1)' : 'none',
             transition: 'all 150ms ease-out',
           }}
         >
@@ -311,7 +311,7 @@ function SubjectDistributionRow({
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '8px 10px',
-        borderRadius: 8,
+        borderRadius: 0,
         backgroundColor: hovered ? '#F8FAFC' : 'transparent',
         transition: 'all 150ms ease-out',
         position: 'relative',
@@ -325,12 +325,12 @@ function SubjectDistributionRow({
           alignItems: 'center',
           fontSize: 13,
           fontWeight: hovered ? 600 : 500,
-          color: hovered ? '#0F172A' : '#1E293B',
+          color: hovered ? '#172033' : '#172033',
           marginBottom: 6,
         }}
       >
         <span>{subject}</span>
-        <span style={{ color: hovered ? '#2563EB' : '#64748B', fontWeight: 600, fontSize: 12.5 }}>
+        <span style={{ color: hovered ? '#E31B23' : '#64748B', fontWeight: 600, fontSize: 12.5 }}>
           {count} · {percent}%
         </span>
       </div>
@@ -340,7 +340,7 @@ function SubjectDistributionRow({
         style={{
           height: hovered ? 7 : 5,
           backgroundColor: '#F1F5F9',
-          borderRadius: 3,
+          borderRadius: 0,
           overflow: 'hidden',
           transition: 'height 150ms ease-out',
         }}
@@ -349,8 +349,8 @@ function SubjectDistributionRow({
           style={{
             height: '100%',
             width: `${Math.min(100, Math.max(0, percent))}%`,
-            backgroundColor: hovered ? '#1D4ED8' : '#2563EB',
-            borderRadius: 3,
+            backgroundColor: hovered ? '#C1121F' : '#E31B23',
+            borderRadius: 0,
             transition: 'width 400ms ease-out, background-color 150ms ease-out',
           }}
         />
@@ -365,7 +365,7 @@ function SubjectDistributionRow({
             color: '#334155',
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 6,
+            borderRadius: 0,
             padding: '4px 8px',
             boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
             display: 'flex',
@@ -374,9 +374,9 @@ function SubjectDistributionRow({
           }}
         >
           <span>
-            <strong style={{ color: '#0F172A' }}>{subject}</strong>: {count} extracted questions
+            <strong style={{ color: '#172033' }}>{subject}</strong>: {count} extracted questions
           </span>
-          <span style={{ color: '#2563EB', fontWeight: 600 }}>{percent}% of current dataset</span>
+          <span style={{ color: '#E31B23', fontWeight: 600 }}>{percent}% of current dataset</span>
         </div>
       )}
     </div>
@@ -465,7 +465,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
       <div
         style={{
           background: 'linear-gradient(135deg, #0F1D38 0%, #14284C 45%, #1B3864 75%, #224578 100%)',
-          borderRadius: 14,
+          borderRadius: 0,
           padding: '24px 28px',
           marginBottom: 24,
           boxShadow: '0 4px 16px -2px rgba(15, 29, 56, 0.12)',
@@ -499,13 +499,13 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 padding: '3px 10px',
                 backgroundColor: 'rgba(255, 255, 255, 0.12)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: 12,
+                borderRadius: 0,
                 fontSize: 12,
                 fontWeight: 600,
                 color: '#6EE7B7',
               }}
             >
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#34D399' }} />
+              <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#34D399' }} />
               <span>Extraction Pipeline Operational</span>
             </div>
           </div>
@@ -528,7 +528,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               padding: '9px 15px',
               fontSize: 13,
               fontWeight: 500,
-              borderRadius: 6,
+              borderRadius: 0,
               background: 'rgba(255, 255, 255, 0.12)',
               color: '#FFFFFF',
               border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -551,12 +551,12 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               padding: '9px 18px',
               fontSize: 13.5,
               fontWeight: 600,
-              borderRadius: 6,
-              background: '#2563EB',
+              borderRadius: 0,
+              background: '#E31B23',
               color: '#FFFFFF',
-              border: '1px solid #2563EB',
+              border: '1px solid #E31B23',
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)',
+              boxShadow: '0 2px 8px rgba(227, 27, 35, 0.3)',
               transition: 'all 0.15s ease',
             }}
           >
@@ -573,7 +573,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             padding: '12px 16px',
             background: '#FEF2F2',
             border: '1px solid #FECDCA',
-            borderRadius: 8,
+            borderRadius: 0,
             marginBottom: 20,
             color: '#B42318',
             display: 'flex',
@@ -595,7 +595,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               color: '#B42318',
               background: '#FFFFFF',
               border: '1px solid #FECDCA',
-              borderRadius: 4,
+              borderRadius: 0,
               cursor: 'pointer',
             }}
           >
@@ -618,7 +618,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Total Papers Uploaded"
           value={stats?.metrics?.[0]?.value || '3'}
           supportingText="+3 this month"
-          icon={<FileText size={18} color="#2563EB" />}
+          icon={<FileText size={18} color="#E31B23" />}
         />
 
         {/* Card 2: Questions Extracted */}
@@ -626,7 +626,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Questions Extracted"
           value={stats?.metrics?.[1]?.value || '299'}
           supportingText="96% successfully parsed"
-          icon={<Layers size={18} color="#2563EB" />}
+          icon={<Layers size={18} color="#E31B23" />}
         />
 
         {/* Card 3: Extraction Accuracy */}
@@ -634,7 +634,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Extraction Accuracy"
           value={stats?.metrics?.[2]?.value || '96.3%'}
           supportingText="High confidence"
-          icon={<CheckCircle2 size={18} color="#2563EB" />}
+          icon={<CheckCircle2 size={18} color="#E31B23" />}
           showProgress={true}
           progressPercent={96.3}
         />
@@ -644,7 +644,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Supported Exam Types"
           value={stats?.metrics?.[3]?.value || '1'}
           supportingText="UPSC / State PSC"
-          icon={<GraduationCap size={18} color="#2563EB" />}
+          icon={<GraduationCap size={18} color="#E31B23" />}
         />
       </div>
 
@@ -661,7 +661,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           style={{
             background: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 14,
+            borderRadius: 0,
             padding: 24,
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
@@ -676,9 +676,9 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 4, height: 22, backgroundColor: '#2563EB', borderRadius: 2 }} />
+              <div style={{ width: 4, height: 22, backgroundColor: '#E31B23', borderRadius: 0 }} />
               <div>
-                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+                <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                   Recent Exam Paper Uploads
                 </h2>
                 <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0 0' }}>
@@ -695,12 +695,12 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 gap: 4,
                 background: 'transparent',
                 border: 'none',
-                color: '#2563EB',
+                color: '#E31B23',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 padding: '4px 8px',
-                borderRadius: 4,
+                borderRadius: 0,
                 transition: 'color 0.15s ease',
               }}
             >
@@ -757,7 +757,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           style={{
             background: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 14,
+            borderRadius: 0,
             padding: 24,
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
             display: 'flex',
@@ -766,8 +766,8 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         >
           {/* Section Title with Vertical Accent */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 4, height: 20, backgroundColor: '#2563EB', borderRadius: 2 }} />
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+            <div style={{ width: 4, height: 20, backgroundColor: '#E31B23', borderRadius: 0 }} />
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
               Question Distribution
             </h2>
           </div>

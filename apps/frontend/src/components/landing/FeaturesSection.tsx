@@ -2,10 +2,10 @@ import React, { ReactNode } from 'react';
 import { Ico } from '../common/Icons';
 
 const iconPalettes = [
-  { color: '#3b82f6', bg: 'rgba(59,130,246,0.15)',  glow: 'rgba(59,130,246,0.25)',  border: 'rgba(59,130,246,0.3)'  },
-  { color: '#10b981', bg: 'rgba(16,185,129,0.15)',  glow: 'rgba(16,185,129,0.25)',  border: 'rgba(16,185,129,0.3)'  },
+  { color: '#E31B23', bg: 'rgba(227, 27, 35,0.15)',  glow: 'rgba(227, 27, 35,0.25)',  border: 'rgba(227, 27, 35,0.3)'  },
+  { color: '#3A8B53', bg: 'rgba(16,185,129,0.15)',  glow: 'rgba(16,185,129,0.25)',  border: 'rgba(16,185,129,0.3)'  },
   { color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)',  glow: 'rgba(139,92,246,0.25)',  border: 'rgba(139,92,246,0.3)'  },
-  { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)',  glow: 'rgba(245,158,11,0.25)',  border: 'rgba(245,158,11,0.3)'  },
+  { color: '#F2B623', bg: 'rgba(245,158,11,0.15)',  glow: 'rgba(245,158,11,0.25)',  border: 'rgba(245,158,11,0.3)'  },
   { color: '#06b6d4', bg: 'rgba(6,182,212,0.15)',   glow: 'rgba(6,182,212,0.25)',   border: 'rgba(6,182,212,0.3)'   },
   { color: '#ec4899', bg: 'rgba(236,72,153,0.15)',  glow: 'rgba(236,72,153,0.25)',  border: 'rgba(236,72,153,0.3)'  },
 ];
@@ -32,7 +32,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
         minHeight: 230,
         flexShrink: 0,
         background: 'var(--bg-card)',
-        borderRadius: 22,
+        borderRadius: 0,
         padding: '28px 26px',
         border: `1px solid ${p.border}`,
         position: 'relative',
@@ -87,7 +87,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           style={{
             position: 'absolute',
             inset: -6,
-            borderRadius: '50%',
+            borderRadius: 0,
             background: p.glow,
             filter: 'blur(8px)',
           }}
@@ -97,7 +97,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           style={{
             width: 54,
             height: 54,
-            borderRadius: 16,
+            borderRadius: 0,
             background: p.bg,
             border: `1px solid ${p.border}`,
             display: 'flex',
@@ -145,7 +145,7 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
           right: 0,
           height: 3,
           background: `linear-gradient(90deg, ${p.color} 0%, ${p.color}44 60%, transparent 100%)`,
-          borderRadius: '0 0 22px 22px',
+          borderRadius: 0,
         }}
       />
     </div>

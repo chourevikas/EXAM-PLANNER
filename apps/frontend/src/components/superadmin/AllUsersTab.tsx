@@ -36,9 +36,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
       case UserRole.SUPER_ADMIN:
         return { bg: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', border: 'rgba(124, 58, 237, 0.25)' };
       case UserRole.ADMIN:
-        return { bg: 'rgba(249, 115, 22, 0.12)', color: '#f97316', border: 'rgba(249, 115, 22, 0.25)' };
+        return { bg: 'rgba(249, 115, 22, 0.12)', color: '#F47B35', border: 'rgba(249, 115, 22, 0.25)' };
       default:
-        return { bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.25)' };
+        return { bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
     }
   };
 
@@ -47,7 +47,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 22,
+        borderRadius: 0,
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -65,10 +65,10 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 99,
-                background: 'rgba(59, 130, 246, 0.12)',
-                color: '#3b82f6',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 0,
+                background: 'rgba(227, 27, 35, 0.12)',
+                color: '#E31B23',
+                border: '1px solid rgba(227, 27, 35, 0.25)',
               }}
             >
               {users.length} Total Users
@@ -85,7 +85,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 10,
+            borderRadius: 0,
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -107,7 +107,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter('ALL')}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -127,13 +127,13 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.STUDENT)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
-            background: roleFilter === UserRole.STUDENT ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-body)',
-            color: roleFilter === UserRole.STUDENT ? '#2563eb' : 'var(--text-main)',
-            border: `1px solid ${roleFilter === UserRole.STUDENT ? '#2563eb' : 'var(--border-color)'}`,
+            background: roleFilter === UserRole.STUDENT ? 'rgba(227, 27, 35, 0.2)' : 'var(--bg-body)',
+            color: roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--text-main)',
+            border: `1px solid ${roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--border-color)'}`,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -147,7 +147,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.ADMIN)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -167,7 +167,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.SUPER_ADMIN)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -192,7 +192,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             gap: 10,
             background: 'var(--bg-body)',
             border: '1px solid var(--border-color)',
-            borderRadius: 12,
+            borderRadius: 0,
             padding: '10px 16px',
             maxWidth: 400,
           }}
@@ -227,7 +227,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 18,
+            borderRadius: 0,
             border: '1px solid var(--border-color)',
           }}
         >
@@ -236,7 +236,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 16, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
                 <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -266,7 +266,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                       {/* User Details */}
                       <td style={{ padding: '18px 20px' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{u.full_name}</div>
-                        <div style={{ fontSize: 12.5, color: '#2563eb', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
+                        <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
                       </td>
 
                       {/* Role Badge */}
@@ -276,7 +276,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                             fontSize: 11,
                             fontWeight: 800,
                             padding: '4px 12px',
-                            borderRadius: 99,
+                            borderRadius: 0,
                             color: roleStyle.color,
                             background: roleStyle.bg,
                             border: `1px solid ${roleStyle.border}`,
@@ -294,10 +294,10 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                             fontSize: 11,
                             fontWeight: 700,
                             padding: '4px 10px',
-                            borderRadius: 99,
-                            color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#f97316' : '#10b981',
-                            background: isSuspended ? 'rgba(239, 68, 68, 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                            border: `1px solid ${isSuspended ? 'rgba(239, 68, 68, 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                            borderRadius: 0,
+                            color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#F47B35' : '#3A8B53',
+                            background: isSuspended ? 'rgba(227, 27, 35, 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                            border: `1px solid ${isSuspended ? 'rgba(227, 27, 35, 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
                           }}
                         >
                           {isCoolingExpired ? 'EXPIRED (7d+)' : u.status}
@@ -338,7 +338,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                               padding: '6px 10px',
                               fontSize: 12,
                               fontWeight: 600,
-                              borderRadius: 8,
+                              borderRadius: 0,
                               border: '1px solid var(--border-color)',
                               background: 'var(--bg-body)',
                               color: 'var(--text-main)',
@@ -360,7 +360,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                                     padding: '6px 10px',
                                     fontSize: 11.5,
                                     fontWeight: 700,
-                                    borderRadius: 8,
+                                    borderRadius: 0,
                                     border: '1px solid rgba(100, 116, 139, 0.3)',
                                     background: 'rgba(100, 116, 139, 0.1)',
                                     color: '#64748b',
@@ -377,10 +377,10 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                                     padding: '6px 12px',
                                     fontSize: 12,
                                     fontWeight: 700,
-                                    borderRadius: 8,
+                                    borderRadius: 0,
                                     border: '1px solid rgba(16, 185, 129, 0.3)',
                                     background: 'rgba(16, 185, 129, 0.12)',
-                                    color: '#10b981',
+                                    color: '#3A8B53',
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease',
                                   }}
@@ -397,9 +397,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                                   padding: '6px 12px',
                                   fontSize: 12,
                                   fontWeight: 700,
-                                  borderRadius: 8,
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  background: 'rgba(239, 68, 68, 0.12)',
+                                  borderRadius: 0,
+                                  border: '1px solid rgba(227, 27, 35, 0.3)',
+                                  background: 'rgba(227, 27, 35, 0.12)',
                                   color: '#ef4444',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',

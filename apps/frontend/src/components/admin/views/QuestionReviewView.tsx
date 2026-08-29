@@ -893,10 +893,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               right: 24,
               zIndex: 9999,
               padding: '12px 20px',
-              borderRadius: 8,
+              borderRadius: 0,
               fontSize: 13.5,
               fontWeight: 600,
-              backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#D97706',
+              backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#F2B623',
               color: '#FFFFFF',
               boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)',
               display: 'flex',
@@ -911,7 +911,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
         {/* Page Header */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
             Question & Solution QA Review Hub
           </h1>
           <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
@@ -923,7 +923,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: '#FFFFFF',
-            borderRadius: 14,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
             padding: '16px 20px',
             marginBottom: 24,
@@ -946,10 +946,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 width: '100%',
                 padding: '8px 12px 8px 36px',
                 fontSize: 13,
-                borderRadius: 6,
+                borderRadius: 0,
                 border: '1px solid #CBD5E1',
                 outline: 'none',
-                color: '#0F172A',
+                color: '#172033',
                 boxSizing: 'border-box',
               }}
             />
@@ -962,10 +962,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               onChange={(e) => setExamStatusFilter(e.target.value)}
               style={{
                 padding: '8px 12px',
-                borderRadius: 6,
+                borderRadius: 0,
                 border: '1px solid #CBD5E1',
                 fontSize: 13,
-                color: '#0F172A',
+                color: '#172033',
                 backgroundColor: '#FFFFFF',
                 outline: 'none',
                 fontWeight: 500,
@@ -980,10 +980,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               onClick={loadExamsList}
               style={{
                 padding: '8px 14px',
-                borderRadius: 6,
+                borderRadius: 0,
                 border: '1px solid #CBD5E1',
                 backgroundColor: '#FFFFFF',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -999,16 +999,16 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         </div>
 
         {/* Exams Table */}
-        <div style={{ backgroundColor: '#FFFFFF', borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
+        <div style={{ backgroundColor: '#FFFFFF', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
           {loadingExams ? (
             <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
-              <Loader2 size={26} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#2563EB' }} />
+              <Loader2 size={26} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#E31B23' }} />
               <div style={{ fontSize: 14, fontWeight: 600 }}>Loading examination repositories...</div>
             </div>
           ) : filteredExams.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
               <BookOpen size={36} style={{ margin: '0 auto 12px auto', color: '#94A3B8' }} />
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>No examination papers found</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#172033' }}>No examination papers found</div>
               <p style={{ fontSize: 13, marginTop: 4 }}>Try changing search query or filter criteria.</p>
             </div>
           ) : (
@@ -1033,7 +1033,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFFFFF')}
                     >
                       <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>{exam.name}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#172033' }}>{exam.name}</div>
                         <div style={{ fontSize: 12, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>{exam.code}</div>
                       </td>
                       <td style={{ padding: '16px 16px', fontSize: 13, color: '#334155' }}>
@@ -1041,7 +1041,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         <div style={{ fontSize: 12, color: '#64748B' }}>{exam.source_year || '2024'}</div>
                       </td>
                       <td style={{ padding: '16px 16px', fontSize: 13 }}>
-                        <span style={{ fontWeight: 600, color: '#0F172A' }}>Set {exam.paper_set_code || 'A'}</span>
+                        <span style={{ fontWeight: 600, color: '#172033' }}>Set {exam.paper_set_code || 'A'}</span>
                         <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
                           {exam.extracted_questions_count || 0} / {exam.total_questions || 100} extracted
                         </div>
@@ -1053,7 +1053,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             alignItems: 'center',
                             gap: 5,
                             padding: '3px 10px',
-                            borderRadius: 12,
+                            borderRadius: 0,
                             fontSize: 12,
                             fontWeight: 600,
                             backgroundColor: isPublished ? '#DCFCE7' : '#FEF3C7',
@@ -1061,7 +1061,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             border: `1px solid ${isPublished ? '#86EFAC' : '#FDE68A'}`,
                           }}
                         >
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isPublished ? '#16A34A' : '#D97706' }} />
+                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: isPublished ? '#16A34A' : '#F2B623' }} />
                           {isPublished ? 'Published to S3' : 'Pending QA Review'}
                         </span>
                       </td>
@@ -1072,9 +1072,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           }}
                           style={{
                             padding: '7px 15px',
-                            backgroundColor: '#2563EB',
+                            backgroundColor: '#E31B23',
                             color: '#FFFFFF',
-                            borderRadius: 6,
+                            borderRadius: 0,
                             border: 'none',
                             fontSize: 12.5,
                             fontWeight: 600,
@@ -1082,7 +1082,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 6,
-                            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
+                            boxShadow: '0 1px 3px rgba(227, 27, 35, 0.25)',
                           }}
                         >
                           <Eye size={14} />
@@ -1114,10 +1114,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             right: 24,
             zIndex: 9999,
             padding: '12px 20px',
-            borderRadius: 8,
+            borderRadius: 0,
             fontSize: 13.5,
             fontWeight: 600,
-            backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#D97706',
+            backgroundColor: toastMessage.type === 'success' ? '#15803D' : toastMessage.type === 'error' ? '#DC2626' : '#F2B623',
             color: '#FFFFFF',
             boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)',
             display: 'flex',
@@ -1134,7 +1134,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       <div
         style={{
           backgroundColor: '#FFFFFF',
-          borderRadius: 14,
+          borderRadius: 0,
           border: '1px solid #E2E8F0',
           padding: '20px 24px',
           marginBottom: 20,
@@ -1149,7 +1149,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 padding: '8px 14px',
                 backgroundColor: '#FFFFFF',
                 border: '1px solid #CBD5E1',
-                borderRadius: 6,
+                borderRadius: 0,
                 fontSize: 13,
                 fontWeight: 600,
                 color: '#334155',
@@ -1166,17 +1166,17 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.015em' }}>
+                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.015em' }}>
                   {selectedExam.name}
                 </h1>
                 <span
                   style={{
                     padding: '3px 9px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 11.5,
                     fontWeight: 700,
-                    backgroundColor: '#EFF6FF',
-                    color: '#2563EB',
+                    backgroundColor: '#F8FAFC',
+                    color: '#E31B23',
                     border: '1px solid #BFDBFE',
                   }}
                 >
@@ -1185,7 +1185,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <span
                   style={{
                     padding: '3px 9px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 11.5,
                     fontWeight: 600,
                     backgroundColor: '#F1F5F9',
@@ -1197,7 +1197,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <span
                   style={{
                     padding: '3px 9px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 11.5,
                     fontWeight: 600,
                     backgroundColor: '#F1F5F9',
@@ -1220,7 +1220,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={true}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'default',
@@ -1240,7 +1240,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={true}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'not-allowed',
@@ -1262,11 +1262,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  backgroundColor: '#D97706',
+                  backgroundColor: '#F2B623',
                   color: '#FFFFFF',
                   border: 'none',
                   display: 'inline-flex',
@@ -1285,11 +1285,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 style={{
                   padding: '9px 18px',
                   border: 'none',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  backgroundColor: '#059669',
+                  backgroundColor: '#3A8B53',
                   color: '#FFFFFF',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1311,7 +1311,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 style={{
                   padding: '9px 18px',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'not-allowed',
@@ -1332,19 +1332,19 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
         {/* Dedicated S3 Pipeline Status Banner (In-Progress vs Out-of-Sync vs In-Sync vs Failed) */}
         {s3PublishStatus.is_syncing && (
-          <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 8, backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 0, backgroundColor: '#F8FAFC', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ position: 'relative', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <RefreshCw size={22} color="#2563EB" className="animate-spin" />
+                <RefreshCw size={22} color="#E31B23" className="animate-spin" />
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#C1121F', display: 'flex', alignItems: 'center', gap: 8 }}>
                   ⚡ S3 Synchronization In Progress
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 0, backgroundColor: '#E2E8F0', color: '#A4161A' }}>
                     {s3PublishStatus.sync_progress ? `${Math.round(s3PublishStatus.sync_progress)}%` : 'RUNNING'}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: '#1E40AF', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: '#A4161A', marginTop: 2 }}>
                   {s3PublishStatus.sync_step || 'Building questions and solutions JSON files and syncing to AWS S3...'}. You can safely continue working or navigate away.
                 </div>
               </div>
@@ -1354,9 +1354,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => selectedExam && checkSyncStatusOnce(selectedExam.id)}
                 style={{
                   padding: '7px 12px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
-                  color: '#1D4ED8',
+                  color: '#C1121F',
                   border: '1px solid #BFDBFE',
                   fontSize: 12,
                   fontWeight: 600,
@@ -1375,7 +1375,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={true}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#93C5FD',
                   color: '#FFFFFF',
                   border: 'none',
@@ -1395,9 +1395,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
         {!s3PublishStatus.is_syncing && s3PublishStatus.is_published && s3PublishStatus.is_s3_out_of_sync && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={20} color="#D97706" />
+              <AlertTriangle size={20} color="#F2B623" />
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B45309' }}>
                   Changes Pending S3 Sync
@@ -1413,9 +1413,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '7px 11px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
-                  color: '#2563eb',
+                  color: '#E31B23',
                   border: '1px solid #93c5fd',
                   fontSize: 12,
                   fontWeight: 600,
@@ -1435,7 +1435,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '7px 11px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#7c3aed',
                   border: '1px solid #c4b5fd',
@@ -1457,8 +1457,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 6,
-                  backgroundColor: '#D97706',
+                  borderRadius: 0,
+                  backgroundColor: '#F2B623',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: 12.5,
@@ -1480,7 +1480,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '7px 12px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#B45309',
                   border: '1px solid #FCD34D',
@@ -1501,7 +1501,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
         {!s3PublishStatus.is_syncing && s3PublishStatus.is_published && !s3PublishStatus.is_s3_out_of_sync && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={20} color="#16A34A" />
               <div>
@@ -1519,9 +1519,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '5px 9px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
-                  color: '#2563eb',
+                  color: '#E31B23',
                   border: '1px solid #bfdbfe',
                   fontSize: 11.5,
                   fontWeight: 600,
@@ -1541,7 +1541,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '5px 9px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#7c3aed',
                   border: '1px solid #ddd6fe',
@@ -1563,7 +1563,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '5px 10px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#15803D',
                   border: '1px solid #86EFAC',
@@ -1585,7 +1585,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={syncingExam}
                 style={{
                   padding: '5px 10px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#166534',
                   border: '1px solid #BBF7D0',
@@ -1602,7 +1602,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 Full Sync
               </button>
 
-              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 0, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
                 LIVE IN CATALOG
               </span>
             </div>
@@ -1610,9 +1610,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
         {s3PublishStatus.publish_status === 'PUBLISH_FAILED' && s3PublishStatus.can_retry && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FFFBEB', border: '1px solid #FCD34D', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={20} color="#D97706" />
+              <AlertTriangle size={20} color="#F2B623" />
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B45309' }}>
                   S3 Publishing Task Interrupted (Fixable via Retry)
@@ -1628,7 +1628,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 12px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#B45309',
                   border: '1px solid #FCD34D',
@@ -1649,8 +1649,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 6,
-                  backgroundColor: '#D97706',
+                  borderRadius: 0,
+                  backgroundColor: '#F2B623',
                   color: '#FFFFFF',
                   border: 'none',
                   fontSize: 12.5,
@@ -1670,7 +1670,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         )}
 
         {s3PublishStatus.is_corrupted && (
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 0, backgroundColor: '#FEF2F2', border: '1px solid #FECACA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <ShieldAlert size={20} color="#DC2626" />
               <div>
@@ -1688,7 +1688,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={loadingQuestions}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   backgroundColor: '#FFFFFF',
                   color: '#B91C1C',
                   border: '1px solid #FCA5A5',
@@ -1705,7 +1705,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <RefreshCw size={13} className={loadingQuestions ? 'animate-spin' : ''} />
                 Re-evaluate Integrity
               </button>
-              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 12, backgroundColor: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 0, backgroundColor: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5' }}>
                 CORRUPTED DATA
               </span>
             </div>
@@ -1715,30 +1715,30 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         {/* Verification Progress Bar & Metrics */}
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
               Verification Progress: {reviewMetrics.reviewed} / {reviewMetrics.total} Verified ({reviewMetrics.total > 0 ? Math.round((reviewMetrics.reviewed / reviewMetrics.total) * 100) : 0}%)
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
                 ⏳ {reviewMetrics.pending} Pending Review
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }}>
                 ✅ {reviewMetrics.reviewed} Verified
               </span>
               {reviewMetrics.rejected > 0 && (
-                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 12, backgroundColor: '#FEF2F2', color: '#B42318', border: '1px solid #FECDCA' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: '#FEF2F2', color: '#B42318', border: '1px solid #FECDCA' }}>
                   ❌ {reviewMetrics.rejected} Rejected
                 </span>
               )}
             </div>
           </div>
 
-          <div style={{ width: '100%', height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 6, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%',
-                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : '#2563EB',
+                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : '#E31B23',
                 width: `${reviewMetrics.total > 0 ? (reviewMetrics.reviewed / reviewMetrics.total) * 100 : 0}%`,
                 transition: 'width 0.3s ease',
               }}
@@ -1753,7 +1753,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: '#FFFFFF',
-            borderRadius: 14,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
             display: 'flex',
             flexDirection: 'column',
@@ -1765,7 +1765,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         >
           {/* Navigator Header */}
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
-            <div style={{ display: 'flex', gap: 4, backgroundColor: '#F1F5F9', padding: 3, borderRadius: 8 }}>
+            <div style={{ display: 'flex', gap: 4, backgroundColor: '#F1F5F9', padding: 3, borderRadius: 0 }}>
               {[
                 { id: 'ALL', label: `All (${reviewMetrics.total})` },
                 { id: 'PENDING', label: `Pending (${reviewMetrics.pending})` },
@@ -1782,10 +1782,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       fontSize: 11.5,
                       fontWeight: isActive ? 700 : 500,
                       border: 'none',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       cursor: 'pointer',
                       backgroundColor: isActive ? '#FFFFFF' : 'transparent',
-                      color: isActive ? '#0F172A' : '#64748B',
+                      color: isActive ? '#172033' : '#64748B',
                       boxShadow: isActive ? '0 1px 2px rgba(15, 23, 42, 0.08)' : 'none',
                       transition: 'all 150ms ease-out',
                     }}
@@ -1808,10 +1808,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   width: '100%',
                   padding: '7px 10px 7px 30px',
                   fontSize: 12.5,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   outline: 'none',
-                  color: '#0F172A',
+                  color: '#172033',
                   boxSizing: 'border-box',
                 }}
               />
@@ -1822,7 +1822,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
             {loadingQuestions ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>
-                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: '#2563EB' }} />
+                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: '#E31B23' }} />
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Loading questions...</div>
               </div>
             ) : filteredQuestions.length === 0 ? (
@@ -1841,13 +1841,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     onClick={() => handleSelectQuestion(idx)}
                     style={{
                       padding: '12px 14px',
-                      borderRadius: 10,
+                      borderRadius: 0,
                       marginBottom: 8,
                       cursor: 'pointer',
                       border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                      borderLeft: isSelected ? '3px solid #2563EB' : '1px solid #E2E8F0',
-                      backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
-                      boxShadow: isSelected ? '0 1px 3px rgba(37, 99, 235, 0.08)' : 'none',
+                      borderLeft: isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0',
+                      backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
+                      boxShadow: isSelected ? '0 1px 3px rgba(227, 27, 35, 0.08)' : 'none',
                       transition: 'all 150ms ease-out',
                     }}
                   >
@@ -1856,10 +1856,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         style={{
                           fontSize: 12,
                           fontWeight: 800,
-                          color: isSelected ? '#2563EB' : '#0F172A',
-                          backgroundColor: isSelected ? '#DBEAFE' : '#F1F5F9',
+                          color: isSelected ? '#E31B23' : '#172033',
+                          backgroundColor: isSelected ? '#E2E8F0' : '#F1F5F9',
                           padding: '2px 7px',
-                          borderRadius: 4,
+                          borderRadius: 0,
                         }}
                       >
                         Q{q.question_number_in_paper}
@@ -1870,7 +1870,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           fontSize: 11,
                           fontWeight: 600,
                           padding: '2px 7px',
-                          borderRadius: 10,
+                          borderRadius: 0,
                           backgroundColor: isPublished ? '#DCFCE7' : isRejected ? '#FEF2F2' : '#FEF3C7',
                           color: isPublished ? '#15803D' : isRejected ? '#B42318' : '#B45309',
                           border: `1px solid ${isPublished ? '#86EFAC' : isRejected ? '#FECDCA' : '#FDE68A'}`,
@@ -1883,7 +1883,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     <div
                       style={{
                         fontSize: 12.5,
-                        color: isSelected ? '#0F172A' : '#475569',
+                        color: isSelected ? '#172033' : '#475569',
                         fontWeight: isSelected ? 600 : 400,
                         lineHeight: 1.4,
                         display: '-webkit-box',
@@ -1897,7 +1897,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
                     {q.subject_name && (
                       <div style={{ fontSize: 11, color: '#64748B', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Tag size={10} color="#2563EB" />
+                        <Tag size={10} color="#E31B23" />
                         <span>{q.subject_name} {q.topic_name ? `› ${q.topic_name}` : ''}</span>
                       </div>
                     )}
@@ -1947,7 +1947,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === 1 || loadingQuestions}
                   style={{
                     padding: '5px 7px',
-                    borderRadius: 5,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
                     color: currentPage === 1 || loadingQuestions ? '#CBD5E1' : '#334155',
@@ -1964,7 +1964,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === 1 || loadingQuestions}
                   style={{
                     padding: '5px 8px',
-                    borderRadius: 5,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
                     color: currentPage === 1 || loadingQuestions ? '#CBD5E1' : '#334155',
@@ -1999,9 +1999,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             minWidth: 22,
                             height: 22,
                             padding: '0 3px',
-                            borderRadius: 4,
-                            border: isCur ? '1px solid #2563EB' : '1px solid #E2E8F0',
-                            backgroundColor: isCur ? '#2563EB' : '#FFFFFF',
+                            borderRadius: 0,
+                            border: isCur ? '1px solid #E31B23' : '1px solid #E2E8F0',
+                            backgroundColor: isCur ? '#E31B23' : '#FFFFFF',
                             color: isCur ? '#FFFFFF' : '#475569',
                             fontSize: 11,
                             fontWeight: isCur ? 700 : 500,
@@ -2021,7 +2021,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === totalPages || loadingQuestions}
                   style={{
                     padding: '5px 8px',
-                    borderRadius: 5,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
                     color: currentPage === totalPages || loadingQuestions ? '#CBD5E1' : '#334155',
@@ -2041,7 +2041,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={currentPage === totalPages || loadingQuestions}
                   style={{
                     padding: '5px 7px',
-                    borderRadius: 5,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     backgroundColor: '#FFFFFF',
                     color: currentPage === totalPages || loadingQuestions ? '#CBD5E1' : '#334155',
@@ -2062,7 +2062,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         <div
           style={{
             backgroundColor: '#FFFFFF',
-            borderRadius: 14,
+            borderRadius: 0,
             border: '1px solid #E2E8F0',
             display: 'flex',
             flexDirection: 'column',
@@ -2089,7 +2089,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', margin: 0, letterSpacing: '-0.01em' }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                     Question #{activeQuestion.question_number_in_paper}
                   </h2>
                   <span
@@ -2097,7 +2097,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       fontSize: 12,
                       fontWeight: 600,
                       padding: '3px 10px',
-                      borderRadius: 12,
+                      borderRadius: 0,
                       backgroundColor:
                         activeQuestion.status === 'PUBLISHED'
                           ? '#DCFCE7'
@@ -2133,12 +2133,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     onClick={() => handleOpenEditModal(activeQuestion)}
                     style={{
                       padding: '8px 14px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid #CBD5E1',
                       backgroundColor: '#FFFFFF',
-                      color: '#0F172A',
+                      color: '#172033',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -2146,7 +2146,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     }}
                   >
-                    <Edit3 size={14} color="#2563EB" />
+                    <Edit3 size={14} color="#E31B23" />
                     Modify Question & Solutions
                   </button>
 
@@ -2155,7 +2155,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     disabled={actionLoadingId === activeQuestion.id}
                     style={{
                       padding: '8px 14px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 600,
                       border: '1px solid #FECDCA',
@@ -2176,7 +2176,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     disabled={actionLoadingId === activeQuestion.id || activeQuestion.status === 'PUBLISHED'}
                     style={{
                       padding: '8px 18px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 600,
                       border: 'none',
@@ -2208,16 +2208,16 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   gap: 12,
                   backgroundColor: '#FAFAFA',
                   padding: '12px 18px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   marginBottom: 16,
                   fontSize: 12.5,
                   border: '1px solid #E2E8F0',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0F172A', fontWeight: 600 }}>
-                  <FolderTree size={15} color="#2563EB" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#172033', fontWeight: 600 }}>
+                  <FolderTree size={15} color="#E31B23" />
                   <span>Subject:</span>
-                  <span style={{ color: '#2563EB' }}>{activeQuestion.subject_name || 'General Studies'}</span>
+                  <span style={{ color: '#E31B23' }}>{activeQuestion.subject_name || 'General Studies'}</span>
                 </div>
 
                 {activeQuestion.topic_name && (
@@ -2235,9 +2235,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 )}
 
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, color: '#64748B' }}>
-                  <span>Difficulty: <strong style={{ color: '#0F172A' }}>{activeQuestion.difficulty}</strong></span>
-                  <span>Marks: <strong style={{ color: '#0F172A' }}>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
-                  <span>Time: <strong style={{ color: '#0F172A' }}>{activeQuestion.expected_time_seconds || 60}s</strong></span>
+                  <span>Difficulty: <strong style={{ color: '#172033' }}>{activeQuestion.difficulty}</strong></span>
+                  <span>Marks: <strong style={{ color: '#172033' }}>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
+                  <span>Time: <strong style={{ color: '#172033' }}>{activeQuestion.expected_time_seconds || 60}s</strong></span>
                 </div>
               </div>
 
@@ -2245,7 +2245,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               <div
                 style={{
                   backgroundColor: '#FFFFFF',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   padding: '14px 18px',
                   marginBottom: 24,
                   border: '1px solid #E2E8F0',
@@ -2254,16 +2254,16 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FolderTree size={16} color="#2563EB" />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                    <FolderTree size={16} color="#E31B23" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
                       Syllabus Hierarchy & Concept Relevance Mappings
                     </span>
                     <span
                       style={{
                         padding: '2px 8px',
-                        backgroundColor: '#EFF6FF',
-                        color: '#2563EB',
-                        borderRadius: 12,
+                        backgroundColor: '#F8FAFC',
+                        color: '#E31B23',
+                        borderRadius: 0,
                         fontSize: 11,
                         fontWeight: 700,
                       }}
@@ -2281,10 +2281,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 10px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#2563EB',
+                      color: '#E31B23',
                       backgroundColor: '#F8FAFC',
                       border: '1px solid #CBD5E1',
                       cursor: 'pointer',
@@ -2318,8 +2318,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         ? Math.round(hItem.relevance_weight * 100)
                         : 100;
                     const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
-                    const badgeColor = pct >= 80 ? '#10B981' : pct >= 50 ? '#3B82F6' : '#F59E0B';
-                    const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#EFF6FF' : '#FFFBEB';
+                    const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? '#E31B23' : '#F2B623';
+                    const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#F8FAFC' : '#FFFBEB';
                     const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
 
                     return (
@@ -2328,7 +2328,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         style={{
                           backgroundColor: isPrim ? '#FAFCFF' : '#FAFAFA',
                           border: isPrim ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
-                          borderRadius: 8,
+                          borderRadius: 0,
                           padding: '12px 14px',
                           display: 'flex',
                           flexDirection: 'column',
@@ -2338,11 +2338,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isPrim ? (
-                              <Sparkles size={14} color="#2563EB" />
+                              <Sparkles size={14} color="#E31B23" />
                             ) : (
                               <GitBranch size={14} color="#64748B" />
                             )}
-                            <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#1E40AF' : '#334155' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#A4161A' : '#334155' }}>
                               {hItem.concept_name || hItem.topic_name || 'Taxonomy Mapping'}
                             </span>
                           </div>
@@ -2354,9 +2354,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 fontWeight: 700,
                                 textTransform: 'uppercase',
                                 padding: '2px 6px',
-                                borderRadius: 4,
-                                backgroundColor: isPrim ? '#DBEAFE' : '#F1F5F9',
-                                color: isPrim ? '#1E40AF' : '#475569',
+                                borderRadius: 0,
+                                backgroundColor: isPrim ? '#E2E8F0' : '#F1F5F9',
+                                color: isPrim ? '#A4161A' : '#475569',
                               }}
                             >
                               {isPrim ? 'PRIMARY' : 'INTERDISCIPLINARY'}
@@ -2366,7 +2366,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 fontSize: 11,
                                 fontWeight: 800,
                                 padding: '2px 7px',
-                                borderRadius: 10,
+                                borderRadius: 0,
                                 backgroundColor: badgeBg,
                                 color: badgeColor,
                                 border: `1px solid ${badgeBorder}`,
@@ -2379,9 +2379,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
                         {/* Breadcrumbs */}
                         <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-                          <span style={{ fontWeight: 600, color: '#0F172A' }}>{hItem.subject_name || 'General Studies'}</span>
+                          <span style={{ fontWeight: 600, color: '#172033' }}>{hItem.subject_name || 'General Studies'}</span>
                           <span style={{ color: '#94A3B8' }}>›</span>
-                          <span style={{ fontWeight: 600, color: '#2563EB' }}>{hItem.topic_name || 'General Concepts'}</span>
+                          <span style={{ fontWeight: 600, color: '#E31B23' }}>{hItem.topic_name || 'General Concepts'}</span>
                           {hItem.subtopic_name && (
                             <>
                               <span style={{ color: '#94A3B8' }}>›</span>
@@ -2392,13 +2392,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
                         {/* Relevance Bar */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                          <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
                             <div
                               style={{
                                 width: `${pct}%`,
                                 height: '100%',
                                 backgroundColor: badgeColor,
-                                borderRadius: 3,
+                                borderRadius: 0,
                                 transition: 'width 300ms ease-out',
                               }}
                             />
@@ -2418,14 +2418,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 <div
                   style={{
                     backgroundColor: '#F8FAFC',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     padding: '18px 22px',
                     marginBottom: 24,
                     border: '1px solid #E2E8F0',
-                    borderLeft: '4px solid #2563EB',
+                    borderLeft: '4px solid #E31B23',
                   }}
                 >
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                     PASSAGE / REFERENCE CONTEXT
                   </div>
                   <div style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
@@ -2438,22 +2438,22 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               <div
                 style={{
                   backgroundColor: '#FFFFFF',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   padding: '22px 24px',
                   border: '1px solid #E2E8F0',
                   marginBottom: 28,
                   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
                 }}
               >
-                <div style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.01em' }}>
+                <div style={{ fontSize: 17, fontWeight: 600, color: '#172033', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.01em' }}>
                   {activeQuestion.question_text}
                 </div>
               </div>
 
               {/* Options & Distractor Analysis Section */}
               <div style={{ marginBottom: 32 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={17} color="#2563EB" />
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Layers size={17} color="#E31B23" />
                   <span>Options & Option Explanations (Distractor Analysis)</span>
                 </div>
 
@@ -2462,7 +2462,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     <div
                       key={opt.option_label}
                       style={{
-                        borderRadius: 10,
+                        borderRadius: 0,
                         border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
                         borderLeft: opt.is_correct ? '4px solid #16A34A' : '1px solid #E2E8F0',
                         backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
@@ -2475,7 +2475,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           style={{
                             width: 28,
                             height: 28,
-                            borderRadius: '50%',
+                            borderRadius: 0,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -2490,7 +2490,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         </span>
 
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: opt.is_correct ? 700 : 500, color: '#0F172A', lineHeight: 1.4 }}>
+                          <div style={{ fontSize: 15, fontWeight: opt.is_correct ? 700 : 500, color: '#172033', lineHeight: 1.4 }}>
                             {opt.option_text || '(Empty Option Text)'}
                           </div>
 
@@ -2499,7 +2499,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             style={{
                               marginTop: 10,
                               padding: '10px 14px',
-                              borderRadius: 8,
+                              borderRadius: 0,
                               fontSize: 13,
                               backgroundColor: opt.is_correct ? '#DCFCE7' : '#FAFAFA',
                               color: opt.is_correct ? '#14532D' : '#475569',
@@ -2526,7 +2526,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               color: '#15803D',
                               backgroundColor: '#DCFCE7',
                               padding: '3px 10px',
-                              borderRadius: 12,
+                              borderRadius: 0,
                               border: '1px solid #86EFAC',
                               flexShrink: 0,
                             }}
@@ -2542,19 +2542,19 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
               {/* 4 Solution Parameters Knowledge Base */}
               <div style={{ marginBottom: 32 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Sparkles size={17} color="#2563EB" />
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={17} color="#E31B23" />
                   <span>4-Parameter Solutions & Knowledge Base</span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
                   {/* 1. Core Concept */}
-                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 10, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#2563EB', marginBottom: 6 }}>
+                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 0, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#E31B23', marginBottom: 6 }}>
                       <Zap size={15} />
                       1. Core Concept
                     </div>
-                    <div style={{ fontSize: 13.5, color: '#0F172A', lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 13.5, color: '#172033', lineHeight: 1.6 }}>
                       {activeQuestion.explanation?.core_concept || (
                         <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No core concept specified.</span>
                       )}
@@ -2562,12 +2562,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   </div>
 
                   {/* 2. Step-by-Step Detailed Solution */}
-                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 10, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
-                      <FileText size={15} color="#2563EB" />
+                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 0, padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
+                      <FileText size={15} color="#E31B23" />
                       2. Step-by-Step Detailed Solution
                     </div>
-                    <div style={{ fontSize: 13.5, color: '#0F172A', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                    <div style={{ fontSize: 13.5, color: '#172033', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                       {activeQuestion.explanation?.detailed_solution || (
                         <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No detailed solution added.</span>
                       )}
@@ -2575,7 +2575,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   </div>
 
                   {/* 3. Points to Remember / Common Traps */}
-                  <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: '16px 20px' }}>
+                  <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
                       <AlertTriangle size={15} />
                       3. Points to Remember & Common Traps
@@ -2596,7 +2596,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   </div>
 
                   {/* 4. Key Takeaways */}
-                  <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 10, padding: '16px 20px' }}>
+                  <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 0, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#15803D', marginBottom: 8 }}>
                       <Award size={15} />
                       4. Key Takeaways
@@ -2634,7 +2634,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={(selectedQuestionIndex === 0 && currentPage === 1) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
@@ -2659,7 +2659,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   disabled={(selectedQuestionIndex === filteredQuestions.length - 1 && currentPage === totalPages) || loadingQuestions}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     fontSize: 13,
                     fontWeight: 600,
                     border: '1px solid #CBD5E1',
@@ -2679,7 +2679,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           ) : (
             <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
               <HelpCircle size={36} style={{ margin: '0 auto 12px auto', color: '#94A3B8' }} />
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Select a question from the left sidebar</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#172033' }}>Select a question from the left sidebar</div>
             </div>
           )}
         </div>
@@ -2705,7 +2705,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 14,
+              borderRadius: 0,
               width: '100%',
               maxWidth: 920,
               maxHeight: '90vh',
@@ -2728,7 +2728,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               }}
             >
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0 }}>
                   Modify Question #{editingQuestion.question_number_in_paper} & Solutions
                 </h2>
                 <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
@@ -2747,7 +2747,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
               {/* Question Text */}
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
                   Question Text:
                 </label>
                 <textarea
@@ -2758,7 +2758,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     width: '100%',
                     padding: '10px 12px',
                     fontSize: 13.5,
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
@@ -2768,7 +2768,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
               {/* Passage Text */}
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
                   Passage / Context (Optional):
                 </label>
                 <textarea
@@ -2780,7 +2780,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     width: '100%',
                     padding: '10px 12px',
                     fontSize: 13,
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: '1px solid #CBD5E1',
                     boxSizing: 'border-box',
                     fontFamily: 'inherit',
@@ -2793,15 +2793,15 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 style={{
                   backgroundColor: '#F8FAFC',
                   border: '1px solid #CBD5E1',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   padding: '16px 18px',
                   marginBottom: 20,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <FolderTree size={16} color="#2563EB" />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                    <FolderTree size={16} color="#E31B23" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
                       Taxonomy Hierarchy & Concept Relevance Manager
                     </span>
                   </div>
@@ -2826,11 +2826,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 10px',
-                      borderRadius: 6,
+                      borderRadius: 0,
                       fontSize: 12,
                       fontWeight: 700,
-                      color: '#2563EB',
-                      backgroundColor: '#EFF6FF',
+                      color: '#E31B23',
+                      backgroundColor: '#F8FAFC',
                       border: '1px solid #BFDBFE',
                       cursor: 'pointer',
                     }}
@@ -2848,14 +2848,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         key={hIdx}
                         style={{
                           backgroundColor: '#FFFFFF',
-                          border: hLink.is_primary ? '1.5px solid #2563EB' : '1px solid #E2E8F0',
-                          borderRadius: 8,
+                          border: hLink.is_primary ? '1.5px solid #E31B23' : '1px solid #E2E8F0',
+                          borderRadius: 0,
                           padding: '14px 16px',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? '#2563EB' : '#475569', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? '#E31B23' : '#475569', cursor: 'pointer' }}>
                               <input
                                 type="radio"
                                 name="primaryHierarchyRadio"
@@ -2881,10 +2881,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               style={{
                                 fontSize: 12,
                                 fontWeight: 800,
-                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? '#2563EB' : '#D97706',
-                                backgroundColor: pct >= 80 ? '#F0FDF4' : pct >= 50 ? '#EFF6FF' : '#FFFBEB',
+                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? '#E31B23' : '#F2B623',
+                                backgroundColor: pct >= 80 ? '#F0FDF4' : pct >= 50 ? '#F8FAFC' : '#FFFBEB',
                                 padding: '2px 8px',
-                                borderRadius: 6,
+                                borderRadius: 0,
                                 border: `1px solid ${pct >= 80 ? '#BBF7D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A'}`,
                               }}
                             >
@@ -2928,7 +2928,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 if (hLink.is_primary) setEditSubjectName(val);
                               }}
                               placeholder="e.g. Economy"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                             />
                           </div>
                           <div>
@@ -2946,7 +2946,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 if (hLink.is_primary) setEditTopicName(val);
                               }}
                               placeholder="e.g. Money and Banking"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                             />
                           </div>
                           <div>
@@ -2964,7 +2964,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 if (hLink.is_primary) setEditSubtopicName(val);
                               }}
                               placeholder="e.g. Banking Structure in India"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                             />
                           </div>
                           <div>
@@ -2981,13 +2981,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 );
                               }}
                               placeholder="e.g. Monetary Policy"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                             />
                           </div>
                         </div>
 
                         {/* Relevance Slider & Percentage Control */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', padding: '8px 12px', borderRadius: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', padding: '8px 12px', borderRadius: 0 }}>
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
                             Relevance Percentage:
                           </span>
@@ -3007,7 +3007,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 )
                               );
                             }}
-                            style={{ flex: 1, accentColor: '#2563EB', cursor: 'pointer' }}
+                            style={{ flex: 1, accentColor: '#E31B23', cursor: 'pointer' }}
                           />
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
@@ -3025,7 +3025,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                   )
                                 );
                               }}
-                              style={{ width: 52, padding: '4px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center', borderRadius: 4, border: '1px solid #CBD5E1' }}
+                              style={{ width: 52, padding: '4px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center', borderRadius: 0, border: '1px solid #CBD5E1' }}
                             />
                             <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>%</span>
                           </div>
@@ -3043,7 +3043,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   <select
                     value={editDifficulty}
                     onChange={(e) => setEditDifficulty(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1' }}
                   >
                     <option value="EASY">EASY</option>
                     <option value="MEDIUM">MEDIUM</option>
@@ -3057,7 +3057,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     step="0.5"
                     value={editMarks}
                     onChange={(e) => setEditMarks(parseFloat(e.target.value) || 2.0)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -3067,7 +3067,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     step="0.01"
                     value={editNegativeMarks}
                     onChange={(e) => setEditNegativeMarks(parseFloat(e.target.value) || 0.66)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
@@ -3076,14 +3076,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     type="number"
                     value={editExpectedTime}
                     onChange={(e) => setEditExpectedTime(parseInt(e.target.value, 10) || 60)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
 
               {/* Options & Distractor Analyses */}
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0F172A', marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#172033', marginBottom: 8 }}>
                   Options & Distractor Analysis (Option Explanations):
                 </label>
                 {editOptions.map((opt, idx) => (
@@ -3093,12 +3093,12 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       padding: '12px 14px',
                       backgroundColor: '#FAFAFA',
                       border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #CBD5E1',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       marginBottom: 10,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                      <span style={{ fontWeight: 800, fontSize: 14, color: '#0F172A', width: 20 }}>
+                      <span style={{ fontWeight: 800, fontSize: 14, color: '#172033', width: 20 }}>
                         {opt.option_label}
                       </span>
                       <input
@@ -3111,7 +3111,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           );
                         }}
                         placeholder={`Option ${opt.option_label} text...`}
-                        style={{ flex: 1, padding: '7px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                        style={{ flex: 1, padding: '7px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1' }}
                       />
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#15803D', cursor: 'pointer' }}>
                         <input
@@ -3142,7 +3142,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         width: '100%',
                         padding: '6px 10px',
                         fontSize: 12,
-                        borderRadius: 6,
+                        borderRadius: 0,
                         border: '1px solid #CBD5E1',
                         backgroundColor: '#FFFFFF',
                         boxSizing: 'border-box',
@@ -3154,13 +3154,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
               {/* 4 Solution Parameters */}
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#0F172A', marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#172033', marginBottom: 12 }}>
                   4 Solution Parameters:
                 </label>
 
                 {/* 1. Core Concept */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#2563EB', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#E31B23', marginBottom: 4 }}>
                     1. Core Concept:
                   </label>
                   <input
@@ -3168,13 +3168,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     value={editCoreConcept}
                     onChange={(e) => setEditCoreConcept(e.target.value)}
                     placeholder="Fundamental principle or theory tested..."
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 {/* 2. Detailed Solution */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#0F172A', marginBottom: 4 }}>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 4 }}>
                     2. Step-by-Step Detailed Solution:
                   </label>
                   <textarea
@@ -3182,7 +3182,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     value={editDetailedSolution}
                     onChange={(e) => setEditDetailedSolution(e.target.value)}
                     placeholder="Comprehensive explanation with steps and derivations..."
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #CBD5E1', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box', fontFamily: 'inherit' }}
                   />
                 </div>
 
@@ -3204,7 +3204,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           setNewTrapInput('');
                         }
                       }}
-                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1' }}
                     />
                     <button
                       type="button"
@@ -3214,13 +3214,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           setNewTrapInput('');
                         }
                       }}
-                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', backgroundColor: '#D97706', color: '#FFFFFF', cursor: 'pointer' }}
+                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 0, border: 'none', backgroundColor: '#F2B623', color: '#FFFFFF', cursor: 'pointer' }}
                     >
                       Add
                     </button>
                   </div>
                   {editCommonTraps.map((trap, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#FEF3C7', borderRadius: 6, marginBottom: 4, fontSize: 12, border: '1px solid #FDE68A' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#FEF3C7', borderRadius: 0, marginBottom: 4, fontSize: 12, border: '1px solid #FDE68A' }}>
                       <span>{trap}</span>
                       <button
                         type="button"
@@ -3251,7 +3251,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           setNewTakeawayInput('');
                         }
                       }}
-                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 6, border: '1px solid #CBD5E1' }}
+                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1' }}
                     />
                     <button
                       type="button"
@@ -3261,13 +3261,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           setNewTakeawayInput('');
                         }
                       }}
-                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 6, border: 'none', backgroundColor: '#15803D', color: '#FFFFFF', cursor: 'pointer' }}
+                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 0, border: 'none', backgroundColor: '#15803D', color: '#FFFFFF', cursor: 'pointer' }}
                     >
                       Add
                     </button>
                   </div>
                   {editKeyTakeaways.map((takeaway, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#DCFCE7', borderRadius: 6, marginBottom: 4, fontSize: 12, border: '1px solid #86EFAC' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#DCFCE7', borderRadius: 0, marginBottom: 4, fontSize: 12, border: '1px solid #86EFAC' }}>
                       <span>{takeaway}</span>
                       <button
                         type="button"
@@ -3299,7 +3299,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => setEditingQuestion(null)}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   color: '#475569',
@@ -3317,10 +3317,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={savingEdit}
                 style={{
                   padding: '9px 18px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
-                  color: '#0F172A',
+                  color: '#172033',
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -3335,7 +3335,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={savingEdit}
                 style={{
                   padding: '9px 20px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#16A34A',
                   color: '#FFFFFF',
@@ -3374,7 +3374,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 12,
+              borderRadius: 0,
               maxWidth: 460,
               width: '100%',
               padding: 24,
@@ -3382,9 +3382,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               border: '1px solid #E2E8F0',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#D97706', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#F2B623', marginBottom: 12 }}>
               <AlertTriangle size={24} />
-              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#172033' }}>
                 Unsaved Question Modifications
               </h3>
             </div>
@@ -3396,7 +3396,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => setShowUnsavedModal(false)}
                 style={{
                   padding: '8px 14px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   fontSize: 13,
@@ -3417,7 +3417,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
@@ -3451,7 +3451,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 12,
+              borderRadius: 0,
               maxWidth: 480,
               width: '100%',
               padding: 24,
@@ -3461,7 +3461,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#DC2626', marginBottom: 12 }}>
               <Lock size={24} />
-              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: '#172033' }}>
                 Cannot Publish Exam to S3
               </h3>
             </div>
@@ -3472,7 +3472,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               style={{
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FECDCA',
-                borderRadius: 8,
+                borderRadius: 0,
                 padding: '12px 14px',
                 fontSize: 13,
                 color: '#B42318',
@@ -3489,9 +3489,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
                 style={{
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: 'none',
-                  backgroundColor: '#2563EB',
+                  backgroundColor: '#E31B23',
                   color: '#FFFFFF',
                   fontSize: 13,
                   fontWeight: 600,
@@ -3504,7 +3504,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 onClick={() => setShowPublishWarningModal(false)}
                 style={{
                   padding: '8px 14px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   fontSize: 13,
@@ -3537,7 +3537,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 12,
+              borderRadius: 0,
               maxWidth: 480,
               width: '100%',
               padding: 24,
@@ -3547,7 +3547,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#16A34A', marginBottom: 12 }}>
               <UploadCloud size={26} />
-              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#0F172A' }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#172033' }}>
                 Publish Exam Package to S3?
               </h3>
             </div>
@@ -3555,7 +3555,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               All <strong>{reviewMetrics.total} questions & solutions</strong> have been verified. Publishing will:
             </p>
             <ul style={{ margin: '0 0 20px 0', paddingLeft: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
-              <li>Generate standalone <code style={{ color: '#2563EB' }}>questions.json</code> & <code style={{ color: '#2563EB' }}>solutions.json</code></li>
+              <li>Generate standalone <code style={{ color: '#E31B23' }}>questions.json</code> & <code style={{ color: '#E31B23' }}>solutions.json</code></li>
               <li>Deploy individual question & solution JSONs to Amazon S3</li>
               <li>Activate this exam for candidate mock tests and live assessments</li>
             </ul>
@@ -3565,7 +3565,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 16px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: '1px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   fontSize: 13,
@@ -3580,7 +3580,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 disabled={publishingExam}
                 style={{
                   padding: '9px 20px',
-                  borderRadius: 6,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#16A34A',
                   color: '#FFFFFF',

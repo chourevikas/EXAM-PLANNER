@@ -805,7 +805,7 @@ export function GuestExamPage() {
             maxWidth: 520,
             width: '100%',
             backgroundColor: '#FFFFFF',
-            borderRadius: 16,
+            borderRadius: 0,
             padding: '36px 32px',
             border: '1px solid #E2E8F0',
             boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.08)',
@@ -816,18 +816,18 @@ export function GuestExamPage() {
             style={{
               width: 56,
               height: 56,
-              borderRadius: '50%',
+              borderRadius: 0,
               backgroundColor: '#FEF3C7',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#D97706',
+              color: '#F2B623',
               marginBottom: 16,
             }}
           >
             <AlertCircle size={28} />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
             No Questions Found
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
@@ -840,8 +840,8 @@ export function GuestExamPage() {
               onClick={() => navigate(`/guest-exam?subject=${encodeURIComponent(gSubject)}&count=10`)}
               style={{
                 padding: '10px 18px',
-                borderRadius: 10,
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 fontSize: 13.5,
                 fontWeight: 600,
@@ -860,7 +860,7 @@ export function GuestExamPage() {
               onClick={() => navigate('/')}
               style={{
                 padding: '10px 18px',
-                borderRadius: 10,
+                borderRadius: 0,
                 backgroundColor: '#F1F5F9',
                 color: '#475569',
                 fontSize: 13.5,
@@ -913,7 +913,7 @@ export function GuestExamPage() {
         width: '100vw',
         overflow: 'hidden',
         backgroundColor: '#F8FAF8',
-        color: '#0F172A',
+        color: '#172033',
         fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
       }}
     >
@@ -942,15 +942,15 @@ export function GuestExamPage() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 9,
-              backgroundColor: '#2563EB',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: 16,
-              boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+              boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
               cursor: 'pointer',
             }}
             title="Go to Home"
@@ -1003,7 +1003,7 @@ export function GuestExamPage() {
             onClick={() => handleFinishGuestExam()}
             style={{
               padding: '7px 18px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
@@ -1037,7 +1037,7 @@ export function GuestExamPage() {
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 16,
+            borderRadius: 0,
             padding: '14px 24px',
             display: 'flex',
             alignItems: 'center',
@@ -1060,8 +1060,8 @@ export function GuestExamPage() {
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 8,
-                backgroundColor: '#EFF6FF',
+                borderRadius: 0,
+                backgroundColor: '#F8FAFC',
                 color: '#1E3A8A',
                 display: 'flex',
                 alignItems: 'center',
@@ -1094,17 +1094,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1122,7 +1122,7 @@ export function GuestExamPage() {
                   width: 220,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1137,11 +1137,11 @@ export function GuestExamPage() {
                     }}
                     style={{
                       padding: '9px 12px',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       fontSize: 12.5,
                       fontWeight: gExam === opt ? 700 : 500,
                       color: gExam === opt ? '#1E3A8A' : '#334155',
-                      backgroundColor: gExam === opt ? '#EFF6FF' : 'transparent',
+                      backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1177,17 +1177,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1205,7 +1205,7 @@ export function GuestExamPage() {
                   width: 250,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1223,7 +1223,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1245,11 +1245,11 @@ export function GuestExamPage() {
                         }}
                         style={{
                           padding: '8px 10px',
-                          borderRadius: 7,
+                          borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: gSubject === opt ? 700 : 500,
                           color: gSubject === opt ? '#1E3A8A' : '#334155',
-                          backgroundColor: gSubject === opt ? '#EFF6FF' : 'transparent',
+                          backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1285,17 +1285,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1313,7 +1313,7 @@ export function GuestExamPage() {
                   width: 270,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1331,7 +1331,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1356,11 +1356,11 @@ export function GuestExamPage() {
                           }}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 7,
+                            borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? '#1E3A8A' : '#334155',
-                            backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                            backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1397,17 +1397,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1425,7 +1425,7 @@ export function GuestExamPage() {
                   width: 170,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1443,11 +1443,11 @@ export function GuestExamPage() {
                       }}
                       style={{
                         padding: '8px 10px',
-                        borderRadius: 7,
+                        borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: isSelected ? 700 : 500,
                         color: isSelected ? '#1E3A8A' : '#334155',
-                        backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                        backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1491,7 +1491,7 @@ export function GuestExamPage() {
               width: 270,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 18,
+              borderRadius: 0,
               display: 'flex',
               flexDirection: 'column',
               padding: '16px 14px',
@@ -1510,12 +1510,12 @@ export function GuestExamPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#1E3A8A' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }} />
                   <span style={{ fontSize: 10.5, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     RECOMMENDED FOR YOU
                   </span>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 0 }}>
                   {displayRecs.length} Qs
                 </span>
               </div>
@@ -1542,7 +1542,7 @@ export function GuestExamPage() {
                       style={{
                         backgroundColor: '#F8FAFC',
                         border: '1px solid #E2E8F0',
-                        borderRadius: 10,
+                        borderRadius: 0,
                         padding: '10px 12px',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
@@ -1563,7 +1563,7 @@ export function GuestExamPage() {
                           {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
                         </span>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
                         {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
                       </div>
                     </div>
@@ -1603,9 +1603,9 @@ export function GuestExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,
-            backgroundColor: '#0F172A',
+            backgroundColor: '#172033',
             color: '#FFFFFF',
-            borderRadius: 99,
+            borderRadius: 0,
             padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -1621,8 +1621,8 @@ export function GuestExamPage() {
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: '50%',
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1645,9 +1645,9 @@ export function GuestExamPage() {
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 20,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563EB',
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               fontSize: 12,
               fontWeight: 700,
@@ -1656,10 +1656,10 @@ export function GuestExamPage() {
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.backgroundColor = '#C1121F';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.backgroundColor = '#E31B23';
             }}
           >
             View Score Now &rsaquo;
@@ -1703,7 +1703,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 420,
               backgroundColor: '#FFFFFF',
-              borderRadius: 20,
+              borderRadius: 0,
               padding: '28px 28px',
               border: '2px solid #E2E8F0',
               boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
@@ -1715,7 +1715,7 @@ export function GuestExamPage() {
               style={{
                 width: 50,
                 height: 50,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FECACA',
                 color: '#DC2626',
@@ -1728,7 +1728,7 @@ export function GuestExamPage() {
               <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
             </div>
 
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
@@ -1743,7 +1743,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   color: '#475569',
@@ -1771,7 +1771,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
@@ -1817,7 +1817,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 440,
               backgroundColor: '#FFFFFF',
-              borderRadius: 22,
+              borderRadius: 0,
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
               boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
@@ -1829,8 +1829,8 @@ export function GuestExamPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: '50%',
-                backgroundColor: '#EFF6FF',
+                borderRadius: 0,
+                backgroundColor: '#F8FAFC',
                 border: '1px solid #BFDBFE',
                 color: '#1E3A8A',
                 display: 'flex',
@@ -1842,11 +1842,11 @@ export function GuestExamPage() {
               <Sparkles size={26} color="#1E3A8A" />
             </div>
 
-            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 0, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Guest Limit Reached (10 Questions)
             </div>
 
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#172033', margin: '0 0 10px 0', lineHeight: 1.3 }}>
               Log in to Unlock More Questions
             </h3>
 
@@ -1864,14 +1864,14 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 46,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#1E3A8A',
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(30, 58, 138, 0.3)',
+                  boxShadow: '0 4px 14px rgba(23, 32, 51, 0.3)',
                   transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
@@ -1879,7 +1879,7 @@ export function GuestExamPage() {
                   gap: 8,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1D4ED8';
+                  e.currentTarget.style.backgroundColor = '#C1121F';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1E3A8A';
@@ -1895,7 +1895,7 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 42,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: '1.5px solid #E2E8F0',
                   backgroundColor: '#FFFFFF',
                   color: '#64748B',

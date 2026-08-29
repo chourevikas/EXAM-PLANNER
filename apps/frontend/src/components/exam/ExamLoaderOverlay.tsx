@@ -60,8 +60,8 @@ export function ExamLoaderOverlay({
           style={{
             position: 'absolute',
             inset: -12,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(37, 99, 235, 0.12)',
+            borderRadius: 0,
+            backgroundColor: 'rgba(227, 27, 35, 0.12)',
             animation: 'loaderPulse 2.4s ease-in-out infinite',
           }}
         />
@@ -70,8 +70,8 @@ export function ExamLoaderOverlay({
           style={{
             position: 'absolute',
             inset: -24,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(37, 99, 235, 0.06)',
+            borderRadius: 0,
+            backgroundColor: 'rgba(227, 27, 35, 0.06)',
             animation: 'loaderPulse 2.4s ease-in-out infinite 0.8s',
           }}
         />
@@ -81,13 +81,13 @@ export function ExamLoaderOverlay({
           style={{
             width: 72,
             height: 72,
-            borderRadius: 20,
-            backgroundColor: '#2563EB',
+            borderRadius: 0,
+            backgroundColor: '#E31B23',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 12px 30px rgba(37, 99, 235, 0.35)',
+            boxShadow: '0 12px 30px rgba(227, 27, 35, 0.35)',
             position: 'relative',
             zIndex: 2,
           }}
@@ -101,7 +101,7 @@ export function ExamLoaderOverlay({
         style={{
           fontSize: 20,
           fontWeight: 700,
-          color: '#0F172A',
+          color: '#172033',
           margin: '0 0 6px 0',
           letterSpacing: '-0.01em',
         }}
@@ -127,7 +127,7 @@ export function ExamLoaderOverlay({
           width: 240,
           height: 4,
           backgroundColor: '#E2E8F0',
-          borderRadius: 99,
+          borderRadius: 0,
           overflow: 'hidden',
           position: 'relative',
           marginBottom: 20,
@@ -139,8 +139,8 @@ export function ExamLoaderOverlay({
             top: 0,
             bottom: 0,
             width: '60%',
-            background: 'linear-gradient(90deg, #2563EB 0%, #3B82F6 100%)',
-            borderRadius: 99,
+            background: 'linear-gradient(90deg, #E31B23 0%, #E31B23 100%)',
+            borderRadius: 0,
             animation: 'loaderProgress 1.6s ease-in-out infinite',
           }}
         />
@@ -156,7 +156,7 @@ export function ExamLoaderOverlay({
           gap: 7,
           fontSize: 13,
           fontWeight: 600,
-          color: '#2563EB',
+          color: '#E31B23',
           transition: 'all 0.3s ease',
         }}
       >
@@ -176,7 +176,7 @@ export function ExamLoaderOverlay({
           fontWeight: 500,
         }}
       >
-        <ShieldCheck size={13} style={{ color: '#059669' }} />
+        <ShieldCheck size={13} style={{ color: '#3A8B53' }} />
         <span>Official Exam Engine & Verified Answer Key</span>
       </div>
 

@@ -69,13 +69,13 @@ export function StudentSidebar({
           gap: 12,
           padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 6,
+          borderRadius: 0,
           textDecoration: 'none',
           fontSize: 13.5,
           fontWeight: isActive ? 600 : 400,
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
-          backgroundColor: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #2563eb' : '3px solid transparent',
+          backgroundColor: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
           transition: 'all 0.15s ease',
           position: 'relative'
         }}
@@ -92,7 +92,7 @@ export function StudentSidebar({
           }
         }}
       >
-        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+        <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </Link>
     );
@@ -108,7 +108,7 @@ export function StudentSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(16, 33, 61, 0.65)',
+            background: 'rgba(23, 32, 51, 0.75)',
             backdropFilter: 'blur(2px)',
             zIndex: 110
           }}
@@ -120,7 +120,7 @@ export function StudentSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          background: '#172033',
           display: 'flex',
           flexDirection: 'column',
           height: 'calc(100vh - 60px)',
@@ -157,7 +157,7 @@ export function StudentSidebar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -193,7 +193,7 @@ export function StudentSidebar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 4,
+                borderRadius: 0,
                 transition: 'color 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -270,13 +270,13 @@ export function StudentSidebar({
             <div
               style={{
                 padding: 14,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: 0,
+                background: '#111111',
+                border: '1px solid #F2B623',
                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FACC15', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F2B623', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
                 <Crown size={16} /> Upgrade to PRO
               </div>
               <p style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.7)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
@@ -289,10 +289,10 @@ export function StudentSidebar({
                   alignItems: 'center',
                   gap: 6,
                   padding: '6px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #FACC15',
+                  borderRadius: 0,
+                  border: '1px solid #F2B623',
                   backgroundColor: 'transparent',
-                  color: '#FACC15',
+                  color: '#F2B623',
                   fontSize: 12,
                   fontWeight: 600,
                   textDecoration: 'none',

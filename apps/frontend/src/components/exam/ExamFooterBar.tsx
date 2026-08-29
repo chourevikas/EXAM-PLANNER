@@ -72,7 +72,7 @@ export function ExamFooterBar({
             disabled={!isAnswered}
             style={{
               padding: isMobile ? '7px 10px' : '8px 16px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: `1px solid ${isAnswered ? '#FECACA' : '#E2E8F0'}`,
               backgroundColor: isAnswered ? '#FEF2F2' : '#FFFFFF',
               color: isAnswered ? '#DC2626' : '#94A3B8',
@@ -98,10 +98,10 @@ export function ExamFooterBar({
             onClick={onToggleMarkReview}
             style={{
               padding: isMobile ? '7px 10px' : '8px 16px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: `1px solid ${isMarkedForReview ? '#FCD34D' : '#E2E8F0'}`,
               backgroundColor: isMarkedForReview ? '#FEF3C7' : '#FFFFFF',
-              color: isMarkedForReview ? '#D97706' : '#475569',
+              color: isMarkedForReview ? '#F2B623' : '#475569',
               fontSize: 12.5,
               fontWeight: 600,
               cursor: 'pointer',
@@ -112,7 +112,7 @@ export function ExamFooterBar({
             }}
             title="Mark for Review"
           >
-            <Flag size={14} fill={isMarkedForReview ? '#D97706' : 'none'} color={isMarkedForReview ? '#D97706' : '#64748B'} />
+            <Flag size={14} fill={isMarkedForReview ? '#F2B623' : 'none'} color={isMarkedForReview ? '#F2B623' : '#64748B'} />
             <span>{isMarkedForReview ? 'Marked for Review' : 'Mark for Review'}</span>
           </button>
         )}
@@ -129,10 +129,10 @@ export function ExamFooterBar({
             disabled={!isAnswered}
             style={{
               padding: isMobile ? '7px 12px' : '9px 18px',
-              borderRadius: 6,
-              border: '1px solid #10B981',
-              backgroundColor: isAnswered ? '#10B981' : '#F0FDF4',
-              color: isAnswered ? '#FFFFFF' : '#059669',
+              borderRadius: 0,
+              border: '1px solid #3A8B53',
+              backgroundColor: isAnswered ? '#3A8B53' : '#F0FDF4',
+              color: isAnswered ? '#FFFFFF' : '#3A8B53',
               fontSize: 13,
               fontWeight: 700,
               cursor: isAnswered ? 'pointer' : 'not-allowed',
@@ -155,7 +155,7 @@ export function ExamFooterBar({
           disabled={isFirstQuestion}
           style={{
             padding: isMobile ? '7px 12px' : '9px 18px',
-            borderRadius: 6,
+            borderRadius: 0,
             border: '1px solid #CBD5E1',
             backgroundColor: '#FFFFFF',
             color: '#475569',
@@ -180,9 +180,9 @@ export function ExamFooterBar({
             onClick={onNext}
             style={{
               padding: isMobile ? '7px 14px' : '9px 22px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563EB',
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               fontSize: 13.5,
               fontWeight: 700,
@@ -190,15 +190,15 @@ export function ExamFooterBar({
               display: 'flex',
               alignItems: 'center',
               gap: 5,
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+              boxShadow: '0 2px 8px rgba(227, 27, 35, 0.25)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.backgroundColor = '#C1121F';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.backgroundColor = '#E31B23';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
@@ -211,9 +211,9 @@ export function ExamFooterBar({
             onClick={onSubmitTest || onNext}
             style={{
               padding: isMobile ? '7px 14px' : '9px 22px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#10B981',
+              backgroundColor: '#3A8B53',
               color: '#FFFFFF',
               fontSize: 13.5,
               fontWeight: 700,
@@ -225,11 +225,11 @@ export function ExamFooterBar({
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.backgroundColor = '#3A8B53';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#10B981';
+              e.currentTarget.style.backgroundColor = '#3A8B53';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >

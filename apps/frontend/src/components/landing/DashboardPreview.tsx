@@ -31,7 +31,7 @@ export function DashboardPreview() {
           width: 700,
           height: 400,
           background:
-            'radial-gradient(ellipse,rgba(37,99,235,0.13) 0%,transparent 70%)',
+            'radial-gradient(ellipse,rgba(227, 27, 35,0.13) 0%,transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -82,7 +82,7 @@ export function DashboardPreview() {
           <div
             style={{
               background: C.slate800,
-              borderRadius: '22px 22px 0 0',
+              borderRadius: 0,
               padding: '14px 14px 0',
               boxShadow: '0 60px 140px rgba(0,0,0,0.55)',
               border: `1px solid ${C.slate700}`,
@@ -92,7 +92,7 @@ export function DashboardPreview() {
             <div
               style={{
                 background: '#0F1A2E',
-                borderRadius: '10px 10px 0 0',
+                borderRadius: 0,
                 padding: '10px 18px',
                 display: 'flex',
                 alignItems: 'center',
@@ -107,7 +107,7 @@ export function DashboardPreview() {
                     style={{
                       width: 10,
                       height: 10,
-                      borderRadius: '50%',
+                      borderRadius: 0,
                       background: c,
                     }}
                   />
@@ -117,7 +117,7 @@ export function DashboardPreview() {
                 style={{
                   flex: 1,
                   background: C.slate800,
-                  borderRadius: 6,
+                  borderRadius: 0,
                   padding: '4px 12px',
                   textAlign: 'center',
                 }}
@@ -169,7 +169,7 @@ export function DashboardPreview() {
                     key={s.l}
                     style={{
                       background: '#fff',
-                      borderRadius: 12,
+                      borderRadius: 0,
                       padding: '14px 16px',
                       border: `1px solid ${C.border}`,
                     }}
@@ -219,7 +219,7 @@ export function DashboardPreview() {
                 <div
                   style={{
                     background: '#fff',
-                    borderRadius: 14,
+                    borderRadius: 0,
                     padding: '18px 20px',
                     border: `1px solid ${C.border}`,
                   }}
@@ -296,7 +296,7 @@ export function DashboardPreview() {
                   <div
                     style={{
                       background: '#fff',
-                      borderRadius: 14,
+                      borderRadius: 0,
                       padding: '16px',
                       border: `1px solid ${C.border}`,
                     }}
@@ -313,12 +313,12 @@ export function DashboardPreview() {
                     </div>
                     <div
                       style={{
-                        background: `rgba(37,99,235,0.06)`,
-                        border: `1px solid rgba(37,99,235,0.15)`,
-                        borderRadius: 8,
+                        background: `rgba(227, 27, 35,0.06)`,
+                        border: `1px solid rgba(227, 27, 35,0.15)`,
+                        borderRadius: 0,
                         padding: '10px 12px',
                         fontSize: 12,
-                        color: '#1d4ed8',
+                        color: '#C1121F',
                         lineHeight: 1.55,
                       }}
                     >
@@ -329,7 +329,7 @@ export function DashboardPreview() {
                   <div
                     style={{
                       background: '#fff',
-                      borderRadius: 14,
+                      borderRadius: 0,
                       padding: '16px',
                       border: `1px solid ${C.border}`,
                       flex: 1,
@@ -372,10 +372,10 @@ export function DashboardPreview() {
                                 ? '16,185,129'
                                 : c === C.saffron
                                 ? '249,115,22'
-                                : '37,99,235'
+                                : '227, 27, 35'
                             },0.1)`,
                             padding: '2px 8px',
-                            borderRadius: 99,
+                            borderRadius: 0,
                           }}
                         >
                           {n} Qs
@@ -392,7 +392,7 @@ export function DashboardPreview() {
             style={{
               height: 14,
               background: C.slate800,
-              borderRadius: '0 0 8px 8px',
+              borderRadius: 0,
               margin: '0 28px',
               boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
             }}
@@ -401,7 +401,7 @@ export function DashboardPreview() {
             style={{
               height: 6,
               background: C.slate700,
-              borderRadius: '0 0 14px 14px',
+              borderRadius: 0,
               margin: '0 48px',
             }}
           />
