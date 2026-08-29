@@ -222,13 +222,26 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                   borderTop: '1px solid var(--border-color)',
                 }}
               >
-                <button
-                  className="btn btn-primary anim-glow"
-                  style={{ width: '100%', padding: '12px', fontSize: 15 }}
-                  onClick={handleLoginClick}
-                >
-                  Get Started
-                </button>
+                {isUserLoggedIn ? (
+                  <button
+                    className="btn btn-primary anim-glow"
+                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/dashboard');
+                    }}
+                  >
+                    Go to Dashboard
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary anim-glow"
+                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                    onClick={handleLoginClick}
+                  >
+                    Get Started
+                  </button>
+                )}
               </div>
             </div>
           </div>
