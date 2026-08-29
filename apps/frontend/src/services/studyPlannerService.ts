@@ -202,3 +202,28 @@ export async function sendPendingTasksEmail(): Promise<any> {
   return data;
 }
 
+export interface WeeklyInsightsResponse {
+  start_date: string;
+  end_date: string;
+  date_range_formatted: string;
+  total_logged_hours: number;
+  total_questions_solved: number;
+  avg_accuracy: number;
+  completion_rate: number;
+  completed_tasks: number;
+  total_tasks: number;
+  active_days_count: number;
+  top_subject: string;
+  highlights: string[];
+  focus_next_week: string[];
+}
+
+export async function fetchWeeklyInsights(startDate?: string): Promise<WeeklyInsightsResponse> {
+  const url = startDate
+    ? `${STUDY_PLAN_API_BASE_URL}/weekly-insights?start_date=${startDate}`
+    : `${STUDY_PLAN_API_BASE_URL}/weekly-insights`;
+  const res = await fetch(url, { headers: getAuthHeaders() });
+  if (!res.ok) throw new Error('Failed to fetch weekly insights report');
+  return await res.json();
+}
+
