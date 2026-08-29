@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { fetchWeeklyInsights, WeeklyInsightsResponse } from '../services/studyPlannerService';
+import { StudentTestimonialForm } from '../components/student/StudentTestimonialForm';
 import { Loader2, Target, CheckCircle2, Clock, Award } from 'lucide-react';
 
 export function WeeklyInsightsPage() {
@@ -161,6 +162,9 @@ export function WeeklyInsightsPage() {
               </ul>
             </div>
           </div>
+
+          {/* Student Testimonial Submission Form */}
+          <StudentTestimonialForm />
         </>
       ) : null}
     </StudentLayout>

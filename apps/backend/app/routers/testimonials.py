@@ -128,7 +128,17 @@ async def list_all_testimonials_for_admin(
 ):
     stmt = select(Testimonial).order_by(col(Testimonial.created_at).desc())
     res = await session.exec(stmt)
-    return list(res.all())
+    items = list(res.all())
+
+    if not items:
+        for seed in INITIAL_TESTIMONIALS:
+            t = Testimonial(**seed)
+            session.add(t)
+        await session.commit()
+        res_seeded = await session.exec(stmt)
+        items = list(res_seeded.all())
+
+    return items
 
 
 @router.post("/admin/{testimonial_id}/approve", response_model=TestimonialOut)
