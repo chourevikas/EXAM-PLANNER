@@ -72,10 +72,14 @@ class AdminService:
         all_users = await self.repo.get_all_users()
         result = []
         for u in all_users:
-            org_name = u.admin_profile.organization_name if u.admin_profile else None
-            dept = u.admin_profile.department if u.admin_profile else None
-            target_exam = u.student_profile.target_exam if u.student_profile else None
-            target_year = u.student_profile.target_year if u.student_profile else None
+            admin_prof = u.__dict__.get("admin_profile")
+            
+            org_name = admin_prof.organization_name if admin_prof else None
+            dept = admin_prof.department if admin_prof else None
+            
+            target_exam = getattr(u, "target_exam", None)
+            target_year = getattr(u, "target_year", None)
+
             result.append(
                 UserDirectoryItemOut(
                     id=str(u.id),
@@ -88,6 +92,8 @@ class AdminService:
                     target_exam=target_exam,
                     target_year=target_year,
                     created_at=u.created_at,
+                    suspended_at=u.suspended_at,
+                    updated_at=u.updated_at,
                 )
             )
         return result

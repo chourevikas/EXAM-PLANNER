@@ -120,6 +120,7 @@ class UserRepository:
             .options(
                 selectinload(User.student_profile),
                 selectinload(User.admin_profile),
+                selectinload(User.skill_profile),
             )
             .order_by(col(User.created_at).desc())
         )
