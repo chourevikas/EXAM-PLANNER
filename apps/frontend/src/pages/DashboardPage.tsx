@@ -9,6 +9,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
+import { StudentTestimonialForm } from '../components/student/StudentTestimonialForm';
 
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
@@ -856,6 +857,9 @@ export function DashboardPage() {
           );
         })()}
       </section>
+
+      {/* Share Testimonial / Preparation Journey Section */}
+      <StudentTestimonialForm userExamDefault={`${user.target_exam || 'UPSC CSE'} ${user.target_year || '2026'} Aspirant`} />
 
       {/* Badges Modal */}
       {showBadgesModal && (
