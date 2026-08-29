@@ -26,7 +26,7 @@ export function AnalyticsPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const historyPageSize = 10;
   // Default to CUMULATIVE_ALL unless a specific attemptId is requested
-  const [selectedAttemptId, setSelectedAttemptId] = useState<string>(attemptIdParam || 'CUMULATIVE_ALL');
+  const [selectedAttemptId, setSelectedAttemptId] = useState<number | string>(attemptIdParam || 'CUMULATIVE_ALL');
   const [report, setReport] = useState<PsychometricReport | null>(null);
   const [questionReportData, setQuestionReportData] = useState<QuestionReportItem[]>([]);
   const [userProgressionData, setUserProgressionData] = useState<UserProgressionReportData | null>(null);
@@ -212,9 +212,9 @@ export function AnalyticsPage() {
     }
   };
 
-  const handleViewSingleExam = (attemptId: string) => {
+  const handleViewSingleExam = (attemptId: number | string) => {
     setSelectedAttemptId(attemptId);
-    setSearchParams({ attemptId });
+    setSearchParams({ attemptId: String(attemptId) });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

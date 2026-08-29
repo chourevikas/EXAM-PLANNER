@@ -8,20 +8,20 @@ import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 
 interface DisplayExam {
-  id: string;
+  id: number | string;
   code: string;
   year: number | string;
   title: string;
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  completedAttemptId?: string;
-  inProgressAttemptId?: string;
+  completedAttemptId?: number | string;
+  inProgressAttemptId?: number | string;
   scoreText?: string;
 }
 
 export function PYQSelectionPage() {
-  const [hoveredExam, setHoveredExam] = useState<string | null>(null);
+  const [hoveredExam, setHoveredExam] = useState<number | string | null>(null);
   const [examsList, setExamsList] = useState<DisplayExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();

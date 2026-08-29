@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export interface DistractorItem {
-  option_id?: string;
+  option_id?: number | string;
   label?: string;
   text?: string;
   closeness_score?: number;
@@ -28,9 +28,9 @@ export interface DistractorItem {
 }
 
 export interface QuestionSolutionData {
-  question_id?: string;
+  question_id?: number | string;
   question_number?: number;
-  correct_option_id?: string;
+  correct_option_id?: number | string;
   correct_option_label?: string;
   difficulty?: string;
   blooms_level?: string;

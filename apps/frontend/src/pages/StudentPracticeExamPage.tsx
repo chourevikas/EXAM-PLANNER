@@ -46,7 +46,7 @@ export function StudentPracticeExamPage() {
   // Question & Response Data
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionOut | null>(null);
-  const [userResponses, setUserResponses] = useState<Record<string, { optionId: string; optionLabel: string }>>({});
+  const [userResponses, setUserResponses] = useState<Record<string | number, { optionId: number | string; optionLabel: string }>>({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
@@ -61,10 +61,10 @@ export function StudentPracticeExamPage() {
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
-  const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
-  const [recUserResponses, setRecUserResponses] = useState<Record<string, string>>({});
-  const expandedRecIdRef = React.useRef<string | null>(null);
-  const recUserResponsesRef = React.useRef<Record<string, string>>({});
+  const [expandedRecId, setExpandedRecId] = useState<number | string | null>(null);
+  const [recUserResponses, setRecUserResponses] = useState<Record<string, number | string>>({});
+  const expandedRecIdRef = React.useRef<number | string | null>(null);
+  const recUserResponsesRef = React.useRef<Record<string, number | string>>({});
 
   useEffect(() => {
     expandedRecIdRef.current = expandedRecId;
@@ -82,7 +82,7 @@ export function StudentPracticeExamPage() {
     setIsPrefetchingRecs(true);
 
     try {
-      const existingIds = new Set<string>();
+      const existingIds = new Set<string | number>();
       currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
@@ -248,7 +248,7 @@ export function StudentPracticeExamPage() {
       const fetchSubjectFallback = async () => {
         setIsPrefetchingSubjectFallback(true);
         try {
-          const existingIds = new Set<string>();
+          const existingIds = new Set<string | number>();
           allQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
           recommendedPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
           subjectFallbackPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
@@ -655,7 +655,7 @@ export function StudentPracticeExamPage() {
     }
   };
 
-  const handleSelectOption = (optionId: string, optionLabel: string) => {
+  const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
 
@@ -675,7 +675,7 @@ export function StudentPracticeExamPage() {
 
     if (gTopic && gTopic !== 'All Topics') {
       try {
-        const existingIds = new Set<string>();
+        const existingIds = new Set<string | number>();
         allQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
         recommendedPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
         Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
@@ -754,7 +754,7 @@ export function StudentPracticeExamPage() {
   }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, recommendedPool, userResponses, revealedMap, handleSelectRecommendation]);
 
   // Reveal Instant Per-Question Answer & Description with Full Solution
-  const handleRevealAnswer = async (qId?: string, overrideOptId?: string, overrideOptLbl?: string) => {
+  const handleRevealAnswer = async (qId?: number | string, overrideOptId?: number | string, overrideOptLbl?: string) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return;
 
@@ -1012,7 +1012,7 @@ export function StudentPracticeExamPage() {
   dynamicTopics = Array.from(new Set([...dynamicTopics, ...qTopics]));
   const availableTopics = ['All Topics', ...dynamicTopics];
 
-  const selectedOptionsMap: Record<number, string> = {};
+  const selectedOptionsMap: Record<number, number | string> = {};
   const markedForReviewMap: Record<number, boolean> = {};
 
   allQuestions.forEach((q, idx) => {

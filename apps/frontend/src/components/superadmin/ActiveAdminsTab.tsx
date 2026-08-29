@@ -5,9 +5,9 @@ import { Search, RefreshCw, UserCheck, UserX, Building, Mail, Clock } from 'luci
 interface ActiveAdminsTabProps {
   admins: AdminApprovalRequest[];
   loading: boolean;
-  processingId: string | null;
-  onSuspend: (id: string, name: string) => void;
-  onReactivate: (id: string, name: string) => void;
+  processingId: number | string | null;
+  onSuspend: (id: number | string, name: string) => void;
+  onReactivate: (id: number | string, name: string) => void;
   onRefresh: () => void;
 }
 

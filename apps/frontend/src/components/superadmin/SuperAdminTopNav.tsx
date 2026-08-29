@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
 import { logoutUser } from '../../services/authService';
 import { Logo } from '../common/Logo';
-import { Search, LogOut, User } from 'lucide-react';
+import { Search, LogOut, User, X } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -132,7 +132,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
       )}
 
       {/* 3. Right Section: Profile & Actions */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', gap: 10 }} ref={cardRef}>
         {/* Mobile Search Icon */}
         {isSmallScreen && (
           <button
@@ -147,12 +147,8 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
             }}
           >
             ⌘K
-          </span>
-        </div>
-    </div>
-
-      {/* 3. Right Section: User Initial Avatar with Dropdown Card */ }
-  <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'relative', gap: 10 }} ref={cardRef}>
+          </button>
+        )}
     {/* Quick Admin Profile Button */}
     <button
       onClick={() => navigate('/profile')}

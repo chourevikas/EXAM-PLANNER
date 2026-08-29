@@ -42,12 +42,12 @@ export function UsersView() {
   const ITEMS_PER_PAGE = 5;
 
   // Popover State for Access Info ("i") button
-  const [activePopoverUserId, setActivePopoverUserId] = useState<string | null>(null);
+  const [activePopoverUserId, setActivePopoverUserId] = useState<number | string | null>(null);
 
   // Candidate Detail Drawer / Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<number | string | null>(null);
 
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -99,7 +99,7 @@ export function UsersView() {
     }
   };
 
-  const handleUpdateAccess = async (userId: string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
+  const handleUpdateAccess = async (userId: number | string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
     setActionLoadingUserId(userId);
     setErrorMsg('');
     setSuccessMsg('');
@@ -833,7 +833,7 @@ export function UsersView() {
 
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(selectedCandidate.id);
+                      navigator.clipboard.writeText(String(selectedCandidate.id));
                       setCopiedId(true);
                       setTimeout(() => setCopiedId(false), 2000);
                     }}

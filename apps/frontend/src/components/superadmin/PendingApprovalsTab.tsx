@@ -5,9 +5,9 @@ import { ShieldCheck, UserX, RefreshCw, Clock, Building, Mail } from 'lucide-rea
 interface PendingApprovalsTabProps {
   requests: AdminApprovalRequest[];
   loading: boolean;
-  processingId: string | null;
-  onApprove: (id: string, name: string) => void;
-  onReject: (id: string, name: string) => void;
+  processingId: number | string | null;
+  onApprove: (id: number | string, name: string) => void;
+  onReject: (id: number | string, name: string) => void;
   onRefresh: () => void;
 }
 

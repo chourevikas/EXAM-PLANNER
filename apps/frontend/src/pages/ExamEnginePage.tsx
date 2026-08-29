@@ -48,7 +48,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const isGuestMode = isGuest || location.pathname === '/guest-exam';
 
   // ─── Session State ───────────────────────────────────────────────────────────
-  const [attemptId, setAttemptId] = useState<string | null>(paramAttemptId || null);
+  const [attemptId, setAttemptId] = useState<number | string | null>(paramAttemptId || null);
   const [attemptMode, setAttemptMode] = useState<AttemptMode>('EXAM');
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
@@ -74,10 +74,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Active question & responses
   const [activeQuestion, setActiveQuestion] = useState<QuestionNavResponse['question'] | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<number | string | null>(null);
   const [selectedOptionLabel, setSelectedOptionLabel] = useState<string | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
-  const [revealResults, setRevealResults] = useState<Record<string, RevealAnswerResponse>>({});
+  const [revealResults, setRevealResults] = useState<Record<string | number, RevealAnswerResponse>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
   const [responseSummary, setResponseSummary] = useState<ResponseSummary>({
     answered_count: 0,
@@ -92,9 +92,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
-  const accumulatedTimePerQuestionRef = useRef<Map<string, number>>(new Map());
+  const accumulatedTimePerQuestionRef = useRef<Map<string | number, number>>(new Map());
 
-  const getActiveQuestionTotalTime = (qId?: string) => {
+  const getActiveQuestionTotalTime = (qId?: string | number) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return 0;
     const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
@@ -103,7 +103,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return Math.max(0, prevAcc + currentVisit);
   };
 
-  const saveQuestionVisitTime = (qId?: string) => {
+  const saveQuestionVisitTime = (qId?: string | number) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return;
     const elapsed = Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0);
@@ -114,15 +114,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   };
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
-  const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
-  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
-  const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
+  const pendingBatchQueueRef = useRef<Map<string | number, BatchSaveItem>>(new Map());
+  const lastSyncedSnapshotRef = useRef<Map<string | number, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const optionSwitchesCountRef = useRef<Map<string | number, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
 
   // Queue a modified response if it passes dirty-check verification
   const queueResponseUpdate = (
-    questionId: string,
-    optId: string | null,
+    questionId: string | number,
+    optId: string | number | null,
     markedForRev: boolean,
     forcedTimeSpent?: number
   ) => {
@@ -450,7 +450,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
-  const loadQuestion = async (attId: string, qNum: number) => {
+  const loadQuestion = async (attId: number | string, qNum: number) => {
     // Record elapsed time on the outgoing question before switching
     if (activeQuestion) {
       saveQuestionVisitTime(activeQuestion.question_id);
@@ -556,7 +556,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   };
 
-  const handleSelectOption = (optionId: string, optionLabel: string) => {
+  const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
       const qId = activeQuestion.question_id;
       const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;

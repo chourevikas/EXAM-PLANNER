@@ -101,7 +101,7 @@ export function GuestExamPage() {
   // Question & Response Data
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionOut | null>(null);
-  const [userResponses, setUserResponses] = useState<Record<string, { optionId: string; optionLabel: string }>>({});
+  const [userResponses, setUserResponses] = useState<Record<string | number, { optionId: number | string; optionLabel: string }>>({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
@@ -130,7 +130,7 @@ export function GuestExamPage() {
     setIsPrefetchingRecs(true);
 
     try {
-      const existingIds = new Set<string>();
+      const existingIds = new Set<string | number>();
       currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
 
@@ -207,7 +207,7 @@ export function GuestExamPage() {
         });
 
         setRecommendedPool((prev) => {
-          const combinedMap = new Map<string, QuestionOut>();
+          const combinedMap = new Map<string | number, QuestionOut>();
           prev.forEach((q) => combinedMap.set(q.question_id, q));
           formatted.forEach((q) => {
             if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
@@ -495,7 +495,7 @@ export function GuestExamPage() {
 
   // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
   const displayRecs = useMemo(() => {
-    const combinedMap = new Map<string, QuestionOut>();
+    const combinedMap = new Map<string | number, QuestionOut>();
     recommendedPool.forEach((q) => {
       if (q.question_id !== activeQuestion?.question_id) {
         combinedMap.set(q.question_id, q);
@@ -526,7 +526,7 @@ export function GuestExamPage() {
   };
 
   // Option Selection
-  const handleSelectOption = (optId: string, optLabel: string) => {
+  const handleSelectOption = (optId: number | string, optLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
 
@@ -885,7 +885,7 @@ export function GuestExamPage() {
   const isCurrentMarked = !!markedForReview[activeQuestion.question_id];
   const currentRevealedResult = revealedMap[activeQuestion.question_id] || null;
 
-  const selectedOptionsMap: Record<number, string> = {};
+  const selectedOptionsMap: Record<number, number | string> = {};
   allQuestions.forEach((q, idx) => {
     if (userResponses[q.question_id]) {
       selectedOptionsMap[idx] = userResponses[q.question_id].optionId;

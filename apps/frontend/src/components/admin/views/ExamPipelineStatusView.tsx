@@ -34,16 +34,16 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
 
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<number | string | null>(null);
+  const [resumeActionMsg, setResumeActionMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadData = async (isSilent: boolean = false) => {
-    if (!isSilent) setIsLoading(true);
-    setError(null);
     try {
+      if (!isSilent) setIsLoading(true);
+      setError(null);
       const data = await fetchExamPipelineStatuses();
       setExams(data);
-      // Keep selected exam updated if drawer is open
       if (selectedExam) {
         const updated = data.find((item) => item.id === selectedExam.id);
         if (updated) setSelectedExam(updated);
@@ -114,7 +114,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     };
   }, []);
 
-  const handleApprove = async (examId: string, examName: string) => {
+  const handleApprove = async (examId: number | string, examName: string) => {
     setApprovingId(examId);
     try {
       await approveAndPublishExam(examId);

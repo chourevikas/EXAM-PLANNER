@@ -590,7 +590,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   // Live Pipeline State
   const [pipelineExams, setPipelineExams] = useState<ExamPipelineStatusItem[]>([]);
   const [stuckPipelines, setStuckPipelines] = useState<StuckPipelineItem[]>([]);
-  const [resumingExamId, setResumingExamId] = useState<string | null>(null);
+  const [resumingExamId, setResumingExamId] = useState<number | string | null>(null);
   const [loadingQueue, setLoadingQueue] = useState<boolean>(true);
   const [queueError, setQueueError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -632,7 +632,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
-  const handleResumePipeline = async (examId: string, examName: string) => {
+  const handleResumePipeline = async (examId: number | string, examName: string) => {
     setResumingExamId(examId);
     try {
       const res = await resumeExamPipeline(examId);
@@ -647,7 +647,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     }
   };
 
-  const handleDismissStuck = async (examId: string) => {
+  const handleDismissStuck = async (examId: number | string) => {
     try {
       await dismissStuckPipeline(examId);
       setStuckPipelines((prev) => prev.filter((p) => p.exam_id !== examId));

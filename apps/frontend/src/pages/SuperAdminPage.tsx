@@ -55,9 +55,9 @@ export function SuperAdminPage() {
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
 
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<number | string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  const [rejectionTarget, setRejectionTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rejectionTarget, setRejectionTarget] = useState<{ id: number | string; name: string } | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -167,7 +167,7 @@ export function SuperAdminPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleApprove = async (id: string, name: string) => {
+  const handleApprove = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await approveAdminRequest(id);
@@ -180,7 +180,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleOpenRejection = (id: string, name: string) => {
+  const handleOpenRejection = (id: number | string, name: string) => {
     setRejectionTarget({ id, name });
   };
 
@@ -200,7 +200,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleSuspend = async (id: string, name: string) => {
+  const handleSuspend = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await suspendAdmin(id);
@@ -213,7 +213,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleReactivate = async (id: string, name: string) => {
+  const handleReactivate = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await reactivateAdmin(id);
@@ -226,7 +226,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string, userName: string) => {
+  const handleRoleChange = async (userId: number | string, newRole: string, userName: string) => {
     try {
       await updateUserRole(userId, newRole);
       showToast(`Updated role for ${userName} to ${newRole}`);
@@ -236,7 +236,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleApproveTestimonial = async (id: string, name: string) => {
+  const handleApproveTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await approveTestimonial(id);
@@ -249,7 +249,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleRejectTestimonial = async (id: string, name: string) => {
+  const handleRejectTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await rejectTestimonialApi(id, 'Inappropriate or invalid submission');
@@ -262,7 +262,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleDeleteTestimonial = async (id: string, name: string) => {
+  const handleDeleteTestimonial = async (id: number | string, name: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete the story by ${name}?`)) return;
     setProcessingId(id);
     try {

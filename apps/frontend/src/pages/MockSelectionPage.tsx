@@ -16,21 +16,21 @@ import {
 } from 'lucide-react';
 
 interface DisplayMock {
-  id: string;
+  id: number | string;
   title: string;
   category: string;
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  completedAttemptId?: string;
-  inProgressAttemptId?: string;
+  completedAttemptId?: number | string;
+  inProgressAttemptId?: number | string;
   scoreText?: string;
   progressPercent?: number;
 }
 
 export function MockSelectionPage() {
   const navigate = useNavigate();
-  const [hoveredMock, setHoveredMock] = useState<string | null>(null);
+  const [hoveredMock, setHoveredMock] = useState<number | string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();

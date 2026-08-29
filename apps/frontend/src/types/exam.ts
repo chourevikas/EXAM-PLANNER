@@ -45,22 +45,22 @@ export type AttemptStatus =
   | 'ABANDONED';
 
 export interface StartExamRequest {
-  exam_id: string;
+  exam_id: number | string;
   mode?: AttemptMode;
   force_new?: boolean;
 }
 
 export interface SaveResponseRequest {
-  question_id: string;
-  selected_option_id?: string | null;
+  question_id: number | string;
+  selected_option_id?: number | string | null;
   is_marked_for_review?: boolean;
   time_spent_seconds?: number;
   option_switch_count?: number;
 }
 
 export interface BatchSaveItem {
-  question_id: string;
-  selected_option_id?: string | null;
+  question_id: number | string;
+  selected_option_id?: number | string | null;
   is_marked_for_review?: boolean;
   time_spent_seconds?: number;
   is_switched?: boolean;
@@ -95,11 +95,11 @@ export interface SubmitExamRequest {
 
 export interface HeartbeatRequest {
   remaining_time_seconds: number;
-  active_question_id?: string | null;
+  active_question_id?: number | string | null;
 }
 
 export interface OptionOut {
-  option_id: string;
+  option_id: number | string;
   option_label: string;
   text: string;
   is_correct?: boolean;
@@ -110,7 +110,7 @@ export interface OptionOut {
 }
 
 export interface QuestionOut {
-  question_id: string;
+  question_id: number | string;
   question_number: number;
   text: string;
   textHindi?: string;
@@ -145,7 +145,7 @@ export interface NavigationMeta {
 }
 
 export interface ResponseState {
-  selected_option_id: string | null;
+  selected_option_id: number | string | null;
   is_marked_for_review: boolean;
   time_spent_seconds: number;
   question_status: QuestionResponseStatus;
@@ -160,7 +160,7 @@ export interface QuestionNavResponse {
 
 export interface QuestionPaletteItem {
   question_number: number;
-  question_id: string;
+  question_id: number | string;
   question_status: QuestionResponseStatus;
 }
 
@@ -172,8 +172,8 @@ export interface ResponseSummary {
 }
 
 export interface StartExamResponse {
-  attempt_id: string;
-  exam_id: string;
+  attempt_id: number | string;
+  exam_id: number | string;
   status: AttemptStatus;
   mode: AttemptMode;
   started_at: string;
@@ -192,12 +192,12 @@ export interface SaveResponseResponse {
 }
 
 export interface RevealAnswerResponse {
-  question_id: string;
+  question_id: number | string;
   question_number: number;
-  correct_option_id: string;
+  correct_option_id: number | string;
   correct_option_label: string;
   is_user_correct: boolean;
-  user_selected_option_id?: string | null;
+  user_selected_option_id?: number | string | null;
   user_selected_label?: string | null;
   marks_awarded: number;
   closeness_score: number;
@@ -207,7 +207,7 @@ export interface RevealAnswerResponse {
 }
 
 export interface SubmitExamResponse {
-  attempt_id: string;
+  attempt_id: number | string;
   status: AttemptStatus;
   submitted_at: string;
   submission_reason: string;
@@ -224,8 +224,8 @@ export interface SubmitExamResponse {
 }
 
 export interface ExamStatusResponse {
-  attempt_id: string;
-  exam_id: string;
+  attempt_id: number | string;
+  exam_id: number | string;
   exam_name?: string;
   status: AttemptStatus;
   mode: AttemptMode;
@@ -283,8 +283,8 @@ export interface TaxonomyMasteryItem {
 
 export interface ExamTimelineItem {
   attempt_number: number;
-  attempt_id: string;
-  exam_id: string;
+  attempt_id: number | string;
+  exam_id: number | string;
   exam_name: string;
   exam_code: string;
   date: string;
@@ -384,13 +384,13 @@ export interface PsychometricReport {
     cumulative_accuracy_percentage?: number;
     generated_at: string;
     candidate: {
-      user_id: string;
+      user_id: number | string;
       full_name: string;
       email: string;
     };
     exam_attempt: {
-      attempt_id?: string;
-      exam_id?: string;
+      attempt_id?: number | string;
+      exam_id?: number | string;
       exam_name: string;
       canonical_code: string;
       total_score_awarded?: number;
@@ -510,21 +510,21 @@ export interface QuestionReportExplanation {
 }
 
 export interface QuestionReportItem {
-  question_id: string;
+  question_id: number | string;
   question_number: number;
   question_text?: string;
   subject_name?: string;
   topic_name?: string;
   difficulty?: string;
   options?: Array<{
-    option_id: string;
+    option_id: number | string;
     option_label: string;
     text: string;
     is_correct?: boolean;
   }>;
-  selected_option_id?: string | null;
+  selected_option_id?: number | string | null;
   selected_option_label?: string | null;
-  correct_option_id?: string;
+  correct_option_id?: number | string;
   correct_option_label?: string;
   is_correct: boolean;
   final_score: number;
@@ -540,8 +540,8 @@ export interface QuestionReportItem {
 }
 
 export interface UserProgressionReportData {
-  attempt_id: string;
-  user_id: string;
+  attempt_id: number | string;
+  user_id: number | string;
   previous_metrics: {
     cumulative_icrs: number;
     cumulative_irt_theta: number;
@@ -572,7 +572,7 @@ export interface UserProgressionReportData {
 }
 
 export interface AttemptEvaluationStatus {
-  attempt_id: string;
+  attempt_id: number | string;
   status: string;
   is_ready: boolean;
   progress_percentage: number;

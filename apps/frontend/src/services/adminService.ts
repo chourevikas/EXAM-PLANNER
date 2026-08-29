@@ -37,7 +37,7 @@ export async function fetchActiveAdmins(): Promise<AdminApprovalRequest[]> {
   return await res.json();
 }
 
-export async function approveAdminRequest(userId: string): Promise<User> {
+export async function approveAdminRequest(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/approve/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -49,7 +49,7 @@ export async function approveAdminRequest(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function rejectAdminRequest(userId: string, reason?: string): Promise<User> {
+export async function rejectAdminRequest(userId: number | string, reason?: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/reject/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -62,7 +62,7 @@ export async function rejectAdminRequest(userId: string, reason?: string): Promi
   return await res.json();
 }
 
-export async function suspendAdmin(userId: string): Promise<User> {
+export async function suspendAdmin(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/suspend/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -74,7 +74,7 @@ export async function suspendAdmin(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function reactivateAdmin(userId: string): Promise<User> {
+export async function reactivateAdmin(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/reactivate/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -113,7 +113,7 @@ export async function fetchPlatformUsers(): Promise<UserDirectoryItem[]> {
   return await res.json();
 }
 
-export async function updateUserRole(userId: string, newRole: string): Promise<User> {
+export async function updateUserRole(userId: number | string, newRole: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -135,7 +135,7 @@ export async function fetchAllUsers(): Promise<User[]> {
   return await res.json();
 }
 
-export async function fetchUserById(userId: string): Promise<User> {
+export async function fetchUserById(userId: number | string): Promise<User> {
   const res = await fetch(`/api/v1/users/${userId}`, { headers: getAuthHeader() });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch user details' }));
@@ -144,7 +144,7 @@ export async function fetchUserById(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
+export async function updateUserStatus(userId: number | string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
   const res = await fetch(`/api/v1/users/${userId}`, {
     method: 'PUT',
     headers: getAuthHeader(),
@@ -158,7 +158,7 @@ export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPE
 }
 
 
-export async function fetchPipelineStatus(examId: string): Promise<any> {
+export async function fetchPipelineStatus(examId: number | string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/status/${examId}`, { headers: getAuthHeader() });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch pipeline status' }));
@@ -167,7 +167,7 @@ export async function fetchPipelineStatus(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function stopPipelineTask(examId: string): Promise<any> {
+export async function stopPipelineTask(examId: number | string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/stop/${examId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -179,7 +179,7 @@ export async function stopPipelineTask(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function restartPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+export async function restartPipelineTask(examId: number | string, language: string = 'ENGLISH'): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/restart/${examId}?language=${language}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -191,7 +191,7 @@ export async function restartPipelineTask(examId: string, language: string = 'EN
   return await res.json();
 }
 
-export async function retryPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+export async function retryPipelineTask(examId: number | string, language: string = 'ENGLISH'): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/retry/${examId}?language=${language}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -204,7 +204,7 @@ export async function retryPipelineTask(examId: string, language: string = 'ENGL
 }
 
 export interface ExamPipelineStatusItem {
-  id: string;
+  id: number | string;
   code: string;
   name: string;
   source_year: number;
@@ -245,7 +245,7 @@ export async function fetchExamPipelineStatuses(): Promise<ExamPipelineStatusIte
 }
 
 export interface StuckPipelineItem {
-  exam_id: string;
+  exam_id: number | string;
   exam_name: string;
   exam_code: string;
   pipeline_type: string;
@@ -265,7 +265,7 @@ export async function fetchStuckPipelines(): Promise<StuckPipelineItem[]> {
   return await res.json();
 }
 
-export async function resumeExamPipeline(examId: string): Promise<any> {
+export async function resumeExamPipeline(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/resume-pipeline`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -277,7 +277,7 @@ export async function resumeExamPipeline(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function dismissStuckPipeline(examId: string): Promise<any> {
+export async function dismissStuckPipeline(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/dismiss-stuck-pipeline`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -289,7 +289,7 @@ export async function dismissStuckPipeline(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function approveAndPublishExam(examId: string): Promise<any> {
+export async function approveAndPublishExam(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -302,7 +302,7 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
 }
 
 export async function syncExamToS3(
-  examId: string,
+  examId: number | string,
   syncAll: boolean = false,
   syncTarget: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' = 'MASTERS_ONLY'
 ): Promise<any> {
@@ -319,7 +319,7 @@ export async function syncExamToS3(
 }
 
 export interface ExamSyncStatusResponse {
-  exam_id: string;
+  exam_id: number | string;
   exam_code: string;
   is_published: boolean;
   is_syncing: boolean;
@@ -336,7 +336,7 @@ export interface ExamSyncStatusResponse {
   solutions_json_folder_path?: string | null;
 }
 
-export async function fetchExamSyncStatus(examId: string): Promise<ExamSyncStatusResponse> {
+export async function fetchExamSyncStatus(examId: number | string): Promise<ExamSyncStatusResponse> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/sync-status`, {
     headers: getAuthHeader(),
   });
@@ -348,7 +348,7 @@ export async function fetchExamSyncStatus(examId: string): Promise<ExamSyncStatu
 }
 
 export interface ExamReviewQuestionsResponse {
-  exam_id: string;
+  exam_id: number | string;
   exam_name?: string;
   exam_code?: string;
   stage?: string;
@@ -380,7 +380,7 @@ export interface ExamReviewQuestionsResponse {
 }
 
 export async function fetchExamQuestionsForReview(
-  examId: string,
+  examId: number | string,
   page: number = 1,
   limit: number = 10,
   status?: string
@@ -397,7 +397,7 @@ export async function fetchExamQuestionsForReview(
   return await res.json();
 }
 
-export async function fetchQuestionsByExam(examId: string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
+export async function fetchQuestionsByExam(examId: number | string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
   let url = `/api/v1/questions?exam_id=${examId}&page=${page}&limit=${limit}`;
   if (status && status !== 'ALL') {
     url += `&status=${status}`;
@@ -410,7 +410,7 @@ export async function fetchQuestionsByExam(examId: string, page: number = 1, lim
   return await res.json();
 }
 
-export async function updateAdminQuestionDetail(questionId: string, payload: any): Promise<any> {
+export async function updateAdminQuestionDetail(questionId: number | string, payload: any): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
     method: 'PUT',
     headers: getAuthHeader(),
@@ -423,7 +423,7 @@ export async function updateAdminQuestionDetail(questionId: string, payload: any
   return await res.json();
 }
 
-export async function updateAdminQuestionStatus(questionId: string, status: string): Promise<any> {
+export async function updateAdminQuestionStatus(questionId: number | string, status: string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
     method: 'PATCH',
     headers: getAuthHeader(),
@@ -467,7 +467,7 @@ export interface OverviewMetric {
 }
 
 export interface RecentUploadItem {
-  id: string;
+  id: number | string;
   title: string;
   questions: number;
   date: string;

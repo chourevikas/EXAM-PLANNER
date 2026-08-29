@@ -5,10 +5,10 @@ import { Search, RefreshCw, CheckCircle, XCircle, Trash2, Star, MessageSquare, C
 interface TestimonialApprovalsTabProps {
   testimonials: TestimonialItem[];
   loading: boolean;
-  processingId: string | null;
-  onApprove: (id: string, name: string) => void;
-  onReject: (id: string, name: string) => void;
-  onDelete: (id: string, name: string) => void;
+  processingId: number | string | null;
+  onApprove: (id: number | string, name: string) => void;
+  onReject: (id: number | string, name: string) => void;
+  onDelete: (id: number | string, name: string) => void;
   onRefresh: () => void;
 }
 

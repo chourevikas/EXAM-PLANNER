@@ -6,9 +6,9 @@ interface AllUsersTabProps {
   users: UserDirectoryItem[];
   loading: boolean;
   onRefresh: () => void;
-  onRoleChange: (userId: string, newRole: string, userName: string) => void;
-  onSuspend?: (userId: string, userName: string) => void;
-  onReactivate?: (userId: string, userName: string) => void;
+  onRoleChange: (userId: number | string, newRole: string, userName: string) => void;
+  onSuspend?: (userId: number | string, userName: string) => void;
+  onReactivate?: (userId: number | string, userName: string) => void;
 }
 
 export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend, onReactivate }: AllUsersTabProps) {

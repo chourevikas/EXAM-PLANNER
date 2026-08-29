@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, Shield } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamHeaderProps {
