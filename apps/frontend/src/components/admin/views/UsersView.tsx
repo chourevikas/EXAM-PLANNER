@@ -23,7 +23,7 @@ import {
   Check,
   Globe
 } from 'lucide-react';
-import { fetchAllUsers, updateUserStatus } from '../../../services/adminService';
+import { fetchAllUsers, updateUserStatus, fetchUserById } from '../../../services/adminService';
 import { User, UserStatus } from '../../../types/auth';
 
 export function UsersView() {
@@ -39,16 +39,32 @@ export function UsersView() {
 
   // Pagination State (5 ntries per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const ITEMS_PER_PAGE = 5
+  const ITEMS_PER_PAGE = 5;
 
   // Popover State for Access Info ("i") button
   const [activePopoverUserId, setActivePopoverUserId] = useState<string | null>(null);
 
   // Candidate Detail Drawer / Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
 
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectCandidate = async (candidate: User) => {
+    setSelectedCandidate(candidate);
+    setIsDetailLoading(true);
+    try {
+      const freshUser = await fetchUserById(candidate.id);
+      if (freshUser) {
+        setSelectedCandidate(prev => prev && prev.id === candidate.id ? { ...prev, ...freshUser } : freshUser);
+      }
+    } catch (err) {
+      console.warn('Could not fetch latest user details:', err);
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadUsers();
@@ -329,7 +345,7 @@ export function UsersView() {
                         <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
                           <div
                             style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-                            onClick={() => setSelectedCandidate(u)}
+                            onClick={() => handleSelectCandidate(u)}
                           >
                             <div style={{
                               width: 40,
@@ -548,7 +564,7 @@ export function UsersView() {
                         {/* View Details Action */}
                         <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
                           <button
-                            onClick={() => setSelectedCandidate(u)}
+                            onClick={() => handleSelectCandidate(u)}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -649,95 +665,172 @@ export function UsersView() {
         )}
       </div>
 
-      {/* Candidate Details Slide-Over Modal Dialog */}
+      {/* Candidate Details Slide-Over Drawer */}
       {selectedCandidate && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
 
           <div
             style={{
               width: '100%',
-              maxWidth: 540,
+              maxWidth: 440,
               backgroundColor: '#ffffff',
               height: '100vh',
-              boxShadow: '-10px 0 40px rgba(0,0,0,0.18)',
+              boxShadow: '-10px 0 40px rgba(15, 23, 42, 0.18)',
               display: 'flex',
               flexDirection: 'column',
               overflowY: 'auto',
-              borderLeft: '1px solid #e2e8f0'
+              borderLeft: '1px solid #e2e8f0',
+              position: 'relative'
             }}
           >
-            {/* Dark Blue Modal Header */}
-            <div style={{ padding: '22px 26px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0f1e3c', color: '#ffffff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-                  <Users size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', margin: 0, fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}>Candidate Profile Details</h3>
-                  <span style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)', fontFamily: 'var(--font-mono)' }}>ID: {selectedCandidate.id}</span>
-                </div>
+            {/* Minimal Top Close Bar (Without redundant Candidate Profile title header) */}
+            <div style={{ padding: '14px 18px 6px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Live Candidate Details
+                </span>
+                {isDetailLoading && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#2563eb', backgroundColor: '#eff6ff', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>
+                    <Loader2 size={10} className="animate-spin" /> Syncing
+                  </span>
+                )}
               </div>
+
               <button
                 onClick={() => setSelectedCandidate(null)}
-                style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', color: '#ffffff', cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)')}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: 6,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#0f172a';
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(37, 99, 235, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+                }}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            {/* Modal Content Form */}
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Drawer Main Body */}
+            <div style={{ padding: '12px 20px 24px 20px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
 
-              {/* Identity Header Card (Dark Blue Gradient Accent) */}
-              <div style={{ padding: 20, borderRadius: 16, background: 'linear-gradient(135deg, #0f1e3c, #1e3a8a)', color: '#ffffff', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(15,30,60,0.2)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.25)', color: '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, border: '2px solid #3b82f6', flexShrink: 0 }}>
+              {/* Colorful Glow Hero Profile Card */}
+              <div style={{
+                padding: 18,
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.06)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {/* Avatar with Vibrant Gradient & Soft Glow */}
+                  <div style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 20,
+                    fontWeight: 800,
+                    boxShadow: '0 0 16px rgba(79, 70, 229, 0.35)',
+                    border: '2.5px solid #ffffff',
+                    flexShrink: 0
+                  }}>
                     {selectedCandidate.full_name ? selectedCandidate.full_name.substring(0, 2).toUpperCase() : 'U'}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden' }}>
-                    <span style={{ fontSize: 19, fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.full_name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255, 255, 255, 0.75)', fontFamily: 'var(--font-mono)' }}>
-                      <Mail size={13} color="#60a5fa" />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', letterSpacing: '-0.01em' }}>
+                        {selectedCandidate.full_name}
+                      </span>
+                      {selectedCandidate.is_verified && (
+                        <CheckCircle size={16} color="#059669" title="Verified Candidate" />
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                      <Mail size={12} color="#3b82f6" />
                       <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.email}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.3)' : 'rgba(59, 130, 246, 0.3)', color: selectedCandidate.role === 'SUPER_ADMIN' ? '#c084fc' : '#93c5fd', border: '1px solid rgba(255,255,255,0.15)' }}>
+
+                    {/* Status Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#eff6ff' : '#ecfdf5',
+                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? '#2563eb' : '#059669',
+                        border: `1px solid ${selectedCandidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : selectedCandidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
+                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(37, 99, 235, 0.12)'
+                      }}>
                         {selectedCandidate.role}
                       </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 12, backgroundColor: selectedCandidate.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)', color: selectedCandidate.status === 'ACTIVE' ? '#6ee7b7' : '#fca5a5', border: '1px solid rgba(255,255,255,0.15)' }}>
-                        {selectedCandidate.status === 'ACTIVE' ? 'Access Granted' : 'Access Revoked'}
+
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
+                        color: selectedCandidate.status === 'ACTIVE' ? '#059669' : '#dc2626',
+                        border: `1px solid ${selectedCandidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
+                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(239, 68, 68, 0.15)'
+                      }}>
+                        {selectedCandidate.status === 'ACTIVE' ? 'Active' : 'Suspended'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Translucent Colourful Action Pills / Buttons Row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 12, borderTop: '1px solid rgba(255, 255, 255, 0.1)', flexWrap: 'wrap' }}>
-                  {/* Send Email Pill */}
+                {/* Translucent Action Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 12, borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
                   <a
                     href={`mailto:${selectedCandidate.email}`}
                     style={{
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
+                      gap: 5,
+                      padding: '5px 12px',
                       borderRadius: 20,
-                      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                      color: '#93c5fd',
-                      border: '1px solid rgba(59, 130, 246, 0.4)',
-                      fontSize: 12,
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      fontSize: 11,
                       fontWeight: 600,
                       textDecoration: 'none',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)'
                     }}
                   >
-                    <Mail size={13} />
+                    <Mail size={12} />
                     <span>Send Email</span>
                   </a>
 
-                  {/* Copy ID Pill */}
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(selectedCandidate.id);
@@ -745,190 +838,370 @@ export function UsersView() {
                       setTimeout(() => setCopiedId(false), 2000);
                     }}
                     style={{
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
+                      gap: 5,
+                      padding: '5px 12px',
                       borderRadius: 20,
-                      backgroundColor: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(124, 58, 237, 0.2)',
-                      color: copiedId ? '#6ee7b7' : '#c084fc',
-                      border: `1px solid ${copiedId ? 'rgba(16, 185, 129, 0.4)' : 'rgba(124, 58, 237, 0.4)'}`,
-                      fontSize: 12,
+                      backgroundColor: copiedId ? '#ecfdf5' : '#f8fafc',
+                      color: copiedId ? '#059669' : '#475569',
+                      border: `1px solid ${copiedId ? '#a7f3d0' : '#cbd5e1'}`,
+                      fontSize: 11,
                       fontWeight: 600,
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
                     }}
                   >
-                    {copiedId ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedId ? <Check size={12} /> : <Copy size={12} />}
                     <span>{copiedId ? 'Copied ID!' : 'Copy Candidate ID'}</span>
                   </button>
 
-                  {/* Verification Tag Pill */}
                   <div
                     style={{
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '6px 12px',
+                      gap: 5,
+                      padding: '5px 12px',
                       borderRadius: 20,
-                      backgroundColor: selectedCandidate.is_verified ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                      color: selectedCandidate.is_verified ? '#6ee7b7' : '#fde047',
-                      border: `1px solid ${selectedCandidate.is_verified ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
-                      fontSize: 12,
-                      fontWeight: 600
+                      backgroundColor: selectedCandidate.is_verified ? '#ecfdf5' : '#fffbe8',
+                      color: selectedCandidate.is_verified ? '#059669' : '#b45309',
+                      border: `1px solid ${selectedCandidate.is_verified ? '#a7f3d0' : '#fde68a'}`,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      boxShadow: selectedCandidate.is_verified ? '0 0 8px rgba(16, 185, 129, 0.12)' : '0 0 8px rgba(245, 158, 11, 0.12)'
                     }}
                   >
-                    {selectedCandidate.is_verified ? <CheckCircle size={13} /> : <XCircle size={13} />}
+                    {selectedCandidate.is_verified ? <CheckCircle size={12} /> : <XCircle size={12} />}
                     <span>{selectedCandidate.is_verified ? 'Verified Account' : 'Pending Verification'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Exam & Target Preparation Section */}
+              {/* Colorful Glow Learning Metrics Grid (2x2 Grid) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Target Exam & Attempt Preparation
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Learning Metrics & Engagement
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <BookOpen size={13} color="#2563eb" />
-                      <span>Target Exam</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {/* Streak Card with Blue Glow */}
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #dbeafe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.06)'
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                      color: '#2563eb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 10px rgba(37, 99, 235, 0.2)',
+                      flexShrink: 0
+                    }}>
+                      <Zap size={18} />
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      UPSC CSE Prelims
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Streak</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#2563eb' }}>
+                        {selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Calendar size={13} color="#d97706" />
-                      <span>Target Year</span>
+                  {/* Questions Solved Card with Emerald Glow */}
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #a7f3d0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.06)'
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                      color: '#059669',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
+                      flexShrink: 0
+                    }}>
+                      <BookOpen size={18} />
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      2026 Attempt #1
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Questions</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#059669' }}>
+                        {selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0} Solved
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Globe size={13} color="#10b981" />
-                      <span>Medium</span>
+                  {/* Rank Level Card with Amber Glow */}
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #fde68a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.06)'
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #fffbe8 0%, #fef3c7 100%)',
+                      color: '#d97706',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 10px rgba(245, 158, 11, 0.2)',
+                      flexShrink: 0
+                    }}>
+                      <Crown size={18} />
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                      English (GS-1)
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Rank Level</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>
+                        Level {selectedCandidate.level || selectedCandidate.student_profile?.level || 1}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total XP Card with Purple Glow */}
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #ddd6fe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.06)'
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+                      color: '#7c3aed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 10px rgba(124, 58, 237, 0.2)',
+                      flexShrink: 0
+                    }}>
+                      <Award size={18} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Total XP</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#7c3aed' }}>
+                        {selectedCandidate.total_xp || selectedCandidate.student_profile?.total_xp || 0} XP
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Premium / Subscription Tier Card */}
+              {/* Subscription Tier Card */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Subscription & Tier Privileges
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Subscription Level
                 </span>
 
-                <div style={{ padding: 16, borderRadius: 14, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  backgroundColor: '#ffffff',
+                  border: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  boxShadow: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '0 0 14px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.02)'
+                }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ padding: 10, borderRadius: 10, backgroundColor: selectedCandidate.subscription_tier === 'PREMIUM' ? 'rgba(245, 158, 11, 0.12)' : '#f1f5f9', color: selectedCandidate.subscription_tier === 'PREMIUM' ? '#d97706' : '#64748b', border: selectedCandidate.subscription_tier === 'PREMIUM' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid #cbd5e1' }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#f8fafc',
+                      color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#d97706' : '#64748b',
+                      border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#cbd5e1'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '0 0 10px rgba(245, 158, 11, 0.25)' : 'none',
+                      flexShrink: 0
+                    }}>
                       <Crown size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                        {selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM' ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                        {(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
                       </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {selectedCandidate.subscription_tier === 'PREMIUM' ? 'Full question bank & advanced analytics active' : 'Basic candidate access limits'}
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                        {(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? 'Full question bank & analytics active' : 'Standard candidate account limits applied'}
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, backgroundColor: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                    Active Plan
+
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 12,
+                    backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#eff6ff',
+                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : '#2563eb',
+                    border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#bfdbfe'}`
+                  }}>
+                    Active Tier
                   </span>
                 </div>
               </div>
 
-              {/* Verification & Account Metadata */}
+              {/* Account Metadata Grid */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Account Timestamps & Security State
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Account System Details
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Verification Status</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: selectedCandidate.is_verified ? '#059669' : '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {selectedCandidate.is_verified ? <CheckCircle size={15} /> : <XCircle size={15} />}
-                      <span>{selectedCandidate.is_verified ? 'Verified Candidate ✅' : 'Unverified Account ❌'}</span>
-                    </div>
-                  </div>
-
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Registration Date</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Timezone</div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
-                      {new Date(selectedCandidate.created_at).toLocaleDateString()}
+                      {selectedCandidate.timezone || 'Asia/Kolkata'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Registration Date</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                      {selectedCandidate.created_at ? new Date(selectedCandidate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Last Profile Sync</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                      {selectedCandidate.updated_at ? new Date(selectedCandidate.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Verification</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: selectedCandidate.is_verified ? '#059669' : '#dc2626' }}>
+                      {selectedCandidate.is_verified ? 'Verified ✅' : 'Unverified ❌'}
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Candidate Progress & Engagement Overview */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.05em' }}>
-                  Candidate Learning Engagement Overview
-                </span>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)', textAlign: 'center' }}>
-                    <Zap size={16} color="#2563eb" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Active Streak</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#2563eb' }}>{selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days</div>
-                  </div>
-
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', textAlign: 'center' }}>
-                    <BookOpen size={16} color="#059669" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Questions</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#059669' }}>{selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0} Attempted</div>
-                  </div>
-
-                  <div style={{ padding: 14, borderRadius: 12, backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.15)', textAlign: 'center' }}>
-                    <Award size={16} color="#d97706" style={{ margin: '0 auto 4px auto' }} />
-                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Level & XP</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#d97706' }}>Lvl {selectedCandidate.level || selectedCandidate.student_profile?.level || 1}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Close Button Footer inside Drawer (Translucent Dark Blue Style) */}
-              <div style={{ marginTop: 12, paddingTop: 16, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setSelectedCandidate(null)}
-                  style={{
-                    padding: '9px 22px',
-                    borderRadius: 10,
-                    backgroundColor: 'rgba(15, 30, 60, 0.08)',
-                    color: '#0f1e3c',
-                    fontSize: 13,
-                    fontWeight: 700,
-                    border: '1px solid rgba(15, 30, 60, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0f1e3c';
-                    e.currentTarget.style.color = '#ffffff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(15, 30, 60, 0.08)';
-                    e.currentTarget.style.color = '#0f1e3c';
-                  }}
-                >
-                  Close Candidate Profile
-                </button>
               </div>
 
             </div>
+
+            {/* Access Control Action Footer */}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  disabled={actionLoadingUserId === selectedCandidate.id || selectedCandidate.status === 'ACTIVE'}
+                  onClick={() => handleUpdateAccess(selectedCandidate.id, 'ACTIVE')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '7px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #10b981',
+                    backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#10b981',
+                    color: selectedCandidate.status === 'ACTIVE' ? '#059669' : '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: selectedCandidate.status === 'ACTIVE' ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: selectedCandidate.status === 'ACTIVE' ? 'none' : '0 0 10px rgba(16, 185, 129, 0.3)'
+                  }}
+                >
+                  {actionLoadingUserId === selectedCandidate.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <>
+                      <UserCheck size={13} />
+                      <span>Allow Access</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  disabled={actionLoadingUserId === selectedCandidate.id || selectedCandidate.status === 'SUSPENDED'}
+                  onClick={() => handleUpdateAccess(selectedCandidate.id, 'SUSPENDED')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '7px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #ef4444',
+                    backgroundColor: selectedCandidate.status === 'SUSPENDED' ? '#fef2f2' : '#ef4444',
+                    color: selectedCandidate.status === 'SUSPENDED' ? '#dc2626' : '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: selectedCandidate.status === 'SUSPENDED' ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(239, 68, 68, 0.3)'
+                  }}
+                >
+                  {actionLoadingUserId === selectedCandidate.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <>
+                      <UserX size={13} />
+                      <span>Revoke Access</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <button
+                onClick={() => setSelectedCandidate(null)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#0f172a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.color = '#475569';
+                }}
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

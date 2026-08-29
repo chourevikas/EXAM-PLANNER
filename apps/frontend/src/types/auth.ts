@@ -36,6 +36,7 @@ export interface User {
   status: UserStatus;
   profile_image?: string;
   is_verified?: boolean;
+  timezone?: string;
   subscription_tier?: string;
   free_questions_attempted?: number;
   current_streak?: number;
