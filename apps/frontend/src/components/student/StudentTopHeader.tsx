@@ -17,7 +17,7 @@ import {
   Zap
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
-
+import { Logo } from '../common/Logo';
 interface StudentTopHeaderProps {
   user: any;
   pageTitle: string;
@@ -236,33 +236,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       {/* Left: Brand Logo & Page Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 0,
-              background: '#E31B23',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.4)'
-            }}
-          >
-            <Zap size={17} color="#fff" fill="#fff" />
-          </div>
-          {!isSmallMobile && (
-            <span
-              style={{
-                fontWeight: 800,
-                fontSize: 16,
-                color: '#ffffff',
-                letterSpacing: '-0.02em'
-              }}
-            >
-              ExamPlanner
-            </span>
-          )}
+          <Logo inverted={true} />
         </Link>
 
         {!isMobile && (

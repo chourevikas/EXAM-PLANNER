@@ -19,6 +19,7 @@ import {
   BarChart2,
   BookOpen
 } from 'lucide-react';
+import { Logo } from '../common/Logo';
 
 interface TopNavProps {
   user?: any;
@@ -146,20 +147,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           onClick={() => onNavigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
         >
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 0,
-              background: '#E31B23',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
-            <Shield size={16} color="#ffffff" />
-          </div>
+          <Logo inverted={true} />
           {!isSmallMobile && (
             <span
               style={{
@@ -167,10 +155,11 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 fontSize: 15,
                 color: '#ffffff',
                 letterSpacing: '-0.01em',
-                fontFamily: 'Inter, sans-serif'
+                fontFamily: 'Inter, sans-serif',
+                marginLeft: 10
               }}
             >
-              ExamPlanner Admin
+              Admin
             </span>
           )}
         </div>

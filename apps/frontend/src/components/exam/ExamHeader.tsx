@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, Shield, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Logo } from '../common/Logo';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -71,24 +72,7 @@ export function ExamHeader({
     >
       {/* Left: Admin Theme ExamPlanner Logo & Paper Metadata */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 0,
-            backgroundColor: '#E31B23',
-            color: '#FFFFFF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: 15,
-            flexShrink: 0,
-            boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
-          }}
-        >
-          <Shield size={18} color="#FFFFFF" />
-        </div>
+        <Logo inverted={true} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* Neat Fading Breadcrumb Trail (IBM Plex Sans 600 Page title / 500 Subtitle) */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserDirectoryItem, UserRole, UserStatus } from '../../types/auth';
 import { Search, RefreshCw, Users, Shield, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
 
@@ -14,6 +14,12 @@ interface AllUsersTabProps {
 export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend, onReactivate }: AllUsersTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter]);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -41,6 +47,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
         return { bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
     }
   };
+
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div
@@ -249,7 +258,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => {
+                {paginatedUsers.map((u) => {
                   const roleStyle = getRoleBadgeStyle(u.role);
                   const isSuspended = u.status === UserStatus.SUSPENDED;
 
@@ -416,6 +425,40 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                 })}
             </tbody>
           </table>
+          
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} entries
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-color)',
+                    background: currentPage === 1 ? 'var(--bg-body)' : 'var(--bg-card)',
+                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: '6px 12px', borderRadius: 0, border: '1px solid var(--border-color)',
+                    background: currentPage === totalPages ? 'var(--bg-body)' : 'var(--bg-card)',
+                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

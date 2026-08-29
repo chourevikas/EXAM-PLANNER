@@ -64,7 +64,7 @@ export function PricingPage() {
     'Unlimited Access to 25+ Years UPSC CSE PYQs',
     'Full-Length & Sectional Smart Mock Test Series',
     'Deep Psychometric Option Hesitation & Mistake Tracking',
-    'Dynamic Adaptive Daily Study Planner',
+    'Dynamic Daily Study Planner',
     'All India Rank Projection & Percentile Matrix',
     'Priority 24/7 Doubt Resolution & Detailed Explanations',
     'Export Performance Reports & Revision Worksheets'

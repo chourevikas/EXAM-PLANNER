@@ -55,7 +55,7 @@ export function MonthlyReportPage() {
       {/* Header Banner */}
       <section style={{ 
         marginBottom: 32, padding: '24px 28px', borderRadius: 0,
-        backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0',
+        backgroundColor: 'var(--bg-card)', border: '1px solid #E2E8F0',
         boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
         backgroundImage: 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(227, 27, 35,0.04) 100%)',
         display: 'flex',
@@ -65,12 +65,12 @@ export function MonthlyReportPage() {
         gap: 16
       }}>
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: '#ECFDF5', borderRadius: 0, marginBottom: 10 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'rgba(58, 139, 83, 0.1)', borderRadius: 0, marginBottom: 10 }}>
             <Ico.Trophy size={14} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#3A8B53', textTransform: 'uppercase' }}>National Benchmarking</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success-green)', textTransform: 'uppercase' }}>National Benchmarking</span>
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#172033', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>Monthly Performance & National Rank</h1>
-          <p style={{ fontSize: 14, color: '#64748B', margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>Monthly Performance & National Rank</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
             Percentile growth curve and exam readiness index for {data?.period || 'August 2026'}.
           </p>
         </div>
@@ -84,9 +84,9 @@ export function MonthlyReportPage() {
             gap: 8,
             padding: '9px 18px',
             borderRadius: 0,
-            backgroundColor: '#F8FAFC',
+            backgroundColor: 'var(--bg-base)',
             border: '1px solid #E2E8F0',
-            color: '#172033',
+            color: 'var(--text-primary)',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
@@ -99,7 +99,7 @@ export function MonthlyReportPage() {
       </section>
 
       {error && (
-        <div style={{ padding: 16, borderRadius: 0, backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', marginBottom: 24, fontSize: 13.5 }}>
+        <div style={{ padding: 16, borderRadius: 0, backgroundColor: 'rgba(227, 27, 35, 0.1)', border: '1px solid #FCA5A5', color: 'var(--primary-red)', marginBottom: 24, fontSize: 13.5 }}>
           {error}
         </div>
       )}
@@ -107,7 +107,7 @@ export function MonthlyReportPage() {
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 32 }}>
           {[1, 2, 3].map(i => (
-            <div key={i} style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 0, border: '1px solid #E2E8F0', height: 136, animation: 'pulse 1.5s infinite ease-in-out' }} />
+            <div key={i} style={{ backgroundColor: 'var(--bg-card)', padding: 24, borderRadius: 0, border: '1px solid #E2E8F0', height: 136, animation: 'pulse 1.5s infinite ease-in-out' }} />
           ))}
         </div>
       ) : (
@@ -120,7 +120,7 @@ export function MonthlyReportPage() {
               title="PREDICTED ALL INDIA RANK"
               value={`#${data?.predicted_rank ? data.predicted_rank.toLocaleString() : '---'}`}
               supportingText={
-                <span style={{ color: '#3A8B53', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: 'var(--success-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <TrendingUp size={14} /> Top {data?.top_percentage ?? 0}% among {data?.active_aspirants ? data.active_aspirants.toLocaleString() : '24,000'}+ active aspirants
                 </span>
               }
@@ -133,7 +133,7 @@ export function MonthlyReportPage() {
               title="OVERALL PERCENTILE"
               value={`${data?.overall_percentile ?? 0} %ile`}
               supportingText={
-                <span style={{ color: data?.percentile_delta && data.percentile_delta >= 0 ? '#3A8B53' : '#F2B623' }}>
+                <span style={{ color: data?.percentile_delta && data.percentile_delta >= 0 ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
                   {data?.percentile_delta && data.percentile_delta >= 0 ? '↑ Up' : '↓ Down'} {Math.abs(data?.percentile_delta ?? 0)} %ile from last month ({data?.previous_month_percentile ?? 0} %ile)
                 </span>
               }
@@ -157,7 +157,7 @@ export function MonthlyReportPage() {
             
             {/* Monthly Percentile Growth Curve Card */}
             <div style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               padding: 24,
               borderRadius: 0,
               border: '1px solid #E2E8F0',
@@ -170,10 +170,10 @@ export function MonthlyReportPage() {
             }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <TrendingUp size={18} color="#E31B23" /> Monthly Percentile Growth Trajectory
                   </h3>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: 'var(--bg-base)', color: 'var(--primary-red)' }}>
                     {data?.monthly_growth_curve?.length || 0} Months Tracked
                   </span>
                 </div>
@@ -182,10 +182,10 @@ export function MonthlyReportPage() {
                   {visibleGrowthItems.map((pt, idx) => (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
-                        <span style={{ color: '#172033' }}>{pt.month}</span>
-                        <span style={{ color: '#E31B23' }}>{pt.percentile} %ile</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{pt.month}</span>
+                        <span style={{ color: 'var(--primary-red)' }}>{pt.percentile} %ile</span>
                       </div>
-                      <div style={{ height: 10, width: '100%', backgroundColor: '#F1F5F9', borderRadius: 0, overflow: 'hidden' }}>
+                      <div style={{ height: 10, width: '100%', backgroundColor: 'var(--bg-muted)', borderRadius: 0, overflow: 'hidden' }}>
                         <div 
                           style={{ 
                             height: '100%', 
@@ -199,7 +199,7 @@ export function MonthlyReportPage() {
                     </div>
                   ))}
                   {visibleGrowthItems.length === 0 && (
-                    <div style={{ textAlign: 'center', color: '#64748B', fontSize: 13, padding: 30 }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: 30 }}>
                       No growth trajectory records available.
                     </div>
                   )}
@@ -208,7 +208,7 @@ export function MonthlyReportPage() {
 
               {/* Card Pagination Footer */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
-                <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
                   Page {growthPage + 1} of {growthTotalPages}
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -217,8 +217,8 @@ export function MonthlyReportPage() {
                     disabled={growthPage === 0}
                     style={{
                       padding: '5px 9px', borderRadius: 0, border: '1px solid #E2E8F0',
-                      backgroundColor: growthPage === 0 ? '#F8FAFC' : '#FFFFFF',
-                      color: growthPage === 0 ? '#CBD5E1' : '#172033',
+                      backgroundColor: growthPage === 0 ? 'var(--bg-base)' : 'var(--bg-card)',
+                      color: growthPage === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
                       cursor: growthPage === 0 ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
@@ -230,8 +230,8 @@ export function MonthlyReportPage() {
                     disabled={growthPage >= growthTotalPages - 1}
                     style={{
                       padding: '5px 9px', borderRadius: 0, border: '1px solid #E2E8F0',
-                      backgroundColor: growthPage >= growthTotalPages - 1 ? '#F8FAFC' : '#FFFFFF',
-                      color: growthPage >= growthTotalPages - 1 ? '#CBD5E1' : '#172033',
+                      backgroundColor: growthPage >= growthTotalPages - 1 ? 'var(--bg-base)' : 'var(--bg-card)',
+                      color: growthPage >= growthTotalPages - 1 ? 'var(--text-muted)' : 'var(--text-primary)',
                       cursor: growthPage >= growthTotalPages - 1 ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
@@ -244,7 +244,7 @@ export function MonthlyReportPage() {
 
             {/* Subject National Benchmarking Card */}
             <div style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               padding: 24,
               borderRadius: 0,
               border: '1px solid #E2E8F0',
@@ -257,34 +257,34 @@ export function MonthlyReportPage() {
             }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Target size={18} color="#3A8B53" /> Subject Accuracy vs National Average
                   </h3>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: '#ECFDF5', color: '#3A8B53' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: 'rgba(58, 139, 83, 0.1)', color: 'var(--success-green)' }}>
                     {data?.subject_benchmark?.length || 0} Subjects
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                   {visibleSubjectItems.map((sb, idx) => (
-                    <div key={idx} style={{ padding: '8px 12px', borderRadius: 0, backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                    <div key={idx} style={{ padding: '8px 12px', borderRadius: 0, backgroundColor: 'var(--bg-base)', border: '1px solid #F1F5F9' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>
-                        <span style={{ color: '#172033' }}>{sb.subject}</span>
-                        <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? '#3A8B53' : '#F2B623' }}>
-                          {sb.user_accuracy}% <span style={{ fontSize: 10.5, color: '#64748B', fontWeight: 400 }}>(National: {sb.national_avg_accuracy}%)</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{sb.subject}</span>
+                        <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
+                          {sb.user_accuracy}% <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>(National: {sb.national_avg_accuracy}%)</span>
                         </span>
                       </div>
                       
                       {/* Visual Comparison Bars */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={{ height: 5, width: '100%', backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${sb.user_accuracy}%`, backgroundColor: sb.user_accuracy >= sb.national_avg_accuracy ? '#3A8B53' : '#F2B623', borderRadius: 0 }} />
+                        <div style={{ height: 5, width: '100%', backgroundColor: 'var(--border-color)', borderRadius: 0, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${sb.user_accuracy}%`, backgroundColor: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)', borderRadius: 0 }} />
                         </div>
                       </div>
                     </div>
                   ))}
                   {visibleSubjectItems.length === 0 && (
-                    <div style={{ textAlign: 'center', color: '#64748B', fontSize: 13, padding: 30 }}>
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: 30 }}>
                       No subject benchmark data calculated yet.
                     </div>
                   )}
@@ -293,7 +293,7 @@ export function MonthlyReportPage() {
 
               {/* Card Pagination Footer */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14, borderTop: '1px solid #F1F5F9' }}>
-                <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>
                   Page {subjectPage + 1} of {subjectTotalPages}
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -302,8 +302,8 @@ export function MonthlyReportPage() {
                     disabled={subjectPage === 0}
                     style={{
                       padding: '5px 9px', borderRadius: 0, border: '1px solid #E2E8F0',
-                      backgroundColor: subjectPage === 0 ? '#F8FAFC' : '#FFFFFF',
-                      color: subjectPage === 0 ? '#CBD5E1' : '#172033',
+                      backgroundColor: subjectPage === 0 ? 'var(--bg-base)' : 'var(--bg-card)',
+                      color: subjectPage === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
                       cursor: subjectPage === 0 ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
@@ -315,8 +315,8 @@ export function MonthlyReportPage() {
                     disabled={subjectPage >= subjectTotalPages - 1}
                     style={{
                       padding: '5px 9px', borderRadius: 0, border: '1px solid #E2E8F0',
-                      backgroundColor: subjectPage >= subjectTotalPages - 1 ? '#F8FAFC' : '#FFFFFF',
-                      color: subjectPage >= subjectTotalPages - 1 ? '#CBD5E1' : '#172033',
+                      backgroundColor: subjectPage >= subjectTotalPages - 1 ? 'var(--bg-base)' : 'var(--bg-card)',
+                      color: subjectPage >= subjectTotalPages - 1 ? 'var(--text-muted)' : 'var(--text-primary)',
                       cursor: subjectPage >= subjectTotalPages - 1 ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}

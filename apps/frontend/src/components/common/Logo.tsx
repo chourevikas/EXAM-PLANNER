@@ -26,18 +26,6 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
           <span style={{ color: inverted ? '#ffffff' : '#111111' }}>exam</span>
           <span style={{ color: '#E31B23' }}>planner</span>
         </div>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: '0.7px',
-            textTransform: 'uppercase',
-            lineHeight: 1,
-            color: inverted ? C.slate400 : C.muted,
-          }}
-        >
-          ADAPTIVE
-        </div>
       </div>
     </div>
   );

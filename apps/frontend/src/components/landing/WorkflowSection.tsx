@@ -14,7 +14,7 @@ export function WorkflowSection() {
     { n: 1, icon: <Ico.Book />,    title: 'Solve PYQs',                  desc: '10,000+ curated questions across all subjects and years.' },
     { n: 2, icon: <Ico.Brain />,   title: 'Real-Time Pattern Analysis', desc: 'Your response patterns mapped to knowledge gaps in real-time.' },
     { n: 3, icon: <Ico.Target />,  title: 'Find Weak Areas',             desc: 'Precise identification of subtopics draining your score.' },
-    { n: 4, icon: <Ico.Cal />,     title: 'Build Study Plan',            desc: 'Adaptive daily plan calibrated to your target exam date.' },
+    { n: 4, icon: <Ico.Cal />,     title: 'Build Study Plan',            desc: 'Daily plan calibrated to your target exam date.' },
     { n: 5, icon: <Ico.Trend />,   title: 'Improve & Crack',             desc: 'Track measurable accuracy gains as confidence compounds.' },
   ];
 
@@ -63,7 +63,7 @@ export function WorkflowSection() {
             className="section-heading"
             style={{ fontWeight: 800, color: '#F8FAFC', marginBottom: 16 }}
           >
-            How the Adaptive Platform Works
+            How the Platform Works
           </h2>
           <p
             className="section-subheading"

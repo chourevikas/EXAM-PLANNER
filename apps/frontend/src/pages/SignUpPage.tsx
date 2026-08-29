@@ -93,7 +93,7 @@ export function SignUpPage() {
         >
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>Create Account</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your adaptive exam preparation</p>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your exam preparation</p>
           </div>
 
           {errorMsg && (

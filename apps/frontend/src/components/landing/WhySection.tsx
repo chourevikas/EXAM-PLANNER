@@ -91,7 +91,7 @@ export function WhySection() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
-                'IRT-calibrated adaptive question selection',
+                'IRT-calibrated question selection',
                 'Behavioral performance fingerprinting',
                 'Subject-level mastery heat maps',
               ].map((pt) => (
@@ -249,7 +249,7 @@ export function WhySection() {
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
-                    Adaptive Plans
+                    Study Plans
                   </div>
                   <h3
                     style={{

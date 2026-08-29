@@ -468,7 +468,7 @@ export function StudyPlannerPage() {
             <Ico.Cal size={14} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Weekly Schedule & Logger</span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Adaptive Study Planner</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Study Planner</h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Structure your weekly targets and log actual study hours.</p>
         </div>
 

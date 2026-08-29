@@ -231,7 +231,7 @@ export function MockSelectionPage() {
             textTransform: 'uppercase',
             letterSpacing: '0.04em'
           }}>
-            <Zap size={13} fill="#4338CA" color="#4338CA" /> ADAPTIVE PRACTICE
+            <Zap size={13} fill="#4338CA" color="#4338CA" /> PRACTICE
           </div>
 
           <h1 style={{
