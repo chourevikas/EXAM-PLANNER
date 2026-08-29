@@ -40,7 +40,14 @@ class TestimonialOut(BaseModel):
 
 
 INITIAL_TESTIMONIALS = [
-
+    {
+        "user_name": "Arjun Sharma",
+        "user_exam": "UPSC CSE 2024 · Rank 47",
+        "user_photo": "/reviewer_arjun.png",
+        "rating": 5,
+        "quote": "ExamPlanner completely changed how I prepared. The platform identified my weak spots in Polity within days — accuracy jumped from 54% to 83% in just two months.",
+        "status": TestimonialStatus.APPROVED,
+    },
     {
         "user_name": "Priya Nair",
         "user_exam": "UPSC CSE 2024 · Selected IAS",

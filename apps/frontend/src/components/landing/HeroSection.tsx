@@ -19,6 +19,35 @@ const QUESTION_COUNTS = [5, 10, 15, 20];
 export function HeroSection({ }: HeroSectionProps) {
   const navigate = useNavigate();
 
+  // Global search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
   // Dynamic 3-level taxonomy state fetched directly from Syllabus API (/api/v1/syllabus)
   const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
   const [subjectsList, setSubjectsList] = useState<string[]>([]);
@@ -202,8 +231,8 @@ export function HeroSection({ }: HeroSectionProps) {
                 display: 'block',
               }}
             >
-              Test your exam readiness. <br />
-              <span style={{ color: '#E31B23', fontWeight: 800 }}>Start in 60 seconds.</span>
+              Master UPSC with <br />
+              <span style={{ color: '#E31B23', fontWeight: 800 }}>Precision Analytics.</span>
             </h1>
 
             {/* Premium Mock Builder Form Card */}
@@ -520,9 +549,186 @@ export function HeroSection({ }: HeroSectionProps) {
           </div>
 
           {/* Right Column: Hero Illustration Animation */}
-          <div className="hero-illustration-wrap" style={{ paddingTop: 'clamp(0px, 4vw, 90px)' }}>
+          <div
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              minHeight: 460,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              perspective: 1200,
+            }}
+          >
+            {/* Soft backdrop glow */}
+            <div
+              style={{
+                position: 'absolute',
+                width: '85%',
+                height: '85%',
+                background: 'radial-gradient(circle at center, rgba(227,27,35,0.08) 0%, transparent 70%)',
+                filter: 'blur(30px)',
+                zIndex: 0,
+              }}
+            />
+
             <HeroIllustration />
           </div>
+
+          {/* Right Column: Global Search Feature (Hidden for now) */}
+          {false && (
+            <div className="hero-search-wrap" style={{ paddingTop: 40, position: 'relative' }}>
+              <div style={{ marginBottom: 16 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: '#172033', margin: 0 }}>
+                  Explore Global Search
+                </h2>
+                <p style={{ fontSize: 14, color: '#64748B', marginTop: 8 }}>
+                  Quickly find Mock Tests, PYQs, and specific Topics across the platform.
+                </p>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <form
+                  onSubmit={(e) => e.preventDefault()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#FFFFFF',
+                    borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.1)',
+                    border: '1px solid #E2E8F0',
+                    overflow: 'visible',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    height: 52
+                  }}
+                >
+                  <select
+                    style={{
+                      padding: '0 16px',
+                      border: 'none',
+                      borderRight: '1px solid #E2E8F0',
+                      background: 'transparent',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#172033',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      borderRadius: '8px 0 0 8px',
+                      height: '100%'
+                    }}
+                  >
+                    <option value="All Exams">All Exams</option>
+                    <option value="UPSC CSE">UPSC CSE</option>
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Search a topic, year, or question..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    style={{
+                      flex: 1,
+                      padding: '0 16px',
+                      border: 'none',
+                      fontSize: 15,
+                      color: '#172033',
+                      outline: 'none',
+                      height: '100%'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    style={{
+                      background: '#E31B23',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '0 24px',
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      borderRadius: '0 8px 8px 0',
+                      transition: 'background 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#C1121F')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#E31B23')}
+                  >
+                    Search
+                  </button>
+                </form>
+
+                {/* Autocomplete Dropdown */}
+                {showDropdown && searchQuery.trim().length > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      marginTop: 8,
+                      background: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.12)',
+                      zIndex: 100,
+                      maxHeight: 400,
+                      overflowY: 'auto',
+                      borderRadius: 8
+                    }}
+                  >
+                    {isSearching ? (
+                      <div style={{ padding: '16px', fontSize: 13, color: '#64748B', textAlign: 'center' }}>Searching...</div>
+                    ) : searchResults ? (
+                      <>
+                        {(searchResults?.topics?.length || 0) > 0 && (
+                          <div>
+                            <div style={{ padding: '8px 12px', background: '#F8FAFC', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Topics & Concepts</div>
+                            {searchResults?.topics.map((t) => (
+                              <div key={t.id} onClick={() => { setShowDropdown(false); navigate(t.url); }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>{t.title}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>{t.type}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(searchResults?.pyqs?.length || 0) > 0 && (
+                          <div>
+                            <div style={{ padding: '8px 12px', background: '#F8FAFC', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Previous Year Papers</div>
+                            {searchResults?.pyqs.map((p) => (
+                              <div key={p.id} onClick={() => { setShowDropdown(false); navigate(p.url); }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>{p.title}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>{p.type}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(searchResults?.mocks?.length || 0) > 0 && (
+                          <div>
+                            <div style={{ padding: '8px 12px', background: '#F8FAFC', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>Mock Tests</div>
+                            {searchResults?.mocks.map((m) => (
+                              <div key={m.id} onClick={() => { setShowDropdown(false); navigate(m.url); }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #F1F5F9' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>{m.title}</div>
+                                <div style={{ fontSize: 11, color: '#64748B' }}>{m.type}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(!searchResults?.topics.length && !searchResults?.pyqs.length && !searchResults?.mocks.length) && (
+                          <div style={{ padding: '16px', fontSize: 13, color: '#64748B', textAlign: 'center' }}>No results found</div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>

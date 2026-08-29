@@ -1580,7 +1580,7 @@ export function GuestExamPage() {
         {!isMobile && (
           <aside
             style={{
-              width: 270,
+              width: 380,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: 0,

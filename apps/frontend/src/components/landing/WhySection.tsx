@@ -2,9 +2,9 @@ import React from 'react';
 import { Ico } from '../common/Icons';
 
 const palettes = {
-  blue:   { color: '#E31B23', bg: 'rgba(227,27,35,0.08)',  border: 'rgba(227,27,35,0.2)',  glow: 'rgba(227,27,35,0.15)'  },
+  blue: { color: '#E31B23', bg: 'rgba(227,27,35,0.08)', border: 'rgba(227,27,35,0.2)', glow: 'rgba(227,27,35,0.15)' },
   violet: { color: '#F2B623', bg: 'rgba(242,182,35,0.08)', border: 'rgba(242,182,35,0.2)', glow: 'rgba(242,182,35,0.15)' },
-  emerald:{ color: '#3A8B53', bg: 'rgba(58,139,83,0.08)', border: 'rgba(58,139,83,0.2)', glow: 'rgba(58,139,83,0.15)' },
+  emerald: { color: '#3A8B53', bg: 'rgba(58,139,83,0.08)', border: 'rgba(58,139,83,0.2)', glow: 'rgba(58,139,83,0.15)' },
 };
 
 export function WhySection() {
@@ -91,7 +91,7 @@ export function WhySection() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
-                'IRT-calibrated question selection',
+                'IRT-calibrated adaptive question selection',
                 'Behavioral performance fingerprinting',
                 'Subject-level mastery heat maps',
               ].map((pt) => (
@@ -249,7 +249,7 @@ export function WhySection() {
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
-                    Study Plans
+                    Adaptive Plans
                   </div>
                   <h3
                     style={{

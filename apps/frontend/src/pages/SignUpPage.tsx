@@ -10,13 +10,13 @@ export function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,7 +93,7 @@ export function SignUpPage() {
         >
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>Create Account</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your exam preparation</p>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Start your adaptive exam preparation</p>
           </div>
 
           {errorMsg && (

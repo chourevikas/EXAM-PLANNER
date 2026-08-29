@@ -93,7 +93,7 @@ export function QuestionSolutionMarkdownCard({
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
       >
-        <Sparkles size={18} className="animate-spin" color="#E31B23" />
+        <Sparkles size={18} className="animate-spin text-blue-600" />
         <span style={{ fontSize: 14, fontWeight: 600 }}>Loading Comprehensive Solution & Distractor Analysis...</span>
       </div>
     );

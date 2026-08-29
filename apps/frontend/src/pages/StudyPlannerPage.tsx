@@ -48,8 +48,8 @@ function renderActivityCategoryDropdowns(
     if (act === 'CONCEPT_REVISION' || act === 'NOTES_REVIEW' || act === 'PRACTICE_MCQS' || act === 'PYQ_SOLVING' || act === 'MOCK_TEST') return false;
     const titleLower = (t.title || '').toLowerCase();
     return !titleLower.includes('revision') && !titleLower.includes('review') &&
-           !titleLower.includes('mcq') && !titleLower.includes('test') &&
-           !titleLower.includes('quiz') && !titleLower.includes('pyq') && !titleLower.includes('practice');
+      !titleLower.includes('mcq') && !titleLower.includes('test') &&
+      !titleLower.includes('quiz') && !titleLower.includes('pyq') && !titleLower.includes('practice');
   });
 
   const revisions = tasksList.filter(t => {
@@ -283,7 +283,7 @@ export function StudyPlannerPage() {
     setLoading(true);
     try {
       let schData = await fetchWeeklySchedule();
-      
+
       // Auto-generate full 7-day weekly plan if schedule is empty for the current week
       const totalWeekTasks = schData?.days?.reduce((acc, d) => acc + (d.tasks?.length || 0), 0) || 0;
       if (schData && schData.days && totalWeekTasks === 0) {
@@ -456,7 +456,7 @@ export function StudyPlannerPage() {
       />
 
       {/* Header Hero Banner */}
-      <section style={{ 
+      <section style={{
         marginBottom: 32, padding: 32, borderRadius: 0,
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
@@ -468,7 +468,7 @@ export function StudyPlannerPage() {
             <Ico.Cal size={14} />
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Weekly Schedule & Logger</span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Study Planner</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Adaptive Study Planner</h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Structure your weekly targets and log actual study hours.</p>
         </div>
 
@@ -555,10 +555,10 @@ export function StudyPlannerPage() {
         </div>
       ) : (
         <div style={{ width: '100%' }}>
-          
+
           {/* Main Tab Views */}
           <div>
-            
+
             {/* TAB 1: 7-DAY WEEKLY BOARD */}
             {activeTab === 'weekly' && schedule && (() => {
               const todayDay = schedule.days.find(d => d.is_today) || schedule.days[0];
@@ -569,7 +569,7 @@ export function StudyPlannerPage() {
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                  
+
                   {/* Top Bar info */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                     <div>

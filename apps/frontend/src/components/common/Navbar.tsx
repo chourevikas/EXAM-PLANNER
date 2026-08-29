@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { Logo } from './Logo';
 import { Ico } from './Icons';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -9,8 +11,18 @@ interface NavbarProps {
 }
 
 export function Navbar({ onLogin, onSignup }: NavbarProps) {
+  const navigate = useNavigate();
+  const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const hasCustomToken = !!localStorage.getItem('access_token');
+    if (isLoaded && (isSignedIn || hasCustomToken)) {
+      setIsUserLoggedIn(true);
+    }
+  }, [isLoaded, isSignedIn]);
   const { isTabletOrBelow } = useBreakpoint();
 
   useEffect(() => {
@@ -135,13 +147,23 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
 
           {/* Desktop Action Buttons (Get Started CTA on far right) */}
           <div className="hidden md:flex" style={{ alignItems: 'center', gap: 14 }}>
-            <button
-              className="btn btn-primary anim-glow touch-target"
-              style={{ padding: '10px 24px', fontSize: 14 }}
-              onClick={onLogin}
-            >
-              Get Started
-            </button>
+            {isUserLoggedIn ? (
+              <button
+                className="btn btn-primary anim-glow"
+                style={{ padding: '10px 24px', fontSize: 14 }}
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary anim-glow touch-target"
+                style={{ padding: '10px 24px', fontSize: 14 }}
+                onClick={onLogin}
+              >
+                Get Started
+              </button>
+            )}
           </div>
 
           {/* Mobile Right Actions (Hamburger Toggle) */}
@@ -201,7 +223,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                 }}
               >
                 <button
-                  className="btn btn-primary anim-glow touch-target"
+                  className="btn btn-primary anim-glow"
                   style={{ width: '100%', padding: '12px', fontSize: 15 }}
                   onClick={handleLoginClick}
                 >

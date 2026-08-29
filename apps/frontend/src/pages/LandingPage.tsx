@@ -21,13 +21,8 @@ export function LandingPage({ initialAuthMode }: LandingPageProps) {
   const navigate = useNavigate();
   const { isSignedIn, isLoaded } = useAuth();
 
-  useEffect(() => {
-    const hasCustomToken = !!localStorage.getItem('access_token');
-    if (isLoaded && (isSignedIn || hasCustomToken)) {
-      sessionStorage.removeItem('latest_synced_attempt_id');
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isLoaded, isSignedIn, navigate]);
+  // Remove automatic redirect so logged-in users can view the homepage.
+  // We'll let the Navbar display a 'Dashboard' button instead.
 
   const getInitialOpen = () => {
     if (initialAuthMode) return true;

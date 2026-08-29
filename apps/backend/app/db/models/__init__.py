@@ -22,6 +22,7 @@ from app.db.models.user import (
     AdminProfile,
     AdminApprovalLog,
     RefreshToken,
+    QuestionBookmark,
 )
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.passage import Passage, PassageTranslation
@@ -94,6 +95,7 @@ __all__ = [
     "AdminProfile",
     "AdminApprovalLog",
     "RefreshToken",
+    "QuestionBookmark",
     "Exam",
     "SyllabusVersion",
     "Subject",

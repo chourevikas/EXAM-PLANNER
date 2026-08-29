@@ -541,8 +541,8 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             }}
             className="touch-target"
             style={{
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.2)',
               backgroundColor: '#E31B23',
@@ -550,12 +550,15 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#ffffff',
+              padding: 0
             }}
             title="User Menu"
             aria-label="User Menu"
           >
-            <UserAvatar userOrImage={user} size={32} fullName={user?.full_name} />
+            {user?.full_name ? user.full_name.substring(0, 2).toUpperCase() : 'AD'}
           </button>
 
           {showProfileMenu && (

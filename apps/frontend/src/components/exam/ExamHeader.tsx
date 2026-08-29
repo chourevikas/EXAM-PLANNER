@@ -1,6 +1,5 @@
 import React from 'react';
 import { Clock, ChevronRight } from 'lucide-react';
-import { Logo } from '../common/Logo';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamHeaderProps {
@@ -75,7 +74,24 @@ export function ExamHeader({
     >
       {/* Left: Brand Logo & Paper Metadata */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 12px)', minWidth: 0, flexShrink: 0 }}>
-        <Logo inverted={true} />
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 0,
+            backgroundColor: '#E31B23',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontSize: 15,
+            flexShrink: 0,
+            boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
+          }}
+        >
+          <Shield size={18} color="#FFFFFF" />
+        </div>
 
         {!isTabletOrBelow && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>

@@ -104,14 +104,15 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           }}
         >
           Join thousands of aspirants using adaptive diagnostics to rank higher.
+          Join thousands of aspirants using adaptive diagnostics to rank higher.
           Start free — no credit card, no commitment.
         </p>
         <div
           style={{
             display: 'flex',
-            gap: 14,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
           }}
         >
           <button
@@ -119,7 +120,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             style={{ fontSize: 16, padding: '14px 32px' }}
             onClick={onSignup}
           >
-            Start Preparing Free <Ico.Arrow />
+            Create Your Free Account <Ico.Arrow />
           </button>
           <button className="btn-dark touch-target" style={{ padding: '14px 28px' }} onClick={onLogin}>
             Login to Continue

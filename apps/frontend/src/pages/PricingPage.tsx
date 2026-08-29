@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { 
-  Zap, 
-  Check, 
-  Star, 
-  ShieldCheck, 
-  CreditCard, 
-  QrCode, 
-  Building2, 
-  Sparkles, 
+import {
+  Zap,
+  Check,
+  Star,
+  ShieldCheck,
+  CreditCard,
+  QrCode,
+  Building2,
+  Sparkles,
   ArrowRight,
   CheckCircle2,
   Lock,
@@ -31,7 +31,7 @@ export function PricingPage() {
   const priceAnnualMonthly = 499;
   const priceAnnualTotal = 5988; // 499 * 12
 
-  const finalAmount = billingCycle === 'annual' 
+  const finalAmount = billingCycle === 'annual'
     ? (discountApplied ? Math.round(priceAnnualTotal * 0.85) : priceAnnualTotal)
     : (discountApplied ? Math.round(priceMonthly * 0.85) : priceMonthly);
 
@@ -48,7 +48,7 @@ export function PricingPage() {
     setTimeout(() => {
       setIsProcessing(false);
       setPaymentSuccess(true);
-      
+
       // Update user in localStorage
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
       const updatedUser = { ...currentUser, subscription_tier: 'PREMIUM' };
@@ -64,7 +64,7 @@ export function PricingPage() {
     'Unlimited Access to 25+ Years UPSC CSE PYQs',
     'Full-Length & Sectional Smart Mock Test Series',
     'Deep Psychometric Option Hesitation & Mistake Tracking',
-    'Dynamic Daily Study Planner',
+    'Dynamic Adaptive Daily Study Planner',
     'All India Rank Projection & Percentile Matrix',
     'Priority 24/7 Doubt Resolution & Detailed Explanations',
     'Export Performance Reports & Revision Worksheets'
@@ -73,7 +73,7 @@ export function PricingPage() {
   return (
     <StudentLayout pageTitle="Pro Subscription">
       {/* Header Banner */}
-      <section style={{ 
+      <section style={{
         marginBottom: 36, padding: '40px 32px', borderRadius: 0,
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
@@ -128,7 +128,7 @@ export function PricingPage() {
 
       {/* Pricing Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 28, maxWidth: 960, margin: '0 auto 40px auto' }}>
-        
+
         {/* Free Plan Card */}
         <div style={{
           backgroundColor: 'var(--bg-card)', padding: 32, borderRadius: 0,
@@ -196,7 +196,7 @@ export function PricingPage() {
               ExamPlanner Pro Membership
             </div>
             <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
-              {billingCycle === 'annual' ? '₹499' : '₹999'} 
+              {billingCycle === 'annual' ? '₹499' : '₹999'}
               <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-muted)' }}>/ month</span>
             </div>
             <div style={{ fontSize: 13, color: 'var(--success-primary)', fontWeight: 600, marginBottom: 20 }}>
@@ -324,7 +324,7 @@ export function PricingPage() {
                   <label style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 10 }}>
                     Select Payment Method
                   </label>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                     {[
                       { id: 'upi', label: 'UPI / QR', icon: QrCode },

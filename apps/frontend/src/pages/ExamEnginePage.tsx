@@ -24,6 +24,7 @@ import {
   listExams,
   ExamItem,
 } from '../services/examService';
+import { addBookmark, removeBookmark } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
 
@@ -534,6 +535,27 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }, [attemptId, timeLeft, activeQuestion]);
 
   // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
+  const handleToggleBookmark = async () => {
+    if (!activeQuestion) return;
+    const qId = String(activeQuestion.question_id || (activeQuestion as any).id);
+    const isBookmarked = !!bookmarkedQs[currentQIndex];
+    
+    // Optimistic update
+    setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !isBookmarked }));
+    
+    try {
+      if (isBookmarked) {
+        await removeBookmark(qId);
+      } else {
+        await addBookmark(qId);
+      }
+    } catch (err) {
+      console.error("Failed to toggle bookmark", err);
+      // Revert on failure
+      setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: isBookmarked }));
+    }
+  };
+
   const handleSelectOption = (optionId: string, optionLabel: string) => {
     if (activeQuestion) {
       const qId = activeQuestion.question_id;
@@ -973,7 +995,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 revealResult={activeQuestion ? revealResults[activeQuestion.question_id] : null}
                 isRevealing={isRevealing}
                 onSelectOption={handleSelectOption}
-                onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
+                onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
                 isPYQ={isPYQ}
