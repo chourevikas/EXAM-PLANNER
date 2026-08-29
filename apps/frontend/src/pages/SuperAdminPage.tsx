@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AdminApprovalRequest, AdminApprovalLog, SystemStats } from '../types/auth';
+import { AdminApprovalRequest, AdminApprovalLog, SystemStats, UserDirectoryItem } from '../types/auth';
 import {
   fetchPendingAdminRequests,
   fetchActiveAdmins,
@@ -9,6 +9,8 @@ import {
   reactivateAdmin,
   fetchAuditLogs,
   fetchSystemStats,
+  fetchPlatformUsers,
+  updateUserRole,
 } from '../services/adminService';
 
 import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
@@ -18,7 +20,16 @@ import { SuperAdminTab, SuperAdminTabNav } from '../components/superadmin/SuperA
 import { PendingApprovalsTab } from '../components/superadmin/PendingApprovalsTab';
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
+import { AllUsersTab } from '../components/superadmin/AllUsersTab';
+import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
 import { RejectionModal } from '../components/superadmin/RejectionModal';
+import {
+  TestimonialItem,
+  fetchAllTestimonialsForAdmin,
+  approveTestimonial,
+  rejectTestimonial as rejectTestimonialApi,
+  deleteTestimonial as deleteTestimonialApi,
+} from '../services/testimonialService';
 
 export function SuperAdminPage() {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('pending');
@@ -37,6 +48,12 @@ export function SuperAdminPage() {
 
   const [auditLogs, setAuditLogs] = useState<AdminApprovalLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
+
+  const [allUsers, setAllUsers] = useState<UserDirectoryItem[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
@@ -65,6 +82,32 @@ export function SuperAdminPage() {
     loadPending();
     loadActive();
     loadLogs();
+    loadUsers();
+    loadTestimonials();
+  };
+
+  const loadTestimonials = async () => {
+    setTestimonialsLoading(true);
+    try {
+      const data = await fetchAllTestimonialsForAdmin();
+      setTestimonials(data);
+    } catch (err: any) {
+      console.error('Failed testimonials fetch:', err);
+    } finally {
+      setTestimonialsLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const data = await fetchPlatformUsers();
+      setAllUsers(data);
+    } catch (err: any) {
+      console.error('Failed users fetch:', err);
+    } finally {
+      setUsersLoading(false);
+    }
   };
 
   const loadStats = async () => {
@@ -183,6 +226,56 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string, userName: string) => {
+    try {
+      await updateUserRole(userId, newRole);
+      showToast(`Updated role for ${userName} to ${newRole}`);
+      loadAllData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update user role', true);
+    }
+  };
+
+  const handleApproveTestimonial = async (id: string, name: string) => {
+    setProcessingId(id);
+    try {
+      await approveTestimonial(id);
+      showToast(`Approved student testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to approve testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectTestimonial = async (id: string, name: string) => {
+    setProcessingId(id);
+    try {
+      await rejectTestimonialApi(id, 'Inappropriate or invalid submission');
+      showToast(`Rejected testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reject testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the story by ${name}?`)) return;
+    setProcessingId(id);
+    try {
+      await deleteTestimonialApi(id);
+      showToast(`Deleted testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const renderActiveTabContent = () => {
     switch (activeTab) {
       case 'pending':
@@ -215,6 +308,27 @@ export function SuperAdminPage() {
             onRefresh={loadLogs}
           />
         );
+      case 'users':
+        return (
+          <AllUsersTab
+            users={allUsers}
+            loading={usersLoading}
+            onRefresh={loadUsers}
+            onRoleChange={handleRoleChange}
+          />
+        );
+      case 'testimonials':
+        return (
+          <TestimonialApprovalsTab
+            testimonials={testimonials}
+            loading={testimonialsLoading}
+            processingId={processingId}
+            onApprove={handleApproveTestimonial}
+            onReject={handleRejectTestimonial}
+            onDelete={handleDeleteTestimonial}
+            onRefresh={loadTestimonials}
+          />
+        );
       default:
         return null;
     }
@@ -241,6 +355,7 @@ export function SuperAdminPage() {
           collapsed={sidebarCollapsed}
           onToggle={handleToggleSidebar}
           pendingCount={pendingRequests.length}
+          pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
         />
@@ -344,10 +459,15 @@ export function SuperAdminPage() {
               )}
 
               {/* KPI Executive Metric Cards */}
-              <SuperAdminStats stats={stats} loading={statsLoading} />
+              <SuperAdminStats stats={stats} loading={statsLoading} onSelectTab={setActiveTab} />
 
               {/* Horizontal Navigation Tabs */}
-              <SuperAdminTabNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pendingRequests.length} />
+              <SuperAdminTabNav
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                pendingCount={pendingRequests.length}
+                pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
+              />
 
               {/* Active Tab View */}
               {renderActiveTabContent()}

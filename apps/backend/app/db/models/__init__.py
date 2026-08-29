@@ -143,3 +143,7 @@ __all__ = [
     "ExamStatus",
     "Notification",
 ]
+
+from app.db.models.testimonial import Testimonial, TestimonialStatus
+
+__all__.extend(["Testimonial", "TestimonialStatus"])

@@ -114,6 +114,29 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return list(res.all())
 
+    async def get_all_users(self) -> List[User]:
+        stmt = (
+            select(User)
+            .options(
+                selectinload(User.student_profile),
+                selectinload(User.admin_profile),
+            )
+            .order_by(col(User.created_at).desc())
+        )
+        res = await self.session.exec(stmt)
+        return list(res.all())
+
+    async def update_user_role(self, user_id: uuid.UUID | str, new_role: UserRole) -> Optional[User]:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+        user.role = new_role
+        if new_role == UserRole.ADMIN and user.status == UserStatus.PENDING:
+            user.status = UserStatus.ACTIVE
+        self.session.add(user)
+        await self.session.commit()
+        return await self.get_by_id(user.id)
+
     async def suspend_admin(self, admin_id: uuid.UUID | str) -> Optional[User]:
         user = await self.get_by_id(admin_id)
         if not user or user.role != UserRole.ADMIN:

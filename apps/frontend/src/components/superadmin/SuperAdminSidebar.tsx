@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, ShieldAlert, Users, History } from 'lucide-react';
+import { Menu, ShieldAlert, Users, History, UserCheck, MessageSquareQuote } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 
 interface SuperAdminSidebarProps {
@@ -8,6 +8,7 @@ interface SuperAdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   pendingCount: number;
+  pendingTestimonialsCount?: number;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -18,6 +19,7 @@ export function SuperAdminSidebar({
   collapsed,
   onToggle,
   pendingCount,
+  pendingTestimonialsCount,
   mobileOpen = false,
   onCloseMobile,
 }: SuperAdminSidebarProps) {
@@ -33,6 +35,8 @@ export function SuperAdminSidebar({
     { id: 'pending', label: 'Pending Approvals', icon: ShieldAlert, badge: pendingCount },
     { id: 'active', label: 'Active Admins', icon: Users },
     { id: 'audit', label: 'Approval Audit Logs', icon: History },
+    { id: 'users', label: 'All Users & Roles', icon: UserCheck },
+    { id: 'testimonials', label: 'Testimonial Approvals', icon: MessageSquareQuote, badge: pendingTestimonialsCount },
   ];
 
   return (

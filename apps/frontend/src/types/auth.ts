@@ -86,3 +86,16 @@ export interface SystemStats {
   database_name: string;
   db_host: string;
 }
+
+export interface UserDirectoryItem {
+  id: string;
+  full_name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  organization_name?: string;
+  department?: string;
+  target_exam?: string;
+  target_year?: string;
+  created_at: string;
+}

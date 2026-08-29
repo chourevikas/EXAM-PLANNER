@@ -159,3 +159,23 @@ class AdminOverviewStatsOut(BaseModel):
     recent_uploads: list[RecentUploadItemOut]
     subject_breakdown: list[SubjectBreakdownItemOut]
 
+
+class UserDirectoryItemOut(BaseModel):
+    id: uuid.UUID | str
+    full_name: str
+    email: EmailStr
+    role: UserRole
+    status: UserStatus
+    organization_name: Optional[str] = None
+    department: Optional[str] = None
+    target_exam: Optional[str] = None
+    target_year: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateRolePayload(BaseModel):
+    new_role: UserRole
+
+
