@@ -389,12 +389,12 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#475569',
+              color: '#FFFFFF',
               transition: 'all 0.15s ease'
             }}
             title="Notifications"
           >
-            <Bell size={19} />
+            <Bell size={19} color="#FFFFFF" />
             {unreadCount > 0 && (
               <span
                 style={{

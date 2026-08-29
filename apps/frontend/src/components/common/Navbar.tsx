@@ -29,11 +29,21 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     };
   }, [mobileMenuOpen]);
 
-  const handleNavClick = (href: string) => {
+  // Strip any URL hash to keep URL completely clean (http://localhost:3000/)
+  useEffect(() => {
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleNavClick = (targetId: string) => {
     setMobileMenuOpen(false);
-    const element = document.querySelector(href);
+    const element = document.querySelector(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
   };
 
@@ -48,10 +58,10 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
   };
 
   const navItems = [
-    { label: 'Platform', href: '#features' },
-    { label: 'Methodology', href: '#how-it-works' },
-    { label: 'Plans', href: '#pricing' },
-    { label: 'About Us', href: '#footer' },
+    { label: 'Platform', targetId: '#features' },
+    { label: 'Methodology', targetId: '#how-it-works' },
+    { label: 'Plans', targetId: '#pricing' },
+    { label: 'About Us', targetId: '#footer' },
   ];
 
   return (
@@ -82,13 +92,21 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex" style={{ alignItems: 'center', gap: 32 }}>
             {navItems.map((item) => (
-              <a
+              <button
                 key={item.label}
-                href={item.href}
+                type="button"
                 className="nav-link"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  font: 'inherit',
+                }}
+                onClick={() => handleNavClick(item.targetId)}
               >
                 {item.label}
-              </a>
+              </button>
             ))}
           </div>
 
@@ -127,15 +145,23 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
           <div className="mobile-drawer-content md:hidden">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {navItems.map((item) => (
-                <a
+                <button
                   key={item.label}
-                  href={item.href}
+                  type="button"
                   className="nav-link"
-                  style={{ fontSize: 16, padding: '6px 0' }}
-                  onClick={() => handleNavClick(item.href)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 16,
+                    padding: '6px 0',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                  onClick={() => handleNavClick(item.targetId)}
                 >
                   {item.label}
-                </a>
+                </button>
               ))}
               <div
                 style={{

@@ -80,22 +80,41 @@ export function Footer() {
                   {col.h}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {col.links.map((l) => (
-                    <a
-                      key={l}
-                      href="#"
-                      style={{
-                        fontSize: 13,
-                        color: '#94a3b8',
-                        textDecoration: 'none',
-                        transition: 'color 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-                    >
-                      {l}
-                    </a>
-                  ))}
+                  {col.links.map((l) => {
+                    const handleFooterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+                      e.preventDefault();
+                      let targetId = '';
+                      if (l === 'Features') targetId = '#features';
+                      else if (l === 'How It Works') targetId = '#how-it-works';
+                      else if (l === 'Pricing') targetId = '#pricing';
+
+                      if (targetId) {
+                        const el = document.querySelector(targetId);
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }
+                      if (window.location.hash) {
+                        window.history.replaceState(null, '', window.location.pathname);
+                      }
+                    };
+
+                    return (
+                      <a
+                        key={l}
+                        href="#"
+                        onClick={handleFooterClick}
+                        style={{
+                          fontSize: 13,
+                          color: '#94a3b8',
+                          textDecoration: 'none',
+                          transition: 'color 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                      >
+                        {l}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             ))}
