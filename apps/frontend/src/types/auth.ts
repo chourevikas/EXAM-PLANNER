@@ -2,6 +2,7 @@ export enum UserRole {
   STUDENT = 'STUDENT',
   ADMIN = 'ADMIN',
   SUPER_ADMIN = 'SUPER_ADMIN',
+  TEACHER = 'TEACHER',
 }
 
 export enum UserStatus {
@@ -85,4 +86,19 @@ export interface SystemStats {
   aws_rds_status: string;
   database_name: string;
   db_host: string;
+}
+
+export interface UserDirectoryItem {
+  id: string;
+  full_name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  organization_name?: string;
+  department?: string;
+  target_exam?: string;
+  target_year?: string;
+  created_at: string;
+  suspended_at?: string;
+  updated_at?: string;
 }

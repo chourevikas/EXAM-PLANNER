@@ -16,6 +16,8 @@ from app.schemas.auth import (
     AdminApprovalLogOut,
     SystemStatsOut,
     AdminOverviewStatsOut,
+    UserDirectoryItemOut,
+    UpdateRolePayload,
 )
 from app.schemas.question import (
     QuestionDetailResponse,
@@ -74,6 +76,30 @@ async def list_active_admins(
     return await service.list_active_admins()
 
 
+@router.get("/all-users", response_model=List[UserDirectoryItemOut])
+async def list_all_users(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+):
+    service = AdminService(session)
+    return await service.list_all_users()
+
+
+@router.post("/users/{user_id}/role", response_model=UserOut)
+async def update_user_role(
+    user_id: str,
+    payload: UpdateRolePayload,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
+):
+    from app.cache import invalidate_user_cache, get_cache
+    service = AdminService(session)
+    res = await service.update_user_role(user_id=user_id, new_role=payload.new_role)
+    await invalidate_user_cache(str(user_id))
+    await get_cache().delete_pattern("ep:admin:*")
+    return res
+
+
 @router.post("/approve/{user_id}", response_model=UserOut)
 async def approve_admin_request(
     user_id: str,
@@ -129,7 +155,10 @@ async def reactivate_admin_user(
 ):
     from app.cache import invalidate_user_cache, get_cache
     service = AdminService(session)
-    res = await service.reactivate_admin_user(user_id=user_id)
+    try:
+        res = await service.reactivate_admin_user(user_id=user_id)
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
     await invalidate_user_cache(str(user_id))
     await get_cache().delete_pattern("ep:admin:overview_stats*")
     return res

@@ -1,14 +1,26 @@
 import React from 'react';
 import { ShieldAlert, Users, GraduationCap } from 'lucide-react';
 import { SystemStats } from '../../types/auth';
+import { SuperAdminTab } from './SuperAdminTabNav';
 
 interface SuperAdminStatsProps {
   stats: SystemStats | null;
   loading: boolean;
+  onSelectTab?: (tab: SuperAdminTab) => void;
 }
 
-export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
-  const cards = [
+export function SuperAdminStats({ stats, loading, onSelectTab }: SuperAdminStatsProps) {
+  const cards: {
+    title: string;
+    value: string | number;
+    badge: string;
+    badgeColor: string;
+    color: string;
+    bg: string;
+    border: string;
+    icon: any;
+    targetTab: SuperAdminTab;
+  }[] = [
     {
       title: 'Pending Approvals',
       value: loading ? '...' : stats?.pending_admins_count ?? 0,
@@ -18,6 +30,7 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
       bg: 'rgba(249, 115, 22, 0.12)',
       border: 'rgba(249, 115, 22, 0.25)',
       icon: ShieldAlert,
+      targetTab: 'pending',
     },
     {
       title: 'Active Admins',
@@ -28,6 +41,7 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
       bg: 'rgba(16, 185, 129, 0.12)',
       border: 'rgba(16, 185, 129, 0.25)',
       icon: Users,
+      targetTab: 'active',
     },
     {
       title: 'Active Students',
@@ -38,6 +52,7 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
       bg: 'rgba(59, 130, 246, 0.12)',
       border: 'rgba(59, 130, 246, 0.25)',
       icon: GraduationCap,
+      targetTab: 'users',
     },
   ];
 
@@ -48,11 +63,14 @@ export function SuperAdminStats({ stats, loading }: SuperAdminStatsProps) {
         return (
           <div
             key={idx}
+            onClick={() => onSelectTab && onSelectTab(card.targetTab)}
+            title={`Click to view ${card.title}`}
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border-color)',
               borderRadius: 20,
               padding: '24px 26px',
+              cursor: 'pointer',
               boxShadow: '0 10px 30px -10px rgba(15, 29, 56, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
               display: 'flex',
               flexDirection: 'column',

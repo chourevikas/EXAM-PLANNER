@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
+import { SuperAdminTopNav } from '../components/superadmin/SuperAdminTopNav';
+import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
+import { AdminTopNav } from '../components/admin/AdminTopNav';
+import { AdminSidebar } from '../components/admin/AdminSidebar';
 import {
   User,
   Target,
@@ -26,6 +30,7 @@ import { UserAvatar } from '../components/common/UserAvatar';
 const PREDEFINED_AVATARS = ['👨‍🎓', '👩‍🎓', '🚀', '🌟', '🧠', '🦉', '🎯', '📚'];
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const [user, setUser] = useState(() => {
     return JSON.parse(localStorage.getItem('user') || '{}');
@@ -33,6 +38,19 @@ export function ProfilePage() {
 
   const [activeTab, setActiveTab] = useState<'personal' | 'exam' | 'billing' | 'security'>('personal');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth <= 768;
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
+  const isAdmin = user.role === 'ADMIN';
 
   // Form Fields
   const [fullName, setFullName] = useState(user.full_name || 'Aspirant');
@@ -123,15 +141,27 @@ export function ProfilePage() {
 
   const isPro = user.subscription_tier === 'PREMIUM';
 
-  return (
-    <StudentLayout pageTitle="Account Settings">
+  const availableTabs = (isSuperAdmin || isAdmin)
+    ? [
+        { id: 'personal', label: 'Personal Info', icon: User },
+        { id: 'security', label: 'Security & Password', icon: Lock },
+      ]
+    : [
+        { id: 'personal', label: 'Personal Info', icon: User },
+        { id: 'exam', label: 'Exam Targets', icon: Target },
+        { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
+        { id: 'security', label: 'Security & Password', icon: Lock },
+      ];
+
+  const profileContent = (
+    <>
       {/* ─── Profile Hero Banner Card ─────────────────────────────────────────── */}
       <div
         style={{
-          backgroundColor: 'var(--bg-card)',
+          backgroundColor: 'var(--bg-card, #ffffff)',
           borderRadius: 24,
-          border: '1px solid var(--border-default)',
-          boxShadow: 'var(--shadow-color-base)',
+          border: '1px solid var(--border-default, #e2e8f0)',
+          boxShadow: 'var(--shadow-color-base, 0 4px 20px rgba(0,0,0,0.04))',
           padding: 32,
           marginBottom: 28,
           backgroundImage: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(91,92,235,0.04) 100%)',
@@ -150,18 +180,52 @@ export function ProfilePage() {
             fullName={fullName}
             style={{
               borderRadius: '50%',
-              border: '2px solid var(--accent-primary)',
-              boxShadow: '0 4px 16px var(--shadow-color-accent)'
+              border: '2px solid var(--accent-primary, #2563eb)',
+              boxShadow: '0 4px 16px var(--shadow-color-accent, rgba(37,99,235,0.25))'
             }}
           />
 
           {/* User Details */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: 0, letterSpacing: '-0.02em' }}>
                 {fullName}
               </h1>
-              {isPro ? (
+              {isSuperAdmin ? (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                    color: '#ea580c',
+                    border: '1px solid rgba(249, 115, 22, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  👑 SUPER ADMIN
+                </span>
+              ) : isAdmin ? (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                    color: '#2563eb',
+                    border: '1px solid rgba(37, 99, 235, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  🛡️ INSTITUTIONAL ADMIN
+                </span>
+              ) : isPro ? (
                 <span
                   style={{
                     fontSize: 11,
@@ -185,9 +249,9 @@ export function ProfilePage() {
                     fontWeight: 700,
                     padding: '3px 10px',
                     borderRadius: 20,
-                    backgroundColor: 'var(--bg-subtle)',
-                    color: 'var(--text-muted)',
-                    border: '1px solid var(--border-default)'
+                    backgroundColor: 'var(--bg-subtle, #f8fafc)',
+                    color: 'var(--text-muted, #64748b)',
+                    border: '1px solid var(--border-default, #e2e8f0)'
                   }}
                 >
                   Free Account
@@ -195,30 +259,58 @@ export function ProfilePage() {
               )}
             </div>
 
-            <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>
-              {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'aspirant@examplanner.com'} • Target: <strong style={{ color: 'var(--text-primary)' }}>{targetExam} {targetYear}</strong>
+            <div style={{ fontSize: 14, color: 'var(--text-muted, #64748b)', marginBottom: 12 }}>
+              {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'superadmin@examplanner.com'}
+              {!(isSuperAdmin || isAdmin) && (
+                <> • Target: <strong style={{ color: 'var(--text-primary, #0f172a)' }}>{targetExam} {targetYear}</strong></>
+              )}
+              {(isSuperAdmin || isAdmin) && (
+                <> • <strong style={{ color: '#2563eb' }}>Administrative Console Access</strong></>
+              )}
             </div>
 
             {/* Quick Badges */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                <Zap size={13} color="#f59e0b" fill="#f59e0b" />
-                <span>{user?.current_streak || 0}-Day Streak</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                <BookOpen size={13} color="#3b82f6" />
-                <span>{(user?.total_questions_attempted ?? user?.free_questions_attempted ?? 0).toLocaleString()} Questions Solved</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                <Award size={13} color="#10b981" />
-                <span>Level {user?.level || 1} Scholar</span>
-              </div>
+              {isSuperAdmin ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: '1px solid rgba(249, 115, 22, 0.25)' }}>
+                    <Shield size={13} color="#ea580c" />
+                    <span>Executive Security Clearance</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                    <Zap size={13} color="#2563eb" fill="#2563eb" />
+                    <span>Full Platform Control</span>
+                  </div>
+                </>
+              ) : isAdmin ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
+                    <Shield size={13} color="#2563eb" />
+                    <span>Institutional Admin Clearance</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <Zap size={13} color="#f59e0b" fill="#f59e0b" />
+                    <span>{user?.current_streak || 0}-Day Streak</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <BookOpen size={13} color="#3b82f6" />
+                    <span>{(user?.total_questions_attempted ?? user?.free_questions_attempted ?? 0).toLocaleString()} Questions Solved</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <Award size={13} color="#10b981" />
+                    <span>Level {user?.level || 1} Scholar</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Upgrade / Billing CTA if Free */}
-        {!isPro && (
+        {/* Upgrade / Billing CTA if Student & Free */}
+        {!(isSuperAdmin || isAdmin) && !isPro && (
           <Link
             to="/pricing"
             style={{
@@ -248,16 +340,11 @@ export function ProfilePage() {
           display: 'flex',
           gap: 8,
           marginBottom: 24,
-          borderBottom: '1px solid var(--border-default)',
+          borderBottom: '1px solid var(--border-default, #e2e8f0)',
           paddingBottom: 4
         }}
       >
-        {[
-          { id: 'personal', label: 'Personal Info', icon: User },
-          { id: 'exam', label: 'Exam Targets', icon: Target },
-          { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
-          { id: 'security', label: 'Security & Password', icon: Lock },
-        ].map((tab) => {
+        {availableTabs.map((tab) => {
           const TabIcon = tab.icon;
           const isActive = activeTab === tab.id;
 
@@ -272,13 +359,13 @@ export function ProfilePage() {
                 padding: '10px 18px',
                 borderRadius: 10,
                 border: 'none',
-                backgroundColor: isActive ? 'var(--accent-bg)' : 'transparent',
-                color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                backgroundColor: isActive ? 'var(--accent-bg, rgba(37,99,235,0.1))' : 'transparent',
+                color: isActive ? 'var(--accent-primary, #2563eb)' : 'var(--text-muted, #64748b)',
                 fontSize: 14,
                 fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                borderBottom: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent'
+                borderBottom: isActive ? '2px solid var(--accent-primary, #2563eb)' : '2px solid transparent'
               }}
             >
               <TabIcon size={16} />
@@ -855,6 +942,93 @@ export function ProfilePage() {
         </div>
 
       </form>
+    </>
+  );
+
+  if (isSuperAdmin) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
+        <SuperAdminTopNav
+          activeTab={'all_users' as any}
+          onNavigate={() => navigate('/super-admin')}
+          onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
+        />
+        <div style={{ display: 'flex', flex: 1, marginTop: 60 }}>
+          <SuperAdminSidebar
+            activeTab={'all_users' as any}
+            onNavigate={() => navigate('/super-admin')}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(prev => !prev)}
+            pendingCount={0}
+            pendingTestimonialsCount={0}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+          />
+          <div
+            style={{
+              flex: 1,
+              marginLeft: isMobile ? 0 : (sidebarCollapsed ? 68 : 240),
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: 0,
+              transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              width: '100%',
+            }}
+          >
+            <main style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '18px 20px' : '28px 36px', boxSizing: 'border-box' }}>
+              <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+                {profileContent}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAdmin) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F7F7F5', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
+        <AdminTopNav
+          user={user}
+          activeView="dashboard"
+          onNavigate={() => navigate('/admin')}
+          onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
+        />
+        <div style={{ display: 'flex', flex: 1, marginTop: '60px' }}>
+          <AdminSidebar
+            activeView="dashboard"
+            onNavigate={() => navigate('/admin')}
+            collapsed={sidebarCollapsed}
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
+          />
+          <div
+            style={{
+              flex: 1,
+              marginLeft: isMobile ? 0 : (sidebarCollapsed ? '68px' : '240px'),
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: 0,
+              transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              width: '100%'
+            }}
+          >
+            <main style={{ flex: 1, overflowY: 'auto', background: '#F7F7F5', padding: isMobile ? '16px 20px' : '24px 32px', boxSizing: 'border-box' }}>
+              <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+                {profileContent}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <StudentLayout pageTitle="Account Settings">
+      {profileContent}
     </StudentLayout>
   );
 }

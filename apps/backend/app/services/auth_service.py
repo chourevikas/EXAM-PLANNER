@@ -2,6 +2,7 @@ import uuid
 import jwt
 from datetime import datetime, timedelta
 from typing import Tuple, Optional
+from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models.user import User, UserRole, UserStatus
@@ -46,7 +47,24 @@ class AuthService:
     ) -> Tuple[TokenResponse, Optional[str]]:
         existing_user = await self.user_repo.get_by_email(user_in.email)
         if existing_user:
-            raise UserAlreadyExistsException(user_in.email)
+            if existing_user.status == UserStatus.SUSPENDED:
+                if existing_user.is_in_cooling_period:
+                    ends_at_str = (
+                        existing_user.cooling_period_ends_at.strftime("%b %d, %Y %H:%M UTC")
+                        if existing_user.cooling_period_ends_at
+                        else "7 days"
+                    )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"This email ({user_in.email}) is under a mandatory 7-day cooling period following account suspension. You can re-register with this email after {ends_at_str}.",
+                    )
+                else:
+                    # Cooling period expired (> 7 days). Release email for new account registration.
+                    existing_user.email = f"archived_{existing_user.id}_{existing_user.email}"
+                    self.session.add(existing_user)
+                    await self.session.commit()
+            else:
+                raise UserAlreadyExistsException(user_in.email)
 
         hashed_pw = get_password_hash(user_in.password)
         user_role = user_in.role or UserRole.STUDENT
@@ -122,7 +140,7 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            email_service.send_verification_email(user_out.email, verification_token)
+            await email_service.send_verification_email(user_out.email, verification_token)
         except Exception as e:
             logger.error(f"Failed to send verification email: {e}")
 
@@ -211,7 +229,7 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            email_service.send_password_reset_email(user.email, reset_token)
+            await email_service.send_password_reset_email(user.email, reset_token)
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
         return True

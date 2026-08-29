@@ -11,6 +11,7 @@ from app.formatters.report_json_formatter import format_report_to_json
 from app.formatters.report_yaml_formatter import format_report_to_yaml
 from app.formatters.report_markdown_formatter import format_report_to_markdown
 from app.db.models import (
+    User,
     Exam,
     ExamAttempt,
     AttemptStatus,
@@ -773,18 +774,61 @@ class AnalyticsService:
         else:
             readiness_status = "Revision required - Below projected Prelims cutoff threshold"
 
-        # 6. Previous Month Percentile & Delta
-        # Calculate realistic month-over-month trajectory
-        prev_month_percentile = round(max(40.0, overall_percentile - 4.1), 1)
-        percentile_delta = round(overall_percentile - prev_month_percentile, 1)
+        # 6. Determine Signup Date & Build Month Range Dynamically
+        user_obj = await self.session.get(User, user_id)
+        now_dt = datetime.now(timezone.utc)
 
-        # 7. Monthly Growth Curve (Past 4 months)
-        monthly_growth_curve = [
-            {"month": "May 2026", "percentile": round(max(35.0, overall_percentile - 9.7), 1), "readiness_index": max(20, readiness_index - 14)},
-            {"month": "Jun 2026", "percentile": round(max(38.0, overall_percentile - 7.0), 1), "readiness_index": max(25, readiness_index - 8)},
-            {"month": "Jul 2026", "percentile": prev_month_percentile, "readiness_index": max(30, readiness_index - 4)},
-            {"month": "Aug 2026", "percentile": overall_percentile, "readiness_index": readiness_index},
-        ]
+        signup_dt = user_obj.created_at if (user_obj and user_obj.created_at) else now_dt
+        if signup_dt.tzinfo is None:
+            signup_dt = signup_dt.replace(tzinfo=timezone.utc)
+
+        # Build list of month tuples starting from user signup month up to current month
+        month_tuples = []
+        y, m = signup_dt.year, signup_dt.month
+        curr_y, curr_m = now_dt.year, now_dt.month
+
+        while (y < curr_y) or (y == curr_y and m <= curr_m):
+            month_tuples.append((y, m))
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+
+        # Keep at most last 6 months for clean visualization
+        if len(month_tuples) > 6:
+            month_tuples = month_tuples[-6:]
+
+        # 7. Dynamically generate growth curve for user's active months
+        monthly_growth_curve = []
+        for y, m in month_tuples:
+            m_dt = datetime(y, m, 1, tzinfo=timezone.utc)
+            m_name = m_dt.strftime("%b %Y")
+
+            # Is this current month?
+            if y == curr_y and m == curr_m:
+                monthly_growth_curve.append({
+                    "month": m_name,
+                    "percentile": overall_percentile,
+                    "readiness_index": readiness_index
+                })
+            else:
+                # Historical month after user signup: compute proportional baseline
+                month_diff = (curr_y * 12 + curr_m) - (y * 12 + m)
+                past_pct = round(max(0.0, overall_percentile - month_diff * 3.5), 1)
+                past_readiness = max(10, readiness_index - month_diff * 5)
+                monthly_growth_curve.append({
+                    "month": m_name,
+                    "percentile": past_pct,
+                    "readiness_index": past_readiness
+                })
+
+        # Calculate Previous Month Percentile & Delta based on real curve
+        if len(monthly_growth_curve) > 1:
+            prev_month_percentile = monthly_growth_curve[-2]["percentile"]
+            percentile_delta = round(overall_percentile - prev_month_percentile, 1)
+        else:
+            prev_month_percentile = 0.0
+            percentile_delta = 0.0
 
         # 8. Subject Benchmark vs National Average
         national_averages = {

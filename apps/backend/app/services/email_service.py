@@ -63,6 +63,65 @@ async def send_subscription_confirmation(email: EmailStr, user_name: str):
         return False
 
 
+async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pending_tasks: list):
+    """Sends an end-of-day email notification listing all pending uncompleted tasks for the day."""
+    if not pending_tasks:
+        return True
+
+    task_list_items = "".join([
+        f"<li style='margin-bottom: 8px;'><strong>{t.get('title', 'Task')}</strong> ({t.get('subject', 'General')} — {t.get('allocated_time_minutes', 30)} mins)</li>"
+        for t in pending_tasks
+    ])
+
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #FEF3C7; padding: 20px; border-radius: 8px; text-align: center; border-left: 5px solid #F59E0B;">
+                <h2 style="color: #B45309; margin: 0;">📅 Daily Study Reminder: {len(pending_tasks)} Pending Task(s)</h2>
+            </div>
+            
+            <p>Hi <strong>{user_name}</strong>,</p>
+            <p>You have <strong>{len(pending_tasks)} study task(s)</strong> remaining for today. Keep up the momentum for your target exam!</p>
+            
+            <div style="background-color: #F9FAFB; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #E5E7EB;">
+                <h4 style="margin-top: 0; color: #374151;">Pending Tasks List:</h4>
+                <ul style="padding-left: 20px; color: #4B5563;">
+                    {task_list_items}
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://examplanner.in/planner" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Open Study Planner</a>
+            </div>
+            
+            <p>Stay consistent and crush your goals!</p>
+            <br>
+            <p style="color: #666; font-size: 14px;">The ExamPlanner Team</p>
+        </body>
+    </html>
+    """
+
+    message = MessageSchema(
+        subject=f"Daily Study Summary: {len(pending_tasks)} Pending Tasks for Today 🎯",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    try:
+        if not settings.MAIL_USERNAME:
+            logger.warning(f"MAIL_USERNAME not configured. Logging pending tasks for {email}: {len(pending_tasks)} tasks.")
+            return True
+
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        logger.info(f"Pending tasks email sent successfully to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send pending tasks email: {e}")
+        return False
+
+
 async def send_admin_notification_subscription(user_email: str, user_name: str):
     """Sends a notification email to the admin when a user successfully upgrades to premium."""
     
@@ -102,13 +161,103 @@ async def send_admin_notification_subscription(user_email: str, user_name: str):
         logger.error(f"Failed to send admin notification email: {e}")
         return False
 
-# Legacy mock for auth_service.py compatibility
-class MockEmailService:
-    def send_verification_email(self, email: str, token: str):
-        logger.info(f"Mock: Sending verification email to {email}")
-        
-    def send_password_reset_email(self, email: str, token: str):
-        logger.info(f"Mock: Sending password reset email to {email}")
+async def send_verification_email(email: str, token: str):
+    """Dispatches a magic verification link to verify user email address."""
+    verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+    
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #4F46E5; padding: 24px; border-radius: 12px; text-align: center; color: white;">
+                <h2 style="margin: 0; font-size: 22px;">Verify Your Email Address ✉️</h2>
+                <p style="margin: 8px 0 0 0; opacity: 0.9;">ExamPlanner AI Mentorship Platform</p>
+            </div>
+            
+            <p style="margin-top: 24px;">Welcome to ExamPlanner!</p>
+            <p>Please confirm your email address to activate your account and start your personalized AI study plan.</p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{verify_url}" style="background-color: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Email Address</a>
+            </div>
+            
+            <p style="color: #666; font-size: 13px;">If you didn't create an account with ExamPlanner, you can safely ignore this email.</p>
+            <p style="color: #666; font-size: 12px; word-break: break-all;">Link: <a href="{verify_url}">{verify_url}</a></p>
+            <br>
+            <p style="color: #888; font-size: 13px;">The ExamPlanner Team</p>
+        </body>
+    </html>
+    """
+    
+    message = MessageSchema(
+        subject="Verify your ExamPlanner email address ✉️",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+    
+    try:
+        if not settings.MAIL_USERNAME:
+            logger.warning(f"MAIL_USERNAME not configured. Magic verification link for {email}: {verify_url}")
+            return True
+            
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        logger.info(f"Verification email sent successfully to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send verification email: {e}")
+        return False
 
-EmailService = MockEmailService
-email_service = MockEmailService()
+
+async def send_password_reset_email(email: str, token: str):
+    """Dispatches a password reset link to user email address."""
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #DC2626; padding: 24px; border-radius: 12px; text-align: center; color: white;">
+                <h2 style="margin: 0; font-size: 22px;">Reset Your Password 🔒</h2>
+            </div>
+            
+            <p style="margin-top: 24px;">We received a request to reset your password for your ExamPlanner account.</p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+                <a href="{reset_url}" style="background-color: #DC2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
+            </div>
+            
+            <p style="color: #666; font-size: 13px;">If you didn't request a password reset, please ignore this email.</p>
+        </body>
+    </html>
+    """
+    
+    message = MessageSchema(
+        subject="Reset your ExamPlanner password 🔒",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+    
+    try:
+        if not settings.MAIL_USERNAME:
+            logger.warning(f"MAIL_USERNAME not configured. Password reset link for {email}: {reset_url}")
+            return True
+            
+        fm = FastMail(conf)
+        await fm.send_message(message)
+        logger.info(f"Password reset email sent successfully to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send password reset email: {e}")
+        return False
+
+
+class AppEmailService:
+    async def send_verification_email(self, email: str, token: str):
+        return await send_verification_email(email, token)
+        
+    async def send_password_reset_email(self, email: str, token: str):
+        return await send_password_reset_email(email, token)
+
+EmailService = AppEmailService
+email_service = AppEmailService()

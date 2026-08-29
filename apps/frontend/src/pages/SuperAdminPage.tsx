@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AdminApprovalRequest, AdminApprovalLog, SystemStats } from '../types/auth';
+import { AdminApprovalRequest, AdminApprovalLog, SystemStats, UserDirectoryItem } from '../types/auth';
 import {
   fetchPendingAdminRequests,
   fetchActiveAdmins,
@@ -9,6 +9,8 @@ import {
   reactivateAdmin,
   fetchAuditLogs,
   fetchSystemStats,
+  fetchPlatformUsers,
+  updateUserRole,
 } from '../services/adminService';
 
 import { SuperAdminSidebar } from '../components/superadmin/SuperAdminSidebar';
@@ -18,7 +20,16 @@ import { SuperAdminTab, SuperAdminTabNav } from '../components/superadmin/SuperA
 import { PendingApprovalsTab } from '../components/superadmin/PendingApprovalsTab';
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
+import { AllUsersTab } from '../components/superadmin/AllUsersTab';
+import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
 import { RejectionModal } from '../components/superadmin/RejectionModal';
+import {
+  TestimonialItem,
+  fetchAllTestimonialsForAdmin,
+  approveTestimonial,
+  rejectTestimonial as rejectTestimonialApi,
+  deleteTestimonial as deleteTestimonialApi,
+} from '../services/testimonialService';
 
 export function SuperAdminPage() {
   const [activeTab, setActiveTab] = useState<SuperAdminTab>('pending');
@@ -37,6 +48,12 @@ export function SuperAdminPage() {
 
   const [auditLogs, setAuditLogs] = useState<AdminApprovalLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(true);
+
+  const [allUsers, setAllUsers] = useState<UserDirectoryItem[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
@@ -65,6 +82,32 @@ export function SuperAdminPage() {
     loadPending();
     loadActive();
     loadLogs();
+    loadUsers();
+    loadTestimonials();
+  };
+
+  const loadTestimonials = async () => {
+    setTestimonialsLoading(true);
+    try {
+      const data = await fetchAllTestimonialsForAdmin();
+      setTestimonials(data);
+    } catch (err: any) {
+      console.error('Failed testimonials fetch:', err);
+    } finally {
+      setTestimonialsLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const data = await fetchPlatformUsers();
+      setAllUsers(data);
+    } catch (err: any) {
+      console.error('Failed users fetch:', err);
+    } finally {
+      setUsersLoading(false);
+    }
   };
 
   const loadStats = async () => {
@@ -183,6 +226,56 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string, userName: string) => {
+    try {
+      await updateUserRole(userId, newRole);
+      showToast(`Updated role for ${userName} to ${newRole}`);
+      loadAllData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update user role', true);
+    }
+  };
+
+  const handleApproveTestimonial = async (id: string, name: string) => {
+    setProcessingId(id);
+    try {
+      await approveTestimonial(id);
+      showToast(`Approved student testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to approve testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectTestimonial = async (id: string, name: string) => {
+    setProcessingId(id);
+    try {
+      await rejectTestimonialApi(id, 'Inappropriate or invalid submission');
+      showToast(`Rejected testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reject testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete the story by ${name}?`)) return;
+    setProcessingId(id);
+    try {
+      await deleteTestimonialApi(id);
+      showToast(`Deleted testimonial by ${name}`);
+      loadTestimonials();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete testimonial', true);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const renderActiveTabContent = () => {
     switch (activeTab) {
       case 'pending':
@@ -215,6 +308,27 @@ export function SuperAdminPage() {
             onRefresh={loadLogs}
           />
         );
+      case 'users':
+        return (
+          <AllUsersTab
+            users={allUsers}
+            loading={usersLoading}
+            onRefresh={loadUsers}
+            onRoleChange={handleRoleChange}
+          />
+        );
+      case 'testimonials':
+        return (
+          <TestimonialApprovalsTab
+            testimonials={testimonials}
+            loading={testimonialsLoading}
+            processingId={processingId}
+            onApprove={handleApproveTestimonial}
+            onReject={handleRejectTestimonial}
+            onDelete={handleDeleteTestimonial}
+            onRefresh={loadTestimonials}
+          />
+        );
       default:
         return null;
     }
@@ -241,6 +355,7 @@ export function SuperAdminPage() {
           collapsed={sidebarCollapsed}
           onToggle={handleToggleSidebar}
           pendingCount={pendingRequests.length}
+          pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
           mobileOpen={mobileOpen}
           onCloseMobile={() => setMobileOpen(false)}
         />
@@ -262,12 +377,13 @@ export function SuperAdminPage() {
               {/* Executive Header Banner */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, #0A1128 0%, #0F1D38 40%, #162B4E 75%, #1F3D6E 100%)',
+                  background: 'var(--bg-card, #ffffff)',
                   borderRadius: 24,
-                  padding: '36px 40px',
-                  color: '#ffffff',
+                  padding: '32px 36px',
+                  color: 'var(--text-main, #0f172a)',
                   marginBottom: 32,
-                  boxShadow: '0 20px 45px -15px rgba(10, 17, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -277,32 +393,18 @@ export function SuperAdminPage() {
                   overflow: 'hidden',
                 }}
               >
-                {/* Decorative Background Lighting */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: -60,
-                    right: -60,
-                    width: 300,
-                    height: 300,
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0) 70%)',
-                    pointerEvents: 'none',
-                  }}
-                />
-
                 <div style={{ position: 'relative', zIndex: 2 }}>
                   <div
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      color: '#fdba74',
+                      color: '#2563eb',
                       textTransform: 'uppercase',
                       letterSpacing: '0.12em',
                       padding: '4px 12px',
                       borderRadius: 99,
-                      background: 'rgba(249, 115, 22, 0.15)',
-                      border: '1px solid rgba(249, 115, 22, 0.3)',
+                      background: 'rgba(37, 99, 235, 0.1)',
+                      border: '1px solid rgba(37, 99, 235, 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -311,10 +413,10 @@ export function SuperAdminPage() {
                   >
                     👑 EXECUTIVE CONTROL CENTER
                   </div>
-                  <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+                  <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: 30, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', lineHeight: 1.2, color: 'var(--text-main)' }}>
                     Super Admin Portal
                   </h1>
-                  <p style={{ fontSize: 14.5, color: 'rgba(255, 255, 255, 0.75)', marginTop: 8, maxWidth: 680, lineHeight: 1.5, margin: '8px 0 0 0' }}>
+                  <p style={{ fontSize: 14.5, color: 'var(--text-muted, #64748b)', marginTop: 8, maxWidth: 680, lineHeight: 1.5, margin: '8px 0 0 0' }}>
                     Central executive console for managing institutional admin access, monitoring platform health, and reviewing security audit records.
                   </p>
                 </div>
@@ -344,10 +446,15 @@ export function SuperAdminPage() {
               )}
 
               {/* KPI Executive Metric Cards */}
-              <SuperAdminStats stats={stats} loading={statsLoading} />
+              <SuperAdminStats stats={stats} loading={statsLoading} onSelectTab={setActiveTab} />
 
               {/* Horizontal Navigation Tabs */}
-              <SuperAdminTabNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pendingRequests.length} />
+              <SuperAdminTabNav
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                pendingCount={pendingRequests.length}
+                pendingTestimonialsCount={testimonials.filter((t) => t.status === 'PENDING').length}
+              />
 
               {/* Active Tab View */}
               {renderActiveTabContent()}

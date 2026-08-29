@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 
 from app.db.models import Exam, Question, Subject, QuestionHierarchyLink, ExamStatus
-from app.db.models.user import User
+from app.db.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     AdminApprovalRequestOut,
@@ -17,6 +17,7 @@ from app.schemas.auth import (
     OverviewMetricOut,
     RecentUploadItemOut,
     SubjectBreakdownItemOut,
+    UserDirectoryItemOut,
 )
 
 
@@ -66,6 +67,42 @@ class AdminService:
                 )
             )
         return result
+
+    async def list_all_users(self) -> List[UserDirectoryItemOut]:
+        all_users = await self.repo.get_all_users()
+        result = []
+        for u in all_users:
+            admin_prof = u.__dict__.get("admin_profile")
+            
+            org_name = admin_prof.organization_name if admin_prof else None
+            dept = admin_prof.department if admin_prof else None
+            
+            target_exam = getattr(u, "target_exam", None)
+            target_year = getattr(u, "target_year", None)
+
+            result.append(
+                UserDirectoryItemOut(
+                    id=str(u.id),
+                    full_name=u.full_name,
+                    email=u.email,
+                    role=u.role,
+                    status=u.status,
+                    organization_name=org_name,
+                    department=dept,
+                    target_exam=target_exam,
+                    target_year=target_year,
+                    created_at=u.created_at,
+                    suspended_at=u.suspended_at,
+                    updated_at=u.updated_at,
+                )
+            )
+        return result
+
+    async def update_user_role(self, user_id: str, new_role: UserRole) -> UserOut:
+        user = await self.repo.update_user_role(user_id=user_id, new_role=new_role)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+        return user
 
     async def approve_admin_request(
         self, user_id: str, current_super_admin: User

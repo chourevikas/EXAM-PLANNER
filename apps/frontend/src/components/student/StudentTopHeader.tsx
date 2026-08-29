@@ -38,7 +38,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -59,6 +60,27 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   useEffect(() => {
     setCurrentUser(user);
   }, [user]);
+
+  const fetchNotifications = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/v1/notifications', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unread_count || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   useEffect(() => {
     const handleProfileUpdate = () => {
@@ -158,11 +180,37 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const isMobile = windowWidth <= 768;
   const isSmallMobile = windowWidth <= 480;
 
-  const mockNotifications = [
-    { id: 1, title: 'Weekly Insight Report Ready', desc: 'Your accuracy in Polity improved by +12% this week.', time: '10m ago', unread: true },
-    { id: 2, title: 'Target 2026 Milestone Reached', desc: 'You completed 500+ PYQs across 4 topics.', time: '2h ago', unread: true },
-    { id: 3, title: 'New Mock Test Added', desc: 'UPSC CSAT Speed Practice Mock #04 is now live.', time: '1d ago', unread: false }
-  ];
+  const handleMarkAllRead = async () => {
+    setUnreadCount(0);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      await fetch('/api/v1/notifications/mark-all-read', { method: 'POST', headers });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleNotificationClick = async (noti: any) => {
+    if (!noti.is_read) {
+      setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      try {
+        const token = localStorage.getItem('access_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        await fetch(`/api/v1/notifications/${noti.id}/read`, { method: 'POST', headers });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setShowNotifications(false);
+    if (noti.action_url) {
+      navigate(noti.action_url);
+    }
+  };
 
   return (
     <header
@@ -437,18 +485,40 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #F1F5F9', marginBottom: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>Notifications</span>
                 {unreadCount > 0 && (
-                  <button onClick={() => setUnreadCount(0)} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     Mark all read
                   </button>
                 )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {mockNotifications.map(n => (
-                  <div key={n.id} style={{ padding: '8px 10px', borderRadius: 8, backgroundColor: '#F8FAFC' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{n.title}</div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{n.desc}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: 16, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                    No notifications yet.
                   </div>
-                ))}
+                ) : (
+                  notifications.map((n: any) => (
+                    <div
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        backgroundColor: n.is_read ? '#FFFFFF' : '#EFF6FF',
+                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid #2563EB',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{n.title}</span>
+                        {!n.is_read && (
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#2563EB' }} />
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{n.message}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

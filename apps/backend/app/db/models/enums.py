@@ -5,6 +5,7 @@ class UserRole(str, enum.Enum):
     STUDENT = "STUDENT"
     ADMIN = "ADMIN"
     SUPER_ADMIN = "SUPER_ADMIN"
+    TEACHER = "TEACHER"
 
 
 class UserStatus(str, enum.Enum):

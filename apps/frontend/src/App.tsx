@@ -54,6 +54,9 @@ const MockSelectionPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('./pages/PricingPage').then((m) => ({ default: m.PricingPage }))
 );
+const VerifyEmailPage = lazy(() =>
+  import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage }))
+);
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 
@@ -88,6 +91,7 @@ export default function App() {
           <Route path="/login" element={<LandingPage initialAuthMode="login" />} />
           <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
 
           {/* Student Practice Exam - Protected Route */}

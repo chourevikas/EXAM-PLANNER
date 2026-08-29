@@ -42,6 +42,7 @@ class User(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+    suspended_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -108,6 +109,33 @@ class User(SQLModel, table=True):
     def free_questions_attempted(self) -> int:
         prof = self._get_student_profile_safe()
         return prof.free_questions_attempted if prof else 0
+
+    @property
+    def effective_suspended_at(self) -> Optional[datetime]:
+        if self.status != UserStatus.SUSPENDED:
+            return None
+        return self.suspended_at or self.updated_at
+
+    @property
+    def cooling_period_ends_at(self) -> Optional[datetime]:
+        susp_time = self.effective_suspended_at
+        if not susp_time:
+            return None
+        from datetime import timedelta
+        return susp_time + timedelta(days=7)
+
+    @property
+    def is_in_cooling_period(self) -> bool:
+        ends = self.cooling_period_ends_at
+        if not ends:
+            return False
+        return datetime.now(timezone.utc) < ends
+
+    @property
+    def cooling_period_expired(self) -> bool:
+        if self.status != UserStatus.SUSPENDED:
+            return False
+        return not self.is_in_cooling_period
 
     @property
     def current_streak(self) -> int:

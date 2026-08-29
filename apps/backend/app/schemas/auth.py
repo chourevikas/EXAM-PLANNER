@@ -43,7 +43,7 @@ class AdminProfileOut(BaseModel):
 class UserOut(BaseModel):
     id: uuid.UUID | str
     full_name: str
-    email: EmailStr
+    email: str
     role: UserRole
     status: UserStatus
     subscription_tier: SubscriptionTier
@@ -95,7 +95,7 @@ class VerifyEmailRequest(BaseModel):
 class AdminApprovalRequestOut(BaseModel):
     id: uuid.UUID | str
     full_name: str
-    email: EmailStr
+    email: str
     role: UserRole
     status: UserStatus
     organization_name: Optional[str] = None
@@ -158,4 +158,30 @@ class AdminOverviewStatsOut(BaseModel):
     metrics: list[OverviewMetricOut]
     recent_uploads: list[RecentUploadItemOut]
     subject_breakdown: list[SubjectBreakdownItemOut]
+
+
+class UserDirectoryItemOut(BaseModel):
+    id: uuid.UUID | str
+    full_name: str
+    email: str
+    role: UserRole
+    status: UserStatus
+    organization_name: Optional[str] = None
+    department: Optional[str] = None
+    target_exam: Optional[str] = None
+    target_year: Optional[str] = None
+    created_at: datetime
+    suspended_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateRolePayload(BaseModel):
+    new_role: UserRole
+
+
+class UpdateRolePayload(BaseModel):
+    new_role: UserRole
+
 

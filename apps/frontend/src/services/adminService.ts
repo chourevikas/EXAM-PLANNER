@@ -1,11 +1,20 @@
-import { AdminApprovalRequest, AdminApprovalLog, SystemStats, User } from '../types/auth';
+import { AdminApprovalRequest, AdminApprovalLog, SystemStats, User, UserDirectoryItem } from '../types/auth';
 
 const API_BASE_URL = '/api/v1/admin';
 
 function getAuthHeader() {
-  const token = localStorage.getItem('access_token');
+  let token = localStorage.getItem('access_token');
+  if (!token) {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        token = parsed.access_token || parsed.token || null;
+      } catch (e) {}
+    }
+  }
   return {
-    'Authorization': `Bearer ${token}`,
+    'Authorization': `Bearer ${token || ''}`,
     'Content-Type': 'application/json',
   };
 }
@@ -91,6 +100,28 @@ export async function fetchSystemStats(): Promise<SystemStats> {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch system stats' }));
     throw new Error(errorData.detail || 'Could not fetch system stats.');
+  }
+  return await res.json();
+}
+
+export async function fetchPlatformUsers(): Promise<UserDirectoryItem[]> {
+  const res = await fetch(`${API_BASE_URL}/all-users`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch platform users' }));
+    throw new Error(errorData.detail || 'Could not fetch user directory.');
+  }
+  return await res.json();
+}
+
+export async function updateUserRole(userId: string, newRole: string): Promise<User> {
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ new_role: newRole }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to update user role' }));
+    throw new Error(errorData.detail || 'Could not update user role.');
   }
   return await res.json();
 }
