@@ -104,6 +104,15 @@ export async function fetchAllUsers(): Promise<User[]> {
   return await res.json();
 }
 
+export async function fetchUserById(userId: string): Promise<User> {
+  const res = await fetch(`/api/v1/users/${userId}`, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch user details' }));
+    throw new Error(errorData.detail || 'Could not fetch candidate profile.');
+  }
+  return await res.json();
+}
+
 export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
   const res = await fetch(`/api/v1/users/${userId}`, {
     method: 'PUT',
