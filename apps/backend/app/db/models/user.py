@@ -245,3 +245,15 @@ class RefreshToken(SQLModel, table=True):
     )
 
     user: Optional[User] = Relationship(back_populates="refresh_tokens")
+
+class QuestionBookmark(SQLModel, table=True):
+    __tablename__ = "question_bookmarks"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    question_id: uuid.UUID = Field(foreign_key="questions.id", ondelete="CASCADE", index=True)
+    notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )

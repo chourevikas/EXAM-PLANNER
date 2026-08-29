@@ -5,15 +5,11 @@ export function Footer() {
   const cols = [
     {
       h: 'Platform',
-      links: ['Features', 'How It Works', 'Dashboard', 'Pricing'],
-    },
-    {
-      h: 'Legal',
-      links: ['Privacy Policy', 'Terms of Service', 'Cookie Policy'],
+      links: ['Features', 'How It Works', 'Pricing'],
     },
     {
       h: 'Support',
-      links: ['Contact Us', 'Help Center', 'Community', 'Telegram'],
+      links: ['Contact Us'],
     },
   ];
 
@@ -52,7 +48,7 @@ export function Footer() {
                 lineHeight: 1.6,
               }}
             >
-              Intelligent exam preparation platform for serious aspirants.
+              Master your UPSC preparation with actual PYQs and AI-driven analytics.
             </p>
           </div>
 
@@ -83,6 +79,11 @@ export function Footer() {
                   {col.links.map((l) => {
                     const handleFooterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
                       e.preventDefault();
+                      if (l === 'Contact Us') {
+                        window.location.href = 'mailto:support@examplanner.in';
+                        return;
+                      }
+
                       let targetId = '';
                       if (l === 'Features') targetId = '#features';
                       else if (l === 'How It Works') targetId = '#how-it-works';
@@ -136,24 +137,25 @@ export function Footer() {
           <div style={{ fontSize: 12, color: '#64748b' }}>
             © {new Date().getFullYear()} ExamPlanner. All rights reserved.
           </div>
-          <div style={{ display: 'flex', gap: 20 }}>
-            {['Twitter', 'LinkedIn', 'YouTube', 'Telegram'].map((s) => (
-              <a
-                key={s}
-                href="#"
-                style={{
-                  fontSize: 12,
-                  color: '#94a3b8',
-                  textDecoration: 'none',
-                  transition: 'color 0.2s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
-              >
-                {s}
-              </a>
-            ))}
-          </div>
+            {/* TODO: Add real social media links once available */}
+            {/* <div style={{ display: 'flex', gap: 20 }}>
+              {['Twitter', 'LinkedIn', 'YouTube'].map((s) => (
+                <a
+                  key={s}
+                  href="#"
+                  style={{
+                    fontSize: 12,
+                    color: '#94a3b8',
+                    textDecoration: 'none',
+                    transition: 'color 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                >
+                  {s}
+                </a>
+              ))}
+            </div> */}
         </div>
       </div>
     </footer>

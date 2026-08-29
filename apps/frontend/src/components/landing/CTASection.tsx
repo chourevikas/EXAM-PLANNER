@@ -110,21 +110,36 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
         <div
           style={{
             display: 'flex',
-            gap: 14,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
           }}
         >
           <button
             className="btn btn-primary anim-glow"
-            style={{ fontSize: 16, padding: '15px 32px' }}
+            style={{ fontSize: 16, padding: '16px 40px' }}
             onClick={onSignup}
           >
-            Start Preparing Free <Ico.Arrow />
+            Create Your Free Account <Ico.Arrow />
           </button>
-          <button className="btn-dark" onClick={onLogin}>
-            Login to Continue
-          </button>
+          
+          <div style={{ fontSize: 14, color: C.slate400 }}>
+            Already have an account?{' '}
+            <button
+              onClick={onLogin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#60A5FA',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              Log in here
+            </button>
+          </div>
         </div>
       </div>
     </section>

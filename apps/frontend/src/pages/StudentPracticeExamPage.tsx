@@ -7,8 +7,9 @@ import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
-import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/examService';
+import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
+import { saveGuestAttempt } from '../utils/guestStorage';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
@@ -60,6 +61,19 @@ export function StudentPracticeExamPage() {
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
+  const [expandedRecId, setExpandedRecId] = useState<string | null>(null);
+  const [recUserResponses, setRecUserResponses] = useState<Record<string, string>>({});
+  const expandedRecIdRef = React.useRef<string | null>(null);
+  const recUserResponsesRef = React.useRef<Record<string, string>>({});
+  
+  useEffect(() => {
+    expandedRecIdRef.current = expandedRecId;
+  }, [expandedRecId]);
+  
+  useEffect(() => {
+    recUserResponsesRef.current = recUserResponses;
+  }, [recUserResponses]);
+
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
 
   // Background prefetch function for dynamic recommended questions
@@ -147,14 +161,48 @@ export function StudentPracticeExamPage() {
         });
 
         setRecommendedPool((prev) => {
-          const combinedMap = new Map<string, QuestionOut>();
-          prev.forEach((q) => combinedMap.set(q.question_id, q));
-          formatted.forEach((q) => {
-            if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
-              combinedMap.set(q.question_id, q);
+          let newList = [...prev];
+          const existingIds = new Set(prev.map((q) => q.question_id));
+          
+          for (let i = formatted.length - 1; i >= 0; i--) {
+            const q = formatted[i];
+            if (!existingIds.has(q.question_id)) {
+              newList.unshift(q);
             }
-          });
-          return Array.from(combinedMap.values()).slice(0, 5);
+          }
+          
+          while (newList.length > 15) {
+            let evictIdx = -1;
+            const currentExpanded = expandedRecIdRef.current;
+            const currentResponses = recUserResponsesRef.current;
+            
+            // Prefer removing already-answered questions that are not expanded
+            for (let i = newList.length - 1; i >= 0; i--) {
+              const q = newList[i];
+              if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
+                evictIdx = i;
+                break;
+              }
+            }
+            
+            // If none found, just find the oldest not expanded
+            if (evictIdx === -1) {
+              for (let i = newList.length - 1; i >= 0; i--) {
+                if (newList[i].question_id !== currentExpanded) {
+                  evictIdx = i;
+                  break;
+                }
+              }
+            }
+            
+            if (evictIdx !== -1) {
+              newList.splice(evictIdx, 1);
+            } else {
+              newList.pop();
+            }
+          }
+          
+          return newList;
         });
       }
     } catch (err) {
@@ -165,56 +213,18 @@ export function StudentPracticeExamPage() {
   }, [gSubject, gTopic, gExam, isPrefetchingRecs]);
 
   useEffect(() => {
-    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs) {
+    if (allQuestions.length > 0 && recommendedPool.length < 15 && !isPrefetchingRecs) {
       prefetchRecommendations(allQuestions, recommendedPool);
     }
-  }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
+  }, [allQuestions, recommendedPool.length, isPrefetchingRecs, prefetchRecommendations]);
 
-  // Handler to jump to or queue a recommended question
+  // Handler to toggle recommended question accordion
   const handleSelectRecommendation = (recQ: QuestionOut) => {
-    const existingIdx = allQuestions.findIndex((q) => q.question_id === recQ.question_id);
-    if (existingIdx !== -1) {
-      setCurrentQIndex(existingIdx);
-      setActiveQuestion(allQuestions[existingIdx]);
-      return;
-    }
-
-    const newQNumber = allQuestions.length + 1;
-    const newQ: QuestionOut = {
-      ...recQ,
-      question_number: newQNumber,
-    };
-
-    const updatedQuestions = [...allQuestions, newQ];
-    setAllQuestions(updatedQuestions);
-    setTotalQuestions(updatedQuestions.length);
-    setCurrentQIndex(updatedQuestions.length - 1);
-    setActiveQuestion(newQ);
-
-    setPalette((prev) => [
-      ...prev,
-      {
-        question_number: newQNumber,
-        question_id: newQ.question_id,
-        question_status: 'VISITED' as any,
-      },
-    ]);
-
-    setRecommendedPool((prev) => prev.filter((q) => q.question_id !== recQ.question_id));
+    setExpandedRecId(prev => (prev === recQ.question_id ? null : recQ.question_id));
   };
 
-  // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
-  const displayRecs = useMemo(() => {
-    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
-    const combinedMap = new Map<string, QuestionOut>();
-    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
-    recommendedPool.forEach((q) => {
-      if (!combinedMap.has(q.question_id)) {
-        combinedMap.set(q.question_id, q);
-      }
-    });
-    return Array.from(combinedMap.values()).slice(0, 5);
-  }, [allQuestions, currentQIndex, recommendedPool]);
+  // The sidebar will render all up to 15 recommended items
+  const displayRecs = recommendedPool;
 
   // Subject-Wide Fallback Pool & Topic Completion Banner
   const [subjectFallbackPool, setSubjectFallbackPool] = useState<QuestionOut[]>([]);
@@ -629,6 +639,27 @@ export function StudentPracticeExamPage() {
   };
 
   // Option selection
+  const handleToggleBookmark = async () => {
+    if (!activeQuestion) return;
+    const qId = String(activeQuestion.question_id || (activeQuestion as any).id);
+    const isBookmarked = !!bookmarkedQs[currentQIndex];
+    
+    // Optimistic UI update
+    setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !isBookmarked }));
+    
+    try {
+      if (isBookmarked) {
+        await removeBookmark(qId);
+      } else {
+        await addBookmark(qId);
+      }
+    } catch (error) {
+      console.error("Failed to toggle bookmark", error);
+      // Revert on failure
+      setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: isBookmarked }));
+    }
+  };
+
   const handleSelectOption = (optionId: string, optionLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
@@ -1540,7 +1571,7 @@ export function StudentPracticeExamPage() {
         {!isMobile && (
           <aside
             style={{
-              width: 270,
+              width: 380,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               borderRadius: 0,
@@ -1584,37 +1615,110 @@ export function StudentPracticeExamPage() {
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
+                  const isExpanded = expandedRecId === rec.question_id;
+                  const answeredOptId = recUserResponses[rec.question_id];
+
                   return (
                     <div
                       key={rec.question_id || idx}
-                      onClick={() => handleSelectRecommendation(rec)}
                       style={{
-                        backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 0,
-                        padding: '10px 12px',
-                        cursor: 'pointer',
+                        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                        borderRadius: 6,
                         transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E2E8F0';
-                        e.currentTarget.style.boxShadow = 'none';
+                        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                        overflow: 'hidden'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
-                        </span>
+                      <div
+                        onClick={() => handleSelectRecommendation(rec)}
+                        style={{ cursor: 'pointer', padding: '10px 12px' }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                          </span>
+                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                          {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
-                        {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                      </div>
+
+                      {/* Inline Options Dropdown */}
+                      {isExpanded && (
+                        <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {rec.options?.map(opt => {
+                              const isSelected = answeredOptId === opt.option_id;
+                              const isCorrect = opt.is_correct;
+                              const isWrongSelected = isSelected && !isCorrect;
+                              const showResult = !!answeredOptId;
+
+                              let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                              let bgStyle = '#FFFFFF';
+
+                              if (showResult) {
+                                if (isCorrect) {
+                                  borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                                } else if (isWrongSelected) {
+                                  borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={opt.option_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!answeredOptId) {
+                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                    }
+                                  }}
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '6px 8px',
+                                    border: borderStyle,
+                                    backgroundColor: bgStyle,
+                                    borderRadius: 4,
+                                    fontSize: 11.5,
+                                    color: '#334155',
+                                    cursor: answeredOptId ? 'default' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    width: '100%'
+                                  }}
+                                >
+                                  <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
+                                    {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
+                                  </div>
+                                  <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {answeredOptId && (rec as any).explanation && (
+                            <div style={{ marginTop: 10, padding: 8, backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, fontSize: 11, color: '#1E3A8A' }}>
+                              <strong>Explanation:</strong> <br/>
+                              {(rec as any).explanation}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -1635,7 +1739,7 @@ export function StudentPracticeExamPage() {
           mode="PRACTICE"
           revealResult={currentRevealedResult}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
-          onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
+          onToggleBookmark={handleToggleBookmark}
           onRevealAnswer={() => handleRevealAnswer()}
           onShowSolution={() => handleShowSolution()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}

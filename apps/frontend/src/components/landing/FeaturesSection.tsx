@@ -185,8 +185,7 @@ export function FeaturesSection() {
             className="section-subheading"
             style={{ color: 'var(--text-muted)', maxWidth: 460, margin: '0 auto' }}
           >
-            A complete data-driven ecosystem for competitive exam preparation —
-            nothing generic, nothing unnecessary.
+            Master UPSC with 10,000+ PYQs, adaptive study plans, and real-time psychometric performance tracking.
           </p>
         </div>
       </div>

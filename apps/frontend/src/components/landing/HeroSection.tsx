@@ -231,8 +231,8 @@ export function HeroSection({ }: HeroSectionProps) {
                 display: 'block',
               }}
             >
-              Test your exam readiness. <br />
-              <span style={{ color: '#E31B23', fontWeight: 800 }}>Start in 60 seconds.</span>
+              Master UPSC with <br />
+              <span style={{ color: '#E31B23', fontWeight: 800 }}>Precision Analytics.</span>
             </h1>
 
             {/* Premium Mock Builder Form Card */}

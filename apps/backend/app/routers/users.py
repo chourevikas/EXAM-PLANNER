@@ -12,6 +12,105 @@ from app.cache import get_cache, build_cache_key, invalidate_user_cache
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+from app.db.models.user import QuestionBookmark
+from app.db.models.question import Question
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
+from fastapi import HTTPException
+import uuid
+
+@router.get("/me/bookmarks")
+async def list_bookmarks(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    stmt = (
+        select(QuestionBookmark, Question)
+        .join(Question, QuestionBookmark.question_id == Question.id)
+        .options(selectinload(Question.translations))
+        .where(QuestionBookmark.user_id == current_user.id)
+        .order_by(QuestionBookmark.created_at.desc())
+    )
+    result = await session.exec(stmt)
+    rows = result.all()
+    
+    # We return basic info to the frontend for now
+    out = []
+    for bk, q in rows:
+        text = ""
+        if q.translations:
+            en_trans = next((t for t in q.translations if t.language == "EN"), None)
+            if en_trans:
+                text = en_trans.question_text
+            else:
+                text = q.translations[0].question_text
+        
+        out.append({
+            "bookmark_id": str(bk.id),
+            "question_id": str(q.id),
+            "question_text": text,
+            "difficulty": q.difficulty.value if hasattr(q, 'difficulty') else "MEDIUM",
+            "created_at": bk.created_at.isoformat() if bk.created_at else None,
+        })
+    return out
+
+@router.post("/me/bookmarks/{question_id}")
+async def add_bookmark(
+    question_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        q_uuid = uuid.UUID(question_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid question ID format")
+    
+    # Check if question exists
+    q = await session.get(Question, q_uuid)
+    if not q:
+        raise HTTPException(status_code=404, detail="Question not found")
+        
+    # Check if already bookmarked
+    stmt = select(QuestionBookmark).where(
+        QuestionBookmark.user_id == current_user.id,
+        QuestionBookmark.question_id == q_uuid
+    )
+    result = await session.exec(stmt)
+    if result.first():
+        return {"message": "Already bookmarked"}
+        
+    bk = QuestionBookmark(
+        user_id=current_user.id,
+        question_id=q_uuid
+    )
+    session.add(bk)
+    await session.commit()
+    return {"message": "Bookmark added", "bookmark_id": str(bk.id)}
+
+@router.delete("/me/bookmarks/{question_id}")
+async def remove_bookmark(
+    question_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        q_uuid = uuid.UUID(question_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid question ID format")
+        
+    stmt = select(QuestionBookmark).where(
+        QuestionBookmark.user_id == current_user.id,
+        QuestionBookmark.question_id == q_uuid
+    )
+    result = await session.exec(stmt)
+    bk = result.first()
+    if not bk:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+        
+    await session.delete(bk)
+    await session.commit()
+    return {"message": "Bookmark removed"}
+
 
 @router.get("", response_model=List[UserRead])
 async def list_users(

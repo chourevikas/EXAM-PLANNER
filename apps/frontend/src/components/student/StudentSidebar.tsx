@@ -10,7 +10,8 @@ import {
   Sparkles,
   Trophy,
   Crown,
-  X
+  X,
+  Bookmark
 } from 'lucide-react';
 
 interface StudentSidebarProps {
@@ -46,6 +47,7 @@ export function StudentSidebar({
     { icon: BookOpen, label: 'Previous Year Qs', to: '/pyq' },
     { icon: Brain, label: 'Practice Tests', to: '/mocks' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
+    { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
   ];
 
   const reportItems = [
