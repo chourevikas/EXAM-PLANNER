@@ -45,7 +45,6 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
         async with self.session_factory() as session:
             # Create test Exam
             exam = Exam(
-                id=uuid.uuid4(),
                 code="upsc_cse-prelims-gs1-2023-a",
                 name="UPSC CSE Prelims (2023) - Set A",
                 stage="prelims",
@@ -54,28 +53,37 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
                 paper_set_code="SET_A",
             )
             session.add(exam)
+            await session.commit()
+            await session.refresh(exam)
 
             # Create test SyllabusVersion
             syl = SyllabusVersion(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 version_code="v1",
                 title="Default Syllabus",
             )
             session.add(syl)
+            await session.commit()
+            await session.refresh(syl)
 
             # Create test Subject, Topic, Subtopic
-            subj = Subject(id=uuid.uuid4(), syllabus_version_id=syl.id, name="Indian Polity")
-            top = Topic(id=uuid.uuid4(), subject_id=subj.id, name="Executive")
-            subtop = Subtopic(id=uuid.uuid4(), topic_id=top.id, name="President of India")
+            subj = Subject(version_id=syl.id, name="Indian Polity")
             session.add(subj)
+            await session.commit()
+            await session.refresh(subj)
+
+            top = Topic(subject_id=subj.id, name="Executive")
             session.add(top)
+            await session.commit()
+            await session.refresh(top)
+
+            subtop = Subtopic(topic_id=top.id, name="President of India")
             session.add(subtop)
             await session.commit()
+            await session.refresh(subtop)
 
             # Create Question
             q = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 subtopic_id=subtop.id,
                 question_number_in_paper=1,
@@ -85,10 +93,10 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q)
             await session.commit()
+            await session.refresh(q)
 
             # Question Translation
             qt = QuestionTranslation(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 language=LanguageCode.ENGLISH,
                 question_text="Consider the following statements regarding the President of India...",
@@ -97,14 +105,12 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
 
             # Options
             opt1 = QuestionOption(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 option_label="A",
                 display_order=1,
                 is_correct=True,
             )
             opt2 = QuestionOption(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 option_label="B",
                 display_order=2,
@@ -113,16 +119,16 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
             session.add(opt1)
             session.add(opt2)
             await session.commit()
+            await session.refresh(opt1)
+            await session.refresh(opt2)
 
             ot1 = OptionTranslation(
-                id=uuid.uuid4(),
                 option_id=opt1.id,
                 language=LanguageCode.ENGLISH,
                 option_text="Statement 1 only",
                 distractor_analysis="Correct. Article 52 states the executive power.",
             )
             ot2 = OptionTranslation(
-                id=uuid.uuid4(),
                 option_id=opt2.id,
                 language=LanguageCode.ENGLISH,
                 option_text="Statement 2 only",
@@ -133,7 +139,6 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
 
             # Question Explanation
             expl = QuestionExplanation(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 language=LanguageCode.ENGLISH,
                 core_concept="Executive powers of the President",
@@ -145,7 +150,6 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
 
             # Question Metadata
             q_meta = QuestionMetadata(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 blooms_level=BloomsLevel.ANALYZE,
                 cognitive_skill="Legal Interpretation",
@@ -157,7 +161,6 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
 
             # Hierarchy Link
             link = QuestionHierarchyLink(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 subtopic_id=subtop.id,
                 topic_id=top.id,
@@ -204,7 +207,6 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
         """Verifies that duplicate subtopic concepts in LLM output do not raise SQLite Integrity Errors."""
         async with self.session_factory() as session:
             exam = Exam(
-                id=uuid.uuid4(),
                 code="test-exam-2026-a",
                 name="Test Exam 2026",
                 stage="prelims",
@@ -213,9 +215,10 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
                 paper_set_code="SET_A",
             )
             session.add(exam)
+            await session.commit()
+            await session.refresh(exam)
 
             q = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 question_number_in_paper=1,
                 section_code="GS-1",
@@ -224,26 +227,34 @@ class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q)
             await session.commit()
+            await session.refresh(q)
 
             syl = SyllabusVersion(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 version_code="v1",
                 title="Default Syllabus",
             )
             session.add(syl)
+            await session.commit()
+            await session.refresh(syl)
 
-            subj = Subject(id=uuid.uuid4(), syllabus_version_id=syl.id, name="Indian Polity")
-            top = Topic(id=uuid.uuid4(), subject_id=subj.id, name="Executive")
-            subtop = Subtopic(id=uuid.uuid4(), topic_id=top.id, name="President of India")
+            subj = Subject(version_id=syl.id, name="Indian Polity")
             session.add(subj)
+            await session.commit()
+            await session.refresh(subj)
+
+            top = Topic(subject_id=subj.id, name="Executive")
             session.add(top)
+            await session.commit()
+            await session.refresh(top)
+
+            subtop = Subtopic(topic_id=top.id, name="President of India")
             session.add(subtop)
             await session.commit()
+            await session.refresh(subtop)
 
             # Add two hierarchy links with identical subtopic_id in memory/session
             link1 = QuestionHierarchyLink(
-                id=uuid.uuid4(),
                 question_id=q.id,
                 subtopic_id=subtop.id,
                 topic_id=top.id,

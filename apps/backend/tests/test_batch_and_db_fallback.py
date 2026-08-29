@@ -26,13 +26,14 @@ class TestBatchAndDbFallback(unittest.IsolatedAsyncioTestCase):
         async with self.session_factory() as db_session:
             # 1. Create a test user, exam, and questions
             user = User(
-                id=uuid.uuid4(),
                 email="batch_test_user@example.com",
                 full_name="Batch Test User",
                 role=UserRole.STUDENT,
                 status=UserStatus.ACTIVE,
             )
             db_session.add(user)
+            await db_session.commit()
+            await db_session.refresh(user)
 
             exam = Exam(
                 name="Batch Test Exam",
@@ -83,7 +84,7 @@ class TestBatchAndDbFallback(unittest.IsolatedAsyncioTestCase):
                 user_id=user.id,
                 req=StartExamRequest(exam_id=exam.id, mode=AttemptMode.EXAM),
             )
-            attempt_id = uuid.UUID(str(start_res.attempt_id))
+            attempt_id = int(start_res.attempt_id)
 
             # 3. Save a batch of responses
             batch_req = BatchSaveResponseRequest(

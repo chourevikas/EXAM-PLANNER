@@ -30,9 +30,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
 
     async def test_admin_create_missing_question_sets_published_and_updates_metrics(self):
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code="upsc-prelims-gs1-2024",
                 name="UPSC Prelims GS1 2024",
                 stage="prelims",
@@ -42,9 +40,10 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
                 missing_question_numbers_json=[2, 3, 4, 5],
             )
             session.add(exam)
+            await session.flush()
+            exam_id = exam.id
 
             q1 = Question(
-                id=uuid.uuid4(),
                 exam_id=exam_id,
                 question_number_in_paper=1,
                 question_type="SINGLE_CHOICE",
@@ -82,19 +81,17 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
 
     async def test_admin_update_question_sets_published(self):
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code="upsc-prelims-gs1-2024",
                 name="UPSC Prelims GS1 2024",
                 stage="prelims",
                 total_questions=5,
             )
             session.add(exam)
+            await session.flush()
+            exam_id = exam.id
 
-            q_id = uuid.uuid4()
             q1 = Question(
-                id=q_id,
                 exam_id=exam_id,
                 question_number_in_paper=3,
                 question_type="SINGLE_CHOICE",
@@ -102,6 +99,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q1)
             await session.commit()
+            q_id = q1.id
 
             service = QuestionService(session)
 
@@ -119,24 +117,35 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
         from app.db.models import Subject, Topic, Subtopic, SyllabusVersion
 
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
-            exam = Exam(id=exam_id, code="upsc-2024", name="UPSC 2024", stage="prelims")
+            exam = Exam(code="upsc-2024", name="UPSC 2024", stage="prelims")
             session.add(exam)
+            await session.flush()
+            exam_id = exam.id
 
-            syl = SyllabusVersion(id=uuid.uuid4(), exam_id=exam_id, version_code="v1.0")
+            syl = SyllabusVersion(exam_id=exam_id, version_code="v1.0")
             session.add(syl)
+            await session.flush()
 
             # Create Subject 1 -> Topic 1 -> Subtopic 1 (e.g. Polity)
-            subj1 = Subject(id=uuid.uuid4(), syllabus_version_id=syl.id, name="Polity", code="POL")
-            top1 = Topic(id=uuid.uuid4(), subject_id=subj1.id, name="Preamble", code="PRE")
-            subtop1 = Subtopic(id=uuid.uuid4(), topic_id=top1.id, name="Sovereignty", code="SOV")
+            subj1 = Subject(version_id=syl.id, name="Polity", code="POL")
+            session.add(subj1)
+            await session.flush()
+            top1 = Topic(subject_id=subj1.id, name="Preamble", code="PRE")
+            session.add(top1)
+            await session.flush()
+            subtop1 = Subtopic(topic_id=top1.id, name="Sovereignty", code="SOV")
+            session.add(subtop1)
 
             # Create Subject 2 -> Topic 2 -> Subtopic 2 (e.g. History)
-            subj2 = Subject(id=uuid.uuid4(), syllabus_version_id=syl.id, name="History", code="HIST")
-            top2 = Topic(id=uuid.uuid4(), subject_id=subj2.id, name="Modern India", code="MOD")
-            subtop2 = Subtopic(id=uuid.uuid4(), topic_id=top2.id, name="Freedom Movement", code="FREE")
+            subj2 = Subject(version_id=syl.id, name="History", code="HIST")
+            session.add(subj2)
+            await session.flush()
+            top2 = Topic(subject_id=subj2.id, name="Modern India", code="MOD")
+            session.add(top2)
+            await session.flush()
+            subtop2 = Subtopic(topic_id=top2.id, name="Freedom Movement", code="FREE")
+            session.add(subtop2)
 
-            session.add_all([subj1, top1, subtop1, subj2, top2, subtop2])
             await session.commit()
 
             service = QuestionService(session)
@@ -177,9 +186,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
         storage = get_storage_provider()
 
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code="upsc-s3-test-2024",
                 name="UPSC S3 Test 2024",
                 stage="prelims",
@@ -188,6 +195,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             )
             session.add(exam)
             await session.commit()
+            exam_id = exam.id
 
             service = QuestionService(session)
 
@@ -205,7 +213,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             )
 
             created_res = await service.create_question(payload)
-            q_id = uuid.UUID(created_res.question_id)
+            q_id = int(created_res.question_id)
 
             q_file = "artifacts/upsc-s3-test-2024/set-a/json/questions/Q001.json"
             s_file = "artifacts/upsc-s3-test-2024/set-a/json/solutions/Q001.json"
@@ -230,9 +238,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
     async def test_hierarchy_links_upsert_deduplication_and_no_unique_violations(self):
         """Tests that submitting duplicate subtopics or re-updating hierarchy links never triggers unique constraint violations."""
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code="upsc-hierarchy-safe-2024",
                 name="UPSC Hierarchy Safe 2024",
                 stage="prelims",
@@ -240,6 +246,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             )
             session.add(exam)
             await session.commit()
+            exam_id = exam.id
 
             service = QuestionService(session)
 
@@ -272,7 +279,7 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
                 ],
             )
             res = await service.create_question(create_payload)
-            q_id = uuid.UUID(res.question_id)
+            q_id = int(res.question_id)
 
             # Verify initial 2 hierarchy links
             initial_q = await service.get_question_detail(q_id)

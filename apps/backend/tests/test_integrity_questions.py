@@ -48,11 +48,9 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
 
     async def test_exam_question_integrity_endpoint(self):
         """Tests GET /api/v1/exams/{exam_id}/integrity-questions with various integrity scenarios and pagination."""
-        exam_id = uuid.uuid4()
         async with self.session_factory() as session:
             # Create exam with total_questions = 4
             exam = Exam(
-                id=exam_id,
                 code=f"test-integrity-{uuid.uuid4().hex[:6]}",
                 name="Test Integrity Exam",
                 source_year=2024,
@@ -65,17 +63,17 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
             session.add(exam)
             await session.commit()
             await session.refresh(exam)
+            exam_id = exam.id
 
             syl_service = SyllabusService(session)
             syl = await syl_service.sync_or_create_exam_syllabus(exam.id)
 
             # Get a canonical subtopic
-            subtopics = (await session.exec(select(Subject, Topic, Subtopic).join(Topic, Topic.subject_id == Subject.id).join(Subtopic, Subtopic.topic_id == Topic.id).where(Subject.syllabus_version_id == syl.id))).first()
+            subtopics = (await session.exec(select(Subject, Topic, Subtopic).join(Topic, Topic.subject_id == Subject.id).join(Subtopic, Subtopic.topic_id == Topic.id).where(Subject.version_id == syl.id))).first()
             valid_subtopic_id = subtopics[2].id if subtopics else None
 
             # Question 1: Completely VALID
             q1 = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 question_number_in_paper=1,
                 subtopic_id=valid_subtopic_id,
@@ -86,6 +84,7 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 integrity_reasons_json=[],
             )
             session.add(q1)
+            await session.flush()
             session.add(QuestionTranslation(question_id=q1.id, language=LanguageCode.ENGLISH, question_text="What is history?"))
             session.add(QuestionOption(question_id=q1.id, option_label="A", display_order=1, is_correct=True))
             session.add(QuestionOption(question_id=q1.id, option_label="B", display_order=2, is_correct=False))
@@ -93,7 +92,6 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
 
             # Question 2: CORRUPTED (missing statement text)
             q2 = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 question_number_in_paper=2,
                 subtopic_id=valid_subtopic_id,
@@ -104,13 +102,13 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 integrity_reasons_json=["Question statement text is missing or blank in database."],
             )
             session.add(q2)
+            await session.flush()
             session.add(QuestionTranslation(question_id=q2.id, language=LanguageCode.ENGLISH, question_text=""))
             session.add(QuestionOption(question_id=q2.id, option_label="A", display_order=1, is_correct=True))
             session.add(QuestionOption(question_id=q2.id, option_label="B", display_order=2, is_correct=False))
 
             # Question 3: PARTIALLY_CORRUPTED (missing correct option / answer key)
             q3 = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 question_number_in_paper=3,
                 subtopic_id=valid_subtopic_id,
@@ -121,6 +119,7 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 integrity_reasons_json=["No correct answer option configured"],
             )
             session.add(q3)
+            await session.flush()
             session.add(QuestionTranslation(question_id=q3.id, language=LanguageCode.ENGLISH, question_text="Question 3 text"))
             session.add(QuestionOption(question_id=q3.id, option_label="A", display_order=1, is_correct=False))
             session.add(QuestionOption(question_id=q3.id, option_label="B", display_order=2, is_correct=False))
@@ -180,10 +179,8 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
 
     async def test_evaluate_and_persist_question_integrity(self):
         """Tests evaluate_and_persist_question_integrity automatically populates columns."""
-        exam_id = uuid.uuid4()
         async with self.session_factory() as session:
             exam = Exam(
-                id=exam_id,
                 code=f"test-eval-{uuid.uuid4().hex[:6]}",
                 name="Test Eval Exam",
                 source_year=2023,
@@ -191,15 +188,18 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
             )
             session.add(exam)
             await session.commit()
+            await session.refresh(exam)
 
             # Create unverified question with missing explanation
             q = Question(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 question_number_in_paper=1,
                 status=QuestionStatus.PENDING_HUMAN_REVIEW,
             )
             session.add(q)
+            await session.commit()
+            await session.refresh(q)
+
             session.add(QuestionTranslation(question_id=q.id, language=LanguageCode.ENGLISH, question_text="Sample text"))
             session.add(QuestionOption(question_id=q.id, option_label="A", display_order=1, is_correct=True))
             session.add(QuestionOption(question_id=q.id, option_label="B", display_order=2, is_correct=False))
@@ -217,7 +217,6 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
         """Tests GET /api/v1/exams/by-year and GET /api/v1/exams/years."""
         async with self.session_factory() as session:
             exam_2024 = Exam(
-                id=uuid.uuid4(),
                 code="upsc-prelims-2024-gs1",
                 name="UPSC Prelims 2024 GS1",
                 source_year=2024,
@@ -229,7 +228,6 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 is_active=True,
             )
             exam_2023 = Exam(
-                id=uuid.uuid4(),
                 code="upsc-prelims-2023-gs1",
                 name="UPSC Prelims 2023 GS1",
                 source_year=2023,
@@ -241,7 +239,6 @@ class TestQuestionIntegrityEndpoints(unittest.IsolatedAsyncioTestCase):
                 is_active=False,
             )
             exam_2019 = Exam(
-                id=uuid.uuid4(),
                 code="upsc-prelims-2019-gs1",
                 name="UPSC Prelims 2019 GS1",
                 source_year=2019,
