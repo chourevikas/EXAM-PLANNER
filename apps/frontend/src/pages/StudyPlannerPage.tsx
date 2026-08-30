@@ -18,6 +18,8 @@ import {
   deleteStudyActivity,
   sendPendingTasksEmail
 } from '../services/studyPlannerService';
+import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
+import { StudyPlannerSkeleton } from '../components/student/StudyPlannerSkeleton';
 
 function getActivityTypeBadge(activityType?: string, title?: string) {
   const act = (activityType || '').toUpperCase();
@@ -549,9 +551,9 @@ export function StudyPlannerPage() {
       </div>
 
       {/* Content Area */}
-      {loading ? (
-        <div style={{ padding: 40, textTransform: 'uppercase', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700 }}>
-          Loading your weekly schedule & logs...
+      {useMinimumLoadingTime(loading, 400) ? (
+        <div style={{ width: '100%' }}>
+          <StudyPlannerSkeleton />
         </div>
       ) : (
         <div style={{ width: '100%' }}>

@@ -17,6 +17,8 @@ import {
 } from '../services/examService';
 import { PsychometricReport, QuestionReportItem, UserProgressionReportData } from '../types/exam';
 import { Loader2, FileCheck, Sparkles, Cpu, Activity, RefreshCw, AlertCircle, ArrowLeft, BarChart3 } from 'lucide-react';
+import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
+import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -772,13 +774,10 @@ export function AnalyticsPage() {
             </div>
           )}
 
-          {/* Loading Spinner */}
-          {isLoading && !isEvaluating && (
-            <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <Loader2 size={28} className="animate-spin" color="#E31B23" />
-              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                Loading 12 Psychometric Diagnostic Matrices...
-              </span>
+          {/* Loading Skeleton */}
+          {useMinimumLoadingTime(isLoading && !isEvaluating, 400) && (
+            <div style={{ marginTop: 16 }}>
+              <PerformanceAnalyticsSkeleton />
             </div>
           )}
 
