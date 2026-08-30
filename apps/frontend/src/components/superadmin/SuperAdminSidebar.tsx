@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, ShieldAlert, Users, History, UserCheck, MessageSquareQuote } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Menu, ShieldAlert, Users, History, UserCheck, MessageSquareQuote, X } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface SuperAdminSidebarProps {
   activeTab: SuperAdminTab;
@@ -23,13 +24,31 @@ export function SuperAdminSidebar({
   mobileOpen = false,
   onCloseMobile,
 }: SuperAdminSidebarProps) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { isTabletOrBelow: isMobile } = useBreakpoint();
 
+  // Escape key handler
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (!mobileOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onCloseMobile) {
+        onCloseMobile();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && mobileOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
+    return () => {
+      document.body.classList.remove('scroll-lock');
+    };
+  }, [isMobile, mobileOpen]);
 
   const navItems: { id: SuperAdminTab; label: string; icon: any; badge?: number }[] = [
     { id: 'pending', label: 'Pending Approvals', icon: ShieldAlert, badge: pendingCount },
@@ -48,10 +67,11 @@ export function SuperAdminSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(16, 33, 61, 0.65)',
+            background: 'rgba(23, 32, 51, 0.75)',
             backdropFilter: 'blur(2px)',
             zIndex: 110,
           }}
+          aria-hidden="true"
         />
       )}
 
@@ -59,10 +79,10 @@ export function SuperAdminSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          background: '#172033',
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100vh - 60px)',
+          height: 'calc(100dvh - 60px)',
           position: 'fixed',
           top: 60,
           left: 0,
@@ -74,8 +94,10 @@ export function SuperAdminSidebar({
           overflow: 'hidden',
           fontFamily: 'Inter, sans-serif',
         }}
+        role="navigation"
+        aria-label="SuperAdmin Navigation"
       >
-        {/* Section Header with Borderless Hamburger Button & MAIN NAVIGATION */}
+        {/* Section Header with Hamburger Button & MAIN NAVIGATION */}
         <div
           style={{
             padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 10px 16px',
@@ -88,6 +110,7 @@ export function SuperAdminSidebar({
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
                 onClick={onToggle}
+                className="touch-target"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -97,7 +120,7 @@ export function SuperAdminSidebar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -117,12 +140,13 @@ export function SuperAdminSidebar({
                   fontFamily: 'Inter, sans-serif',
                 }}
               >
-                Main Navigation
+                Super Admin
               </span>
             </div>
           ) : (
             <button
               onClick={onToggle}
+              className="touch-target"
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -132,7 +156,7 @@ export function SuperAdminSidebar({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 4,
+                borderRadius: 0,
                 transition: 'color 0.15s ease',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -143,40 +167,64 @@ export function SuperAdminSidebar({
               <Menu size={18} />
             </button>
           )}
+
+          {isMobile && onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="touch-target"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                padding: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
-        {/* Navigation Items List */}
-        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 10px' }}>
-          {navItems.map(({ icon: Icon, label, id, badge }) => {
-            const isActive = activeTab === id;
+        {/* Navigation Links */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 10px', flex: 1, overflowY: 'auto' }}>
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+
             return (
               <button
-                key={id}
+                key={item.id}
                 onClick={() => {
-                  onNavigate(id);
-                  if (onCloseMobile) onCloseMobile();
+                  onNavigate(item.id);
+                  if (isMobile && onCloseMobile) {
+                    onCloseMobile();
+                  }
                 }}
-                title={(collapsed && !isMobile) ? label : undefined}
+                className="touch-target"
+                title={collapsed && !isMobile ? item.label : undefined}
                 style={{
-                  width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
                   padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
                   justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-                  borderRadius: 6,
-                  background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  borderRadius: 0,
+                  background: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
                   border: 'none',
-                  borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #f97316' : '3px solid transparent',
+                  borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
                   color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                   cursor: 'pointer',
                   fontSize: 13.5,
-                  fontFamily: 'Inter, sans-serif',
                   fontWeight: isActive ? 600 : 400,
                   transition: 'all 0.15s ease',
-                  whiteSpace: 'nowrap',
-                  marginBottom: 4,
-                  boxSizing: 'border-box',
+                  width: '100%',
+                  textAlign: 'left',
+                  position: 'relative',
+                  minHeight: 44,
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
@@ -191,20 +239,30 @@ export function SuperAdminSidebar({
                   }
                 }}
               >
-                <Icon size={17} color={isActive ? '#f97316' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
-                {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>}
-                {(!collapsed || isMobile) && badge !== undefined && badge > 0 && (
+                <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+
+                {(!collapsed || isMobile) && (
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.label}
+                  </span>
+                )}
+
+                {/* Notification Badge */}
+                {Boolean(item.badge && item.badge > 0) && (
                   <span
                     style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: 99,
-                      background: '#f97316',
+                      backgroundColor: '#E31B23',
                       color: '#ffffff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: (collapsed && !isMobile) ? '2px 4px' : '2px 7px',
+                      borderRadius: (collapsed && !isMobile) ? 0 : 0,
+                      position: (collapsed && !isMobile) ? 'absolute' : 'static',
+                      top: (collapsed && !isMobile) ? 4 : 'auto',
+                      right: (collapsed && !isMobile) ? 8 : 'auto',
                     }}
                   >
-                    {badge}
+                    {item.badge}
                   </span>
                 )}
               </button>

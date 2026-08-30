@@ -38,9 +38,7 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
     async def test_review_questions_and_solutions_flow(self):
         async with self.session_factory() as session:
             # 1. Create a test exam
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code=f"test-review-exam-{uuid.uuid4().hex[:6]}",
                 name="Test Review Exam",
                 stage="prelims",
@@ -52,11 +50,11 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             )
             session.add(exam)
             await session.commit()
+            await session.refresh(exam)
+            exam_id = exam.id
 
             # 2. Add 2 questions in PENDING_HUMAN_REVIEW
-            q1_id = uuid.uuid4()
             q1 = Question(
-                id=q1_id,
                 exam_id=exam_id,
                 question_number_in_paper=1,
                 paper_set_code="SET_A",
@@ -64,9 +62,7 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q1)
 
-            q2_id = uuid.uuid4()
             q2 = Question(
-                id=q2_id,
                 exam_id=exam_id,
                 question_number_in_paper=2,
                 paper_set_code="SET_A",
@@ -74,6 +70,10 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q2)
             await session.commit()
+            await session.refresh(q1)
+            await session.refresh(q2)
+            q1_id = q1.id
+            q2_id = q2.id
 
             # Add translations and options for Q1
             qt1 = QuestionTranslation(
@@ -258,9 +258,7 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
 
     async def test_corrupted_question_detection(self):
         async with self.session_factory() as session:
-            exam_id = uuid.uuid4()
             exam = Exam(
-                id=exam_id,
                 code=f"test-corrupt-exam-{uuid.uuid4().hex[:6]}",
                 name="Test Corrupt Exam",
                 stage="prelims",
@@ -272,11 +270,11 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             )
             session.add(exam)
             await session.commit()
+            await session.refresh(exam)
+            exam_id = exam.id
 
             # Add question with NO options (Corrupted)
-            q_id = uuid.uuid4()
             q = Question(
-                id=q_id,
                 exam_id=exam_id,
                 question_number_in_paper=1,
                 paper_set_code="SET_A",
@@ -284,6 +282,8 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             )
             session.add(q)
             await session.commit()
+            await session.refresh(q)
+            q_id = q.id
 
             # Add translation with empty text
             qt = QuestionTranslation(

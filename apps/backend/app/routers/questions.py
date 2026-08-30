@@ -21,16 +21,16 @@ router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
 
 @router.get("", response_model=QuestionPaginatedResponse, summary="Get Questions with Multi-Filtering & Pagination")
 async def list_questions(
-    subject_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Subject ID"),
+    subject_id: Optional[int] = Query(default=None, description="Filter by Subject ID"),
     subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
     subject_code: Optional[str] = Query(default=None, description="Filter by Subject Code"),
-    topic_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Topic ID"),
+    topic_id: Optional[int] = Query(default=None, description="Filter by Topic ID"),
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
     topic_code: Optional[str] = Query(default=None, description="Filter by Topic Code"),
-    subtopic_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Subtopic ID"),
+    subtopic_id: Optional[int] = Query(default=None, description="Filter by Subtopic ID"),
     subtopic_name: Optional[str] = Query(default=None, description="Filter by Subtopic Name (substring match)"),
     subtopic_code: Optional[str] = Query(default=None, description="Filter by Subtopic Code"),
-    exam_id: Optional[uuid.UUID] = Query(default=None, description="Filter by Exam ID"),
+    exam_id: Optional[int] = Query(default=None, description="Filter by Exam ID"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
     exam_type: Optional[QuestionSourceType] = Query(default=None, description="Filter by Exam Type e.g. PYQ or STATIC_MOCK"),
     exam_year: Optional[int] = Query(default=None, description="Filter by Exam Year e.g. 2023"),
@@ -248,7 +248,7 @@ async def create_question(
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
 async def get_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -256,11 +256,16 @@ async def get_question(
     Requirement 8: Takes question ID and language, returning complete information across all tables
     (question text, passage text, options, paper set, difficulty, marks, explanation, metadata, hierarchy links).
     """
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
         "questions:detail",
-        str(question_id),
+        str(qid_int),
         lang=str(language.value if hasattr(language, "value") else language),
     )
     cached_data = await cache.get(cache_key)
@@ -268,7 +273,7 @@ async def get_question(
         return JSONResponse(content=cached_data)
 
     service = QuestionService(session)
-    detail = await service.get_question_detail(question_id=question_id, language=language)
+    detail = await service.get_question_detail(question_id=qid_int, language=language)
     if detail is not None:
         serialized = detail.model_dump(mode="json") if hasattr(detail, "model_dump") else (detail.dict() if hasattr(detail, "dict") else detail)
         await cache.set(cache_key, serialized, ttl_seconds=3600)
@@ -278,7 +283,7 @@ async def get_question(
 
 @router.put("/{question_id}", response_model=QuestionDetailResponse, summary="Update Question & Publish")
 async def update_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -286,16 +291,21 @@ async def update_question(
     Requirement 8: Updates question text, options, translations, passage, explanation, metadata in DB
     and automatically sets Question status to PUBLISHED upon saving.
     """
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
     from app.cache import invalidate_question_cache
     service = QuestionService(session)
-    res = await service.update_question_detail(question_id=question_id, payload=payload)
-    await invalidate_question_cache(str(question_id))
+    res = await service.update_question_detail(question_id=qid_int, payload=payload)
+    await invalidate_question_cache(str(qid_int))
     return res
 
 
 @router.patch("/{question_id}", response_model=QuestionDetailResponse, summary="Partial Update Question & Publish")
 async def patch_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     payload: QuestionUpdatePayload,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -303,45 +313,63 @@ async def patch_question(
     Partially updates question text, options, translations, explanation, or metadata in DB
     and automatically sets Question status to PUBLISHED upon saving.
     """
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
     from app.cache import invalidate_question_cache
     service = QuestionService(session)
-    res = await service.update_question_detail(question_id=question_id, payload=payload)
-    await invalidate_question_cache(str(question_id))
+    res = await service.update_question_detail(question_id=qid_int, payload=payload)
+    await invalidate_question_cache(str(qid_int))
     return res
 
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete Question")
 async def delete_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Deletes a question entity by ID."""
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
     from app.cache import invalidate_question_cache
     service = QuestionService(session)
-    await service.delete_question(question_id=question_id)
-    await invalidate_question_cache(str(question_id))
+    await service.delete_question(question_id=qid_int)
+    await invalidate_question_cache(str(qid_int))
     return None
 
 
 @router.get("/{question_id}/formatted/yaml", response_class=PlainTextResponse, summary="Export Question to YAML")
 async def get_question_yaml_file(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
     service = QuestionService(session)
-    return await service.get_question_yaml_file(question_id)
+    return await service.get_question_yaml_file(qid_int)
 
 
 @router.get("/{question_id}/formatted/markdown", response_class=PlainTextResponse, summary="Export Question to Markdown")
 async def get_question_markdown_file(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
     service = QuestionService(session)
-    return await service.get_question_markdown_file(question_id)
+    return await service.get_question_markdown_file(qid_int)
 
 
 @router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question")
 async def get_question_solution(
-    question_id: uuid.UUID,
+    question_id: int | str,
     language: LanguageCode = LanguageCode.ENGLISH,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -349,6 +377,11 @@ async def get_question_solution(
     Fetches full solution metadata, markdown explanation, option distractor analyses,
     core concepts, key takeaways, and common traps from S3 JSON artifact or optimized batch DB query.
     """
+    try:
+        qid_int = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
     from app.cache import get_cache, build_cache_key
     from app.db.models import Exam, Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionMetadata
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
@@ -357,12 +390,12 @@ async def get_question_solution(
 
     cache = get_cache()
     lang_str = language.value if hasattr(language, "value") else str(language)
-    cache_key = build_cache_key("questions:solution", str(question_id), lang_str)
+    cache_key = build_cache_key("questions:solution", str(qid_int), lang_str)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=jsonable_encoder(cached_data))
 
-    q = await session.get(Question, question_id)
+    q = await session.get(Question, qid_int)
     if not q:
         raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 

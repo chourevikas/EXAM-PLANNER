@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index, Column
@@ -28,7 +27,7 @@ class Exam(SQLModel, table=True):
         ),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     code: str = Field(
         unique=True,
         index=True,
@@ -106,8 +105,6 @@ class Exam(SQLModel, table=True):
     display_order: int = Field(default=1)
     is_active: bool = Field(default=False, index=True)
 
-
-
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
@@ -152,8 +149,8 @@ class SyllabusVersion(SQLModel, table=True):
         Index("ix_syllabus_exam_version", "exam_id", "version_code", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     version_code: str = Field(max_length=50)
     title: Optional[str] = Field(default=None)
     effective_from: datetime = Field(
@@ -171,11 +168,11 @@ class SyllabusVersion(SQLModel, table=True):
 class Subject(SQLModel, table=True):
     __tablename__ = "subjects"
     __table_args__ = (
-        Index("ix_subjects_syllabus_order", "syllabus_version_id", "display_order"),
+        Index("ix_subjects_syllabus_order", "version_id", "display_order"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    syllabus_version_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    version_id: int = Field(
         foreign_key="syllabus_versions.id", ondelete="CASCADE", index=True
     )
     code: str = Field(default="DEFAULT", max_length=50)
@@ -192,8 +189,8 @@ class Topic(SQLModel, table=True):
     __tablename__ = "topics"
     __table_args__ = (Index("ix_topics_subject_order", "subject_id", "display_order"),)
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    subject_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subject_id: int = Field(
         foreign_key="subjects.id", ondelete="CASCADE", index=True
     )
     code: str = Field(default="DEFAULT", max_length=50)
@@ -210,8 +207,8 @@ class Subtopic(SQLModel, table=True):
     __tablename__ = "subtopics"
     __table_args__ = (Index("ix_subtopics_topic_order", "topic_id", "display_order"),)
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    topic_id: uuid.UUID = Field(foreign_key="topics.id", ondelete="CASCADE", index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    topic_id: int = Field(foreign_key="topics.id", ondelete="CASCADE", index=True)
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)
     display_order: int = Field(default=1)

@@ -1,20 +1,20 @@
 export const C = {
-  navy:    '#0F172A',
-  royal:   '#2563EB',
-  elec:    '#3B82F6',
-  emerald: '#10B981',
-  saffron: '#F97316',
-  ivory:   '#FAFAF7',
+  navy:    '#172033', // deep-navy
+  royal:   '#E31B23', // primary-red
+  elec:    '#199EAE', // info-teal
+  emerald: '#3A8B53', // success-green
+  saffron: '#F47B35', // orange
+  ivory:   '#F8FAFC', // soft-white
   white:   '#FFFFFF',
-  border:  '#E5E7EB',
-  slate:   '#111827',
+  border:  '#E2E8F0',
+  slate:   '#111111', // ink-black
   grey:    '#6B7280',
   muted:   '#9CA3AF',
   light:   '#F3F4F6',
-  blue50:  '#EFF6FF',
-  blue100: '#DBEAFE',
-  slate800:'#1E293B',
-  slate700:'#334155',
+  blue50:  'rgba(227, 27, 35, 0.05)',
+  blue100: 'rgba(227, 27, 35, 0.1)',
+  slate800:'#172033', // deep-navy variant
+  slate700:'#111111', // ink-black variant
   slate600:'#475569',
   slate500:'#64748B',
   slate400:'#94A3B8',

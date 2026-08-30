@@ -44,7 +44,7 @@ class TestDatabase(unittest.IsolatedAsyncioTestCase):
             await session.commit()
             await session.refresh(exam)
 
-            subtopic = Subtopic(name="Fundamental Rights", topic_id=uuid.uuid4())
+            subtopic = Subtopic(name="Fundamental Rights", topic_id=1)
             session.add(subtopic)
             await session.commit()
             await session.refresh(subtopic)
@@ -54,7 +54,7 @@ class TestDatabase(unittest.IsolatedAsyncioTestCase):
                 subtopic_id=subtopic.id,
                 memory_type=MemoryType.PASSAGE,
                 page_numbers_json="[1, 2]",
-                question_ids_json='["' + str(uuid.uuid4()) + '"]',
+                question_ids_json="[1]",
             )
             session.add(passage)
             await session.commit()

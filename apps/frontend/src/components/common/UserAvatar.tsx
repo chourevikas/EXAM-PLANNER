@@ -112,7 +112,7 @@ export function UserAvatar({
           width: size,
           height: size,
           borderRadius,
-          background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+          background: 'linear-gradient(135deg, #E31B23, #E31B23)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -120,7 +120,7 @@ export function UserAvatar({
           lineHeight: 1,
           flexShrink: 0,
           userSelect: 'none',
-          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+          boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
           ...style
         }}
       >
@@ -137,7 +137,7 @@ export function UserAvatar({
         width: size,
         height: size,
         borderRadius,
-        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+        background: 'linear-gradient(135deg, #E31B23, #C1121F)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -146,7 +146,7 @@ export function UserAvatar({
         color: '#ffffff',
         flexShrink: 0,
         userSelect: 'none',
-        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+        boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
         ...style
       }}
     >

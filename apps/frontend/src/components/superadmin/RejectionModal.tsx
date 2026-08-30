@@ -37,7 +37,7 @@ export function RejectionModal({ isOpen, adminName, onClose, onConfirm }: Reject
         style={{
           background: 'var(--bg-modal)',
           border: '1px solid var(--border-color)',
-          borderRadius: 24,
+          borderRadius: 0,
           padding: 32,
           maxWidth: 440,
           width: '100%',
@@ -62,7 +62,7 @@ export function RejectionModal({ isOpen, adminName, onClose, onConfirm }: Reject
             style={{
               width: '100%',
               padding: '12px',
-              borderRadius: 12,
+              borderRadius: 0,
               border: '1px solid var(--border-color)',
               background: 'var(--bg-body)',
               color: 'var(--text-main)',

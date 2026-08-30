@@ -57,13 +57,13 @@ export function ExamSubmitModal({
       <div
         style={{
           backgroundColor: isDark ? '#0f1e3c' : '#ffffff',
-          borderRadius: 20,
+          borderRadius: 0,
           border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0'}`,
           boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
           width: '100%',
           maxWidth: 440,
           padding: 28,
-          color: isDark ? '#ffffff' : '#0f172a',
+          color: isDark ? '#ffffff' : '#172033',
           textAlign: 'center'
         }}
       >
@@ -71,10 +71,10 @@ export function ExamSubmitModal({
           style={{
             width: 56,
             height: 56,
-            borderRadius: '50%',
-            backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff',
-            border: '1px solid #3b82f6',
-            color: '#2563eb',
+            borderRadius: 0,
+            backgroundColor: isDark ? 'rgba(227, 27, 35, 0.2)' : '#F8FAFC',
+            border: '1px solid #E31B23',
+            color: '#E31B23',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -95,18 +95,18 @@ export function ExamSubmitModal({
             gridTemplateColumns: '1fr 1fr 1fr',
             gap: 10,
             padding: 14,
-            borderRadius: 12,
+            borderRadius: 0,
             backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
             marginBottom: 24
           }}
         >
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{ans}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{ans}</div>
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Answered</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f59e0b' }}>{mrk}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#F2B623' }}>{mrk}</div>
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Review</div>
           </div>
           <div>
@@ -124,10 +124,10 @@ export function ExamSubmitModal({
             style={{
               flex: 1,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1'}`,
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
-              color: isDark ? '#ffffff' : '#0f172a',
+              color: isDark ? '#ffffff' : '#172033',
               fontSize: 14,
               fontWeight: 600,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -142,9 +142,9 @@ export function ExamSubmitModal({
             style={{
               flex: 1,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563eb',
+              backgroundColor: '#E31B23',
               color: '#ffffff',
               fontSize: 14,
               fontWeight: 700,

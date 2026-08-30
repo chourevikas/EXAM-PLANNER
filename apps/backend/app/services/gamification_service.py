@@ -12,7 +12,7 @@ class GamificationService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def check_and_update_daily_goal(self, user_id: uuid.UUID) -> dict:
+    async def check_and_update_daily_goal(self, user_id: int) -> dict:
         # Get today's date
         today = datetime.now(timezone.utc).date()
         
@@ -22,16 +22,16 @@ class GamificationService:
             StudyTask.scheduled_date == today,
             StudyTask.is_completed == False
         )
-        result = await self.session.execute(stmt)
-        incomplete_tasks = result.scalars().all()
+        result = await self.session.exec(stmt)
+        incomplete_tasks = result.all()
         
         if len(incomplete_tasks) > 0:
             return {"daily_goal_met": False, "message": "More tasks remaining for today."}
 
         # Daily goal met! Now update Gamification stats
         stmt = select(StudentProfile).where(StudentProfile.user_id == user_id)
-        result = await self.session.execute(stmt)
-        profile = result.scalars().first()
+        result = await self.session.exec(stmt)
+        profile = result.first()
         
         if not profile:
             raise HTTPException(status_code=404, detail="Student profile not found")
@@ -90,14 +90,14 @@ class GamificationService:
             "new_badges": new_unlocked_badges if 'new_unlocked_badges' in locals() else []
         }
 
-    async def _check_and_award_badges(self, user_id: uuid.UUID, profile: StudentProfile) -> list[str]:
+    async def _check_and_award_badges(self, user_id: int, profile: StudentProfile) -> list[str]:
         # Get all badges
         stmt = select(Badge)
-        badges = (await self.session.execute(stmt)).scalars().all()
+        badges = (await self.session.exec(stmt)).all()
         
         # Get user's unlocked badges
         stmt_ub = select(UserBadge).where(UserBadge.user_id == user_id)
-        user_badges = (await self.session.execute(stmt_ub)).scalars().all()
+        user_badges = (await self.session.exec(stmt_ub)).all()
         unlocked_badge_ids = {ub.badge_id for ub in user_badges}
         
         newly_unlocked = []

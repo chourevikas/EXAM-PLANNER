@@ -37,7 +37,7 @@ export async function fetchActiveAdmins(): Promise<AdminApprovalRequest[]> {
   return await res.json();
 }
 
-export async function approveAdminRequest(userId: string): Promise<User> {
+export async function approveAdminRequest(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/approve/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -49,7 +49,7 @@ export async function approveAdminRequest(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function rejectAdminRequest(userId: string, reason?: string): Promise<User> {
+export async function rejectAdminRequest(userId: number | string, reason?: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/reject/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -62,7 +62,7 @@ export async function rejectAdminRequest(userId: string, reason?: string): Promi
   return await res.json();
 }
 
-export async function suspendAdmin(userId: string): Promise<User> {
+export async function suspendAdmin(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/suspend/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -74,7 +74,7 @@ export async function suspendAdmin(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function reactivateAdmin(userId: string): Promise<User> {
+export async function reactivateAdmin(userId: number | string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/reactivate/${userId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -113,7 +113,7 @@ export async function fetchPlatformUsers(): Promise<UserDirectoryItem[]> {
   return await res.json();
 }
 
-export async function updateUserRole(userId: string, newRole: string): Promise<User> {
+export async function updateUserRole(userId: number | string, newRole: string): Promise<User> {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -135,7 +135,7 @@ export async function fetchAllUsers(): Promise<User[]> {
   return await res.json();
 }
 
-export async function fetchUserById(userId: string): Promise<User> {
+export async function fetchUserById(userId: number | string): Promise<User> {
   const res = await fetch(`/api/v1/users/${userId}`, { headers: getAuthHeader() });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch user details' }));
@@ -144,7 +144,7 @@ export async function fetchUserById(userId: string): Promise<User> {
   return await res.json();
 }
 
-export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
+export async function updateUserStatus(userId: number | string, status: 'ACTIVE' | 'SUSPENDED'): Promise<User> {
   const res = await fetch(`/api/v1/users/${userId}`, {
     method: 'PUT',
     headers: getAuthHeader(),
@@ -158,7 +158,7 @@ export async function updateUserStatus(userId: string, status: 'ACTIVE' | 'SUSPE
 }
 
 
-export async function fetchPipelineStatus(examId: string): Promise<any> {
+export async function fetchPipelineStatus(examId: number | string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/status/${examId}`, { headers: getAuthHeader() });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch pipeline status' }));
@@ -167,7 +167,7 @@ export async function fetchPipelineStatus(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function stopPipelineTask(examId: string): Promise<any> {
+export async function stopPipelineTask(examId: number | string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/stop/${examId}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -179,7 +179,7 @@ export async function stopPipelineTask(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function restartPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+export async function restartPipelineTask(examId: number | string, language: string = 'ENGLISH'): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/restart/${examId}?language=${language}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -191,7 +191,7 @@ export async function restartPipelineTask(examId: string, language: string = 'EN
   return await res.json();
 }
 
-export async function retryPipelineTask(examId: string, language: string = 'ENGLISH'): Promise<any> {
+export async function retryPipelineTask(examId: number | string, language: string = 'ENGLISH'): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/retry/${examId}?language=${language}`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -204,7 +204,7 @@ export async function retryPipelineTask(examId: string, language: string = 'ENGL
 }
 
 export interface ExamPipelineStatusItem {
-  id: string;
+  id: number | string;
   code: string;
   name: string;
   source_year: number;
@@ -245,7 +245,7 @@ export async function fetchExamPipelineStatuses(): Promise<ExamPipelineStatusIte
 }
 
 export interface StuckPipelineItem {
-  exam_id: string;
+  exam_id: number | string;
   exam_name: string;
   exam_code: string;
   pipeline_type: string;
@@ -265,7 +265,7 @@ export async function fetchStuckPipelines(): Promise<StuckPipelineItem[]> {
   return await res.json();
 }
 
-export async function resumeExamPipeline(examId: string): Promise<any> {
+export async function resumeExamPipeline(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/resume-pipeline`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -277,7 +277,7 @@ export async function resumeExamPipeline(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function dismissStuckPipeline(examId: string): Promise<any> {
+export async function dismissStuckPipeline(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/dismiss-stuck-pipeline`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -289,7 +289,7 @@ export async function dismissStuckPipeline(examId: string): Promise<any> {
   return await res.json();
 }
 
-export async function approveAndPublishExam(examId: string): Promise<any> {
+export async function approveAndPublishExam(examId: number | string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve`, {
     method: 'POST',
     headers: getAuthHeader(),
@@ -302,7 +302,7 @@ export async function approveAndPublishExam(examId: string): Promise<any> {
 }
 
 export async function syncExamToS3(
-  examId: string,
+  examId: number | string,
   syncAll: boolean = false,
   syncTarget: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' = 'MASTERS_ONLY'
 ): Promise<any> {
@@ -319,7 +319,7 @@ export async function syncExamToS3(
 }
 
 export interface ExamSyncStatusResponse {
-  exam_id: string;
+  exam_id: number | string;
   exam_code: string;
   is_published: boolean;
   is_syncing: boolean;
@@ -336,7 +336,7 @@ export interface ExamSyncStatusResponse {
   solutions_json_folder_path?: string | null;
 }
 
-export async function fetchExamSyncStatus(examId: string): Promise<ExamSyncStatusResponse> {
+export async function fetchExamSyncStatus(examId: number | string): Promise<ExamSyncStatusResponse> {
   const res = await fetch(`${API_BASE_URL}/exams/${examId}/sync-status`, {
     headers: getAuthHeader(),
   });
@@ -348,7 +348,7 @@ export async function fetchExamSyncStatus(examId: string): Promise<ExamSyncStatu
 }
 
 export interface ExamReviewQuestionsResponse {
-  exam_id: string;
+  exam_id: number | string;
   exam_name?: string;
   exam_code?: string;
   stage?: string;
@@ -380,7 +380,7 @@ export interface ExamReviewQuestionsResponse {
 }
 
 export async function fetchExamQuestionsForReview(
-  examId: string,
+  examId: number | string,
   page: number = 1,
   limit: number = 10,
   status?: string
@@ -397,7 +397,7 @@ export async function fetchExamQuestionsForReview(
   return await res.json();
 }
 
-export async function fetchQuestionsByExam(examId: string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
+export async function fetchQuestionsByExam(examId: number | string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
   let url = `/api/v1/questions?exam_id=${examId}&page=${page}&limit=${limit}`;
   if (status && status !== 'ALL') {
     url += `&status=${status}`;
@@ -410,7 +410,7 @@ export async function fetchQuestionsByExam(examId: string, page: number = 1, lim
   return await res.json();
 }
 
-export async function updateAdminQuestionDetail(questionId: string, payload: any): Promise<any> {
+export async function updateAdminQuestionDetail(questionId: number | string, payload: any): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
     method: 'PUT',
     headers: getAuthHeader(),
@@ -423,7 +423,7 @@ export async function updateAdminQuestionDetail(questionId: string, payload: any
   return await res.json();
 }
 
-export async function updateAdminQuestionStatus(questionId: string, status: string): Promise<any> {
+export async function updateAdminQuestionStatus(questionId: number | string, status: string): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/questions/${questionId}`, {
     method: 'PATCH',
     headers: getAuthHeader(),
@@ -467,7 +467,7 @@ export interface OverviewMetric {
 }
 
 export interface RecentUploadItem {
-  id: string;
+  id: number | string;
   title: string;
   questions: number;
   date: string;
@@ -496,6 +496,145 @@ export async function fetchAdminOverviewStats(): Promise<AdminOverviewStats> {
   }
   return await res.json();
 }
+
+
+export interface QuestionOptionPayload {
+  option_id?: string | number;
+  option_label: string;
+  display_order?: number;
+  option_text: string;
+  is_correct: boolean;
+  distractor_analysis?: string;
+  closeness_score?: number;
+}
+
+export interface QuestionCreatePayload {
+  exam_id: string | number;
+  question_number_in_paper: number;
+  question_text: string;
+  paper_set_code?: string;
+  section_code?: string;
+  question_type?: string;
+  difficulty?: string;
+  marks?: number;
+  negative_marks?: number;
+  expected_time_seconds?: number;
+  options?: QuestionOptionPayload[];
+  passage_text?: string;
+  core_concept?: string;
+  detailed_solution?: string;
+  common_traps?: string[];
+  key_takeaways?: string[];
+  subject_name?: string;
+  topic_name?: string;
+  subtopic_name?: string;
+  subject_id?: string | number;
+  topic_id?: string | number;
+  subtopic_id?: string | number;
+  language?: string;
+}
+
+export interface QuestionIssueDetail {
+  question_id?: string | null;
+  question_number_in_paper: number;
+  status: string;
+  issue_category: 'MISSING_IN_PAPER' | 'CORRUPTED' | 'PARTIALLY_CORRUPTED' | 'VALID';
+  issues: string[];
+  has_statement?: boolean;
+  has_options?: boolean;
+  has_correct_option?: boolean;
+  has_explanation?: boolean;
+  has_valid_syllabus?: boolean;
+  subject?: string | null;
+  topic?: string | null;
+  subtopic?: string | null;
+  question_text_preview?: string | null;
+  options_count?: number;
+  is_complete?: boolean;
+  requires_human_review?: boolean;
+}
+
+export interface ExamIntegrityQuestionsResponse {
+  exam_id: string | number;
+  exam_name?: string;
+  paper_set_code?: string;
+  total_expected_questions: number;
+  total_extracted_questions: number;
+  corrupted_count: number;
+  partially_corrupted_count: number;
+  missing_count: number;
+  valid_count: number;
+  missing_question_numbers: number[];
+  page: number;
+  limit: number;
+  total_items: number;
+  pages: number;
+  items: QuestionIssueDetail[];
+}
+
+export async function createAdminQuestion(payload: QuestionCreatePayload): Promise<any> {
+  const res = await fetch('/api/v1/questions', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to create question' }));
+    throw new Error(errorData.detail || 'Question creation failed.');
+  }
+  return await res.json();
+}
+
+export async function fetchExamIntegrityQuestions(
+  examId: string | number,
+  issueType?: string,
+  page: number = 1,
+  limit: number = 100
+): Promise<ExamIntegrityQuestionsResponse> {
+  let url = `/api/v1/exams/${encodeURIComponent(examId)}/integrity-questions?page=${page}&limit=${limit}`;
+  if (issueType && issueType !== 'ALL') {
+    url += `&issue_type=${encodeURIComponent(issueType)}`;
+  }
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam integrity questions' }));
+    throw new Error(errorData.detail || 'Could not fetch exam integrity questions.');
+  }
+  return await res.json();
+}
+
+export async function fetchExamsByYear(): Promise<any> {
+  const res = await fetch('/api/v1/exams/by-year', { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exams grouped by year' }));
+    throw new Error(errorData.detail || 'Could not fetch exams by year.');
+  }
+  return await res.json();
+}
+
+export async function fetchMasterSyllabus(examId?: string | number): Promise<any> {
+  const url = examId ? `/api/v1/exams/${encodeURIComponent(examId)}/syllabus` : '/api/v1/syllabus';
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch syllabus hierarchy' }));
+    throw new Error(errorData.detail || 'Could not fetch syllabus.');
+  }
+  return await res.json();
+}
+
+export async function verifySyllabusTaxonomy(subject: string, topic: string, subtopic: string): Promise<any> {
+  const res = await fetch('/api/v1/syllabus/verify', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ subject, topic, subtopic }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to verify syllabus node' }));
+    throw new Error(errorData.detail || 'Syllabus node verification failed.');
+  }
+  return await res.json();
+}
+
 
 
 

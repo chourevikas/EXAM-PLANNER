@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
@@ -63,17 +63,22 @@ async def list_answer_key_batches(session: AsyncSession = Depends(get_async_sess
 
 @router.get("/answer-key/batches/{batch_id}")
 async def get_answer_key_batch_detail(
-    batch_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    batch_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
     """Fetches detailed answer key mapping log for a batch."""
+    try:
+        bid = int(batch_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Answer key batch not found.")
+
     cache = get_cache()
-    cache_key = build_cache_key("answer_keys:batch", str(batch_id))
+    cache_key = build_cache_key("answer_keys:batch", str(bid))
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=cached_data)
 
     service = AnswerKeyService(session)
-    detail = await service.get_batch_detail(batch_id)
+    detail = await service.get_batch_detail(bid)
     if detail is not None:
         await cache.set(cache_key, detail, ttl_seconds=3600)
         return JSONResponse(content=detail)

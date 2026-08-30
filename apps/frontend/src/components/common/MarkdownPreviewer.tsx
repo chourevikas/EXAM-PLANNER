@@ -54,7 +54,7 @@ export function MarkdownPreviewer({
         style={{
           fontSize: 22,
           fontWeight: 800,
-          color: isDark ? '#ffffff' : '#0f172a',
+          color: isDark ? '#ffffff' : '#172033',
           margin: '24px 0 12px 0',
           borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
           paddingBottom: 8,
@@ -67,7 +67,7 @@ export function MarkdownPreviewer({
         style={{
           fontSize: 18,
           fontWeight: 800,
-          color: isDark ? '#60a5fa' : '#2563eb',
+          color: isDark ? '#60a5fa' : '#E31B23',
           margin: '20px 0 10px 0',
         }}
         {...props}
@@ -78,7 +78,7 @@ export function MarkdownPreviewer({
         style={{
           fontSize: 15,
           fontWeight: 700,
-          color: isDark ? '#e2e8f0' : '#1e293b',
+          color: isDark ? '#e2e8f0' : '#172033',
           margin: '16px 0 8px 0',
         }}
         {...props}
@@ -114,7 +114,7 @@ export function MarkdownPreviewer({
             borderCollapse: 'collapse',
             fontSize: 13,
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
-            borderRadius: 8,
+            borderRadius: 0,
           }}
           {...props}
         />
@@ -135,7 +135,7 @@ export function MarkdownPreviewer({
           fontWeight: 700,
           textAlign: 'left',
           borderBottom: `2px solid ${isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1'}`,
-          color: isDark ? '#ffffff' : '#0f172a',
+          color: isDark ? '#ffffff' : '#172033',
         }}
         {...props}
       />
@@ -159,16 +159,16 @@ export function MarkdownPreviewer({
       const isTip = textContent.includes('[!TIP]') || textContent.includes('Recommendation');
       const isWarning = textContent.includes('[!WARNING]');
 
-      let borderColor = '#2563eb';
-      let bgColor = isDark ? 'rgba(37, 99, 235, 0.08)' : '#eff6ff';
+      let borderColor = '#E31B23';
+      let bgColor = isDark ? 'rgba(227, 27, 35, 0.08)' : '#F8FAFC';
       if (isImportant) {
         borderColor = '#8b5cf6';
         bgColor = isDark ? 'rgba(139, 92, 246, 0.12)' : '#f5f3ff';
       } else if (isTip) {
-        borderColor = '#10b981';
+        borderColor = '#3A8B53';
         bgColor = isDark ? 'rgba(16, 185, 129, 0.12)' : '#f0fdf4';
       } else if (isWarning) {
-        borderColor = '#f59e0b';
+        borderColor = '#F2B623';
         bgColor = isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb';
       }
 
@@ -179,7 +179,7 @@ export function MarkdownPreviewer({
             padding: '12px 18px',
             borderLeft: `4px solid ${borderColor}`,
             backgroundColor: bgColor,
-            borderRadius: '0 10px 10px 0',
+            borderRadius: 0,
             color: isDark ? '#e2e8f0' : '#334155',
             fontSize: 13.5,
             lineHeight: 1.5,
@@ -199,7 +199,7 @@ export function MarkdownPreviewer({
               backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
               color: isDark ? '#f472b6' : '#db2777',
               padding: '2px 6px',
-              borderRadius: 4,
+              borderRadius: 0,
               fontFamily: 'monospace',
               fontSize: '0.9em',
             }}
@@ -213,10 +213,10 @@ export function MarkdownPreviewer({
         <div
           style={{
             margin: '14px 0',
-            borderRadius: 12,
+            borderRadius: 0,
             overflow: 'hidden',
-            backgroundColor: isDark ? '#0b1120' : '#0f172a',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#1e293b'}`,
+            backgroundColor: isDark ? '#0b1120' : '#172033',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#172033'}`,
           }}
         >
           <pre
@@ -281,7 +281,7 @@ export function MarkdownPreviewer({
     <div
       style={{
         backgroundColor: isDark ? '#131f37' : '#ffffff',
-        borderRadius: 20,
+        borderRadius: 0,
         border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
         boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.03)',
         overflow: 'hidden',
@@ -301,7 +301,7 @@ export function MarkdownPreviewer({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
             {title}
           </h3>
           <span
@@ -309,10 +309,10 @@ export function MarkdownPreviewer({
               fontSize: 11,
               fontWeight: 700,
               padding: '2px 8px',
-              borderRadius: 10,
-              backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#eff6ff',
-              color: '#2563eb',
-              border: '1px solid rgba(37,99,235,0.3)',
+              borderRadius: 0,
+              backgroundColor: isDark ? 'rgba(227, 27, 35,0.2)' : '#F8FAFC',
+              color: '#E31B23',
+              border: '1px solid rgba(227, 27, 35,0.3)',
             }}
           >
             ReactMarkdown (remark-gfm)
@@ -325,7 +325,7 @@ export function MarkdownPreviewer({
             style={{
               display: 'flex',
               padding: 3,
-              borderRadius: 10,
+              borderRadius: 0,
               backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
             }}
           >
@@ -336,9 +336,9 @@ export function MarkdownPreviewer({
                 alignItems: 'center',
                 gap: 5,
                 padding: '5px 12px',
-                borderRadius: 8,
+                borderRadius: 0,
                 border: 'none',
-                backgroundColor: mode === 'preview' ? '#2563eb' : 'transparent',
+                backgroundColor: mode === 'preview' ? '#E31B23' : 'transparent',
                 color: mode === 'preview' ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
                 fontSize: 12,
                 fontWeight: 700,
@@ -357,9 +357,9 @@ export function MarkdownPreviewer({
                 alignItems: 'center',
                 gap: 5,
                 padding: '5px 12px',
-                borderRadius: 8,
+                borderRadius: 0,
                 border: 'none',
-                backgroundColor: mode === 'raw' ? '#2563eb' : 'transparent',
+                backgroundColor: mode === 'raw' ? '#E31B23' : 'transparent',
                 color: mode === 'raw' ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
                 fontSize: 12,
                 fontWeight: 700,
@@ -380,7 +380,7 @@ export function MarkdownPreviewer({
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              borderRadius: 10,
+              borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`,
               backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
               color: isDark ? '#e2e8f0' : '#334155',
@@ -389,7 +389,7 @@ export function MarkdownPreviewer({
               cursor: 'pointer',
             }}
           >
-            {copied ? <Check size={13} color="#10b981" /> : <Copy size={13} />}
+            {copied ? <Check size={13} color="#3A8B53" /> : <Copy size={13} />}
             <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
 
@@ -401,9 +401,9 @@ export function MarkdownPreviewer({
               alignItems: 'center',
               gap: 6,
               padding: '6px 12px',
-              borderRadius: 10,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563eb',
+              backgroundColor: '#E31B23',
               color: '#ffffff',
               fontSize: 12,
               fontWeight: 700,
@@ -419,7 +419,7 @@ export function MarkdownPreviewer({
       {/* Main Body */}
       <div style={{ padding: 24 }}>
         {mode === 'preview' ? (
-          <div style={{ lineHeight: 1.6, color: isDark ? '#e2e8f0' : '#1e293b' }}>
+          <div style={{ lineHeight: 1.6, color: isDark ? '#e2e8f0' : '#172033' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {content || 'No audit content available.'}
             </ReactMarkdown>
@@ -432,9 +432,9 @@ export function MarkdownPreviewer({
               width: '100%',
               minHeight: 480,
               backgroundColor: isDark ? '#0b1120' : '#f8fafc',
-              color: isDark ? '#f8fafc' : '#0f172a',
+              color: isDark ? '#f8fafc' : '#172033',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1'}`,
-              borderRadius: 12,
+              borderRadius: 0,
               padding: 16,
               fontFamily: 'monospace',
               fontSize: 13,

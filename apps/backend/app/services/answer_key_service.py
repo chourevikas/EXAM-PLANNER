@@ -162,7 +162,7 @@ class AnswerKeyService:
             await cache.set(cache_key, serialized, ttl_seconds=1800)
         return batches
 
-    async def get_batch_detail(self, batch_id: uuid.UUID) -> Dict[str, Any]:
+    async def get_batch_detail(self, batch_id: int) -> Dict[str, Any]:
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         cache_key = build_cache_key("answer_keys:batch", str(batch_id))
@@ -201,7 +201,7 @@ class AnswerKeyService:
         await cache.set(cache_key, res_data, ttl_seconds=3600)
         return res_data
 
-    async def map_stored_answers_from_db(self, exam_id: uuid.UUID) -> int:
+    async def map_stored_answers_from_db(self, exam_id: int) -> int:
         """
         Maps stored AnswerKeyMapping entries directly from the database to newly extracted questions.
         Performs 0 LLM vision calls and 0 PDF processing operations.

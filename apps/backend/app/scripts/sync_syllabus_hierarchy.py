@@ -45,13 +45,13 @@ async def sync_master_syllabus():
             subject = existing_subjects.get(s_key)
             if not subject:
                 subject = Subject(
-                    id=uuid.uuid4(),
-                    syllabus_version_id=syl_ver.id,
+                    version_id=syl_ver.id,
                     name=subject_name.strip(),
                     code=subject_name.strip()[:4].upper(),
                     display_order=len(existing_subjects) + 1,
                 )
                 session.add(subject)
+                await session.flush()
                 existing_subjects[s_key] = subject
                 added_subjects += 1
 
@@ -60,12 +60,12 @@ async def sync_master_syllabus():
                 topic = existing_topics.get(t_key)
                 if not topic:
                     topic = Topic(
-                        id=uuid.uuid4(),
                         subject_id=subject.id,
                         name=topic_name.strip(),
                         display_order=len(existing_topics) + 1,
                     )
                     session.add(topic)
+                    await session.flush()
                     existing_topics[t_key] = topic
                     added_topics += 1
                 elif topic.subject_id is None:
@@ -77,7 +77,6 @@ async def sync_master_syllabus():
                     subtopic = existing_subtopics.get(st_key)
                     if not subtopic:
                         subtopic = Subtopic(
-                            id=uuid.uuid4(),
                             topic_id=topic.id,
                             name=subtopic_name.strip(),
                             pyq_frequency=1,

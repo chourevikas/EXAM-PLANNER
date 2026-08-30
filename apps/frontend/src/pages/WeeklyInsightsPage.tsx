@@ -34,7 +34,7 @@ export function WeeklyInsightsPage() {
         style={{
           marginBottom: 32,
           padding: 32,
-          borderRadius: 24,
+          borderRadius: 0,
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-color-base)',
@@ -48,7 +48,7 @@ export function WeeklyInsightsPage() {
             gap: 6,
             padding: '4px 12px',
             backgroundColor: 'rgba(219, 39, 119, 0.1)',
-            borderRadius: 20,
+            borderRadius: 0,
             marginBottom: 10,
             border: '1px solid rgba(219, 39, 119, 0.25)',
           }}
@@ -68,21 +68,21 @@ export function WeeklyInsightsPage() {
 
       {isLoading ? (
         <div style={{ padding: 48, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Loader2 size={28} className="animate-spin" color="#2563eb" />
+          <Loader2 size={28} className="animate-spin" color="#E31B23" />
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
             Generating Weekly Executive Insights...
           </span>
         </div>
       ) : error ? (
-        <div style={{ padding: 32, textAlign: 'center', color: '#ef4444', backgroundColor: 'var(--bg-card)', borderRadius: 20 }}>
+        <div style={{ padding: 32, textAlign: 'center', color: '#ef4444', backgroundColor: 'var(--bg-card)', borderRadius: 0 }}>
           {error}
         </div>
       ) : data ? (
         <>
           {/* Top Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-            <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#2563eb' }}>
+            <div style={{ padding: 20, borderRadius: 0, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#E31B23' }}>
                 <Clock size={20} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Logged Study Time</span>
               </div>
@@ -92,8 +92,8 @@ export function WeeklyInsightsPage() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Across {data.active_days_count} active days</span>
             </div>
 
-            <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#10b981' }}>
+            <div style={{ padding: 20, borderRadius: 0, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#3A8B53' }}>
                 <Target size={20} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Questions & Accuracy</span>
               </div>
@@ -103,7 +103,7 @@ export function WeeklyInsightsPage() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Average test accuracy</span>
             </div>
 
-            <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+            <div style={{ padding: 20, borderRadius: 0, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#8b5cf6' }}>
                 <CheckCircle2 size={20} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Target Completion</span>
@@ -114,8 +114,8 @@ export function WeeklyInsightsPage() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{data.completed_tasks}/{data.total_tasks} study targets</span>
             </div>
 
-            <div style={{ padding: 20, borderRadius: 16, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#f59e0b' }}>
+            <div style={{ padding: 20, borderRadius: 0, backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, color: '#F2B623' }}>
                 <Award size={20} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Primary Focus</span>
               </div>
@@ -129,9 +129,9 @@ export function WeeklyInsightsPage() {
           {/* Grid of Report Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
             {/* Card 1: Key Achievements */}
-            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ padding: 8, backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', borderRadius: 10 }}>
+                <div style={{ padding: 8, backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#3A8B53', borderRadius: 0 }}>
                   <Ico.Trophy size={18} />
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Weekly Highlights</h3>
@@ -146,9 +146,9 @@ export function WeeklyInsightsPage() {
             </div>
 
             {/* Card 2: Recommended Revision */}
-            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 24, border: '1px solid var(--border-default)' }}>
+            <div style={{ backgroundColor: 'var(--bg-card)', padding: 28, borderRadius: 0, border: '1px solid var(--border-default)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ padding: 8, backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', borderRadius: 10 }}>
+                <div style={{ padding: 8, backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#F2B623', borderRadius: 0 }}>
                   <Ico.Brain size={18} />
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Focus Next Week</h3>

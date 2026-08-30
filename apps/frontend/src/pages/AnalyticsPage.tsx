@@ -26,7 +26,7 @@ export function AnalyticsPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const historyPageSize = 10;
   // Default to CUMULATIVE_ALL unless a specific attemptId is requested
-  const [selectedAttemptId, setSelectedAttemptId] = useState<string>(attemptIdParam || 'CUMULATIVE_ALL');
+  const [selectedAttemptId, setSelectedAttemptId] = useState<number | string>(attemptIdParam || 'CUMULATIVE_ALL');
   const [report, setReport] = useState<PsychometricReport | null>(null);
   const [questionReportData, setQuestionReportData] = useState<QuestionReportItem[]>([]);
   const [userProgressionData, setUserProgressionData] = useState<UserProgressionReportData | null>(null);
@@ -169,7 +169,35 @@ export function AnalyticsPage() {
         if (isCancelled) return;
 
         if (jsonRes.status === 'fulfilled') {
-          setReport(jsonRes.value);
+          const loadedReport = jsonRes.value;
+          setReport(loadedReport);
+
+          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with backoff until resolved
+          if (targetId !== 'CUMULATIVE_ALL' && !loadedReport?.llm_insight) {
+            let attempts = 0;
+            const maxAttempts = 10; // Poll up to 10 times (max ~25 seconds)
+            const pollIntervalMs = 3500;
+
+            const pollAiInsight = async () => {
+              if (isCancelled || attempts >= maxAttempts) return;
+              attempts++;
+              try {
+                const refreshedReport = await getPsychometricReportJson(targetId);
+                if (refreshedReport && refreshedReport.llm_insight && !isCancelled) {
+                  setReport((prev) => (prev ? { ...prev, llm_insight: refreshedReport.llm_insight } : refreshedReport));
+                  return; // Resolved successfully
+                }
+              } catch {
+                // Silent catch - will retry next interval
+              }
+
+              if (!isCancelled && attempts < maxAttempts) {
+                setTimeout(pollAiInsight, pollIntervalMs);
+              }
+            };
+
+            setTimeout(pollAiInsight, 2000);
+          }
         } else {
           setError(jsonRes.reason?.message || 'Report is currently compiling in background. Please refresh in a moment.');
         }
@@ -212,9 +240,9 @@ export function AnalyticsPage() {
     }
   };
 
-  const handleViewSingleExam = (attemptId: string) => {
+  const handleViewSingleExam = (attemptId: number | string) => {
     setSelectedAttemptId(attemptId);
-    setSearchParams({ attemptId });
+    setSearchParams({ attemptId: String(attemptId) });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -235,16 +263,16 @@ export function AnalyticsPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '12px 20px',
-            borderRadius: 16,
-            backgroundColor: 'rgba(37, 99, 235, 0.08)',
-            border: '1px solid rgba(37, 99, 235, 0.25)',
+            borderRadius: 0,
+            backgroundColor: 'rgba(227, 27, 35, 0.08)',
+            border: '1px solid rgba(227, 27, 35, 0.25)',
             flexWrap: 'wrap',
             gap: 12,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Viewing Individual Exam Report:</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#2563eb' }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: '#E31B23' }}>
               {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
             </span>
           </div>
@@ -256,14 +284,14 @@ export function AnalyticsPage() {
               alignItems: 'center',
               gap: 8,
               padding: '8px 16px',
-              borderRadius: 12,
-              backgroundColor: '#2563eb',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#ffffff',
               border: 'none',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
               transition: 'all 0.15s ease',
             }}
           >
@@ -278,11 +306,11 @@ export function AnalyticsPage() {
         style={{
           marginBottom: 24,
           padding: 32,
-          borderRadius: 24,
+          borderRadius: 0,
           backgroundColor: 'var(--bg-card)',
           border: '1px solid var(--border-default)',
           boxShadow: 'var(--shadow-color-base)',
-          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(37,99,235,0.06) 100%)',
+          backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(227, 27, 35,0.06) 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -298,7 +326,7 @@ export function AnalyticsPage() {
               gap: 6,
               padding: '4px 12px',
               backgroundColor: 'var(--accent-bg)',
-              borderRadius: 20,
+              borderRadius: 0,
               marginBottom: 10,
               border: '1px solid var(--accent-border)',
             }}
@@ -327,7 +355,7 @@ export function AnalyticsPage() {
               alignItems: 'center',
               gap: 8,
               padding: '10px 18px',
-              borderRadius: 14,
+              borderRadius: 0,
               backgroundColor: 'var(--bg-subtle)',
               border: '1px solid var(--accent-primary)',
               color: 'var(--text-primary)',
@@ -338,7 +366,7 @@ export function AnalyticsPage() {
               transition: 'all 0.2s ease',
             }}
           >
-            <BarChart3 size={16} color="#2563eb" />
+            <BarChart3 size={16} color="#E31B23" />
             ← Back to Master Cumulative Report
           </button>
         )}
@@ -359,7 +387,7 @@ export function AnalyticsPage() {
             style={{
               marginBottom: 20,
               padding: '14px 20px',
-              borderRadius: 16,
+              borderRadius: 0,
               backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
@@ -382,9 +410,9 @@ export function AnalyticsPage() {
                 onChange={(e) => handleViewSingleExam(e.target.value)}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   backgroundColor: 'var(--bg-subtle)',
-                  border: '1px solid #2563eb',
+                  border: '1px solid #E31B23',
                   color: 'var(--text-primary)',
                   fontSize: 12.5,
                   fontWeight: 700,
@@ -409,7 +437,7 @@ export function AnalyticsPage() {
             padding: '64px 32px',
             textAlign: 'center',
             backgroundColor: 'var(--bg-card)',
-            borderRadius: 24,
+            borderRadius: 0,
             border: '1px solid var(--border-default)',
             boxShadow: 'var(--shadow-color-base)',
             display: 'flex',
@@ -425,9 +453,9 @@ export function AnalyticsPage() {
             style={{
               width: 80,
               height: 80,
-              borderRadius: '50%',
-              backgroundColor: 'rgba(37, 99, 235, 0.1)',
-              border: '1px solid rgba(37, 99, 235, 0.25)',
+              borderRadius: 0,
+              backgroundColor: 'rgba(227, 27, 35, 0.1)',
+              border: '1px solid rgba(227, 27, 35, 0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -453,14 +481,14 @@ export function AnalyticsPage() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '14px 28px',
-                borderRadius: 14,
-                backgroundColor: '#2563eb',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#ffffff',
                 border: 'none',
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(37, 99, 235, 0.3)',
+                boxShadow: '0 4px 16px rgba(227, 27, 35, 0.3)',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -472,432 +500,432 @@ export function AnalyticsPage() {
         <>
           {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
           {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
-        <section
-          style={{
-            marginBottom: 24,
-            padding: 24,
-            borderRadius: 20,
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-default)',
-            boxShadow: 'var(--shadow-color-base)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BarChart3 size={18} color="#2563eb" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
-              </h3>
-              <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
-                Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
-              </p>
-            </div>
-          </div>
+            <section
+              style={{
+                marginBottom: 24,
+                padding: 24,
+                borderRadius: 0,
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-default)',
+                boxShadow: 'var(--shadow-color-base)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <BarChart3 size={18} color="#E31B23" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
+                  </h3>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+                    Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
+                  </p>
+                </div>
+              </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border-default)', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Paper & Attempt</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Mode</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Date</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Marks Scored / Max Marks</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Questions</th>
-                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const totalPages = Math.ceil(attemptsHistory.length / historyPageSize) || 1;
-                  const validPage = Math.min(Math.max(1, historyPage), totalPages);
-                  const startIndex = (validPage - 1) * historyPageSize;
-                  const paginated = attemptsHistory.slice(startIndex, startIndex + historyPageSize);
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-default)', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>#</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Exam Paper & Attempt</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Mode</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Date</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Marks Scored / Max Marks</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>Questions</th>
+                      <th style={{ padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const totalPages = Math.ceil(attemptsHistory.length / historyPageSize) || 1;
+                      const validPage = Math.min(Math.max(1, historyPage), totalPages);
+                      const startIndex = (validPage - 1) * historyPageSize;
+                      const paginated = attemptsHistory.slice(startIndex, startIndex + historyPageSize);
 
-                  return paginated.map((att, idx) => {
-                    const globalIdx = startIndex + idx;
-                    const sameExamList = attemptsHistory.filter((a) => a.exam_id === att.exam_id || a.exam_name === att.exam_name);
-                    const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
-                    const attemptNum = sameExamList.length - attemptIndex;
+                      return paginated.map((att, idx) => {
+                        const globalIdx = startIndex + idx;
+                        const sameExamList = attemptsHistory.filter((a) => a.exam_id === att.exam_id || a.exam_name === att.exam_name);
+                        const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
+                        const attemptNum = sameExamList.length - attemptIndex;
 
-                    return (
-                      <tr
-                        key={att.attempt_id}
-                        style={{
-                          borderBottom: '1px solid var(--border-default)',
-                        }}
-                      >
-                        <td style={{ padding: '12px', fontWeight: 800, color: '#2563eb' }}>{globalIdx + 1}</td>
-                        <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span>{att.exam_name}</span>
-                            {sameExamList.length > 1 && (
+                        return (
+                          <tr
+                            key={att.attempt_id}
+                            style={{
+                              borderBottom: '1px solid var(--border-default)',
+                            }}
+                          >
+                            <td style={{ padding: '12px', fontWeight: 800, color: '#E31B23' }}>{globalIdx + 1}</td>
+                            <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span>{att.exam_name}</span>
+                                {sameExamList.length > 1 && (
+                                  <span
+                                    style={{
+                                      fontSize: 10.5,
+                                      fontWeight: 800,
+                                      padding: '2px 7px',
+                                      borderRadius: 0,
+                                      backgroundColor: 'rgba(227, 27, 35, 0.12)',
+                                      color: '#E31B23',
+                                      border: '1px solid rgba(227, 27, 35, 0.25)',
+                                    }}
+                                  >
+                                    Attempt #{attemptNum}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px' }}>
                               <span
                                 style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 800,
-                                  padding: '2px 7px',
-                                  borderRadius: 6,
-                                  backgroundColor: 'rgba(37, 99, 235, 0.12)',
-                                  color: '#2563eb',
-                                  border: '1px solid rgba(37, 99, 235, 0.25)',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '3px 8px',
+                                  borderRadius: 0,
+                                  backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                  color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
                                 }}
                               >
-                                Attempt #{attemptNum}
+                                {att.mode.replace('_', ' ')}
                               </span>
-                            )}
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: '3px 8px',
-                              borderRadius: 8,
-                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(37, 99, 235, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                              color: att.mode === 'FULL_MOCK' ? '#2563eb' : '#10b981',
-                            }}
-                          >
-                            {att.mode.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                          {new Date(att.started_at).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          <span style={{ color: Number(att.total_score) >= 92 ? '#10b981' : '#2563eb' }}>
-                            {att.total_score}
-                          </span>{' '}
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
-                        </td>
-                        <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                          {att.total_questions} Questions
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                          <button
-                            onClick={() => handleViewSingleExam(att.attempt_id)}
-                            style={{
-                              padding: '6px 14px',
-                              borderRadius: 10,
-                              backgroundColor: '#2563eb',
-                              color: '#ffffff',
-                              border: 'none',
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            View Exam Report →
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
-          </div>
+                            </td>
+                            <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                              {new Date(att.started_at).toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
+                                {att.total_score}
+                              </span>{' '}
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {att.max_possible_score} Marks</span>
+                            </td>
+                            <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
+                              {att.total_questions} Questions
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              <button
+                                onClick={() => handleViewSingleExam(att.attempt_id)}
+                                style={{
+                                  padding: '6px 14px',
+                                  borderRadius: 0,
+                                  backgroundColor: '#E31B23',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  boxShadow: '0 2px 8px rgba(227, 27, 35, 0.2)',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                View Exam Report →
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Pagination Controls */}
-          {attemptsHistory.length > historyPageSize && (() => {
-            const totalPages = Math.ceil(attemptsHistory.length / historyPageSize);
-            const startItem = (historyPage - 1) * historyPageSize + 1;
-            const endItem = Math.min(historyPage * historyPageSize, attemptsHistory.length);
+              {/* Pagination Controls */}
+              {attemptsHistory.length > historyPageSize && (() => {
+                const totalPages = Math.ceil(attemptsHistory.length / historyPageSize);
+                const startItem = (historyPage - 1) * historyPageSize + 1;
+                const endItem = Math.min(historyPage * historyPageSize, attemptsHistory.length);
 
-            return (
+                return (
+                  <div
+                    style={{
+                      marginTop: 18,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                      paddingTop: 14,
+                      borderTop: '1px solid var(--border-default)',
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      Showing <strong style={{ color: 'var(--text-primary)' }}>{startItem} - {endItem}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{attemptsHistory.length}</strong> attempts
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        disabled={historyPage <= 1}
+                        onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: historyPage <= 1 ? 0.5 : 1,
+                        }}
+                      >
+                        ← Previous
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={`page_${pageNum}`}
+                          onClick={() => setHistoryPage(pageNum)}
+                          style={{
+                            padding: '6px 11px',
+                            borderRadius: 0,
+                            border: pageNum === historyPage ? '1px solid #E31B23' : '1px solid var(--border-default)',
+                            backgroundColor: pageNum === historyPage ? '#E31B23' : 'var(--bg-subtle)',
+                            color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+
+                      <button
+                        disabled={historyPage >= totalPages}
+                        onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage >= totalPages ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage >= totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage >= totalPages ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: historyPage >= totalPages ? 0.5 : 1,
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </section>
+          )}
+
+          {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
+          {isEvaluating && (
+            <div
+              style={{
+                padding: 32,
+                marginBottom: 28,
+                borderRadius: 0,
+                backgroundColor: 'var(--bg-card)',
+                border: '2px solid rgba(227, 27, 35, 0.3)',
+                boxShadow: '0 8px 32px rgba(227, 27, 35, 0.12)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                alignItems: 'center',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#E31B23' }}>
+                <Cpu size={28} className="animate-spin" />
+                <Sparkles size={24} color="#8b5cf6" />
+              </div>
+
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Psychometric Evaluation Engine Active
+              </h2>
+
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 520 }}>
+                {evalMessage}
+              </p>
+
+              {/* Progress Bar */}
               <div
                 style={{
-                  marginTop: 18,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  paddingTop: 14,
-                  borderTop: '1px solid var(--border-default)',
+                  width: '100%',
+                  maxWidth: 480,
+                  height: 8,
+                  borderRadius: 0,
+                  backgroundColor: 'var(--bg-subtle)',
+                  overflow: 'hidden',
+                  marginTop: 6,
                 }}
               >
-                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
-                  Showing <strong style={{ color: 'var(--text-primary)' }}>{startItem} - {endItem}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{attemptsHistory.length}</strong> attempts
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${evalProgress}%`,
+                    background: 'linear-gradient(90deg, #E31B23, #8b5cf6)',
+                    borderRadius: 0,
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                Polling live diagnostics ({evalProgress}% Complete)
+              </span>
+            </div>
+          )}
+
+          {/* Loading Spinner */}
+          {isLoading && !isEvaluating && (
+            <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <Loader2 size={28} className="animate-spin" color="#E31B23" />
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Loading 12 Psychometric Diagnostic Matrices...
+              </span>
+            </div>
+          )}
+
+          {/* Error / Processing Banner */}
+          {error && !isEvaluating && (
+            <div
+              style={{
+                padding: '20px 24px',
+                borderRadius: 0,
+                backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                border: '1px solid rgba(227, 27, 35, 0.3)',
+                color: 'var(--text-primary)',
+                marginBottom: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 16,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
+                <AlertCircle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
+                <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
+                  <strong style={{ color: '#ef4444' }}>Evaluation Notice: </strong>
+                  <span>{error}</span>
+                </div>
+              </div>
+
+              {selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
+                <button
+                  onClick={handleRetryEvaluation}
+                  disabled={isRetrying}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 20px',
+                    borderRadius: 0,
+                    backgroundColor: '#E31B23',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: isRetrying ? 'not-allowed' : 'pointer',
+                    opacity: isRetrying ? 0.7 : 1,
+                    boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <RefreshCw size={16} className={isRetrying ? 'animate-spin' : ''} />
+                  <span>{isRetrying ? 'Retrying Evaluation...' : 'Retry Evaluation'}</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Live Saved Psychometric Report View */}
+          {report ? (
+            <PsychometricReportView
+              report={report}
+              questionReportData={questionReportData}
+              userProgressionData={userProgressionData}
+            />
+          ) : (
+            !isLoading && !isEvaluating && (
+              <div
+                style={{
+                  padding: 48,
+                  textAlign: 'center',
+                  backgroundColor: 'var(--bg-card)',
+                  borderRadius: 0,
+                  border: '1px solid var(--border-default)',
+                  boxShadow: 'var(--shadow-color-base)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 16,
+                  maxWidth: 680,
+                  margin: '32px auto',
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 0,
+                    backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ef4444',
+                    fontSize: 28,
+                  }}
+                >
+                  ⚠️
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Unable to Generate Report
+                </h2>
+
+                <p style={{ fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 520, margin: 0 }}>
+                  No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
+                </p>
+
+                <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
                   <button
-                    disabled={historyPage <= 1}
-                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    type="button"
+                    onClick={() => window.location.reload()}
                     style={{
-                      padding: '6px 12px',
-                      borderRadius: 8,
+                      padding: '10px 20px',
+                      borderRadius: 0,
                       border: '1px solid var(--border-default)',
-                      backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
-                      color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
-                      cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
-                      fontSize: 12,
+                      backgroundColor: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: 13.5,
                       fontWeight: 700,
-                      opacity: historyPage <= 1 ? 0.5 : 1,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    ← Previous
+                    ↻ Refresh Analysis
                   </button>
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                    <button
-                      key={`page_${pageNum}`}
-                      onClick={() => setHistoryPage(pageNum)}
-                      style={{
-                        padding: '6px 11px',
-                        borderRadius: 8,
-                        border: pageNum === historyPage ? '1px solid #2563eb' : '1px solid var(--border-default)',
-                        backgroundColor: pageNum === historyPage ? '#2563eb' : 'var(--bg-subtle)',
-                        color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-
                   <button
-                    disabled={historyPage >= totalPages}
-                    onClick={() => setHistoryPage((p) => Math.min(totalPages, p + 1))}
+                    type="button"
+                    onClick={() => (window.location.href = '/practice')}
                     style={{
-                      padding: '6px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border-default)',
-                      backgroundColor: historyPage >= totalPages ? 'transparent' : 'var(--bg-subtle)',
-                      color: historyPage >= totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
-                      cursor: historyPage >= totalPages ? 'not-allowed' : 'pointer',
-                      fontSize: 12,
+                      padding: '10px 22px',
+                      borderRadius: 0,
+                      border: 'none',
+                      backgroundColor: 'var(--accent-primary, #E31B23)',
+                      color: '#ffffff',
+                      fontSize: 13.5,
                       fontWeight: 700,
-                      opacity: historyPage >= totalPages ? 0.5 : 1,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(227, 27, 35, 0.3)',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    Next →
+                    Take a Practice Exam →
                   </button>
                 </div>
               </div>
-            );
-          })()}
-        </section>
-      )}
-
-      {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
-      {isEvaluating && (
-        <div
-          style={{
-            padding: 32,
-            marginBottom: 28,
-            borderRadius: 20,
-            backgroundColor: 'var(--bg-card)',
-            border: '2px solid rgba(37, 99, 235, 0.3)',
-            boxShadow: '0 8px 32px rgba(37, 99, 235, 0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-            alignItems: 'center',
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#2563eb' }}>
-            <Cpu size={28} className="animate-spin" />
-            <Sparkles size={24} color="#8b5cf6" />
-          </div>
-
-          <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-            Psychometric Evaluation Engine Active
-          </h2>
-
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 520 }}>
-            {evalMessage}
-          </p>
-
-          {/* Progress Bar */}
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              height: 8,
-              borderRadius: 8,
-              backgroundColor: 'var(--bg-subtle)',
-              overflow: 'hidden',
-              marginTop: 6,
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${evalProgress}%`,
-                background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
-                borderRadius: 8,
-                transition: 'width 0.4s ease',
-              }}
-            />
-          </div>
-
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-            Polling live diagnostics ({evalProgress}% Complete)
-          </span>
-        </div>
-      )}
-
-      {/* Loading Spinner */}
-      {isLoading && !isEvaluating && (
-        <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Loader2 size={28} className="animate-spin" color="#2563eb" />
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Loading 12 Psychometric Diagnostic Matrices...
-          </span>
-        </div>
-      )}
-
-      {/* Error / Processing Banner */}
-      {error && !isEvaluating && (
-        <div
-          style={{
-            padding: '20px 24px',
-            borderRadius: 16,
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: 'var(--text-primary)',
-            marginBottom: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
-            <AlertCircle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
-            <div style={{ fontSize: 13.5, lineHeight: 1.5 }}>
-              <strong style={{ color: '#ef4444' }}>Evaluation Notice: </strong>
-              <span>{error}</span>
-            </div>
-          </div>
-
-          {selectedAttemptId && selectedAttemptId !== 'CUMULATIVE_ALL' && (
-            <button
-              onClick={handleRetryEvaluation}
-              disabled={isRetrying}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 20px',
-                borderRadius: 12,
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: isRetrying ? 'not-allowed' : 'pointer',
-                opacity: isRetrying ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <RefreshCw size={16} className={isRetrying ? 'animate-spin' : ''} />
-              <span>{isRetrying ? 'Retrying Evaluation...' : 'Retry Evaluation'}</span>
-            </button>
+            )
           )}
-        </div>
-      )}
-
-      {/* Live Saved Psychometric Report View */}
-      {report ? (
-        <PsychometricReportView
-          report={report}
-          questionReportData={questionReportData}
-          userProgressionData={userProgressionData}
-        />
-      ) : (
-        !isLoading && !isEvaluating && (
-          <div
-            style={{
-              padding: 48,
-              textAlign: 'center',
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: 24,
-              border: '1px solid var(--border-default)',
-              boxShadow: 'var(--shadow-color-base)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              maxWidth: 680,
-              margin: '32px auto',
-            }}
-          >
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ef4444',
-                fontSize: 28,
-              }}
-            >
-              ⚠️
-            </div>
-
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-              Unable to Generate Report
-            </h2>
-
-            <p style={{ fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 520, margin: 0 }}>
-              No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
-            </p>
-
-            <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: 12,
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                ↻ Refresh Analysis
-              </button>
-
-              <button
-                type="button"
-                onClick={() => (window.location.href = '/practice')}
-                style={{
-                  padding: '10px 22px',
-                  borderRadius: 12,
-                  border: 'none',
-                  backgroundColor: 'var(--accent-primary, #2563eb)',
-                  color: '#ffffff',
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                Take a Practice Exam →
-              </button>
-            </div>
-          </div>
-        )
-      )}
         </>
       )}
     </StudentLayout>

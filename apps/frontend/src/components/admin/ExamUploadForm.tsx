@@ -47,12 +47,12 @@ export function ExamUploadForm() {
           style={{
             flex: 1,
             padding: '10px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 14,
             fontWeight: 700,
-            border: uploadMode === 'QUESTION_PAPER' ? '2px solid var(--royal, #2563eb)' : '1px solid #e2e8f0',
-            backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#eff6ff' : '#ffffff',
-            color: uploadMode === 'QUESTION_PAPER' ? '#1e40af' : '#64748b',
+            border: uploadMode === 'QUESTION_PAPER' ? '2px solid var(--royal, #E31B23)' : '1px solid #e2e8f0',
+            backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#F8FAFC' : '#ffffff',
+            color: uploadMode === 'QUESTION_PAPER' ? '#A4161A' : '#64748b',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
           }}
@@ -65,12 +65,12 @@ export function ExamUploadForm() {
           style={{
             flex: 1,
             padding: '10px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 14,
             fontWeight: 700,
-            border: uploadMode === 'ANSWER_KEY' ? '2px solid var(--royal, #2563eb)' : '1px solid #e2e8f0',
-            backgroundColor: uploadMode === 'ANSWER_KEY' ? '#eff6ff' : '#ffffff',
-            color: uploadMode === 'ANSWER_KEY' ? '#1e40af' : '#64748b',
+            border: uploadMode === 'ANSWER_KEY' ? '2px solid var(--royal, #E31B23)' : '1px solid #e2e8f0',
+            backgroundColor: uploadMode === 'ANSWER_KEY' ? '#F8FAFC' : '#ffffff',
+            color: uploadMode === 'ANSWER_KEY' ? '#A4161A' : '#64748b',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
           }}
@@ -223,7 +223,7 @@ export function ExamUploadForm() {
             padding: '14px',
             fontSize: 15,
             fontWeight: 700,
-            borderRadius: 12,
+            borderRadius: 0,
             opacity: isUploading ? 0.7 : 1,
             cursor: isUploading ? 'not-allowed' : 'pointer',
           }}

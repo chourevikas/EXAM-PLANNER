@@ -1,5 +1,6 @@
 import React from 'react';
-import { Clock, Shield, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, Shield } from 'lucide-react';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamHeaderProps {
   examTitle: string;
@@ -33,7 +34,8 @@ export function ExamHeader({
   onSubmitClick,
 }: ExamHeaderProps) {
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
-  const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Student Dashboard' : 'Home');
+  const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
 
   const isCriticalTime = timeLeft < 120; // < 2 mins
   const isLowTime = timeLeft < 600; // < 10 mins
@@ -49,6 +51,7 @@ export function ExamHeader({
 
   return (
     <header
+      className="exam-top-header"
       style={{
         height: 60,
         position: 'fixed',
@@ -56,7 +59,7 @@ export function ExamHeader({
         left: 0,
         right: 0,
         zIndex: 100,
-        background: 'linear-gradient(90deg, #0F1D38 0%, #14284C 35%, #1B3864 70%, #224578 100%)',
+        background: 'linear-gradient(90deg, #111111 0%, #172033 100%)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -64,19 +67,19 @@ export function ExamHeader({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '0 24px',
+        padding: '0 clamp(12px, 3vw, 24px)',
         boxSizing: 'border-box',
         fontFamily: "'IBM Plex Sans', -apple-system, system-ui, sans-serif",
       }}
     >
-      {/* Left: Admin Theme ExamPlanner Logo & Paper Metadata */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {/* Left: Brand Logo & Paper Metadata */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 12px)', minWidth: 0, flexShrink: 0 }}>
         <div
           style={{
             width: 32,
             height: 32,
-            borderRadius: 6,
-            backgroundColor: '#2563EB',
+            borderRadius: 0,
+            backgroundColor: '#E31B23',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
@@ -84,100 +87,102 @@ export function ExamHeader({
             fontWeight: 700,
             fontSize: 15,
             flexShrink: 0,
-            boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+            boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
           }}
         >
           <Shield size={18} color="#FFFFFF" />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {/* Neat Fading Breadcrumb Trail (IBM Plex Sans 600 Page title / 500 Subtitle) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'rgba(255, 255, 255, 0.75)', fontWeight: 500, fontFamily: "'IBM Plex Sans', sans-serif" }}>
-            <button
-              type="button"
-              onClick={onBack}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                color: 'rgba(255, 255, 255, 0.95)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: 14,
-                fontFamily: "'IBM Plex Sans', sans-serif",
-                textDecoration: 'none',
-                transition: 'opacity 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '0.7';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-              title={`Return to ${rootBreadcrumb}`}
-            >
-              {rootBreadcrumb}
-            </button>
+        {!isTabletOrBelow && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            {/* Breadcrumb Trail */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'clamp(12px, 2.5vw, 14px)', color: 'rgba(255, 255, 255, 0.75)', fontWeight: 500, fontFamily: "'IBM Plex Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <button
+                type="button"
+                onClick={onBack}
+                className="touch-target"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: 'inherit',
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                  textDecoration: 'none',
+                  transition: 'opacity 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '0.7';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+                title={`Return to ${rootBreadcrumb}`}
+              >
+                {rootBreadcrumb}
+              </button>
 
-            {topicName && (
-              <>
-                <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>{topicName}</span>
-              </>
-            )}
+              {topicName && (
+                <>
+                  <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+                  <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>{topicName}</span>
+                </>
+              )}
 
-            {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
-              <>
-                <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                <span style={{ color: '#93C5FD', fontWeight: 600 }}>{subtopicName}</span>
-              </>
-            )}
+              {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
+                <>
+                  <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
+                  <span style={{ color: '#E31B23', fontWeight: 600 }}>{subtopicName}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Center: Monospaced Precision Clock Module with Admin Theme Fading Ring */}
+      {/* Center: Precision Clock Module */}
       {showTimer && (
         <div
+          className="exam-timer-center"
           style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: '5px 22px',
-            borderRadius: 8,
+            gap: 6,
+            borderRadius: 0,
             backgroundColor: 'rgba(255, 255, 255, 0.07)',
             border: '1px solid rgba(255, 255, 255, 0.14)',
             boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(15, 29, 56, 0.3)',
             backdropFilter: 'blur(4px)',
             WebkitBackdropFilter: 'blur(4px)',
+            padding: '4px 10px',
           }}
         >
-          <Clock size={16} color={timerColor} />
+          <Clock size={14} color={timerColor} />
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {!isTabletOrBelow && (
+              <span
+                style={{
+                  fontSize: 8,
+                  color: 'rgba(255, 255, 255, 0.55)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
+              >
+                TIME REMAINING
+              </span>
+            )}
             <span
               style={{
-                fontSize: 8.5,
-                color: 'rgba(255, 255, 255, 0.55)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                fontWeight: 700,
-                lineHeight: 1,
-              }}
-            >
-              TIME REMAINING
-            </span>
-            <span
-              style={{
-                fontSize: 16.5,
+                fontSize: 'clamp(13px, 2.5vw, 15.5px)',
                 fontWeight: 800,
                 color: timerColor,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '0.05em',
-                marginTop: 2,
+                letterSpacing: '0.04em',
               }}
             >
               {formatTime(timeLeft)}
@@ -186,24 +191,26 @@ export function ExamHeader({
         </div>
       )}
 
-      {/* Right: Submit Test CTA (Only when showSubmitButton is true) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {/* Right: Submit Test CTA */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {showSubmitButton && onSubmitClick && (
           <button
             type="button"
             onClick={onSubmitClick}
             disabled={isSubmitting}
+            className="touch-target"
             style={{
-              padding: '6px 16px',
-              borderRadius: 6,
+              padding: '6px 14px',
+              borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
-              fontSize: 12.5,
+              fontSize: 'clamp(11.5px, 2.5vw, 12.5px)',
               fontWeight: 600,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               opacity: isSubmitting ? 0.6 : 1,
               transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
               if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';

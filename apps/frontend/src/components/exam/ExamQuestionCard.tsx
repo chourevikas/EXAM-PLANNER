@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamQuestionCardProps {
   question: QuestionOut | {
@@ -27,20 +28,20 @@ interface ExamQuestionCardProps {
       text: string;
       textHindi?: string;
       text_hindi?: string;
-      option_id?: string;
+      option_id?: number | string;
       translations?: Record<string, any>;
     }[];
   };
   questionIndex: number;
   totalQuestions: number;
-  selectedOptionId?: string | null;
+  selectedOptionId?: number | string | null;
   selectedOptionLabel?: string | null;
   isBookmarked?: boolean;
   language: 'en' | 'hi';
   mode?: 'EXAM' | 'PRACTICE' | 'REVISION';
   revealResult?: RevealAnswerResponse | null;
   isRevealing?: boolean;
-  onSelectOption: (optionId: string, optionLabel: string) => void;
+  onSelectOption: (optionId: number | string, optionLabel: string) => void;
   onToggleBookmark?: () => void;
   onRevealAnswer?: () => void;
   onShowSolution?: () => void;
@@ -174,13 +175,13 @@ export function ExamQuestionCard({
           lineHeight: 1.5,
           fontSize: 15,
           fontWeight: 600,
-          color: '#0F172A',
+          color: '#172033',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         {...props}
       />
     ),
-    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#0F172A' }} {...props} />,
+    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#172033' }} {...props} />,
     table: ({ node, ...props }: any) => (
       <div style={{ overflowX: 'auto', margin: '10px 0' }}>
         <table
@@ -189,7 +190,7 @@ export function ExamQuestionCard({
             borderCollapse: 'collapse',
             fontSize: 12.5,
             border: '1px solid #E2E8F0',
-            borderRadius: 6,
+            borderRadius: 0,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
           {...props}
@@ -204,7 +205,7 @@ export function ExamQuestionCard({
           textAlign: 'left',
           backgroundColor: '#F1F5F9',
           borderBottom: '2px solid #E2E8F0',
-          color: '#0F172A',
+          color: '#172033',
         }}
         {...props}
       />
@@ -214,7 +215,7 @@ export function ExamQuestionCard({
         style={{
           padding: '6px 10px',
           borderBottom: '1px solid #F1F5F9',
-          color: '#0F172A',
+          color: '#172033',
         }}
         {...props}
       />
@@ -226,7 +227,7 @@ export function ExamQuestionCard({
         style={{
           margin: '3px 0',
           fontSize: 14,
-          color: '#0F172A',
+          color: '#172033',
           lineHeight: 1.45,
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
@@ -242,12 +243,14 @@ export function ExamQuestionCard({
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
   };
 
+  const { isMobile, isSmallScreen } = useBreakpoint();
+
   return (
     <main
       style={{
         flex: 1,
         width: '100%',
-        padding: isPYQ ? '16px 36px 28px 36px' : '12px 24px 28px 24px',
+        padding: 'clamp(8px, 2vw, 24px)',
         overflow: 'hidden',
         boxSizing: 'border-box',
         backgroundColor: '#F8FAF8',
@@ -267,7 +270,7 @@ export function ExamQuestionCard({
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
+          gap: 12,
           height: '100%',
           maxHeight: '100%',
           boxSizing: 'border-box',
@@ -278,11 +281,11 @@ export function ExamQuestionCard({
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              padding: '16px 20px',
-              borderRadius: 8,
+              padding: 'clamp(12px, 2.5vw, 18px)',
+              borderRadius: 0,
               border: '1px solid #E2E8F0',
-              borderLeft: '4px solid #2563EB',
-              fontSize: 15,
+              borderLeft: '4px solid #E31B23',
+              fontSize: 'clamp(13px, 2vw, 15px)',
               color: '#334155',
               lineHeight: 1.55,
               fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -300,9 +303,9 @@ export function ExamQuestionCard({
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderTop: '4px solid #1E3A8A',
-            borderRadius: 18,
+            borderRadius: 0,
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
-            padding: '20px 24px',
+            padding: 'clamp(12px, 2.5vw, 20px)',
             display: 'flex',
             flexDirection: 'column',
             flex: 1,
@@ -316,58 +319,37 @@ export function ExamQuestionCard({
           <div
             style={{
               display: 'flex',
+              flexDirection: isSmallScreen ? 'column' : 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 16,
+              alignItems: isSmallScreen ? 'stretch' : 'center',
+              marginBottom: 14,
               paddingBottom: 12,
               borderBottom: '1.5px solid #F1F5F9',
               flexShrink: 0,
-              gap: 12,
+              gap: isSmallScreen ? 10 : 12,
             }}
           >
-            {/* Left: Previous Question Button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Prominent Previous Question Button */}
-              {onPrev && (
-                <button
-                  type="button"
-                  onClick={onPrev}
-                  disabled={questionIndex === 0}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex === 0 ? '#94A3B8' : '#1E293B',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (questionIndex > 0) {
-                      e.currentTarget.style.backgroundColor = '#EFF6FF';
-                      e.currentTarget.style.borderColor = '#2563EB';
-                      e.currentTarget.style.color = '#2563EB';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (questionIndex > 0) {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#1E293B';
-                    }
-                  }}
-                >
-                  <ChevronLeft size={15} />
-                  <span>Prev</span>
-                </button>
-              )}
+            {/* Left: Difficulty Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#F2B623',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #FDE68A',
+                  padding: '4px 10px',
+                  borderRadius: 0,
+                  letterSpacing: '0.04em',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
+                {difficultyLabel}
+              </span>
             </div>
 
             {/* Center: Question Counter Pill */}
@@ -380,79 +362,40 @@ export function ExamQuestionCard({
                   letterSpacing: '0.04em',
                   fontVariantNumeric: 'tabular-nums',
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: '#F8FAFC',
                   padding: '5px 14px',
-                  borderRadius: 8,
-                  border: '1px solid #DBEAFE',
+                  borderRadius: 0,
+                  border: '1px solid #E2E8F0',
                 }}
               >
                 QUESTION {questionIndex + 1}
               </span>
             </div>
 
-            {/* Right: Next Question Button & Difficulty Badge */}
+            {/* Right: Bookmark Button */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Prominent Next Question Button */}
-              {onNext && (
+              {onToggleBookmark && (
                 <button
                   type="button"
-                  onClick={onNext}
-                  disabled={questionIndex >= totalQuestions - 1}
+                  onClick={onToggleBookmark}
+                  title={isBookmarked ? "Remove Bookmark" : "Bookmark Question"}
                   style={{
-                    display: 'inline-flex',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#1E293B',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    justifyContent: 'center',
+                    color: isBookmarked ? '#E31B23' : '#94A3B8',
+                    transition: 'color 0.15s ease'
                   }}
-                  onMouseEnter={(e) => {
-                    if (questionIndex < totalQuestions - 1) {
-                      e.currentTarget.style.backgroundColor = '#EFF6FF';
-                      e.currentTarget.style.borderColor = '#2563EB';
-                      e.currentTarget.style.color = '#2563EB';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (questionIndex < totalQuestions - 1) {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#1E293B';
-                    }
-                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#E31B23'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8'; }}
                 >
-                  <span>Next</span>
-                  <ChevronRight size={15} />
+                  <Bookmark size={18} fill={isBookmarked ? '#E31B23' : 'none'} />
                 </button>
               )}
-
-              <span
-                style={{
-                  fontSize: 11,
-                  color: '#D97706',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#FEF3C7',
-                  border: '1px solid #FDE68A',
-                  padding: '4px 10px',
-                  borderRadius: 99,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#D97706', display: 'inline-block' }} />
-                {difficultyLabel}
-              </span>
             </div>
           </div>
 
@@ -471,7 +414,7 @@ export function ExamQuestionCard({
               style={{
                 marginBottom: 14,
                 fontSize: 15,
-                color: '#0F172A',
+                color: '#172033',
                 fontWeight: 600,
                 lineHeight: 1.5,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -482,232 +425,330 @@ export function ExamQuestionCard({
               </ReactMarkdown>
             </div>
 
-          {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
-            {options.map((opt) => {
-              const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
-              
-              const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
-              const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
+            {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+              {options.map((opt) => {
+                const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
 
-              let borderStyle = isSelected ? '1.5px solid #2563EB' : '1px solid #E2E8F0';
-              let bgStyle = isSelected ? '#EFF6FF' : '#F8FAFC';
-              let badgeBg = isSelected ? '#2563EB' : '#FFFFFF';
-              let badgeColor = isSelected ? '#FFFFFF' : '#475569';
-              let badgeBorder = isSelected ? '1px solid #2563EB' : '1px solid #CBD5E1';
+                const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
+                const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
 
-              if (revealResult) {
-                if (isCorrectOpt) {
-                  borderStyle = '1.5px solid #10B981';
-                  bgStyle = '#ECFDF5';
-                  badgeBg = '#10B981';
-                  badgeColor = '#FFFFFF';
-                  badgeBorder = '1px solid #10B981';
-                } else if (isWrongSelectedOpt) {
-                  borderStyle = '1.5px solid #EF4444';
-                  bgStyle = '#FEF2F2';
-                  badgeBg = '#EF4444';
-                  badgeColor = '#FFFFFF';
-                  badgeBorder = '1px solid #EF4444';
+                let borderStyle = isSelected ? '1.5px solid #E31B23' : '1px solid #E2E8F0';
+                let bgStyle = isSelected ? '#F8FAFC' : '#F8FAFC';
+                let badgeBg = isSelected ? '#E31B23' : '#FFFFFF';
+                let badgeColor = isSelected ? '#FFFFFF' : '#475569';
+                let badgeBorder = isSelected ? '1px solid #E31B23' : '1px solid #CBD5E1';
+
+                if (revealResult) {
+                  if (isCorrectOpt) {
+                    borderStyle = '1.5px solid #3A8B53';
+                    bgStyle = '#ECFDF5';
+                    badgeBg = '#3A8B53';
+                    badgeColor = '#FFFFFF';
+                    badgeBorder = '1px solid #3A8B53';
+                  } else if (isWrongSelectedOpt) {
+                    borderStyle = '1.5px solid #EF4444';
+                    bgStyle = '#FEF2F2';
+                    badgeBg = '#EF4444';
+                    badgeColor = '#FFFFFF';
+                    badgeBorder = '1px solid #EF4444';
+                  }
                 }
-              }
 
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => onSelectOption(opt.id, opt.cleanLabel)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '9px 12px',
-                    borderRadius: 8,
-                    border: borderStyle,
-                    backgroundColor: bgStyle,
-                    color: '#0F172A',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.18s ease-out',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                >
-                  {/* Option Label Badge ([A], [B], [C], [D]) */}
-                  <div
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onSelectOption(opt.id, opt.cleanLabel)}
+                    className="touch-target"
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 6,
-                      backgroundColor: badgeBg,
-                      color: badgeColor,
-                      border: badgeBorder,
-                      fontWeight: 700,
-                      fontSize: 12,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
+                      gap: 12,
+                      padding: '10px 14px',
+                      borderRadius: 0,
+                      border: borderStyle,
+                      backgroundColor: bgStyle,
+                      color: '#172033',
+                      cursor: 'pointer',
+                      textAlign: 'left',
                       transition: 'all 0.18s ease-out',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      minHeight: 44,
                     }}
                   >
-                    {opt.cleanLabel}
-                  </div>
-
-                  {/* Option Text */}
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      color: '#0F172A',
-                      fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
-                      lineHeight: 1.45,
-                      flex: 1,
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    }}
-                  >
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={optionMarkdownComponents}>
-                      {opt.text}
-                    </ReactMarkdown>
-                  </div>
-
-                  {/* Right Status Indicator */}
-                  {isCorrectOpt ? (
-                    <CheckCircle2 size={18} style={{ color: '#10B981', flexShrink: 0 }} />
-                  ) : isWrongSelectedOpt ? (
-                    <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
-                  ) : (
+                    {/* Option Label Badge ([A], [B], [C], [D]) */}
                     <div
                       style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: '50%',
-                        border: isSelected ? '4.5px solid #2563EB' : '1.5px solid #CBD5E1',
-                        backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
+                        width: 28,
+                        height: 28,
+                        borderRadius: 0,
+                        backgroundColor: badgeBg,
+                        color: badgeColor,
+                        border: badgeBorder,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         flexShrink: 0,
-                        boxSizing: 'border-box',
                         transition: 'all 0.18s ease-out',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    >
+                      {opt.cleanLabel}
+                    </div>
 
-          {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
-          {mode !== 'EXAM' && revealResult && showDetailedSolution && (
-            <QuestionSolutionMarkdownCard
-              isUserCorrect={revealResult.is_user_correct}
-              selectedOptionLabel={revealResult.user_selected_label || selectedOptionLabel || undefined}
-              solution={{
-                question_id: revealResult.question_id,
-                question_number: revealResult.question_number || questionIndex + 1,
-                correct_option_id: revealResult.correct_option_id,
-                correct_option_label: revealResult.correct_option_label,
-                blooms_level: (question as any).blooms_taxonomy_level || (question as any).blooms_level || 'ANALYZE',
-                difficulty: (question as any).difficulty || 'MEDIUM',
-                topic: (question as any).topic_name || (question as any).topic || (question as any).section_code,
-                subtopic: (question as any).subtopic_name || (question as any).subtopic,
-                presigned_url: (revealResult as any).presigned_url,
-                explanation: typeof revealResult.explanation === 'object' && revealResult.explanation !== null
-                  ? {
+                    {/* Option Text */}
+                    <div
+                      style={{
+                        fontSize: 14,
+                        color: '#172033',
+                        fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
+                        lineHeight: 1.45,
+                        flex: 1,
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={optionMarkdownComponents}>
+                        {opt.text}
+                      </ReactMarkdown>
+                    </div>
+
+                    {/* Right Status Indicator */}
+                    {isCorrectOpt ? (
+                      <CheckCircle2 size={18} style={{ color: '#3A8B53', flexShrink: 0 }} />
+                    ) : isWrongSelectedOpt ? (
+                      <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
+                    ) : (
+                      <div
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 0,
+                          border: isSelected ? '4.5px solid #E31B23' : '1.5px solid #CBD5E1',
+                          backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
+                          flexShrink: 0,
+                          boxSizing: 'border-box',
+                          transition: 'all 0.18s ease-out',
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
+            {mode !== 'EXAM' && revealResult && showDetailedSolution && (
+              <QuestionSolutionMarkdownCard
+                isUserCorrect={revealResult.is_user_correct}
+                selectedOptionLabel={revealResult.user_selected_label || selectedOptionLabel || undefined}
+                solution={{
+                  question_id: revealResult.question_id,
+                  question_number: revealResult.question_number || questionIndex + 1,
+                  correct_option_id: revealResult.correct_option_id,
+                  correct_option_label: revealResult.correct_option_label,
+                  blooms_level: (question as any).blooms_taxonomy_level || (question as any).blooms_level || 'ANALYZE',
+                  difficulty: (question as any).difficulty || 'MEDIUM',
+                  topic: (question as any).topic_name || (question as any).topic || (question as any).section_code,
+                  subtopic: (question as any).subtopic_name || (question as any).subtopic,
+                  presigned_url: (revealResult as any).presigned_url,
+                  explanation: typeof revealResult.explanation === 'object' && revealResult.explanation !== null
+                    ? {
                       core_concept: (revealResult.explanation as any).core_concept,
                       detailed_solution: (revealResult.explanation as any).detailed_solution || (revealResult.explanation as any).detailed_text || (revealResult.explanation as any).text || (typeof revealResult.explanation === 'string' ? revealResult.explanation : ''),
                       common_traps: (revealResult.explanation as any).common_traps || (revealResult.explanation as any).traps || [],
                       key_takeaways: (revealResult.explanation as any).key_takeaways || (revealResult.explanation as any).points_to_remember || ((revealResult.explanation as any).key_takeaway ? [(revealResult.explanation as any).key_takeaway] : []),
                     }
-                  : {
+                    : {
                       detailed_solution: typeof revealResult.explanation === 'string' ? revealResult.explanation : 'Detailed solution is available.',
                     },
-                distractor_scores: revealResult.distractor_scores || {},
-              }}
-            />
-          )}
+                  distractor_scores: revealResult.distractor_scores || {},
+                }}
+              />
+            )}
 
-          {/* Action Buttons: Submit & Show Solution aligned to the right side */}
-          {onRevealAnswer && (
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              {/* Button 1: Submit */}
-              <button
-                type="button"
-                onClick={onRevealAnswer}
-                disabled={!selectedOptionId || !!revealResult}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: 8,
-                  border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #2563EB',
-                  backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#2563EB',
-                  color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
-                  boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.22)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.15s ease',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  if (!revealResult && selectedOptionId) {
-                    e.currentTarget.style.backgroundColor = '#1D4ED8';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!revealResult && selectedOptionId) {
-                    e.currentTarget.style.backgroundColor = '#2563EB';
-                  }
-                }}
-              >
-                {revealResult ? '✓ Submitted' : 'Submit'}
-              </button>
+            {/* Action Buttons & Navigation */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
 
-              {/* Button 2: Show Solution */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!revealResult && selectedOptionId) {
-                    onRevealAnswer();
-                  }
-                  const nextState = !showDetailedSolution;
-                  setShowDetailedSolution(nextState);
-                  if (nextState && onShowSolution) {
-                    onShowSolution();
-                  }
-                }}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: 8,
-                  border: showDetailedSolution ? '1px solid #2563EB' : '1px solid #CBD5E1',
-                  backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
-                  color: showDetailedSolution ? '#2563EB' : '#1E293B',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.15s ease',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showDetailedSolution) {
-                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                    e.currentTarget.style.borderColor = '#94A3B8';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showDetailedSolution) {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
-                    e.currentTarget.style.borderColor = '#CBD5E1';
-                  }
-                }}
-              >
-                {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
-              </button>
+              {/* Left spacing for center alignment balance */}
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}></div>
+
+              {/* Center: Prev | Question X | Next */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'center' }}>
+                {/* Prominent Previous Question Button */}
+                {onPrev && (
+                  <button
+                    type="button"
+                    onClick={onPrev}
+                    disabled={questionIndex === 0}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '6px 12px',
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                      color: questionIndex === 0 ? '#94A3B8' : '#172033',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (questionIndex > 0) {
+                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.borderColor = '#E31B23';
+                        e.currentTarget.style.color = '#E31B23';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (questionIndex > 0) {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.color = '#172033';
+                      }
+                    }}
+                  >
+                    <ChevronLeft size={15} />
+                    <span>Prev</span>
+                  </button>
+                )}
+
+                {/* Prominent Next Question Button */}
+                {onNext && (
+                  <button
+                    type="button"
+                    onClick={onNext}
+                    disabled={questionIndex >= totalQuestions - 1}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '6px 12px',
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                      color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (questionIndex < totalQuestions - 1) {
+                        e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        e.currentTarget.style.borderColor = '#E31B23';
+                        e.currentTarget.style.color = '#E31B23';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (questionIndex < totalQuestions - 1) {
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                        e.currentTarget.style.color = '#172033';
+                      }
+                    }}
+                  >
+                    <span>Next</span>
+                    <ChevronRight size={15} />
+                  </button>
+                )}
+              </div>
+
+              {/* Right: Action Buttons */}
+              <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                {onRevealAnswer && (
+                  <>
+                    {/* Button 1: Submit */}
+                    <button
+                      type="button"
+                      onClick={onRevealAnswer}
+                      disabled={!selectedOptionId || !!revealResult}
+                      style={{
+                        padding: '8px 18px',
+                        borderRadius: 0,
+                        border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #E31B23',
+                        backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#E31B23',
+                        color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
+                        boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(227, 27, 35, 0.22)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'all 0.15s ease',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!revealResult && selectedOptionId) {
+                          e.currentTarget.style.backgroundColor = '#C1121F';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!revealResult && selectedOptionId) {
+                          e.currentTarget.style.backgroundColor = '#E31B23';
+                        }
+                      }}
+                    >
+                      {revealResult ? '✓ Submitted' : 'Submit'}
+                    </button>
+
+                    {/* Button 2: Show Solution */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!revealResult && selectedOptionId) {
+                          onRevealAnswer();
+                        }
+                        const nextState = !showDetailedSolution;
+                        setShowDetailedSolution(nextState);
+                        if (nextState && onShowSolution) {
+                          onShowSolution();
+                        }
+                      }}
+                      style={{
+                        padding: '8px 18px',
+                        borderRadius: 0,
+                        border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
+                        backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
+                        color: showDetailedSolution ? '#E31B23' : '#172033',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        transition: 'all 0.15s ease',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!showDetailedSolution) {
+                          e.currentTarget.style.backgroundColor = '#F8FAFC';
+                          e.currentTarget.style.borderColor = '#94A3B8';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!showDetailedSolution) {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.borderColor = '#CBD5E1';
+                        }
+                      }}
+                    >
+                      {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          )}
           </div>
         </div>
       </div>

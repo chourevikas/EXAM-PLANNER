@@ -10,13 +10,13 @@ export function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +83,7 @@ export function SignUpPage() {
         <div
           style={{
             background: 'var(--bg-card)',
-            borderRadius: 24,
+            borderRadius: 0,
             padding: 40,
             width: '100%',
             maxWidth: 440,
@@ -99,11 +99,11 @@ export function SignUpPage() {
           {errorMsg && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                background: 'rgba(227, 27, 35, 0.1)',
+                border: '1px solid rgba(227, 27, 35, 0.3)',
                 color: '#ef4444',
                 padding: '12px 16px',
-                borderRadius: 12,
+                borderRadius: 0,
                 marginBottom: 20,
                 fontSize: 14,
                 display: 'flex',
@@ -123,7 +123,7 @@ export function SignUpPage() {
                 border: '1px solid rgba(34, 197, 94, 0.3)',
                 color: '#22c55e',
                 padding: '12px 16px',
-                borderRadius: 12,
+                borderRadius: 0,
                 marginBottom: 20,
                 fontSize: 14,
                 display: 'flex',
@@ -144,7 +144,7 @@ export function SignUpPage() {
             style={{
               width: '100%',
               padding: '12px 16px',
-              borderRadius: 12,
+              borderRadius: 0,
               border: '1px solid var(--border-color)',
               background: 'var(--bg-card)',
               color: 'var(--text-main)',
@@ -185,7 +185,7 @@ export function SignUpPage() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
@@ -209,7 +209,7 @@ export function SignUpPage() {
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1px solid var(--border-color)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-main)',
@@ -235,7 +235,7 @@ export function SignUpPage() {
                   style={{
                     width: '100%',
                     padding: '12px 40px 12px 16px',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     border: '1px solid var(--border-color)',
                     background: 'var(--bg-secondary)',
                     color: 'var(--text-main)',
@@ -270,14 +270,14 @@ export function SignUpPage() {
               style={{
                 width: '100%',
                 padding: '14px',
-                borderRadius: 12,
+                borderRadius: 0,
                 border: 'none',
                 background: 'var(--royal)',
                 color: '#ffffff',
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
                 transition: 'all 0.2s ease',
               }}
             >
@@ -312,7 +312,7 @@ export function SignUpPage() {
           <div
             style={{
               background: 'var(--bg-card)',
-              borderRadius: 24,
+              borderRadius: 0,
               padding: 36,
               maxWidth: 460,
               width: '100%',
@@ -325,9 +325,9 @@ export function SignUpPage() {
               style={{
                 width: 64,
                 height: 64,
-                borderRadius: '50%',
+                borderRadius: 0,
                 background: 'rgba(245, 158, 11, 0.15)',
-                color: '#f59e0b',
+                color: '#F2B623',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -352,7 +352,7 @@ export function SignUpPage() {
               style={{
                 width: '100%',
                 padding: '12px 24px',
-                borderRadius: 12,
+                borderRadius: 0,
                 border: 'none',
                 background: 'var(--royal)',
                 color: '#ffffff',

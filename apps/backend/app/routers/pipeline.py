@@ -47,47 +47,31 @@ logger = setup_logger("PipelineRouter")
 router = APIRouter(prefix="/pipeline", tags=["Pipeline Management"])
 
 
-def _clean_uuid_str(val: Any) -> str:
+def _clean_id_str(val: Any) -> str:
     return str(val).strip().strip('"').strip("'").strip()
 
 
-def parse_exam_id_or_generate(raw_id: Optional[str]) -> uuid.UUID:
-    """Parses raw_id string into uuid.UUID, or generates fresh uuid.uuid4() if empty/None."""
-    if not raw_id:
-        return uuid.uuid4()
-    cleaned = _clean_uuid_str(raw_id)
-    if not cleaned:
-        return uuid.uuid4()
-    try:
-        return uuid.UUID(cleaned)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b').",
-        )
-
-
-def parse_required_exam_id(raw_id: Any) -> uuid.UUID:
-    """Parses required raw_id into uuid.UUID with clear error response."""
-    if isinstance(raw_id, uuid.UUID):
+def parse_required_exam_id(raw_id: Any) -> int:
+    """Parses required raw_id into int with clear error response."""
+    if isinstance(raw_id, int):
         return raw_id
     if not raw_id:
         raise HTTPException(
             status_code=400,
-            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID.",
+            detail="Missing required 'exam_id'. Value must be a valid integer ID.",
         )
-    cleaned = _clean_uuid_str(raw_id)
+    cleaned = _clean_id_str(raw_id)
     if not cleaned:
         raise HTTPException(
             status_code=400,
-            detail="Missing required 'exam_id'. Value must be a valid UUID/GUID.",
+            detail="Missing required 'exam_id'. Value must be a valid integer ID.",
         )
     try:
-        return uuid.UUID(cleaned)
+        return int(cleaned)
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid UUID/GUID (e.g. '6884bea7-6a8d-44b2-a1ad-c2749970083b' or '6884bea76a8d44b2a1adc2749970083b').",
+            detail=f"Invalid 'exam_id': '{raw_id}'. Value must be a valid integer ID.",
         )
 
 
@@ -589,14 +573,14 @@ async def get_exam_questions_extraction_status(
     Fetches real-time status of extracted questions, missing questions, and review statuses
     for frontend display. Accepts canonical_exam_code or exam_id UUID.
     """
-    exam_uuid = None
+    exam_id_int = None
     try:
-        exam_uuid = uuid.UUID(exam_identifier)
+        exam_id_int = int(exam_identifier)
     except ValueError:
         pass
 
-    if exam_uuid:
-        target_exam = await db.get(Exam, exam_uuid)
+    if exam_id_int is not None:
+        target_exam = await db.get(Exam, exam_id_int)
     else:
         stmt = select(Exam).where(
             (func.lower(Exam.code) == exam_identifier.lower())
@@ -698,14 +682,14 @@ async def get_exam_pipeline_status(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Fetches real-time status of all 3 pipelines using either canonical_exam_code or exam_id UUID."""
-    exam_uuid = None
+    exam_id_int = None
     try:
-        exam_uuid = uuid.UUID(exam_identifier)
+        exam_id_int = int(exam_identifier)
     except ValueError:
         pass
 
-    if exam_uuid:
-        target_exam = await db.get(Exam, exam_uuid)
+    if exam_id_int is not None:
+        target_exam = await db.get(Exam, exam_id_int)
     else:
         stmt = select(Exam).where(
             (func.lower(Exam.code) == exam_identifier.lower())

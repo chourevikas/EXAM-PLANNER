@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
@@ -12,7 +11,7 @@ from app.db.models.enums import (
 
 
 class QuestionOptionPayload(BaseModel):
-    option_id: Optional[uuid.UUID] = None
+    option_id: Optional[int | str] = None
     option_label: str = Field(description="'A', 'B', 'C', 'D'")
     display_order: int = 1
     option_text: str
@@ -22,9 +21,9 @@ class QuestionOptionPayload(BaseModel):
 
 
 class QuestionHierarchyLinkPayload(BaseModel):
-    subtopic_id: Optional[uuid.UUID] = None
-    topic_id: Optional[uuid.UUID] = None
-    subject_id: Optional[uuid.UUID] = None
+    subtopic_id: Optional[int | str] = None
+    topic_id: Optional[int | str] = None
+    subject_id: Optional[int | str] = None
     subject_name: Optional[str] = None
     topic_name: Optional[str] = None
     subtopic_name: Optional[str] = None
@@ -51,10 +50,10 @@ class QuestionUpdatePayload(BaseModel):
     subject_name: Optional[str] = None
     topic_name: Optional[str] = None
     subtopic_name: Optional[str] = None
-    subject_id: Optional[uuid.UUID] = None
-    topic_id: Optional[uuid.UUID] = None
-    subtopic_id: Optional[uuid.UUID] = None
-    subtopic_ids: Optional[List[uuid.UUID]] = None
+    subject_id: Optional[int | str] = None
+    topic_id: Optional[int | str] = None
+    subtopic_id: Optional[int | str] = None
+    subtopic_ids: Optional[List[int | str]] = None
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
@@ -63,7 +62,7 @@ class QuestionUpdatePayload(BaseModel):
 
 
 class QuestionCreatePayload(BaseModel):
-    exam_id: uuid.UUID
+    exam_id: int | str
     question_number_in_paper: int
     question_text: str
     paper_set_code: Optional[str] = "SET_A"
@@ -82,10 +81,10 @@ class QuestionCreatePayload(BaseModel):
     subject_name: Optional[str] = None
     topic_name: Optional[str] = None
     subtopic_name: Optional[str] = None
-    subject_id: Optional[uuid.UUID] = None
-    topic_id: Optional[uuid.UUID] = None
-    subtopic_id: Optional[uuid.UUID] = None
-    subtopic_ids: Optional[List[uuid.UUID]] = None
+    subject_id: Optional[int | str] = None
+    topic_id: Optional[int | str] = None
+    subtopic_id: Optional[int | str] = None
+    subtopic_ids: Optional[List[int | str]] = None
     hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None
     blooms_level: Optional[BloomsLevel] = None
     cognitive_skill: Optional[str] = None
@@ -94,7 +93,7 @@ class QuestionCreatePayload(BaseModel):
 
 
 class QuestionOptionDetail(BaseModel):
-    option_id: str
+    option_id: str | int
     option_label: str
     display_order: int
     is_correct: bool
@@ -105,7 +104,7 @@ class QuestionOptionDetail(BaseModel):
 
 
 class QuestionExplanationDetail(BaseModel):
-    explanation_id: Optional[str] = None
+    explanation_id: Optional[str | int] = None
     language: str
     core_concept: Optional[str] = None
     detailed_solution: Optional[str] = None
@@ -124,13 +123,13 @@ class QuestionMetadataDetail(BaseModel):
 
 
 class HierarchyLinkDetail(BaseModel):
-    subject_id: Optional[str] = None
+    subject_id: Optional[str | int] = None
     subject_name: Optional[str] = None
     subject_code: Optional[str] = None
-    topic_id: Optional[str] = None
+    topic_id: Optional[str | int] = None
     topic_name: Optional[str] = None
     topic_code: Optional[str] = None
-    subtopic_id: Optional[str] = None
+    subtopic_id: Optional[str | int] = None
     subtopic_name: Optional[str] = None
     subtopic_code: Optional[str] = None
     is_primary: bool = True
@@ -140,8 +139,8 @@ class HierarchyLinkDetail(BaseModel):
 
 
 class QuestionDetailResponse(BaseModel):
-    question_id: str
-    exam_id: Optional[str] = None
+    question_id: str | int
+    exam_id: Optional[str | int] = None
     exam_name: Optional[str] = None
     exam_code: Optional[str] = None
     exam_type: Optional[str] = None
@@ -160,7 +159,7 @@ class QuestionDetailResponse(BaseModel):
     is_complete: bool = True
     has_image: bool = False
     page_numbers: List[int] = []
-    passage_id: Optional[str] = None
+    passage_id: Optional[str | int] = None
     passage_text: Optional[str] = None
     question_text: str = ""
     translations: Dict[str, str] = {}
@@ -182,7 +181,7 @@ class QuestionPaginatedResponse(BaseModel):
 
 
 class ExamReviewQuestionsResponse(BaseModel):
-    exam_id: str
+    exam_id: str | int
     exam_name: Optional[str] = None
     exam_code: Optional[str] = None
     stage: str = "prelims"
@@ -211,4 +210,3 @@ class ExamReviewQuestionsResponse(BaseModel):
     page: int
     limit: int
     pages: int
-

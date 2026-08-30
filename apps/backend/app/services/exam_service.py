@@ -164,7 +164,7 @@ class ExamService:
         return await self.repo.list_all(status=status, is_active=is_active)
 
 
-    async def get_exam_detail(self, exam_id: uuid.UUID) -> Exam:
+    async def get_exam_detail(self, exam_id: int) -> Exam:
         exam = await self.repo.get_by_id(exam_id)
         if not exam:
             raise HTTPException(

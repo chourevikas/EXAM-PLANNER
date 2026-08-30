@@ -34,7 +34,7 @@ class TestHITL(unittest.IsolatedAsyncioTestCase):
         async with self.session_factory() as session:
             service = HumanReviewService(session)
 
-            exam_id = uuid.uuid4()
+            exam_id = 1
             q = Question(
                 exam_id=exam_id,
                 section_code="GS_1",

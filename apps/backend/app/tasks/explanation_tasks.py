@@ -90,7 +90,7 @@ async def async_process_exam_explanations(
             async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
-                    exam_id=uuid.UUID(exam_id_str),
+                    exam_id=int(exam_id_str),
                     pipeline_type="EXPLANATION_INDEXING",
                     status="STOPPED",
                     current_step="CANCELLED_BY_ADMIN",
@@ -112,7 +112,7 @@ async def async_process_exam_explanations(
             async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
-                    exam_id=uuid.UUID(exam_id_str),
+                    exam_id=int(exam_id_str),
                     pipeline_type="EXPLANATION_INDEXING",
                     status="FAILED",
                     current_step="FAILED_WITH_ERROR",

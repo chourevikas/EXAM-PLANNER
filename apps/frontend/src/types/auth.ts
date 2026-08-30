@@ -29,7 +29,7 @@ export interface AdminProfile {
 }
 
 export interface User {
-  id: string;
+  id: number | string;
   full_name: string;
   email: string;
   role: UserRole;
@@ -59,7 +59,7 @@ export interface AuthResponse {
 }
 
 export interface AdminApprovalRequest {
-  id: string;
+  id: number | string;
   full_name: string;
   email: string;
   role: UserRole;
@@ -70,7 +70,7 @@ export interface AdminApprovalRequest {
 }
 
 export interface AdminApprovalLog {
-  id: string;
+  id: number | string;
   admin_user_name: string;
   admin_user_email: string;
   action: 'APPROVED' | 'REJECTED';
@@ -90,7 +90,7 @@ export interface SystemStats {
 }
 
 export interface UserDirectoryItem {
-  id: string;
+  id: number | string;
   full_name: string;
   email: string;
   role: UserRole;

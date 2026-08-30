@@ -1,4 +1,3 @@
-import uuid
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
@@ -27,7 +26,7 @@ class SubscriptionTier(str, enum.Enum):
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     full_name: str = Field(max_length=255)
     email: str = Field(unique=True, index=True, max_length=255)
     clerk_id: Optional[str] = Field(default=None, unique=True, index=True, max_length=255)
@@ -156,9 +155,8 @@ class User(SQLModel, table=True):
 class StudentProfile(SQLModel, table=True):
     __tablename__ = "student_profiles"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(
-        foreign_key="users.id", ondelete="CASCADE", unique=True, index=True
+    user_id: int = Field(
+        foreign_key="users.id", ondelete="CASCADE", primary_key=True, index=True
     )
     subscription_tier: SubscriptionTier = Field(default=SubscriptionTier.FREE)
     free_questions_attempted: int = Field(default=0)
@@ -178,18 +176,17 @@ class StudentProfile(SQLModel, table=True):
 class AdminProfile(SQLModel, table=True):
     __tablename__ = "admin_profiles"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(
-        foreign_key="users.id", ondelete="CASCADE", unique=True, index=True
+    user_id: int = Field(
+        foreign_key="users.id", ondelete="CASCADE", primary_key=True, index=True
     )
     organization_name: Optional[str] = Field(default=None, max_length=255)
     department: Optional[str] = Field(default=None, max_length=255)
 
-    approved_by_id: Optional[uuid.UUID] = Field(
+    approved_by_id: Optional[int] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
     approved_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
-    rejected_by_id: Optional[uuid.UUID] = Field(
+    rejected_by_id: Optional[int] = Field(
         default=None, foreign_key="users.id", ondelete="SET NULL"
     )
     rejected_at: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
@@ -214,12 +211,12 @@ class AdminProfile(SQLModel, table=True):
 class AdminApprovalLog(SQLModel, table=True):
     __tablename__ = "admin_approval_logs"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    admin_user_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    admin_user_id: int = Field(
         foreign_key="users.id", ondelete="CASCADE", index=True
     )
-    reviewed_by_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="users.id", ondelete="SET NULL"
+    reviewed_by_id: Optional[int] = Field(
+        default=None, foreign_key="users.id", ondelete="SET NULL", index=True
     )
     action: str = Field(max_length=50)
     reason: Optional[str] = Field(default=None)
@@ -232,8 +229,8 @@ class AdminApprovalLog(SQLModel, table=True):
 class RefreshToken(SQLModel, table=True):
     __tablename__ = "refresh_tokens"
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     token_hash: str
     device_name: Optional[str] = Field(default=None, max_length=255)
     ip_address: Optional[str] = Field(default=None, max_length=45)
@@ -245,3 +242,16 @@ class RefreshToken(SQLModel, table=True):
     )
 
     user: Optional[User] = Relationship(back_populates="refresh_tokens")
+
+
+class QuestionBookmark(SQLModel, table=True):
+    __tablename__ = "question_bookmarks"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
+    question_id: int = Field(foreign_key="questions.id", ondelete="CASCADE", index=True)
+    notes: Optional[str] = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )

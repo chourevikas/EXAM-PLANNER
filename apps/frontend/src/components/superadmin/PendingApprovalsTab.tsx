@@ -5,9 +5,9 @@ import { ShieldCheck, UserX, RefreshCw, Clock, Building, Mail } from 'lucide-rea
 interface PendingApprovalsTabProps {
   requests: AdminApprovalRequest[];
   loading: boolean;
-  processingId: string | null;
-  onApprove: (id: string, name: string) => void;
-  onReject: (id: string, name: string) => void;
+  processingId: number | string | null;
+  onApprove: (id: number | string, name: string) => void;
+  onReject: (id: number | string, name: string) => void;
   onRefresh: () => void;
 }
 
@@ -24,7 +24,7 @@ export function PendingApprovalsTab({
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 22,
+        borderRadius: 0,
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -43,9 +43,9 @@ export function PendingApprovalsTab({
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '3px 10px',
-                  borderRadius: 99,
+                  borderRadius: 0,
                   background: 'rgba(249, 115, 22, 0.12)',
-                  color: '#f97316',
+                  color: '#F47B35',
                   border: '1px solid rgba(249, 115, 22, 0.25)',
                 }}
               >
@@ -64,7 +64,7 @@ export function PendingApprovalsTab({
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 10,
+            borderRadius: 0,
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -98,7 +98,7 @@ export function PendingApprovalsTab({
             padding: '56px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 18,
+            borderRadius: 0,
             border: '1px border-dashed var(--border-color)',
           }}
         >
@@ -121,7 +121,7 @@ export function PendingApprovalsTab({
                 alignItems: 'center',
                 background: 'var(--bg-body)',
                 border: '1px solid var(--border-color)',
-                borderRadius: 18,
+                borderRadius: 0,
                 padding: '24px 28px',
                 gap: 20,
                 flexWrap: 'wrap',
@@ -146,12 +146,12 @@ export function PendingApprovalsTab({
                   <span
                     style={{
                       fontSize: 12,
-                      color: '#2563eb',
-                      background: 'rgba(37, 99, 235, 0.1)',
+                      color: '#E31B23',
+                      background: 'rgba(227, 27, 35, 0.1)',
                       padding: '3px 12px',
-                      borderRadius: 99,
+                      borderRadius: 0,
                       fontWeight: 600,
-                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      border: '1px solid rgba(227, 27, 35, 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -185,10 +185,10 @@ export function PendingApprovalsTab({
                     padding: '9px 18px',
                     fontSize: 13,
                     fontWeight: 600,
-                    borderRadius: 10,
+                    borderRadius: 0,
                     cursor: 'pointer',
                     background: 'transparent',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    border: '1px solid rgba(227, 27, 35, 0.3)',
                     color: '#ef4444',
                     display: 'flex',
                     alignItems: 'center',
@@ -196,7 +196,7 @@ export function PendingApprovalsTab({
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                    e.currentTarget.style.background = 'rgba(227, 27, 35, 0.1)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
@@ -213,10 +213,10 @@ export function PendingApprovalsTab({
                     padding: '9px 20px',
                     fontSize: 13,
                     fontWeight: 700,
-                    borderRadius: 10,
+                    borderRadius: 0,
                     cursor: 'pointer',
-                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                    border: '1px solid #10B981',
+                    background: 'linear-gradient(135deg, #3A8B53 0%, #3A8B53 100%)',
+                    border: '1px solid #3A8B53',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',

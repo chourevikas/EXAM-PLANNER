@@ -122,7 +122,7 @@ export function StatusBadge({
         padding,
         fontSize,
         fontWeight: 700,
-        borderRadius: 20,
+        borderRadius: 0,
         backgroundColor: bg,
         color,
         border,

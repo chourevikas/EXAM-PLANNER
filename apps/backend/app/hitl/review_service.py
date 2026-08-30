@@ -46,14 +46,21 @@ class HumanReviewService:
         self.session = session
 
     async def get_pending_review_tasks(
-        self, exam_id: Optional[uuid.UUID] = None, only_flagged: bool = False
+        self, exam_id: Optional[int | str] = None, only_flagged: bool = False
     ) -> List[HumanReviewTask]:
         """Asynchronously fetches pending human review tasks for Admin review."""
+        parsed_exam_id = None
+        if exam_id is not None:
+            try:
+                parsed_exam_id = int(exam_id)
+            except (ValueError, TypeError):
+                return []
+
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         cache_key = build_cache_key(
             "review:tasks",
-            str(exam_id) if exam_id else "all",
+            str(parsed_exam_id) if parsed_exam_id else "all",
             only_flagged=only_flagged,
         )
         cached_data = await cache.get(cache_key)
@@ -63,8 +70,8 @@ class HumanReviewService:
         query = select(HumanReviewTask).where(
             HumanReviewTask.review_status == "PENDING_REVIEW"
         )
-        if exam_id:
-            query = query.where(HumanReviewTask.exam_id == exam_id)
+        if parsed_exam_id:
+            query = query.where(HumanReviewTask.exam_id == parsed_exam_id)
         if only_flagged:
             query = query.where(HumanReviewTask.is_flagged_by_validator == True)
 
@@ -76,28 +83,33 @@ class HumanReviewService:
         return tasks
 
     async def get_question_review_detail(
-        self, question_id: uuid.UUID
+        self, question_id: int | str
     ) -> Dict[str, Any]:
         """Asynchronously fetches full question details, passage context, translations, options, and audit flags."""
-        question = await self.session.get(Question, question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"Question with ID {question_id} not found.")
+
+        question = await self.session.get(Question, q_id)
         if not question:
             raise ValueError(f"Question with ID {question_id} not found.")
 
         review_task_res = await self.session.exec(
-            select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
+            select(HumanReviewTask).where(HumanReviewTask.question_id == q_id)
         )
         review_task = review_task_res.first()
 
         translations_res = await self.session.exec(
             select(QuestionTranslation).where(
-                QuestionTranslation.question_id == question_id
+                QuestionTranslation.question_id == q_id
             )
         )
         translations = translations_res.all()
 
         options_res = await self.session.exec(
             select(QuestionOption)
-            .where(QuestionOption.question_id == question_id)
+            .where(QuestionOption.question_id == q_id)
             .order_by(col(QuestionOption.display_order))
         )
         options = options_res.all()
@@ -280,8 +292,8 @@ class HumanReviewService:
 
     async def update_and_approve_question(
         self,
-        question_id: uuid.UUID,
-        admin_id: Optional[uuid.UUID] = None,
+        question_id: int | str,
+        admin_id: Optional[int | str] = None,
         updated_passage_text: Optional[str] = None,
         updated_question_text: Optional[str] = None,
         updated_options: Optional[List[Dict[str, Any]]] = None,
@@ -289,7 +301,19 @@ class HumanReviewService:
         reviewer_notes: Optional[str] = None,
     ) -> Question:
         """Allows Admin to update passage context, question text, options, and publish the question."""
-        question = await self.session.get(Question, question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"Question with ID {question_id} not found.")
+
+        parsed_admin_id = None
+        if admin_id is not None:
+            try:
+                parsed_admin_id = int(admin_id)
+            except (ValueError, TypeError):
+                parsed_admin_id = None
+
+        question = await self.session.get(Question, q_id)
         if not question:
             raise ValueError(f"Question with ID {question_id} not found.")
 
@@ -309,7 +333,7 @@ class HumanReviewService:
         if updated_question_text:
             trans_res = await self.session.exec(
                 select(QuestionTranslation).where(
-                    QuestionTranslation.question_id == question_id
+                    QuestionTranslation.question_id == q_id
                 )
             )
             trans = trans_res.first()
@@ -327,7 +351,7 @@ class HumanReviewService:
 
                 opt_res = await self.session.exec(
                     select(QuestionOption).where(
-                        QuestionOption.question_id == question_id,
+                        QuestionOption.question_id == q_id,
                         QuestionOption.option_label == opt_label,
                     )
                 )
@@ -352,7 +376,7 @@ class HumanReviewService:
         # Update Correct Answer explicitly if label specified
         if correct_option_label:
             options_res = await self.session.exec(
-                select(QuestionOption).where(QuestionOption.question_id == question_id)
+                select(QuestionOption).where(QuestionOption.question_id == q_id)
             )
             for opt in options_res.all():
                 opt.is_correct = opt.option_label == correct_option_label
@@ -370,12 +394,12 @@ class HumanReviewService:
 
         # Update Review Task
         review_task_res = await self.session.exec(
-            select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
+            select(HumanReviewTask).where(HumanReviewTask.question_id == q_id)
         )
         review_task = review_task_res.first()
         if review_task:
             review_task.review_status = "VERIFIED"
-            review_task.assigned_admin_id = admin_id
+            review_task.assigned_admin_id = parsed_admin_id
             review_task.reviewer_notes = reviewer_notes
             review_task.reviewed_at = datetime.now(timezone.utc)
             self.session.add(review_task)
@@ -383,7 +407,6 @@ class HumanReviewService:
         await self.session.flush()
         await self.session.commit()
         await self.session.refresh(question)
-
 
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
@@ -401,10 +424,15 @@ class HumanReviewService:
         return question
 
     async def trigger_llm_reextraction_for_question(
-        self, question_id: uuid.UUID, admin_id: Optional[uuid.UUID] = None
+        self, question_id: int | str, admin_id: Optional[int | str] = None
     ) -> Dict[str, Any]:
         """Triggers sequential LLM re-extraction retry targeting the specific pages of the question and passage."""
-        question = await self.session.get(Question, question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"Question with ID {question_id} not found.")
+
+        question = await self.session.get(Question, q_id)
         if not question:
             raise ValueError(f"Question with ID {question_id} not found.")
 
@@ -450,7 +478,7 @@ class HumanReviewService:
                         )
                         q_trans_res = await self.session.exec(
                             select(QuestionTranslation).where(
-                                QuestionTranslation.question_id == question_id,
+                                QuestionTranslation.question_id == q_id,
                                 QuestionTranslation.language == lang_str,
                             )
                         )
@@ -466,7 +494,7 @@ class HumanReviewService:
                         for opt_schema in trans.options:
                             opt_res = await self.session.exec(
                                 select(QuestionOption).where(
-                                    QuestionOption.question_id == question_id,
+                                    QuestionOption.question_id == q_id,
                                     QuestionOption.option_label
                                     == opt_schema.display_label,
                                 )
@@ -493,17 +521,22 @@ class HumanReviewService:
         }
 
     async def reject_question(
-        self, question_id: uuid.UUID, rejection_reason: str, reviewer_notes: Optional[str] = None
+        self, question_id: int | str, rejection_reason: str, reviewer_notes: Optional[str] = None
     ) -> Question:
         """Flags question as REJECTED and records reviewer failure reason."""
-        question = await self.session.get(Question, question_id)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"Question with ID {question_id} not found.")
+
+        question = await self.session.get(Question, q_id)
         if not question:
             raise ValueError(f"Question with ID {question_id} not found.")
 
         question.status = QuestionStatus.REJECTED
         self.session.add(question)
 
-        task_stmt = select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
+        task_stmt = select(HumanReviewTask).where(HumanReviewTask.question_id == q_id)
         task = (await self.session.exec(task_stmt)).first()
 
         reasons = [rejection_reason]
@@ -527,7 +560,7 @@ class HumanReviewService:
 
     async def update_question_explanation(
         self,
-        question_id: uuid.UUID,
+        question_id: int | str,
         core_concept: Optional[str] = None,
         detailed_solution: Optional[str] = None,
         common_traps: Optional[List[str]] = None,
@@ -535,6 +568,11 @@ class HumanReviewService:
         language: str = "ENGLISH",
     ) -> Any:
         """Allows QA reviewers to manually edit and save question explanations."""
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"Question with ID {question_id} not found.")
+
         from app.db.models.enums import LanguageCode
         from app.db.models.explanation import QuestionExplanation
 
@@ -544,14 +582,14 @@ class HumanReviewService:
             lang_enum = LanguageCode.ENGLISH
 
         expl_stmt = select(QuestionExplanation).where(
-            QuestionExplanation.question_id == question_id,
+            QuestionExplanation.question_id == q_id,
             QuestionExplanation.language == lang_enum,
         )
         expl = (await self.session.exec(expl_stmt)).first()
 
         if not expl:
             expl = QuestionExplanation(
-                question_id=question_id,
+                question_id=q_id,
                 language=lang_enum,
                 core_concept=core_concept or "Reviewer Provided Concept",
                 detailed_solution=detailed_solution or "Reviewer Provided Solution",
@@ -573,7 +611,7 @@ class HumanReviewService:
         await self.session.refresh(expl)
 
         # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
-        q = await self.session.get(Question, question_id)
+        q = await self.session.get(Question, q_id)
         if q and q.exam_id:
             exam = await self.session.get(Exam, q.exam_id)
             if exam:
@@ -581,6 +619,6 @@ class HumanReviewService:
                 self.session.add(exam)
                 await self.session.commit()
             builder = ExamJsonBuilder(self.session)
-            await builder.sync_single_question_artifacts(question_id)
+            await builder.sync_single_question_artifacts(q_id)
 
         return expl

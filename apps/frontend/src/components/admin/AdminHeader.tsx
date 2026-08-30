@@ -33,7 +33,7 @@ export function AdminHeader() {
             window.location.href = '/';
           }}
           className="btn btn-ghost"
-          style={{ padding: '7px 16px', fontSize: 13, borderRadius: 10, cursor: 'pointer' }}
+          style={{ padding: '7px 16px', fontSize: 13, borderRadius: 0, cursor: 'pointer' }}
         >
           Sign Out
         </button>

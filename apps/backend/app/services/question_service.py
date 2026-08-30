@@ -57,16 +57,16 @@ class QuestionService:
 
     async def list_questions_paginated(
         self,
-        subject_id: Optional[uuid.UUID] = None,
+        subject_id: Optional[int] = None,
         subject_name: Optional[str] = None,
         subject_code: Optional[str] = None,
-        topic_id: Optional[uuid.UUID] = None,
+        topic_id: Optional[int] = None,
         topic_name: Optional[str] = None,
         topic_code: Optional[str] = None,
-        subtopic_id: Optional[uuid.UUID] = None,
+        subtopic_id: Optional[int] = None,
         subtopic_name: Optional[str] = None,
         subtopic_code: Optional[str] = None,
-        exam_id: Optional[uuid.UUID] = None,
+        exam_id: Optional[int] = None,
         exam_name: Optional[str] = None,
         exam_type: Optional[QuestionSourceType] = None,
         exam_year: Optional[int] = None,
@@ -154,7 +154,7 @@ class QuestionService:
 
     async def get_exam_questions_for_review(
         self,
-        exam_id: uuid.UUID,
+        exam_id: int,
         page: int = 1,
         limit: int = 10,
         language: LanguageCode = LanguageCode.ENGLISH,
@@ -209,13 +209,13 @@ class QuestionService:
             q_ids = [q.id for q in all_questions]
             qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
             qt_res = await self.session.exec(qt_stmt)
-            q_trans_map: dict[uuid.UUID, list[str]] = {}
+            q_trans_map: dict[int, list[str]] = {}
             for t in qt_res.all():
                 q_trans_map.setdefault(t.question_id, []).append(t.question_text or "")
 
             opt_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
             opt_res = await self.session.exec(opt_stmt)
-            q_opts_set: set[uuid.UUID] = {opt.question_id for opt in opt_res.all()}
+            q_opts_set: set[int] = {opt.question_id for opt in opt_res.all()}
 
             for q in all_questions:
                 trans_texts = q_trans_map.get(q.id, [])
@@ -309,21 +309,25 @@ class QuestionService:
         )
 
     async def get_question_detail(
-        self, question_id: uuid.UUID | str, language: LanguageCode = LanguageCode.ENGLISH
+        self, question_id: int | str, language: LanguageCode = LanguageCode.ENGLISH
     ) -> QuestionDetailResponse:
         from app.cache import get_cache, build_cache_key
-        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
         cache = get_cache()
         cache_key = build_cache_key(
             "questions:detail",
-            str(q_uuid),
+            str(q_id),
             lang=str(language.value if hasattr(language, "value") else language),
         )
         cached_data = await cache.get(cache_key)
         if cached_data is not None:
             return QuestionDetailResponse(**cached_data)
 
-        q = await self.repo.get_by_id(q_uuid)
+        q = await self.repo.get_by_id(q_id)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         detail_res = await self._build_question_detail_response(q, target_lang=language)
@@ -332,11 +336,15 @@ class QuestionService:
         return detail_res
 
     async def update_question_detail(
-        self, question_id: uuid.UUID | str, payload: QuestionUpdatePayload
+        self, question_id: int | str, payload: QuestionUpdatePayload
     ) -> QuestionDetailResponse:
         from app.cache import invalidate_question_cache
-        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
-        q = await self.repo.get_by_id(q_uuid)
+        try:
+            q_id = int(question_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+
+        q = await self.repo.get_by_id(q_id)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
@@ -538,7 +546,7 @@ class QuestionService:
                         self.session.add(syl_ver)
                         await self.session.flush()
                     subj_obj = Subject(
-                        syllabus_version_id=syl_ver.id,
+                        version_id=syl_ver.id,
                         name=clean_sname,
                         code=clean_sname[:10].upper().replace(" ", "_"),
                     )
@@ -608,7 +616,7 @@ class QuestionService:
         await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
-    async def _touch_exam_updated_at(self, exam_id: Optional[uuid.UUID]):
+    async def _touch_exam_updated_at(self, exam_id: Optional[int]):
         if not exam_id:
             return
         exam = await self.session.get(Exam, exam_id)
@@ -617,7 +625,7 @@ class QuestionService:
             self.session.add(exam)
             await self.session.commit()
 
-    async def _recalculate_exam_metrics(self, exam_id: Optional[uuid.UUID]):
+    async def _recalculate_exam_metrics(self, exam_id: Optional[int]):
         if not exam_id:
             return
         exam_obj = await self.session.get(Exam, exam_id)
@@ -749,13 +757,13 @@ class QuestionService:
 
     async def _save_hierarchy_links(
         self,
-        question_id: uuid.UUID,
-        subtopic_id: Optional[uuid.UUID] = None,
-        subtopic_ids: Optional[List[uuid.UUID]] = None,
+        question_id: int,
+        subtopic_id: Optional[int] = None,
+        subtopic_ids: Optional[List[int]] = None,
         hierarchy_links: Optional[List[QuestionHierarchyLinkPayload]] = None,
     ):
-        # 1. Collect and deduplicate target hierarchy link definitions keyed by subtopic_id (UUID)
-        target_links: Dict[uuid.UUID, Dict[str, Any]] = {}
+        # 1. Collect and deduplicate target hierarchy link definitions keyed by subtopic_id (int)
+        target_links: Dict[int, Dict[str, Any]] = {}
 
         if hierarchy_links:
             for idx, link_p in enumerate(hierarchy_links):
@@ -784,13 +792,13 @@ class QuestionService:
 
                     # Upsert Subject
                     s_stmt = select(Subject).where(
-                        Subject.syllabus_version_id == syl_ver.id,
+                        Subject.version_id == syl_ver.id,
                         func.lower(Subject.name) == s_name.lower(),
                     )
                     subj = (await self.session.exec(s_stmt)).first()
                     if not subj:
                         subj = Subject(
-                            syllabus_version_id=syl_ver.id,
+                            version_id=syl_ver.id,
                             name=s_name,
                             code=s_name[:10].upper().replace(" ", "_"),
                         )
@@ -913,7 +921,7 @@ class QuestionService:
             QuestionHierarchyLink.question_id == question_id
         )
         existing_links = (await self.session.exec(existing_stmt)).all()
-        existing_by_subtopic: Dict[uuid.UUID, QuestionHierarchyLink] = {
+        existing_by_subtopic: Dict[int, QuestionHierarchyLink] = {
             link.subtopic_id: link for link in existing_links
         }
 
@@ -963,9 +971,9 @@ class QuestionService:
                 q_obj.subtopic_id = primary_subtopic_id or next(iter(target_links))
                 self.session.add(q_obj)
 
-    async def delete_question(self, question_id: uuid.UUID | str) -> bool:
-        q_uuid = uuid.UUID(str(question_id)) if not isinstance(question_id, uuid.UUID) else question_id
-        q = await self.repo.get_by_id(q_uuid)
+    async def delete_question(self, question_id: int | str) -> bool:
+        q_id = int(question_id)
+        q = await self.repo.get_by_id(q_id)
         if not q:
             raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
         exam_id = q.exam_id
@@ -988,13 +996,13 @@ class QuestionService:
             await builder.delete_single_question_artifacts(exam_code, paper_set, q_num)
         return True
 
-    async def get_question_yaml_file(self, question_id: uuid.UUID) -> str:
+    async def get_question_yaml_file(self, question_id: int | str) -> str:
         q = await self.repo.get_by_id(question_id)
         if not q:
             raise HTTPException(status_code=404, detail="Question not found")
         return await async_export_question_to_yaml_string(self.session, q)
 
-    async def get_question_markdown_file(self, question_id: uuid.UUID) -> str:
+    async def get_question_markdown_file(self, question_id: int | str) -> str:
         q = await self.repo.get_by_id(question_id)
         if not q:
             raise HTTPException(status_code=404, detail="Question not found")

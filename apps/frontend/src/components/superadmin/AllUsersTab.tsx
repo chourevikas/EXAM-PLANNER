@@ -6,9 +6,9 @@ interface AllUsersTabProps {
   users: UserDirectoryItem[];
   loading: boolean;
   onRefresh: () => void;
-  onRoleChange: (userId: string, newRole: string, userName: string) => void;
-  onSuspend?: (userId: string, userName: string) => void;
-  onReactivate?: (userId: string, userName: string) => void;
+  onRoleChange: (userId: number | string, newRole: string, userName: string) => void;
+  onSuspend?: (userId: number | string, userName: string) => void;
+  onReactivate?: (userId: number | string, userName: string) => void;
 }
 
 export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend, onReactivate }: AllUsersTabProps) {
@@ -36,9 +36,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
       case UserRole.SUPER_ADMIN:
         return { bg: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed', border: 'rgba(124, 58, 237, 0.25)' };
       case UserRole.ADMIN:
-        return { bg: 'rgba(249, 115, 22, 0.12)', color: '#f97316', border: 'rgba(249, 115, 22, 0.25)' };
+        return { bg: 'rgba(249, 115, 22, 0.12)', color: '#F47B35', border: 'rgba(249, 115, 22, 0.25)' };
       default:
-        return { bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.25)' };
+        return { bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
     }
   };
 
@@ -47,7 +47,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
       style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
-        borderRadius: 22,
+        borderRadius: 0,
         padding: 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
@@ -65,10 +65,10 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                 fontSize: 11,
                 fontWeight: 800,
                 padding: '3px 10px',
-                borderRadius: 99,
-                background: 'rgba(59, 130, 246, 0.12)',
-                color: '#3b82f6',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 0,
+                background: 'rgba(227, 27, 35, 0.12)',
+                color: '#E31B23',
+                border: '1px solid rgba(227, 27, 35, 0.25)',
               }}
             >
               {users.length} Total Users
@@ -85,7 +85,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             padding: '9px 18px',
             fontSize: 13,
             fontWeight: 600,
-            borderRadius: 10,
+            borderRadius: 0,
             border: '1px solid var(--border-color)',
             background: 'var(--bg-body)',
             color: 'var(--text-main)',
@@ -107,7 +107,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter('ALL')}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -127,13 +127,13 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.STUDENT)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
-            background: roleFilter === UserRole.STUDENT ? 'rgba(59, 130, 246, 0.2)' : 'var(--bg-body)',
-            color: roleFilter === UserRole.STUDENT ? '#2563eb' : 'var(--text-main)',
-            border: `1px solid ${roleFilter === UserRole.STUDENT ? '#2563eb' : 'var(--border-color)'}`,
+            background: roleFilter === UserRole.STUDENT ? 'rgba(227, 27, 35, 0.2)' : 'var(--bg-body)',
+            color: roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--text-main)',
+            border: `1px solid ${roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--border-color)'}`,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -147,7 +147,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.ADMIN)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -167,7 +167,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           onClick={() => setRoleFilter(UserRole.SUPER_ADMIN)}
           style={{
             padding: '8px 16px',
-            borderRadius: 10,
+            borderRadius: 0,
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
@@ -192,7 +192,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             gap: 10,
             background: 'var(--bg-body)',
             border: '1px solid var(--border-color)',
-            borderRadius: 12,
+            borderRadius: 0,
             padding: '10px 16px',
             maxWidth: 400,
           }}
@@ -227,7 +227,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
             padding: '48px 24px',
             textAlign: 'center',
             background: 'var(--bg-body)',
-            borderRadius: 18,
+            borderRadius: 0,
             border: '1px solid var(--border-color)',
           }}
         >
@@ -236,184 +236,184 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 16, border: '1px solid var(--border-color)' }}>
+        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
-                <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  <th style={{ padding: '16px 20px' }}>User Details</th>
-                  <th style={{ padding: '16px 20px' }}>Assigned Role</th>
-                  <th style={{ padding: '16px 20px' }}>Account Status</th>
-                  <th style={{ padding: '16px 20px' }}>Profile Information</th>
-                  <th style={{ padding: '16px 20px' }}>Joined Date</th>
-                  <th style={{ padding: '16px 20px', textAlign: 'right' }}>Actions & Role</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((u) => {
-                  const roleStyle = getRoleBadgeStyle(u.role);
-                  const isSuspended = u.status === UserStatus.SUSPENDED;
+              <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <th style={{ padding: '16px 20px' }}>User Details</th>
+                <th style={{ padding: '16px 20px' }}>Assigned Role</th>
+                <th style={{ padding: '16px 20px' }}>Account Status</th>
+                <th style={{ padding: '16px 20px' }}>Profile Information</th>
+                <th style={{ padding: '16px 20px' }}>Joined Date</th>
+                <th style={{ padding: '16px 20px', textAlign: 'right' }}>Actions & Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((u) => {
+                const roleStyle = getRoleBadgeStyle(u.role);
+                const isSuspended = u.status === UserStatus.SUSPENDED;
 
-                  // Cooling period math (7 days = 7 * 24 * 60 * 60 * 1000 ms)
-                  const suspTime = u.suspended_at || u.updated_at;
-                  const suspDate = suspTime ? new Date(suspTime) : null;
-                  const msElapsed = suspDate ? Date.now() - suspDate.getTime() : 0;
-                  const daysElapsed = suspDate ? msElapsed / (1000 * 60 * 60 * 24) : 0;
-                  const isCoolingExpired = isSuspended && daysElapsed >= 7;
-                  const daysRemaining = Math.max(1, Math.ceil(7 - daysElapsed));
+                // Cooling period math (7 days = 7 * 24 * 60 * 60 * 1000 ms)
+                const suspTime = u.suspended_at || u.updated_at;
+                const suspDate = suspTime ? new Date(suspTime) : null;
+                const msElapsed = suspDate ? Date.now() - suspDate.getTime() : 0;
+                const daysElapsed = suspDate ? msElapsed / (1000 * 60 * 60 * 24) : 0;
+                const isCoolingExpired = isSuspended && daysElapsed >= 7;
+                const daysRemaining = Math.max(1, Math.ceil(7 - daysElapsed));
 
-                  return (
-                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
-                      {/* User Details */}
-                      <td style={{ padding: '18px 20px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{u.full_name}</div>
-                        <div style={{ fontSize: 12.5, color: '#2563eb', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
-                      </td>
+                return (
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
+                    {/* User Details */}
+                    <td style={{ padding: '18px 20px' }}>
+                      <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{u.full_name}</div>
+                      <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
+                    </td>
 
-                      {/* Role Badge */}
-                      <td style={{ padding: '18px 20px' }}>
-                        <span
+                    {/* Role Badge */}
+                    <td style={{ padding: '18px 20px' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: '4px 12px',
+                          borderRadius: 0,
+                          color: roleStyle.color,
+                          background: roleStyle.bg,
+                          border: `1px solid ${roleStyle.border}`,
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        {u.role === UserRole.SUPER_ADMIN ? '👑 SUPER ADMIN' : u.role}
+                      </span>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td style={{ padding: '18px 20px' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: 0,
+                          color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#F47B35' : '#3A8B53',
+                          background: isSuspended ? 'rgba(227, 27, 35, 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          border: `1px solid ${isSuspended ? 'rgba(227, 27, 35, 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                        }}
+                      >
+                        {isCoolingExpired ? 'EXPIRED (7d+)' : u.status}
+                      </span>
+                    </td>
+
+                    {/* Profile Information */}
+                    <td style={{ padding: '18px 20px', fontSize: 13, color: 'var(--text-muted)' }}>
+                      {u.role === UserRole.STUDENT ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                            {u.target_exam || 'UPSC CSE'} {u.target_year || '2026'}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>Aspirant Candidate</div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                            {u.organization_name || 'System Admin'}
+                          </div>
+                          {u.department && <div style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>{u.department}</div>}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Joined Date */}
+                    <td style={{ padding: '18px 20px', fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+
+                    {/* Manage Role Selector & Suspend / Reactivate Controls */}
+                    <td style={{ padding: '18px 20px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                        <select
+                          value={u.role}
+                          onChange={(e) => onRoleChange(u.id, e.target.value, u.full_name)}
                           style={{
-                            fontSize: 11,
-                            fontWeight: 800,
-                            padding: '4px 12px',
-                            borderRadius: 99,
-                            color: roleStyle.color,
-                            background: roleStyle.bg,
-                            border: `1px solid ${roleStyle.border}`,
-                            letterSpacing: '0.04em',
+                            padding: '6px 10px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            borderRadius: 0,
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-body)',
+                            color: 'var(--text-main)',
+                            cursor: 'pointer',
+                            outline: 'none',
                           }}
                         >
-                          {u.role === UserRole.SUPER_ADMIN ? '👑 SUPER ADMIN' : u.role}
-                        </span>
-                      </td>
+                          <option value={UserRole.STUDENT}>STUDENT</option>
+                          <option value={UserRole.ADMIN}>ADMIN</option>
+                          <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>
+                        </select>
 
-                      {/* Status Badge */}
-                      <td style={{ padding: '18px 20px' }}>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: '4px 10px',
-                            borderRadius: 99,
-                            color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#f97316' : '#10b981',
-                            background: isSuspended ? 'rgba(239, 68, 68, 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                            border: `1px solid ${isSuspended ? 'rgba(239, 68, 68, 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
-                          }}
-                        >
-                          {isCoolingExpired ? 'EXPIRED (7d+)' : u.status}
-                        </span>
-                      </td>
-
-                      {/* Profile Information */}
-                      <td style={{ padding: '18px 20px', fontSize: 13, color: 'var(--text-muted)' }}>
-                        {u.role === UserRole.STUDENT ? (
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                              {u.target_exam || 'UPSC CSE'} {u.target_year || '2026'}
-                            </div>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>Aspirant Candidate</div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                              {u.organization_name || 'System Admin'}
-                            </div>
-                            {u.department && <div style={{ fontSize: 11.5, color: 'var(--text-subtle)' }}>{u.department}</div>}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Joined Date */}
-                      <td style={{ padding: '18px 20px', fontSize: 12.5, color: 'var(--text-muted)' }}>
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </td>
-
-                      {/* Manage Role Selector & Suspend / Reactivate Controls */}
-                      <td style={{ padding: '18px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-                          <select
-                            value={u.role}
-                            onChange={(e) => onRoleChange(u.id, e.target.value, u.full_name)}
-                            style={{
-                              padding: '6px 10px',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              borderRadius: 8,
-                              border: '1px solid var(--border-color)',
-                              background: 'var(--bg-body)',
-                              color: 'var(--text-main)',
-                              cursor: 'pointer',
-                              outline: 'none',
-                            }}
-                          >
-                            <option value={UserRole.STUDENT}>STUDENT</option>
-                            <option value={UserRole.ADMIN}>ADMIN</option>
-                            <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>
-                          </select>
-
-                          {u.role !== UserRole.SUPER_ADMIN && (
-                            isSuspended ? (
-                              isCoolingExpired ? (
-                                <span
-                                  title="Cooling period of 7 days has expired. This account can no longer be reactivated; the email is available for fresh signup."
-                                  style={{
-                                    padding: '6px 10px',
-                                    fontSize: 11.5,
-                                    fontWeight: 700,
-                                    borderRadius: 8,
-                                    border: '1px solid rgba(100, 116, 139, 0.3)',
-                                    background: 'rgba(100, 116, 139, 0.1)',
-                                    color: '#64748b',
-                                  }}
-                                >
-                                  🔒 Cooling Expired
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => onReactivate && onReactivate(u.id, u.full_name)}
-                                  title={`Cooling period active (${daysRemaining}d remaining). Click to reactivate.`}
-                                  style={{
-                                    padding: '6px 12px',
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    borderRadius: 8,
-                                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                                    background: 'rgba(16, 185, 129, 0.12)',
-                                    color: '#10b981',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                >
-                                  ⚡ Reactivate ({daysRemaining}d left)
-                                </button>
-                              )
+                        {u.role !== UserRole.SUPER_ADMIN && (
+                          isSuspended ? (
+                            isCoolingExpired ? (
+                              <span
+                                title="Cooling period of 7 days has expired. This account can no longer be reactivated; the email is available for fresh signup."
+                                style={{
+                                  padding: '6px 10px',
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  borderRadius: 0,
+                                  border: '1px solid rgba(100, 116, 139, 0.3)',
+                                  background: 'rgba(100, 116, 139, 0.1)',
+                                  color: '#64748b',
+                                }}
+                              >
+                                🔒 Cooling Expired
+                              </span>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => onSuspend && onSuspend(u.id, u.full_name)}
-                                title="Suspend user account and trigger 7-day cooling period"
+                                onClick={() => onReactivate && onReactivate(u.id, u.full_name)}
+                                title={`Cooling period active (${daysRemaining}d remaining). Click to reactivate.`}
                                 style={{
                                   padding: '6px 12px',
                                   fontSize: 12,
                                   fontWeight: 700,
-                                  borderRadius: 8,
-                                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                                  background: 'rgba(239, 68, 68, 0.12)',
-                                  color: '#ef4444',
+                                  borderRadius: 0,
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  background: 'rgba(16, 185, 129, 0.12)',
+                                  color: '#3A8B53',
                                   cursor: 'pointer',
                                   transition: 'all 0.15s ease',
                                 }}
                               >
-                                🛑 Suspend
+                                ⚡ Reactivate ({daysRemaining}d left)
                               </button>
                             )
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onSuspend && onSuspend(u.id, u.full_name)}
+                              title="Suspend user account and trigger 7-day cooling period"
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                borderRadius: 0,
+                                border: '1px solid rgba(227, 27, 35, 0.3)',
+                                background: 'rgba(227, 27, 35, 0.12)',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              🛑 Suspend
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

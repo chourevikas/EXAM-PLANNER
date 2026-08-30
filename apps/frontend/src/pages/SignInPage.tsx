@@ -71,7 +71,7 @@ export function SignInPage() {
         <div
           style={{
             background: '#FFFFFF',
-            borderRadius: 24,
+            borderRadius: 0,
             padding: '36px 32px 32px 32px',
             width: '100%',
             maxWidth: 420,
@@ -93,7 +93,7 @@ export function SignInPage() {
             <div
               style={{
                 padding: '12px 14px',
-                borderRadius: 10,
+                borderRadius: 0,
                 background: '#FEF2F2',
                 border: '1px solid #FECACA',
                 color: '#DC2626',
@@ -113,10 +113,10 @@ export function SignInPage() {
             <div
               style={{
                 padding: '12px 14px',
-                borderRadius: 10,
+                borderRadius: 0,
                 background: '#ECFDF5',
                 border: '1px solid #A7F3D0',
-                color: '#059669',
+                color: '#3A8B53',
                 fontSize: 13.5,
                 fontWeight: 500,
                 marginBottom: 20,
@@ -143,7 +143,7 @@ export function SignInPage() {
                 style={{
                   width: '100%',
                   height: 52,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   backgroundColor: '#F8FAFC',
                   border: '1px solid #E2E8F0',
                   padding: '0 16px',
@@ -182,7 +182,7 @@ export function SignInPage() {
                   style={{
                     width: '100%',
                     height: 52,
-                    borderRadius: 12,
+                    borderRadius: 0,
                     backgroundColor: '#F8FAFC',
                     border: '1px solid #E2E8F0',
                     padding: '0 44px 0 16px',
@@ -235,7 +235,7 @@ export function SignInPage() {
               style={{
                 width: '100%',
                 height: 52,
-                borderRadius: 12,
+                borderRadius: 0,
                 backgroundColor: '#334EAC',
                 color: '#FFFFFF',
                 fontSize: 15,
@@ -300,7 +300,7 @@ export function SignInPage() {
             style={{
               width: '100%',
               height: 52,
-              borderRadius: 12,
+              borderRadius: 0,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
               color: '#172033',

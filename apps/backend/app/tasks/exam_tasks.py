@@ -81,7 +81,7 @@ async def async_process_exam_pdf(
         from app.services.task_registry import task_registry
         task_registry.register_current_task(str(exam_id_str))
 
-        exam_id = uuid.UUID(exam_id_str)
+        exam_id = int(exam_id_str)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         log.info(f"Reading total pages from PDF '{pdf_file.name}'...")
@@ -210,7 +210,7 @@ async def async_process_exam_pdf(
             async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
-                    exam_id=uuid.UUID(exam_id_str),
+                    exam_id=int(exam_id_str),
                     pipeline_type="QUESTION_EXTRACTION",
                     status="STOPPED",
                     current_step="CANCELLED_BY_ADMIN",
@@ -231,7 +231,7 @@ async def async_process_exam_pdf(
             async with managed_async_session() as session:
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
-                    exam_id=uuid.UUID(exam_id_str),
+                    exam_id=int(exam_id_str),
                     pipeline_type="QUESTION_EXTRACTION",
                     status="FAILED",
                     current_step="FAILED_WITH_ERROR",

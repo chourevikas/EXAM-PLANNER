@@ -1,12 +1,10 @@
-import uuid
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
-
 
 from app.db.models import LanguageCode, QuestionStatus
 from app.schemas.question import ExamReviewQuestionsResponse
@@ -36,7 +34,7 @@ class ApproveQuestionRequest(BaseModel):
     summary="Get Exam Questions with Full Solution Knowledge Base for Review",
 )
 async def get_exam_questions_review(
-    exam_id: uuid.UUID,
+    exam_id: int | str,
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -44,11 +42,16 @@ async def get_exam_questions_review(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
+    try:
+        eid = int(exam_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Exam not found.")
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
         "admin:review",
-        str(exam_id),
+        str(eid),
         page=page,
         limit=limit,
         lang=str(language.value if hasattr(language, "value") else language),
@@ -60,7 +63,7 @@ async def get_exam_questions_review(
 
     q_service = QuestionService(session)
     review_res = await q_service.get_exam_questions_for_review(
-        exam_id=exam_id,
+        exam_id=eid,
         page=page,
         limit=limit,
         language=language,
@@ -75,13 +78,20 @@ async def get_exam_questions_review(
 
 @router.get("/tasks")
 async def get_pending_tasks(
-    exam_id: Optional[uuid.UUID] = Query(default=None),
+    exam_id: Optional[int | str] = Query(default=None),
     only_flagged: bool = Query(default=False),
     session: AsyncSession = Depends(get_async_session),
 ):
+    parsed_exam_id = None
+    if exam_id is not None:
+        try:
+            parsed_exam_id = int(exam_id)
+        except (ValueError, TypeError):
+            return JSONResponse(content=[])
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
-    cache_key = build_cache_key("hitl:tasks", exam_id=str(exam_id) if exam_id else None, flagged=only_flagged)
+    cache_key = build_cache_key("hitl:tasks", exam_id=str(parsed_exam_id) if parsed_exam_id else None, flagged=only_flagged)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=cached_data)
@@ -89,7 +99,7 @@ async def get_pending_tasks(
     from fastapi.encoders import jsonable_encoder
     service = HumanReviewService(session)
     tasks = await service.get_pending_review_tasks(
-        exam_id=exam_id, only_flagged=only_flagged
+        exam_id=parsed_exam_id, only_flagged=only_flagged
     )
     if tasks is not None:
         serialized = jsonable_encoder(tasks)
@@ -100,18 +110,23 @@ async def get_pending_tasks(
 
 @router.get("/tasks/{question_id}")
 async def get_question_detail(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found.")
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
-    cache_key = build_cache_key("hitl:task_detail", str(question_id))
+    cache_key = build_cache_key("hitl:task_detail", str(qid))
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=cached_data)
 
     service = HumanReviewService(session)
     try:
-        detail = await service.get_question_review_detail(question_id)
+        detail = await service.get_question_review_detail(qid)
         if detail is not None:
             await cache.set(cache_key, detail, ttl_seconds=1800)
             return JSONResponse(content=detail)
@@ -122,10 +137,15 @@ async def get_question_detail(
 
 @router.post("/tasks/{question_id}/approve")
 async def approve_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     req: ApproveQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found.")
+
     from app.cache import invalidate_question_cache, invalidate_exam_cache
     service = HumanReviewService(session)
     try:
@@ -135,14 +155,14 @@ async def approve_question(
             else None
         )
         question = await service.update_and_approve_question(
-            question_id=question_id,
+            question_id=qid,
             updated_passage_text=req.updated_passage_text,
             updated_question_text=req.updated_question_text,
             updated_options=options_dicts,
             correct_option_label=req.correct_option_label,
             reviewer_notes=req.reviewer_notes,
         )
-        await invalidate_question_cache(str(question_id), str(question.exam_id) if question.exam_id else None)
+        await invalidate_question_cache(str(qid), str(question.exam_id) if question.exam_id else None)
         if question.exam_id:
             await invalidate_exam_cache(str(question.exam_id))
         return {
@@ -169,14 +189,19 @@ class UpdateExplanationRequest(BaseModel):
 
 @router.post("/tasks/{question_id}/reextract")
 async def trigger_reextraction(
-    question_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str, session: AsyncSession = Depends(get_async_session)
 ):
     """Triggers sequential LLM re-extraction retry targeting the specific pages of the flawed question/passage."""
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found.")
+
     from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
-        res = await service.trigger_llm_reextraction_for_question(question_id)
-        await invalidate_question_cache(str(question_id))
+        res = await service.trigger_llm_reextraction_for_question(qid)
+        await invalidate_question_cache(str(qid))
         return res
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -184,20 +209,25 @@ async def trigger_reextraction(
 
 @router.post("/tasks/{question_id}/reject")
 async def reject_question(
-    question_id: uuid.UUID,
+    question_id: int | str,
     req: RejectQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Rejects/flags a question during QA review with a specific rejection reason."""
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found.")
+
     from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
         q = await service.reject_question(
-            question_id=question_id,
+            question_id=qid,
             rejection_reason=req.rejection_reason,
             reviewer_notes=req.reviewer_notes,
         )
-        await invalidate_question_cache(str(question_id))
+        await invalidate_question_cache(str(qid))
         return {
             "message": f"Question #{q.question_number_in_paper} rejected.",
             "question_id": str(q.id),
@@ -209,26 +239,31 @@ async def reject_question(
 
 @router.post("/tasks/{question_id}/update-explanation")
 async def update_explanation(
-    question_id: uuid.UUID,
+    question_id: int | str,
     req: UpdateExplanationRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Allows QA reviewers to manually edit and save question explanations."""
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Question not found.")
+
     from app.cache import invalidate_question_cache
     service = HumanReviewService(session)
     try:
         expl = await service.update_question_explanation(
-            question_id=question_id,
+            question_id=qid,
             core_concept=req.core_concept,
             detailed_solution=req.detailed_solution,
             common_traps=req.common_traps,
             key_takeaways=req.key_takeaways,
             language=req.language,
         )
-        await invalidate_question_cache(str(question_id))
+        await invalidate_question_cache(str(qid))
         return {
             "message": "Question explanation updated successfully by QA reviewer.",
-            "question_id": str(question_id),
+            "question_id": str(qid),
             "explanation_id": str(expl.id),
             "language": expl.language.value if hasattr(expl.language, "value") else str(expl.language),
         }

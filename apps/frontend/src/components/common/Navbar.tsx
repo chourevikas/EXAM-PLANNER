@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { Logo } from './Logo';
 import { Ico } from './Icons';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface NavbarProps {
   onLogin: () => void;
@@ -8,28 +11,58 @@ interface NavbarProps {
 }
 
 export function Navbar({ onLogin, onSignup }: NavbarProps) {
+  const navigate = useNavigate();
+  const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const hasCustomToken = !!localStorage.getItem('access_token');
+    if (isLoaded && (isSignedIn || hasCustomToken)) {
+      setIsUserLoggedIn(true);
+    }
+  }, [isLoaded, isSignedIn]);
+  const { isTabletOrBelow } = useBreakpoint();
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', fn);
+    window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
+
+  // Close mobile menu on Escape key
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   // Lock body scroll when mobile menu is active
   useEffect(() => {
     if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.classList.add('scroll-lock');
     } else {
-      document.body.style.overflow = '';
+      document.body.classList.remove('scroll-lock');
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.classList.remove('scroll-lock');
     };
   }, [mobileMenuOpen]);
 
-  // Strip any URL hash to keep URL completely clean (http://localhost:3000/)
+  // Auto close mobile drawer on desktop resize
+  useEffect(() => {
+    if (!isTabletOrBelow && mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [isTabletOrBelow, mobileMenuOpen]);
+
+  // Strip any URL hash to keep URL clean
   useEffect(() => {
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -52,11 +85,6 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     onLogin();
   };
 
-  const handleSignupClick = () => {
-    setMobileMenuOpen(false);
-    onSignup();
-  };
-
   const navItems = [
     { label: 'Platform', targetId: '#features' },
     { label: 'Methodology', targetId: '#how-it-works' },
@@ -68,6 +96,8 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     <>
       <nav
         className={`glass-nav ${scrolled ? 'scrolled' : ''}`}
+        role="navigation"
+        aria-label="Main Navigation"
         style={{
           position: 'fixed',
           top: 0,
@@ -82,9 +112,11 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingLeft: '24px',
-            paddingRight: '24px',
+            paddingLeft: 'clamp(16px, 4vw, 32px)',
+            paddingRight: 'clamp(16px, 4vw, 32px)',
             width: '100%',
+            maxWidth: 1320,
+            margin: '0 auto',
           }}
         >
           <Logo />
@@ -100,8 +132,11 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  padding: 0,
+                  padding: '8px 4px',
                   font: 'inherit',
+                  minHeight: 44,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
                 onClick={() => handleNavClick(item.targetId)}
               >
@@ -112,21 +147,32 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
 
           {/* Desktop Action Buttons (Get Started CTA on far right) */}
           <div className="hidden md:flex" style={{ alignItems: 'center', gap: 14 }}>
-            <button
-              className="btn btn-primary anim-glow"
-              style={{ padding: '10px 24px', fontSize: 14 }}
-              onClick={onLogin}
-            >
-              Get Started
-            </button>
+            {isUserLoggedIn ? (
+              <button
+                className="btn btn-primary anim-glow"
+                style={{ padding: '10px 24px', fontSize: 14 }}
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary anim-glow touch-target"
+                style={{ padding: '10px 24px', fontSize: 14 }}
+                onClick={onLogin}
+              >
+                Get Started
+              </button>
+            )}
           </div>
 
           {/* Mobile Right Actions (Hamburger Toggle) */}
           <div className="flex md:hidden" style={{ alignItems: 'center', gap: 8 }}>
             <button
-              className="theme-toggle-btn"
+              className="theme-toggle-btn touch-target"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+              aria-expanded={mobileMenuOpen}
               style={{ fontSize: 18 }}
             >
               {mobileMenuOpen ? '✕' : '☰'}
@@ -141,22 +187,25 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
           <div
             className="mobile-drawer-overlay md:hidden"
             onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
           />
-          <div className="mobile-drawer-content md:hidden">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="mobile-drawer-content md:hidden" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {navItems.map((item) => (
                 <button
                   key={item.label}
                   type="button"
-                  className="nav-link"
+                  className="nav-link touch-target"
                   style={{
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 16,
-                    padding: '6px 0',
+                    padding: '10px 0',
                     textAlign: 'left',
                     font: 'inherit',
+                    width: '100%',
+                    justifyContent: 'flex-start',
                   }}
                   onClick={() => handleNavClick(item.targetId)}
                 >
@@ -173,13 +222,26 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                   borderTop: '1px solid var(--border-color)',
                 }}
               >
-                <button
-                  className="btn btn-primary anim-glow"
-                  style={{ width: '100%', padding: '12px', fontSize: 15 }}
-                  onClick={handleLoginClick}
-                >
-                  Get Started
-                </button>
+                {isUserLoggedIn ? (
+                  <button
+                    className="btn btn-primary anim-glow"
+                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/dashboard');
+                    }}
+                  >
+                    Go to Dashboard
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary anim-glow"
+                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                    onClick={handleLoginClick}
+                  >
+                    Get Started
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -188,4 +250,3 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     </>
   );
 }
-

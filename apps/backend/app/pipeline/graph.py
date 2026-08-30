@@ -89,8 +89,8 @@ async def node_parallel_extract_worker(state: ParallelWorkerInput) -> dict:
 
 async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
     exam_id = (
-        uuid.UUID(state["exam_id"])
-        if isinstance(state["exam_id"], str)
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
         else state["exam_id"]
     )
     pdf_path = state["pdf_path"]
@@ -171,8 +171,8 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
 
 async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
     exam_id = (
-        uuid.UUID(state["exam_id"])
-        if isinstance(state["exam_id"], str)
+        int(state["exam_id"])
+        if isinstance(state["exam_id"], (str, int))
         else state["exam_id"]
     )
     processed_keys = state["processed_question_keys"]

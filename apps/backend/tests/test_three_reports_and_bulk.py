@@ -52,13 +52,14 @@ class TestThreeReportsAndBulk(unittest.IsolatedAsyncioTestCase):
         async with self.session_factory() as db_session:
             # 1. Create a student user and an exam
             user = User(
-                id=uuid.uuid4(),
                 email="reports_user@example.com",
                 full_name="Report Tester",
                 role=UserRole.STUDENT,
                 status=UserStatus.ACTIVE,
             )
             db_session.add(user)
+            await db_session.commit()
+            await db_session.refresh(user)
 
             exam = Exam(
                 name="Diagnostics Master Exam",
@@ -129,7 +130,7 @@ class TestThreeReportsAndBulk(unittest.IsolatedAsyncioTestCase):
                 req=StartExamRequest(exam_id=exam.id, mode=AttemptMode.EXAM),
                 user_id=user.id,
             )
-            attempt_id = uuid.UUID(str(start_res.attempt_id))
+            attempt_id = int(start_res.attempt_id)
 
             # 4. Test Bulk Questions Retrieval
             bulk_data = await service.get_all_questions_bulk(

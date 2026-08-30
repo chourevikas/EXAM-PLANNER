@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   Menu,
   LayoutDashboard,
   BookOpen,
   Upload,
-  Cpu,
   ClipboardCheck,
   GraduationCap,
   Users,
   BarChart2,
-  Activity,
   X
 } from 'lucide-react';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface SidebarProps {
   activeView: string;
@@ -30,15 +29,31 @@ export function AdminSidebar({
   onCloseMobile,
   onToggleSidebar
 }: SidebarProps) {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { isTabletOrBelow: isMobile } = useBreakpoint();
 
+  // Escape key handler
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
+    if (!mobileOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onCloseMobile) {
+        onCloseMobile();
+      }
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && mobileOpen) {
+      document.body.classList.add('scroll-lock');
+    } else {
+      document.body.classList.remove('scroll-lock');
+    }
+    return () => {
+      document.body.classList.remove('scroll-lock');
+    };
+  }, [isMobile, mobileOpen]);
 
   const coreNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
@@ -65,16 +80,17 @@ export function AdminSidebar({
           if (onCloseMobile) onCloseMobile();
         }}
         title={collapsed && !isMobile ? item.label : undefined}
+        className="touch-target"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
-          borderRadius: 6,
-          background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+          borderRadius: 0,
+          background: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
           border: 'none',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #2563EB' : '3px solid transparent',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           cursor: 'pointer',
           fontSize: 13.5,
@@ -83,7 +99,8 @@ export function AdminSidebar({
           transition: 'all 0.15s ease',
           width: '100%',
           textAlign: 'left',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          minHeight: 44,
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
@@ -98,7 +115,7 @@ export function AdminSidebar({
           }
         }}
       >
-        <Icon size={17} color={isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+        <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </button>
     );
@@ -113,10 +130,11 @@ export function AdminSidebar({
             position: 'fixed',
             inset: 0,
             top: 60,
-            background: 'rgba(16, 33, 61, 0.65)',
+            background: 'rgba(23, 32, 51, 0.75)',
             backdropFilter: 'blur(2px)',
             zIndex: 110
           }}
+          aria-hidden="true"
         />
       )}
 
@@ -124,10 +142,10 @@ export function AdminSidebar({
         style={{
           width: isMobile ? 260 : (collapsed ? 68 : 240),
           minWidth: isMobile ? 260 : (collapsed ? 68 : 240),
-          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          background: '#172033',
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100vh - 60px)',
+          height: 'calc(100dvh - 60px)',
           position: 'fixed',
           top: 60,
           left: 0,
@@ -138,8 +156,10 @@ export function AdminSidebar({
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
           overflow: 'hidden'
         }}
+        role="navigation"
+        aria-label="Admin Navigation"
       >
-        {/* Section Header with Borderless Hamburger Button */}
+        {/* Section Header with Hamburger Button */}
         <div
           style={{
             padding: (collapsed && !isMobile) ? '14px 0' : '16px 16px 6px 16px',
@@ -153,6 +173,7 @@ export function AdminSidebar({
               {onToggleSidebar && (
                 <button
                   onClick={onToggleSidebar}
+                  className="touch-target"
                   style={{
                     background: 'transparent',
                     border: 'none',
@@ -162,7 +183,7 @@ export function AdminSidebar({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderRadius: 4,
+                    borderRadius: 0,
                     transition: 'color 0.15s ease',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -190,6 +211,7 @@ export function AdminSidebar({
             onToggleSidebar && (
               <button
                 onClick={onToggleSidebar}
+                className="touch-target"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -199,7 +221,7 @@ export function AdminSidebar({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   transition: 'color 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
@@ -215,6 +237,7 @@ export function AdminSidebar({
           {isMobile && onCloseMobile && (
             <button
               onClick={onCloseMobile}
+              className="touch-target"
               style={{
                 background: 'none',
                 border: 'none',
@@ -225,8 +248,9 @@ export function AdminSidebar({
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
+              aria-label="Close menu"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           )}
         </div>

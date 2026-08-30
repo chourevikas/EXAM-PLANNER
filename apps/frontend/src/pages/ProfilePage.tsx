@@ -159,12 +159,12 @@ export function ProfilePage() {
       <div
         style={{
           backgroundColor: 'var(--bg-card, #ffffff)',
-          borderRadius: 24,
+          borderRadius: 0,
           border: '1px solid var(--border-default, #e2e8f0)',
           boxShadow: 'var(--shadow-color-base, 0 4px 20px rgba(0,0,0,0.04))',
           padding: 32,
           marginBottom: 28,
-          backgroundImage: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(91,92,235,0.04) 100%)',
+          backgroundImage: 'linear-gradient(135deg, rgba(227, 27, 35,0.06) 0%, rgba(91,92,235,0.04) 100%)',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
@@ -179,16 +179,16 @@ export function ProfilePage() {
             size={84}
             fullName={fullName}
             style={{
-              borderRadius: '50%',
-              border: '2px solid var(--accent-primary, #2563eb)',
-              boxShadow: '0 4px 16px var(--shadow-color-accent, rgba(37,99,235,0.25))'
+              borderRadius: 0,
+              border: '2px solid var(--accent-primary, #E31B23)',
+              boxShadow: '0 4px 16px var(--shadow-color-accent, rgba(227, 27, 35,0.25))'
             }}
           />
 
           {/* User Details */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #172033)', margin: 0, letterSpacing: '-0.02em' }}>
                 {fullName}
               </h1>
               {isSuperAdmin ? (
@@ -197,7 +197,7 @@ export function ProfilePage() {
                     fontSize: 11,
                     fontWeight: 800,
                     padding: '4px 12px',
-                    borderRadius: 20,
+                    borderRadius: 0,
                     backgroundColor: 'rgba(249, 115, 22, 0.15)',
                     color: '#ea580c',
                     border: '1px solid rgba(249, 115, 22, 0.3)',
@@ -214,10 +214,10 @@ export function ProfilePage() {
                     fontSize: 11,
                     fontWeight: 800,
                     padding: '4px 12px',
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                    color: '#2563eb',
-                    border: '1px solid rgba(37, 99, 235, 0.3)',
+                    borderRadius: 0,
+                    backgroundColor: 'rgba(227, 27, 35, 0.15)',
+                    color: '#E31B23',
+                    border: '1px solid rgba(227, 27, 35, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4
@@ -231,10 +231,10 @@ export function ProfilePage() {
                     fontSize: 11,
                     fontWeight: 700,
                     padding: '3px 10px',
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderRadius: 0,
+                    backgroundColor: 'rgba(227, 27, 35, 0.2)',
                     color: '#60a5fa',
-                    border: '1px solid rgba(59, 130, 246, 0.4)',
+                    border: '1px solid rgba(227, 27, 35, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4
@@ -248,7 +248,7 @@ export function ProfilePage() {
                     fontSize: 11,
                     fontWeight: 700,
                     padding: '3px 10px',
-                    borderRadius: 20,
+                    borderRadius: 0,
                     backgroundColor: 'var(--bg-subtle, #f8fafc)',
                     color: 'var(--text-muted, #64748b)',
                     border: '1px solid var(--border-default, #e2e8f0)'
@@ -262,10 +262,10 @@ export function ProfilePage() {
             <div style={{ fontSize: 14, color: 'var(--text-muted, #64748b)', marginBottom: 12 }}>
               {clerkUser?.primaryEmailAddress?.emailAddress || user.email || 'superadmin@examplanner.com'}
               {!(isSuperAdmin || isAdmin) && (
-                <> • Target: <strong style={{ color: 'var(--text-primary, #0f172a)' }}>{targetExam} {targetYear}</strong></>
+                <> • Target: <strong style={{ color: 'var(--text-primary, #172033)' }}>{targetExam} {targetYear}</strong></>
               )}
               {(isSuperAdmin || isAdmin) && (
-                <> • <strong style={{ color: '#2563eb' }}>Administrative Console Access</strong></>
+                <> • <strong style={{ color: '#E31B23' }}>Administrative Console Access</strong></>
               )}
             </div>
 
@@ -273,34 +273,34 @@ export function ProfilePage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {isSuperAdmin ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: '1px solid rgba(249, 115, 22, 0.25)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: '1px solid rgba(249, 115, 22, 0.25)' }}>
                     <Shield size={13} color="#ea580c" />
                     <span>Executive Security Clearance</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
-                    <Zap size={13} color="#2563eb" fill="#2563eb" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35, 0.1)', color: '#E31B23', border: '1px solid rgba(227, 27, 35, 0.25)' }}>
+                    <Zap size={13} color="#E31B23" fill="#E31B23" />
                     <span>Full Platform Control</span>
                   </div>
                 </>
               ) : isAdmin ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.25)' }}>
-                    <Shield size={13} color="#2563eb" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35, 0.1)', color: '#E31B23', border: '1px solid rgba(227, 27, 35, 0.25)' }}>
+                    <Shield size={13} color="#E31B23" />
                     <span>Institutional Admin Clearance</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                    <Zap size={13} color="#f59e0b" fill="#f59e0b" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <Zap size={13} color="#F2B623" fill="#F2B623" />
                     <span>{user?.current_streak || 0}-Day Streak</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                    <BookOpen size={13} color="#3b82f6" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <BookOpen size={13} color="#E31B23" />
                     <span>{(user?.total_questions_attempted ?? user?.free_questions_attempted ?? 0).toLocaleString()} Questions Solved</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 8, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                    <Award size={13} color="#10b981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
+                    <Award size={13} color="#3A8B53" />
                     <span>Level {user?.level || 1} Scholar</span>
                   </div>
                 </>
@@ -318,13 +318,13 @@ export function ProfilePage() {
               alignItems: 'center',
               gap: 8,
               padding: '12px 20px',
-              backgroundColor: '#2563eb',
+              backgroundColor: '#E31B23',
               color: '#ffffff',
-              borderRadius: 12,
+              borderRadius: 0,
               textDecoration: 'none',
               fontSize: 14,
               fontWeight: 700,
-              boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+              boxShadow: '0 4px 16px rgba(227, 27, 35, 0.4)',
               transition: 'transform 0.2s'
             }}
           >
@@ -357,15 +357,15 @@ export function ProfilePage() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '10px 18px',
-                borderRadius: 10,
+                borderRadius: 0,
                 border: 'none',
-                backgroundColor: isActive ? 'var(--accent-bg, rgba(37,99,235,0.1))' : 'transparent',
-                color: isActive ? 'var(--accent-primary, #2563eb)' : 'var(--text-muted, #64748b)',
+                backgroundColor: isActive ? 'var(--accent-bg, rgba(227, 27, 35,0.1))' : 'transparent',
+                color: isActive ? 'var(--accent-primary, #E31B23)' : 'var(--text-muted, #64748b)',
                 fontSize: 14,
                 fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                borderBottom: isActive ? '2px solid var(--accent-primary, #2563eb)' : '2px solid transparent'
+                borderBottom: isActive ? '2px solid var(--accent-primary, #E31B23)' : '2px solid transparent'
               }}
             >
               <TabIcon size={16} />
@@ -387,7 +387,7 @@ export function ProfilePage() {
               style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 18,
+                borderRadius: 0,
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)'
               }}
@@ -404,7 +404,7 @@ export function ProfilePage() {
                     style={{
                       width: 52,
                       height: 52,
-                      borderRadius: '50%',
+                      borderRadius: 0,
                       fontSize: 26,
                       display: 'flex',
                       alignItems: 'center',
@@ -426,7 +426,7 @@ export function ProfilePage() {
               style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 18,
+                borderRadius: 0,
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'grid',
@@ -445,7 +445,7 @@ export function ProfilePage() {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-subtle)',
                     color: 'var(--text-primary)',
@@ -467,7 +467,7 @@ export function ProfilePage() {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
                     color: 'var(--text-muted)',
@@ -490,7 +490,7 @@ export function ProfilePage() {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-subtle)',
                     color: 'var(--text-primary)',
@@ -512,7 +512,7 @@ export function ProfilePage() {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-disabled, rgba(0,0,0,0.05))',
                     color: 'var(--text-muted)',
@@ -535,7 +535,7 @@ export function ProfilePage() {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-subtle)',
                     color: 'var(--text-primary)',
@@ -557,7 +557,7 @@ export function ProfilePage() {
             style={{
               backgroundColor: 'var(--bg-card)',
               padding: 24,
-              borderRadius: 18,
+              borderRadius: 0,
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
               display: 'grid',
@@ -575,7 +575,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -598,7 +598,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -623,7 +623,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -650,7 +650,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -677,7 +677,7 @@ export function ProfilePage() {
               style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 18,
+                borderRadius: 0,
                 border: isPro ? '2px solid var(--accent-primary)' : '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)',
                 display: 'flex',
@@ -703,13 +703,13 @@ export function ProfilePage() {
                   to="/pricing"
                   style={{
                     padding: '10px 20px',
-                    borderRadius: 10,
-                    backgroundColor: '#2563eb',
+                    borderRadius: 0,
+                    backgroundColor: '#E31B23',
                     color: '#ffffff',
                     fontSize: 14,
                     fontWeight: 700,
                     textDecoration: 'none',
-                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
+                    boxShadow: '0 4px 14px rgba(227, 27, 35, 0.4)'
                   }}
                 >
                   Upgrade to Pro
@@ -720,7 +720,7 @@ export function ProfilePage() {
                   onClick={() => alert('Your Pro Subscription is active and fully unlocked!')}
                   style={{
                     padding: '8px 16px',
-                    borderRadius: 10,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'var(--bg-subtle)',
                     color: 'var(--text-primary)',
@@ -739,7 +739,7 @@ export function ProfilePage() {
               style={{
                 backgroundColor: 'var(--bg-card)',
                 padding: 24,
-                borderRadius: 18,
+                borderRadius: 0,
                 border: '1px solid var(--border-default)',
                 boxShadow: 'var(--shadow-color-base)'
               }}
@@ -759,7 +759,7 @@ export function ProfilePage() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: 12,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       backgroundColor: 'var(--bg-subtle)',
                       border: '1px solid var(--border-default)'
                     }}
@@ -780,7 +780,7 @@ export function ProfilePage() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#2563eb',
+                          color: '#E31B23',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -806,7 +806,7 @@ export function ProfilePage() {
             style={{
               backgroundColor: 'var(--bg-card)',
               padding: 24,
-              borderRadius: 18,
+              borderRadius: 0,
               border: '1px solid var(--border-default)',
               boxShadow: 'var(--shadow-color-base)',
               display: 'flex',
@@ -826,7 +826,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -849,7 +849,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -872,7 +872,7 @@ export function ProfilePage() {
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid var(--border-default)',
                   backgroundColor: 'var(--bg-subtle)',
                   color: 'var(--text-primary)',
@@ -893,9 +893,9 @@ export function ProfilePage() {
                 onClick={() => setTwoFactor(!twoFactor)}
                 style={{
                   padding: '6px 16px',
-                  borderRadius: 20,
+                  borderRadius: 0,
                   border: 'none',
-                  backgroundColor: twoFactor ? '#10b981' : 'var(--bg-subtle)',
+                  backgroundColor: twoFactor ? '#3A8B53' : 'var(--bg-subtle)',
                   color: twoFactor ? '#ffffff' : 'var(--text-muted)',
                   fontSize: 12,
                   fontWeight: 700,
@@ -915,9 +915,9 @@ export function ProfilePage() {
             type="submit"
             style={{
               padding: '12px 24px',
-              borderRadius: 12,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563eb',
+              backgroundColor: '#E31B23',
               color: '#ffffff',
               fontSize: 14,
               fontWeight: 700,
@@ -925,7 +925,7 @@ export function ProfilePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+              boxShadow: '0 4px 14px rgba(227, 27, 35, 0.4)',
               transition: 'transform 0.2s'
             }}
           >
@@ -934,7 +934,7 @@ export function ProfilePage() {
           </button>
 
           {savedSuccess && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10b981', fontSize: 13, fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#3A8B53', fontSize: 13, fontWeight: 700 }}>
               <Check size={18} />
               <span>Settings updated successfully!</span>
             </div>
@@ -947,7 +947,7 @@ export function ProfilePage() {
 
   if (isSuperAdmin) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
         <SuperAdminTopNav
           activeTab={'all_users' as any}
           onNavigate={() => navigate('/super-admin')}

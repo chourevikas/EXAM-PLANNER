@@ -1,8 +1,6 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
-
 from app.db.models.types import DateTimeTZ
 
 if TYPE_CHECKING:
@@ -15,8 +13,8 @@ class PipelineRun(SQLModel, table=True):
         Index("ix_pipeline_runs_exam_type", "exam_id", "pipeline_type"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    exam_id: uuid.UUID = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     
     pipeline_type: str = Field(
         description="'QUESTION_EXTRACTION', 'ANSWER_KEY', 'EXPLANATION_INDEXING'",

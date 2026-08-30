@@ -39,9 +39,14 @@ class CumulativeAnalyticsAggregator:
     async def compute_user_cumulative_report(
         cls,
         session: AsyncSession,
-        user_id: uuid.UUID,
+        user_id: int | str,
         force_recompute: bool = False,
     ) -> Dict[str, Any]:
+        if isinstance(user_id, str):
+            try:
+                user_id = int(user_id)
+            except ValueError:
+                raise ValueError(f"User with ID '{user_id}' not found.")
         user = await session.get(User, user_id)
         if not user:
             raise ValueError(f"User with ID '{user_id}' not found.")
@@ -75,6 +80,21 @@ class CumulativeAnalyticsAggregator:
         if not attempts:
             return cls._build_empty_cumulative_report(user, now_iso)
 
+        # Batch load all exams and attempt reports in 2 queries (prevents 2N queries)
+        exam_ids = list({att.exam_id for att in attempts if att.exam_id})
+        exam_map: Dict[Any, Exam] = {}
+        if exam_ids:
+            exams_res = await session.exec(select(Exam).where(col(Exam.id).in_(exam_ids)))
+            exam_map = {e.id: e for e in exams_res.all()}
+
+        attempt_ids = [att.id for att in attempts]
+        rep_db_map: Dict[Any, ExamAttemptReport] = {}
+        if attempt_ids:
+            rep_res = await session.exec(
+                select(ExamAttemptReport).where(col(ExamAttemptReport.attempt_id).in_(attempt_ids))
+            )
+            rep_db_map = {r.attempt_id: r for r in rep_res.all()}
+
         # 1. Process Timeline & Collect Attempt Reports
         exam_timeline: List[Dict[str, Any]] = []
         all_tax_subjects: Dict[str, Dict[str, Any]] = {}
@@ -97,16 +117,12 @@ class CumulativeAnalyticsAggregator:
         }
 
         for idx, att in enumerate(attempts, 1):
-            exam = await session.get(Exam, att.exam_id)
+            exam = exam_map.get(att.exam_id)
             exam_name = exam.name if exam else f"Exam Attempt #{idx}"
             exam_code = exam.code if exam else f"EXAM-{idx}"
 
             # Attempt report metadata or DB report
-            rep_db = (
-                await session.exec(
-                    select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == att.id)
-                )
-            ).first()
+            rep_db = rep_db_map.get(att.id)
 
             meta = att.report_metadata_json or (rep_db.full_report_json if rep_db else {}) or {}
             macro = meta.get("part_3_aggregated_user_report", {}) or meta.get("part_2_exam_macro_scorecard", {})
@@ -186,8 +202,14 @@ class CumulativeAnalyticsAggregator:
                     select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == att.id)
                 )
                 eqr_rows = eqr_res.all()
+                eqr_q_ids = list({eqr.question_id for eqr in eqr_rows if eqr.question_id})
+                q_model_map: Dict[Any, Question] = {}
+                if eqr_q_ids:
+                    _qm_res = await session.exec(select(Question).where(col(Question.id).in_(eqr_q_ids)))
+                    q_model_map = {q.id: q for q in _qm_res.all()}
+
                 for eqr in eqr_rows:
-                    q_model = await session.get(Question, eqr.question_id) if eqr.question_id else None
+                    q_model = q_model_map.get(eqr.question_id) if eqr.question_id else None
                     q_subj = getattr(q_model, "subject", None) or getattr(q_model, "subject_name", None) or "General Studies"
                     q_top = getattr(q_model, "topic", None) or getattr(q_model, "topic_name", None) or "Core Concepts"
                     q_sub = getattr(q_model, "subtopic", None) or getattr(q_model, "subtopic_name", None) or "Foundations"
@@ -381,17 +403,21 @@ class CumulativeAnalyticsAggregator:
                         "incorrect": max(0, tax_item.total_attempts - tax_item.correct_attempts),
                     }
 
-        # Persist / Sync real Bloom statistics into UserTaxonomyMastery in DB with atomic ON CONFLICT DO UPDATE
+        # Persist / Sync real Bloom statistics into UserTaxonomyMastery in DB
+        tax_blooms_map = {
+            t.taxonomy_id_code.upper(): t
+            for t in db_tax_list
+            if (t.taxonomy_type or "").upper() == "BLOOMS" and t.taxonomy_id_code
+        }
         for b_name, b_counts in all_blooms_totals.items():
             tot = b_counts["total"]
             corr = b_counts["correct"]
             b_acc = round((corr / max(1, tot)) * 100.0, 1) if tot > 0 else 0.0
             st_status = "STRONG" if b_acc >= 75.0 else ("MODERATE" if b_acc >= 50.0 else "WEAK_REVISION_REQUIRED")
 
-            try:
-                from sqlalchemy.dialects.postgresql import insert as pg_insert
-                stmt = pg_insert(UserTaxonomyMastery).values(
-                    id=uuid.uuid4(),
+            tax_m = tax_blooms_map.get(b_name.upper())
+            if not tax_m:
+                tax_m = UserTaxonomyMastery(
                     user_id=user_id,
                     taxonomy_type="BLOOMS",
                     taxonomy_id_code=b_name,
@@ -401,46 +427,16 @@ class CumulativeAnalyticsAggregator:
                     mastery_percentage=b_acc,
                     strength_status=st_status,
                     updated_at=datetime.now(timezone.utc),
-                ).on_conflict_do_update(
-                    index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
-                    set_={
-                        "taxonomy_name": f"Bloom's {b_name.capitalize()} Thinking",
-                        "total_attempts": tot,
-                        "correct_attempts": corr,
-                        "mastery_percentage": b_acc,
-                        "strength_status": st_status,
-                        "updated_at": datetime.now(timezone.utc),
-                    },
                 )
-                await session.exec(stmt)
-            except Exception:
-                existing_tax_res = await session.exec(
-                    select(UserTaxonomyMastery).where(
-                        UserTaxonomyMastery.user_id == user_id,
-                        UserTaxonomyMastery.taxonomy_type == "BLOOMS",
-                        UserTaxonomyMastery.taxonomy_id_code == b_name,
-                    )
-                )
-                tax_m = existing_tax_res.first()
-                if not tax_m:
-                    tax_m = UserTaxonomyMastery(
-                        user_id=user_id,
-                        taxonomy_type="BLOOMS",
-                        taxonomy_id_code=b_name,
-                        taxonomy_name=f"Bloom's {b_name.capitalize()} Thinking",
-                        total_attempts=tot,
-                        correct_attempts=corr,
-                        mastery_percentage=b_acc,
-                        strength_status=st_status,
-                    )
-                    session.add(tax_m)
-                else:
-                    tax_m.total_attempts = tot
-                    tax_m.correct_attempts = corr
-                    tax_m.mastery_percentage = b_acc
-                    tax_m.strength_status = st_status
-                    tax_m.updated_at = datetime.now(timezone.utc)
-                    session.add(tax_m)
+                tax_blooms_map[b_name.upper()] = tax_m
+            else:
+                tax_m.taxonomy_name = f"Bloom's {b_name.capitalize()} Thinking"
+                tax_m.total_attempts = tot
+                tax_m.correct_attempts = corr
+                tax_m.mastery_percentage = b_acc
+                tax_m.strength_status = st_status
+                tax_m.updated_at = datetime.now(timezone.utc)
+            session.add(tax_m)
 
         # If all_tax_subjects is still empty, seed default syllabus subjects so reports are NEVER blank
         if not all_tax_subjects:

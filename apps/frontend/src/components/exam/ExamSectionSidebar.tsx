@@ -103,7 +103,7 @@ export function ExamSectionSidebar({
           height: '100vh',
           zIndex: 210,
           width: 300,
-          background: 'linear-gradient(180deg, #0F1D38 0%, #14284C 40%, #1B3864 75%, #204278 100%)',
+          background: 'linear-gradient(180deg, #111111 0%, #172033 100%)',
           color: '#FFFFFF',
           boxShadow: '8px 0 32px rgba(15, 23, 42, 0.45)',
           display: 'flex',
@@ -130,13 +130,13 @@ export function ExamSectionSidebar({
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 6,
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+                boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
               }}
             >
               <Layers size={18} />
@@ -172,7 +172,7 @@ export function ExamSectionSidebar({
                 color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 padding: 6,
-                borderRadius: 6,
+                borderRadius: 0,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -230,9 +230,9 @@ export function ExamSectionSidebar({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '10px 14px',
-                    borderRadius: 6,
+                    borderRadius: 0,
                     border: 'none',
-                    borderLeft: isSecActive ? '3px solid #2563EB' : '3px solid transparent',
+                    borderLeft: isSecActive ? '3px solid #E31B23' : '3px solid transparent',
                     background: isSecActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                     color: isSecActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                     cursor: 'pointer',
@@ -260,12 +260,12 @@ export function ExamSectionSidebar({
                   <span
                     style={{
                       fontSize: 12,
-                      color: isSecActive ? '#93C5FD' : 'rgba(255, 255, 255, 0.5)',
+                      color: isSecActive ? '#E31B23' : 'rgba(255, 255, 255, 0.5)',
                       fontWeight: isSecActive ? 600 : 400,
                       fontVariantNumeric: 'tabular-nums',
-                      backgroundColor: isSecActive ? 'rgba(37, 99, 235, 0.3)' : 'rgba(255, 255, 255, 0.06)',
+                      backgroundColor: isSecActive ? 'rgba(227, 27, 35, 0.3)' : 'rgba(255, 255, 255, 0.06)',
                       padding: '2px 8px',
-                      borderRadius: 99,
+                      borderRadius: 0,
                       fontFamily: "'IBM Plex Sans', sans-serif",
                     }}
                   >
@@ -301,13 +301,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 10,
+                borderRadius: 0,
                 backgroundColor: 'rgba(16, 185, 129, 0.12)',
                 border: '1px solid rgba(16, 185, 129, 0.25)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#3A8B53' }} />
                 <span style={{ color: '#A7F3D0', fontWeight: 600 }}>ANSWERED</span>
               </div>
               <span style={{ color: '#34D399', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
@@ -321,13 +321,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 10,
+                borderRadius: 0,
                 backgroundColor: 'rgba(245, 158, 11, 0.12)',
                 border: '1px solid rgba(245, 158, 11, 0.25)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#F2B623' }} />
                 <span style={{ color: '#FDE68A', fontWeight: 600 }}>REVIEW</span>
               </div>
               <span style={{ color: '#FBBF24', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>
@@ -341,13 +341,13 @@ export function ExamSectionSidebar({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderRadius: 10,
+                borderRadius: 0,
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#94A3B8' }} />
+                <div style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#94A3B8' }} />
                 <span style={{ color: '#CBD5E1', fontWeight: 600 }}>UNANSWERED</span>
               </div>
               <span style={{ color: '#94A3B8', fontWeight: 800, fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>

@@ -16,21 +16,21 @@ import {
 } from 'lucide-react';
 
 interface DisplayMock {
-  id: string;
+  id: number | string;
   title: string;
   category: string;
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  completedAttemptId?: string;
-  inProgressAttemptId?: string;
+  completedAttemptId?: number | string;
+  inProgressAttemptId?: number | string;
   scoreText?: string;
   progressPercent?: number;
 }
 
 export function MockSelectionPage() {
   const navigate = useNavigate();
-  const [hoveredMock, setHoveredMock] = useState<string | null>(null);
+  const [hoveredMock, setHoveredMock] = useState<number | string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
@@ -205,7 +205,7 @@ export function MockSelectionPage() {
       <section style={{
         marginBottom: 32,
         padding: '32px 36px',
-        borderRadius: 20,
+        borderRadius: 0,
         background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FAF5FF 100%)',
         border: '1px solid #E0E7FF',
         position: 'relative',
@@ -226,7 +226,7 @@ export function MockSelectionPage() {
             color: '#3730A3',
             fontSize: 11,
             fontWeight: 700,
-            borderRadius: 20,
+            borderRadius: 0,
             marginBottom: 14,
             textTransform: 'uppercase',
             letterSpacing: '0.04em'
@@ -266,7 +266,7 @@ export function MockSelectionPage() {
             {/* Checklist Clipboard */}
             <g transform="translate(45, 15) rotate(-6)">
               <rect x="0" y="0" width="85" height="110" rx="10" fill="#FFFFFF" filter="drop-shadow(0px 8px 16px rgba(99, 102, 241, 0.15))" stroke="#C7D2FE" strokeWidth="2" />
-              <rect x="28" y="-6" width="30" height="12" rx="4" fill="#F59E0B" />
+              <rect x="28" y="-6" width="30" height="12" rx="4" fill="#F2B623" />
               {/* Lines and checkmarks */}
               <circle cx="20" cy="30" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
               <path d="M17 30L19 32L23 28" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -283,7 +283,7 @@ export function MockSelectionPage() {
 
             {/* Bullseye Target & Dart */}
             <g transform="translate(130, 35)">
-              <circle cx="45" cy="45" r="35" fill="#EF4444" filter="drop-shadow(0px 6px 12px rgba(239, 68, 68, 0.25))" />
+              <circle cx="45" cy="45" r="35" fill="#EF4444" filter="drop-shadow(0px 6px 12px rgba(227, 27, 35, 0.25))" />
               <circle cx="45" cy="45" r="25" fill="#FFFFFF" />
               <circle cx="45" cy="45" r="15" fill="#EF4444" />
               <circle cx="45" cy="45" r="6" fill="#FFFFFF" />
@@ -301,7 +301,7 @@ export function MockSelectionPage() {
       <section style={{
         marginBottom: 36,
         padding: '28px 32px',
-        borderRadius: 18,
+        borderRadius: 0,
         backgroundColor: '#FFFFFF',
         border: '1px solid #E5E7EB',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
@@ -310,7 +310,7 @@ export function MockSelectionPage() {
           <div style={{
             width: 44,
             height: 44,
-            borderRadius: 12,
+            borderRadius: 0,
             background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
             display: 'flex',
             alignItems: 'center',
@@ -321,7 +321,7 @@ export function MockSelectionPage() {
             <Zap size={22} fill="#FFFFFF" color="#FFFFFF" />
           </div>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1E293B', margin: 0 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: 0 }}>
               Instant Practice Test Generator
             </h2>
             <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
@@ -344,10 +344,10 @@ export function MockSelectionPage() {
                   width: '100%',
                   height: 42,
                   padding: '0 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid #E2E8F0',
                   backgroundColor: '#FAFAFC',
-                  color: '#1E293B',
+                  color: '#172033',
                   fontSize: 13,
                   fontWeight: 500,
                   outline: 'none',
@@ -369,10 +369,10 @@ export function MockSelectionPage() {
                   width: '100%',
                   height: 42,
                   padding: '0 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid #E2E8F0',
                   backgroundColor: '#FAFAFC',
-                  color: '#1E293B',
+                  color: '#172033',
                   fontSize: 13,
                   fontWeight: 500,
                   outline: 'none',
@@ -399,10 +399,10 @@ export function MockSelectionPage() {
                   width: '100%',
                   height: 42,
                   padding: '0 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid #E2E8F0',
                   backgroundColor: '#FAFAFC',
-                  color: '#1E293B',
+                  color: '#172033',
                   fontSize: 13,
                   fontWeight: 500,
                   outline: 'none',
@@ -428,10 +428,10 @@ export function MockSelectionPage() {
                   width: '100%',
                   height: 42,
                   padding: '0 14px',
-                  borderRadius: 10,
+                  borderRadius: 0,
                   border: '1px solid #E2E8F0',
                   backgroundColor: '#FAFAFC',
-                  color: '#1E293B',
+                  color: '#172033',
                   fontSize: 13,
                   fontWeight: 500,
                   outline: 'none',
@@ -460,18 +460,18 @@ export function MockSelectionPage() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '12px 24px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%)',
+                borderRadius: 0,
+                background: 'linear-gradient(135deg, #4F46E5 0%, #E31B23 100%)',
                 color: '#FFFFFF',
                 fontWeight: 700,
                 fontSize: 14,
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
+                boxShadow: '0 4px 14px rgba(227, 27, 35, 0.35)',
                 transition: 'transform 0.15s ease, boxShadow 0.15s ease',
               }}
             >
-              <PlayCircle size={18} fill="#FFFFFF" color="#3B82F6" />
+              <PlayCircle size={18} fill="#FFFFFF" color="#E31B23" />
               <span>Start Practice Test</span>
               <ArrowRight size={16} />
             </button>
@@ -482,7 +482,7 @@ export function MockSelectionPage() {
       {/* Full-Length & Curated Test Series Header Row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1E293B', margin: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: 0 }}>
             Full-Length & Curated Test Series
           </h2>
           <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0 0' }}>
@@ -495,12 +495,12 @@ export function MockSelectionPage() {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: '#2563EB',
+            color: '#E31B23',
             textDecoration: 'none',
             padding: '6px 12px',
-            borderRadius: 8,
-            border: '1px solid #EFF6FF',
-            backgroundColor: '#EFF6FF',
+            borderRadius: 0,
+            border: '1px solid #F8FAFC',
+            backgroundColor: '#F8FAFC',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4
@@ -529,8 +529,8 @@ export function MockSelectionPage() {
                 onMouseLeave={() => setHoveredMock(null)}
                 style={{
                   backgroundColor: '#FFFFFF',
-                  borderRadius: 14,
-                  border: `1px solid ${hoveredMock === mock.id ? '#3B82F6' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  borderRadius: 0,
+                  border: `1px solid ${hoveredMock === mock.id ? '#E31B23' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
                   padding: '24px',
                   boxShadow: hoveredMock === mock.id
                     ? '0 8px 24px rgba(15, 23, 42, 0.08)'
@@ -549,9 +549,9 @@ export function MockSelectionPage() {
                       fontSize: 11,
                       fontWeight: 700,
                       padding: '3px 8px',
-                      borderRadius: 4,
-                      backgroundColor: '#EFF6FF',
-                      color: '#2563EB',
+                      borderRadius: 0,
+                      backgroundColor: '#F8FAFC',
+                      color: '#E31B23',
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em'
                     }}>
@@ -568,7 +568,7 @@ export function MockSelectionPage() {
                   </div>
 
                   {/* Title */}
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 8px 0' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
                     {mock.title}
                   </h3>
 
@@ -583,15 +583,15 @@ export function MockSelectionPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#EA580C', marginBottom: 6 }}>
                         <span>65% Completed</span>
                       </div>
-                      <div style={{ width: '100%', height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden' }}>
-                        <div style={{ width: '65%', height: '100%', backgroundColor: '#F97316', borderRadius: 3 }} />
+                      <div style={{ width: '100%', height: 6, borderRadius: 0, backgroundColor: '#F1F5F9', overflow: 'hidden' }}>
+                        <div style={{ width: '65%', height: '100%', backgroundColor: '#F47B35', borderRadius: 0 }} />
                       </div>
                     </div>
                   )}
 
                   {/* Completed: Score Badge */}
                   {isCompleted && (
-                    <div style={{ marginTop: 10, padding: '4px 10px', backgroundColor: '#ECFDF5', borderRadius: 6, fontSize: 12, fontWeight: 700, color: '#059669', display: 'inline-block' }}>
+                    <div style={{ marginTop: 10, padding: '4px 10px', backgroundColor: '#ECFDF5', borderRadius: 0, fontSize: 12, fontWeight: 700, color: '#3A8B53', display: 'inline-block' }}>
                       Score: {mock.scoreText || '0 / 200'}
                     </div>
                   )}
@@ -605,7 +605,7 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         height: 40,
-                        borderRadius: 8,
+                        borderRadius: 0,
                         backgroundColor: '#FFF7ED',
                         border: '1px solid #FFEDD5',
                         color: '#EA580C',
@@ -628,8 +628,8 @@ export function MockSelectionPage() {
                         style={{
                           flex: 1,
                           height: 40,
-                          borderRadius: 8,
-                          backgroundColor: '#10B981',
+                          borderRadius: 0,
+                          backgroundColor: '#3A8B53',
                           color: '#FFFFFF',
                           fontWeight: 700,
                           fontSize: 13,
@@ -641,7 +641,7 @@ export function MockSelectionPage() {
                           boxSizing: 'border-box'
                         }}
                       >
-                        <PlayCircle size={15} fill="#FFFFFF" color="#10B981" /> Retake Test
+                        <PlayCircle size={15} fill="#FFFFFF" color="#3A8B53" /> Retake Test
                       </Link>
 
                       <Link
@@ -649,7 +649,7 @@ export function MockSelectionPage() {
                         style={{
                           padding: '0 16px',
                           height: 40,
-                          borderRadius: 8,
+                          borderRadius: 0,
                           backgroundColor: '#FFFFFF',
                           border: '1px solid #E2E8F0',
                           color: '#334155',
@@ -671,8 +671,8 @@ export function MockSelectionPage() {
                       style={{
                         width: '100%',
                         height: 40,
-                        borderRadius: 8,
-                        backgroundColor: '#2563EB',
+                        borderRadius: 0,
+                        backgroundColor: '#E31B23',
                         color: '#FFFFFF',
                         fontWeight: 700,
                         fontSize: 13,
@@ -682,10 +682,10 @@ export function MockSelectionPage() {
                         justifyContent: 'center',
                         gap: 6,
                         boxSizing: 'border-box',
-                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                        boxShadow: '0 2px 6px rgba(227, 27, 35, 0.25)'
                       }}
                     >
-                      <PlayCircle size={15} fill="#FFFFFF" color="#2563EB" /> Start Test
+                      <PlayCircle size={15} fill="#FFFFFF" color="#E31B23" /> Start Test
                     </Link>
                   )}
                 </div>

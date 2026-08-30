@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.models import (
@@ -15,14 +15,134 @@ from app.db.models import (
     QuestionHierarchyLink,
     Passage,
     PassageTranslation,
+    Subtopic,
 )
 from app.db.models.enums import LanguageCode
+
+
+async def preload_questions_export_data(
+    session: AsyncSession, questions: List[Question]
+) -> Dict[str, Any]:
+    """
+    Preloads all child tables, options, translations, taxonomies, and hierarchies
+    for a batch of questions in a minimal number of O(1) SQL roundtrips.
+    """
+    if not questions:
+        return {}
+
+    q_ids = [q.id for q in questions]
+
+    # 1. Question Translations
+    trans_res = await session.exec(
+        select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
+    )
+    trans_map: Dict[int, List[QuestionTranslation]] = {}
+    for t in trans_res.all():
+        trans_map.setdefault(t.question_id, []).append(t)
+
+    # 2. Options & Option Translations
+    opt_res = await session.exec(
+        select(QuestionOption)
+        .where(col(QuestionOption.question_id).in_(q_ids))
+        .order_by(col(QuestionOption.display_order).asc())
+    )
+    options_map: Dict[int, List[QuestionOption]] = {}
+    opt_ids = []
+    for opt in opt_res.all():
+        options_map.setdefault(opt.question_id, []).append(opt)
+        opt_ids.append(opt.id)
+
+    opt_trans_map: Dict[int, List[OptionTranslation]] = {}
+    if opt_ids:
+        ot_res = await session.exec(
+            select(OptionTranslation).where(col(OptionTranslation.option_id).in_(opt_ids))
+        )
+        for ot in ot_res.all():
+            opt_trans_map.setdefault(ot.option_id, []).append(ot)
+
+    # 3. Question Explanations
+    expl_res = await session.exec(
+        select(QuestionExplanation).where(
+            col(QuestionExplanation.question_id).in_(q_ids),
+            QuestionExplanation.language == LanguageCode.ENGLISH,
+        )
+    )
+    expl_map: Dict[int, QuestionExplanation] = {
+        e.question_id: e for e in expl_res.all()
+    }
+
+    # 4. Question Metadata
+    meta_res = await session.exec(
+        select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
+    )
+    meta_map: Dict[int, QuestionMetadata] = {
+        m.question_id: m for m in meta_res.all()
+    }
+
+    # 5. Assets
+    asset_res = await session.exec(
+        select(QuestionAsset)
+        .where(col(QuestionAsset.question_id).in_(q_ids))
+        .order_by(col(QuestionAsset.display_order).asc())
+    )
+    assets_map: Dict[int, List[QuestionAsset]] = {}
+    for a in asset_res.all():
+        assets_map.setdefault(a.question_id, []).append(a)
+
+    # 6. Hierarchy Links & Subtopics
+    h_res = await session.exec(
+        select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
+    )
+    h_map: Dict[int, List[QuestionHierarchyLink]] = {}
+    subtopic_ids = set()
+    for hl in h_res.all():
+        h_map.setdefault(hl.question_id, []).append(hl)
+        if hl.subtopic_id:
+            subtopic_ids.add(hl.subtopic_id)
+
+    subtopics_map: Dict[int, Subtopic] = {}
+    if subtopic_ids:
+        st_res = await session.exec(
+            select(Subtopic).where(col(Subtopic.id).in_(subtopic_ids))
+        )
+        for st in st_res.all():
+            subtopics_map[st.id] = st
+
+    # 7. Passages & Passage Translations
+    passage_ids = [q.passage_id for q in questions if q.passage_id]
+    passages_map: Dict[int, Passage] = {}
+    pass_trans_map: Dict[int, List[PassageTranslation]] = {}
+    if passage_ids:
+        p_res = await session.exec(
+            select(Passage).where(col(Passage.id).in_(passage_ids))
+        )
+        for p in p_res.all():
+            passages_map[p.id] = p
+        pt_res = await session.exec(
+            select(PassageTranslation).where(col(PassageTranslation.passage_id).in_(passage_ids))
+        )
+        for pt in pt_res.all():
+            pass_trans_map.setdefault(pt.passage_id, []).append(pt)
+
+    return {
+        "trans_map": trans_map,
+        "options_map": options_map,
+        "opt_trans_map": opt_trans_map,
+        "expl_map": expl_map,
+        "meta_map": meta_map,
+        "assets_map": assets_map,
+        "h_map": h_map,
+        "subtopics_map": subtopics_map,
+        "passages_map": passages_map,
+        "pass_trans_map": pass_trans_map,
+    }
 
 
 async def async_export_question_to_json_dict(
     session: AsyncSession,
     question: Question,
     exam: Optional[Exam] = None,
+    preloaded: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Export a question record and all related entities into a clean, complete JSON dictionary
@@ -32,10 +152,14 @@ async def async_export_question_to_json_dict(
         exam = await session.get(Exam, question.exam_id)
 
     # 1. Question Translations
-    trans_stmt = select(QuestionTranslation).where(
-        QuestionTranslation.question_id == question.id
-    )
-    trans_list = (await session.exec(trans_stmt)).all()
+    if preloaded is not None:
+        trans_list = preloaded.get("trans_map", {}).get(question.id, [])
+    else:
+        trans_stmt = select(QuestionTranslation).where(
+            QuestionTranslation.question_id == question.id
+        )
+        trans_list = (await session.exec(trans_stmt)).all()
+
     translations_dict = {}
     for t in trans_list:
         lang_str = t.language.value if hasattr(t.language, "value") else str(t.language)
@@ -45,17 +169,24 @@ async def async_export_question_to_json_dict(
         }
 
     # 2. Options & Option Translations (including distractor analysis)
-    opt_stmt = select(QuestionOption).where(
-        QuestionOption.question_id == question.id
-    ).order_by(col(QuestionOption.display_order))
-    options_list = (await session.exec(opt_stmt)).all()
-    options_payload = []
+    if preloaded is not None:
+        options_list = preloaded.get("options_map", {}).get(question.id, [])
+    else:
+        opt_stmt = select(QuestionOption).where(
+            QuestionOption.question_id == question.id
+        ).order_by(col(QuestionOption.display_order))
+        options_list = (await session.exec(opt_stmt)).all()
 
+    options_payload = []
     for opt in options_list:
-        ot_stmt = select(OptionTranslation).where(
-            OptionTranslation.option_id == opt.id
-        )
-        o_translations = (await session.exec(ot_stmt)).all()
+        if preloaded is not None:
+            o_translations = preloaded.get("opt_trans_map", {}).get(opt.id, [])
+        else:
+            ot_stmt = select(OptionTranslation).where(
+                OptionTranslation.option_id == opt.id
+            )
+            o_translations = (await session.exec(ot_stmt)).all()
+
         opt_trans_dict = {}
         for ot in o_translations:
             lang_str = (
@@ -79,11 +210,15 @@ async def async_export_question_to_json_dict(
         )
 
     # 3. Question Explanation (English canonical)
-    expl_stmt = select(QuestionExplanation).where(
-        QuestionExplanation.question_id == question.id,
-        QuestionExplanation.language == LanguageCode.ENGLISH,
-    )
-    expl = (await session.exec(expl_stmt)).first()
+    if preloaded is not None:
+        expl = preloaded.get("expl_map", {}).get(question.id)
+    else:
+        expl_stmt = select(QuestionExplanation).where(
+            QuestionExplanation.question_id == question.id,
+            QuestionExplanation.language == LanguageCode.ENGLISH,
+        )
+        expl = (await session.exec(expl_stmt)).first()
+
     explanation_payload = None
     if expl:
         explanation_payload = {
@@ -94,10 +229,14 @@ async def async_export_question_to_json_dict(
         }
 
     # 4. Question Metadata & IRT Parameters
-    meta_stmt = select(QuestionMetadata).where(
-        QuestionMetadata.question_id == question.id
-    )
-    q_meta = (await session.exec(meta_stmt)).first()
+    if preloaded is not None:
+        q_meta = preloaded.get("meta_map", {}).get(question.id)
+    else:
+        meta_stmt = select(QuestionMetadata).where(
+            QuestionMetadata.question_id == question.id
+        )
+        q_meta = (await session.exec(meta_stmt)).first()
+
     metadata_payload = None
     if q_meta:
         metadata_payload = {
@@ -112,10 +251,14 @@ async def async_export_question_to_json_dict(
         }
 
     # 5. Question Assets
-    asset_stmt = select(QuestionAsset).where(
-        QuestionAsset.question_id == question.id
-    ).order_by(col(QuestionAsset.display_order))
-    assets = (await session.exec(asset_stmt)).all()
+    if preloaded is not None:
+        assets = preloaded.get("assets_map", {}).get(question.id, [])
+    else:
+        asset_stmt = select(QuestionAsset).where(
+            QuestionAsset.question_id == question.id
+        ).order_by(col(QuestionAsset.display_order))
+        assets = (await session.exec(asset_stmt)).all()
+
     assets_payload = [
         {
             "asset_id": str(a.id),
@@ -130,16 +273,22 @@ async def async_export_question_to_json_dict(
     ]
 
     # 6. Hierarchy Links & Concept PYQ Frequency
-    h_stmt = select(QuestionHierarchyLink).where(
-        QuestionHierarchyLink.question_id == question.id
-    )
-    h_links = (await session.exec(h_stmt)).all()
+    if preloaded is not None:
+        h_links = preloaded.get("h_map", {}).get(question.id, [])
+    else:
+        h_stmt = select(QuestionHierarchyLink).where(
+            QuestionHierarchyLink.question_id == question.id
+        )
+        h_links = (await session.exec(h_stmt)).all()
+
     hierarchy_payload = []
     for hl in h_links:
         subtop_freq = 0
         if hl.subtopic_id:
-            from app.db.models import Subtopic
-            subtop = await session.get(Subtopic, hl.subtopic_id)
+            if preloaded is not None:
+                subtop = preloaded.get("subtopics_map", {}).get(hl.subtopic_id)
+            else:
+                subtop = await session.get(Subtopic, hl.subtopic_id)
             if subtop:
                 subtop_freq = subtop.pyq_frequency
 
@@ -158,12 +307,20 @@ async def async_export_question_to_json_dict(
     # 7. Passage payload if linked
     passage_payload = None
     if question.passage_id:
-        p_obj = await session.get(Passage, question.passage_id)
+        if preloaded is not None:
+            p_obj = preloaded.get("passages_map", {}).get(question.passage_id)
+            p_trans = preloaded.get("pass_trans_map", {}).get(question.passage_id, [])
+        else:
+            p_obj = await session.get(Passage, question.passage_id)
+            if p_obj:
+                pt_stmt = select(PassageTranslation).where(
+                    PassageTranslation.passage_id == p_obj.id
+                )
+                p_trans = (await session.exec(pt_stmt)).all()
+            else:
+                p_trans = []
+
         if p_obj:
-            pt_stmt = select(PassageTranslation).where(
-                PassageTranslation.passage_id == p_obj.id
-            )
-            p_trans = (await session.exec(pt_stmt)).all()
             p_trans_dict = {}
             for pt in p_trans:
                 lang_str = (
@@ -226,7 +383,9 @@ async def async_export_question_to_json_string(
     session: AsyncSession,
     question: Question,
     exam: Optional[Exam] = None,
+    preloaded: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Exports question entity into clean formatted JSON string."""
-    data = await async_export_question_to_json_dict(session, question, exam)
+    data = await async_export_question_to_json_dict(session, question, exam, preloaded=preloaded)
     return json.dumps(data, indent=2, ensure_ascii=False)
+

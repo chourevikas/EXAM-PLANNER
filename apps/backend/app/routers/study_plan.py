@@ -22,17 +22,22 @@ router = APIRouter(prefix="/study-plan", tags=["Study Plan & Gamification"])
 
 @router.post("/tasks/{task_id}/complete")
 async def complete_study_task(
-    task_id: uuid.UUID,
+    task_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     # Fetch the task
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    result = await session.execute(stmt)
-    task = result.scalars().first()
+    result = await session.exec(stmt)
+    task = result.first()
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -136,16 +141,21 @@ class UpdateTaskRequest(SQLModel):
 
 @router.put("/tasks/{task_id}")
 async def update_study_task(
-    task_id: uuid.UUID,
+    task_id: int | str,
     req: UpdateTaskRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    task = (await session.execute(stmt)).scalars().first()
+    task = (await session.exec(stmt)).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -175,15 +185,20 @@ async def update_study_task(
 
 @router.delete("/tasks/{task_id}")
 async def delete_study_task(
-    task_id: uuid.UUID,
+    task_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    try:
+        tid = int(task_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Task not found")
+
     stmt = select(StudyTask).where(
-        StudyTask.id == task_id,
+        StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    task = (await session.execute(stmt)).scalars().first()
+    task = (await session.exec(stmt)).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -206,7 +221,7 @@ class BulkTaskItem(SQLModel):
     linked_question_numbers: Optional[List[int]] = []
 
 class BulkAddFromReportRequest(SQLModel):
-    attempt_id: uuid.UUID
+    attempt_id: int | str
     tasks: List[BulkTaskItem]
 
 @router.post("/tasks/bulk-from-report")
@@ -266,7 +281,7 @@ async def bulk_add_tasks_from_report(
             scheduled_date=task_date,
             is_completed=False,
             is_ai_recommended=True,
-            source_attempt_id=req.attempt_id
+            source_attempt_id=int(req.attempt_id) if req.attempt_id is not None else None
         )
         session.add(new_task)
         created_task_ids.append(str(new_task.id))
@@ -282,7 +297,7 @@ async def bulk_add_tasks_from_report(
 
 @router.get("/tasks/attempt/{attempt_id}/status")
 async def get_attempt_tasks_status(
-    attempt_id: uuid.UUID,
+    attempt_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -828,7 +843,7 @@ async def list_study_activities(
 
 @router.delete("/activities/{activity_id}")
 async def delete_study_activity(
-    activity_id: uuid.UUID,
+    activity_id: int,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -879,10 +894,10 @@ async def get_user_badges(
         return JSONResponse(content=jsonable_encoder(cached_data))
 
     stmt_all = select(Badge)
-    badges = (await session.execute(stmt_all)).scalars().all()
+    badges = (await session.exec(stmt_all)).all()
     
     stmt_user = select(UserBadge).where(UserBadge.user_id == current_user.id)
-    user_badges = (await session.execute(stmt_user)).scalars().all()
+    user_badges = (await session.exec(stmt_user)).all()
     unlocked_badge_ids = {ub.badge_id for ub in user_badges}
     
     unlocked = []

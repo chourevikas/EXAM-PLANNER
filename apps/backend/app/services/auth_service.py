@@ -193,7 +193,7 @@ class AuthService:
 
         return token_response, refresh_token
 
-    async def logout_user(self, user_id: uuid.UUID | str) -> None:
+    async def logout_user(self, user_id: int | str) -> None:
         await self.user_repo.revoke_user_refresh_tokens(user_id)
 
     async def verify_email(self, token: str) -> bool:

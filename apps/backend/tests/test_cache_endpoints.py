@@ -38,7 +38,6 @@ class TestCacheEndpointsAndServices(unittest.IsolatedAsyncioTestCase):
     async def test_question_service_list_and_detail_caching_and_invalidation(self):
         async with self.session_factory() as session:
             exam = Exam(
-                id=uuid.uuid4(),
                 code="upsc-prelims-2024",
                 name="UPSC Prelims 2024",
                 stage="PRELIMS",
@@ -63,7 +62,7 @@ class TestCacheEndpointsAndServices(unittest.IsolatedAsyncioTestCase):
                     ],
                 )
             )
-            q_id = created_q.question_id
+            q_id = int(created_q.question_id)
 
             # 1. Fetch Question Detail -> Populates Cache
             res1 = await q_service.get_question_detail(q_id, language=LanguageCode.ENGLISH)
@@ -92,7 +91,6 @@ class TestCacheEndpointsAndServices(unittest.IsolatedAsyncioTestCase):
     async def test_question_service_list_caching(self):
         async with self.session_factory() as session:
             exam = Exam(
-                id=uuid.uuid4(),
                 code="upsc-prelims-2023",
                 name="UPSC Prelims 2023",
                 stage="PRELIMS",
@@ -123,7 +121,7 @@ class TestCacheEndpointsAndServices(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(res2.items), 1)
 
             # 3. Delete question -> Invalidates list cache
-            await q_service.delete_question(created_q.question_id)
+            await q_service.delete_question(int(created_q.question_id))
 
             # 4. List questions -> Fresh query with 0 items
             res3 = await q_service.list_questions_paginated(exam_id=exam.id, page=1, limit=10)

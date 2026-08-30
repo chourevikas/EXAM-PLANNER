@@ -25,8 +25,15 @@ from app.core.deps import get_current_user, require_roles
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-async def _get_user_question_stats(session: AsyncSession, user_id: str | uuid.UUID) -> dict:
-    u_id = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+async def _get_user_question_stats(session: AsyncSession, user_id: int | str) -> dict:
+    try:
+        u_id = int(user_id)
+    except (ValueError, TypeError):
+        return {
+            "total_questions_solved": 0,
+            "streak_days": 0,
+            "today_questions_solved": 0,
+        }
     now_utc = datetime.now(timezone.utc)
     today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     today_date = today_start.date()

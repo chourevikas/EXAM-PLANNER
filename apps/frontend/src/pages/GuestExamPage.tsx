@@ -4,10 +4,11 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap, X, Lightbulb } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ export function GuestExamPage() {
   // Question & Response Data
   const [allQuestions, setAllQuestions] = useState<QuestionOut[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<QuestionOut | null>(null);
-  const [userResponses, setUserResponses] = useState<Record<string, { optionId: string; optionLabel: string }>>({});
+  const [userResponses, setUserResponses] = useState<Record<string | number, { optionId: number | string; optionLabel: string }>>({});
   const [revealedMap, setRevealedMap] = useState<Record<string, RevealAnswerResponse>>({});
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
@@ -113,20 +114,31 @@ export function GuestExamPage() {
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
+  const [expandedRecId, setExpandedRecId] = useState<number | string | null>(null);
+  const [recUserResponses, setRecUserResponses] = useState<Record<string, number | string>>({});
+  const [recShowSolution, setRecShowSolution] = useState<Record<string | number, boolean>>({});
+  const [recExplanations, setRecExplanations] = useState<Record<string | number, string>>({});
+  const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>({});
+  const expandedRecIdRef = React.useRef<number | string | null>(null);
+  const recUserResponsesRef = React.useRef<Record<string, number | string>>({});
+
+  useEffect(() => {
+    expandedRecIdRef.current = expandedRecId;
+  }, [expandedRecId]);
+
+  useEffect(() => {
+    recUserResponsesRef.current = recUserResponses;
+  }, [recUserResponses]);
+
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
 
   // Mobile Responsiveness & Custom Dropdown Search State
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
 
   const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
@@ -134,7 +146,7 @@ export function GuestExamPage() {
     setIsPrefetchingRecs(true);
 
     try {
-      const existingIds = new Set<string>();
+      const existingIds = new Set<string | number>();
       currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
 
@@ -211,14 +223,47 @@ export function GuestExamPage() {
         });
 
         setRecommendedPool((prev) => {
-          const combinedMap = new Map<string, QuestionOut>();
-          prev.forEach((q) => combinedMap.set(q.question_id, q));
-          formatted.forEach((q) => {
-            if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
-              combinedMap.set(q.question_id, q);
+          let newList = [...prev];
+          const existingIds = new Set(prev.map((q) => q.question_id));
+
+          for (let i = formatted.length - 1; i >= 0; i--) {
+            const q = formatted[i];
+            if (!existingIds.has(q.question_id)) {
+              newList.unshift(q);
             }
-          });
-          return Array.from(combinedMap.values()).slice(0, 5);
+          }
+
+          while (newList.length > 15) {
+            let evictIdx = -1;
+            const currentExpanded = expandedRecIdRef.current;
+            const currentResponses = recUserResponsesRef.current;
+
+            // Prefer removing already-answered questions that are not expanded
+            for (let i = newList.length - 1; i >= 0; i--) {
+              const q = newList[i];
+              if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
+                evictIdx = i;
+                break;
+              }
+            }
+
+            // If none found, just find the oldest not expanded
+            if (evictIdx === -1) {
+              for (let i = newList.length - 1; i >= 0; i--) {
+                if (newList[i].question_id !== currentExpanded) {
+                  evictIdx = i;
+                  break;
+                }
+              }
+            }
+
+            if (evictIdx !== -1) {
+              newList.splice(evictIdx, 1);
+            } else {
+              break;
+            }
+          }
+          return newList;
         });
       }
     } catch (err) {
@@ -484,31 +529,38 @@ export function GuestExamPage() {
     }
   }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
 
-  // Handler to jump to or prompt login for recommended question outside 10 Q limit
+  // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
-    const existingIdx = allQuestions.findIndex((q) => q.question_id === recQ.question_id);
-    if (existingIdx !== -1) {
-      setCurrentQIndex(existingIdx);
-      setActiveQuestion(allQuestions[existingIdx]);
-      return;
-    }
-
-    // Guest user limit reached (10 questions max) -> Show Login Pop-up Modal
-    setShowLoginModal(true);
+    setExpandedRecId(prev => (prev === recQ.question_id ? null : recQ.question_id));
   };
 
-  // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
-  const displayRecs = useMemo(() => {
-    const remainingTestQuestions = allQuestions.slice(currentQIndex + 1);
-    const combinedMap = new Map<string, QuestionOut>();
-    remainingTestQuestions.forEach((q) => combinedMap.set(q.question_id, q));
-    recommendedPool.forEach((q) => {
-      if (!combinedMap.has(q.question_id)) {
-        combinedMap.set(q.question_id, q);
+  // Toggle Show Solution for a recommended card (fetches from API if needed)
+  const handleRecShowSolution = async (rec: QuestionOut) => {
+    const qId = rec.question_id;
+    setRecShowSolution(prev => ({ ...prev, [qId]: !prev[qId] }));
+    if (recExplanations[qId] || (rec as any).explanation) return;
+    setRecSolutionLoading(prev => ({ ...prev, [qId]: true }));
+    try {
+      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      if (res.ok) {
+        const data = await res.json();
+        // API returns { explanation: { detailed_solution, core_concept, ... } }
+        const expl = data.explanation?.detailed_solution
+          || data.explanation?.core_concept
+          || (typeof data.explanation === 'string' ? data.explanation : null)
+          || data.detailed_solution
+          || null;
+        if (expl) setRecExplanations(prev => ({ ...prev, [qId]: expl }));
       }
-    });
-    return Array.from(combinedMap.values()).slice(0, 5);
-  }, [allQuestions, currentQIndex, recommendedPool]);
+    } catch (err) {
+      console.warn('Rec solution fetch error:', err);
+    } finally {
+      setRecSolutionLoading(prev => ({ ...prev, [qId]: false }));
+    }
+  };
+
+  // All up to 15 recommended items to display
+  const displayRecs = recommendedPool;
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -527,7 +579,7 @@ export function GuestExamPage() {
   };
 
   // Option Selection
-  const handleSelectOption = (optId: string, optLabel: string) => {
+  const handleSelectOption = (optId: number | string, optLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
 
@@ -805,7 +857,7 @@ export function GuestExamPage() {
             maxWidth: 520,
             width: '100%',
             backgroundColor: '#FFFFFF',
-            borderRadius: 16,
+            borderRadius: 0,
             padding: '36px 32px',
             border: '1px solid #E2E8F0',
             boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.08)',
@@ -816,18 +868,18 @@ export function GuestExamPage() {
             style={{
               width: 56,
               height: 56,
-              borderRadius: '50%',
+              borderRadius: 0,
               backgroundColor: '#FEF3C7',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#D97706',
+              color: '#F2B623',
               marginBottom: 16,
             }}
           >
             <AlertCircle size={28} />
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0F172A', margin: '0 0 8px 0' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
             No Questions Found
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
@@ -840,8 +892,8 @@ export function GuestExamPage() {
               onClick={() => navigate(`/guest-exam?subject=${encodeURIComponent(gSubject)}&count=10`)}
               style={{
                 padding: '10px 18px',
-                borderRadius: 10,
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 fontSize: 13.5,
                 fontWeight: 600,
@@ -860,7 +912,7 @@ export function GuestExamPage() {
               onClick={() => navigate('/')}
               style={{
                 padding: '10px 18px',
-                borderRadius: 10,
+                borderRadius: 0,
                 backgroundColor: '#F1F5F9',
                 color: '#475569',
                 fontSize: 13.5,
@@ -886,7 +938,7 @@ export function GuestExamPage() {
   const isCurrentMarked = !!markedForReview[activeQuestion.question_id];
   const currentRevealedResult = revealedMap[activeQuestion.question_id] || null;
 
-  const selectedOptionsMap: Record<number, string> = {};
+  const selectedOptionsMap: Record<number, number | string> = {};
   allQuestions.forEach((q, idx) => {
     if (userResponses[q.question_id]) {
       selectedOptionsMap[idx] = userResponses[q.question_id].optionId;
@@ -913,7 +965,7 @@ export function GuestExamPage() {
         width: '100vw',
         overflow: 'hidden',
         backgroundColor: '#F8FAF8',
-        color: '#0F172A',
+        color: '#172033',
         fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
       }}
     >
@@ -942,15 +994,15 @@ export function GuestExamPage() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 9,
-              backgroundColor: '#2563EB',
+              borderRadius: 0,
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: 16,
-              boxShadow: '0 2px 10px rgba(37, 99, 235, 0.4)',
+              boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
               cursor: 'pointer',
             }}
             title="Go to Home"
@@ -1003,7 +1055,7 @@ export function GuestExamPage() {
             onClick={() => handleFinishGuestExam()}
             style={{
               padding: '7px 18px',
-              borderRadius: 6,
+              borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
@@ -1024,10 +1076,10 @@ export function GuestExamPage() {
           </button>
         </div>
       </header>
-      {/* 2. Premium Floating Exam Filter Window (Below Navbar with generous spacing) */}
+      {/* 2. Premium Floating Exam Filter Window */}
       <div
         style={{
-          padding: '24px 28px 12px 28px',
+          padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 24px) 6px clamp(10px, 2.5vw, 24px)',
           backgroundColor: 'transparent',
           zIndex: 40,
           flexShrink: 0,
@@ -1037,11 +1089,12 @@ export function GuestExamPage() {
           style={{
             backgroundColor: '#FFFFFF',
             border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '14px 24px',
+            borderRadius: 0,
+            padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 20,
+            gap: '8px 12px',
             boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             position: 'relative',
           }}
@@ -1052,16 +1105,17 @@ export function GuestExamPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              paddingRight: 16,
+              paddingRight: 12,
               borderRight: '1px solid #F1F5F9',
+              flexShrink: 0,
             }}
           >
             <div
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 8,
-                backgroundColor: '#EFF6FF',
+                borderRadius: 0,
+                backgroundColor: '#F8FAFC',
                 color: '#1E3A8A',
                 display: 'flex',
                 alignItems: 'center',
@@ -1094,17 +1148,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1122,7 +1176,7 @@ export function GuestExamPage() {
                   width: 220,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1137,11 +1191,11 @@ export function GuestExamPage() {
                     }}
                     style={{
                       padding: '9px 12px',
-                      borderRadius: 8,
+                      borderRadius: 0,
                       fontSize: 12.5,
                       fontWeight: gExam === opt ? 700 : 500,
                       color: gExam === opt ? '#1E3A8A' : '#334155',
-                      backgroundColor: gExam === opt ? '#EFF6FF' : 'transparent',
+                      backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1177,17 +1231,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1205,7 +1259,7 @@ export function GuestExamPage() {
                   width: 250,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1223,7 +1277,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1245,11 +1299,11 @@ export function GuestExamPage() {
                         }}
                         style={{
                           padding: '8px 10px',
-                          borderRadius: 7,
+                          borderRadius: 0,
                           fontSize: 12.5,
                           fontWeight: gSubject === opt ? 700 : 500,
                           color: gSubject === opt ? '#1E3A8A' : '#334155',
-                          backgroundColor: gSubject === opt ? '#EFF6FF' : 'transparent',
+                          backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1285,17 +1339,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1313,7 +1367,7 @@ export function GuestExamPage() {
                   width: 270,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 10,
                   zIndex: 100,
@@ -1331,7 +1385,7 @@ export function GuestExamPage() {
                     style={{
                       width: '100%',
                       padding: '7px 10px 7px 30px',
-                      borderRadius: 7,
+                      borderRadius: 0,
                       border: '1px solid #E2E8F0',
                       fontSize: 12,
                       outline: 'none',
@@ -1356,11 +1410,11 @@ export function GuestExamPage() {
                           }}
                           style={{
                             padding: '8px 10px',
-                            borderRadius: 7,
+                            borderRadius: 0,
                             fontSize: 12.5,
                             fontWeight: isSelected ? 700 : 500,
                             color: isSelected ? '#1E3A8A' : '#334155',
-                            backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                            backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1397,17 +1451,17 @@ export function GuestExamPage() {
               style={{
                 width: '100%',
                 padding: '8px 14px',
-                borderRadius: 9,
+                borderRadius: 0,
                 border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
                 backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
-                color: '#0F172A',
+                color: '#172033',
                 fontSize: 13,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 cursor: 'pointer',
-                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(30, 58, 138, 0.12)' : 'none',
+                boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1425,7 +1479,7 @@ export function GuestExamPage() {
                   width: 170,
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
-                  borderRadius: 12,
+                  borderRadius: 0,
                   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
                   padding: 8,
                   zIndex: 100,
@@ -1443,11 +1497,11 @@ export function GuestExamPage() {
                       }}
                       style={{
                         padding: '8px 10px',
-                        borderRadius: 7,
+                        borderRadius: 0,
                         fontSize: 12.5,
                         fontWeight: isSelected ? 700 : 500,
                         color: isSelected ? '#1E3A8A' : '#334155',
-                        backgroundColor: isSelected ? '#EFF6FF' : 'transparent',
+                        backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1471,35 +1525,253 @@ export function GuestExamPage() {
         </div>
       </div>
 
+      {/* Mobile Recommended Questions Toggle Button */}
+      {isMobile && displayRecs.length > 0 && (
+        <div style={{ padding: '0 clamp(10px, 2.5vw, 24px) 8px', display: 'flex', justifyContent: 'flex-start' }}>
+          <button
+            type="button"
+            onClick={() => setShowMobileRecs(true)}
+            className="touch-target center-content"
+            style={{
+              padding: '6px 14px',
+              borderRadius: 0,
+              border: '1px solid #CBD5E1',
+              backgroundColor: '#FFFFFF',
+              color: '#1E3A8A',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <Sparkles size={14} color="#1E3A8A" />
+            <span>Recommended Questions ({displayRecs.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Recommended Questions Modal */}
+      {isMobile && showMobileRecs && (
+        <div
+          className="auth-modal-overlay"
+          onClick={() => setShowMobileRecs(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="auth-modal-card"
+            style={{ maxWidth: 440, maxHeight: '80vh', overflowY: 'auto', padding: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={16} color="#1E3A8A" />
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#1E3A8A', textTransform: 'uppercase' }}>
+                  RECOMMENDED FOR YOU ({displayRecs.length})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileRecs(false)}
+                className="touch-target center-content"
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 4 }}
+                aria-label="Close recommendations"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {displayRecs.map((rec, idx) => {
+                const isExpanded = expandedRecId === rec.question_id;
+                const answeredOptId = recUserResponses[rec.question_id];
+
+                return (
+                  <div
+                    key={rec.question_id || idx}
+                    style={{
+                      backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                      border: '1px solid',
+                      borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                      borderRadius: 6,
+                      transition: 'all 0.15s ease',
+                      boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      onClick={() => handleSelectRecommendation(rec)}
+                      style={{ cursor: 'pointer', padding: '10px 12px' }}
+                      onMouseEnter={(e) => {
+                        if (!isExpanded) {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isExpanded) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        </span>
+                        <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                        {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                      </div>
+                    </div>
+
+                    {/* Inline Options Dropdown */}
+                    {isExpanded && (
+                      <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {rec.options?.map(opt => {
+                            const isSelected = answeredOptId === opt.option_id;
+                            const isCorrect = opt.is_correct;
+                            const isWrongSelected = isSelected && !isCorrect;
+                            const showResult = !!answeredOptId;
+
+                            let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                            let bgStyle = '#FFFFFF';
+
+                            if (showResult) {
+                              if (isCorrect) {
+                                borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                              } else if (isWrongSelected) {
+                                borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                              }
+                            }
+
+                            return (
+                              <button
+                                key={opt.option_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!answeredOptId) {
+                                    setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                  }
+                                }}
+                                style={{
+                                  textAlign: 'left',
+                                  padding: '6px 8px',
+                                  border: borderStyle,
+                                  backgroundColor: bgStyle,
+                                  borderRadius: 4,
+                                  fontSize: 11.5,
+                                  color: '#334155',
+                                  cursor: answeredOptId ? 'default' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 6,
+                                  width: '100%'
+                                }}
+                              >
+                                <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                  {opt.option_label}.
+                                </span>
+                                <span>{opt.text}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Show Solution button + explanation panel (mobile) */}
+                        {(() => {
+                          const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                          const explanation = typeof _rawExpl === 'string'
+                            ? _rawExpl
+                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                          const isLoadingSolution = recSolutionLoading[rec.question_id];
+                          const solutionOpen = recShowSolution[rec.question_id];
+                          return (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                style={{
+                                  marginTop: 10, width: '100%', padding: '6px 10px',
+                                  border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                  borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                  color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <Lightbulb size={12} />
+                                {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                              </button>
+                              {solutionOpen && (
+                                <div style={{
+                                  marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                  border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                  color: '#1E3A8A', lineHeight: 1.55,
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <Lightbulb size={12} color="#2563EB" />
+                                    Explanation
+                                  </div>
+                                  {isLoadingSolution
+                                    ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                    : explanation
+                                      ? explanation
+                                      : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                  }
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3. Main Workspace Container */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           paddingBottom: 28,
-          paddingRight: 24,
-          overflow: 'hidden',
+          paddingRight: isMobile ? 12 : 24,
+          paddingLeft: isMobile ? 12 : 0,
+          overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAF8',
           boxSizing: 'border-box',
+          minHeight: 'calc(100vh - 180px)',
+          gap: isMobile ? 0 : 20,
         }}
       >
-        {/* Left Recommended Floating Panel */}
+        {/* Left Recommended Floating Panel (Desktop) */}
         {!isMobile && (
           <aside
             style={{
-              width: 270,
+              width: 380,
               backgroundColor: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: 18,
+              borderRadius: 0,
               display: 'flex',
               flexDirection: 'column',
               padding: '16px 14px',
               gap: 14,
               overflowY: 'auto',
               flexShrink: 0,
-              height: 'calc(100% - 40px)',
-              maxHeight: 'calc(100% - 40px)',
+              alignSelf: 'flex-start',
+              position: 'sticky',
+              top: 12,
+              maxHeight: 'calc(100vh - 200px)',
               marginLeft: 24,
               marginTop: 12,
               marginBottom: 28,
@@ -1510,12 +1782,12 @@ export function GuestExamPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#1E3A8A' }} />
+                  <div style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }} />
                   <span style={{ fontSize: 10.5, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     RECOMMENDED FOR YOU
                   </span>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 0 }}>
                   {displayRecs.length} Qs
                 </span>
               </div>
@@ -1532,40 +1804,150 @@ export function GuestExamPage() {
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
-                  const isInTest = allQuestions.some((q) => q.question_id === rec.question_id);
-                  const testIndex = allQuestions.findIndex((q) => q.question_id === rec.question_id);
+                  const isExpanded = expandedRecId === rec.question_id;
+                  const answeredOptId = recUserResponses[rec.question_id];
 
                   return (
                     <div
                       key={rec.question_id || idx}
-                      onClick={() => handleSelectRecommendation(rec)}
                       style={{
-                        backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 10,
-                        padding: '10px 12px',
-                        cursor: 'pointer',
+                        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                        borderRadius: 6,
                         transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E2E8F0';
-                        e.currentTarget.style.boxShadow = 'none';
+                        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                        overflow: 'hidden'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
-                        </span>
+                      <div
+                        onClick={() => handleSelectRecommendation(rec)}
+                        style={{ cursor: 'pointer', padding: '10px 12px' }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                          </span>
+                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                          {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0F172A', lineHeight: 1.3 }}>
-                        {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                      </div>
+
+                      {/* Inline Options Dropdown */}
+                      {isExpanded && (
+                        <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {rec.options?.map(opt => {
+                              const isSelected = answeredOptId === opt.option_id;
+                              const isCorrect = opt.is_correct;
+                              const isWrongSelected = isSelected && !isCorrect;
+                              const showResult = !!answeredOptId;
+
+                              let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                              let bgStyle = '#FFFFFF';
+
+                              if (showResult) {
+                                if (isCorrect) {
+                                  borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                                } else if (isWrongSelected) {
+                                  borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={opt.option_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!answeredOptId) {
+                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                    }
+                                  }}
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '6px 8px',
+                                    border: borderStyle,
+                                    backgroundColor: bgStyle,
+                                    borderRadius: 4,
+                                    fontSize: 11.5,
+                                    color: '#334155',
+                                    cursor: answeredOptId ? 'default' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    width: '100%'
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                    {opt.option_label}.
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Show Solution button + explanation panel (desktop) */}
+                          {(() => {
+                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                            const explanation = typeof _rawExpl === 'string'
+                              ? _rawExpl
+                              : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                            const isLoadingSolution = recSolutionLoading[rec.question_id];
+                            const solutionOpen = recShowSolution[rec.question_id];
+                            return (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                  style={{
+                                    marginTop: 10, width: '100%', padding: '6px 10px',
+                                    border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                    borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                    color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  <Lightbulb size={12} />
+                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                                </button>
+                                {solutionOpen && (
+                                  <div style={{
+                                    marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                    border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                    color: '#1E3A8A', lineHeight: 1.55,
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      <Lightbulb size={12} color="#2563EB" />
+                                      Explanation
+                                    </div>
+                                    {isLoadingSolution
+                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                      : explanation
+                                        ? explanation
+                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                    }
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -1603,9 +1985,9 @@ export function GuestExamPage() {
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 990,
-            backgroundColor: '#0F172A',
+            backgroundColor: '#172033',
             color: '#FFFFFF',
-            borderRadius: 99,
+            borderRadius: 0,
             padding: '10px 20px',
             display: 'flex',
             alignItems: 'center',
@@ -1621,8 +2003,8 @@ export function GuestExamPage() {
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: '50%',
-                backgroundColor: '#2563EB',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
                 color: '#FFFFFF',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1645,9 +2027,9 @@ export function GuestExamPage() {
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 20,
+              borderRadius: 0,
               border: 'none',
-              backgroundColor: '#2563EB',
+              backgroundColor: '#E31B23',
               color: '#FFFFFF',
               fontSize: 12,
               fontWeight: 700,
@@ -1656,10 +2038,10 @@ export function GuestExamPage() {
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.backgroundColor = '#C1121F';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.backgroundColor = '#E31B23';
             }}
           >
             View Score Now &rsaquo;
@@ -1703,7 +2085,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 420,
               backgroundColor: '#FFFFFF',
-              borderRadius: 20,
+              borderRadius: 0,
               padding: '28px 28px',
               border: '2px solid #E2E8F0',
               boxShadow: '0 20px 40px -10px rgba(15, 23, 42, 0.25)',
@@ -1715,7 +2097,7 @@ export function GuestExamPage() {
               style={{
                 width: 50,
                 height: 50,
-                borderRadius: '50%',
+                borderRadius: 0,
                 backgroundColor: '#FEF2F2',
                 border: '1px solid #FECACA',
                 color: '#DC2626',
@@ -1728,7 +2110,7 @@ export function GuestExamPage() {
               <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
             </div>
 
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
@@ -1743,7 +2125,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: '1.5px solid #CBD5E1',
                   backgroundColor: '#FFFFFF',
                   color: '#475569',
@@ -1771,7 +2153,7 @@ export function GuestExamPage() {
                 style={{
                   flex: 1,
                   height: 42,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
@@ -1817,7 +2199,7 @@ export function GuestExamPage() {
               width: '100%',
               maxWidth: 440,
               backgroundColor: '#FFFFFF',
-              borderRadius: 22,
+              borderRadius: 0,
               padding: '32px 28px',
               border: '1.5px solid #E2E8F0',
               boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
@@ -1829,8 +2211,8 @@ export function GuestExamPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: '50%',
-                backgroundColor: '#EFF6FF',
+                borderRadius: 0,
+                backgroundColor: '#F8FAFC',
                 border: '1px solid #BFDBFE',
                 color: '#1E3A8A',
                 display: 'flex',
@@ -1842,11 +2224,11 @@ export function GuestExamPage() {
               <Sparkles size={26} color="#1E3A8A" />
             </div>
 
-            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 12, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ display: 'inline-block', backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 0, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Guest Limit Reached (10 Questions)
             </div>
 
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#172033', margin: '0 0 10px 0', lineHeight: 1.3 }}>
               Log in to Unlock More Questions
             </h3>
 
@@ -1864,14 +2246,14 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 46,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: 'none',
                   backgroundColor: '#1E3A8A',
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(30, 58, 138, 0.3)',
+                  boxShadow: '0 4px 14px rgba(23, 32, 51, 0.3)',
                   transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
@@ -1879,7 +2261,7 @@ export function GuestExamPage() {
                   gap: 8,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1D4ED8';
+                  e.currentTarget.style.backgroundColor = '#C1121F';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1E3A8A';
@@ -1895,7 +2277,7 @@ export function GuestExamPage() {
                 style={{
                   width: '100%',
                   height: 42,
-                  borderRadius: 14,
+                  borderRadius: 0,
                   border: '1.5px solid #E2E8F0',
                   backgroundColor: '#FFFFFF',
                   color: '#64748B',

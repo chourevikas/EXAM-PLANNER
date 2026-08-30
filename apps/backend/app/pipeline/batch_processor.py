@@ -246,10 +246,10 @@ def build_question_registry(
 
 import asyncio
 
-_exam_commit_locks: Dict[uuid.UUID, asyncio.Lock] = {}
+_exam_commit_locks: Dict[int, asyncio.Lock] = {}
 
 
-def _get_exam_lock(exam_id: uuid.UUID) -> asyncio.Lock:
+def _get_exam_lock(exam_id: int) -> asyncio.Lock:
     if exam_id not in _exam_commit_locks:
         _exam_commit_locks[exam_id] = asyncio.Lock()
     return _exam_commit_locks[exam_id]
@@ -266,10 +266,10 @@ class BatchQuestionRegistrar:
 
     async def commit_questions_in_batches(
         self,
-        exam_id: uuid.UUID,
+        exam_id: int,
         pdf_path: str,
         question_registry: Dict[Tuple[str, int], dict],
-        passage_id_map: Dict[str, Tuple[uuid.UUID, List[int]]],
+        passage_id_map: Dict[str, Tuple[int, List[int]]],
         storage: BaseStorageProvider,
         load_pdf_page_image_fn: Any,
     ) -> BatchProcessingSummary:
@@ -306,7 +306,6 @@ class BatchQuestionRegistrar:
                             )
                             existing_q = existing_q_res.first()
 
-                            question_id = existing_q.id if existing_q else uuid.uuid4()
                             q_passage_id = None
                             q_passage_pages = []
 
@@ -330,9 +329,7 @@ class BatchQuestionRegistrar:
 
                             if not existing_q:
                                 q_obj = Question(
-                                    id=question_id,
                                     exam_id=exam_id,
-                                    canonical_question_id=question_id,
                                     section_code=sec_code,
                                     paper_set_code=paper_set_code,
                                     passage_id=q_passage_id,
@@ -351,6 +348,8 @@ class BatchQuestionRegistrar:
                                     status=QuestionStatus.PENDING_HUMAN_REVIEW,
                                 )
                                 session.add(q_obj)
+                                await session.flush()
+                                question_id = q_obj.id
 
                                 # Create Baseline QuestionMetadata (Pipeline 1 initial setup)
                                 meta_res = await session.exec(
@@ -370,6 +369,7 @@ class BatchQuestionRegistrar:
                                     )
                                     session.add(q_meta)
                             else:
+                                question_id = existing_q.id
                                 existing_q.is_complete = q_data["is_complete"]
                                 existing_q.has_image = q_data["has_image"]
                                 existing_q.page_numbers_json = q_data["page_numbers"]
@@ -432,13 +432,13 @@ class BatchQuestionRegistrar:
                                     opt_label = str(opt.display_label)
                                     if opt_label not in opts_by_label:
                                         q_opt = QuestionOption(
-                                            id=uuid.uuid4(),
                                             question_id=question_id,
                                             option_label=opt_label,
                                             display_order=opt.display_order,
                                             is_correct=False,
                                         )
                                         session.add(q_opt)
+                                        await session.flush()
                                         opts_by_label[opt_label] = q_opt
                                     else:
                                         q_opt = opts_by_label[opt_label]

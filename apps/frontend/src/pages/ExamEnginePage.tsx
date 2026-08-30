@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
-import { ExamSectionSidebar, Section, Question } from '../components/exam/ExamSectionSidebar';
+import { Section, Question } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 import {
   startExamAttempt,
@@ -23,6 +24,7 @@ import {
   listExams,
   ExamItem,
 } from '../services/examService';
+import { addBookmark, removeBookmark } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
 
@@ -46,7 +48,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const isGuestMode = isGuest || location.pathname === '/guest-exam';
 
   // ─── Session State ───────────────────────────────────────────────────────────
-  const [attemptId, setAttemptId] = useState<string | null>(paramAttemptId || null);
+  const [attemptId, setAttemptId] = useState<number | string | null>(paramAttemptId || null);
   const [attemptMode, setAttemptMode] = useState<AttemptMode>('EXAM');
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
@@ -72,10 +74,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Active question & responses
   const [activeQuestion, setActiveQuestion] = useState<QuestionNavResponse['question'] | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<number | string | null>(null);
   const [selectedOptionLabel, setSelectedOptionLabel] = useState<string | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
-  const [revealResults, setRevealResults] = useState<Record<string, RevealAnswerResponse>>({});
+  const [revealResults, setRevealResults] = useState<Record<string | number, RevealAnswerResponse>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
   const [responseSummary, setResponseSummary] = useState<ResponseSummary>({
     answered_count: 0,
@@ -85,16 +87,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   });
 
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
-
-  // Mobile Responsiveness State
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [mobileTab, setMobileTab] = useState<'question' | 'sections' | 'palette'>('question');
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const [mobileTab, setMobileTab] = useState<'question' | 'palette'>('question');
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
-  const accumulatedTimePerQuestionRef = useRef<Map<string, number>>(new Map());
+  const accumulatedTimePerQuestionRef = useRef<Map<string | number, number>>(new Map());
 
-  const getActiveQuestionTotalTime = (qId?: string) => {
+  const getActiveQuestionTotalTime = (qId?: string | number) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return 0;
     const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
@@ -103,7 +103,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return Math.max(0, prevAcc + currentVisit);
   };
 
-  const saveQuestionVisitTime = (qId?: string) => {
+  const saveQuestionVisitTime = (qId?: string | number) => {
     const targetId = qId || activeQuestion?.question_id;
     if (!targetId) return;
     const elapsed = Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0);
@@ -114,15 +114,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   };
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
-  const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
-  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
-  const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
+  const pendingBatchQueueRef = useRef<Map<string | number, BatchSaveItem>>(new Map());
+  const lastSyncedSnapshotRef = useRef<Map<string | number, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const optionSwitchesCountRef = useRef<Map<string | number, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
+  const autoSubmittedRef = useRef<boolean>(false);
 
   // Queue a modified response if it passes dirty-check verification
   const queueResponseUpdate = (
-    questionId: string,
-    optId: string | null,
+    questionId: string | number,
+    optId: string | number | null,
     markedForRev: boolean,
     forcedTimeSpent?: number
   ) => {
@@ -209,11 +210,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return () => clearInterval(interval);
   }, [attemptId, activeQuestion, selectedOptionId, isMarkedForReview]);
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+
 
   // ─── 1. Session Initialization / Resume ─────────────────────────────────────
   useEffect(() => {
@@ -454,7 +451,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
-  const loadQuestion = async (attId: string, qNum: number) => {
+  const loadQuestion = async (attId: number | string, qNum: number) => {
     // Record elapsed time on the outgoing question before switching
     if (activeQuestion) {
       saveQuestionVisitTime(activeQuestion.question_id);
@@ -515,6 +512,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Immediate Auto-Submission when Timer reaches 0
+  useEffect(() => {
+    if (isLoadingSession || !attemptId || timeLeft > 0 || autoSubmittedRef.current) return;
+    autoSubmittedRef.current = true;
+    handleConfirmSubmit('TIMER_EXPIRED');
+  }, [timeLeft, isLoadingSession, attemptId]);
+
   useEffect(() => {
     if (!attemptId) return;
 
@@ -527,7 +531,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         });
 
         if (hbRes.auto_submitted) {
-          alert('Time has expired! Your exam has been automatically submitted.');
           navigate(`/analytics?attemptId=${attemptId}`);
         }
       } catch (err) {
@@ -539,7 +542,28 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   }, [attemptId, timeLeft, activeQuestion]);
 
   // ─── Zero-Lag Action Handlers with Asynchronous Batching ──────────────────────
-  const handleSelectOption = (optionId: string, optionLabel: string) => {
+  const handleToggleBookmark = async () => {
+    if (!activeQuestion) return;
+    const qId = String(activeQuestion.question_id || (activeQuestion as any).id);
+    const isBookmarked = !!bookmarkedQs[currentQIndex];
+    
+    // Optimistic update
+    setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !isBookmarked }));
+    
+    try {
+      if (isBookmarked) {
+        await removeBookmark(qId);
+      } else {
+        await addBookmark(qId);
+      }
+    } catch (err) {
+      console.error("Failed to toggle bookmark", err);
+      // Revert on failure
+      setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: isBookmarked }));
+    }
+  };
+
+  const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
       const qId = activeQuestion.question_id;
       const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
@@ -682,7 +706,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (isMobile) setMobileTab('question');
   };
 
-  const handleConfirmSubmit = async () => {
+  const handleConfirmSubmit = async (reason: 'USER_CLICKED_SUBMIT' | 'TIMER_EXPIRED' = 'USER_CLICKED_SUBMIT') => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
@@ -779,7 +803,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         });
 
         await submitExamAttempt(attemptId, {
-          submission_reason: 'USER_CLICKED_SUBMIT',
+          submission_reason: reason,
           responses: allFinalResponses.length > 0 ? allFinalResponses : undefined,
         });
         navigate(`/analytics?attemptId=${attemptId}`);
@@ -891,16 +915,17 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       />
 
       {/* Mobile Tab Switcher Bar (< 1024px) */}
-      {isMobile && (
+      {isMobile && isPYQ && (
         <div
           style={{
-            marginTop: 64,
+            marginTop: 60,
             height: 44,
             backgroundColor: isDark ? '#0f1e3c' : '#ffffff',
             borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
+            gap: 12,
             padding: '0 8px',
             position: 'fixed',
             top: 0,
@@ -911,8 +936,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         >
           {[
             { id: 'question', label: 'Question', icon: FileText },
-            { id: 'sections', label: 'Sections', icon: Layers },
-            ...(isPYQ ? [{ id: 'palette', label: 'Palette', icon: Grid }] : []),
+            { id: 'palette', label: 'Palette', icon: Grid },
           ].map((tab) => {
             const TabIcon = tab.icon;
             const isActive = mobileTab === tab.id;
@@ -920,18 +944,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               <button
                 key={tab.id}
                 onClick={() => setMobileTab(tab.id as any)}
+                className="touch-target center-content"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '6px 14px',
-                  borderRadius: 8,
+                  padding: '6px 16px',
+                  borderRadius: 0,
                   border: 'none',
-                  backgroundColor: isActive ? '#2563eb' : 'transparent',
+                  backgroundColor: isActive ? '#E31B23' : 'transparent',
                   color: isActive ? '#ffffff' : isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
-                  fontSize: 12,
+                  fontSize: 12.5,
                   fontWeight: 700,
                   cursor: 'pointer',
+                  minHeight: 36,
                 }}
               >
                 <TabIcon size={14} />
@@ -941,25 +967,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           })}
         </div>
       )}
-
-      {/* Slide-out Drawer Left Sidebar */}
-      <ExamSectionSidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        sections={subjectSections}
-        activeSectionId={activeSectionId}
-        palette={palette}
-        totalQuestions={totalQuestions}
-        currentQIndex={currentQIndex}
-        responseSummary={liveResponseSummary}
-        onSelectSection={(secId, startQ) => {
-          setActiveSectionId(secId);
-          if (startQ && startQ >= 1 && startQ <= totalQuestions) {
-            handleSelectQuestionFromPalette(startQ - 1);
-          }
-        }}
-        onSelectQuestion={handleSelectQuestionFromPalette}
-      />
 
       {/* Main Viewport Body */}
       <div
@@ -979,7 +986,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
-                <Loader2 size={24} className="animate-spin" color="#2563eb" />
+                <Loader2 size={24} className="animate-spin" color="#E31B23" />
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#64748B' }}>Loading question #{currentQIndex + 1}...</span>
               </div>
             ) : activeQuestion ? (
@@ -995,7 +1002,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 revealResult={activeQuestion ? revealResults[activeQuestion.question_id] : null}
                 isRevealing={isRevealing}
                 onSelectOption={handleSelectOption}
-                onToggleBookmark={() => setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))}
+                onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
                 isPYQ={isPYQ}
@@ -1060,8 +1067,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             style={{
               width: '100%',
               maxWidth: 500,
-              backgroundColor: isDark ? '#1e293b' : '#ffffff',
-              borderRadius: 24,
+              backgroundColor: isDark ? '#172033' : '#ffffff',
+              borderRadius: 0,
               padding: '32px',
               border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
@@ -1072,9 +1079,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 28,
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                color: '#2563eb',
+                borderRadius: 0,
+                backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                color: '#E31B23',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1084,7 +1091,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               <Trophy size={28} />
             </div>
 
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#0f172a', marginBottom: 4 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: isDark ? '#f8fafc' : '#172033', marginBottom: 4 }}>
               Guest Test Results
             </h2>
 
@@ -1095,20 +1102,20 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {/* Score Pill */}
             <div
               style={{
-                backgroundColor: isDark ? '#0f172a' : '#f0f6ff',
-                borderRadius: 16,
+                backgroundColor: isDark ? '#172033' : '#f0f6ff',
+                borderRadius: 0,
                 padding: '18px',
                 marginBottom: 20,
-                border: '1px solid rgba(37, 99, 235, 0.15)',
+                border: '1px solid rgba(227, 27, 35, 0.15)',
               }}
             >
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Your Estimated Score
               </div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#1e293b', margin: '4px 0' }}>
+              <div style={{ fontSize: 36, fontWeight: 900, color: isDark ? '#ffffff' : '#172033', margin: '4px 0' }}>
                 {guestScoreData.score} <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>/ {guestScoreData.totalScore}</span>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#3A8B53' }}>
                 Accuracy: {guestScoreData.accuracy}%
               </div>
             </div>
@@ -1122,15 +1129,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 marginBottom: 20,
               }}
             >
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>CORRECT</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981' }}>{guestScoreData.correctCount}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#3A8B53' }}>{guestScoreData.correctCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>WRONG</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{guestScoreData.wrongCount}</div>
               </div>
-              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: 10, borderRadius: 12, border: '1px solid var(--border-default)' }}>
+              <div style={{ backgroundColor: isDark ? '#172033' : '#f8fafc', padding: 10, borderRadius: 0, border: '1px solid var(--border-default)' }}>
                 <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>UNATTEMPTED</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#64748b' }}>{guestScoreData.unattemptedCount}</div>
               </div>
@@ -1139,15 +1146,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             {/* CTA Box */}
             <div
               style={{
-                background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
-                borderRadius: 16,
+                background: 'linear-gradient(135deg, rgba(227, 27, 35,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                borderRadius: 0,
                 padding: 16,
                 marginBottom: 20,
-                border: '1px solid rgba(37,99,235,0.2)',
+                border: '1px solid rgba(227, 27, 35,0.2)',
                 textAlign: 'left',
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#E31B23', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Sparkles size={15} /> Unlock Full 12-Matrix Psychometric Analysis
               </div>
               <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
@@ -1167,9 +1174,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   style={{
                     flex: 1,
                     padding: '12px 16px',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     border: 'none',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#E31B23',
                     color: '#ffffff',
                     fontSize: 14,
                     fontWeight: 800,
@@ -1187,7 +1194,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   onClick={() => navigate('/')}
                   style={{
                     padding: '12px 14px',
-                    borderRadius: 12,
+                    borderRadius: 0,
                     border: '1px solid var(--border-default)',
                     backgroundColor: 'transparent',
                     color: isDark ? '#cbd5e1' : '#475569',
@@ -1211,7 +1218,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#2563eb',
+                    color: '#E31B23',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -1251,7 +1258,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             gap: 16,
           }}
         >
-          <Loader2 size={44} className="animate-spin" color="#3b82f6" />
+          <Loader2 size={44} className="animate-spin" color="#E31B23" />
           <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-display, sans-serif)' }}>
             Submitting & Evaluating Test...
           </div>

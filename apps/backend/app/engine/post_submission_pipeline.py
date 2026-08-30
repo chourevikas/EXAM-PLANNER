@@ -1,6 +1,4 @@
 import asyncio
-import json
-import uuid
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from sqlmodel import select, col
@@ -78,9 +76,10 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
     """
     Robust multi-tier solution resolver with 20-minute sliding memory cache:
     Tier 0: Active sliding memory cache (instant < 1ms lookup).
-    Tier 1: Master S3 JSON file (exam.solutions_json_path or exams/{code}/exam_solutions.json) for instant full-exam loading.
-    Tier 2: S3 Solutions Folder (individual Q001.json, Q002.json... in artifacts/{code}/{set}/json/solutions or exams/{code}/solutions) for practice / guest tests.
-    Tier 3: Dynamic Database fallback via ExamJsonBuilder or DB models.
+    Tier 1: Master S3 JSON file (exam.solutions_json_path) — single-file download, fastest path.
+    Tier 2: S3 Solutions Folder — concurrent individual file fetches (asyncio.gather).
+    Tier 3: Dynamic Database fallback via ExamJsonBuilder.
+    Note: uses try/except on download directly (no exists() pre-check = 1 round trip instead of 2).
     """
     cached = get_cached_solutions_data(exam.code)
     if cached and cached.get("questions"):
@@ -94,18 +93,17 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
     q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
     alt_q_folder = f"exams/{exam.code}/questions"
 
-    # Tier 1: Try Master S3 Solutions JSON (Fastest for full exams, < 15ms)
+    # Tier 1: Try Master S3 Solutions JSON — direct download, no exists() pre-check
     try:
-        if await storage.exists(s_rel_path):
-            solutions_data = await storage.download_json(s_rel_path)
-            if solutions_data and solutions_data.get("questions"):
-                logger.info(f"Loaded solutions from master JSON '{s_rel_path}' ({len(solutions_data['questions'])} questions).")
-                set_cached_solutions_data(exam.code, solutions_data)
-                return solutions_data
+        solutions_data = await storage.download_json(s_rel_path)
+        if solutions_data and solutions_data.get("questions"):
+            logger.info(f"Loaded solutions from master JSON '{s_rel_path}' ({len(solutions_data['questions'])} questions).")
+            set_cached_solutions_data(exam.code, solutions_data)
+            return solutions_data
     except Exception as err:
-        logger.warning(f"Tier 1 master solutions JSON '{s_rel_path}' lookup failed: {err}")
+        logger.debug(f"Tier 1 master solutions JSON '{s_rel_path}' not available: {err}")
 
-    # Tier 2: Try S3 Solutions & Questions Folders (Individual files for practice/guest tests)
+    # Tier 2: Try S3 Solutions & Questions Folders — fully concurrent asyncio.gather
     try:
         questions_count = exam.total_questions or exam.extracted_questions_count or 100
 
@@ -113,12 +111,10 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
             sol_data = None
             for s_prefix in [s_folder, alt_folder]:
                 for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"]:
-                    q_file = f"{s_prefix.rstrip('/')}/{pattern}"
                     try:
-                        if await storage.exists(q_file):
-                            sol_data = await storage.download_json(q_file)
-                            if sol_data:
-                                break
+                        sol_data = await storage.download_json(f"{s_prefix.rstrip('/')}/{pattern}")
+                        if sol_data:
+                            break
                     except Exception:
                         pass
                 if sol_data:
@@ -127,12 +123,10 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
             q_data = None
             for q_prefix in [q_folder, alt_q_folder]:
                 for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
-                    q_file = f"{q_prefix.rstrip('/')}/{pattern}"
                     try:
-                        if await storage.exists(q_file):
-                            q_data = await storage.download_json(q_file)
-                            if q_data:
-                                break
+                        q_data = await storage.download_json(f"{q_prefix.rstrip('/')}/{pattern}")
+                        if q_data:
+                            break
                     except Exception:
                         pass
                 if q_data:
@@ -146,8 +140,6 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
                 merged.update(q_data)
             if sol_data and isinstance(sol_data, dict):
                 merged.update(sol_data)
-
-            # Ensure canonical keys
             if q_data and isinstance(q_data, dict):
                 merged["question_text"] = q_data.get("text") or q_data.get("question_text") or merged.get("question_text")
                 merged["options"] = q_data.get("options") or merged.get("options")
@@ -159,49 +151,51 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
         sol_list = [r for r in sol_results if isinstance(r, dict) and r]
 
         if sol_list:
-            logger.info(f"Loaded {len(sol_list)} question-solution pairs from S3 folders '{s_folder}' and '{q_folder}'.")
-            res_dict = {
-                "exam_id": str(exam.id),
-                "exam_code": exam.code,
-                "questions": sol_list,
-            }
+            logger.info(f"Loaded {len(sol_list)} Q/S pairs from S3 folders.")
+            res_dict = {"exam_id": str(exam.id), "exam_code": exam.code, "questions": sol_list}
             set_cached_solutions_data(exam.code, res_dict)
             return res_dict
     except Exception as err:
-        logger.warning(f"Tier 2 solutions folder '{s_folder}' failed: {err}")
+        logger.warning(f"Tier 2 solutions folder fetch failed: {err}")
 
     # Tier 3: Dynamic Database Fallback
     try:
         from app.services.exam_json_builder import ExamJsonBuilder
-        logger.info(f"Tier 3: Generating solutions data from database for exam '{exam.code}'...")
+        logger.info(f"Tier 3: Generating solutions from DB for exam '{exam.code}'...")
         builder = ExamJsonBuilder(session)
         res = await builder.generate_and_upload(exam.id)
-        if res.get("solutions_json_path") and await storage.exists(res["solutions_json_path"]):
-            solutions_data = await storage.download_json(res["solutions_json_path"])
-            if solutions_data and solutions_data.get("questions"):
-                set_cached_solutions_data(exam.code, solutions_data)
-                return solutions_data
+        if res.get("solutions_json_path"):
+            try:
+                solutions_data = await storage.download_json(res["solutions_json_path"])
+                if solutions_data and solutions_data.get("questions"):
+                    set_cached_solutions_data(exam.code, solutions_data)
+                    return solutions_data
+            except Exception:
+                pass
     except Exception as err:
         logger.error(f"Tier 3 DB solutions generation failed: {err}", exc_info=True)
 
-    fallback_dict = {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
-    return fallback_dict
+    return {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
 
 
 _IN_FLIGHT_PIPELINES: set = set()
 
 
-async def run_post_submission_pipeline(attempt_id: uuid.UUID, session: Optional[AsyncSession] = None) -> None:
+async def run_post_submission_pipeline(attempt_id: int | str, session: Optional[AsyncSession] = None) -> None:
     """
-    Asynchronous, non-blocking post-submission pipeline:
-    1. Executes mode-aware mathematical matrix engine via `MatrixOrchestrator` (zero LLM).
-    2. Updates DB records: `ExamAttempt`, `UserSkillProfile`, `UserTaxonomyMastery`, `UserMemoryState`.
-    3. Saves 3-part report JSON to S3 / local storage.
-    4. Executes **1 single LLM call** to generate personalized diagnostic insight & recommendations.
-    5. Updates `ExamAttempt.report_metadata_json["llm_insight"]` and sets `status = EVALUATED`.
+    Asynchronous, non-blocking post-submission pipeline.
+    Phase 1 (fast): Matrix computation + DB persistence → status = SUBMITTED with math data.
+    Phase 2 (async): LLM AI synthesis → status = EVALUATED with insights.
     """
+    # Normalize to int to prevent str/int dedup failures
+    try:
+        attempt_id = int(attempt_id)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid attempt_id '{attempt_id}' — cannot run pipeline.")
+        return
+
     if attempt_id in _IN_FLIGHT_PIPELINES:
-        logger.info(f"Pipeline for attempt '{attempt_id}' is already executing in-flight. Skipping duplicate trigger.")
+        logger.info(f"Pipeline for attempt '{attempt_id}' already in-flight. Skipping duplicate.")
         return
 
     _IN_FLIGHT_PIPELINES.add(attempt_id)
@@ -234,7 +228,7 @@ async def run_post_submission_pipeline(attempt_id: uuid.UUID, session: Optional[
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
 
 
-async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> None:
+async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     # 1. Fetch Attempt
     attempt = await session.get(ExamAttempt, attempt_id)
     if not attempt:
@@ -302,7 +296,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             logger.warning(f"No questions found to seed for exam '{exam.name}'.")
             return
 
-    # Load User Memories & User Profile
+    # Load User Memories & User Profile — bulk subtopic fetch (avoids N+1)
     mem_res = await session.exec(
         select(UserMemoryState).where(UserMemoryState.user_id == user.id)
     )
@@ -364,10 +358,10 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     master_sol_doc: Optional[Dict[str, Any]] = None
 
     if not is_practice_or_guest:
-        # Load master questions & solutions from S3 for full exams
+        # Load master questions & solutions — try/except directly, no exists() pre-check
         try:
             for q_path in [q_json_path, f"artifacts/{exam.code}/exam_questions.json"]:
-                if await storage.exists(q_path):
+                try:
                     q_doc = await storage.download_json(q_path)
                     if q_doc and q_doc.get("questions"):
                         for q_item in q_doc["questions"]:
@@ -377,6 +371,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                                 master_q_by_id[str(q_item["question_id"])] = q_item
                         logger.info(f"Loaded master questions JSON '{q_path}' ({len(q_doc['questions'])} questions).")
                         break
+                except Exception:
+                    pass
         except Exception as q_err:
             logger.debug(f"Master questions JSON load failed: {q_err}")
 
@@ -455,6 +451,25 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                     if isinstance(res, tuple) and len(res) == 3:
                         num, q_d, s_d = res
                         indiv_s3_map[num] = (q_d, s_d)
+
+    # For full exams: pre-batch any questions missing from master JSON to avoid serial awaits in loop
+    _full_exam_fallback_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
+    if not is_practice_or_guest:
+        _missing_nums = [
+            i for i, r in enumerate(responses_db, 1)
+            if not (master_q_by_id.get(str(r.question_id)) or master_q_by_num.get(i))
+            and not (master_sol_by_id.get(str(r.question_id)) or master_sol_by_num.get(i))
+        ]
+        if _missing_nums:
+            logger.info(f"Pre-fetching {len(_missing_nums)} missing S3 pairs in parallel for full exam fallback.")
+            _fb_results = await asyncio.gather(
+                *[_fetch_individual_s3_pair(n) for n in _missing_nums],
+                return_exceptions=True
+            )
+            for _fb_res in _fb_results:
+                if isinstance(_fb_res, tuple) and len(_fb_res) == 3:
+                    _fn, _fq, _fs = _fb_res
+                    _full_exam_fallback_map[_fn] = (_fq, _fs)
 
     # Lazy Database Fallback Cache (only populated if S3 is missing data for any question)
     db_loaded = False
@@ -549,8 +564,10 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         else:
             s3_q = master_q_by_id.get(str(r.question_id)) or master_q_by_num.get(q_num)
             s3_sol = master_sol_by_id.get(str(r.question_id)) or master_sol_by_num.get(q_num)
+            # Fallback is pre-batched in _full_exam_fallback_map (fetched before loop)
             if not s3_q and not s3_sol:
-                _, s3_q, s3_sol = await _fetch_individual_s3_pair(q_num)
+                _fb = _full_exam_fallback_map.get(q_num, (None, None))
+                s3_q, s3_sol = _fb
 
         # Trigger DB fallback only if S3 did not provide complete question/option/solution data
         if not s3_q or not s3_sol or not s3_q.get("options") or not s3_sol.get("explanation"):
@@ -1182,37 +1199,19 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     candidate_dict = {"user_id": str(user.id), "full_name": user.full_name, "email": user.email}
     exam_dict = {"attempt_id": str(attempt.id), "exam_id": str(exam.id), "exam_name": traceable_exam_name, "exam_code": exam.code, "mode": str(attempt.mode)}
 
-    mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-        candidate_info=candidate_dict,
-        exam_info=exam_dict,
-        precalculated_metrics=precalc_payload,
-    )
-
-    # Sync AI cognitive insights and study tasks into report structures
-    ai_tasks = mentorship_insight.get("study_plan_tasks", [])
-    if "part_2_exam_macro_scorecard" in report:
-        report["part_2_exam_macro_scorecard"]["ai_cognitive_insights"] = mentorship_insight
-        if ai_tasks:
-            report["part_2_exam_macro_scorecard"]["actionable_tasks"] = ai_tasks
-    if "part_3_aggregated_user_report" in report:
-        report["part_3_aggregated_user_report"]["ai_cognitive_insights"] = mentorship_insight
-        if ai_tasks:
-            report["part_3_aggregated_user_report"]["actionable_tasks"] = ai_tasks
-    report["ai_cognitive_insights"] = mentorship_insight
-
-    # 9. Bulk Persist Report 1 (Per-Question Diagnostics) in DB (Zero S3 Upload)
+    # ─── Phase 1: Flush all math results to DB immediately ───────────────────
+    # Persist per-question diagnostics BEFORE LLM call so the report is readable
+    # even if LLM is slow or fails. Frontend can show math report immediately.
     part_1_items = report.get("part_1_per_question_analysis", [])
-    
     existing_q_reps = await session.exec(select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == attempt.id))
     q_rep_map = {r.question_id: r for r in existing_q_reps.all()}
-
     for q_item in part_1_items:
-        q_uid = uuid.UUID(q_item["question_id"]) if isinstance(q_item["question_id"], str) else q_item["question_id"]
+        q_raw = q_item.get("question_id")
+        q_uid = int(q_raw) if q_raw is not None else None
         expl_dict = q_item.get("explanation")
-
         existing_q_rep = q_rep_map.get(q_uid)
         if not existing_q_rep:
-            q_rep = ExamQuestionReport(
+            session.add(ExamQuestionReport(
                 attempt_id=attempt.id,
                 question_id=q_uid,
                 question_number=q_item.get("question_number", 1),
@@ -1227,28 +1226,74 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
                 is_option_switched=bool(q_item.get("is_option_switched", False)),
                 blooms_level=q_item.get("blooms_level", "ANALYZE"),
                 explanation_json=expl_dict,
-            )
-            session.add(q_rep)
+            ))
         else:
             existing_q_rep.explanation_json = expl_dict
             existing_q_rep.is_correct = q_item.get("is_correct", False)
             existing_q_rep.final_score = float(q_item.get("marks_awarded", 0.0))
             session.add(existing_q_rep)
 
-    # 10. Persist Report 2 (Exam Macro Scorecard Report) in DB
+    # Slim metadata summary stored on attempt (NOT the full 100-question report)
+    _score_summary = part_2.get("score_summary", {})
+    attempt.report_metadata_json = {
+        "is_ready": False,
+        "phase": "MATH_COMPLETE",
+        "exam_name": traceable_exam_name,
+        "scoring": {
+            "net_score": _score_summary.get("total_score", 0.0),
+            "max_score": _score_summary.get("max_score", 200.0),
+            "accuracy_percentage": _score_summary.get("accuracy_percentage", 0.0),
+            "correct_count": _score_summary.get("correct_count", 0),
+            "incorrect_count": _score_summary.get("incorrect_count", 0),
+            "unattempted_count": _score_summary.get("unattempted_count", 0),
+        },
+        "icrs_score": icrs_obj.get("icrs_score", 65.0),
+        "irt_theta": irt_obj.get("latent_ability_theta", 0.0),
+    }
+    session.add(attempt)
+    await session.commit()
+    logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
+
+    # ─── Phase 2: AI synthesis ────────────────────────────────────────────────
+    mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+        candidate_info=candidate_dict,
+        exam_info=exam_dict,
+        precalculated_metrics=precalc_payload,
+    )
+
+    # Sync AI insights into report
+    ai_tasks = mentorship_insight.get("study_plan_tasks", [])
+    if "part_2_exam_macro_scorecard" in report:
+        report["part_2_exam_macro_scorecard"]["ai_cognitive_insights"] = mentorship_insight
+        if ai_tasks:
+            report["part_2_exam_macro_scorecard"]["actionable_tasks"] = ai_tasks
+    if "part_3_aggregated_user_report" in report:
+        report["part_3_aggregated_user_report"]["ai_cognitive_insights"] = mentorship_insight
+        if ai_tasks:
+            report["part_3_aggregated_user_report"]["actionable_tasks"] = ai_tasks
+    report["ai_cognitive_insights"] = mentorship_insight
+
+    # Update per-question reports with final explanations (Phase 2 enrichment)
+    existing_q_reps2 = await session.exec(select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == attempt.id))
+    q_rep_map2 = {r.question_id: r for r in existing_q_reps2.all()}
+    for q_item in part_1_items:
+        q_raw = q_item.get("question_id")
+        q_uid = int(q_raw) if q_raw is not None else None
+        existing_q_rep = q_rep_map2.get(q_uid)
+        if existing_q_rep:
+            existing_q_rep.explanation_json = q_item.get("explanation")
+            session.add(existing_q_rep)
+
     report["part_3_aggregated_user_report"]["llm_insight"] = mentorship_insight
     report["part_3_aggregated_user_report"]["mentorship_insight"] = mentorship_insight
     if "part_2_exam_macro_scorecard" in report:
         report["part_2_exam_macro_scorecard"]["llm_insight"] = mentorship_insight
         report["part_2_exam_macro_scorecard"]["mentorship_insight"] = mentorship_insight
 
-    from app.formatters.report_markdown_formatter import format_report_to_markdown
-    markdown_audit = format_report_to_markdown(report)
-
     attempt_rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt.id)
     existing_att_rep = (await session.exec(attempt_rep_stmt)).first()
     if not existing_att_rep:
-        att_rep = ExamAttemptReport(
+        session.add(ExamAttemptReport(
             attempt_id=attempt.id,
             user_id=user.id,
             exam_id=exam.id,
@@ -1256,20 +1301,17 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             taxonomy_breakdown_json=report["part_2_taxonomy_analysis"],
             llm_insight_json=mentorship_insight,
             full_report_json=report,
-            markdown_audit_text=markdown_audit,
             s3_report_url=None,
-        )
-        session.add(att_rep)
+        ))
     else:
         existing_att_rep.matrices_summary_json = report["part_3_aggregated_user_report"]
         existing_att_rep.taxonomy_breakdown_json = report["part_2_taxonomy_analysis"]
         existing_att_rep.llm_insight_json = mentorship_insight
         existing_att_rep.full_report_json = report
-        existing_att_rep.markdown_audit_text = markdown_audit
         existing_att_rep.s3_report_url = None
         session.add(existing_att_rep)
 
-    # 11. Persist Report 3 (User Progression Delta Report) in DB
+    # Persist User Progression Delta Report
     updated_profile_dict = {
         "cumulative_icrs": profile.cumulative_icrs,
         "cumulative_irt_theta": profile.cumulative_irt_theta,
@@ -1289,7 +1331,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
     user_prog_stmt = select(UserSkillProgressionReport).where(UserSkillProgressionReport.attempt_id == attempt.id)
     existing_user_prog = (await session.exec(user_prog_stmt)).first()
     if not existing_user_prog:
-        user_prog = UserSkillProgressionReport(
+        session.add(UserSkillProgressionReport(
             attempt_id=attempt.id,
             user_id=user.id,
             previous_metrics_json=profile_dict,
@@ -1297,8 +1339,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
             deltas_json=deltas,
             taxonomy_promotions_json=report["part_2_taxonomy_analysis"],
             spaced_repetition_schedule_json={"evaluated_at": now_t.isoformat()},
-        )
-        session.add(user_prog)
+        ))
     else:
         existing_user_prog.previous_metrics_json = profile_dict
         existing_user_prog.updated_metrics_json = updated_profile_dict
@@ -1307,26 +1348,47 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: uuid.UUID) -> No
         existing_user_prog.spaced_repetition_schedule_json = {"evaluated_at": now_t.isoformat()}
         session.add(existing_user_prog)
 
-    # 12. Update attempt report_metadata_json and status = EVALUATED
-    attempt.report_metadata_json = report
+    # Final status = EVALUATED with slim metadata (full report is in ExamAttemptReport)
+    attempt.report_metadata_json = {
+        "is_ready": True,
+        "phase": "EVALUATED",
+        "exam_name": traceable_exam_name,
+        "scoring": {
+            "net_score": _score_summary.get("total_score", 0.0),
+            "max_score": _score_summary.get("max_score", 200.0),
+            "accuracy_percentage": _score_summary.get("accuracy_percentage", 0.0),
+            "correct_count": _score_summary.get("correct_count", 0),
+            "incorrect_count": _score_summary.get("incorrect_count", 0),
+            "unattempted_count": _score_summary.get("unattempted_count", 0),
+        },
+        "icrs_score": icrs_obj.get("icrs_score", 65.0),
+        "irt_theta": irt_obj.get("latent_ability_theta", 0.0),
+        "ai_ready": True,
+    }
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)
     await session.commit()
 
     t_end = datetime.now(timezone.utc)
     total_pipeline_ms = round((t_end - t_start).total_seconds() * 1000, 1)
-    logger.info(f"✅ [PIPELINE_COMPLETE] Attempt '{attempt.id}' status set to EVALUATED. Total Pipeline Runtime: {total_pipeline_ms}ms")
+    logger.info(f"✅ [PIPELINE_COMPLETE] Attempt '{attempt.id}' EVALUATED. Total Runtime: {total_pipeline_ms}ms")
 
-    # 14. Trigger instant recomputation of multi-exam cumulative aggregate profile
-    try:
-        from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
-        await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
-            session=session,
-            user_id=user.id,
-            force_recompute=True,
-        )
-    except Exception as cum_err:
-        logger.warning(f"Cumulative profile auto-update warning: {cum_err}")
+    # Fire cumulative profile recomputation non-blocking (new session so it doesn't
+    # share the committed state of the current session)
+    async def _run_cumulative_update():
+        try:
+            from app.engine.cumulative_analytics_aggregator import CumulativeAnalyticsAggregator
+            async with managed_async_session() as cum_sess:
+                await CumulativeAnalyticsAggregator.compute_user_cumulative_report(
+                    session=cum_sess,
+                    user_id=user.id,
+                    force_recompute=True,
+                )
+        except Exception as cum_err:
+            logger.warning(f"Cumulative profile update warning: {cum_err}")
+
+    asyncio.create_task(_run_cumulative_update())
+    logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All sections persisted. Status = EVALUATED.")
 
     logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All 4 sections persisted. Status set to EVALUATED.")
 

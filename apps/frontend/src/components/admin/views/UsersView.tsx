@@ -42,12 +42,12 @@ export function UsersView() {
   const ITEMS_PER_PAGE = 5;
 
   // Popover State for Access Info ("i") button
-  const [activePopoverUserId, setActivePopoverUserId] = useState<string | null>(null);
+  const [activePopoverUserId, setActivePopoverUserId] = useState<number | string | null>(null);
 
   // Candidate Detail Drawer / Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(null);
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<number | string | null>(null);
 
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -99,7 +99,7 @@ export function UsersView() {
     }
   };
 
-  const handleUpdateAccess = async (userId: string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
+  const handleUpdateAccess = async (userId: number | string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
     setActionLoadingUserId(userId);
     setErrorMsg('');
     setSuccessMsg('');
@@ -153,11 +153,11 @@ export function UsersView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 0, background: 'linear-gradient(135deg, #E31B23, #C1121F)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(227, 27, 35,0.25)' }}>
               <Users size={22} />
             </div>
             <div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
                 Candidate Directory & Access Control
               </h2>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
@@ -170,14 +170,14 @@ export function UsersView() {
 
       {/* Alert Notifications */}
       {errorMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 16px', borderRadius: 0, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
           <ShieldAlert size={16} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 16px', borderRadius: 0, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#3A8B53', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CheckCircle size={16} />
           <span>{successMsg}</span>
         </div>
@@ -185,28 +185,28 @@ export function UsersView() {
 
       {/* Analytics Metric Cards (White Theme) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#F8FAFC', color: '#E31B23', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Users size={20} />
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Total Candidates</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)' }}>{totalCount}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#172033', fontFamily: 'var(--font-display)' }}>{totalCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#ecfdf5', color: '#3A8B53', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <UserCheck size={20} />
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Access Allowed</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#059669', fontFamily: 'var(--font-display)' }}>{activeCount}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#3A8B53', fontFamily: 'var(--font-display)' }}>{activeCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <UserX size={20} />
           </div>
           <div>
@@ -215,8 +215,8 @@ export function UsersView() {
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Crown size={20} />
           </div>
           <div>
@@ -227,13 +227,13 @@ export function UsersView() {
       </div>
 
       {/* Main Table Container (White Theme) */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
 
         {/* Controls Toolbar: Search & Filters */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', gap: 16, flexWrap: 'wrap' }}>
 
           {/* Search Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 10, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 0, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
             <Search size={16} color="#94a3b8" />
             <input
               type="text"
@@ -245,7 +245,7 @@ export function UsersView() {
                 background: 'transparent',
                 outline: 'none',
                 fontSize: 13,
-                color: '#0f172a',
+                color: '#172033',
                 width: '100%'
               }}
             />
@@ -270,8 +270,8 @@ export function UsersView() {
               style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #cbd5e1',
-                borderRadius: 8,
-                color: '#0f172a',
+                borderRadius: 0,
+                color: '#172033',
                 padding: '7px 12px',
                 fontSize: 12,
                 outline: 'none',
@@ -289,7 +289,7 @@ export function UsersView() {
 
         {/* Directory Table */}
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10, color: '#2563eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10, color: '#E31B23' }}>
             <Loader2 className="animate-spin" size={24} />
             <span style={{ fontSize: 14, fontWeight: 600 }}>Loading live candidate directory...</span>
           </div>
@@ -350,15 +350,15 @@ export function UsersView() {
                             <div style={{
                               width: 40,
                               height: 40,
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                              borderRadius: 0,
+                              background: 'linear-gradient(135deg, #E31B23, #C1121F)',
                               color: '#ffffff',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: 14,
                               fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(37,99,235,0.2)',
+                              boxShadow: '0 2px 8px rgba(227, 27, 35,0.2)',
                               border: '2px solid #ffffff',
                               flexShrink: 0
                             }}>
@@ -366,11 +366,11 @@ export function UsersView() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: '#172033', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                                   {u.full_name}
                                 </span>
                                 {u.is_verified && (
-                                  <CheckCircle size={14} color="#059669" title="Verified Candidate" />
+                                  <CheckCircle size={14} color="#3A8B53" title="Verified Candidate" />
                                 )}
                               </div>
                               <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
@@ -385,11 +385,11 @@ export function UsersView() {
                           <span style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? '#2563eb' : '#059669',
+                            background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(227, 27, 35, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? '#E31B23' : '#3A8B53',
                             padding: '5px 12px',
-                            borderRadius: 20,
-                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
+                            borderRadius: 0,
+                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(227, 27, 35, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
                           }}>
                             {u.role}
                           </span>
@@ -406,7 +406,7 @@ export function UsersView() {
                             background: isPremium ? '#fffbe8' : '#f8fafc',
                             color: isPremium ? '#b45309' : '#64748b',
                             padding: '5px 12px',
-                            borderRadius: 10,
+                            borderRadius: 0,
                             border: `1px solid ${isPremium ? '#fde68a' : '#e2e8f0'}`
                           }}>
                             {isPremium && <Crown size={13} color="#d97706" />}
@@ -422,13 +422,13 @@ export function UsersView() {
                             color: isAccessAllowed ? '#047857' : '#b91c1c',
                             backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2',
                             padding: '4px 10px',
-                            borderRadius: 12,
+                            borderRadius: 0,
                             border: `1px solid ${isAccessAllowed ? '#a7f3d0' : '#fecaca'}`,
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 6
                           }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isAccessAllowed ? '#10b981' : '#ef4444' }} />
+                            <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: isAccessAllowed ? '#3A8B53' : '#ef4444' }} />
                             {isAccessAllowed ? 'Active' : 'Suspended'}
                           </span>
                         </td>
@@ -446,7 +446,7 @@ export function UsersView() {
                               style={{
                                 width: 34,
                                 height: 34,
-                                borderRadius: '50%',
+                                borderRadius: 0,
                                 border: '1px solid #bae6fd',
                                 backgroundColor: activePopoverUserId === u.id ? '#0284c7' : '#f0f9ff',
                                 color: activePopoverUserId === u.id ? '#ffffff' : '#0284c7',
@@ -473,7 +473,7 @@ export function UsersView() {
                                   left: 0,
                                   width: 250,
                                   backgroundColor: '#ffffff',
-                                  borderRadius: 16,
+                                  borderRadius: 0,
                                   border: '1px solid #cbd5e1',
                                   boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
                                   padding: 16,
@@ -484,8 +484,8 @@ export function UsersView() {
                                 }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>Access Control</span>
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 12, backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2', color: isAccessAllowed ? '#059669' : '#dc2626' }}>
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: '#172033' }}>Access Control</span>
+                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2', color: isAccessAllowed ? '#3A8B53' : '#dc2626' }}>
                                     {isAccessAllowed ? 'Granted' : 'Revoked'}
                                   </span>
                                 </div>
@@ -505,9 +505,9 @@ export function UsersView() {
                                       justifyContent: 'center',
                                       gap: 6,
                                       padding: '9px 12px',
-                                      borderRadius: 10,
-                                      border: '1px solid #10b981',
-                                      backgroundColor: isAccessAllowed ? '#f0fdf4' : '#10b981',
+                                      borderRadius: 0,
+                                      border: '1px solid #3A8B53',
+                                      backgroundColor: isAccessAllowed ? '#f0fdf4' : '#3A8B53',
                                       color: isAccessAllowed ? '#a7f3d0' : '#ffffff',
                                       fontSize: 12,
                                       fontWeight: 700,
@@ -535,7 +535,7 @@ export function UsersView() {
                                       justifyContent: 'center',
                                       gap: 6,
                                       padding: '9px 12px',
-                                      borderRadius: 10,
+                                      borderRadius: 0,
                                       border: '1px solid #ef4444',
                                       backgroundColor: !isAccessAllowed ? '#fef2f2' : '#ef4444',
                                       color: !isAccessAllowed ? '#fca5a5' : '#ffffff',
@@ -570,10 +570,10 @@ export function UsersView() {
                               alignItems: 'center',
                               gap: 6,
                               padding: '7px 14px',
-                              borderRadius: 10,
+                              borderRadius: 0,
                               border: '1px solid #cbd5e1',
                               backgroundColor: '#ffffff',
-                              color: '#0f172a',
+                              color: '#172033',
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -581,14 +581,14 @@ export function UsersView() {
                               boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#eff6ff';
+                              e.currentTarget.style.backgroundColor = '#F8FAFC';
                               e.currentTarget.style.borderColor = '#93c5fd';
-                              e.currentTarget.style.color = '#2563eb';
+                              e.currentTarget.style.color = '#E31B23';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = '#ffffff';
                               e.currentTarget.style.borderColor = '#cbd5e1';
-                              e.currentTarget.style.color = '#0f172a';
+                              e.currentTarget.style.color = '#172033';
                             }}
                           >
                             <span>View Profile</span>
@@ -619,10 +619,10 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: '1px solid #cbd5e1',
                     backgroundColor: currentPage === 1 ? '#f1f5f9' : '#ffffff',
-                    color: currentPage === 1 ? '#94a3b8' : '#0f172a',
+                    color: currentPage === 1 ? '#94a3b8' : '#172033',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
@@ -633,7 +633,7 @@ export function UsersView() {
                   <span>Previous</span>
                 </button>
 
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', padding: '0 8px', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#172033', padding: '0 8px', fontFamily: 'var(--font-mono)' }}>
                   Page {currentPage} of {totalPages}
                 </span>
 
@@ -645,10 +645,10 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: '1px solid #cbd5e1',
                     backgroundColor: currentPage >= totalPages ? '#f1f5f9' : '#ffffff',
-                    color: currentPage >= totalPages ? '#94a3b8' : '#0f172a',
+                    color: currentPage >= totalPages ? '#94a3b8' : '#172033',
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
@@ -686,12 +686,12 @@ export function UsersView() {
             {/* Minimal Top Close Bar (Without redundant Candidate Profile title header) */}
             <div style={{ padding: '14px 18px 6px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
+                <span style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#3A8B53', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Live Candidate Details
                 </span>
                 {isDetailLoading && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#2563eb', backgroundColor: '#eff6ff', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#E31B23', backgroundColor: '#F8FAFC', padding: '1px 6px', borderRadius: 0, fontWeight: 600 }}>
                     <Loader2 size={10} className="animate-spin" /> Syncing
                   </span>
                 )}
@@ -705,7 +705,7 @@ export function UsersView() {
                   color: '#64748b',
                   cursor: 'pointer',
                   padding: 6,
-                  borderRadius: 8,
+                  borderRadius: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -714,8 +714,8 @@ export function UsersView() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#0f172a';
-                  e.currentTarget.style.boxShadow = '0 0 10px rgba(37, 99, 235, 0.2)';
+                  e.currentTarget.style.color = '#172033';
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(227, 27, 35, 0.2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#f8fafc';
@@ -733,21 +733,21 @@ export function UsersView() {
               {/* Colorful Glow Hero Profile Card */}
               <div style={{
                 padding: 18,
-                borderRadius: 16,
+                borderRadius: 0,
                 background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                 border: '1px solid #e2e8f0',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 14,
-                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.06)'
+                boxShadow: '0 4px 20px rgba(227, 27, 35, 0.06)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   {/* Avatar with Vibrant Gradient & Soft Glow */}
                   <div style={{
                     width: 52,
                     height: 52,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #7c3aed 100%)',
+                    borderRadius: 0,
+                    background: 'linear-gradient(135deg, #E31B23 0%, #4f46e5 50%, #7c3aed 100%)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
@@ -763,16 +763,16 @@ export function UsersView() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', letterSpacing: '-0.01em' }}>
+                      <span style={{ fontSize: 17, fontWeight: 800, color: '#172033', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', letterSpacing: '-0.01em' }}>
                         {selectedCandidate.full_name}
                       </span>
                       {selectedCandidate.is_verified && (
-                        <CheckCircle size={16} color="#059669" title="Verified Candidate" />
+                        <CheckCircle size={16} color="#3A8B53" title="Verified Candidate" />
                       )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-                      <Mail size={12} color="#3b82f6" />
+                      <Mail size={12} color="#E31B23" />
                       <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.email}</span>
                     </div>
 
@@ -782,11 +782,11 @@ export function UsersView() {
                         fontSize: 10,
                         fontWeight: 700,
                         padding: '2px 8px',
-                        borderRadius: 12,
-                        backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#eff6ff' : '#ecfdf5',
-                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? '#2563eb' : '#059669',
+                        borderRadius: 0,
+                        backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#F8FAFC' : '#ecfdf5',
+                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? '#E31B23' : '#3A8B53',
                         border: `1px solid ${selectedCandidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : selectedCandidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
-                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(37, 99, 235, 0.12)'
+                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(227, 27, 35, 0.12)'
                       }}>
                         {selectedCandidate.role}
                       </span>
@@ -795,11 +795,11 @@ export function UsersView() {
                         fontSize: 10,
                         fontWeight: 700,
                         padding: '2px 8px',
-                        borderRadius: 12,
+                        borderRadius: 0,
                         backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
-                        color: selectedCandidate.status === 'ACTIVE' ? '#059669' : '#dc2626',
+                        color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#dc2626',
                         border: `1px solid ${selectedCandidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
-                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(239, 68, 68, 0.15)'
+                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(227, 27, 35, 0.15)'
                       }}>
                         {selectedCandidate.status === 'ACTIVE' ? 'Active' : 'Suspended'}
                       </span>
@@ -816,15 +816,15 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 20,
-                      backgroundColor: '#eff6ff',
-                      color: '#2563eb',
+                      borderRadius: 0,
+                      backgroundColor: '#F8FAFC',
+                      color: '#E31B23',
                       border: '1px solid #bfdbfe',
                       fontSize: 11,
                       fontWeight: 600,
                       textDecoration: 'none',
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)'
+                      boxShadow: '0 2px 6px rgba(227, 27, 35, 0.08)'
                     }}
                   >
                     <Mail size={12} />
@@ -833,7 +833,7 @@ export function UsersView() {
 
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(selectedCandidate.id);
+                      navigator.clipboard.writeText(String(selectedCandidate.id));
                       setCopiedId(true);
                       setTimeout(() => setCopiedId(false), 2000);
                     }}
@@ -842,9 +842,9 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 20,
+                      borderRadius: 0,
                       backgroundColor: copiedId ? '#ecfdf5' : '#f8fafc',
-                      color: copiedId ? '#059669' : '#475569',
+                      color: copiedId ? '#3A8B53' : '#475569',
                       border: `1px solid ${copiedId ? '#a7f3d0' : '#cbd5e1'}`,
                       fontSize: 11,
                       fontWeight: 600,
@@ -863,9 +863,9 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 20,
+                      borderRadius: 0,
                       backgroundColor: selectedCandidate.is_verified ? '#ecfdf5' : '#fffbe8',
-                      color: selectedCandidate.is_verified ? '#059669' : '#b45309',
+                      color: selectedCandidate.is_verified ? '#3A8B53' : '#b45309',
                       border: `1px solid ${selectedCandidate.is_verified ? '#a7f3d0' : '#fde68a'}`,
                       fontSize: 11,
                       fontWeight: 600,
@@ -888,31 +888,31 @@ export function UsersView() {
                   {/* Streak Card with Blue Glow */}
                   <div style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: 0,
                     backgroundColor: '#ffffff',
-                    border: '1px solid #dbeafe',
+                    border: '1px solid #E2E8F0',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.06)'
+                    boxShadow: '0 4px 12px rgba(227, 27, 35, 0.06)'
                   }}>
                     <div style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
-                      background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                      color: '#2563eb',
+                      borderRadius: 0,
+                      background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
+                      color: '#E31B23',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(37, 99, 235, 0.2)',
+                      boxShadow: '0 0 10px rgba(227, 27, 35, 0.2)',
                       flexShrink: 0
                     }}>
                       <Zap size={18} />
                     </div>
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Streak</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#2563eb' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#E31B23' }}>
                         {selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days
                       </div>
                     </div>
@@ -921,7 +921,7 @@ export function UsersView() {
                   {/* Questions Solved Card with Emerald Glow */}
                   <div style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: 0,
                     backgroundColor: '#ffffff',
                     border: '1px solid #a7f3d0',
                     display: 'flex',
@@ -932,9 +932,9 @@ export function UsersView() {
                     <div style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-                      color: '#059669',
+                      color: '#3A8B53',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -945,7 +945,7 @@ export function UsersView() {
                     </div>
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Questions</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#059669' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#3A8B53' }}>
                         {selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0} Solved
                       </div>
                     </div>
@@ -954,7 +954,7 @@ export function UsersView() {
                   {/* Rank Level Card with Amber Glow */}
                   <div style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: 0,
                     backgroundColor: '#ffffff',
                     border: '1px solid #fde68a',
                     display: 'flex',
@@ -965,7 +965,7 @@ export function UsersView() {
                     <div style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       background: 'linear-gradient(135deg, #fffbe8 0%, #fef3c7 100%)',
                       color: '#d97706',
                       display: 'flex',
@@ -987,7 +987,7 @@ export function UsersView() {
                   {/* Total XP Card with Purple Glow */}
                   <div style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: 0,
                     backgroundColor: '#ffffff',
                     border: '1px solid #ddd6fe',
                     display: 'flex',
@@ -998,7 +998,7 @@ export function UsersView() {
                     <div style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
                       color: '#7c3aed',
                       display: 'flex',
@@ -1027,7 +1027,7 @@ export function UsersView() {
 
                 <div style={{
                   padding: 14,
-                  borderRadius: 12,
+                  borderRadius: 0,
                   backgroundColor: '#ffffff',
                   border: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '1px solid #fde68a' : '1px solid #e2e8f0',
                   display: 'flex',
@@ -1039,7 +1039,7 @@ export function UsersView() {
                     <div style={{
                       width: 36,
                       height: 36,
-                      borderRadius: 10,
+                      borderRadius: 0,
                       backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#f8fafc',
                       color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#d97706' : '#64748b',
                       border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#cbd5e1'}`,
@@ -1052,7 +1052,7 @@ export function UsersView() {
                       <Crown size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
                         {(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
                       </div>
                       <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
@@ -1065,9 +1065,9 @@ export function UsersView() {
                     fontSize: 10,
                     fontWeight: 700,
                     padding: '3px 10px',
-                    borderRadius: 12,
-                    backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#eff6ff',
-                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : '#2563eb',
+                    borderRadius: 0,
+                    backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#F8FAFC',
+                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : '#E31B23',
                     border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#bfdbfe'}`
                   }}>
                     Active Tier
@@ -1082,30 +1082,30 @@ export function UsersView() {
                 </span>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Timezone</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.timezone || 'Asia/Kolkata'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Registration Date</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.created_at ? new Date(selectedCandidate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Last Profile Sync</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.updated_at ? new Date(selectedCandidate.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 10, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Verification</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: selectedCandidate.is_verified ? '#059669' : '#dc2626' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: selectedCandidate.is_verified ? '#3A8B53' : '#dc2626' }}>
                       {selectedCandidate.is_verified ? 'Verified ✅' : 'Unverified ❌'}
                     </div>
                   </div>
@@ -1125,10 +1125,10 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 5,
                     padding: '7px 14px',
-                    borderRadius: 8,
-                    border: '1px solid #10b981',
-                    backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#10b981',
-                    color: selectedCandidate.status === 'ACTIVE' ? '#059669' : '#ffffff',
+                    borderRadius: 0,
+                    border: '1px solid #3A8B53',
+                    backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#3A8B53',
+                    color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#ffffff',
                     fontSize: 11,
                     fontWeight: 700,
                     cursor: selectedCandidate.status === 'ACTIVE' ? 'not-allowed' : 'pointer',
@@ -1154,7 +1154,7 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 5,
                     padding: '7px 14px',
-                    borderRadius: 8,
+                    borderRadius: 0,
                     border: '1px solid #ef4444',
                     backgroundColor: selectedCandidate.status === 'SUSPENDED' ? '#fef2f2' : '#ef4444',
                     color: selectedCandidate.status === 'SUSPENDED' ? '#dc2626' : '#ffffff',
@@ -1162,7 +1162,7 @@ export function UsersView() {
                     fontWeight: 700,
                     cursor: selectedCandidate.status === 'SUSPENDED' ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
-                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(239, 68, 68, 0.3)'
+                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(227, 27, 35, 0.3)'
                   }}
                 >
                   {actionLoadingUserId === selectedCandidate.id ? (
@@ -1180,7 +1180,7 @@ export function UsersView() {
                 onClick={() => setSelectedCandidate(null)}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: 8,
+                  borderRadius: 0,
                   backgroundColor: '#ffffff',
                   color: '#475569',
                   fontSize: 12,
@@ -1191,7 +1191,7 @@ export function UsersView() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#0f172a';
+                  e.currentTarget.style.color = '#172033';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#ffffff';

@@ -57,6 +57,9 @@ const PricingPage = lazy(() =>
 const VerifyEmailPage = lazy(() =>
   import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage }))
 );
+const BookmarksPage = lazy(() =>
+  import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage }))
+);
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 
@@ -174,6 +177,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookmarks"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                <BookmarksPage />
               </ProtectedRoute>
             }
           />

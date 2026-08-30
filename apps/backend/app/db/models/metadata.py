@@ -1,4 +1,3 @@
-import uuid
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
 from app.db.models.enums import BloomsLevel
@@ -14,8 +13,8 @@ class QuestionMetadata(SQLModel, table=True):
         Index("ix_q_meta_concept", "primary_concept_tag"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    question_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", unique=True, index=True
     )
     blooms_level: BloomsLevel = Field(default=BloomsLevel.ANALYZE, index=True)

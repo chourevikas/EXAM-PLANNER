@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
@@ -17,11 +16,11 @@ class Passage(SQLModel, table=True):
         Index("ix_passages_subtopic", "subtopic_id"),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    subtopic_id: Optional[uuid.UUID] = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
-    exam_id: Optional[uuid.UUID] = Field(
+    exam_id: Optional[int] = Field(
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
     )
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
@@ -35,7 +34,7 @@ class Passage(SQLModel, table=True):
     question_ids_json: Optional[list] = Field(
         default=[],
         sa_column=Column(PortableJSON),
-        description="JSON array of linked question UUID strings",
+        description="JSON array of linked question ID numbers",
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -56,8 +55,8 @@ class PassageTranslation(SQLModel, table=True):
         Index("ix_passage_trans_unique", "passage_id", "language", unique=True),
     )
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    passage_id: uuid.UUID = Field(
+    id: Optional[int] = Field(default=None, primary_key=True)
+    passage_id: int = Field(
         foreign_key="passages.id", ondelete="CASCADE", index=True
     )
     language: LanguageCode = Field(index=True)

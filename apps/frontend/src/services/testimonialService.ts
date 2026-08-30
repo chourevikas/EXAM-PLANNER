@@ -1,5 +1,5 @@
 export interface TestimonialItem {
-  id: string;
+  id: number | string;
   user_name: string;
   user_exam: string;
   user_photo?: string | null;
@@ -66,7 +66,7 @@ export async function fetchAllTestimonialsForAdmin(): Promise<TestimonialItem[]>
   return await res.json();
 }
 
-export async function approveTestimonial(id: string): Promise<TestimonialItem> {
+export async function approveTestimonial(id: number | string): Promise<TestimonialItem> {
   const res = await fetch(`${API_BASE}/admin/${id}/approve`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -80,7 +80,7 @@ export async function approveTestimonial(id: string): Promise<TestimonialItem> {
   return await res.json();
 }
 
-export async function rejectTestimonial(id: string, reason?: string): Promise<TestimonialItem> {
+export async function rejectTestimonial(id: number | string, reason?: string): Promise<TestimonialItem> {
   const res = await fetch(`${API_BASE}/admin/${id}/reject`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -95,7 +95,7 @@ export async function rejectTestimonial(id: string, reason?: string): Promise<Te
   return await res.json();
 }
 
-export async function deleteTestimonial(id: string): Promise<{ message: string }> {
+export async function deleteTestimonial(id: number | string): Promise<{ message: string }> {
   const res = await fetch(`${API_BASE}/admin/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),

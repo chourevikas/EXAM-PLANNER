@@ -8,20 +8,20 @@ import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 
 interface DisplayExam {
-  id: string;
+  id: number | string;
   code: string;
   year: number | string;
   title: string;
   totalQuestions: number;
   duration: string;
   status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
-  completedAttemptId?: string;
-  inProgressAttemptId?: string;
+  completedAttemptId?: number | string;
+  inProgressAttemptId?: number | string;
   scoreText?: string;
 }
 
 export function PYQSelectionPage() {
-  const [hoveredExam, setHoveredExam] = useState<string | null>(null);
+  const [hoveredExam, setHoveredExam] = useState<number | string | null>(null);
   const [examsList, setExamsList] = useState<DisplayExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
@@ -101,12 +101,12 @@ export function PYQSelectionPage() {
     <StudentLayout pageTitle="Previous Year Questions">
       {/* Header Banner */}
       <section style={{ 
-        marginBottom: 32, padding: 32, borderRadius: 24,
+        marginBottom: 32, padding: 32, borderRadius: 0,
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
         backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(245,158,11,0.06) 100%)'
       }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 20, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 10, border: '1px solid var(--accent-border)' }}>
           <Ico.Book size={14} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>Authentic UPSC Archive</span>
         </div>
@@ -121,7 +121,7 @@ export function PYQSelectionPage() {
           Fetching real-time exam archive and attempt status...
         </div>
       ) : examsList.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border-default)' }}>
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
           <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
             <Ico.Book size={40} />
           </div>
@@ -143,8 +143,8 @@ export function PYQSelectionPage() {
                 onMouseLeave={() => setHoveredExam(null)}
                 style={{
                   backgroundColor: '#FFFFFF',
-                  borderRadius: 14,
-                  border: `1px solid ${hoveredExam === exam.id ? '#2563EB' : hasCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  borderRadius: 0,
+                  border: `1px solid ${hoveredExam === exam.id ? '#E31B23' : hasCompleted ? '#A7F3D0' : '#E2E8F0'}`,
                   position: 'relative',
                   overflow: 'hidden',
                   padding: '22px 24px',
@@ -168,7 +168,7 @@ export function PYQSelectionPage() {
                     left: 0,
                     right: 0,
                     height: 3,
-                    backgroundColor: '#2563EB',
+                    backgroundColor: '#E31B23',
                     transform: hoveredExam === exam.id ? 'scaleX(1)' : 'scaleX(0)',
                     transformOrigin: 'left center',
                     transition: 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
@@ -178,9 +178,9 @@ export function PYQSelectionPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{
                       backgroundColor: hasInProgress ? 'rgba(245,158,11,0.12)' : hasCompleted ? 'rgba(16,185,129,0.12)' : 'var(--accent-bg)',
-                      color: hasInProgress ? '#f59e0b' : hasCompleted ? '#10b981' : 'var(--accent-primary)',
+                      color: hasInProgress ? '#F2B623' : hasCompleted ? '#3A8B53' : 'var(--accent-primary)',
                       padding: '6px 12px',
-                      borderRadius: 20,
+                      borderRadius: 0,
                       fontSize: 12,
                       fontWeight: 800,
                       display: 'flex',
@@ -211,7 +211,7 @@ export function PYQSelectionPage() {
                   </div>
 
                   {hasCompleted && exam.scoreText && (
-                    <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 12, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#10b981', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 0, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', fontSize: 13, color: '#3A8B53', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                       <span>Report Ready</span>
                       <span>Score: {exam.scoreText}</span>
                     </div>
@@ -227,8 +227,8 @@ export function PYQSelectionPage() {
                         style={{
                           flex: 1,
                           padding: '10px 14px',
-                          borderRadius: 12,
-                          backgroundColor: '#f59e0b',
+                          borderRadius: 0,
+                          backgroundColor: '#F2B623',
                           color: '#ffffff',
                           fontWeight: 700,
                           fontSize: 13,
@@ -248,8 +248,8 @@ export function PYQSelectionPage() {
                           to={`/analytics?attemptId=${exam.completedAttemptId}`}
                           style={{
                             padding: '10px 12px',
-                            borderRadius: 12,
-                            backgroundColor: '#2563eb',
+                            borderRadius: 0,
+                            backgroundColor: '#E31B23',
                             color: '#ffffff',
                             fontWeight: 700,
                             fontSize: 13,
@@ -268,7 +268,7 @@ export function PYQSelectionPage() {
                         to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 12px',
-                          borderRadius: 12,
+                          borderRadius: 0,
                           backgroundColor: 'var(--bg-subtle)',
                           color: 'var(--text-primary)',
                           fontWeight: 600,
@@ -291,8 +291,8 @@ export function PYQSelectionPage() {
                         style={{
                           flex: 1,
                           padding: '10px 14px',
-                          borderRadius: 12,
-                          backgroundColor: '#2563eb',
+                          borderRadius: 0,
+                          backgroundColor: '#E31B23',
                           color: '#ffffff',
                           fontWeight: 700,
                           fontSize: 13,
@@ -311,7 +311,7 @@ export function PYQSelectionPage() {
                         to={`/exam/${exam.id}?forceNew=true&type=PYQ`}
                         style={{
                           padding: '10px 14px',
-                          borderRadius: 12,
+                          borderRadius: 0,
                           backgroundColor: 'var(--bg-subtle)',
                           color: 'var(--text-primary)',
                           fontWeight: 600,
@@ -333,7 +333,7 @@ export function PYQSelectionPage() {
                       style={{
                         flex: 1,
                         padding: '10px 14px',
-                        borderRadius: 12,
+                        borderRadius: 0,
                         backgroundColor: 'var(--accent-primary)',
                         color: '#ffffff',
                         fontWeight: 700,

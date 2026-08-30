@@ -55,9 +55,9 @@ export function SuperAdminPage() {
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
 
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<number | string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError: boolean } | null>(null);
-  const [rejectionTarget, setRejectionTarget] = useState<{ id: string; name: string } | null>(null);
+  const [rejectionTarget, setRejectionTarget] = useState<{ id: number | string; name: string } | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -167,7 +167,7 @@ export function SuperAdminPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleApprove = async (id: string, name: string) => {
+  const handleApprove = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await approveAdminRequest(id);
@@ -180,7 +180,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleOpenRejection = (id: string, name: string) => {
+  const handleOpenRejection = (id: number | string, name: string) => {
     setRejectionTarget({ id, name });
   };
 
@@ -200,7 +200,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleSuspend = async (id: string, name: string) => {
+  const handleSuspend = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await suspendAdmin(id);
@@ -213,7 +213,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleReactivate = async (id: string, name: string) => {
+  const handleReactivate = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await reactivateAdmin(id);
@@ -226,7 +226,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: string, userName: string) => {
+  const handleRoleChange = async (userId: number | string, newRole: string, userName: string) => {
     try {
       await updateUserRole(userId, newRole);
       showToast(`Updated role for ${userName} to ${newRole}`);
@@ -236,7 +236,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleApproveTestimonial = async (id: string, name: string) => {
+  const handleApproveTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await approveTestimonial(id);
@@ -249,7 +249,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleRejectTestimonial = async (id: string, name: string) => {
+  const handleRejectTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
       await rejectTestimonialApi(id, 'Inappropriate or invalid submission');
@@ -262,7 +262,7 @@ export function SuperAdminPage() {
     }
   };
 
-  const handleDeleteTestimonial = async (id: string, name: string) => {
+  const handleDeleteTestimonial = async (id: number | string, name: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete the story by ${name}?`)) return;
     setProcessingId(id);
     try {
@@ -335,7 +335,7 @@ export function SuperAdminPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#0F172A', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-body, #F8FAFC)', fontFamily: 'Inter, sans-serif', color: '#172033', overflowX: 'hidden' }}>
       {/* Full-Width Top Header (fixed at top: 0) */}
       <SuperAdminTopNav
         activeTab={activeTab}
@@ -378,9 +378,9 @@ export function SuperAdminPage() {
               <div
                 style={{
                   background: 'var(--bg-card, #ffffff)',
-                  borderRadius: 24,
+                  borderRadius: 0,
                   padding: '32px 36px',
-                  color: 'var(--text-main, #0f172a)',
+                  color: 'var(--text-main, #172033)',
                   marginBottom: 32,
                   border: '1px solid var(--border-color, #e2e8f0)',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
@@ -398,13 +398,13 @@ export function SuperAdminPage() {
                     style={{
                       fontSize: 11,
                       fontWeight: 800,
-                      color: '#2563eb',
+                      color: '#E31B23',
                       textTransform: 'uppercase',
                       letterSpacing: '0.12em',
                       padding: '4px 12px',
-                      borderRadius: 99,
-                      background: 'rgba(37, 99, 235, 0.1)',
-                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      borderRadius: 0,
+                      background: 'rgba(227, 27, 35, 0.1)',
+                      border: '1px solid rgba(227, 27, 35, 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -427,13 +427,13 @@ export function SuperAdminPage() {
                 <div
                   style={{
                     padding: '14px 20px',
-                    borderRadius: 14,
+                    borderRadius: 0,
                     fontSize: 14,
                     fontWeight: 600,
                     marginBottom: 24,
-                    background: toastMessage.isError ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                    color: toastMessage.isError ? '#ef4444' : '#10b981',
-                    border: `1px solid ${toastMessage.isError ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+                    background: toastMessage.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                    color: toastMessage.isError ? '#ef4444' : '#3A8B53',
+                    border: `1px solid ${toastMessage.isError ? 'rgba(227, 27, 35, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,

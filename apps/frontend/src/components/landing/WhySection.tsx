@@ -2,9 +2,9 @@ import React from 'react';
 import { Ico } from '../common/Icons';
 
 const palettes = {
-  blue:   { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.2)',  glow: 'rgba(59,130,246,0.15)'  },
-  violet: { color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)', glow: 'rgba(139,92,246,0.15)' },
-  emerald:{ color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)', glow: 'rgba(16,185,129,0.15)' },
+  blue: { color: '#E31B23', bg: 'rgba(227,27,35,0.08)', border: 'rgba(227,27,35,0.2)', glow: 'rgba(227,27,35,0.15)' },
+  violet: { color: '#F2B623', bg: 'rgba(242,182,35,0.08)', border: 'rgba(242,182,35,0.2)', glow: 'rgba(242,182,35,0.15)' },
+  emerald: { color: '#3A8B53', bg: 'rgba(58,139,83,0.08)', border: 'rgba(58,139,83,0.2)', glow: 'rgba(58,139,83,0.15)' },
 };
 
 export function WhySection() {
@@ -100,7 +100,7 @@ export function WhySection() {
                     style={{
                       width: 22,
                       height: 22,
-                      borderRadius: '50%',
+                      borderRadius: 0,
                       background: palettes.blue.bg,
                       border: `1px solid ${palettes.blue.border}`,
                       display: 'flex',
@@ -155,7 +155,7 @@ export function WhySection() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 15,
+                    borderRadius: 0,
                     background: palettes.emerald.bg,
                     border: `1px solid ${palettes.emerald.border}`,
                     display: 'flex',
@@ -224,7 +224,7 @@ export function WhySection() {
                   style={{
                     width: 52,
                     height: 52,
-                    borderRadius: 15,
+                    borderRadius: 0,
                     background: palettes.violet.bg,
                     border: `1px solid ${palettes.violet.border}`,
                     display: 'flex',

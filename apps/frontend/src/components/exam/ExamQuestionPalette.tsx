@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QuestionPaletteItem } from '../../types/exam';
+import { X } from 'lucide-react';
 
 interface ExamQuestionPaletteProps {
   questions?: any[];
@@ -13,6 +14,8 @@ interface ExamQuestionPaletteProps {
   onSubmitTest?: () => void;
   onRevealAnswer?: () => void;
   isRevealed?: boolean;
+  isOverlay?: boolean;
+  onCloseOverlay?: () => void;
 }
 
 export function ExamQuestionPalette({
@@ -27,8 +30,27 @@ export function ExamQuestionPalette({
   onSubmitTest,
   onRevealAnswer,
   isRevealed = false,
+  isOverlay = false,
+  onCloseOverlay,
 }: ExamQuestionPaletteProps) {
   const totalCount = palette ? palette.length : questions.length || 10;
+
+  // Lock body scroll and listen for Escape when in full-screen overlay mode
+  useEffect(() => {
+    if (isOverlay) {
+      document.body.classList.add('scroll-lock');
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && onCloseOverlay) {
+          onCloseOverlay();
+        }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.body.classList.remove('scroll-lock');
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isOverlay, onCloseOverlay]);
 
   const getQStatus = (index: number): string => {
     if (palette && palette[index]) {
@@ -53,29 +75,15 @@ export function ExamQuestionPalette({
     if (st === 'MARKED_FOR_REVIEW' || st === 'ANSWERED_AND_MARKED') markedCount++;
   }
 
-  return (
-    <aside
-      style={{
-        width: 270,
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: 18,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '16px 14px',
-        boxSizing: 'border-box',
-        flexShrink: 0,
-        height: 'fit-content',
-        maxHeight: 'calc(100vh - 160px)',
-        position: 'sticky',
-        top: 20,
-        marginRight: 24,
-        marginTop: 12,
-        overflow: 'hidden',
-        boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
-        fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
-      }}
-    >
+  const handlePickQuestion = (idx: number) => {
+    onSelectQuestion(idx);
+    if (isOverlay && onCloseOverlay) {
+      onCloseOverlay();
+    }
+  };
+
+  const content = (
+    <>
       {/* 1. Header */}
       <div
         style={{
@@ -87,30 +95,53 @@ export function ExamQuestionPalette({
           borderBottom: '1px solid #F1F5F9',
         }}
       >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            color: '#1E3A8A',
-            letterSpacing: '0.08em',
-          }}
-        >
-          QUESTION PALETTE
-        </span>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#475569',
-            backgroundColor: '#F8FAFC',
-            padding: '2px 8px',
-            borderRadius: 6,
-            border: '1px solid #E2E8F0',
-          }}
-        >
-          {totalCount} Questions
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              color: '#1E3A8A',
+              letterSpacing: '0.08em',
+            }}
+          >
+            QUESTION PALETTE
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#475569',
+              backgroundColor: '#F8FAFC',
+              padding: '2px 8px',
+              borderRadius: 0,
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            {totalCount} Questions
+          </span>
+        </div>
+
+        {isOverlay && onCloseOverlay && (
+          <button
+            type="button"
+            onClick={onCloseOverlay}
+            className="touch-target"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#64748B',
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label="Close question palette"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* 2. Answer Status Summary Panels */}
@@ -127,7 +158,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#F0FDF4',
             border: '1px solid #DCFCE7',
-            borderRadius: 10,
+            borderRadius: 0,
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -152,7 +183,7 @@ export function ExamQuestionPalette({
           style={{
             backgroundColor: '#FFFBEB',
             border: '1px solid #FEF3C7',
-            borderRadius: 10,
+            borderRadius: 0,
             padding: '8px 10px',
             display: 'flex',
             flexDirection: 'column',
@@ -173,54 +204,71 @@ export function ExamQuestionPalette({
       {/* 3. Segmented Filter Tabs */}
       <div
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
           gap: 3,
           marginBottom: 14,
           backgroundColor: '#F8FAFC',
           border: '1px solid #E2E8F0',
-          borderRadius: 8,
+          borderRadius: 0,
           padding: 3,
+          boxSizing: 'border-box',
         }}
       >
-        {(['all', 'answered', 'marked', 'unanswered'] as const).map((tab) => {
-          const isActive = paletteFilter === tab;
+        {[
+          { key: 'all', label: 'All' },
+          { key: 'answered', label: 'Answered' },
+          { key: 'marked', label: 'Marked' },
+          { key: 'unanswered', label: 'Unans.' },
+        ].map((tab) => {
+          const isActive = paletteFilter === tab.key;
           return (
             <button
-              key={tab}
+              key={tab.key}
               type="button"
-              onClick={() => onFilterChange(tab)}
+              onClick={() => onFilterChange(tab.key as any)}
+              className="touch-target center-content"
               style={{
-                flex: 1,
-                padding: '4px 0',
-                borderRadius: 6,
+                padding: '6px 2px',
+                borderRadius: 0,
                 border: 'none',
                 backgroundColor: isActive ? '#FFFFFF' : 'transparent',
                 color: isActive ? '#1E3A8A' : '#64748B',
-                fontSize: 10.5,
-                fontWeight: isActive ? 700 : 600,
+                fontSize: 11,
+                fontWeight: isActive ? 800 : 600,
                 cursor: 'pointer',
-                textTransform: 'capitalize',
-                boxShadow: isActive ? '0 1px 3px rgba(15, 23, 42, 0.06)' : 'none',
+                boxShadow: isActive ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
                 transition: 'all 0.15s ease',
+                textAlign: 'center',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
+              title={tab.key}
             >
-              {tab}
+              {tab.label}
             </button>
           );
         })}
       </div>
 
-      {/* 4. Question Number Grid (5-column layout, rounded circular buttons) */}
+      {/* 4. Question Number Grid */}
       <div
+        className="no-scrollbar"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 8,
+          gridTemplateColumns: isOverlay ? 'repeat(auto-fill, minmax(44px, 1fr))' : 'repeat(5, 1fr)',
+          gap: 6,
           overflowY: 'auto',
+          overflowX: 'hidden',
           alignContent: 'start',
-          paddingRight: 2,
+          padding: 2,
           marginBottom: 14,
-          maxHeight: 220,
+          maxHeight: isOverlay ? '55vh' : 240,
+          boxSizing: 'border-box',
         }}
       >
         {Array.from({ length: totalCount }).map((_, idx) => {
@@ -245,8 +293,8 @@ export function ExamQuestionPalette({
             textColor = '#B45309';
             borderColor = '#FDE68A';
           } else if (status === 'ANSWERED_AND_MARKED') {
-            bgColor = '#DBEAFE';
-            textColor = '#1E40AF';
+            bgColor = '#E2E8F0';
+            textColor = '#A4161A';
             borderColor = '#93C5FD';
           }
 
@@ -261,11 +309,14 @@ export function ExamQuestionPalette({
             <button
               key={idx}
               type="button"
-              onClick={() => onSelectQuestion(idx)}
+              onClick={() => handlePickQuestion(idx)}
+              className="touch-target center-content"
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: '50%',
+                width: '100%',
+                aspectRatio: '1 / 1',
+                minHeight: 34,
+                maxHeight: 44,
+                borderRadius: 0,
                 border: `1px solid ${borderColor}`,
                 backgroundColor: bgColor,
                 color: textColor,
@@ -275,12 +326,14 @@ export function ExamQuestionPalette({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto',
+                textAlign: 'center',
                 transition: 'all 0.15s ease',
                 fontVariantNumeric: 'tabular-nums',
                 boxShadow: isCurrent
-                  ? '0 2px 8px rgba(30, 58, 138, 0.3)'
+                  ? '0 2px 8px rgba(23, 32, 51, 0.3)'
                   : '0 1px 2px rgba(15, 23, 42, 0.02)',
+                boxSizing: 'border-box',
+                padding: 0,
               }}
               onMouseEnter={(e) => {
                 if (!isCurrent) {
@@ -308,28 +361,29 @@ export function ExamQuestionPalette({
             type="button"
             onClick={onRevealAnswer}
             disabled={isRevealed}
+            className="touch-target"
             style={{
               width: '100%',
-              padding: '9px 0',
-              borderRadius: 8,
-              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #2563EB',
-              backgroundColor: isRevealed ? '#F1F5F9' : '#2563EB',
+              padding: '10px 0',
+              borderRadius: 0,
+              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #E31B23',
+              backgroundColor: isRevealed ? '#F1F5F9' : '#E31B23',
               color: isRevealed ? '#64748B' : '#FFFFFF',
-              fontSize: 12.5,
+              fontSize: 13,
               fontWeight: 700,
               cursor: isRevealed ? 'default' : 'pointer',
-              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(37, 99, 235, 0.2)',
+              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(227, 27, 35, 0.2)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#1D4ED8';
+                e.currentTarget.style.backgroundColor = '#C1121F';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#2563EB';
+                e.currentTarget.style.backgroundColor = '#E31B23';
                 e.currentTarget.style.transform = 'translateY(0)';
               }
             }}
@@ -342,14 +396,15 @@ export function ExamQuestionPalette({
           <button
             type="button"
             onClick={onSubmitTest}
+            className="touch-target"
             style={{
               width: '100%',
-              padding: '9px 0',
-              borderRadius: 8,
+              padding: '10px 0',
+              borderRadius: 0,
               border: '1px solid #CBD5E1',
               backgroundColor: '#FFFFFF',
-              color: '#1E293B',
-              fontSize: 12.5,
+              color: '#172033',
+              fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
@@ -370,7 +425,45 @@ export function ExamQuestionPalette({
           </button>
         )}
       </div>
+    </>
+  );
+
+  if (isOverlay) {
+    return (
+      <div
+        className="auth-modal-overlay"
+        onClick={onCloseOverlay}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div
+          className="auth-modal-card"
+          style={{ maxWidth: 480, maxHeight: '85vh', overflowY: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <aside
+      className="exam-palette-sidebar"
+      style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '16px 14px',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+        fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
+      }}
+    >
+      {content}
     </aside>
   );
 }
-

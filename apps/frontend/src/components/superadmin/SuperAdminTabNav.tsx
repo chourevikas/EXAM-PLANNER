@@ -25,7 +25,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
         gap: 8,
         background: 'var(--bg-card)',
         padding: 6,
-        borderRadius: 16,
+        borderRadius: 0,
         border: '1px solid var(--border-color)',
         marginBottom: 28,
         overflowX: 'auto',
@@ -44,7 +44,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
               flex: 1,
               minWidth: 170,
               padding: '12px 20px',
-              borderRadius: 12,
+              borderRadius: 0,
               border: 'none',
               background: isActive
                 ? 'linear-gradient(135deg, #0F1D38 0%, #1B3864 100%)'
@@ -74,17 +74,17 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
               }
             }}
           >
-            <Icon size={17} color={isActive ? '#f97316' : 'var(--text-muted)'} />
+            <Icon size={17} color={isActive ? '#F47B35' : 'var(--text-muted)'} />
             <span>{tab.label}</span>
             {tab.count !== undefined && tab.count > 0 && (
               <span
                 style={{
-                  background: isActive ? '#f97316' : 'rgba(249, 115, 22, 0.15)',
-                  color: isActive ? '#ffffff' : '#f97316',
+                  background: isActive ? '#F47B35' : 'rgba(249, 115, 22, 0.15)',
+                  color: isActive ? '#ffffff' : '#F47B35',
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '2px 8px',
-                  borderRadius: 99,
+                  borderRadius: 0,
                   marginLeft: 4,
                   border: isActive ? 'none' : '1px solid rgba(249, 115, 22, 0.3)',
                 }}

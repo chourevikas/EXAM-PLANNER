@@ -115,11 +115,9 @@ class TestSyllabusHierarchyEndpoints(unittest.IsolatedAsyncioTestCase):
 
     async def test_exam_syllabus_sync_and_endpoint(self):
         """Tests SyllabusService.sync_or_create_exam_syllabus and GET /api/v1/exams/{exam_id}/syllabus."""
-        exam_id = uuid.uuid4()
         syl_ver_id = None
         async with self.session_factory() as session:
             exam = Exam(
-                id=exam_id,
                 code=f"test-syllabus-exam-{uuid.uuid4().hex[:6]}",
                 name="Test Syllabus Exam",
                 source_year=2024,
@@ -130,6 +128,7 @@ class TestSyllabusHierarchyEndpoints(unittest.IsolatedAsyncioTestCase):
             session.add(exam)
             await session.commit()
             await session.refresh(exam)
+            exam_id = exam.id
 
             service = SyllabusService(session)
             syl_ver = await service.sync_or_create_exam_syllabus(exam.id)
@@ -139,7 +138,7 @@ class TestSyllabusHierarchyEndpoints(unittest.IsolatedAsyncioTestCase):
             syl_ver_id = syl_ver.id
 
             # Verify DB records created
-            subjs = (await session.exec(select(Subject).where(Subject.syllabus_version_id == syl_ver.id))).all()
+            subjs = (await session.exec(select(Subject).where(Subject.version_id == syl_ver.id))).all()
             self.assertEqual(len(subjs), 8)
 
         # Call endpoint with overridden dependency session
@@ -149,7 +148,7 @@ class TestSyllabusHierarchyEndpoints(unittest.IsolatedAsyncioTestCase):
             res = await ac.get(f"/api/v1/exams/{exam_id}/syllabus")
             self.assertEqual(res.status_code, 200)
             data = res.json()
-            self.assertEqual(data["exam_id"], str(exam_id))
-            self.assertEqual(data["syllabus_version_id"], str(syl_ver_id))
+            self.assertEqual(str(data["exam_id"]), str(exam_id))
+            self.assertEqual(str(data["syllabus_version_id"]), str(syl_ver_id))
             self.assertEqual(len(data["subjects"]), 8)
             self.assertIsNotNone(data["subjects"][0]["id"])

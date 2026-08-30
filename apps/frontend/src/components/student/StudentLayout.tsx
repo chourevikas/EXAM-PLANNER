@@ -4,6 +4,7 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopHeader } from './StudentTopHeader';
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../../services/authService';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -17,7 +18,8 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
 
   useEffect(() => {
     if (isClerkLoaded && clerkUser) {
@@ -67,27 +69,28 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
     }).catch(err => {
       console.error("Failed to fetch user data:", err);
     });
-
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (!mobile) setMobileOpen(false);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, [pageTitle]);
 
+  // Close mobile sidebar when transitioning to desktop
+  useEffect(() => {
+    if (!isTabletOrBelow) {
+      setMobileOpen(false);
+    }
+  }, [isTabletOrBelow]);
+
   const handleToggleSidebar = () => {
-    if (isMobile) {
+    if (isTabletOrBelow) {
       setMobileOpen(!mobileOpen);
     } else {
       setCollapsed(!collapsed);
     }
   };
 
+  // Determine CSS class for content area margin
+  const contentAreaClass = `student-content-area${collapsed ? ' sidebar-collapsed' : ''}`;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0F172A', overflowX: 'hidden' }}>
+    <div className="student-layout-root">
       
       {/* Full-width Top Header (fixed at top 0, left 0, right 0) */}
       <StudentTopHeader 
@@ -97,7 +100,7 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
       />
 
       {/* Main Container below Top Header */}
-      <div style={{ display: 'flex', flex: 1, marginTop: '60px' }}>
+      <div className="student-main-container">
         
         {/* Sidebar Navigation (fixed top: 60px, below header) */}
         <StudentSidebar 
@@ -109,25 +112,9 @@ export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
         />
 
         {/* Main Content Area */}
-        <div 
-          style={{ 
-            flex: 1, 
-            marginLeft: isMobile ? 0 : (collapsed ? '68px' : '240px'), 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minWidth: 0,
-            transition: 'margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-            width: '100%'
-          }}
-        >
+        <div className={contentAreaClass}>
           {/* Page Content Viewport */}
-          <main style={{ 
-            padding: isMobile ? '16px' : '28px 36px', 
-            maxWidth: '1360px', 
-            margin: '0 auto', 
-            width: '100%', 
-            boxSizing: 'border-box' 
-          }}>
+          <main className="student-content-main">
             {children}
           </main>
         </div>
