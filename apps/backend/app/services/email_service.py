@@ -5,18 +5,48 @@ from app.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize the FastMail configuration using our Settings from Hostinger
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME or "",
-    MAIL_PASSWORD=settings.MAIL_PASSWORD or "",
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=bool(settings.MAIL_USERNAME and settings.MAIL_PASSWORD),
-    VALIDATE_CERTS=True
-)
+def get_fastmail_config() -> ConnectionConfig:
+    """Builds FastMail ConnectionConfig dynamically from current settings."""
+    return ConnectionConfig(
+        MAIL_USERNAME=settings.MAIL_USERNAME or "",
+        MAIL_PASSWORD=settings.MAIL_PASSWORD or "",
+        MAIL_FROM=settings.MAIL_FROM,
+        MAIL_PORT=settings.MAIL_PORT,
+        MAIL_SERVER=settings.MAIL_SERVER,
+        MAIL_STARTTLS=settings.MAIL_STARTTLS,
+        MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+        USE_CREDENTIALS=bool(settings.MAIL_USERNAME and settings.MAIL_PASSWORD),
+        VALIDATE_CERTS=True
+    )
+
+async def _send_via_aws_ses(recipients: list[str], subject: str, html_body: str) -> bool:
+    """Fallback email dispatcher using AWS SES if SMTP credentials are not configured."""
+    if not (settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY):
+        return False
+    try:
+        import boto3
+        client = boto3.client(
+            'ses',
+            region_name=settings.AWS_REGION or 'ap-southeast-2',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
+        )
+        sender = settings.MAIL_FROM or settings.AWS_SES_SENDER or "support@examplanner.in"
+        response = client.send_email(
+            Destination={'ToAddresses': recipients},
+            Message={
+                'Body': {
+                    'Html': {'Charset': 'UTF-8', 'Data': html_body}
+                },
+                'Subject': {'Charset': 'UTF-8', 'Data': subject}
+            },
+            Source=sender
+        )
+        logger.info(f"Email sent via AWS SES to {recipients}. MessageId: {response.get('MessageId')}")
+        return True
+    except Exception as e:
+        logger.debug(f"AWS SES fallback dispatch note: {e}")
+        return False
 
 async def send_subscription_confirmation(email: EmailStr, user_name: str):
     """Sends a confirmation email to the user when they successfully upgrade to premium."""
@@ -50,13 +80,17 @@ async def send_subscription_confirmation(email: EmailStr, user_name: str):
     )
     
     try:
-        if not settings.MAIL_USERNAME:
-            logger.warning("MAIL_USERNAME is not set in environment. Skipping email sending.")
-            return False
-            
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"Subscription confirmation email successfully sent to {email}")
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Subscription confirmation email successfully sent to {email}")
+            return True
+        
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Subscription confirmation email simulated for {email}")
         return True
     except Exception as e:
         logger.error(f"Failed to send subscription confirmation email: {e}")
@@ -109,13 +143,17 @@ async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pend
     )
 
     try:
-        if not settings.MAIL_USERNAME:
-            logger.warning(f"MAIL_USERNAME not configured. Logging pending tasks for {email}: {len(pending_tasks)} tasks.")
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Pending tasks email sent successfully via SMTP to {email}")
             return True
 
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"Pending tasks email sent successfully to {email}")
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Pending tasks email dispatch simulated for {email}: {len(pending_tasks)} tasks.")
         return True
     except Exception as e:
         logger.error(f"Failed to send pending tasks email: {e}")
@@ -149,13 +187,17 @@ async def send_admin_notification_subscription(user_email: str, user_name: str):
     )
     
     try:
-        if not settings.MAIL_USERNAME:
-            logger.warning("MAIL_USERNAME is not set in environment. Skipping admin email.")
-            return False
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Admin notification email successfully sent to {admin_email} for user {user_email}")
+            return True
             
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"Admin notification email successfully sent to {admin_email} for user {user_email}")
+        ses_ok = await _send_via_aws_ses([str(admin_email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Admin notification email simulated for {admin_email}")
         return True
     except Exception as e:
         logger.error(f"Failed to send admin notification email: {e}")
@@ -196,13 +238,17 @@ async def send_verification_email(email: str, token: str):
     )
     
     try:
-        if not settings.MAIL_USERNAME:
-            logger.warning(f"MAIL_USERNAME not configured. Magic verification link for {email}: {verify_url}")
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Verification email sent successfully to {email}")
             return True
-            
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"Verification email sent successfully to {email}")
+
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Verification email link simulated for {email}: {verify_url}")
         return True
     except Exception as e:
         logger.error(f"Failed to send verification email: {e}")
@@ -239,13 +285,17 @@ async def send_password_reset_email(email: str, token: str):
     )
     
     try:
-        if not settings.MAIL_USERNAME:
-            logger.warning(f"MAIL_USERNAME not configured. Password reset link for {email}: {reset_url}")
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Password reset email sent successfully to {email}")
             return True
-            
-        fm = FastMail(conf)
-        await fm.send_message(message)
-        logger.info(f"Password reset email sent successfully to {email}")
+
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Password reset link simulated for {email}: {reset_url}")
         return True
     except Exception as e:
         logger.error(f"Failed to send password reset email: {e}")

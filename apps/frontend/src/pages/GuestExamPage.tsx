@@ -23,6 +23,8 @@ import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { formatEnum } from '../utils/formatEnum';
+import { guardedFetch } from '../utils/apiGuard';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -165,6 +167,13 @@ export function GuestExamPage() {
   }, [recUserResponses]);
 
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
+  const [isRecsExhausted, setIsRecsExhausted] = useState(false);
+
+  // Reset recommendations exhaustion when exam/subject/topic filters change
+  useEffect(() => {
+    setIsRecsExhausted(false);
+    setRecommendedPool([]);
+  }, [gExam, gSubject, gTopic, gSubtopic]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isMobile, isTabletOrBelow } = useBreakpoint();
@@ -177,7 +186,7 @@ export function GuestExamPage() {
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(
     async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
-      if (isPrefetchingRecs) return;
+      if (isPrefetchingRecs || isRecsExhausted) return;
       setIsPrefetchingRecs(true);
 
       try {
@@ -188,6 +197,7 @@ export function GuestExamPage() {
         currentPool.forEach((q) => {
           if (q.question_id) existingIds.add(q.question_id);
         });
+        Object.keys(recUserResponsesRef.current || {}).forEach((qId) => existingIds.add(qId));
 
         const excludeIdsParam = Array.from(existingIds).join(',');
 
@@ -215,114 +225,132 @@ export function GuestExamPage() {
           }
         }
 
-        // Step 1: Exact subject + topic with exclude_ids
-        const params = new URLSearchParams({ limit: '5' });
-        if (querySubject) params.append('subject_name', querySubject);
-        if (queryTopic) params.append('topic_name', queryTopic);
-        if (targetExam) params.append('exam_name', targetExam);
-        if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
-
-        let res = await fetch(`/api/v1/questions?${params.toString()}`);
         let newFetched: any[] = [];
-        if (res.ok) {
-          const data = await res.json();
-          newFetched = data.items || [];
-        }
 
-        // Step 2: Fallback - relax topic while preserving subject
-        if (newFetched.length === 0 && querySubject) {
-          const fallbackParams = new URLSearchParams({ limit: '5' });
-          fallbackParams.append('subject_name', querySubject);
-          if (targetExam) fallbackParams.append('exam_name', targetExam);
-          if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
+        // Step 1: Query API by Topic first if a topic is selected
+        if (queryTopic) {
+          const topicParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+          topicParams.append('topic_name', queryTopic);
+          if (querySubject) topicParams.append('subject_name', querySubject);
+          if (targetExam) topicParams.append('exam_name', targetExam);
+          if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
 
-          res = await fetch(`/api/v1/questions?${fallbackParams.toString()}`);
-          if (res.ok) {
-            const data = await res.json();
-            newFetched = data.items || [];
+          try {
+            const res = await guardedFetch(`/api/v1/questions?${topicParams.toString()}`);
+            if (res.ok) {
+              const data = await res.json();
+              newFetched = data.items || [];
+            }
+          } catch (err) {
+            console.warn('Topic recommendation fetch failed:', err);
           }
         }
 
-        if (newFetched.length > 0) {
-          const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
-            const rawOptions = item.options || [];
-            const optionsList = rawOptions.map((o: any, oIdx: number) => ({
-              option_id:
-                o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
-              option_label: o.option_label || String.fromCharCode(65 + oIdx),
-              text:
-                o.option_text ||
-                o.text ||
-                `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-              is_correct: Boolean(o.is_correct),
-            }));
-            return {
-              question_id: item.question_id,
-              question_number: 0,
-              text: item.question_text || item.text || '',
-              options: optionsList,
-              section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
-              topic_name: item.topic_name || queryTopic,
-              subtopic_name: item.subtopic_name,
-              difficulty: item.difficulty || 'MEDIUM',
-              marks: item.marks || 2.0,
-              negative_marks: item.negative_marks || 0.66,
-              expected_time_seconds: item.expected_time_seconds || 60,
-              explanation: item.explanation || item.explanation_text || '',
-            } as any;
-          });
+        // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
+        if (newFetched.length === 0 && querySubject) {
+          const subjParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+          subjParams.append('subject_name', querySubject);
+          if (targetExam) subjParams.append('exam_name', targetExam);
+          if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
-          setRecommendedPool((prev) => {
-            let newList = [...prev];
-            const existingIds = new Set(prev.map((q) => q.question_id));
-
-            for (let i = formatted.length - 1; i >= 0; i--) {
-              const q = formatted[i];
-              if (!existingIds.has(q.question_id)) {
-                newList.unshift(q);
-              }
+          try {
+            const res = await guardedFetch(`/api/v1/questions?${subjParams.toString()}`);
+            if (res.ok) {
+              const data = await res.json();
+              newFetched = data.items || [];
             }
+          } catch (err) {
+            console.warn('Subject recommendation fetch failed:', err);
+          }
 
-            while (newList.length > 15) {
-              let evictIdx = -1;
-              const currentExpanded = expandedRecIdRef.current;
-              const currentResponses = recUserResponsesRef.current;
+          // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+          if (newFetched.length === 0) {
+            setIsRecsExhausted(true);
+            return;
+          }
+          if (newFetched.length > 0) {
+            const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
+              const rawOptions = item.options || [];
+              const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+                option_id:
+                  o.option_id ||
+                  `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                option_label: o.option_label || String.fromCharCode(65 + oIdx),
+                text:
+                  o.option_text ||
+                  o.text ||
+                  `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+                is_correct: Boolean(o.is_correct),
+              }));
+              return {
+                question_id: item.question_id,
+                question_number: 0,
+                text: item.question_text || item.text || '',
+                options: optionsList,
+                section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
+                topic_name: item.topic_name || queryTopic,
+                subtopic_name: item.subtopic_name,
+                difficulty: item.difficulty || 'MEDIUM',
+                marks: item.marks || 2.0,
+                negative_marks: item.negative_marks || 0.66,
+                expected_time_seconds: item.expected_time_seconds || 60,
+                explanation: item.explanation || item.explanation_text || '',
+              } as any;
+            });
 
-              // Prefer removing already-answered questions that are not expanded
-              for (let i = newList.length - 1; i >= 0; i--) {
-                const q = newList[i];
-                if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
-                  evictIdx = i;
-                  break;
+            setRecommendedPool((prev) => {
+              let newList = [...prev];
+              const existingIds = new Set(prev.map((q) => q.question_id));
+
+              for (let i = formatted.length - 1; i >= 0; i--) {
+                const q = formatted[i];
+                if (!existingIds.has(q.question_id)) {
+                  newList.unshift(q);
                 }
               }
 
-              // If none found, just find the oldest not expanded
-              if (evictIdx === -1) {
+              while (newList.length > 15) {
+                let evictIdx = -1;
+                const currentExpanded = expandedRecIdRef.current;
+                const currentResponses = recUserResponsesRef.current;
+
+                // Prefer removing already-answered questions that are not expanded
                 for (let i = newList.length - 1; i >= 0; i--) {
-                  if (newList[i].question_id !== currentExpanded) {
+                  const q = newList[i];
+                  if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
                     evictIdx = i;
                     break;
                   }
                 }
-              }
 
-              if (evictIdx !== -1) {
-                newList.splice(evictIdx, 1);
-              } else {
-                break;
+                // If none found, just find the oldest not expanded
+                if (evictIdx === -1) {
+                  for (let i = newList.length - 1; i >= 0; i--) {
+                    if (newList[i].question_id !== currentExpanded) {
+                      evictIdx = i;
+                      break;
+                    }
+                  }
+                }
+
+                if (evictIdx !== -1) {
+                  newList.splice(evictIdx, 1);
+                } else {
+                  break;
+                }
               }
-            }
-            return newList;
-          });
+              return newList;
+            });
+          }
         }
       } catch (err) {
         console.warn('Background recommendation prefetch error:', err);
+        setIsRecsExhausted(true);
       } finally {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gExam, isPrefetchingRecs],
+    [gSubject, gTopic, gExam, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Timer countdown
@@ -363,29 +391,54 @@ export function GuestExamPage() {
           text:
             o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
           is_correct: Boolean(o.is_correct),
+          distractor_analysis: o.distractor_analysis || null,
         }));
 
-        const expText =
-          q.explanation ||
-          q.explanation_text ||
-          q.description ||
-          q.solution ||
-          q.solution_text ||
-          '';
+        const expObj = q.explanation;
+        let expText = '';
+        if (typeof expObj === 'object' && expObj !== null) {
+          expText = expObj.detailed_solution || expObj.solution || expObj.text || '';
+        } else if (typeof expObj === 'string') {
+          expText = expObj;
+        }
+
+        const primaryH =
+          (q.hierarchy || []).find((h: any) => h.is_primary) || (q.hierarchy || [])[0] || {};
+        const subjName =
+          primaryH.subject_name ||
+          q.subject_name ||
+          (gSubject && !gSubject.startsWith('All Subjects') ? gSubject : 'General Studies');
+        const topName =
+          primaryH.topic_name ||
+          q.topic_name ||
+          (gTopic && !gTopic.startsWith('All Topics') ? gTopic : subjName);
+        const subtopName =
+          primaryH.subtopic_name ||
+          q.subtopic_name ||
+          (gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '');
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
           question_number: idx + 1,
           text: q.question_text || q.text || '',
+          passage_text: q.passage_text || null,
           options: optionsList,
-          section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
-          topic_name: q.topic_name || gTopic,
-          subtopic_name: q.subtopic_name || gSubtopic,
+          section_code: topName || subjName || 'General Studies',
+          subject_name: subjName,
+          topic_name: topName,
+          subtopic_name: subtopName,
+          concept_name: primaryH.concept_name || '',
+          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : 'UPSC CSE'),
+          source_year:
+            q.source_year ||
+            (gYear && gYear.replace(/\D/g, '') ? Number(gYear.replace(/\D/g, '')) : 2023),
+          stage: q.stage || 'Prelims',
+          paper_set_code: q.paper_set_code || 'SET_A',
           difficulty: q.difficulty || 'MEDIUM',
           marks: q.marks || 2.0,
           negative_marks: q.negative_marks || 0.66,
           expected_time_seconds: q.expected_time_seconds || 60,
-          explanation: expText,
+          explanation: expObj || expText,
         } as any;
       };
 
@@ -431,7 +484,7 @@ export function GuestExamPage() {
         : '';
 
       // 1. Try with subject + topic + year + selected exam
-      const p1 = new URLSearchParams({ limit: gCount.toString() });
+      const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
       if (querySubject) {
         p1.append('subject_name', querySubject);
       }
@@ -454,7 +507,7 @@ export function GuestExamPage() {
 
       // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
       if (fetchedMap.size === 0 && queryTopic) {
-        const p2 = new URLSearchParams({ limit: gCount.toString() });
+        const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (querySubject) {
           p2.append('subject_name', querySubject);
         }
@@ -467,7 +520,7 @@ export function GuestExamPage() {
 
       // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
       if (fetchedMap.size === 0 && querySubject) {
-        const p3 = new URLSearchParams({ limit: gCount.toString() });
+        const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p3.append('subject_name', querySubject);
         if (targetExam) {
           p3.append('exam_name', targetExam);
@@ -477,7 +530,7 @@ export function GuestExamPage() {
 
       // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
       if (fetchedMap.size === 0 && rawSubject && rawSubject !== querySubject) {
-        const p4 = new URLSearchParams({ limit: gCount.toString() });
+        const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p4.append('subject_name', rawSubject);
         if (targetExam) {
           p4.append('exam_name', targetExam);
@@ -487,14 +540,14 @@ export function GuestExamPage() {
 
       // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
       if (fetchedMap.size === 0 && (querySubject || rawSubject)) {
-        const p5 = new URLSearchParams({ limit: gCount.toString() });
+        const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p5.append('subject_name', querySubject || rawSubject);
         await fetchWithParams(p5);
       }
 
       // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
       if (fetchedMap.size === 0 && !rawSubject) {
-        const p6 = new URLSearchParams({ limit: gCount.toString() });
+        const p6 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (targetExam) {
           p6.append('exam_name', targetExam);
         }
@@ -608,10 +661,21 @@ export function GuestExamPage() {
 
   // Auto-prefetch background recommendations whenever pool has fewer than 5 items
   useEffect(() => {
-    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs) {
+    if (
+      allQuestions.length > 0 &&
+      recommendedPool.length < 5 &&
+      !isPrefetchingRecs &&
+      !isRecsExhausted
+    ) {
       prefetchRecommendations(allQuestions, recommendedPool);
     }
-  }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
+  }, [
+    allQuestions,
+    recommendedPool.length,
+    isPrefetchingRecs,
+    isRecsExhausted,
+    prefetchRecommendations,
+  ]);
 
   // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
@@ -667,6 +731,7 @@ export function GuestExamPage() {
   const handleSelectOption = (optId: number | string, optLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
+    if (revealedMap[qId]) return; // Locked once submitted
 
     setUserResponses((prev) => ({
       ...prev,
@@ -875,8 +940,8 @@ export function GuestExamPage() {
       responses: responsesPayload,
     };
 
-    setGuestScoreData(scorePayload);
-    saveGuestAttempt(scorePayload);
+    const savedAttempt = saveGuestAttempt(scorePayload);
+    setGuestScoreData({ ...scorePayload, attemptId: savedAttempt.id });
 
     if (startCountdown) {
       setScoreCountdown(10);
@@ -1918,260 +1983,315 @@ export function GuestExamPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {displayRecs.map((rec, idx) => {
-                const isExpanded = expandedRecId === rec.question_id;
-                const answeredOptId = recUserResponses[rec.question_id];
+              {displayRecs.length === 0 ? (
+                <div
+                  style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '24px 0' }}
+                >
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
+                </div>
+              ) : (
+                displayRecs.map((rec, idx) => {
+                  const isExpanded = expandedRecId === rec.question_id;
+                  const answeredOptId = recUserResponses[rec.question_id];
 
-                return (
-                  <div
-                    key={rec.question_id || idx}
-                    style={{
-                      backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
-                      border: '1px solid',
-                      borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
-                      borderRadius: 6,
-                      transition: 'all 0.15s ease',
-                      boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
-                      overflow: 'hidden',
-                    }}
-                  >
+                  return (
                     <div
-                      onClick={() => handleSelectRecommendation(rec)}
-                      style={{ cursor: 'pointer', padding: '10px 12px' }}
-                      onMouseEnter={(e) => {
-                        if (!isExpanded) {
-                          e.currentTarget.style.backgroundColor = '#FFFFFF';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isExpanded) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }
+                      key={rec.question_id || idx}
+                      style={{
+                        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                        borderRadius: 6,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                        overflow: 'hidden',
                       }}
                     >
                       <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: 4,
+                        onClick={() => handleSelectRecommendation(rec)}
+                        style={{ cursor: 'pointer', padding: '10px 12px' }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                          }
                         }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: 700,
-                            color: '#475569',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
-                        </span>
-                        <ChevronDown
-                          size={14}
-                          style={{
-                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: '0.2s',
-                            color: '#94A3B8',
-                          }}
-                        />
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: '#172033',
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {rec.text
-                          ? isExpanded
-                            ? rec.text
-                            : rec.text.length > 70
-                              ? `${rec.text.substring(0, 70)}...`
-                              : rec.text
-                          : `Practice Question ${idx + 1}`}
-                      </div>
-                    </div>
-
-                    {/* Inline Options Dropdown */}
-                    {isExpanded && (
-                      <div
-                        style={{
-                          padding: '0 12px 12px 12px',
-                          borderTop: '1px solid #F1F5F9',
+                        onMouseLeave={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
                         }}
                       >
                         <div
                           style={{
-                            marginTop: 10,
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: 6,
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: 4,
+                            marginBottom: 6,
                           }}
                         >
-                          {rec.options?.map((opt) => {
-                            const isSelected = answeredOptId === opt.option_id;
-                            const isCorrect = opt.is_correct;
-                            const isWrongSelected = isSelected && !isCorrect;
-                            const showResult = !!answeredOptId;
-
-                            let borderStyle = isSelected
-                              ? '1px solid #94A3B8'
-                              : '1px solid #E2E8F0';
-                            let bgStyle = '#FFFFFF';
-
-                            if (showResult) {
-                              if (isCorrect) {
-                                borderStyle = '1px solid #3A8B53';
-                                bgStyle = '#ECFDF5';
-                              } else if (isWrongSelected) {
-                                borderStyle = '1px solid #EF4444';
-                                bgStyle = '#FEF2F2';
-                              }
-                            }
-
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 3,
+                              backgroundColor: '#F1F5F9',
+                              color: '#334155',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {rec.topic_name ||
+                              (rec as any).subject ||
+                              rec.section_code ||
+                              'General Studies'}
+                          </span>
+                          {(rec as any).subtopic_name && (
+                            <span
+                              style={{
+                                fontSize: 9.5,
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: 3,
+                                backgroundColor: '#EEF2FF',
+                                color: '#4338CA',
+                              }}
+                            >
+                              {(rec as any).subtopic_name}
+                            </span>
+                          )}
+                          {(() => {
+                            const d = ((rec as any).difficulty || 'MEDIUM').toUpperCase();
+                            const bg =
+                              d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
+                            const text =
+                              d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+                            const border =
+                              d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
                             return (
-                              <button
-                                key={opt.option_id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!answeredOptId) {
-                                    setRecUserResponses((p) => ({
-                                      ...p,
-                                      [rec.question_id]: opt.option_id,
-                                    }));
-                                  }
-                                }}
+                              <span
                                 style={{
-                                  textAlign: 'left',
-                                  padding: '6px 8px',
-                                  border: borderStyle,
-                                  backgroundColor: bgStyle,
-                                  borderRadius: 4,
-                                  fontSize: 11.5,
-                                  color: '#334155',
-                                  cursor: answeredOptId ? 'default' : 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  gap: 6,
-                                  width: '100%',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight: 800,
-                                    color: showResult && isCorrect ? '#059669' : '#64748B',
-                                  }}
-                                >
-                                  {opt.option_label}.
-                                </span>
-                                <span>{opt.text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Show Solution button + explanation panel (mobile) */}
-                        {(() => {
-                          const _rawExpl =
-                            recExplanations[rec.question_id] || (rec as any).explanation;
-                          const explanation =
-                            typeof _rawExpl === 'string'
-                              ? _rawExpl
-                              : _rawExpl?.detailed_solution || _rawExpl?.core_concept || null;
-                          const isLoadingSolution = recSolutionLoading[rec.question_id];
-                          const solutionOpen = recShowSolution[rec.question_id];
-                          return (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRecShowSolution(rec);
-                                }}
-                                style={{
-                                  marginTop: 10,
-                                  width: '100%',
-                                  padding: '6px 10px',
-                                  border: '1px solid',
-                                  borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
-                                  borderRadius: 5,
-                                  backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
-                                  color: solutionOpen ? '#4338CA' : '#475569',
-                                  fontSize: 11,
+                                  fontSize: 9.5,
                                   fontWeight: 700,
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: 5,
-                                  transition: 'all 0.15s ease',
+                                  padding: '2px 6px',
+                                  borderRadius: 3,
+                                  backgroundColor: bg,
+                                  color: text,
+                                  border: `1px solid ${border}`,
                                 }}
                               >
-                                <Lightbulb size={12} />
-                                {solutionOpen ? 'Hide Solution' : 'Show Solution'}
-                              </button>
-                              {solutionOpen && (
+                                {d}
+                              </span>
+                            );
+                          })()}
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 600,
+                              padding: '2px 6px',
+                              borderRadius: 3,
+                              backgroundColor: '#F8FAFC',
+                              color: '#64748B',
+                              border: '1px solid #E2E8F0',
+                            }}
+                          >
+                            ⏱️ {(rec as any).expected_time_seconds || 60}s
+                          </span>
+                          {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+                            <span
+                              style={{
+                                fontSize: 9.5,
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: 3,
+                                backgroundColor: '#F3E8FF',
+                                color: '#7E22CE',
+                              }}
+                            >
+                              {(rec as any).exam_name || 'UPSC'}{' '}
+                              {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+                            </span>
+                          )}
+                          <ChevronDown
+                            size={14}
+                            style={{
+                              marginLeft: 'auto',
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: '0.2s',
+                              color: '#94A3B8',
+                            }}
+                          />
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: '#172033',
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {rec.text
+                            ? isExpanded
+                              ? rec.text
+                              : rec.text.length > 70
+                                ? `${rec.text.substring(0, 70)}...`
+                                : rec.text
+                            : `Practice Question ${idx + 1}`}
+                        </div>
+                      </div>
+
+                      {/* Inline Options Dropdown */}
+                      {isExpanded && (
+                        <div
+                          style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}
+                        >
+                          <div
+                            style={{
+                              marginTop: 10,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 8,
+                            }}
+                          >
+                            {rec.options?.map((opt: any) => {
+                              const isSelected = answeredOptId === opt.option_id;
+                              const isCorrect = opt.is_correct;
+                              const isWrongSelected = isSelected && !isCorrect;
+                              const showResult = !!answeredOptId;
+                              const optionDesc =
+                                opt.distractor_analysis ||
+                                opt.description ||
+                                (isCorrect
+                                  ? 'Correct option matching standard syllabus concepts.'
+                                  : 'Incorrect distractor option.');
+
+                              let borderStyle = isSelected
+                                ? '1px solid #94A3B8'
+                                : '1px solid #E2E8F0';
+                              let bgStyle = '#FFFFFF';
+
+                              if (showResult) {
+                                if (isCorrect) {
+                                  borderStyle = '1px solid #3A8B53';
+                                  bgStyle = '#ECFDF5';
+                                } else if (isWrongSelected) {
+                                  borderStyle = '1px solid #EF4444';
+                                  bgStyle = '#FEF2F2';
+                                }
+                              }
+
+                              return (
                                 <div
-                                  style={{
-                                    marginTop: 8,
-                                    padding: '10px 12px',
-                                    backgroundColor: '#EFF6FF',
-                                    border: '1px solid #BFDBFE',
-                                    borderRadius: 5,
-                                    fontSize: 11.5,
-                                    color: '#1E3A8A',
-                                    lineHeight: 1.55,
-                                  }}
+                                  key={opt.option_id}
+                                  style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
                                 >
-                                  <div
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!answeredOptId) {
+                                        setRecUserResponses((p) => ({
+                                          ...p,
+                                          [rec.question_id]: opt.option_id,
+                                        }));
+                                      }
+                                    }}
                                     style={{
+                                      textAlign: 'left',
+                                      padding: '8px 10px',
+                                      border: borderStyle,
+                                      backgroundColor: bgStyle,
+                                      borderRadius: 4,
+                                      fontSize: 11.5,
+                                      color: '#334155',
+                                      cursor: answeredOptId ? 'default' : 'pointer',
                                       display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 5,
-                                      marginBottom: 6,
-                                      fontWeight: 800,
-                                      fontSize: 11,
-                                      textTransform: 'uppercase',
-                                      letterSpacing: '0.05em',
+                                      alignItems: 'flex-start',
+                                      gap: 6,
+                                      width: '100%',
                                     }}
                                   >
-                                    <Lightbulb size={12} color="#2563EB" />
-                                    Explanation
-                                  </div>
-                                  {isLoadingSolution ? (
-                                    <span
+                                    <div
                                       style={{
-                                        color: '#64748B',
-                                        fontStyle: 'italic',
+                                        width: 14,
+                                        height: 14,
+                                        flexShrink: 0,
+                                        marginTop: 2,
+                                        borderRadius: '50%',
+                                        border: '1px solid #CBD5E1',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: isSelected ? '#1E3A8A' : '#FFF',
                                       }}
                                     >
-                                      Loading solution…
-                                    </span>
-                                  ) : explanation ? (
-                                    explanation
-                                  ) : (
+                                      {isSelected && (
+                                        <div
+                                          style={{
+                                            width: 6,
+                                            height: 6,
+                                            borderRadius: '50%',
+                                            backgroundColor: '#FFF',
+                                          }}
+                                        />
+                                      )}
+                                    </div>
                                     <span
                                       style={{
-                                        color: '#64748B',
-                                        fontStyle: 'italic',
+                                        fontWeight: 800,
+                                        color: showResult && isCorrect ? '#059669' : '#64748B',
                                       }}
                                     >
-                                      No explanation available.
+                                      {opt.option_label}.
                                     </span>
+                                    <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                                  </button>
+
+                                  {/* Option-level description directly underneath */}
+                                  {showResult && optionDesc && (
+                                    <div
+                                      style={{
+                                        marginLeft: 16,
+                                        padding: '5px 8px',
+                                        fontSize: 11,
+                                        lineHeight: 1.4,
+                                        borderRadius: 3,
+                                        backgroundColor: isCorrect
+                                          ? '#F0FDF4'
+                                          : isWrongSelected
+                                            ? '#FEF2F2'
+                                            : '#F8FAFC',
+                                        borderLeft: `3px solid ${isCorrect ? '#10B981' : isWrongSelected ? '#EF4444' : '#CBD5E1'}`,
+                                        color: isCorrect
+                                          ? '#166534'
+                                          : isWrongSelected
+                                            ? '#991B1B'
+                                            : '#475569',
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          fontSize: 10,
+                                          textTransform: 'uppercase',
+                                          marginRight: 4,
+                                        }}
+                                      >
+                                        Option {opt.option_label}:
+                                      </strong>
+                                      {optionDesc}
+                                    </div>
                                   )}
                                 </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -2281,7 +2401,7 @@ export function GuestExamPage() {
                     padding: '16px 0',
                   }}
                 >
-                  Loading recommendations...
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
@@ -2320,24 +2440,98 @@ export function GuestExamPage() {
                         <div
                           style={{
                             display: 'flex',
+                            flexWrap: 'wrap',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: 4,
+                            gap: 4,
+                            marginBottom: 6,
                           }}
                         >
                           <span
                             style={{
-                              fontSize: 10.5,
+                              fontSize: 9.5,
                               fontWeight: 700,
-                              color: '#475569',
+                              padding: '2px 6px',
+                              borderRadius: 3,
+                              backgroundColor: '#F1F5F9',
+                              color: '#334155',
                               textTransform: 'uppercase',
                             }}
                           >
-                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                            {rec.topic_name ||
+                              (rec as any).subject ||
+                              rec.section_code ||
+                              'General Studies'}
                           </span>
+                          {(rec as any).subtopic_name && (
+                            <span
+                              style={{
+                                fontSize: 9.5,
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: 3,
+                                backgroundColor: '#EEF2FF',
+                                color: '#4338CA',
+                              }}
+                            >
+                              {(rec as any).subtopic_name}
+                            </span>
+                          )}
+                          {(() => {
+                            const d = ((rec as any).difficulty || 'MEDIUM').toUpperCase();
+                            const bg =
+                              d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
+                            const text =
+                              d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+                            const border =
+                              d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
+                            return (
+                              <span
+                                style={{
+                                  fontSize: 9.5,
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: 3,
+                                  backgroundColor: bg,
+                                  color: text,
+                                  border: `1px solid ${border}`,
+                                }}
+                              >
+                                {d}
+                              </span>
+                            );
+                          })()}
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 600,
+                              padding: '2px 6px',
+                              borderRadius: 3,
+                              backgroundColor: '#F8FAFC',
+                              color: '#64748B',
+                              border: '1px solid #E2E8F0',
+                            }}
+                          >
+                            ⏱️ {(rec as any).expected_time_seconds || 60}s
+                          </span>
+                          {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+                            <span
+                              style={{
+                                fontSize: 9.5,
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: 3,
+                                backgroundColor: '#F3E8FF',
+                                color: '#7E22CE',
+                              }}
+                            >
+                              {(rec as any).exam_name || 'UPSC'}{' '}
+                              {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+                            </span>
+                          )}
                           <ChevronDown
                             size={14}
                             style={{
+                              marginLeft: 'auto',
                               transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                               transition: '0.2s',
                               color: '#94A3B8',
@@ -2349,7 +2543,7 @@ export function GuestExamPage() {
                             fontSize: 12,
                             fontWeight: 700,
                             color: '#172033',
-                            lineHeight: 1.3,
+                            lineHeight: 1.35,
                           }}
                         >
                           {rec.text
@@ -2365,24 +2559,27 @@ export function GuestExamPage() {
                       {/* Inline Options Dropdown */}
                       {isExpanded && (
                         <div
-                          style={{
-                            padding: '0 12px 12px 12px',
-                            borderTop: '1px solid #F1F5F9',
-                          }}
+                          style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}
                         >
                           <div
                             style={{
                               marginTop: 10,
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 6,
+                              gap: 8,
                             }}
                           >
-                            {rec.options?.map((opt) => {
+                            {rec.options?.map((opt: any) => {
                               const isSelected = answeredOptId === opt.option_id;
                               const isCorrect = opt.is_correct;
                               const isWrongSelected = isSelected && !isCorrect;
                               const showResult = !!answeredOptId;
+                              const optionDesc =
+                                opt.distractor_analysis ||
+                                opt.description ||
+                                (isCorrect
+                                  ? 'Correct option matching standard syllabus concepts.'
+                                  : 'Incorrect distractor option.');
 
                               let borderStyle = isSelected
                                 ? '1px solid #94A3B8'

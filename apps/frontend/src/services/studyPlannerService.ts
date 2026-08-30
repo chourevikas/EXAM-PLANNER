@@ -1,3 +1,5 @@
+import { guardedFetch } from '../utils/apiGuard';
+
 const STUDY_PLAN_API_BASE_URL = '/api/v1/study-plan';
 
 function getAuthHeaders(): Record<string, string> {
@@ -90,19 +92,19 @@ export interface LogActivityPayload {
 
 export async function fetchWeeklySchedule(startDate?: string): Promise<WeeklyScheduleResponse> {
   const url = startDate ? `${STUDY_PLAN_API_BASE_URL}/weekly-schedule?start_date=${startDate}` : `${STUDY_PLAN_API_BASE_URL}/weekly-schedule`;
-  const res = await fetch(url, { headers: getAuthHeaders() });
+  const res = await guardedFetch(url, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch weekly schedule');
   return await res.json();
 }
 
 export async function fetchStudyTasks(): Promise<StudyTaskItem[]> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks`, { headers: getAuthHeaders() });
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch study tasks');
   return await res.json();
 }
 
 export async function createStudyTask(payload: CreateTaskPayload): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -112,7 +114,7 @@ export async function createStudyTask(payload: CreateTaskPayload): Promise<any> 
 }
 
 export async function updateStudyTask(taskId: string, payload: Partial<CreateTaskPayload>): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -122,7 +124,7 @@ export async function updateStudyTask(taskId: string, payload: Partial<CreateTas
 }
 
 export async function deleteStudyTask(taskId: string): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -131,7 +133,7 @@ export async function deleteStudyTask(taskId: string): Promise<any> {
 }
 
 export async function completeStudyTask(taskId: string): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}/complete`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks/${taskId}/complete`, {
     method: 'POST',
     headers: getAuthHeaders()
   });
@@ -140,7 +142,7 @@ export async function completeStudyTask(taskId: string): Promise<any> {
 }
 
 export async function bulkAddTasksFromReport(attemptId: string, tasks: any[]): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/tasks/bulk-from-report`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/tasks/bulk-from-report`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ attempt_id: attemptId, tasks })
@@ -150,7 +152,7 @@ export async function bulkAddTasksFromReport(attemptId: string, tasks: any[]): P
 }
 
 export async function logStudyActivity(payload: LogActivityPayload): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/activities`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/activities`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
@@ -160,13 +162,13 @@ export async function logStudyActivity(payload: LogActivityPayload): Promise<any
 }
 
 export async function fetchStudyActivities(): Promise<StudyActivityItem[]> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/activities`, { headers: getAuthHeaders() });
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/activities`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch study activities');
   return await res.json();
 }
 
 export async function deleteStudyActivity(activityId: string): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/activities/${activityId}`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/activities/${activityId}`, {
     method: 'DELETE',
     headers: getAuthHeaders()
   });
@@ -175,13 +177,13 @@ export async function deleteStudyActivity(activityId: string): Promise<any> {
 }
 
 export async function fetchStudyActivitiesSummary(): Promise<StudySummaryResponse> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/activities/summary`, { headers: getAuthHeaders() });
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/activities/summary`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch study summary');
   return await res.json();
 }
 
 export async function generateWeeklyStudyPlan(startDate?: string, overwriteExisting: boolean = false): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/generate-weekly-plan`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/generate-weekly-plan`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ start_date: startDate, overwrite_existing: overwriteExisting })
@@ -191,7 +193,7 @@ export async function generateWeeklyStudyPlan(startDate?: string, overwriteExist
 }
 
 export async function sendPendingTasksEmail(): Promise<any> {
-  const res = await fetch(`${STUDY_PLAN_API_BASE_URL}/send-pending-email`, {
+  const res = await guardedFetch(`${STUDY_PLAN_API_BASE_URL}/send-pending-email`, {
     method: 'POST',
     headers: getAuthHeaders()
   });
@@ -222,7 +224,7 @@ export async function fetchWeeklyInsights(startDate?: string): Promise<WeeklyIns
   const url = startDate
     ? `${STUDY_PLAN_API_BASE_URL}/weekly-insights?start_date=${startDate}`
     : `${STUDY_PLAN_API_BASE_URL}/weekly-insights`;
-  const res = await fetch(url, { headers: getAuthHeaders() });
+  const res = await guardedFetch(url, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch weekly insights report');
   return await res.json();
 }

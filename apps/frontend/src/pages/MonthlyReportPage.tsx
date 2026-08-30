@@ -5,6 +5,7 @@ import { Ico } from '../components/common/Icons';
 import { fetchMonthlyBenchmark, MonthlyBenchmarkResponse } from '../services/analyticsService';
 import { TrendingUp, Award, Target, BarChart2, ShieldCheck, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import StudentMetricCard from '../components/student/StudentMetricCard';
+import { formatEnum } from '../utils/formatEnum';
 
 export function MonthlyReportPage() {
   const { getToken } = useAuth();
@@ -269,7 +270,7 @@ export function MonthlyReportPage() {
                   {visibleSubjectItems.map((sb, idx) => (
                     <div key={idx} style={{ padding: '8px 12px', borderRadius: 0, backgroundColor: 'var(--bg-base)', border: '1px solid #F1F5F9' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>
-                        <span style={{ color: 'var(--text-primary)' }}>{sb.subject}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{formatEnum(sb.subject)}</span>
                         <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
                           {sb.user_accuracy}% <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>(National: {sb.national_avg_accuracy}%)</span>
                         </span>

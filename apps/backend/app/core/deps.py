@@ -44,12 +44,6 @@ async def get_current_user(
         token = request.cookies.get("access_token")
 
     if not token:
-        if settings.ENVIRONMENT == "development":
-            user_res = await session.exec(select(User).where(User.status == UserStatus.ACTIVE).limit(1))
-            dev_user = user_res.first()
-            if dev_user:
-                return dev_user
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated. Bearer token required.",
@@ -149,12 +143,6 @@ async def get_current_user(
 
     except Exception:
         pass
-
-    if settings.ENVIRONMENT == "development":
-        user_res = await session.exec(select(User).where(User.status == UserStatus.ACTIVE).limit(1))
-        dev_user = user_res.first()
-        if dev_user:
-            return dev_user
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

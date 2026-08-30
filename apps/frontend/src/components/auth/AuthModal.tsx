@@ -12,6 +12,8 @@ interface AuthModalProps {
   mode: AuthMode;
   onClose: () => void;
   onSwitchMode: (newMode: AuthMode) => void;
+  onSuccess?: () => void;
+  redirectUrl?: string;
 }
 
 export function AuthModal({
@@ -19,6 +21,8 @@ export function AuthModal({
   mode,
   onClose,
   onSwitchMode,
+  onSuccess,
+  redirectUrl
 }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -37,9 +41,13 @@ export function AuthModal({
   useEffect(() => {
     if (isSignedIn && isOpen) {
       onClose();
-      navigate('/dashboard');
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [isSignedIn, isOpen, navigate, onClose]);
+  }, [isSignedIn, isOpen, navigate, onClose, onSuccess]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -80,7 +88,11 @@ export function AuthModal({
         setSuccessMsg('Signed in successfully! Loading your dashboard...');
         setTimeout(() => {
           onClose();
-          navigate(res.redirect_url || '/dashboard');
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            navigate(res.redirect_url || '/dashboard');
+          }
         }, 800);
       } else {
         const res = await registerUser(
@@ -96,7 +108,11 @@ export function AuthModal({
           setSuccessMsg('🎉 Account created! Opening your dashboard...');
           setTimeout(() => {
             onClose();
-            navigate(res.redirect_url || '/dashboard');
+            if (onSuccess) {
+              onSuccess();
+            } else {
+              navigate(res.redirect_url || '/dashboard');
+            }
           }, 1000);
         }
       }
@@ -554,7 +570,9 @@ export function AuthModal({
               onClick={() => {
                 sessionStorage.setItem('pending_guest_sync', 'true');
                 onClose();
-                const redirectTarget = `${window.location.origin}/dashboard`;
+                const redirectTarget = redirectUrl 
+                  ? `${window.location.origin}${redirectUrl}` 
+                  : `${window.location.origin}/dashboard`;
                 clerk.openSignIn({
                   fallbackRedirectUrl: redirectTarget,
                   signUpFallbackRedirectUrl: redirectTarget,

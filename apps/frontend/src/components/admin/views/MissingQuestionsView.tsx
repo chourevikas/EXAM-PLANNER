@@ -63,7 +63,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
       await Promise.all(
         allExams.map(async (e) => {
           try {
-            const diag = await fetchExamIntegrityQuestions(e.id, 'ALL', 1, 100);
+            const diag = await fetchExamIntegrityQuestions(e.id, 'ALL', 1, 250);
             if (diag) {
               integrityResults[e.id] = diag;
             }
@@ -140,18 +140,22 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
     };
   }, [filteredExams, integrityMap]);
 
-  const handleOpenAddMissingModal = (exam: any, qNum?: number) => {
+  const handleOpenAddMissingModal = (exam: any, qNum?: number, isCorrupted: boolean = false) => {
     const diag = integrityMap[exam.id];
     const missingNums = diag?.missing_question_numbers || [];
+    const corruptedNums = (diag?.items || [])
+      .filter((item: any) => item.issue_category === 'CORRUPTED' || item.issue_category === 'PARTIALLY_CORRUPTED')
+      .map((item: any) => item.question_number_in_paper)
+      .sort((a: number, b: number) => a - b);
 
     setActiveModalExam({
       id: exam.id,
       name: exam.name,
       code: exam.code,
       paper_set_code: exam.paper_set_code || 'SET_A',
-      missing_question_numbers: missingNums,
+      missing_question_numbers: isCorrupted ? corruptedNums : missingNums,
     });
-    setModalInitialQNum(qNum || (missingNums.length > 0 ? missingNums[0] : 1));
+    setModalInitialQNum(qNum || (isCorrupted ? (corruptedNums.length > 0 ? corruptedNums[0] : 1) : (missingNums.length > 0 ? missingNums[0] : 1)));
     setIsModalOpen(true);
   };
 
@@ -438,12 +442,21 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
             const diag = integrityMap[exam.id];
             const missingCount = diag ? diag.missing_count : Math.max(0, (exam.total_questions || 100) - (exam.extracted_questions_count || 0));
             const missingNumbers = diag?.missing_question_numbers || [];
+            const corruptedNumbers = (diag?.items || [])
+              .filter((item: any) => item.issue_category === 'CORRUPTED' || item.issue_category === 'PARTIALLY_CORRUPTED')
+              .map((item: any) => item.question_number_in_paper)
+              .sort((a: number, b: number) => a - b);
+            
             const extractedCount = diag ? diag.total_extracted_questions : (exam.extracted_questions_count || 0);
             const expectedCount = diag ? diag.total_expected_questions : (exam.total_questions || 100);
-            const corruptedCount = diag ? diag.corrupted_count : 0;
+            const corruptedCount = diag ? diag.corrupted_count + diag.partially_corrupted_count : 0;
             const isExpanded = Boolean(expandedExams[exam.id]);
+            
             const visiblePills = isExpanded ? missingNumbers : missingNumbers.slice(0, 16);
             const hiddenCount = missingNumbers.length - visiblePills.length;
+            
+            const visibleCorruptedPills = isExpanded ? corruptedNumbers : corruptedNumbers.slice(0, 16);
+            const hiddenCorruptedCount = corruptedNumbers.length - visibleCorruptedPills.length;
 
             return (
               <div
@@ -506,8 +519,10 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
                         {extractedCount} / {expectedCount} Extracted
                       </div>
-                      <div style={{ fontSize: 11, color: missingCount > 0 ? '#DC2626' : '#10B981', fontWeight: 600 }}>
-                        {missingCount > 0 ? `${missingCount} Question${missingCount > 1 ? 's' : ''} Missing` : '100% Extracted'}
+                      <div style={{ fontSize: 11, color: (missingCount > 0 || corruptedCount > 0) ? '#DC2626' : '#10B981', fontWeight: 600 }}>
+                        {missingCount > 0 ? `${missingCount} Missing ` : ''}
+                        {corruptedCount > 0 ? `${corruptedCount} Corrupted ` : ''}
+                        {missingCount === 0 && corruptedCount === 0 ? '100% Extracted & Valid' : ''}
                       </div>
                     </div>
 
@@ -602,7 +617,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                       {visiblePills.map((qNum) => (
                         <button
                           key={qNum}
-                          onClick={() => handleOpenAddMissingModal(exam, qNum)}
+                          onClick={() => handleOpenAddMissingModal(exam, qNum, false)}
                           style={{
                             padding: '4px 10px',
                             borderRadius: 6,
@@ -647,6 +662,99 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           }}
                         >
                           +{hiddenCount} More...
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Premium Transparent Amber Glass Corrupted Sequence Container */}
+                {corruptedNumbers.length > 0 && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(245, 158, 11, 0.03)',
+                      backdropFilter: 'blur(4px)',
+                      padding: '14px 18px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(245, 158, 11, 0.18)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: '#92400E', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <AlertTriangle size={15} color="#D97706" />
+                        Corrupted Sequence Numbers ({corruptedNumbers.length}):
+                      </span>
+                      {corruptedNumbers.length > 16 && (
+                        <button
+                          onClick={() => toggleExpandExams(exam.id)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#D97706',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                          }}
+                        >
+                          {isExpanded ? 'Collapse List' : `+ ${hiddenCorruptedCount} More Corrupted Questions`}
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {visibleCorruptedPills.map((qNum) => (
+                        <button
+                          key={qNum}
+                          onClick={() => handleOpenAddMissingModal(exam, qNum, true)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                            border: '1px solid rgba(245, 158, 11, 0.22)',
+                            color: '#B45309',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.18)';
+                            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(245, 158, 11, 0.08)';
+                            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.22)';
+                          }}
+                          title={`Click to fix Corrupted Question #${qNum}`}
+                        >
+                          <span>Q#{qNum}</span>
+                          <Sparkles size={12} color="#D97706" />
+                        </button>
+                      ))}
+
+                      {!isExpanded && hiddenCorruptedCount > 0 && (
+                        <button
+                          onClick={() => toggleExpandExams(exam.id)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 6,
+                            backgroundColor: 'rgba(245, 158, 11, 0.04)',
+                            border: '1px dashed rgba(245, 158, 11, 0.3)',
+                            color: '#D97706',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          +{hiddenCorruptedCount} More...
                         </button>
                       )}
                     </div>

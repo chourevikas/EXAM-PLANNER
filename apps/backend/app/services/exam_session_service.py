@@ -313,33 +313,36 @@ class ExamSessionService:
         if not exam:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
 
-        # 1. Primary Strategy: Check S3 Question Artifacts using questions_json_folder_path
-        paper_set = exam.paper_set_code or "SET_A"
-        clean_set = str(paper_set).strip().lower().replace("_", "-")
-        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-        q_filename = f"Q{question_number:03d}.json"
-        s3_indiv_path = f"{q_folder.rstrip('/')}/{q_filename}"
-        q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+        # --- S3 Storage Logic Commented Out (Using Direct PostgreSQL DB for all queries) ---
+        # paper_set = exam.paper_set_code or "SET_A"
+        # clean_set = str(paper_set).strip().lower().replace("_", "-")
+        # q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+        # q_filename = f"Q{question_number:03d}.json"
+        # s3_indiv_path = f"{q_folder.rstrip('/')}/{q_filename}"
+        # q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+        #
+        # q_payload = None
+        # presigned_url = None
+        #
+        # try:
+        #     if await self.storage.exists(s3_indiv_path):
+        #         q_payload = await self.storage.download_json(s3_indiv_path)
+        #         presigned_url = await self.storage.generate_presigned_url(s3_indiv_path)
+        # except Exception:
+        #     q_payload = None
+        #
+        # if not q_payload:
+        #     try:
+        #         if await self.storage.exists(q_json_path):
+        #             questions_doc = await self.storage.download_json(q_json_path)
+        #             questions_list = questions_doc.get("questions", [])
+        #             if question_number <= len(questions_list):
+        #                 q_payload = questions_list[question_number - 1]
+        #     except Exception:
+        #         q_payload = None
 
         q_payload = None
         presigned_url = None
-
-        try:
-            if await self.storage.exists(s3_indiv_path):
-                q_payload = await self.storage.download_json(s3_indiv_path)
-                presigned_url = await self.storage.generate_presigned_url(s3_indiv_path)
-        except Exception:
-            q_payload = None
-
-        if not q_payload:
-            try:
-                if await self.storage.exists(q_json_path):
-                    questions_doc = await self.storage.download_json(q_json_path)
-                    questions_list = questions_doc.get("questions", [])
-                    if question_number <= len(questions_list):
-                        q_payload = questions_list[question_number - 1]
-            except Exception:
-                q_payload = None
 
         # 2. Database Question Lookup & Synchronization
         q_stmt = select(Question).where(
@@ -583,81 +586,100 @@ class ExamSessionService:
                 opts_by_qid.setdefault(opt.question_id, {})[opt.option_label.upper()] = opt.id
 
         def _sync_question_ids(q_list_in: list) -> list:
-            for q_data in q_list_in:
+            for idx, q_data in enumerate(q_list_in, 1):
                 if not isinstance(q_data, dict):
                     continue
-                q_num = q_data.get("question_number")
-                if q_num and q_num in db_questions:
+                raw_num = q_data.get("question_number")
+                try:
+                    q_num = int(raw_num) if raw_num is not None else idx
+                except (ValueError, TypeError):
+                    q_num = idx
+                q_data["question_number"] = q_num
+                if q_num in db_questions:
                     db_q = db_questions[q_num]
                     q_data["question_id"] = str(db_q.id)
                     q_opt_map = opts_by_qid.get(db_q.id, {})
                     if "options" in q_data and isinstance(q_data["options"], list):
-                        for idx, o in enumerate(q_data["options"], 1):
+                        for opt_idx, o in enumerate(q_data["options"], 1):
                             if isinstance(o, dict):
-                                lbl = (o.get("option_label") or o.get("label") or chr(64 + idx)).strip().upper()
+                                lbl = (o.get("option_label") or o.get("label") or chr(64 + opt_idx)).strip().upper()
                                 if lbl in q_opt_map:
                                     o["option_id"] = str(q_opt_map[lbl])
                                     o["id"] = str(q_opt_map[lbl])
             return q_list_in
 
-        # 1. Try master questions JSON
-        q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-        try:
-            if await self.storage.exists(q_json_path):
-                doc = await self.storage.download_json(q_json_path)
-                if doc and doc.get("questions"):
-                    doc["questions"] = _sync_question_ids(doc["questions"])
-                    return doc
-        except Exception as err:
-            logger.debug(f"Master questions json load failed: {err}")
-
-        # 2. Try questions folder (individual Q001.json...)
-        paper_set = exam.paper_set_code or "SET_A"
-        clean_set = str(paper_set).strip().lower().replace("_", "-")
-        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-        alt_q_folder = f"exams/{exam.code}/questions"
-        try:
-            q_count = attempt.total_questions or exam.total_questions or 100
-
-            async def _fetch_single_q(q_num: int):
-                for q_prefix in [q_folder, alt_q_folder]:
-                    for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
-                        q_file = f"{q_prefix.rstrip('/')}/{pattern}"
-                        try:
-                            if await self.storage.exists(q_file):
-                                q_data = await self.storage.download_json(q_file)
-                                if q_data and isinstance(q_data, dict):
-                                    q_data["question_number"] = q_data.get("question_number") or q_num
-                                    q_data["text"] = q_data.get("text") or q_data.get("question_text")
-                                    return q_data
-                        except Exception:
-                            pass
-                return None
-
-            q_tasks = [_fetch_single_q(i) for i in range(1, q_count + 1)]
-            q_results = await asyncio.gather(*q_tasks, return_exceptions=True)
-            q_list = [r for r in q_results if isinstance(r, dict) and r]
-
-            if q_list:
-                q_list = _sync_question_ids(q_list)
-                return {
-                    "exam_id": str(exam.id),
-                    "exam_code": exam.code,
-                    "total_questions": len(q_list),
-                    "questions": q_list,
-                }
-        except Exception as err:
-            logger.debug(f"Folder questions load failed: {err}")
-
-        # 3. Fallback: Database ExamJsonBuilder
+        # 1. Direct High-Performance Database Query (Loads all questions for the exam without solutions)
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(self.session)
-        res = await builder.generate_and_upload(exam.id)
-        if res.get("questions_json_path") and await self.storage.exists(res["questions_json_path"]):
-            doc = await self.storage.download_json(res["questions_json_path"])
-            if doc and doc.get("questions"):
-                doc["questions"] = _sync_question_ids(doc["questions"])
-                return doc
+
+        stmt = (
+            select(Question)
+            .where(Question.exam_id == exam.id)
+            .order_by(col(Question.question_number_in_paper))
+        )
+        res = await self.session.exec(stmt)
+        questions = res.all()
+
+        if questions:
+            preloaded_data = await builder.preload_batch_question_data(questions)
+            questions_payload = []
+            for q in questions:
+                # q_card contains question text, metadata, and options WITHOUT is_correct or solutions
+                q_card, _ = await builder.build_single_question_cards(q, preloaded=preloaded_data)
+                questions_payload.append(q_card)
+
+            return {
+                "exam_id": str(exam.id),
+                "exam_code": exam.code,
+                "total_questions": len(questions_payload),
+                "questions": questions_payload,
+            }
+
+        # --- S3 Storage Fallback Logic Commented Out (PostgreSQL DB is used as single source of truth) ---
+        # q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+        # try:
+        #     if await self.storage.exists(q_json_path):
+        #         doc = await self.storage.download_json(q_json_path)
+        #         if doc and doc.get("questions"):
+        #             doc["questions"] = _sync_question_ids(doc["questions"])
+        #             return doc
+        # except Exception as err:
+        #     logger.debug(f"Master questions json load failed: {err}")
+        #
+        # paper_set = exam.paper_set_code or "SET_A"
+        # clean_set = str(paper_set).strip().lower().replace("_", "-")
+        # q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
+        # alt_q_folder = f"exams/{exam.code}/questions"
+        # try:
+        #     q_count = attempt.total_questions or exam.total_questions or 100
+        #     async def _fetch_single_q(q_num: int):
+        #         for q_prefix in [q_folder, alt_q_folder]:
+        #             for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
+        #                 q_file = f"{q_prefix.rstrip('/')}/{pattern}"
+        #                 try:
+        #                     if await self.storage.exists(q_file):
+        #                         q_data = await self.storage.download_json(q_file)
+        #                         if q_data and isinstance(q_data, dict):
+        #                             q_data["question_number"] = q_data.get("question_number") or q_num
+        #                             q_data["text"] = q_data.get("text") or q_data.get("question_text")
+        #                             return q_data
+        #                 except Exception:
+        #                     pass
+        #         return None
+        #
+        #     q_tasks = [_fetch_single_q(i) for i in range(1, q_count + 1)]
+        #     q_results = await asyncio.gather(*q_tasks, return_exceptions=True)
+        #     q_list = [r for r in q_results if isinstance(r, dict) and r]
+        #     if q_list:
+        #         q_list = _sync_question_ids(q_list)
+        #         return {
+        #             "exam_id": str(exam.id),
+        #             "exam_code": exam.code,
+        #             "total_questions": len(q_list),
+        #             "questions": q_list,
+        #         }
+        # except Exception as err:
+        #     logger.debug(f"Folder questions load failed: {err}")
 
         return {
             "exam_id": str(exam.id),
@@ -1115,35 +1137,38 @@ class ExamSessionService:
         if not exam:
             raise HTTPException(status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found.")
 
-        # 1. Primary Strategy: Check S3 Solution JSON Artifacts using solutions_json_folder_path
-        paper_set = exam.paper_set_code or "SET_A"
-        clean_set = str(paper_set).strip().lower().replace("_", "-")
-        s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
         q_model = await self.session.get(Question, resp.question_id) if resp.question_id else None
         q_num = q_model.question_number_in_paper if q_model else attempt.current_question_index
-        s_filename = f"Q{q_num:03d}.json"
-        s3_indiv_sol_path = f"{s_folder.rstrip('/')}/{s_filename}"
-        s_json_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
+
+        # --- S3 Solutions Storage Commented Out (Using Direct PostgreSQL DB) ---
+        # paper_set = exam.paper_set_code or "SET_A"
+        # clean_set = str(paper_set).strip().lower().replace("_", "-")
+        # s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
+        # s_filename = f"Q{q_num:03d}.json"
+        # s3_indiv_sol_path = f"{s_folder.rstrip('/')}/{s_filename}"
+        # s_json_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
+        #
+        # q_sol = None
+        # try:
+        #     if await self.storage.exists(s3_indiv_sol_path):
+        #         q_sol = await self.storage.download_json(s3_indiv_sol_path)
+        # except Exception:
+        #     q_sol = None
+        #
+        # if not q_sol:
+        #     try:
+        #         if await self.storage.exists(s_json_path):
+        #             solutions_doc = await self.storage.download_json(s_json_path)
+        #             sol_list = solutions_doc.get("questions", [])
+        #             q_sol = next((s for s in sol_list if str(s.get("question_id")) == str(resp.question_id)), None)
+        #             if not q_sol and q_num:
+        #                 q_sol = next((s for s in sol_list if s.get("question_number") == q_num), None)
+        #     except Exception:
+        #         q_sol = None
 
         q_sol = None
-        try:
-            if await self.storage.exists(s3_indiv_sol_path):
-                q_sol = await self.storage.download_json(s3_indiv_sol_path)
-        except Exception:
-            q_sol = None
 
-        if not q_sol:
-            try:
-                if await self.storage.exists(s_json_path):
-                    solutions_doc = await self.storage.download_json(s_json_path)
-                    sol_list = solutions_doc.get("questions", [])
-                    q_sol = next((s for s in sol_list if str(s.get("question_id")) == str(resp.question_id)), None)
-                    if not q_sol and q_num:
-                        q_sol = next((s for s in sol_list if s.get("question_number") == q_num), None)
-            except Exception:
-                q_sol = None
-
-        # 2. Fallback Strategy: Database Query
+        # 2. Database Query for Solution & Distractor Analysis
         if not q_sol:
             if not q_model:
                 raise HTTPException(status_code=404, detail="Question not found in S3 or database.")
@@ -1543,8 +1568,8 @@ class ExamSessionService:
 
         await self.session.commit()
 
-        from app.cache import invalidate_user_cache
-        await invalidate_user_cache(str(user_id))
+        from app.cache import invalidate_attempt_cache
+        await invalidate_attempt_cache(attempt.id, str(user_id))
 
         # Enqueue async post-submission pipeline
         from app.engine.post_submission_pipeline import run_post_submission_pipeline
@@ -1596,13 +1621,18 @@ class ExamSessionService:
         if cached_data is not None:
             return cached_data
 
-        stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
+        base_stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
         if exam_id:
-            stmt = stmt.where(ExamAttempt.exam_id == exam_id)
+            base_stmt = base_stmt.where(ExamAttempt.exam_id == exam_id)
         if status_filter:
-            stmt = stmt.where(ExamAttempt.status == status_filter)
+            base_stmt = base_stmt.where(ExamAttempt.status == status_filter)
 
-        stmt = stmt.order_by(col(ExamAttempt.created_at).desc()).offset(skip).limit(limit)
+        from sqlmodel import func
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_res = await self.session.exec(count_stmt)
+        total_count = total_res.first() or 0
+
+        stmt = base_stmt.order_by(col(ExamAttempt.created_at).desc()).offset(skip).limit(limit)
         res = await self.session.exec(stmt)
         attempts = res.all()
 
@@ -1637,7 +1667,7 @@ class ExamSessionService:
                 "submitted_at": att.submitted_at.isoformat() if att.submitted_at else None,
             })
 
-        result_dict = {"items": items, "skip": skip, "limit": limit}
+        result_dict = {"items": items, "total": total_count, "skip": skip, "limit": limit}
         await cache.set(cache_key, result_dict, ttl_seconds=120)
         return result_dict
 

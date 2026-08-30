@@ -589,7 +589,7 @@ export async function fetchExamIntegrityQuestions(
   examId: string | number,
   issueType?: string,
   page: number = 1,
-  limit: number = 100
+  limit: number = 250
 ): Promise<ExamIntegrityQuestionsResponse> {
   let url = `/api/v1/exams/${encodeURIComponent(examId)}/integrity-questions?page=${page}&limit=${limit}`;
   if (issueType && issueType !== 'ALL') {

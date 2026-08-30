@@ -60,8 +60,20 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Could not check interrupted pipeline runs on startup: {err}")
 
     try:
+        from app.services.daily_scheduler_service import start_daily_midnight_scheduler
+        start_daily_midnight_scheduler()
+    except Exception as err:
+        logger.warning(f"Could not start daily midnight scheduler: {err}")
+
+    try:
         yield
     finally:
+        try:
+            from app.services.daily_scheduler_service import stop_daily_midnight_scheduler
+            stop_daily_midnight_scheduler()
+        except Exception:
+            pass
+
         logger.info("🧹 Server shutdown initiated. Cleaning up temporary upload directories and PDF cache...")
         from pathlib import Path
         import shutil

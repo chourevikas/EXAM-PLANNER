@@ -1,3 +1,5 @@
+import { guardedFetch } from '../utils/apiGuard';
+
 const ANALYTICS_API_BASE_URL = '/api/v1/analytics';
 
 export interface PredictedRankResponse {
@@ -19,7 +21,7 @@ export async function fetchPredictedRank(): Promise<PredictedRankResponse> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${ANALYTICS_API_BASE_URL}/predicted-rank`, { headers });
+  const res = await guardedFetch(`${ANALYTICS_API_BASE_URL}/predicted-rank`, { headers });
   if (!res.ok) {
     throw new Error('Failed to fetch predicted rank analytics');
   }
@@ -64,7 +66,7 @@ export async function fetchMonthlyBenchmark(overrideToken?: string): Promise<Mon
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, { headers });
+  const res = await guardedFetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, { headers });
   if (!res.ok) {
     throw new Error(`Failed to fetch monthly benchmarking analytics (Status ${res.status})`);
   }

@@ -3,6 +3,8 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import { listBookmarks, removeBookmark } from '../services/bookmarkService';
 import { fetchCurrentUser } from '../services/authService';
 
+import { formatEnum } from '../utils/formatEnum';
+
 export function BookmarksPage(): React.ReactElement {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export function BookmarksPage(): React.ReactElement {
               <div key={b.bookmark_id} style={{ padding: 20, border: '1px solid #E2E8F0', borderRadius: 8, background: '#FFFFFF' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#334EAC', background: '#EFF6FF', padding: '4px 8px', borderRadius: 4 }}>
-                    {b.difficulty}
+                    {formatEnum(b.difficulty)}
                   </span>
                   <button 
                     onClick={() => handleRemove(b.question_id)}

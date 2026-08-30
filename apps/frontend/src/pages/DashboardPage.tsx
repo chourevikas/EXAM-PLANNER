@@ -10,10 +10,13 @@ import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
 import { StudentTestimonialForm } from '../components/student/StudentTestimonialForm';
+import { StudentMetricCardSkeleton } from '../components/student/StudentMetricCardSkeleton';
+import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { formatEnum } from '../utils/formatEnum';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -63,6 +66,7 @@ export function DashboardPage() {
   const [isSubmittingLog, setIsSubmittingLog] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [attemptsPage, setAttemptsPage] = useState<number>(0);
   const [guestSessionsPage, setGuestSessionsPage] = useState<number>(0);
   const SESSIONS_PER_PAGE = 3;
@@ -100,7 +104,11 @@ export function DashboardPage() {
         }
       } catch (err) {
         console.error("Failed to fetch student dashboard stats:", err);
+      } finally {
+        setIsLoadingStats(false);
       }
+    } else {
+      setIsLoadingStats(false);
     }
   };
 
@@ -217,63 +225,73 @@ export function DashboardPage() {
 
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 18, marginBottom: 32 }}>
-        <StudentMetricCard
-          title="Total Questions Solved"
-          value={
-            <span>
-              {totalQuestionsSolved.toLocaleString()}{' '}
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
-            </span>
-          }
-          supportingText={todayQuestionsAttempted > 0 ? `${todayQuestionsAttempted} Qs attempted today` : "Across all practice exams"}
-          icon={<Ico.Target size={18} />}
-          showProgress={true}
-          progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
-          accentColor="#E31B23"
-        />
+        {useMinimumLoadingTime(isLoadingStats) ? (
+          <>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StudentMetricCardSkeleton key={i} showProgress={i === 0} />
+            ))}
+          </>
+        ) : (
+          <>
+            <StudentMetricCard
+              title="Total Questions Solved"
+              value={
+                <span>
+                  {totalQuestionsSolved.toLocaleString()}{' '}
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Qs</span>
+                </span>
+              }
+              supportingText={todayQuestionsAttempted > 0 ? `${todayQuestionsAttempted} Qs attempted today` : "Across all practice exams"}
+              icon={<Ico.Target size={18} />}
+              showProgress={true}
+              progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
+              accentColor="#E31B23"
+            />
 
-        <StudentMetricCard
-          title="Tests Completed"
-          value={
-            <span>
-              {dashboardStats?.totalExams ?? 0}{' '}
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Exams</span>
-            </span>
-          }
-          supportingText="Completed practice tests"
-          icon={<Ico.Trophy size={18} />}
-          accentColor="#F2B623"
-        />
+            <StudentMetricCard
+              title="Tests Completed"
+              value={
+                <span>
+                  {dashboardStats?.totalExams ?? 0}{' '}
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>Exams</span>
+                </span>
+              }
+              supportingText="Completed practice tests"
+              icon={<Ico.Trophy size={18} />}
+              accentColor="#F2B623"
+            />
 
-        <StudentMetricCard
-          title="Overall Accuracy"
-          value={
-            <span>
-              {dashboardStats?.overallAccuracy ?? 0}%
-            </span>
-          }
-          supportingText="Average correctness score"
-          icon={<Ico.Chart size={18} />}
-          accentColor="#3A8B53"
-        />
+            <StudentMetricCard
+              title="Overall Accuracy"
+              value={
+                <span>
+                  {dashboardStats?.overallAccuracy ?? 0}%
+                </span>
+              }
+              supportingText="Average correctness score"
+              icon={<Ico.Chart size={18} />}
+              accentColor="#3A8B53"
+            />
 
-        <StudentMetricCard
-          title="Total XP / Badges"
-          value={
-            <span>
-              {(user.total_xp ?? 0).toLocaleString()}{' '}
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>XP</span>
-            </span>
-          }
-          supportingText={
-            <span style={{ color: '#E31B23', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              View Achievements <Ico.ArrowRight size={13} />
-            </span>
-          }
-          icon={<Ico.Star filled />}
-          onClick={() => setShowBadgesModal(true)}
-          accentColor="#E31B23"
-        />
+            <StudentMetricCard
+              title="Total XP / Badges"
+              value={
+                <span>
+                  {(user.total_xp ?? 0).toLocaleString()}{' '}
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#64748B' }}>XP</span>
+                </span>
+              }
+              supportingText={
+                <span style={{ color: '#E31B23', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  View Achievements <Ico.ArrowRight size={13} />
+                </span>
+              }
+              icon={<Ico.Star filled />}
+              onClick={() => setShowBadgesModal(true)}
+              accentColor="#E31B23"
+            />
+          </>
+        )}
       </section>
 
 
@@ -319,7 +337,7 @@ export function DashboardPage() {
                         const data = payload[0].payload;
                         return (
                           <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{data.subject}</div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{formatEnum(data.subject)}</div>
                             <div style={{ fontSize: 12, color: '#E31B23', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
                             <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                               Attempted: {data.total_attempted} | Correct: {data.total_correct}

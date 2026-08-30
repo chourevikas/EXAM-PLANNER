@@ -17,6 +17,9 @@ import {
 } from '../services/examService';
 import { PsychometricReport, QuestionReportItem, UserProgressionReportData } from '../types/exam';
 import { Loader2, FileCheck, Sparkles, Cpu, Activity, RefreshCw, AlertCircle, ArrowLeft, BarChart3 } from 'lucide-react';
+import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
+import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
+import { formatEnum } from '../utils/formatEnum';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -58,7 +61,7 @@ export function AnalyticsPage() {
     async function loadAttemptHistory() {
       setIsHistoryLoading(true);
       try {
-        const history = await listCandidateAttempts();
+        const history = await listCandidateAttempts({ page: 1, limit: 100 });
         const completed = history.filter(
           (a) => a.status === 'COMPLETED' || a.status === 'EVALUATED' || a.status === 'SUBMITTED' || a.status === 'AUTO_SUBMITTED' || a.status === 'FAILED'
         );
@@ -114,9 +117,18 @@ export function AnalyticsPage() {
         return;
       }
 
+      // Validate numeric attempt ID
+      const numId = parseInt(String(targetId), 10);
+      if (isNaN(numId)) {
+        setError(`Invalid attempt ID '${targetId}'.`);
+        setIsLoading(false);
+        setIsEvaluating(false);
+        return;
+      }
+
       try {
         // Step 1: Check status via lightweight polling endpoint
-        const initialStatus = await getAttemptEvaluationStatus(targetId);
+        const initialStatus = await getAttemptEvaluationStatus(numId);
 
         if (initialStatus && (initialStatus.is_failed || initialStatus.status === 'FAILED')) {
           setError(initialStatus.message || 'Psychometric evaluation failed for this attempt. Please click Retry below to re-evaluate.');
@@ -128,25 +140,26 @@ export function AnalyticsPage() {
         if (initialStatus && !initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
           setIsEvaluating(true);
           setEvalProgress(initialStatus.progress_percentage || 40);
-          setEvalMessage(initialStatus.message || 'Synthesizing 11 psychometric matrices & smart mentor recommendations...');
+          setEvalMessage(initialStatus.message || 'Synthesizing psychometric matrices & smart mentor recommendations...');
 
-          // Long-polling loop (every 1.5s)
+          // Long-polling loop with 6s delay strictly AFTER previous response completes
           const isReady = await pollAttemptReportUntilReady(
-            targetId,
+            numId,
             (statusUpdate) => {
               if (isCancelled) return;
               setEvalProgress(statusUpdate.progress_percentage || 60);
               setEvalMessage(statusUpdate.message || 'Computing knowledge ability and decay curves...');
             },
-            200,
-            1500
+            30,
+            6000,
+            () => isCancelled
           );
 
           if (isCancelled) return;
           setIsEvaluating(false);
 
           if (!isReady) {
-            const checkLatest = await getAttemptEvaluationStatus(targetId);
+            const checkLatest = await getAttemptEvaluationStatus(numId);
             if (checkLatest && (checkLatest.is_failed || checkLatest.status === 'FAILED')) {
               setError(checkLatest.message || 'Psychometric evaluation failed. Please click Retry below.');
             } else {
@@ -161,9 +174,9 @@ export function AnalyticsPage() {
 
         // Step 2: Fetch structured JSON reports in parallel (no raw markdown calls)
         const [jsonRes, qRes, progRes] = await Promise.allSettled([
-          getPsychometricReportJson(targetId),
-          getAttemptQuestionReport(targetId),
-          getAttemptUserProgressionReport(targetId),
+          getPsychometricReportJson(numId),
+          getAttemptQuestionReport(numId),
+          getAttemptUserProgressionReport(numId),
         ]);
 
         if (isCancelled) return;
@@ -172,17 +185,17 @@ export function AnalyticsPage() {
           const loadedReport = jsonRes.value;
           setReport(loadedReport);
 
-          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with backoff until resolved
+          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with 6s interval after each response
           if (targetId !== 'CUMULATIVE_ALL' && !loadedReport?.llm_insight) {
             let attempts = 0;
-            const maxAttempts = 10; // Poll up to 10 times (max ~25 seconds)
-            const pollIntervalMs = 3500;
+            const maxAttempts = 10;
+            const pollIntervalMs = 6000;
 
             const pollAiInsight = async () => {
               if (isCancelled || attempts >= maxAttempts) return;
               attempts++;
               try {
-                const refreshedReport = await getPsychometricReportJson(targetId);
+                const refreshedReport = await getPsychometricReportJson(numId);
                 if (refreshedReport && refreshedReport.llm_insight && !isCancelled) {
                   setReport((prev) => (prev ? { ...prev, llm_insight: refreshedReport.llm_insight } : refreshedReport));
                   return; // Resolved successfully
@@ -196,7 +209,7 @@ export function AnalyticsPage() {
               }
             };
 
-            setTimeout(pollAiInsight, 2000);
+            setTimeout(pollAiInsight, pollIntervalMs);
           }
         } else {
           setError(jsonRes.reason?.message || 'Report is currently compiling in background. Please refresh in a moment.');
@@ -276,28 +289,6 @@ export function AnalyticsPage() {
               {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
             </span>
           </div>
-
-          <button
-            onClick={handleBackToCumulative}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 0,
-              backgroundColor: '#E31B23',
-              color: '#ffffff',
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <ArrowLeft size={16} />
-            <span>← Back to Cumulative User Report</span>
-          </button>
         </div>
       )}
 
@@ -339,37 +330,72 @@ export function AnalyticsPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
             {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Student Performance & Mastery Profile' : 'Exam Performance & Cognitive Diagnostic'}
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
             {selectedAttemptId === 'CUMULATIVE_ALL'
-              ? 'Multi-exam weighted synthesis across all completed tests with AI contextual diagnosis, subject mastery, and actionable study plans.'
-              : 'Detailed question-by-question breakdown, macro scores, and AI mentorship guidance for this completed test.'}
+              ? 'Multi-exam weighted synthesis across all completed tests with contextual diagnosis, subject mastery, and actionable study plans.'
+              : 'Detailed question-by-question breakdown, macro scores, and mentorship guidance for this completed test.'}
           </p>
+
+          {/* Diagnostic Data Loaded Sign Badge */}
+          {(() => {
+            const hasAi = Boolean(
+              report?.llm_insight?.executive_summary ||
+              (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
+              (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
+              ((report?.llm_insight?.study_plan_tasks || []).length > 0) ||
+              (((report as any)?.part_2_exam_macro_scorecard?.actionable_tasks || []).length > 0) ||
+              (((report as any)?.part_3_aggregated_user_report?.actionable_tasks || []).length > 0)
+            );
+
+            if (isLoading) return null;
+
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                {hasAi ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 12px',
+                      backgroundColor: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      borderRadius: 0,
+                      color: '#059669',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    <Sparkles size={14} color="#059669" />
+                    Diagnostic Data: Loaded & Verified
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 12px',
+                      backgroundColor: '#FEF3C7',
+                      border: '1px solid #FDE68A',
+                      borderRadius: 0,
+                      color: '#D97706',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    <Loader2 size={14} className="animate-spin" color="#D97706" />
+                    Diagnostic Data: Generating Insights...
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
-        {/* Back to Master Cumulative Overview Button (When viewing single exam) */}
-        {selectedAttemptId !== 'CUMULATIVE_ALL' && (
-          <button
-            onClick={handleBackToCumulative}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
-              borderRadius: 0,
-              backgroundColor: 'var(--bg-subtle)',
-              border: '1px solid var(--accent-primary)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-color-base)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <BarChart3 size={16} color="#E31B23" />
-            ← Back to Master Cumulative Report
-          </button>
-        )}
+
       </section>
 
       {/* Per-Exam Attempt Switcher (When viewing an individual exam that has multiple attempts) */}
@@ -470,7 +496,7 @@ export function AnalyticsPage() {
           </h2>
 
           <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 500, margin: 0 }}>
-            You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep AI Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
+            You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
           </p>
 
           <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -586,7 +612,7 @@ export function AnalyticsPage() {
                                   color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
                                 }}
                               >
-                                {att.mode.replace('_', ' ')}
+                                {formatEnum(att.mode)}
                               </span>
                             </td>
                             <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
@@ -772,13 +798,10 @@ export function AnalyticsPage() {
             </div>
           )}
 
-          {/* Loading Spinner */}
-          {isLoading && !isEvaluating && (
-            <div style={{ padding: 40, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-              <Loader2 size={28} className="animate-spin" color="#E31B23" />
-              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                Loading 12 Psychometric Diagnostic Matrices...
-              </span>
+          {/* Loading Skeleton */}
+          {useMinimumLoadingTime(isLoading && !isEvaluating, 400) && (
+            <div style={{ marginTop: 16 }}>
+              <PerformanceAnalyticsSkeleton />
             </div>
           )}
 

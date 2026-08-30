@@ -31,6 +31,7 @@ import {
   CalendarPlus,
   ArrowRight,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import {
   PsychometricReport,
@@ -60,6 +61,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { formatEnum } from '../../utils/formatEnum';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -78,15 +80,33 @@ export function PsychometricReportView({
     report?.is_cumulative ||
     report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
 
+  const hasAiInsight = Boolean(
+    report?.llm_insight?.executive_summary ||
+    (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
+    (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
+    ((report?.llm_insight?.study_plan_tasks || []).length > 0) ||
+    (((report as any)?.part_2_exam_macro_scorecard?.actionable_tasks || []).length > 0) ||
+    (((report as any)?.part_3_aggregated_user_report?.actionable_tasks || []).length > 0)
+  );
+
+  const rawTasksList = (
+    report?.llm_insight?.study_plan_tasks ||
+    (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
+    (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
+    (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
+    (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.study_plan_tasks ||
+    []
+  );
+
   const [activeTab, setActiveTab] = useState<
-    'questions' | 'exam-matrices' | 'topics' | 'user-aggregate'
-  >(isCumulative ? 'exam-matrices' : 'questions');
+    'exam-scorecard' | 'questions' | 'ai-insights' | 'user-trajectory' | 'topics'
+  >(isCumulative ? 'user-trajectory' : 'exam-scorecard');
 
   useEffect(() => {
-    if (isCumulative && activeTab === 'questions') {
-      setActiveTab('exam-matrices');
-    } else if (!isCumulative && activeTab === 'user-aggregate') {
-      setActiveTab('questions');
+    if (isCumulative && (activeTab === 'exam-scorecard' || activeTab === 'questions')) {
+      setActiveTab('user-trajectory');
+    } else if (!isCumulative && activeTab === 'user-trajectory') {
+      setActiveTab('exam-scorecard');
     }
   }, [isCumulative]);
 
@@ -134,12 +154,12 @@ export function PsychometricReportView({
   };
 
   const handleScheduleSingleTask = async (task: any) => {
-    if (!attemptId) return;
+    const targetAttemptId = attemptId || 'CUMULATIVE_ALL';
     const taskId = task.task_id || task.title;
     setIsAddingTask((prev) => ({ ...prev, [taskId]: true }));
     try {
       await bulkAddStudyTasksFromReport({
-        attempt_id: attemptId,
+        attempt_id: String(targetAttemptId),
         tasks: [task],
       });
       const fullTitle = `[${task.subject || 'Core'}] ${task.title}`;
@@ -153,11 +173,12 @@ export function PsychometricReportView({
   };
 
   const handleScheduleAllTasks = async (tasks: any[]) => {
-    if (!attemptId || !tasks.length) return;
+    const targetAttemptId = attemptId || 'CUMULATIVE_ALL';
+    if (!tasks.length) return;
     setIsBulkAdding(true);
     try {
       await bulkAddStudyTasksFromReport({
-        attempt_id: attemptId,
+        attempt_id: String(targetAttemptId),
         tasks,
       });
       const nextTitles = new Set(scheduledTaskTitles);
@@ -929,17 +950,109 @@ export function PsychometricReportView({
 
   const expandAllHierarchy = () => {
     const allIds: Record<string, boolean> = {};
-    hierarchyData.forEach((s: any) => {
-      allIds[`subj_${s.name}`] = true;
-      s.topics?.forEach((t: any) => {
-        allIds[`top_${s.name}_${t.name}`] = true;
-      });
-    });
+    const traverse = (node: any, currentId: string) => {
+      allIds[currentId] = true;
+      node.topics?.forEach((t: any) => traverse(t, `${currentId}_${t.name}`));
+      node.subtopics?.forEach((s: any) => traverse(s, `${currentId}_${s.name}`));
+    };
+    hierarchyData.forEach((s: any) => traverse(s, `node_${s.name}`));
     setExpandedHierarchyNodes(allIds);
   };
 
   const collapseAllHierarchy = () => {
     setExpandedHierarchyNodes({});
+  };
+
+  const renderHierarchyNode = (node: any, level: number, nodeId: string) => {
+    const isExpanded = !!expandedHierarchyNodes[nodeId];
+    const hasChildren = (node.topics && node.topics.length > 0) || (node.subtopics && node.subtopics.length > 0);
+    const hasQuestions = node.question_numbers && node.question_numbers.length > 0;
+    const isLeaf = !hasChildren;
+
+    const accColor = node.accuracy >= 85 ? '#3A8B53' : node.accuracy >= 70 ? '#10b981' : node.accuracy >= 50 ? '#F2B623' : node.accuracy >= 30 ? '#F47B35' : '#ef4444';
+
+    return (
+      <div key={nodeId} style={{ marginBottom: 4 }}>
+        <div
+          onClick={() => hasChildren ? toggleHierarchyNode(nodeId) : undefined}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            marginLeft: level * 20,
+            backgroundColor: level === 0 ? (isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc') : 'transparent',
+            border: level === 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : 'none',
+            borderBottom: level > 0 ? `1px dashed ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : undefined,
+            borderRadius: 0,
+            cursor: hasChildren ? 'pointer' : 'default',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {hasChildren ? (
+              isExpanded ? <ChevronDown size={16} color="#64748b" /> : <ChevronRight size={16} color="#64748b" />
+            ) : (
+              <div style={{ width: 16 }} />
+            )}
+            <span style={{
+              fontSize: level === 0 ? 14 : level === 1 ? 13 : 12,
+              fontWeight: level === 0 ? 800 : level === 1 ? 700 : 600,
+              color: isDark ? '#e2e8f0' : '#1e293b'
+            }}>
+              {node.name || 'Unnamed Node'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
+              {node.correct || 0} / {node.total || 0}
+            </span>
+            <span style={{
+              display: 'inline-block',
+              width: 48,
+              textAlign: 'right',
+              fontSize: 12,
+              fontWeight: 800,
+              color: accColor
+            }}>
+              {node.accuracy || 0}%
+            </span>
+          </div>
+        </div>
+
+        {isExpanded && hasChildren && (
+          <div style={{ marginTop: 4 }}>
+            {node.topics && node.topics.map((child: any) => renderHierarchyNode(child, level + 1, `${nodeId}_${child.name}`))}
+            {node.subtopics && node.subtopics.map((child: any) => renderHierarchyNode(child, level + 1, `${nodeId}_${child.name}`))}
+          </div>
+        )}
+        
+        {isExpanded && isLeaf && hasQuestions && !isCumulative && (
+          <div style={{ marginLeft: level * 20 + 36, marginTop: 4, marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {node.question_numbers.map((qNum: number) => (
+              <button
+                key={qNum}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleJumpToQuestion(qNum);
+                }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                  color: isDark ? '#cbd5e1' : '#475569',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                  borderRadius: 0,
+                  cursor: 'pointer'
+                }}
+              >
+                Q{qNum}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -984,47 +1097,71 @@ export function PsychometricReportView({
           </p>
         </div>
 
-        {/* Score & Accuracy Badges */}
-        <div style={{ display: 'flex', gap: 16 }}>
+        {/* Score, Accuracy & AI Data Status Badges */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <div
             style={{
               backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
-              padding: '12px 20px',
+              padding: '10px 18px',
               borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
               textAlign: 'center',
             }}
           >
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Marks</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#E31B23' }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#E31B23' }}>
               {metadata?.exam_attempt?.total_score_awarded !== undefined
                 ? metadata.exam_attempt.total_score_awarded.toFixed(2)
                 : (metadata?.exam_attempt as any)?.total_score !== undefined
                   ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
                   : '0.00'}
-              <span style={{ fontSize: 13, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
+              <span style={{ fontSize: 12, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
             </div>
           </div>
 
           <div
             style={{
               backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
-              padding: '12px 20px',
+              padding: '10px 18px',
               borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
               textAlign: 'center',
             }}
           >
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>ICRS Index</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#3A8B53' }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#3A8B53' }}>
               {icrs?.icrs_score || 82}
-              <span style={{ fontSize: 13, color: '#64748b' }}> / 100</span>
+              <span style={{ fontSize: 12, color: '#64748b' }}> / 100</span>
+            </div>
+          </div>
+
+          {/* AI Diagnostic Status Sign Badge */}
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: 0,
+              border: hasAiInsight ? '1px solid #A7F3D0' : '1px solid #FDE68A',
+              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 2,
+            }}
+          >
+            <div style={{ fontSize: 10.5, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {hasAiInsight ? <Sparkles size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
+              Diagnostic Status
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: hasAiInsight ? '#059669' : '#D97706' }}>
+              {hasAiInsight ? 'Data Loaded' : 'Generating...'}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Navigation Tabs (4 Standardized Sections) */}
+      {/* Navigation Tabs (Separated Sub-Pages for Exam Report & User Report) */}
       <div
         style={{
           display: 'flex',
@@ -1034,18 +1171,19 @@ export function PsychometricReportView({
           overflowX: 'auto',
         }}
       >
-        {[
-          { id: 'questions', label: '1. Per-Question Diagnostics & Solutions', icon: Target },
-          { id: 'exam-matrices', label: isCumulative ? '1. Cumulative Performance Scorecards' : '2. Exam Performance & Cognitive Scorecard', icon: Zap },
-          { id: 'topics', label: isCumulative ? '2. Syllabus & Category Mastery' : '3. Syllabus & Category Mastery', icon: BookOpen },
-          { id: 'user-aggregate', label: '3. Longitudinal Evolution & Trends', icon: TrendingUp },
-        ].filter((tab) => {
-          if (isCumulative) {
-            return tab.id !== 'questions';
-          } else {
-            return tab.id !== 'user-aggregate';
-          }
-        }).map((tab) => {
+        {(isCumulative
+          ? [
+              { id: 'user-trajectory', label: '1. Longitudinal Trajectory & Core Mastery', icon: TrendingUp },
+              { id: 'topics', label: '2. Topic Hierarchy & Subject Mastery', icon: BookOpen },
+              { id: 'ai-insights', label: '3. Strategic Roadmap & Study Plan', icon: Sparkles },
+            ]
+          : [
+              { id: 'exam-scorecard', label: '1. Exam Scorecard & Performance Metrics', icon: Zap },
+              { id: 'questions', label: '2. Question Solutions & Distractor Traps', icon: Target },
+              { id: 'ai-insights', label: '3. Insights & Actionable Study Plan', icon: Sparkles },
+              { id: 'topics', label: '4. Topic Hierarchy & Category Mastery', icon: BookOpen },
+            ]
+        ).map((tab) => {
           const IconComp = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1070,15 +1208,33 @@ export function PsychometricReportView({
             >
               <IconComp size={16} />
               <span>{tab.label}</span>
+              {tab.id === 'ai-insights' && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 2,
+                    backgroundColor: hasAiInsight
+                      ? (isActive ? 'rgba(255,255,255,0.25)' : '#ECFDF5')
+                      : (isActive ? 'rgba(255,255,255,0.25)' : '#FEF3C7'),
+                    color: hasAiInsight
+                      ? (isActive ? '#FFFFFF' : '#059669')
+                      : (isActive ? '#FFFFFF' : '#D97706'),
+                  }}
+                >
+                  {hasAiInsight ? 'READY' : 'GENERATING'}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          PLACE 1: EXAM 12-MATRIX PERFORMANCE (Tab 1)
+          PLACE 1: EXAM SCORECARD PERFORMANCE (Tab 1)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'exam-matrices' && (
+      {activeTab === 'exam-scorecard' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Executive Prelims / Practice Performance & Benchmark Card */}
           {(() => {
@@ -1276,7 +1432,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#E31B23', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.exam_readiness_insight || aiInsights.benchmark_verdict || icrs?.interpretation || 'Multi-factor readiness index evaluating net score against qualification benchmarks.'}
               </div>
@@ -1357,7 +1513,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#3A8B53', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.knowledge_depth_insight || 'Measures underlying conceptual strength independently of question difficulty variations.'}
               </div>
@@ -1446,7 +1602,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#F2B623', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.guessing_and_confidence_insight || gti?.recommendation || 'Differentiates educated 50:50 eliminations from blind impulsive guesses under time pressure.'}
               </div>
@@ -1535,7 +1691,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#8b5cf6', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.elimination_skill_insight || 'Measures how reliably you convert 50:50 elimination choices into net positive marks.'}
               </div>
@@ -1621,7 +1777,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.stamina_and_consistency_insight || satoi?.recommendation || 'Evaluates whether your attempt accuracy and focus remained stable across all quarters of the paper.'}
               </div>
@@ -1707,7 +1863,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#ec4899', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.pacing_and_time_insight || 'Tracks whether you allocated sufficient time per question without running into end-of-test time pressure.'}
               </div>
@@ -1797,7 +1953,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.decision_confidence_insight || 'Measures whether second-guessing and switching options produced positive gains or costly negative penalties.'}
                     </div>
@@ -1900,7 +2056,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.trap_resistance_insight || (totalTrapsFallen === 0 ? 'You exhibit strong trap resistance, successfully avoiding high-closeness and inverse fact distractors in the questions you chose to answer.' : `Detected ${totalTrapsFallen} trap selections. Strengthen factual boundary precision on extreme statement options.`)}
                     </div>
@@ -1993,7 +2149,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.critical_vulnerabilities?.[0] || 'Focus on high-yield revision tasks listed below to maximize your score.'}
                     </div>
@@ -2108,19 +2264,417 @@ export function PsychometricReportView({
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Personalized Actionable Revision Tasks (Interactive Recommendation Board with Study Plan Sync) */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          PAGE 3: AI COGNITIVE INSIGHTS & ACTIONABLE REVISION PLAN (Tab 3)
+      ────────────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'ai-insights' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* AI Status Banner */}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 0,
+              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              border: `1px solid ${hasAiInsight ? '#A7F3D0' : '#FDE68A'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {hasAiInsight ? (
+                <div style={{ padding: 8, backgroundColor: '#D1FAE5', color: '#059669' }}>
+                  <Sparkles size={22} />
+                </div>
+              ) : (
+                <div style={{ padding: 8, backgroundColor: '#FDE68A', color: '#D97706' }}>
+                  <Loader2 size={22} className="animate-spin" />
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E' }}>
+                  {hasAiInsight
+                    ? (isCumulative ? '✨ Longitudinal Strategic Diagnostic: Ready & Synthesized' : '✨ Cognitive Diagnostic & Revision Plan: Ready')
+                    : '⏳ Mentorship Engine: Synthesizing Cognitive Insights & Tasks...'}
+                </div>
+                <div style={{ fontSize: 12.5, color: hasAiInsight ? '#047857' : '#B45309' }}>
+                  {hasAiInsight
+                    ? (isCumulative
+                        ? 'Deep longitudinal evaluation across all attempts with custom strategic study tasks.'
+                        : 'Personalized evaluation of errors, option distractors, and high-yield revision tasks for this test.')
+                    : 'Analyzing distractor choices, mistake patterns, and timing matrices in the background. Please wait a moment...'}
+                </div>
+              </div>
+            </div>
+
+            {hasAiInsight && (
+              <span
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  padding: '4px 12px',
+                  backgroundColor: '#059669',
+                  color: '#FFFFFF',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                DATA VERIFIED
+              </span>
+            )}
+          </div>
+
+          {/* AI Cognitive Diagnostic Insights Narrative Card */}
+          <div
+            style={{
+              ...cardStyle,
+              gridColumn: '1 / -1',
+              background: isDark
+                ? 'linear-gradient(135deg, #131d36 0%, #172033 100%)'
+                : 'linear-gradient(135deg, #f8fafc 0%, #F8FAFC 100%)',
+              border: '1px solid rgba(227, 27, 35, 0.3)',
+              padding: 24,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+              <div
+                style={{
+                  padding: 10,
+                  borderRadius: 0,
+                  backgroundColor: 'rgba(227, 27, 35,0.2)',
+                  color: '#E31B23',
+                }}
+              >
+                <Brain size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 800,
+                      margin: 0,
+                      color: isDark ? '#ffffff' : '#172033',
+                    }}
+                  >
+                    {isCumulative ? 'Longitudinal Strategic Master Evaluation' : 'Cognitive Diagnostic Report'}
+                  </h3>
+                  {!hasAiInsight && (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                        color: '#E31B23',
+                        border: '1px solid rgba(227, 27, 35, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Sparkles size={11} /> Synthesizing live mentor advice...
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                  Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
+                </div>
+              </div>
+            </div>
+
+        {(() => {
+          const insightObj: Record<string, any> =
+            (report as any)?.llm_insight ||
+            (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
+            (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
+            (report as any)?.part_3_aggregated_user_report?.llm_insight ||
+            (report as any)?.part_3_aggregated_user_report?.mentorship_insight ||
+            {};
+
+          const execSummary =
+            insightObj.executive_summary ||
+            'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
+          const benchmarkVerdict =
+            insightObj.benchmark_verdict ||
+            'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
+          const strengths: string[] =
+            insightObj.tactical_strengths ||
+            insightObj.strengths || [
+              'High accuracy on conceptual elimination questions.',
+              'Controlled guessing tendency on high-uncertainty items.',
+            ];
+          const weaknesses: string[] =
+            insightObj.critical_vulnerabilities ||
+            insightObj.weaknesses || [
+              'Susceptibility to extreme qualifier statement traps.',
+              'Negative switch regret on revised answers in final section.',
+            ];
+          const pacingDiag =
+            insightObj.pacing_and_unattempted_diagnosis ||
+            'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
+          const distractorCritique =
+            insightObj.distractor_trap_critique ||
+            'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
+          const closingAdvice =
+            insightObj.closing_mentorship_advice ||
+            insightObj.closing ||
+            'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Executive Summary & Benchmark Verdict Callout */}
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 0,
+                  backgroundColor: isDark
+                    ? 'rgba(227, 27, 35,0.1)'
+                    : 'rgba(227, 27, 35,0.08)',
+                  border: '1px solid rgba(227, 27, 35,0.25)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: '#E31B23',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  🎯 Executive Summary & UPSC Benchmark Verdict
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: isDark ? '#ffffff' : '#172033',
+                    marginBottom: 8,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {benchmarkVerdict}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: isDark ? '#cbd5e1' : '#334155',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {execSummary}
+                </div>
+              </div>
+
+              {/* Strengths & Critical Vulnerabilities Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: 16,
+                }}
+              >
+                {/* Strengths */}
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#3A8B53',
+                      marginBottom: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <CheckCircle2 size={18} /> Tactical Strengths Observed
+                  </div>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      fontSize: 12.5,
+                      color: isDark ? '#e2e8f0' : '#166534',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {strengths.map((s: string, sIdx: number) => (
+                      <li key={sIdx} style={{ margin: '4px 0' }}>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Critical Vulnerabilities */}
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark ? 'rgba(227, 27, 35,0.1)' : '#fef2f2',
+                    border: '1px solid rgba(227, 27, 35,0.25)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#ef4444',
+                      marginBottom: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
+                  </div>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      fontSize: 12.5,
+                      color: isDark ? '#e2e8f0' : '#991b1b',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {weaknesses.map((w: string, wIdx: number) => (
+                      <li key={wIdx} style={{ margin: '4px 0' }}>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Behavioral Pacing & Distractor Critique */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(139,92,246,0.08)'
+                      : 'rgba(139,92,246,0.05)',
+                    border: '1px solid rgba(139,92,246,0.2)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#8b5cf6',
+                      marginBottom: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: isDark ? '#cbd5e1' : '#334155',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {pacingDiag}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(245,158,11,0.08)'
+                      : 'rgba(245,158,11,0.05)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#F2B623',
+                      marginBottom: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <ShieldAlert size={16} /> Distractor & Option Revision Critique
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: isDark ? '#cbd5e1' : '#334155',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {distractorCritique}
+                  </div>
+                </div>
+              </div>
+
+              {/* Closing Advice */}
+              {closingAdvice && (
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.03)'
+                      : 'rgba(0,0,0,0.02)',
+                    borderLeft: '4px solid #E31B23',
+                    fontSize: 12.5,
+                    fontStyle: 'italic',
+                    color: isDark ? '#93c5fd' : '#A4161A',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  💡 Mentor's Guidance: "{closingAdvice}"
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Actionable Study Plan Tasks Section - SHOWN ONLY WHEN AI DATA ARRIVES */}
+      {hasAiInsight && rawTasksList.length > 0 && (
+        <div
+          style={{
+            ...cardStyle,
+            gridColumn: '1 / -1',
+            padding: 24,
+            border: '1px solid rgba(227, 27, 35,0.3)',
+            background: isDark
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+          }}
+        >
           {(() => {
-            const rawTasksList = (
-              (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
-              (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
-              (report as any)?.llm_insight?.study_plan_tasks ||
-              (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
-              []
-            ).slice(0, 4);
-
-            if (!rawTasksList || rawTasksList.length === 0) return null;
-
             const unaddedCount = rawTasksList.filter(
               (t: any) =>
                 !scheduledTaskTitles.has(t.title) &&
@@ -2129,17 +2683,7 @@ export function PsychometricReportView({
             ).length;
 
             return (
-              <div
-                style={{
-                  ...cardStyle,
-                  gridColumn: '1 / -1',
-                  padding: 24,
-                  border: '1px solid rgba(227, 27, 35,0.3)',
-                  background: isDark
-                    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                    : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                }}
-              >
+              <div>
                 <div
                   style={{
                     display: 'flex',
@@ -2171,7 +2715,7 @@ export function PsychometricReportView({
                             color: isDark ? '#ffffff' : '#172033',
                           }}
                         >
-                          AI-Recommended Study Plan Tasks (4 Priorities)
+                          Mentor-Recommended Study Plan Tasks ({rawTasksList.length} Action Items)
                         </h3>
                         <span
                           style={{
@@ -2183,7 +2727,7 @@ export function PsychometricReportView({
                             color: '#E31B23',
                           }}
                         >
-                          4 Action Steps
+                          {rawTasksList.length} Priorities
                         </span>
                       </div>
                       <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
@@ -2239,7 +2783,7 @@ export function PsychometricReportView({
                           fontWeight: 800,
                         }}
                       >
-                        <CheckCircle2 size={16} /> All 4 Tasks Added
+                        <CheckCircle2 size={16} /> All Tasks Added to Plan
                       </div>
                     )}
                   </div>
@@ -2258,288 +2802,113 @@ export function PsychometricReportView({
                     const isAdded =
                       scheduledTaskTitles.has(t.title) ||
                       scheduledTaskTitles.has(fullTitle) ||
-                      addedTaskPlanSuccess[taskId] === 'ADDED';
-                    const isDone = !!completedTasks[taskId];
-                    const loading = !!isAddingTask[taskId];
-                    const priority = (t.priority || 'HIGH').toUpperCase();
-                    const isCritical = priority === 'CRITICAL';
-                    const isHigh = priority === 'HIGH';
+                      addedTaskPlanSuccess[taskId] === 'ADDED' ||
+                      t.is_added_to_plan;
+                    const isDone = completedTasks[taskId];
+                    const isAdding = isAddingTask[taskId];
+
+                    const priorityColor =
+                      t.priority === 'CRITICAL' ? '#ef4444' : t.priority === 'HIGH' ? '#f59e0b' : '#3b82f6';
 
                     return (
                       <div
                         key={taskId}
                         style={{
-                          padding: 20,
+                          padding: 18,
                           borderRadius: 0,
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-                          border: `1px solid ${isAdded
-                              ? 'rgba(16,185,129,0.35)'
-                              : isCritical
-                                ? 'rgba(227, 27, 35,0.3)'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.08)'
-                                  : '#e2e8f0'
-                            }`,
-                          boxShadow: isAdded
-                            ? '0 2px 12px rgba(16,185,129,0.08)'
-                            : '0 2px 8px rgba(0,0,0,0.03)',
+                          backgroundColor: isDark ? '#1a2234' : '#ffffff',
+                          border: `1px solid ${isAdded ? '#10b981' : isDark ? '#334155' : '#e2e8f0'}`,
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between',
-                          gap: 14,
-                          transition: 'all 0.2s ease',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
                         }}
                       >
                         <div>
-                          {/* Badges Bar */}
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              gap: 8,
-                              marginBottom: 10,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <span
-                                style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 900,
-                                  padding: '2px 7px',
-                                  borderRadius: 0,
-                                  backgroundColor: isDark ? 'rgba(227, 27, 35,0.15)' : '#F8FAFC',
-                                  color: '#E31B23',
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Task 0{idx + 1}
-                              </span>
-
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 800,
-                                  padding: '2px 8px',
-                                  borderRadius: 0,
-                                  backgroundColor: isCritical
-                                    ? 'rgba(227, 27, 35,0.15)'
-                                    : isHigh
-                                      ? 'rgba(245,158,11,0.15)'
-                                      : 'rgba(227, 27, 35,0.15)',
-                                  color: isCritical
-                                    ? '#ef4444'
-                                    : isHigh
-                                      ? '#F2B623'
-                                      : '#E31B23',
-                                }}
-                              >
-                                {priority} PRIORITY
-                              </span>
-
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  padding: '2px 8px',
-                                  borderRadius: 0,
-                                  backgroundColor: isDark
-                                    ? 'rgba(255,255,255,0.06)'
-                                    : 'rgba(0,0,0,0.05)',
-                                  color: isDark ? '#cbd5e1' : '#475569',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 3,
-                                }}
-                              >
-                                <Clock size={12} /> {t.allocated_time_minutes || 30} Mins
-                              </span>
-
-                              {t.activity_type && (
-                                <span
-                                  style={{
-                                    fontSize: 10.5,
-                                    fontWeight: 700,
-                                    padding: '2px 8px',
-                                    borderRadius: 0,
-                                    backgroundColor: 'rgba(139,92,246,0.12)',
-                                    color: '#8b5cf6',
-                                  }}
-                                >
-                                  {t.activity_type.replace(/_/g, ' ')}
-                                </span>
-                              )}
-                            </div>
-
-                            <span style={{ fontSize: 11, color: '#64748b' }}>
-                              Due in {t.due_in_days || 2}d
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 0,
+                                backgroundColor: `${priorityColor}15`,
+                                color: priorityColor,
+                                border: `1px solid ${priorityColor}30`,
+                              }}
+                            >
+                              {formatEnum(t.priority || 'HIGH')}
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+                              ⏱️ {t.allocated_time_minutes || 30} mins
                             </span>
                           </div>
 
-                          {/* Task Title */}
-                          <h4
-                            style={{
-                              fontSize: 15.5,
-                              fontWeight: 800,
-                              margin: '0 0 6px 0',
-                              textDecoration: isDone ? 'line-through' : 'none',
-                              color: isDark ? '#ffffff' : '#172033',
-                              lineHeight: 1.35,
-                            }}
-                          >
+                          <h4 style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#172033', margin: '0 0 4px 0' }}>
                             {t.title}
                           </h4>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#E31B23', marginBottom: 8 }}>
+                            📚 {formatEnum(t.subject)} • {formatEnum(t.topic)}
+                          </div>
 
-                          {/* Reasoning */}
                           {t.reasoning && (
-                            <div
-                              style={{
-                                fontSize: 12.5,
-                                color: isDark ? '#94a3b8' : '#64748b',
-                                marginBottom: 10,
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {t.reasoning}
-                            </div>
+                            <p style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                              💡 {t.reasoning}
+                            </p>
                           )}
 
-                          {/* Action Checklist */}
                           {t.action_checklist && t.action_checklist.length > 0 && (
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 6,
-                                borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'
-                                  }`,
-                                paddingTop: 10,
-                                marginTop: 6,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  color: isDark ? '#64748b' : '#94a3b8',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px',
-                                }}
-                              >
-                                Action Checklist:
-                              </div>
-                              {t.action_checklist.map((step: string, sIdx: number) => (
-                                <div
-                                  key={sIdx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    fontSize: 12,
-                                    color: isDark ? '#cbd5e1' : '#334155',
-                                    lineHeight: 1.4,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      width: 5,
-                                      height: 5,
-                                      borderRadius: 0,
-                                      backgroundColor: '#E31B23',
-                                      marginTop: 6,
-                                      flexShrink: 0,
-                                    }}
-                                  />
-                                  <span>{step}</span>
-                                </div>
+                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.4 }}>
+                              {t.action_checklist.map((item: string, cIdx: number) => (
+                                <li key={cIdx}>{item}</li>
                               ))}
-                            </div>
-                          )}
-
-                          {/* Linked Questions */}
-                          {t.linked_question_numbers && t.linked_question_numbers.length > 0 && (
-                            <div
-                              style={{
-                                marginTop: 10,
-                                fontSize: 11.5,
-                                color: '#64748b',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <span>Linked Exam Questions:</span>
-                              <strong style={{ color: isDark ? '#cbd5e1' : '#172033' }}>
-                                Q{t.linked_question_numbers.join(', Q')}
-                              </strong>
-                            </div>
+                            </ul>
                           )}
                         </div>
 
-                        {/* Action Footer */}
-                        <div
-                          style={{
-                            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
-                              }`,
-                            paddingTop: 12,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          {isAdded ? (
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                fontSize: 12,
-                                fontWeight: 800,
-                                color: '#3A8B53',
-                              }}
-                            >
-                              <CheckCircle2 size={16} /> Scheduled in Study Plan
-                            </div>
-                          ) : (
-                            <button
-                              disabled={loading}
-                              onClick={() => handleScheduleSingleTask(t)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '7px 14px',
-                                borderRadius: 0,
-                                backgroundColor: isDark
-                                  ? 'rgba(227, 27, 35,0.15)'
-                                  : '#F8FAFC',
-                                color: '#E31B23',
-                                border: '1px solid rgba(227, 27, 35,0.3)',
-                                fontSize: 12,
-                                fontWeight: 800,
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s ease',
-                              }}
-                            >
-                              <CalendarPlus size={14} />
-                              {loading ? 'Adding...' : '+ Add to Study Plan'}
-                            </button>
-                          )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: `1px solid ${isDark ? '#334155' : '#f1f5f9'}` }}>
+                          <button
+                            disabled={isAdded || isAdding}
+                            onClick={() => handleScheduleSingleTask(t)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '6px 12px',
+                              borderRadius: 0,
+                              backgroundColor: isAdded ? '#10b981' : '#E31B23',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: isAdded || isAdding ? 'default' : 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {isAdding ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" /> Scheduling...
+                              </>
+                            ) : isAdded ? (
+                              <>
+                                <CheckCircle2 size={13} /> ✓ Added to Plan
+                              </>
+                            ) : (
+                              <>
+                                <CalendarPlus size={13} /> Add to Study Plan
+                              </>
+                            )}
+                          </button>
 
                           <button
                             onClick={() => toggleTaskCompleted(taskId)}
                             style={{
-                              padding: '4px 10px',
+                              padding: '6px 10px',
                               borderRadius: 0,
-                              backgroundColor: isDone
-                                ? '#3A8B53'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.06)'
-                                  : '#f1f5f9',
-                              color: isDone ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
-                              border: 'none',
-                              fontSize: 11,
+                              backgroundColor: isDone ? 'rgba(16,185,129,0.15)' : 'transparent',
+                              color: isDone ? '#10b981' : '#64748b',
+                              border: `1px solid ${isDone ? '#10b981' : '#cbd5e1'}`,
+                              fontSize: 11.5,
                               fontWeight: 700,
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -2557,345 +2926,15 @@ export function PsychometricReportView({
               </div>
             );
           })()}
-
-          {/* AI Cognitive Diagnostic Insights Section (Structured LLM Synthesis) */}
-          <div
-            style={{
-              ...cardStyle,
-              gridColumn: '1 / -1',
-              background: isDark
-                ? 'linear-gradient(135deg, #131d36 0%, #172033 100%)'
-                : 'linear-gradient(135deg, #f8fafc 0%, #F8FAFC 100%)',
-              border: '1px solid rgba(227, 27, 35, 0.3)',
-              padding: 24,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-              <div
-                style={{
-                  padding: 10,
-                  borderRadius: 0,
-                  backgroundColor: 'rgba(227, 27, 35,0.2)',
-                  color: '#E31B23',
-                }}
-              >
-                <Brain size={24} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <h3
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 800,
-                      margin: 0,
-                      color: isDark ? '#ffffff' : '#172033',
-                    }}
-                  >
-                    AI Cognitive Diagnostic Report
-                  </h3>
-                  {!((report as any)?.llm_insight || (report as any)?.part_2_exam_macro_scorecard?.llm_insight || (report as any)?.part_3_aggregated_user_report?.llm_insight) && (
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        borderRadius: 12,
-                        backgroundColor: 'rgba(227, 27, 35, 0.1)',
-                        color: '#E31B23',
-                        border: '1px solid rgba(227, 27, 35, 0.25)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <Sparkles size={11} /> Synthesizing live mentor advice...
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
-                  Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
-                </div>
-              </div>
-            </div>
-
-            {(() => {
-              const insightObj: Record<string, any> =
-                (report as any)?.llm_insight ||
-                (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
-                (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
-                (report as any)?.part_3_aggregated_user_report?.llm_insight ||
-                {};
-
-              const execSummary =
-                insightObj.executive_summary ||
-                'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
-              const benchmarkVerdict =
-                insightObj.benchmark_verdict ||
-                'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
-              const strengths: string[] =
-                insightObj.tactical_strengths ||
-                insightObj.strengths || [
-                  'High accuracy on conceptual elimination questions.',
-                  'Controlled guessing tendency on high-uncertainty items.',
-                ];
-              const weaknesses: string[] =
-                insightObj.critical_vulnerabilities ||
-                insightObj.weaknesses || [
-                  'Susceptibility to extreme qualifier statement traps.',
-                  'Negative switch regret on revised answers in final section.',
-                ];
-              const pacingDiag =
-                insightObj.pacing_and_unattempted_diagnosis ||
-                'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
-              const distractorCritique =
-                insightObj.distractor_trap_critique ||
-                'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
-              const closingAdvice =
-                insightObj.closing_mentorship_advice ||
-                insightObj.closing ||
-                'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* Executive Summary & Benchmark Verdict Callout */}
-                  <div
-                    style={{
-                      padding: 16,
-                      borderRadius: 0,
-                      backgroundColor: isDark
-                        ? 'rgba(227, 27, 35,0.1)'
-                        : 'rgba(227, 27, 35,0.08)',
-                      border: '1px solid rgba(227, 27, 35,0.25)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 800,
-                        color: '#E31B23',
-                        textTransform: 'uppercase',
-                        marginBottom: 4,
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      🎯 Executive Summary & UPSC Benchmark Verdict
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: isDark ? '#ffffff' : '#172033',
-                        marginBottom: 8,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {benchmarkVerdict}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: isDark ? '#cbd5e1' : '#334155',
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      {execSummary}
-                    </div>
-                  </div>
-
-                  {/* Strengths & Critical Vulnerabilities Grid */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: 16,
-                    }}
-                  >
-                    {/* Strengths */}
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
-                        border: '1px solid rgba(16,185,129,0.25)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#3A8B53',
-                          marginBottom: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <CheckCircle2 size={18} /> Tactical Strengths Observed
-                      </div>
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 18,
-                          fontSize: 12.5,
-                          color: isDark ? '#e2e8f0' : '#166534',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {strengths.map((s: string, sIdx: number) => (
-                          <li key={sIdx} style={{ margin: '4px 0' }}>
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Critical Vulnerabilities */}
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(227, 27, 35,0.1)' : '#fef2f2',
-                        border: '1px solid rgba(227, 27, 35,0.25)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#ef4444',
-                          marginBottom: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
-                      </div>
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 18,
-                          fontSize: 12.5,
-                          color: isDark ? '#e2e8f0' : '#991b1b',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {weaknesses.map((w: string, wIdx: number) => (
-                          <li key={wIdx} style={{ margin: '4px 0' }}>
-                            {w}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Behavioral Pacing & Distractor Critique */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(139,92,246,0.08)'
-                          : 'rgba(139,92,246,0.05)',
-                        border: '1px solid rgba(139,92,246,0.2)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#8b5cf6',
-                          marginBottom: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: isDark ? '#cbd5e1' : '#334155',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {pacingDiag}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(245,158,11,0.08)'
-                          : 'rgba(245,158,11,0.05)',
-                        border: '1px solid rgba(245,158,11,0.2)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#F2B623',
-                          marginBottom: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <ShieldAlert size={16} /> Distractor & Option Revision Critique
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: isDark ? '#cbd5e1' : '#334155',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {distractorCritique}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Closing Advice */}
-                  {closingAdvice && (
-                    <div
-                      style={{
-                        padding: '12px 18px',
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.03)'
-                          : 'rgba(0,0,0,0.02)',
-                        borderLeft: '4px solid #E31B23',
-                        fontSize: 12.5,
-                        fontStyle: 'italic',
-                        color: isDark ? '#93c5fd' : '#A4161A',
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      💡 Mentor's Guidance: "{closingAdvice}"
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
         </div>
       )}
+    </div>
+  )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          PLACE 2: USER LONGITUDINAL SKILL PROFILE (Tab 2)
+          PAGE 1: USER LONGITUDINAL TRAJECTORY (Tab 1 for Cumulative Profile)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'user-aggregate' && (
+      {activeTab === 'user-trajectory' && isCumulative && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Header Banner */}
           <div
@@ -3127,128 +3166,6 @@ export function PsychometricReportView({
             </div>
           </div>
 
-          {/* Subject-Wise Cumulative Performance & Mean Scoreboard */}
-          {hierarchyData && hierarchyData.length > 0 && (
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <Layers size={20} color="#E31B23" />
-                <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
-                  Subject Cumulative Performance & Mean Scoreboard
-                </h3>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
-                {hierarchyData.map((subj: any) => {
-                  const bStyle = getBadgeStyle(subj.status);
-                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
-                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
-                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
-
-                  return (
-                    <div
-                      key={`user_agg_subj_${subj.name}`}
-                      style={{
-                        padding: '16px',
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
-                        borderLeft: `4px solid ${subj.accuracy >= 70 ? '#3A8B53' : subj.accuracy >= 50 ? '#F2B623' : '#ef4444'}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 10,
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#172033' }}>
-                            {subj.name}
-                          </div>
-                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
-                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
-                          </div>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 11.5,
-                            fontWeight: 800,
-                            padding: '2px 8px',
-                            borderRadius: 0,
-                            backgroundColor: bStyle.bg,
-                            color: bStyle.color,
-                            border: `1px solid ${bStyle.border}`,
-                          }}
-                        >
-                          {subj.accuracy}% Acc
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff', borderRadius: 0 }}>
-                        <span>Cumulative Mean: <strong style={{ color: '#E31B23' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
-                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#3A8B53' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
-                      </div>
-
-                      {/* Hierarchical Categorization: Topics and Subtopics */}
-                      {subj.topics && subj.topics.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Syllabus Topics & Subtopics:
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {subj.topics.slice(0, 4).map((t: any) => (
-                              <div
-                                key={`user_agg_top_${subj.name}_${t.name}`}
-                                style={{
-                                  padding: '6px 8px',
-                                  borderRadius: 0,
-                                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
-                                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 3,
-                                }}
-                              >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
-                                  <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
-                                    • {t.name}
-                                  </span>
-                                  <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#3A8B53' : t.accuracy >= 50 ? '#F2B623' : '#ef4444' }}>
-                                    {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
-                                  </span>
-                                </div>
-                                {t.subtopics && t.subtopics.length > 0 && (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
-                                    {t.subtopics.slice(0, 3).map((sub: any) => (
-                                      <span
-                                        key={`user_agg_sub_${sub.name}`}
-                                        style={{
-                                          fontSize: 10,
-                                          padding: '1px 6px',
-                                          borderRadius: 0,
-                                          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                                          color: '#64748b',
-                                        }}
-                                      >
-                                        ↳ {sub.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {subj.topics.length > 4 && (
-                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
-                                + {subj.topics.length - 4} more topics in full syllabus hierarchy
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Multi-Exam Evolution & Progression Visualizers (Cross-Exam Comparison) */}
           {timelineData && timelineData.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -3457,7 +3374,7 @@ export function PsychometricReportView({
                               <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
                               <td style={{ padding: '10px 12px' }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35,0.1)', color: '#E31B23' }}>
-                                  {item.pacing_status}
+                                  {formatEnum(item.pacing_status)}
                                 </span>
                               </td>
                             </tr>
@@ -3895,7 +3812,7 @@ export function PsychometricReportView({
                                 <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>💡 Cognitive Thinking Level</span>
                                 <div>
                                   <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.35)' }}>
-                                    {q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking'}
+                                    {formatEnum(q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking')}
                                   </span>
                                 </div>
                               </div>
@@ -3910,7 +3827,7 @@ export function PsychometricReportView({
                                       const b = getBadgeStyle(dClass.includes('Near') || dClass.includes('High') ? 'VULNERABLE' : 'COMPETENT');
                                       return (
                                         <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                                          {dClass}
+                                          {formatEnum(dClass)}
                                         </span>
                                       );
                                     })()}
@@ -4748,770 +4665,19 @@ export function PsychometricReportView({
               </div>
             </div>
 
-            {/* Subject Cumulative Mean Score & Performance Scoreboard (with Hierarchical Breakdown) */}
+            {/* Interactive Hierarchy Tree */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <Layers size={18} color="#3A8B53" />
+                <Layers size={18} color="#E31B23" />
                 <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
-                  Subject Cumulative Mean Score & Hierarchical Performance Scoreboard
+                  Subject & Topic Hierarchy Breakdown
                 </h4>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 14 }}>
-                {hierarchyData.map((subj: any) => {
-                  const bStyle = getBadgeStyle(subj.status);
-                  const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
-                  const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
-                  const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
-
-                  return (
-                    <div
-                      key={`subj_board_${subj.name}`}
-                      style={{
-                        padding: '16px',
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
-                        borderLeft: `4px solid ${subj.accuracy >= 70 ? '#3A8B53' : subj.accuracy >= 50 ? '#F2B623' : '#ef4444'}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 10,
-                      }}
-                    >
-                      {/* Subject Top Row */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#172033' }}>
-                            {subj.name}
-                          </div>
-                          <div style={{ fontSize: 11.5, color: '#64748b' }}>
-                            {subj.topics?.length || 0} Topics • {subj.total} Questions ({subj.correct} Correct)
-                          </div>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 11.5,
-                            fontWeight: 800,
-                            padding: '2px 8px',
-                            borderRadius: 0,
-                            backgroundColor: bStyle.bg,
-                            color: bStyle.color,
-                            border: `1px solid ${bStyle.border}`,
-                          }}
-                        >
-                          {subj.accuracy}% Acc
-                        </span>
-                      </div>
-
-                      {/* Cumulative Mean Score & Net Marks */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: isDark ? '#cbd5e1' : '#334155', padding: '6px 10px', backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', borderRadius: 0 }}>
-                        <span>Avg Mean: <strong style={{ color: '#E31B23' }}>{meanScore >= 0 ? `+${meanScore}` : meanScore} Marks / Exam</strong></span>
-                        <span>Net: <strong style={{ color: netMarks >= 0 ? '#3A8B53' : '#ef4444' }}>{netMarks >= 0 ? `+${netMarks}` : netMarks} m</strong></span>
-                      </div>
-
-                      {/* Hierarchical Categorization: Topics and Subtopics */}
-                      {subj.topics && subj.topics.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Syllabus Topics & Subtopics:
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {subj.topics.slice(0, 4).map((t: any) => {
-                              const tNet = t.net_marks !== undefined ? t.net_marks : Math.round((t.correct * 2.0 - (t.attempted - t.correct) * 0.6667) * 100) / 100;
-                              return (
-                                <div
-                                  key={`board_top_${subj.name}_${t.name}`}
-                                  style={{
-                                    padding: '6px 8px',
-                                    borderRadius: 0,
-                                    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
-                                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}`,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 3,
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5 }}>
-                                    <span style={{ fontWeight: 600, color: isDark ? '#e2e8f0' : '#334155' }}>
-                                      • {t.name}
-                                    </span>
-                                    <span style={{ fontWeight: 700, color: t.accuracy >= 70 ? '#3A8B53' : t.accuracy >= 50 ? '#F2B623' : '#ef4444' }}>
-                                      {t.accuracy}% ({t.correct}/{t.attempted || t.total} Qs)
-                                    </span>
-                                  </div>
-                                  {t.subtopics && t.subtopics.length > 0 && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingLeft: 8 }}>
-                                      {t.subtopics.slice(0, 3).map((sub: any) => (
-                                        <span
-                                          key={`board_sub_${sub.name}`}
-                                          style={{
-                                            fontSize: 10,
-                                            padding: '1px 6px',
-                                            borderRadius: 0,
-                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                                            color: '#64748b',
-                                          }}
-                                        >
-                                          ↳ {sub.name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {subj.topics.length > 4 && (
-                              <span style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' }}>
-                                + {subj.topics.length - 4} more topics in full syllabus hierarchy below
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {hierarchyData.map((node: any) => renderHierarchyNode(node, 0, `node_${node.name}`))}
               </div>
             </div>
 
-            {/* Hierarchical Tree Container */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {hierarchyData.map((subj: any) => {
-                const isSubjExpanded = !!expandedHierarchyNodes[`subj_${subj.name}`];
-                const bSubj = getBadgeStyle(subj.status);
-                const netMarks = subj.net_marks !== undefined ? subj.net_marks : Math.round((subj.correct * 2.0 - (subj.attempted - subj.correct) * 0.6667) * 100) / 100;
-                const numExams = Math.max(1, timelineData.length || (report as any)?.metadata?.total_exams_evaluated || 1);
-                const meanScore = subj.mean_score !== undefined ? subj.mean_score : Math.round((netMarks / numExams) * 100) / 100;
-
-                return (
-                  <div
-                    key={subj.name}
-                    style={{
-                      borderRadius: 0,
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'
-                        }`,
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {/* LEVEL 1: SUBJECT HEADER */}
-                    <div
-                      onClick={() => toggleHierarchyNode(`subj_${subj.name}`)}
-                      style={{
-                        padding: '14px 18px',
-                        backgroundColor: isDark
-                          ? 'rgba(227, 27, 35,0.08)'
-                          : 'rgba(227, 27, 35,0.04)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                        borderBottom: isSubjExpanded
-                          ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`
-                          : 'none',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {isSubjExpanded ? (
-                          <ChevronDown size={18} color="#E31B23" />
-                        ) : (
-                          <ChevronRight size={18} color="#E31B23" />
-                        )}
-                        {isSubjExpanded ? (
-                          <FolderOpen size={20} color="#E31B23" />
-                        ) : (
-                          <Folder size={20} color="#E31B23" />
-                        )}
-                        <div>
-                          <span
-                            style={{
-                              fontSize: 15,
-                              fontWeight: 800,
-                              color: isDark ? '#ffffff' : '#172033',
-                            }}
-                          >
-                            {subj.name}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11.5,
-                              color: '#64748b',
-                              marginLeft: 8,
-                            }}
-                          >
-                            ({subj.topics?.length || 0} topics • {subj.total} questions)
-                          </span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        {/* Mean Score and Net Marks Badges */}
-                        <span
-                          style={{
-                            fontSize: 11.5,
-                            fontWeight: 800,
-                            padding: '3px 8px',
-                            borderRadius: 0,
-                            backgroundColor: isDark ? 'rgba(227, 27, 35,0.15)' : '#F8FAFC',
-                            color: '#E31B23',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Avg: {meanScore >= 0 ? `+${meanScore}` : meanScore} m/exam
-                        </span>
-
-                        <span
-                          style={{
-                            fontSize: 11.5,
-                            fontWeight: 800,
-                            padding: '3px 8px',
-                            borderRadius: 0,
-                            backgroundColor: netMarks >= 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#f0fdf4') : (isDark ? 'rgba(227, 27, 35,0.15)' : '#fef2f2'),
-                            color: netMarks >= 0 ? '#3A8B53' : '#ef4444',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Net: {netMarks >= 0 ? `+${netMarks}` : netMarks} m
-                        </span>
-
-                        {/* Question stats */}
-                        <div style={{ fontSize: 12.5, color: '#64748b' }}>
-                          <strong style={{ color: isDark ? '#ffffff' : '#172033' }}>
-                            {subj.correct}
-                          </strong>{' '}
-                          / {subj.attempted} Correct
-                        </div>
-
-                        {/* Accuracy */}
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 900,
-                            color:
-                              subj.accuracy >= 85
-                                ? '#3A8B53'
-                                : subj.accuracy >= 70
-                                  ? '#E31B23'
-                                  : subj.accuracy >= 50
-                                    ? '#F2B623'
-                                    : '#ef4444',
-                            minWidth: 48,
-                            textAlign: 'right',
-                          }}
-                        >
-                          {subj.accuracy}%
-                        </div>
-
-                        {/* Pacing Badge */}
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '3px 8px',
-                            borderRadius: 0,
-                            backgroundColor:
-                              subj.pacing_status === 'OPTIMAL'
-                                ? 'rgba(16,185,129,0.12)'
-                                : subj.pacing_status === 'BOTTLENECK'
-                                  ? 'rgba(227, 27, 35,0.12)'
-                                  : 'rgba(139,92,246,0.12)',
-                            color:
-                              subj.pacing_status === 'OPTIMAL'
-                                ? '#3A8B53'
-                                : subj.pacing_status === 'BOTTLENECK'
-                                  ? '#ef4444'
-                                  : '#8b5cf6',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {subj.pacing_label || '⚡ Optimal'} (~{subj.avg_time}s/q)
-                        </span>
-
-                        {/* Retention Badge */}
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '3px 8px',
-                            borderRadius: 0,
-                            backgroundColor: 'rgba(20,184,166,0.12)',
-                            color: '#0d9488',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          🧠 {subj.retention_pct}% Memory
-                        </span>
-
-                        {/* Strength Badge */}
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: '3px 10px',
-                            borderRadius: 0,
-                            backgroundColor: bSubj.bg,
-                            color: bSubj.color,
-                            border: `1px solid ${bSubj.border}`,
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {bSubj.label}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Bloom Thinking Distribution Sub-bar */}
-                    {subj.blooms && Object.keys(subj.blooms).length > 0 && (
-                      <div
-                        style={{
-                          padding: '6px 18px',
-                          backgroundColor: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(241,245,249,0.4)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          flexWrap: 'wrap',
-                          fontSize: 11.5,
-                          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : '#f1f5f9'}`,
-                        }}
-                      >
-                        <span style={{ fontWeight: 700, color: '#64748b' }}>Bloom Thinking Levels:</span>
-                        {Object.entries(subj.blooms).map(([bKey, bVal]: [string, any]) => (
-                          <span
-                            key={bKey}
-                            style={{
-                              padding: '2px 7px',
-                              borderRadius: 0,
-                              backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff',
-                              color: '#6366f1',
-                              fontWeight: 700,
-                              fontSize: 11,
-                            }}
-                          >
-                            {bKey.charAt(0) + bKey.slice(1).toLowerCase()}: {bVal.accuracy}% ({bVal.correct}/{bVal.total})
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Quick Jump to Subject Questions */}
-                    {subj.question_numbers && subj.question_numbers.length > 0 && (
-                      <div
-                        style={{
-                          padding: '6px 18px',
-                          backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(241,245,249,0.6)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          flexWrap: 'wrap',
-                          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0'}`,
-                        }}
-                      >
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
-                          📍 View Subject Questions ({subj.question_numbers.length}):
-                        </span>
-                        {subj.question_numbers.map((qNum: number) => (
-                          <button
-                            key={qNum}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleJumpToQuestion(qNum);
-                            }}
-                            style={{
-                              padding: '2px 7px',
-                              borderRadius: 0,
-                              fontSize: 11,
-                              fontWeight: 800,
-                              backgroundColor: isDark ? 'rgba(227, 27, 35,0.15)' : '#F8FAFC',
-                              color: '#E31B23',
-                              border: '1px solid rgba(227, 27, 35,0.3)',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
-                            title={`Jump to Question #${qNum} in Detailed Diagnostics Tab`}
-                          >
-                            Q{qNum}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* LEVEL 2: TOPICS LIST */}
-                    {isSubjExpanded && subj.topics && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                        }}
-                      >
-                        {subj.topics.map((top: any) => {
-                          const isTopExpanded =
-                            !!expandedHierarchyNodes[`top_${subj.name}_${top.name}`];
-                          const bTop = getBadgeStyle(top.status);
-
-                          return (
-                            <div
-                              key={top.name}
-                              style={{
-                                borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9'
-                                  }`,
-                              }}
-                            >
-                              {/* TOPIC ROW */}
-                              <div
-                                onClick={() =>
-                                  toggleHierarchyNode(`top_${subj.name}_${top.name}`)
-                                }
-                                style={{
-                                  padding: '12px 18px 12px 36px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  cursor: 'pointer',
-                                  userSelect: 'none',
-                                  flexWrap: 'wrap',
-                                  gap: 10,
-                                  backgroundColor: isDark
-                                    ? isTopExpanded
-                                      ? 'rgba(255,255,255,0.03)'
-                                      : 'transparent'
-                                    : isTopExpanded
-                                      ? '#f8fafc'
-                                      : 'transparent',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 10,
-                                  }}
-                                >
-                                  {isTopExpanded ? (
-                                    <ChevronDown size={16} color="#64748b" />
-                                  ) : (
-                                    <ChevronRight size={16} color="#64748b" />
-                                  )}
-                                  <Layers size={16} color="#6366f1" />
-                                  <div>
-                                    <span
-                                      style={{
-                                        fontSize: 13.5,
-                                        fontWeight: 700,
-                                        color: isDark ? '#e2e8f0' : '#172033',
-                                      }}
-                                    >
-                                      {top.name}
-                                    </span>
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        color: '#64748b',
-                                        marginLeft: 6,
-                                      }}
-                                    >
-                                      ({top.subtopics?.length || 0} subtopics • {top.total} Qs)
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 12,
-                                    flexWrap: 'wrap',
-                                  }}
-                                >
-                                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                                    <strong>{top.correct}</strong> / {top.attempted} Correct
-                                  </div>
-
-                                  <div
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: 800,
-                                      color:
-                                        top.accuracy >= 85
-                                          ? '#3A8B53'
-                                          : top.accuracy >= 70
-                                            ? '#E31B23'
-                                            : top.accuracy >= 50
-                                              ? '#F2B623'
-                                              : '#ef4444',
-                                      minWidth: 45,
-                                      textAlign: 'right',
-                                    }}
-                                  >
-                                    {top.accuracy}%
-                                  </div>
-
-                                  {/* Topic Pacing Badge */}
-                                  <span
-                                    style={{
-                                      fontSize: 10.5,
-                                      padding: '2px 7px',
-                                      borderRadius: 0,
-                                      backgroundColor:
-                                        top.pacing_status === 'OPTIMAL'
-                                          ? 'rgba(16,185,129,0.12)'
-                                          : top.pacing_status === 'BOTTLENECK'
-                                            ? 'rgba(227, 27, 35,0.12)'
-                                            : 'rgba(139,92,246,0.12)',
-                                      color:
-                                        top.pacing_status === 'OPTIMAL'
-                                          ? '#3A8B53'
-                                          : top.pacing_status === 'BOTTLENECK'
-                                            ? '#ef4444'
-                                            : '#8b5cf6',
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    {top.pacing_label || '⚡ Optimal'} (~{top.avg_time}s/q)
-                                  </span>
-
-                                  {/* Topic Strength Badge */}
-                                  <span
-                                    style={{
-                                      fontSize: 10.5,
-                                      padding: '2px 8px',
-                                      borderRadius: 0,
-                                      backgroundColor: bTop.bg,
-                                      color: bTop.color,
-                                      border: `1px solid ${bTop.border}`,
-                                      fontWeight: 700,
-                                      whiteSpace: 'nowrap',
-                                    }}
-                                  >
-                                    {bTop.label}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Topic Bloom Thinking Breakdown */}
-                              {top.blooms && Object.keys(top.blooms).length > 0 && (
-                                <div
-                                  style={{
-                                    padding: '4px 18px 4px 58px',
-                                    backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(248,250,252,0.4)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    flexWrap: 'wrap',
-                                    fontSize: 11,
-                                  }}
-                                >
-                                  <span style={{ fontWeight: 700, color: '#64748b' }}>Thinking Levels:</span>
-                                  {Object.entries(top.blooms).map(([bKey, bVal]: [string, any]) => (
-                                    <span
-                                      key={bKey}
-                                      style={{
-                                        padding: '1px 6px',
-                                        borderRadius: 0,
-                                        backgroundColor: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff',
-                                        color: '#6366f1',
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {bKey.charAt(0) + bKey.slice(1).toLowerCase()}: {bVal.accuracy}% ({bVal.correct}/{bVal.total})
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Quick Jump to Topic Questions */}
-                              {top.question_numbers && top.question_numbers.length > 0 && (
-                                <div
-                                  style={{
-                                    padding: '4px 20px 8px 58px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                    flexWrap: 'wrap',
-                                    backgroundColor: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(248,250,252,0.6)',
-                                  }}
-                                >
-                                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b' }}>
-                                    📍 Topic Questions:
-                                  </span>
-                                  {top.question_numbers.map((qNum: number) => (
-                                    <button
-                                      key={qNum}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleJumpToQuestion(qNum);
-                                      }}
-                                      style={{
-                                        padding: '1px 6px',
-                                        borderRadius: 0,
-                                        fontSize: 10.5,
-                                        fontWeight: 800,
-                                        backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : '#eef2ff',
-                                        color: '#6366f1',
-                                        border: '1px solid rgba(99,102,241,0.3)',
-                                        cursor: 'pointer',
-                                      }}
-                                      title={`Jump to Question #${qNum}`}
-                                    >
-                                      Q{qNum}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* LEVEL 3: SUBTOPICS LIST */}
-                              {isTopExpanded && top.subtopics && (
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    backgroundColor: isDark
-                                      ? 'rgba(0,0,0,0.15)'
-                                      : 'rgba(0,0,0,0.02)',
-                                  }}
-                                >
-                                  {top.subtopics.map((sub: any) => {
-                                    const bSub = getBadgeStyle(sub.status);
-
-                                    return (
-                                      <div
-                                        key={sub.name}
-                                        style={{
-                                          borderBottom: `1px solid ${isDark
-                                              ? 'rgba(255,255,255,0.03)'
-                                              : '#f1f5f9'
-                                            }`,
-                                        }}
-                                      >
-                                        <div
-                                          style={{
-                                            padding: '10px 18px 10px 72px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            fontSize: 12.5,
-                                            flexWrap: 'wrap',
-                                            gap: 8,
-                                          }}
-                                        >
-                                          <div
-                                            style={{
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: 8,
-                                            }}
-                                          >
-                                            <Target size={14} color="#14b8a6" />
-                                            <span
-                                              style={{
-                                                color: isDark ? '#cbd5e1' : '#334155',
-                                                fontWeight: 600,
-                                              }}
-                                            >
-                                              {sub.name}
-                                            </span>
-                                          </div>
-
-                                          <div
-                                            style={{
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: 12,
-                                              flexWrap: 'wrap',
-                                            }}
-                                          >
-                                            <div style={{ color: '#64748b', fontSize: 11.5 }}>
-                                              <strong>{sub.correct}</strong> / {sub.attempted} (
-                                              {sub.total} Qs)
-                                            </div>
-                                            <div
-                                              style={{
-                                                fontSize: 12,
-                                                fontWeight: 800,
-                                                color:
-                                                  sub.accuracy >= 85
-                                                    ? '#3A8B53'
-                                                    : sub.accuracy >= 70
-                                                      ? '#E31B23'
-                                                      : sub.accuracy >= 50
-                                                        ? '#F2B623'
-                                                        : '#ef4444',
-                                                minWidth: 42,
-                                                textAlign: 'right',
-                                              }}
-                                            >
-                                              {sub.accuracy}%
-                                            </div>
-                                            <span
-                                              style={{
-                                                fontSize: 10,
-                                                padding: '2px 7px',
-                                                borderRadius: 0,
-                                                backgroundColor: bSub.bg,
-                                                color: bSub.color,
-                                                border: `1px solid ${bSub.border}`,
-                                                fontWeight: 700,
-                                                whiteSpace: 'nowrap',
-                                              }}
-                                            >
-                                              {bSub.label}
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        {/* Quick Jump to Subtopic Questions */}
-                                        {sub.question_numbers && sub.question_numbers.length > 0 && (
-                                          <div
-                                            style={{
-                                              padding: '2px 20px 6px 72px',
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: 5,
-                                              flexWrap: 'wrap',
-                                            }}
-                                          >
-                                            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>
-                                              📍 Qs:
-                                            </span>
-                                            {sub.question_numbers.map((qNum: number) => (
-                                              <button
-                                                key={qNum}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleJumpToQuestion(qNum);
-                                                }}
-                                                style={{
-                                                  padding: '1px 5px',
-                                                  borderRadius: 0,
-                                                  fontSize: 10,
-                                                  fontWeight: 800,
-                                                  backgroundColor: isDark ? 'rgba(20,184,166,0.15)' : '#f0fdfa',
-                                                  color: '#0d9488',
-                                                  border: '1px solid rgba(20,184,166,0.3)',
-                                                  cursor: 'pointer',
-                                                }}
-                                                title={`Jump to Question #${qNum}`}
-                                              >
-                                                Q{qNum}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}

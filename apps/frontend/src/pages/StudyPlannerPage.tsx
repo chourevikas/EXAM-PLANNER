@@ -18,6 +18,9 @@ import {
   deleteStudyActivity,
   sendPendingTasksEmail
 } from '../services/studyPlannerService';
+import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
+import { StudyPlannerSkeleton } from '../components/student/StudyPlannerSkeleton';
+import { formatEnum } from '../utils/formatEnum';
 
 function getActivityTypeBadge(activityType?: string, title?: string) {
   const act = (activityType || '').toUpperCase();
@@ -549,9 +552,9 @@ export function StudyPlannerPage() {
       </div>
 
       {/* Content Area */}
-      {loading ? (
-        <div style={{ padding: 40, textTransform: 'uppercase', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700 }}>
-          Loading your weekly schedule & logs...
+      {useMinimumLoadingTime(loading, 400) ? (
+        <div style={{ width: '100%' }}>
+          <StudyPlannerSkeleton />
         </div>
       ) : (
         <div style={{ width: '100%' }}>
@@ -867,12 +870,12 @@ export function StudyPlannerPage() {
                           <tr key={a.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                             <td style={{ padding: '12px 10px', color: 'var(--text-primary)', fontWeight: 600 }}>{a.date}</td>
                             <td style={{ padding: '12px 10px' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{a.subject || 'General Studies'}</div>
-                              {a.topic && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{a.topic}</div>}
+                              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatEnum(a.subject || 'General Studies')}</div>
+                              {a.topic && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatEnum(a.topic)}</div>}
                             </td>
                             <td style={{ padding: '12px 10px' }}>
                               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }}>
-                                {(a.activity_type || 'CONCEPT_REVISION').replace('_', ' ')}
+                                {formatEnum(a.activity_type || 'CONCEPT_REVISION')}
                               </span>
                             </td>
                             <td style={{ padding: '12px 10px', fontWeight: 700, color: 'var(--text-primary)' }}>

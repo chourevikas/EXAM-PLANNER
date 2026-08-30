@@ -76,13 +76,13 @@ async def get_user_notifications(
     
     notifications = (await session.exec(stmt_all)).all()
 
-    # 3. Calculate unread count
-    stmt_unread_count = select(Notification).where(
+    # 3. Calculate unread count (efficient SQL COUNT)
+    from sqlmodel import func
+    stmt_unread_count = select(func.count()).select_from(Notification).where(
         Notification.user_id == current_user.id,
         Notification.is_read == False
     )
-    unread_records = (await session.exec(stmt_unread_count)).all()
-    unread_count = len(unread_records)
+    unread_count = (await session.exec(stmt_unread_count)).one_or_none() or 0
 
     return JSONResponse(content=jsonable_encoder({
         "unread_count": unread_count,

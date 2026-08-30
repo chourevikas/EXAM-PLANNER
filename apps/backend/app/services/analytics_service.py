@@ -40,6 +40,13 @@ class AnalyticsService:
         attempt_id: Optional[int] = None,
     ) -> Response:
         try:
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.full_report_json:
+                    json_content = format_report_to_json(rep_db.full_report_json)
+                    return Response(content=json_content, media_type="application/json")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -128,7 +135,7 @@ class AnalyticsService:
                 part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
                 if part_1 and len(part_1) > 0:
                     all_questions = part_1
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(part_1), "questions": part_1}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(part_1), "questions": part_1}, ttl_seconds=5)
 
             # 2. Database ExamQuestionReport Rows
             if not all_questions:
@@ -158,14 +165,14 @@ class AnalyticsService:
                         }
                         for r in rows
                     ]
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=5)
 
             # 3. Synchronously evaluate report
             if not all_questions:
                 rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
                 if rep and rep.get("part_1_per_question_analysis"):
                     all_questions = rep["part_1_per_question_analysis"]
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=5)
 
         if not all_questions:
             raise HTTPException(status_code=404, detail="Question-level diagnostic report not available.")
@@ -216,7 +223,7 @@ class AnalyticsService:
                 "llm_insight": rep_db.llm_insight_json,
                 "created_at": rep_db.created_at.isoformat() if rep_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # 2. Instant DB Cache: attempt.report_metadata_json
@@ -230,7 +237,7 @@ class AnalyticsService:
                 "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
                 "metadata": meta.get("metadata", {}),
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # 3. Fallback to compiled report
@@ -273,7 +280,7 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db.spaced_repetition_schedule_json,
                 "created_at": prog_db.created_at.isoformat() if prog_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # Synchronously evaluate report to generate true progression delta
@@ -291,7 +298,7 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db_after.spaced_repetition_schedule_json,
                 "created_at": prog_db_after.created_at.isoformat() if prog_db_after.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         raise HTTPException(status_code=404, detail="User skill progression report not available.")
@@ -382,10 +389,12 @@ class AnalyticsService:
                 "total_questions": attempt.total_questions,
             }
 
-        # Check if actual full 12-matrix evaluated report exists
+        # Check if actual full 12-matrix evaluated report exists or Phase 1 is complete
         has_evaluated_report = False
         if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
-            if "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
+            if attempt.report_metadata_json.get("phase") in ("MATH_COMPLETE", "EVALUATED") or attempt.report_metadata_json.get("is_ready"):
+                has_evaluated_report = True
+            elif "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
                 has_evaluated_report = True
 
         if not has_evaluated_report:
@@ -399,18 +408,18 @@ class AnalyticsService:
         # Auto-recovery for stuck attempts
         if not is_ready:
             time_since = (datetime.now(timezone.utc) - (attempt.submitted_at.replace(tzinfo=timezone.utc) if attempt.submitted_at else datetime.now(timezone.utc))).total_seconds()
-            if time_since >= 2 and attempt_id not in _RETRIGGERED_ATTEMPTS:
+            if time_since >= 15 and attempt_id not in _RETRIGGERED_ATTEMPTS:
                 _RETRIGGERED_ATTEMPTS.add(attempt_id)
                 logger.info(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-triggering pipeline.")
                 if attempt.id:
                     asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
-        status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
-        progress = 100 if is_ready else (70 if attempt.status == AttemptStatus.SUBMITTED else 30)
+        status_str = "COMPLETED" if (attempt.status == AttemptStatus.EVALUATED or has_evaluated_report) else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
+        progress = 100 if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready"))) else (85 if has_evaluated_report else (70 if attempt.status == AttemptStatus.SUBMITTED else 30))
         message = (
             "Psychometric and cognitive evaluation completed successfully."
-            if is_ready
-            else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance..."
+            if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready")))
+            else ("Cognitive score analysis ready. AI mentorship synthesis in progress..." if has_evaluated_report else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance...")
         )
 
         return {
@@ -443,6 +452,9 @@ class AnalyticsService:
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
         _RETRIGGERED_ATTEMPTS.discard(attempt_id)
 
+        from app.cache import invalidate_attempt_cache
+        await invalidate_attempt_cache(attempt_id, attempt.user_id)
+
         # Launch pipeline
         asyncio.create_task(run_post_submission_pipeline(attempt_id))
 
@@ -472,7 +484,7 @@ class AnalyticsService:
             force_recompute=force_recompute,
         )
         if report:
-            await cache.set(cache_key, report, ttl_seconds=1800)
+            await cache.set(cache_key, report, ttl_seconds=5)
         return report
 
     async def get_user_cumulative_aggregate_markdown(

@@ -30,24 +30,29 @@ router = APIRouter(prefix="/attempts", tags=["Student Exam-Taking Sessions"])
 
 @router.get("", summary="List Candidate's Exam Attempts History")
 async def list_candidate_attempts(
+    page: Optional[int] = None,
+    page_size: Optional[int] = None,
     skip: int = 0,
-    limit: int = 500,
+    limit: int = 50,
     exam_id: Optional[int | str] = None,
     status_filter: Optional[AttemptStatus] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Lists candidate's exam attempts history with optional filtering by exam_id or status.
+    Lists candidate's exam attempts history with optional pagination and filtering by exam_id or status.
     """
     parsed_exam_id = int(exam_id) if exam_id and str(exam_id).isdigit() else None
+    effective_limit = min(page_size if page_size and page_size > 0 else limit, 100)
+    effective_skip = ((page - 1) * effective_limit) if (page and page >= 1) else skip
+
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
         "attempts:user",
         str(current_user.id),
-        skip=skip,
-        limit=limit,
+        skip=effective_skip,
+        limit=effective_limit,
         exam_id=str(parsed_exam_id) if parsed_exam_id else None,
         status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
     )
@@ -59,16 +64,21 @@ async def list_candidate_attempts(
     service = ExamSessionService(session)
     res = await service.list_user_attempts(
         user_id=current_user.id,
-        skip=skip,
-        limit=limit,
+        skip=effective_skip,
+        limit=effective_limit,
         exam_id=parsed_exam_id,
         status_filter=status_filter,
     )
     if res is not None:
+        if page and page_size:
+            res["page"] = page
+            res["page_size"] = effective_limit
+            import math
+            res["total_pages"] = max(1, math.ceil((res.get("total", 0)) / effective_limit))
         serialized = jsonable_encoder(res)
-        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        await cache.set(cache_key, serialized, ttl_seconds=5)
         return JSONResponse(content=serialized)
-    return JSONResponse(content=[])
+    return JSONResponse(content={"items": [], "total": 0})
 
 
 @router.post("/start", response_model=StartExamResponse, status_code=status.HTTP_201_CREATED)

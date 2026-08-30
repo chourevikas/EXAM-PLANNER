@@ -215,25 +215,23 @@ class TestAdminQuestionManagement(unittest.IsolatedAsyncioTestCase):
             created_res = await service.create_question(payload)
             q_id = int(created_res.question_id)
 
-            q_file = "artifacts/upsc-s3-test-2024/set-a/json/questions/Q001.json"
-            s_file = "artifacts/upsc-s3-test-2024/set-a/json/solutions/Q001.json"
+            # S3 syncing is disabled per system architecture (DB is single source of truth)
+            # q_file = "artifacts/upsc-s3-test-2024/set-a/json/questions/Q001.json"
+            # s_file = "artifacts/upsc-s3-test-2024/set-a/json/solutions/Q001.json"
+            # self.assertTrue(await storage.exists(q_file))
+            # self.assertTrue(await storage.exists(s_file))
 
-            self.assertTrue(await storage.exists(q_file))
-            self.assertTrue(await storage.exists(s_file))
-
-            # 2. Update Question -> Real-time S3 update
+            # 2. Update Question -> Direct DB update
             update_payload = QuestionUpdatePayload(
                 question_text="Updated: What is Article 21 of the Constitution?",
             )
-            await service.update_question_detail(question_id=q_id, payload=update_payload)
+            updated_res = await service.update_question_detail(question_id=q_id, payload=update_payload)
+            self.assertIn("Updated: What is Article 21", updated_res.question_text)
 
-            q_data = await storage.download_json(q_file)
-            self.assertIn("Updated: What is Article 21", q_data["text"])
-
-            # 3. Delete Question -> Real-time S3 deletion
+            # 3. Delete Question -> Direct DB deletion
             await service.delete_question(question_id=q_id)
-            self.assertFalse(await storage.exists(q_file))
-            self.assertFalse(await storage.exists(s_file))
+            deleted_q = await session.get(Question, q_id)
+            self.assertIsNone(deleted_q)
 
     async def test_hierarchy_links_upsert_deduplication_and_no_unique_violations(self):
         """Tests that submitting duplicate subtopics or re-updating hierarchy links never triggers unique constraint violations."""

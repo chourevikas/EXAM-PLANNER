@@ -41,10 +41,23 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
   };
 
   const handlePrimaryAction = () => {
-    if (isLoggedIn) {
-      navigate('/dashboard');
-    } else {
+    if (!isLoggedIn) {
       handleOpenAuth('signup');
+      return;
+    }
+    onClose();
+    if (scoreData.attemptId) {
+      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
+    } else {
+      navigate('/analytics');
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    if (scoreData.attemptId) {
+      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
+    } else {
+      navigate('/analytics');
     }
   };
 
@@ -55,6 +68,14 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
   return (
     <>
+      <AuthModal
+        isOpen={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSwitchMode={setAuthMode}
+        onSuccess={handleAuthSuccess}
+        redirectUrl={scoreData?.attemptId ? `/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}` : '/analytics'}
+      />
       <div
         style={{
           position: 'fixed',
@@ -386,6 +407,36 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 <span>Retake</span>
               </button>
             </div>
+
+            {/* In-Page Question & Solution Review Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '100%',
+                padding: '11px 16px',
+                borderRadius: 0,
+                border: '1px solid #CBD5E1',
+                backgroundColor: '#F8FAFC',
+                color: '#1E293B',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F1F5F9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#F8FAFC';
+              }}
+            >
+              <span>Review Questions & Solutions on This Page</span>
+            </button>
 
             {!isLoggedIn && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>

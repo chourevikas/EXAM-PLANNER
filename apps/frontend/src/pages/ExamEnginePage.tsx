@@ -27,6 +27,7 @@ import {
 import { addBookmark, removeBookmark } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
+import { formatEnum } from '../utils/formatEnum';
 
 import {
   AttemptMode,
@@ -673,11 +674,28 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     total: liveTotal,
   };
 
+  const markAsVisited = (idx: number) => {
+    setPalette((prev) => {
+      if (!prev || idx >= prev.length) return prev;
+      const copy = [...prev];
+      const curStatus = copy[idx]?.question_status;
+      if (!curStatus || curStatus === 'UNVISITED') {
+        copy[idx] = {
+          ...copy[idx],
+          question_number: idx + 1,
+          question_status: 'VISITED',
+        };
+      }
+      return copy;
+    });
+  };
+
   const handleNext = async () => {
     saveCurrentResponse();
     if (currentQIndex < totalQuestions - 1) {
       const nextIdx = currentQIndex + 1;
       setCurrentQIndex(nextIdx);
+      markAsVisited(nextIdx);
       if (attemptId) {
         await loadQuestion(attemptId, nextIdx + 1);
       }
@@ -690,6 +708,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (currentQIndex > 0) {
       const prevIdx = currentQIndex - 1;
       setCurrentQIndex(prevIdx);
+      markAsVisited(prevIdx);
       if (attemptId) {
         await loadQuestion(attemptId, prevIdx + 1);
       }
@@ -700,6 +719,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleSelectQuestionFromPalette = async (idx: number) => {
     saveCurrentResponse();
     setCurrentQIndex(idx);
+    markAsVisited(idx);
     if (attemptId) {
       await loadQuestion(attemptId, idx + 1);
     }
@@ -914,6 +934,44 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         onSubmitClick={handleOpenSubmitModal}
       />
 
+      {/* In-Page Show Report Pill Banner for Practice & Guest Exams */}
+      {guestScoreData && (
+        <div
+          style={{
+            position: 'fixed',
+            top: isMobile ? 104 : 64,
+            right: 24,
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowGuestScoreModal(true)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#E31B23',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 0,
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
+              transition: 'transform 0.15s ease',
+            }}
+          >
+            <Trophy size={16} />
+            <span>Show Test Report ({guestScoreData.score}/{guestScoreData.totalScore || guestScoreData.totalMarksPossible})</span>
+          </button>
+        </div>
+      )}
+
       {/* Mobile Tab Switcher Bar (< 1024px) */}
       {isMobile && isPYQ && (
         <div
@@ -1005,6 +1063,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+                onPrev={handlePrev}
+                onNext={handleNext}
                 isPYQ={isPYQ}
               />
             ) : null}
@@ -1096,7 +1156,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             </h2>
 
             <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 20 }}>
-              Topic: <strong>{guestScoreData.topic}</strong> • Subtopic: <strong>{guestScoreData.subtopic}</strong>
+              Topic: <strong>{formatEnum(guestScoreData.topic)}</strong> • Subtopic: <strong>{formatEnum(guestScoreData.subtopic)}</strong>
             </p>
 
             {/* Score Pill */}
@@ -1206,6 +1266,25 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                   Back Home
                 </button>
               </div>
+
+              {/* Review on this page button */}
+              <button
+                type="button"
+                onClick={() => setShowGuestScoreModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '11px 16px',
+                  borderRadius: 0,
+                  border: '1px solid var(--border-default)',
+                  backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+                  color: isDark ? '#f8fafc' : '#1e293b',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Review Questions & Solutions on This Page
+              </button>
 
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>Already registered?</span>
