@@ -85,6 +85,11 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     onLogin();
   };
 
+  const handleSignupClick = () => {
+    setMobileMenuOpen(false);
+    onSignup();
+  };
+
   const navItems = [
     { label: 'Platform', targetId: '#features' },
     { label: 'Methodology', targetId: '#how-it-works' },
@@ -156,13 +161,22 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                 Go to Dashboard
               </button>
             ) : (
-              <button
-                className="btn btn-primary anim-glow touch-target"
-                style={{ padding: '10px 24px', fontSize: 14 }}
-                onClick={onLogin}
-              >
-                Get Started
-              </button>
+              <>
+                <button
+                  className="btn btn-ghost touch-target"
+                  style={{ padding: '10px 20px', fontSize: 14 }}
+                  onClick={onLogin}
+                >
+                  Login
+                </button>
+                <button
+                  className="btn btn-primary anim-glow touch-target"
+                  style={{ padding: '10px 24px', fontSize: 14 }}
+                  onClick={onSignup}
+                >
+                  Get Started
+                </button>
+              </>
             )}
           </div>
 
@@ -234,13 +248,22 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                     Go to Dashboard
                   </button>
                 ) : (
-                  <button
-                    className="btn btn-primary anim-glow"
-                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
-                    onClick={handleLoginClick}
-                  >
-                    Get Started
-                  </button>
+                  <>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                      onClick={handleLoginClick}
+                    >
+                      Login
+                    </button>
+                    <button
+                      className="btn btn-primary anim-glow"
+                      style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                      onClick={handleSignupClick}
+                    >
+                      Get Started
+                    </button>
+                  </>
                 )}
               </div>
             </div>
