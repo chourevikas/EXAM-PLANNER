@@ -41,10 +41,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
   };
 
   const handlePrimaryAction = () => {
-    if (isLoggedIn) {
-      navigate('/dashboard');
+    onClose();
+    if (scoreData.attemptId) {
+      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
     } else {
-      handleOpenAuth('signup');
+      navigate('/analytics');
     }
   };
 

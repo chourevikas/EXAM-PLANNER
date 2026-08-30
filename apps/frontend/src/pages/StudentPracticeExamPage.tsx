@@ -129,7 +129,7 @@ export function StudentPracticeExamPage() {
 
       // Step 1: Query API by Topic first if a topic is selected
       if (queryTopic) {
-        const topicParams = new URLSearchParams({ limit: '5' });
+        const topicParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
         topicParams.append('topic_name', queryTopic);
         if (querySubject) topicParams.append('subject_name', querySubject);
         if (targetExam) topicParams.append('exam_name', targetExam);
@@ -148,7 +148,7 @@ export function StudentPracticeExamPage() {
 
       // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
       if (newFetched.length === 0 && querySubject) {
-        const subjParams = new URLSearchParams({ limit: '5' });
+        const subjParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
         subjParams.append('subject_name', querySubject);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
@@ -178,20 +178,23 @@ export function StudentPracticeExamPage() {
             option_label: o.option_label || String.fromCharCode(65 + oIdx),
             text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
             is_correct: Boolean(o.is_correct),
+            distractor_analysis: o.distractor_analysis || o.explanation || o.description || (o.is_correct ? 'Correct option matching core syllabus concepts.' : 'Distractor option.'),
           }));
           return {
             question_id: item.question_id,
             question_number: 0,
             text: item.question_text || item.text || '',
             options: optionsList,
-            section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
+            section_code: item.subject_name || querySubject || 'Recommended',
+            subject: item.subject_name || querySubject || gSubject || 'General Studies',
             topic_name: item.topic_name || queryTopic,
             subtopic_name: item.subtopic_name,
             difficulty: item.difficulty || 'MEDIUM',
             marks: item.marks || 2.0,
             negative_marks: item.negative_marks || 0.66,
             expected_time_seconds: item.expected_time_seconds || 60,
-            explanation: item.explanation || item.explanation_text || '',
+            source_year: item.source_year || item.exam_year || gYear,
+            exam_name: item.exam_name || gExam || 'UPSC CSE',
           } as any;
         });
 
@@ -1727,13 +1730,37 @@ export function StudentPracticeExamPage() {
                           }
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                          <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F1F5F9', color: '#334155', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.subject || rec.section_code || 'General Studies'}
                           </span>
-                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                          {rec.subtopic_name && (
+                            <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                              {rec.subtopic_name}
+                            </span>
+                          )}
+                          {(() => {
+                            const d = (rec.difficulty || 'MEDIUM').toUpperCase();
+                            const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
+                            const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+                            const border = d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
+                            return (
+                              <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 3, backgroundColor: bg, color: text, border: `1px solid ${border}` }}>
+                                {d}
+                              </span>
+                            );
+                          })()}
+                          <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>
+                            ⏱️ {rec.expected_time_seconds || 60}s
+                          </span>
+                          {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+                            <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F3E8FF', color: '#7E22CE' }}>
+                              {(rec as any).exam_name || 'UPSC'} {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+                            </span>
+                          )}
+                          <ChevronDown size={14} style={{ marginLeft: 'auto', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
                           {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
                         </div>
                       </div>
@@ -1741,12 +1768,13 @@ export function StudentPracticeExamPage() {
                       {/* Inline Options Dropdown */}
                       {isExpanded && (
                         <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
-                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {rec.options?.map(opt => {
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {rec.options?.map((opt: any) => {
                               const isSelected = answeredOptId === opt.option_id;
                               const isCorrect = opt.is_correct;
                               const isWrongSelected = isSelected && !isCorrect;
                               const showResult = !!answeredOptId;
+                              const optionDesc = opt.distractor_analysis || opt.explanation || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
 
                               let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                               let bgStyle = '#FFFFFF';
@@ -1760,83 +1788,59 @@ export function StudentPracticeExamPage() {
                               }
 
                               return (
-                                <button
-                                  key={opt.option_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!answeredOptId) {
-                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
-                                    }
-                                  }}
-                                  style={{
-                                    textAlign: 'left',
-                                    padding: '6px 8px',
-                                    border: borderStyle,
-                                    backgroundColor: bgStyle,
-                                    borderRadius: 4,
-                                    fontSize: 11.5,
-                                    color: '#334155',
-                                    cursor: answeredOptId ? 'default' : 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    width: '100%',
-                                  }}
-                                >
-                                  <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
-                                    {opt.option_label}.
-                                  </span>
-                                  <span>{opt.text}</span>
-                                </button>
+                                <div key={opt.option_id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!answeredOptId) {
+                                        setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                      }
+                                    }}
+                                    style={{
+                                      textAlign: 'left',
+                                      padding: '8px 10px',
+                                      border: borderStyle,
+                                      backgroundColor: bgStyle,
+                                      borderRadius: 4,
+                                      fontSize: 11.5,
+                                      color: '#334155',
+                                      cursor: answeredOptId ? 'default' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: 6,
+                                      width: '100%',
+                                    }}
+                                  >
+                                    <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                      {opt.option_label}.
+                                    </span>
+                                    <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                                  </button>
+
+                                  {/* Option-level description directly underneath */}
+                                  {showResult && optionDesc && (
+                                    <div
+                                      style={{
+                                        marginLeft: 16,
+                                        padding: '5px 8px',
+                                        fontSize: 11,
+                                        lineHeight: 1.4,
+                                        borderRadius: 3,
+                                        backgroundColor: isCorrect ? '#F0FDF4' : isWrongSelected ? '#FEF2F2' : '#F8FAFC',
+                                        borderLeft: `3px solid ${isCorrect ? '#10B981' : isWrongSelected ? '#EF4444' : '#CBD5E1'}`,
+                                        color: isCorrect ? '#166534' : isWrongSelected ? '#991B1B' : '#475569',
+                                      }}
+                                    >
+                                      <strong style={{ fontSize: 10, textTransform: 'uppercase', marginRight: 4 }}>
+                                        Option {opt.option_label}:
+                                      </strong>
+                                      {optionDesc}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
-
-                          {/* Show Solution button + explanation panel (mobile) */}
-                          {(() => {
-                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
-                            const explanation = typeof _rawExpl === 'string'
-                              ? _rawExpl
-                              : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
-                            const isLoadingSolution = recSolutionLoading[rec.question_id];
-                            const solutionOpen = recShowSolution[rec.question_id];
-                            return (
-                              <>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
-                                  style={{
-                                    marginTop: 10, width: '100%', padding: '6px 10px',
-                                    border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
-                                    borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
-                                    color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
-                                  }}
-                                >
-                                  <Lightbulb size={12} />
-                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
-                                </button>
-                                {solutionOpen && (
-                                  <div style={{
-                                    marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
-                                    border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
-                                    color: '#1E3A8A', lineHeight: 1.55,
-                                  }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                      <Lightbulb size={12} color="#2563EB" />
-                                      Explanation
-                                    </div>
-                                    {isLoadingSolution
-                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
-                                      : explanation
-                                        ? explanation
-                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
-                                    }
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
                         </div>
                       )}
                     </div>
@@ -1945,13 +1949,37 @@ export function StudentPracticeExamPage() {
                           }
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                          <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F1F5F9', color: '#334155', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.subject || rec.section_code || 'General Studies'}
                           </span>
-                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                          {rec.subtopic_name && (
+                            <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#EEF2FF', color: '#4338CA' }}>
+                              {rec.subtopic_name}
+                            </span>
+                          )}
+                          {(() => {
+                            const d = (rec.difficulty || 'MEDIUM').toUpperCase();
+                            const bg = d === 'EASY' ? '#ECFDF5' : d === 'HARD' ? '#FEF2F2' : '#FFFBEB';
+                            const text = d === 'EASY' ? '#047857' : d === 'HARD' ? '#B91C1C' : '#B45309';
+                            const border = d === 'EASY' ? '#A7F3D0' : d === 'HARD' ? '#FECACA' : '#FDE68A';
+                            return (
+                              <span style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 3, backgroundColor: bg, color: text, border: `1px solid ${border}` }}>
+                                {d}
+                              </span>
+                            );
+                          })()}
+                          <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>
+                            ⏱️ {rec.expected_time_seconds || 60}s
+                          </span>
+                          {Boolean((rec as any).exam_name || (rec as any).source_year) && (
+                            <span style={{ fontSize: 9.5, fontWeight: 600, padding: '2px 6px', borderRadius: 3, backgroundColor: '#F3E8FF', color: '#7E22CE' }}>
+                              {(rec as any).exam_name || 'UPSC'} {(rec as any).source_year ? `• ${(rec as any).source_year}` : ''}
+                            </span>
+                          )}
+                          <ChevronDown size={14} style={{ marginLeft: 'auto', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
                           {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
                         </div>
                       </div>
@@ -1959,12 +1987,13 @@ export function StudentPracticeExamPage() {
                       {/* Inline Options Dropdown */}
                       {isExpanded && (
                         <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
-                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {rec.options?.map(opt => {
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {rec.options?.map((opt: any) => {
                               const isSelected = answeredOptId === opt.option_id;
                               const isCorrect = opt.is_correct;
                               const isWrongSelected = isSelected && !isCorrect;
                               const showResult = !!answeredOptId;
+                              const optionDesc = opt.distractor_analysis || opt.explanation || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
 
                               let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                               let bgStyle = '#FFFFFF';
@@ -1978,99 +2007,62 @@ export function StudentPracticeExamPage() {
                               }
 
                               return (
-                                <button
-                                  key={opt.option_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!answeredOptId) {
-                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
-                                    }
-                                  }}
-                                  style={{
-                                    textAlign: 'left',
-                                    padding: '6px 8px',
-                                    border: borderStyle,
-                                    backgroundColor: bgStyle,
-                                    borderRadius: 4,
-                                    fontSize: 11.5,
-                                    color: '#334155',
-                                    cursor: answeredOptId ? 'default' : 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    width: '100%'
-                                  }}
-                                >
-                                  <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
-                                    {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
-                                  </div>
-                                  <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
-                                </button>
+                                <div key={opt.option_id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!answeredOptId) {
+                                        setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                      }
+                                    }}
+                                    style={{
+                                      textAlign: 'left',
+                                      padding: '8px 10px',
+                                      border: borderStyle,
+                                      backgroundColor: bgStyle,
+                                      borderRadius: 4,
+                                      fontSize: 11.5,
+                                      color: '#334155',
+                                      cursor: answeredOptId ? 'default' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: 6,
+                                      width: '100%',
+                                    }}
+                                  >
+                                    <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
+                                      {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
+                                    </div>
+                                    <span style={{ fontWeight: 800, color: showResult && isCorrect ? '#047857' : '#475569' }}>
+                                      {opt.option_label}.
+                                    </span>
+                                    <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                                  </button>
+
+                                  {/* Option-level description directly underneath */}
+                                  {showResult && optionDesc && (
+                                    <div
+                                      style={{
+                                        marginLeft: 20,
+                                        padding: '5px 8px',
+                                        fontSize: 11,
+                                        lineHeight: 1.4,
+                                        borderRadius: 3,
+                                        backgroundColor: isCorrect ? '#F0FDF4' : isWrongSelected ? '#FEF2F2' : '#F8FAFC',
+                                        borderLeft: `3px solid ${isCorrect ? '#10B981' : isWrongSelected ? '#EF4444' : '#CBD5E1'}`,
+                                        color: isCorrect ? '#166534' : isWrongSelected ? '#991B1B' : '#475569',
+                                      }}
+                                    >
+                                      <strong style={{ fontSize: 10, textTransform: 'uppercase', marginRight: 4 }}>
+                                        Option {opt.option_label}:
+                                      </strong>
+                                      {optionDesc}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
-
-                          {/* Show Solution button + explanation panel */}
-                          {(() => {
-                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
-                          const explanation = typeof _rawExpl === 'string'
-                            ? _rawExpl
-                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
-                          const isLoadingSolution = recSolutionLoading[rec.question_id];
-                            const solutionOpen = recShowSolution[rec.question_id];
-                            return (
-                              <>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
-                                  style={{
-                                    marginTop: 10,
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    border: '1px solid',
-                                    borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
-                                    borderRadius: 5,
-                                    backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
-                                    color: solutionOpen ? '#4338CA' : '#475569',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 5,
-                                    transition: 'all 0.15s ease',
-                                    letterSpacing: '0.03em',
-                                  }}
-                                >
-                                  <Lightbulb size={12} />
-                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
-                                </button>
-                                {solutionOpen && (
-                                  <div style={{
-                                    marginTop: 8,
-                                    padding: '10px 12px',
-                                    backgroundColor: '#EFF6FF',
-                                    border: '1px solid #BFDBFE',
-                                    borderRadius: 5,
-                                    fontSize: 11.5,
-                                    color: '#1E3A8A',
-                                    lineHeight: 1.55,
-                                  }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                      <Lightbulb size={12} color="#2563EB" />
-                                      Explanation
-                                    </div>
-                                    {isLoadingSolution
-                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
-                                      : explanation
-                                        ? explanation
-                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
-                                    }
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
                         </div>
                       )}
                     </div>

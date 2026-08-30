@@ -76,7 +76,7 @@ async def list_candidate_attempts(
             import math
             res["total_pages"] = max(1, math.ceil((res.get("total", 0)) / effective_limit))
         serialized = jsonable_encoder(res)
-        await cache.set(cache_key, serialized, ttl_seconds=1800)
+        await cache.set(cache_key, serialized, ttl_seconds=5)
         return JSONResponse(content=serialized)
     return JSONResponse(content={"items": [], "total": 0})
 

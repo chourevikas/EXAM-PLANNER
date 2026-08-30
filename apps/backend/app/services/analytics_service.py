@@ -135,7 +135,7 @@ class AnalyticsService:
                 part_1 = attempt.report_metadata_json.get("part_1_per_question_analysis")
                 if part_1 and len(part_1) > 0:
                     all_questions = part_1
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(part_1), "questions": part_1}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(part_1), "questions": part_1}, ttl_seconds=5)
 
             # 2. Database ExamQuestionReport Rows
             if not all_questions:
@@ -165,14 +165,14 @@ class AnalyticsService:
                         }
                         for r in rows
                     ]
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=5)
 
             # 3. Synchronously evaluate report
             if not all_questions:
                 rep = await compile_comprehensive_psychometric_report(self.session, attempt_id=attempt_id)
                 if rep and rep.get("part_1_per_question_analysis"):
                     all_questions = rep["part_1_per_question_analysis"]
-                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=86400)
+                    await cache.set(cache_key, {"attempt_id": str(attempt_id), "total_questions": len(all_questions), "questions": all_questions}, ttl_seconds=5)
 
         if not all_questions:
             raise HTTPException(status_code=404, detail="Question-level diagnostic report not available.")
@@ -223,7 +223,7 @@ class AnalyticsService:
                 "llm_insight": rep_db.llm_insight_json,
                 "created_at": rep_db.created_at.isoformat() if rep_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # 2. Instant DB Cache: attempt.report_metadata_json
@@ -237,7 +237,7 @@ class AnalyticsService:
                 "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
                 "metadata": meta.get("metadata", {}),
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # 3. Fallback to compiled report
@@ -280,7 +280,7 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db.spaced_repetition_schedule_json,
                 "created_at": prog_db.created_at.isoformat() if prog_db.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         # Synchronously evaluate report to generate true progression delta
@@ -298,7 +298,7 @@ class AnalyticsService:
                 "spaced_repetition_schedule": prog_db_after.spaced_repetition_schedule_json,
                 "created_at": prog_db_after.created_at.isoformat() if prog_db_after.created_at else None,
             }
-            await cache.set(cache_key, res_data, ttl_seconds=86400)
+            await cache.set(cache_key, res_data, ttl_seconds=5)
             return res_data
 
         raise HTTPException(status_code=404, detail="User skill progression report not available.")
@@ -484,7 +484,7 @@ class AnalyticsService:
             force_recompute=force_recompute,
         )
         if report:
-            await cache.set(cache_key, report, ttl_seconds=1800)
+            await cache.set(cache_key, report, ttl_seconds=5)
         return report
 
     async def get_user_cumulative_aggregate_markdown(
