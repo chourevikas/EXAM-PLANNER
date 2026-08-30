@@ -27,6 +27,7 @@ import {
 import { addBookmark, removeBookmark } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { AuthModal, AuthMode } from '../components/auth/AuthModal';
+import { formatEnum } from '../utils/formatEnum';
 
 import {
   AttemptMode,
@@ -1155,7 +1156,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             </h2>
 
             <p style={{ fontSize: 13, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 20 }}>
-              Topic: <strong>{guestScoreData.topic}</strong> • Subtopic: <strong>{guestScoreData.subtopic}</strong>
+              Topic: <strong>{formatEnum(guestScoreData.topic)}</strong> • Subtopic: <strong>{formatEnum(guestScoreData.subtopic)}</strong>
             </p>
 
             {/* Score Pill */}

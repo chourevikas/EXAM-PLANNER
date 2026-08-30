@@ -977,51 +977,10 @@ async def send_pending_tasks_email(
 
 
 @router.post("/trigger-daily-digests")
-async def trigger_daily_digests_for_all_users(
-    session: AsyncSession = Depends(get_async_session)
-):
+async def trigger_daily_digests_for_all_users():
     """Admin / Background Trigger: Scans all users and dispatches pending task email digests for tasks in the last 14 days up to today."""
-    today = datetime.now(timezone.utc).date()
-    cutoff_date = today - timedelta(days=14)
-    
-    stmt = select(StudyTask, User).join(User, StudyTask.user_id == User.id).where(
-        StudyTask.scheduled_date >= cutoff_date,
-        StudyTask.scheduled_date <= today,
-        StudyTask.is_completed == False
-    )
-    results = (await session.exec(stmt)).all()
-
-    user_tasks_map = {}
-    for task, user in results:
-        if user.id not in user_tasks_map:
-            user_tasks_map[user.id] = {
-                "user": user,
-                "tasks": []
-            }
-        user_tasks_map[user.id]["tasks"].append({
-            "title": task.title,
-            "subject": task.subject or "General Studies",
-            "allocated_time_minutes": task.allocated_time_minutes or 30
-        })
-
-    sent_count = 0
-    for uid, data in user_tasks_map.items():
-        user = data["user"]
-        tasks_list = data["tasks"]
-        user_name = getattr(user, 'full_name', None) or user.email.split('@')[0]
-        
-        ok = await send_pending_tasks_summary_email(
-            email=user.email,
-            user_name=user_name,
-            pending_tasks=tasks_list
-        )
-        if ok:
-            sent_count += 1
-
-    return {
-        "message": f"Dispatched pending task email digests to {sent_count} user(s).",
-        "total_users_with_pending": len(user_tasks_map),
-        "emails_sent": sent_count
-    }
+    from app.services.daily_scheduler_service import run_daily_midnight_dispatch
+    res = await run_daily_midnight_dispatch(force=True)
+    return res
 
 

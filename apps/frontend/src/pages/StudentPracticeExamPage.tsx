@@ -10,6 +10,8 @@ import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
+import { formatEnum } from '../utils/formatEnum';
+import { guardedFetch } from '../utils/apiGuard';
 
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
@@ -86,6 +88,11 @@ export function StudentPracticeExamPage() {
     setRecommendedPool([]);
   }, [gExam, gSubject, gTopic, gSubtopic]);
 
+  const userResponsesRef = React.useRef(userResponses);
+  userResponsesRef.current = userResponses;
+  const revealedMapRef = React.useRef(revealedMap);
+  revealedMapRef.current = revealedMap;
+
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
     if (isPrefetchingRecs || isRecsExhausted) return;
@@ -95,8 +102,8 @@ export function StudentPracticeExamPage() {
       const existingIds = new Set<string | number>();
       currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
-      Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
-      Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
+      Object.keys(userResponsesRef.current || {}).forEach((qId) => existingIds.add(qId));
+      Object.keys(revealedMapRef.current || {}).forEach((qId) => existingIds.add(qId));
       Object.keys(recUserResponsesRef.current || {}).forEach((qId) => existingIds.add(qId));
 
       const excludeIdsParam = Array.from(existingIds).join(',');
@@ -129,7 +136,7 @@ export function StudentPracticeExamPage() {
         if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await fetch(`/api/v1/questions?${topicParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions?${topicParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -147,7 +154,7 @@ export function StudentPracticeExamPage() {
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await fetch(`/api/v1/questions?${subjParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions?${subjParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -1137,7 +1144,7 @@ export function StudentPracticeExamPage() {
         <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 0, padding: '40px 32px', maxWidth: 480, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', marginBottom: 8 }}>No Practice Questions Found</h2>
           <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
-            No practice questions mapped to <strong>{gTopic || gSubject}</strong> were found.
+            No practice questions mapped to <strong>{formatEnum(gTopic || gSubject)}</strong> were found.
           </p>
           <button
             onClick={() => navigate('/mocks')}
@@ -1353,7 +1360,7 @@ export function StudentPracticeExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gSubject || 'All Subjects'}</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gSubject ? formatEnum(gSubject) : 'All Subjects'}</span>
               <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
             </button>
 

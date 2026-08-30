@@ -19,6 +19,7 @@ import { PsychometricReport, QuestionReportItem, UserProgressionReportData } fro
 import { Loader2, FileCheck, Sparkles, Cpu, Activity, RefreshCw, AlertCircle, ArrowLeft, BarChart3 } from 'lucide-react';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
+import { formatEnum } from '../utils/formatEnum';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -656,7 +657,7 @@ export function AnalyticsPage() {
                                   color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
                                 }}
                               >
-                                {att.mode.replace('_', ' ')}
+                                {formatEnum(att.mode)}
                               </span>
                             </td>
                             <td style={{ padding: '12px', color: 'var(--text-muted)' }}>

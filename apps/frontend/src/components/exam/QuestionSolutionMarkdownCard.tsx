@@ -16,6 +16,7 @@ import {
   BookmarkCheck,
   ExternalLink,
 } from 'lucide-react';
+import { formatEnum } from '../../utils/formatEnum';
 
 export interface DistractorItem {
   option_id?: number | string;
@@ -247,7 +248,7 @@ export function QuestionSolutionMarkdownCard({
             }}
           >
             <BrainCircuit size={12} />
-            Bloom's: {bloomsLevel}
+            Bloom's: {formatEnum(bloomsLevel)}
           </span>
           <span
             style={{
@@ -264,7 +265,7 @@ export function QuestionSolutionMarkdownCard({
               }`,
             }}
           >
-            {difficulty} Tier
+            {formatEnum(difficulty)} Tier
           </span>
           {solution.topic && (
             <span
@@ -282,7 +283,7 @@ export function QuestionSolutionMarkdownCard({
               }}
             >
               <Layers size={12} />
-              {solution.topic}
+              {formatEnum(solution.topic)}
             </span>
           )}
         </div>

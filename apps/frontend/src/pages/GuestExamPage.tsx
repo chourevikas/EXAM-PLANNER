@@ -9,6 +9,8 @@ import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { formatEnum } from '../utils/formatEnum';
+import { guardedFetch } from '../utils/apiGuard';
 
 export function GuestExamPage() {
   const navigate = useNavigate();
@@ -188,7 +190,7 @@ export function GuestExamPage() {
         if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await fetch(`/api/v1/questions?${topicParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions?${topicParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -206,7 +208,7 @@ export function GuestExamPage() {
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await fetch(`/api/v1/questions?${subjParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions?${subjParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -929,7 +931,7 @@ export function GuestExamPage() {
             No Questions Found
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
-            No questions match your current selection (Subject: <strong>{gSubject}</strong>{gTopic ? `, Topic: ${gTopic}` : ''}{gSubtopic ? `, Subtopic: ${gSubtopic}` : ''}).
+            No questions match your current selection (Subject: <strong>{formatEnum(gSubject)}</strong>{gTopic ? `, Topic: ${formatEnum(gTopic)}` : ''}{gSubtopic ? `, Subtopic: ${formatEnum(gSubtopic)}` : ''}).
           </p>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1291,7 +1293,7 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gSubject}</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatEnum(gSubject)}</span>
               <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
             </button>
 
@@ -1399,7 +1401,7 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gTopic || 'All Topics'}</span>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gTopic ? formatEnum(gTopic) : 'All Topics'}</span>
               <ChevronDown size={14} color="#64748B" style={{ transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
             </button>
 

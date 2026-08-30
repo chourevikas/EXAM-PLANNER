@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, ChevronLeft, ChevronRight, Bookmark, Clock, Awar
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { formatEnum } from '../../utils/formatEnum';
 
 interface ExamQuestionCardProps {
   question: QuestionOut | {
@@ -443,7 +444,7 @@ export function ExamQuestionCard({
                   }}
                 >
                   <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: diffColors.text }} />
-                  {difficultyLabel}
+                  {formatEnum(difficultyLabel)}
                 </span>
 
                 {/* Time & Tier Badge */}
@@ -528,7 +529,7 @@ export function ExamQuestionCard({
                   }}
                 >
                   <Award size={12} color="#0284C7" />
-                  {examYearDisplay}
+                  {formatEnum(examName)} {sourceYear ? `${sourceYear}` : ''}
                 </span>
               )}
 
@@ -545,7 +546,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  {subjectLabel}
+                  {formatEnum(subjectLabel)}
                 </span>
               )}
 
@@ -562,7 +563,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  {topicLabel}
+                  {formatEnum(topicLabel)}
                 </span>
               )}
 
@@ -579,7 +580,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  ↳ {subtopicLabel}
+                  ↳ {formatEnum(subtopicLabel)}
                 </span>
               )}
             </div>

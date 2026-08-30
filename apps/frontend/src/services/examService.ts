@@ -14,6 +14,7 @@ import {
   SubmitExamResponse,
   PsychometricReport,
 } from '../types/exam';
+import { guardedFetch } from '../utils/apiGuard';
 
 const API_BASE_URL = '/api/v1';
 
@@ -51,7 +52,7 @@ export async function uploadExamPaper({
   formData.append('set_code', set_code || 'SET_A');
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/exams/upload`, {
+  const response = await guardedFetch(`${API_BASE_URL}/exams/upload`, {
     method: 'POST',
     headers,
     body: formData,
@@ -89,7 +90,7 @@ export async function uploadAnswerKey({
   formData.append('set_code', set_code);
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/pipeline/upload-answer-key`, {
+  const response = await guardedFetch(`${API_BASE_URL}/pipeline/upload-answer-key`, {
     method: 'POST',
     headers,
     body: formData,
@@ -105,7 +106,7 @@ export async function uploadAnswerKey({
 
 /** 1. Start Exam Attempt */
 export async function startExamAttempt(payload: StartExamRequest): Promise<StartExamResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/start`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/start`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -125,7 +126,7 @@ export async function getQuestionByNumber(
   language: string = 'ENGLISH'
 ): Promise<QuestionNavResponse> {
   const url = `${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/questions/${questionNumber}?language=${encodeURIComponent(language)}`;
-  const response = await fetch(url, {
+  const response = await guardedFetch(url, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -142,7 +143,7 @@ export async function saveQuestionResponse(
   attemptId: number | string,
   payload: SaveResponseRequest
 ): Promise<SaveResponseResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -160,7 +161,7 @@ export async function revealQuestionAnswer(
   attemptId: number | string,
   questionId: number | string
 ): Promise<RevealAnswerResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/reveal/${encodeURIComponent(questionId)}`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/reveal/${encodeURIComponent(questionId)}`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -177,7 +178,7 @@ export async function sendExamHeartbeat(
   attemptId: number | string,
   payload: HeartbeatRequest
 ): Promise<HeartbeatResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/heartbeat`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/heartbeat`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -192,7 +193,7 @@ export async function sendExamHeartbeat(
 
 /** 6. Get Exam Session Status & Palette (Resume Session) */
 export async function getExamAttemptStatus(attemptId: number | string): Promise<ExamStatusResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/status`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/status`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -209,7 +210,7 @@ export async function submitExamAttempt(
   attemptId: number | string,
   payload: SubmitExamRequest = { submission_reason: 'USER_CLICKED_SUBMIT' }
 ): Promise<SubmitExamResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/submit`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/submit`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -224,7 +225,7 @@ export async function submitExamAttempt(
 
 /** 8. Get Submitted Attempt Summary Result */
 export async function getAttemptResult(attemptId: number | string): Promise<SubmitExamResponse> {
-  const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/result`, {
+  const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/result`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -238,7 +239,7 @@ export async function getAttemptResult(attemptId: number | string): Promise<Subm
 
 /** 9. Fetch Psychometric Diagnostic Report JSON */
 export async function getPsychometricReportJson(attemptId: number | string): Promise<PsychometricReport> {
-  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/json`, {
+  const response = await guardedFetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/json`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -273,7 +274,7 @@ export async function listExams(status?: string, includeInactive: boolean = fals
     if (status) {
       url += `?status=${encodeURIComponent(status)}`;
     }
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: getAuthHeaders(customToken),
     });
@@ -335,7 +336,7 @@ export async function listCandidateAttempts(
       url += `&status_filter=${encodeURIComponent(statusFilter)}`;
     }
 
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: getAuthHeaders(customToken),
     });
@@ -376,7 +377,7 @@ export async function getAllAttemptQuestionsBulk(
   // 2. Secondary Strategy: Fetch from FastAPI backend bulk questions endpoint
   try {
     const url = `${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/questions/bulk?language=${encodeURIComponent(language)}`;
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -404,7 +405,7 @@ export async function prefetchQuestion(attemptId: number | string, qNum: number,
 
 export async function saveQuestionResponsesBatch(attemptId: number | string, payload: any): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses/batch`, {
+    const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses/batch`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -423,7 +424,7 @@ export async function saveQuestionResponsesBatch(attemptId: number | string, pay
 
 export async function getResponseBatchStatus(attemptId: number | string, batchId: string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses/batch/${batchId}`, {
+    const response = await guardedFetch(`${API_BASE_URL}/attempts/${encodeURIComponent(attemptId)}/responses/batch/${batchId}`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -443,7 +444,7 @@ export async function getAttemptEvaluationStatus(attemptId: number | string): Pr
     if (String(cleanId) === 'CUMULATIVE_ALL' || isNaN(Number(cleanId))) {
       return { is_ready: true, status: 'COMPLETED' };
     }
-    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/status`, {
+    const response = await guardedFetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/status`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -459,7 +460,7 @@ export async function getAttemptEvaluationStatus(attemptId: number | string): Pr
 
 export async function retryAttemptEvaluation(attemptId: number | string): Promise<any> {
   const cleanId = cleanAttemptId(attemptId);
-  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/retry`, {
+  const response = await guardedFetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/retry`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -504,7 +505,7 @@ export async function pollAttemptReportUntilReady(
 
 export async function getAttemptQuestionReport(attemptId: number | string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/questions`, {
+    const response = await guardedFetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/questions`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -518,7 +519,7 @@ export async function getAttemptQuestionReport(attemptId: number | string): Prom
 
 export async function getAttemptUserProgressionReport(attemptId: number | string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/user-delta`, {
+    const response = await guardedFetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/user-delta`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -533,7 +534,7 @@ export async function getAttemptUserProgressionReport(attemptId: number | string
 export async function getUserCumulativeAggregateReport(userId?: number | string): Promise<any> {
   try {
     const target = userId || 'me';
-    const response = await fetch(`${API_BASE_URL}/analytics/users/${encodeURIComponent(target)}/aggregate-report`, {
+    const response = await guardedFetch(`${API_BASE_URL}/analytics/users/${encodeURIComponent(target)}/aggregate-report`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -548,7 +549,7 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
 export async function fetchMasterSyllabus(examId?: number | string): Promise<any> {
   try {
     const url = examId ? `${API_BASE_URL}/syllabus?exam_id=${encodeURIComponent(examId)}` : `${API_BASE_URL}/syllabus`;
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -562,7 +563,7 @@ export async function fetchMasterSyllabus(examId?: number | string): Promise<any
 
 export async function fetchExamsByYear(): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/exams/by-year`, {
+    const response = await guardedFetch(`${API_BASE_URL}/exams/by-year`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -576,7 +577,7 @@ export async function fetchExamsByYear(): Promise<any> {
 
 export async function verifySyllabusNode(payload: { subject?: string; topic?: string; subtopic?: string }): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/syllabus/verify`, {
+    const response = await guardedFetch(`${API_BASE_URL}/syllabus/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -591,7 +592,7 @@ export async function verifySyllabusNode(payload: { subject?: string; topic?: st
 
 export async function fetchExamSyllabusTree(examId: number | string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/exams/${encodeURIComponent(examId)}/syllabus`, {
+    const response = await guardedFetch(`${API_BASE_URL}/exams/${encodeURIComponent(examId)}/syllabus`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -608,7 +609,7 @@ export async function fetchExamIntegrityQuestions(examId: string, status?: strin
     const url = status
       ? `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?status=${encodeURIComponent(status)}`
       : `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions`;
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -624,7 +625,7 @@ export async function bulkAddStudyTasksFromReport(payload: {
   attempt_id: string;
   tasks: any[];
 }): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/study-plan/tasks/bulk-from-report`, {
+  const response = await guardedFetch(`${API_BASE_URL}/study-plan/tasks/bulk-from-report`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -638,7 +639,7 @@ export async function bulkAddStudyTasksFromReport(payload: {
 
 export async function getAttemptScheduledTasksStatus(attemptId: string): Promise<{ attempt_id: string; scheduled_task_titles: string[]; tasks: any[] }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/study-plan/tasks/attempt/${encodeURIComponent(attemptId)}/status`, {
+    const response = await guardedFetch(`${API_BASE_URL}/study-plan/tasks/attempt/${encodeURIComponent(attemptId)}/status`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });

@@ -31,6 +31,7 @@ import {
   CalendarPlus,
   ArrowRight,
   Filter,
+  Loader2,
 } from 'lucide-react';
 import {
   PsychometricReport,
@@ -60,6 +61,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { formatEnum } from '../../utils/formatEnum';
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
@@ -1138,9 +1140,9 @@ export function PsychometricReportView({
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          PLACE 1: EXAM 12-MATRIX PERFORMANCE (Tab 1)
+          PLACE 1: EXAM SCORECARD PERFORMANCE (Tab 1)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'exam-matrices' && (
+      {activeTab === 'exam-scorecard' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Executive Prelims / Practice Performance & Benchmark Card */}
           {(() => {
@@ -2568,7 +2570,7 @@ export function PsychometricReportView({
       </div>
 
       {/* Actionable Study Plan Tasks Section - SHOWN ONLY WHEN AI DATA ARRIVES */}
-      {hasAiInsight && rawTasksList.length > 0 ? (
+      {hasAiInsight && rawTasksList.length > 0 && (
         <div
           style={{
             ...cardStyle,
@@ -2743,7 +2745,7 @@ export function PsychometricReportView({
                                 border: `1px solid ${priorityColor}30`,
                               }}
                             >
-                              {t.priority || 'HIGH'} PRIORITY
+                              {formatEnum(t.priority || 'HIGH')}
                             </span>
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
                               ⏱️ {t.allocated_time_minutes || 30} mins
@@ -2754,7 +2756,7 @@ export function PsychometricReportView({
                             {t.title}
                           </h4>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#E31B23', marginBottom: 8 }}>
-                            📚 {t.subject} • {t.topic}
+                            📚 {formatEnum(t.subject)} • {formatEnum(t.topic)}
                           </div>
 
                           {t.reasoning && (
@@ -2834,6 +2836,8 @@ export function PsychometricReportView({
           })()}
         </div>
       )}
+    </div>
+  )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           PAGE 1: USER LONGITUDINAL TRAJECTORY (Tab 1 for Cumulative Profile)
@@ -3400,7 +3404,7 @@ export function PsychometricReportView({
                               <td style={{ padding: '10px 12px', color: '#06b6d4' }}>{item.satoi_score}/100</td>
                               <td style={{ padding: '10px 12px' }}>
                                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35,0.1)', color: '#E31B23' }}>
-                                  {item.pacing_status}
+                                  {formatEnum(item.pacing_status)}
                                 </span>
                               </td>
                             </tr>
@@ -3838,7 +3842,7 @@ export function PsychometricReportView({
                                 <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>💡 Cognitive Thinking Level</span>
                                 <div>
                                   <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.35)' }}>
-                                    {q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking'}
+                                    {formatEnum(q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking')}
                                   </span>
                                 </div>
                               </div>
@@ -3853,7 +3857,7 @@ export function PsychometricReportView({
                                       const b = getBadgeStyle(dClass.includes('Near') || dClass.includes('High') ? 'VULNERABLE' : 'COMPETENT');
                                       return (
                                         <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: b.bg, color: b.color, border: `1px solid ${b.border}` }}>
-                                          {dClass}
+                                          {formatEnum(dClass)}
                                         </span>
                                       );
                                     })()}

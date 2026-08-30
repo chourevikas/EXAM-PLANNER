@@ -16,6 +16,7 @@ import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { fetchPredictedRank, PredictedRankResponse } from '../services/analyticsService';
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { formatEnum } from '../utils/formatEnum';
 
 const studyHoursData = [
   { day: 'Mon', hours: 4.5 },
@@ -336,7 +337,7 @@ export function DashboardPage() {
                         const data = payload[0].payload;
                         return (
                           <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{data.subject}</div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{formatEnum(data.subject)}</div>
                             <div style={{ fontSize: 12, color: '#E31B23', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
                             <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                               Attempted: {data.total_attempted} | Correct: {data.total_correct}
