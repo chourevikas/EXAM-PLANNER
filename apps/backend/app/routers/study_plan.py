@@ -36,8 +36,8 @@ async def complete_study_task(
         StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    result = await session.execute(stmt)
-    task = result.scalars().first()
+    result = await session.exec(stmt)
+    task = result.first()
     
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -155,7 +155,7 @@ async def update_study_task(
         StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    task = (await session.execute(stmt)).scalars().first()
+    task = (await session.exec(stmt)).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -198,7 +198,7 @@ async def delete_study_task(
         StudyTask.id == tid,
         StudyTask.user_id == current_user.id
     )
-    task = (await session.execute(stmt)).scalars().first()
+    task = (await session.exec(stmt)).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -281,7 +281,7 @@ async def bulk_add_tasks_from_report(
             scheduled_date=task_date,
             is_completed=False,
             is_ai_recommended=True,
-            source_attempt_id=req.attempt_id
+            source_attempt_id=int(req.attempt_id) if req.attempt_id is not None else None
         )
         session.add(new_task)
         created_task_ids.append(str(new_task.id))
@@ -894,10 +894,10 @@ async def get_user_badges(
         return JSONResponse(content=jsonable_encoder(cached_data))
 
     stmt_all = select(Badge)
-    badges = (await session.execute(stmt_all)).scalars().all()
+    badges = (await session.exec(stmt_all)).all()
     
     stmt_user = select(UserBadge).where(UserBadge.user_id == current_user.id)
-    user_badges = (await session.execute(stmt_user)).scalars().all()
+    user_badges = (await session.exec(stmt_user)).all()
     unlocked_badge_ids = {ub.badge_id for ub in user_badges}
     
     unlocked = []

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import List
 from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 
 from app.db.models import Exam, Question, Subject, QuestionHierarchyLink, ExamStatus
@@ -49,7 +49,8 @@ class AdminService:
         return result
 
     async def list_active_admins(self) -> List[AdminApprovalRequestOut]:
-        active_users = await self.repo.get_active_admins()
+        from app.db.models.user import UserStatus
+        active_users = await self.repo.get_all_users_for_superadmin(role=UserRole.ADMIN, status=UserStatus.ACTIVE)
         result = []
         for u in active_users:
             org_name = u.admin_profile.organization_name if u.admin_profile else None
@@ -69,7 +70,7 @@ class AdminService:
         return result
 
     async def list_all_users(self) -> List[UserDirectoryItemOut]:
-        all_users = await self.repo.get_all_users()
+        all_users = await self.repo.get_all_users_for_superadmin()
         result = []
         for u in all_users:
             admin_prof = u.__dict__.get("admin_profile")
@@ -139,7 +140,7 @@ class AdminService:
         return user
 
     async def get_approval_audit_logs(self) -> List[AdminApprovalLogOut]:
-        logs = await self.repo.get_approval_logs()
+        logs = await self.repo.get_approval_audit_logs()
         result = []
         for log in logs:
             admin_user = await self.repo.get_by_id(log.admin_user_id)
@@ -173,9 +174,9 @@ class AdminService:
         if cached_data is not None:
             return SystemStatsOut(**cached_data) if isinstance(cached_data, dict) else cached_data
 
-        stats = await self.repo.get_system_stats()
+        stats = await self.repo.get_system_audit_stats()
         if stats:
-            serialized = stats.model_dump(mode="json") if hasattr(stats, "model_dump") else stats
+            serialized = stats if isinstance(stats, dict) else (stats.model_dump(mode="json") if hasattr(stats, "model_dump") else stats)
             await cache.set(cache_key, serialized, ttl_seconds=300)
             return SystemStatsOut(**stats) if isinstance(stats, dict) else stats
         return stats
