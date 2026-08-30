@@ -14,7 +14,6 @@ import {
   Layers,
   FileCheck2,
   BookmarkCheck,
-  ExternalLink,
 } from 'lucide-react';
 
 export interface DistractorItem {
@@ -543,27 +542,6 @@ export function QuestionSolutionMarkdownCard({
           <FileCheck2 size={14} />
           Cognitive Skill: {solution.cognitive_skill || 'Analytical & Conceptual Reasoning'}
         </span>
-        {solution.presigned_url ? (
-          <a
-            href={solution.presigned_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#E31B23',
-              fontSize: 11,
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              textDecoration: 'none',
-            }}
-          >
-            <ExternalLink size={12} />
-            S3 Verified JSON Artifact
-          </a>
-        ) : (
-          <span>Verified Solution Artifact</span>
-        )}
       </div>
     </div>
   );

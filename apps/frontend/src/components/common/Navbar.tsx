@@ -102,6 +102,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     { label: 'Methodology', targetId: '#how-it-works' },
     { label: 'Plans', to: '/plans' },
     { label: 'About Us', to: '/about' },
+    { label: 'Contact Us', to: '/contact' },
   ];
 
   const handleNavItemClick = (item: { targetId?: string; to?: string }) => {

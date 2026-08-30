@@ -1,37 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
+import {
+  Eye,
+  CheckCircle2,
+  XCircle,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  Bookmark,
+} from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamQuestionCardProps {
-  question: QuestionOut | {
-    id: number | string;
-    sectionId?: string;
-    sectionName?: string;
-    subtopic_name?: string;
-    topic_name?: string;
-    difficulty?: string;
-    text: string;
-    textHindi?: string;
-    text_hindi?: string;
-    question_text_hi?: string;
-    question_text_hindi?: string;
-    translations?: Record<string, any>;
-    passage_text?: string | null;
-    passage_text_hindi?: string | null;
-    passage_translations?: Record<string, string>;
-    options: {
-      label: string;
-      text: string;
-      textHindi?: string;
-      text_hindi?: string;
-      option_id?: number | string;
-      translations?: Record<string, any>;
-    }[];
-  };
+  question:
+    | QuestionOut
+    | {
+        id: number | string;
+        sectionId?: string;
+        sectionName?: string;
+        subtopic_name?: string;
+        topic_name?: string;
+        difficulty?: string;
+        text: string;
+        textHindi?: string;
+        text_hindi?: string;
+        question_text_hi?: string;
+        question_text_hindi?: string;
+        translations?: Record<string, any>;
+        passage_text?: string | null;
+        passage_text_hindi?: string | null;
+        passage_translations?: Record<string, string>;
+        options: {
+          label: string;
+          text: string;
+          textHindi?: string;
+          text_hindi?: string;
+          option_id?: number | string;
+          translations?: Record<string, any>;
+        }[];
+      };
   questionIndex: number;
   totalQuestions: number;
   selectedOptionId?: number | string | null;
@@ -89,7 +99,9 @@ function getPassageText(q: any, lang: 'en' | 'hi'): string | null {
 
 function cleanOptionLabel(rawLabel: string, index: number): string {
   if (!rawLabel) return String.fromCharCode(65 + index);
-  const clean = String(rawLabel).replace(/[\(\)\.\s]/g, '').toUpperCase();
+  const clean = String(rawLabel)
+    .replace(/[\(\)\.\s]/g, '')
+    .toUpperCase();
   return clean.length === 1 ? clean : String.fromCharCode(65 + index);
 }
 
@@ -181,7 +193,9 @@ export function ExamQuestionCard({
         {...props}
       />
     ),
-    strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700, color: '#172033' }} {...props} />,
+    strong: ({ node, ...props }: any) => (
+      <strong style={{ fontWeight: 700, color: '#172033' }} {...props} />
+    ),
     table: ({ node, ...props }: any) => (
       <div style={{ overflowX: 'auto', margin: '10px 0' }}>
         <table
@@ -238,7 +252,14 @@ export function ExamQuestionCard({
 
   const optionMarkdownComponents: any = {
     p: ({ node, ...props }: any) => (
-      <span style={{ display: 'inline', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }} {...props} />
+      <span
+        style={{
+          display: 'inline',
+          margin: 0,
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+        }}
+        {...props}
+      />
     ),
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
   };
@@ -250,17 +271,17 @@ export function ExamQuestionCard({
       style={{
         flex: 1,
         width: '100%',
-        padding: 'clamp(8px, 2vw, 24px)',
         overflow: 'hidden',
         boxSizing: 'border-box',
         backgroundColor: '#F8FAF8',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
+        alignItems: 'stretch',
         justifyContent: 'flex-start',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
         height: '100%',
         maxHeight: '100%',
+        minHeight: 0,
       }}
     >
       <div
@@ -270,9 +291,11 @@ export function ExamQuestionCard({
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
+          justifyContent: 'flex-start',
           gap: 12,
           height: '100%',
           maxHeight: '100%',
+          minHeight: 0,
           boxSizing: 'border-box',
         }}
       >
@@ -308,7 +331,9 @@ export function ExamQuestionCard({
             padding: 'clamp(12px, 2.5vw, 20px)',
             display: 'flex',
             flexDirection: 'column',
+            justifyContent: 'flex-start',
             flex: 1,
+            minHeight: 0,
             maxHeight: '100%',
             boxSizing: 'border-box',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -347,7 +372,15 @@ export function ExamQuestionCard({
                   letterSpacing: '0.04em',
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 0,
+                    backgroundColor: '#F2B623',
+                    display: 'inline-block',
+                  }}
+                />
                 {difficultyLabel}
               </span>
             </div>
@@ -378,7 +411,7 @@ export function ExamQuestionCard({
                 <button
                   type="button"
                   onClick={onToggleBookmark}
-                  title={isBookmarked ? "Remove Bookmark" : "Bookmark Question"}
+                  title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -388,10 +421,14 @@ export function ExamQuestionCard({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: isBookmarked ? '#E31B23' : '#94A3B8',
-                    transition: 'color 0.15s ease'
+                    transition: 'color 0.15s ease',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#E31B23'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8'; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#E31B23';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8';
+                  }}
                 >
                   <Bookmark size={18} fill={isBookmarked ? '#E31B23' : 'none'} />
                 </button>
@@ -404,15 +441,17 @@ export function ExamQuestionCard({
             style={{
               overflowY: 'auto',
               flex: 1,
+              minHeight: 0,
               paddingRight: 6,
               display: 'flex',
               flexDirection: 'column',
+              justifyContent: 'space-between',
             }}
           >
             {/* Question Body (Compact 15px font, 600 weight) */}
             <div
               style={{
-                marginBottom: 14,
+                marginBottom: 0,
                 fontSize: 15,
                 color: '#172033',
                 fontWeight: 600,
@@ -426,11 +465,24 @@ export function ExamQuestionCard({
             </div>
 
             {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                marginTop: 'auto',
+              }}
+            >
               {options.map((opt) => {
-                const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
+                const isSelected =
+                  selectedOptionId === opt.id ||
+                  selectedOptionLabel === opt.cleanLabel ||
+                  selectedOptionLabel === opt.rawLabel;
 
-                const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
+                const isCorrectOpt =
+                  revealResult &&
+                  (revealResult.correct_option_id === opt.id ||
+                    revealResult.correct_option_label === opt.cleanLabel);
                 const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
 
                 let borderStyle = isSelected ? '1.5px solid #E31B23' : '1px solid #E2E8F0';
@@ -504,13 +556,16 @@ export function ExamQuestionCard({
                       style={{
                         fontSize: 14,
                         color: '#172033',
-                        fontWeight: (isSelected || isCorrectOpt) ? 600 : 500,
+                        fontWeight: isSelected || isCorrectOpt ? 600 : 500,
                         lineHeight: 1.45,
                         flex: 1,
                         fontFamily: "'Plus Jakarta Sans', sans-serif",
                       }}
                     >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={optionMarkdownComponents}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={optionMarkdownComponents}
+                      >
                         {opt.text}
                       </ReactMarkdown>
                     </div>
@@ -543,211 +598,281 @@ export function ExamQuestionCard({
             {mode !== 'EXAM' && revealResult && showDetailedSolution && (
               <QuestionSolutionMarkdownCard
                 isUserCorrect={revealResult.is_user_correct}
-                selectedOptionLabel={revealResult.user_selected_label || selectedOptionLabel || undefined}
+                selectedOptionLabel={
+                  revealResult.user_selected_label || selectedOptionLabel || undefined
+                }
                 solution={{
                   question_id: revealResult.question_id,
                   question_number: revealResult.question_number || questionIndex + 1,
                   correct_option_id: revealResult.correct_option_id,
                   correct_option_label: revealResult.correct_option_label,
-                  blooms_level: (question as any).blooms_taxonomy_level || (question as any).blooms_level || 'ANALYZE',
+                  blooms_level:
+                    (question as any).blooms_taxonomy_level ||
+                    (question as any).blooms_level ||
+                    'ANALYZE',
                   difficulty: (question as any).difficulty || 'MEDIUM',
-                  topic: (question as any).topic_name || (question as any).topic || (question as any).section_code,
+                  topic:
+                    (question as any).topic_name ||
+                    (question as any).topic ||
+                    (question as any).section_code,
                   subtopic: (question as any).subtopic_name || (question as any).subtopic,
                   presigned_url: (revealResult as any).presigned_url,
-                  explanation: typeof revealResult.explanation === 'object' && revealResult.explanation !== null
-                    ? {
-                      core_concept: (revealResult.explanation as any).core_concept,
-                      detailed_solution: (revealResult.explanation as any).detailed_solution || (revealResult.explanation as any).detailed_text || (revealResult.explanation as any).text || (typeof revealResult.explanation === 'string' ? revealResult.explanation : ''),
-                      common_traps: (revealResult.explanation as any).common_traps || (revealResult.explanation as any).traps || [],
-                      key_takeaways: (revealResult.explanation as any).key_takeaways || (revealResult.explanation as any).points_to_remember || ((revealResult.explanation as any).key_takeaway ? [(revealResult.explanation as any).key_takeaway] : []),
-                    }
-                    : {
-                      detailed_solution: typeof revealResult.explanation === 'string' ? revealResult.explanation : 'Detailed solution is available.',
-                    },
+                  explanation:
+                    typeof revealResult.explanation === 'object' &&
+                    revealResult.explanation !== null
+                      ? {
+                          core_concept: (revealResult.explanation as any).core_concept,
+                          detailed_solution:
+                            (revealResult.explanation as any).detailed_solution ||
+                            (revealResult.explanation as any).detailed_text ||
+                            (revealResult.explanation as any).text ||
+                            (typeof revealResult.explanation === 'string'
+                              ? revealResult.explanation
+                              : ''),
+                          common_traps:
+                            (revealResult.explanation as any).common_traps ||
+                            (revealResult.explanation as any).traps ||
+                            [],
+                          key_takeaways:
+                            (revealResult.explanation as any).key_takeaways ||
+                            (revealResult.explanation as any).points_to_remember ||
+                            ((revealResult.explanation as any).key_takeaway
+                              ? [(revealResult.explanation as any).key_takeaway]
+                              : []),
+                        }
+                      : {
+                          detailed_solution:
+                            typeof revealResult.explanation === 'string'
+                              ? revealResult.explanation
+                              : 'Detailed solution is available.',
+                        },
                   distractor_scores: revealResult.distractor_scores || {},
                 }}
               />
             )}
+          </div>
 
-            {/* Action Buttons & Navigation */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          {/* Action Buttons & Navigation - Fixed Footer (always visible, outside the scrollable body) */}
+          <div
+            style={{
+              paddingTop: 12,
+              borderTop: '1px solid #F1F5F9',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {/* Left spacing for center alignment balance */}
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'flex-start',
+              }}
+            ></div>
 
-              {/* Left spacing for center alignment balance */}
-              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}></div>
+            {/* Center: Prev | Question X | Next */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flex: 1,
+                justifyContent: 'center',
+              }}
+            >
+              {/* Prominent Previous Question Button */}
+              {onPrev && (
+                <button
+                  type="button"
+                  onClick={onPrev}
+                  disabled={questionIndex === 0}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '6px 12px',
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                    color: questionIndex === 0 ? '#94A3B8' : '#172033',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (questionIndex > 0) {
+                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.color = '#E31B23';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (questionIndex > 0) {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.color = '#172033';
+                    }
+                  }}
+                >
+                  <ChevronLeft size={15} />
+                  <span>Prev</span>
+                </button>
+              )}
 
-              {/* Center: Prev | Question X | Next */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'center' }}>
-                {/* Prominent Previous Question Button */}
-                {onPrev && (
+              {/* Prominent Next Question Button */}
+              {onNext && (
+                <button
+                  type="button"
+                  onClick={onNext}
+                  disabled={questionIndex >= totalQuestions - 1}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '6px 12px',
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (questionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.backgroundColor = '#F8FAFC';
+                      e.currentTarget.style.borderColor = '#E31B23';
+                      e.currentTarget.style.color = '#E31B23';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (questionIndex < totalQuestions - 1) {
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                      e.currentTarget.style.borderColor = '#CBD5E1';
+                      e.currentTarget.style.color = '#172033';
+                    }
+                  }}
+                >
+                  <span>Next</span>
+                  <ChevronRight size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* Right: Action Buttons */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                flex: 1,
+                justifyContent: 'flex-end',
+              }}
+            >
+              {onRevealAnswer && (
+                <>
+                  {/* Button 1: Submit */}
                   <button
                     type="button"
-                    onClick={onPrev}
-                    disabled={questionIndex === 0}
+                    onClick={onRevealAnswer}
+                    disabled={!selectedOptionId || !!revealResult}
                     style={{
+                      padding: '8px 18px',
+                      borderRadius: 0,
+                      border:
+                        revealResult || !selectedOptionId
+                          ? '1px solid #CBD5E1'
+                          : '1px solid #E31B23',
+                      backgroundColor: revealResult
+                        ? '#F1F5F9'
+                        : !selectedOptionId
+                          ? '#E2E8F0'
+                          : '#E31B23',
+                      color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: revealResult
+                        ? 'default'
+                        : !selectedOptionId
+                          ? 'not-allowed'
+                          : 'pointer',
+                      boxShadow:
+                        revealResult || !selectedOptionId
+                          ? 'none'
+                          : '0 2px 8px rgba(227, 27, 35, 0.22)',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
-                      padding: '6px 12px',
-                      borderRadius: 0,
-                      border: '1px solid #CBD5E1',
-                      backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                      color: questionIndex === 0 ? '#94A3B8' : '#172033',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
+                      gap: 6,
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
                     onMouseEnter={(e) => {
-                      if (questionIndex > 0) {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E31B23';
-                        e.currentTarget.style.color = '#E31B23';
+                      if (!revealResult && selectedOptionId) {
+                        e.currentTarget.style.backgroundColor = '#C1121F';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (questionIndex > 0) {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.color = '#172033';
+                      if (!revealResult && selectedOptionId) {
+                        e.currentTarget.style.backgroundColor = '#E31B23';
                       }
                     }}
                   >
-                    <ChevronLeft size={15} />
-                    <span>Prev</span>
+                    {revealResult ? '✓ Submitted' : 'Submit'}
                   </button>
-                )}
 
-                {/* Prominent Next Question Button */}
-                {onNext && (
+                  {/* Button 2: Show Solution */}
                   <button
                     type="button"
-                    onClick={onNext}
-                    disabled={questionIndex >= totalQuestions - 1}
+                    onClick={() => {
+                      if (!revealResult && selectedOptionId) {
+                        onRevealAnswer();
+                      }
+                      const nextState = !showDetailedSolution;
+                      setShowDetailedSolution(nextState);
+                      if (nextState && onShowSolution) {
+                        onShowSolution();
+                      }
+                    }}
                     style={{
+                      padding: '8px 18px',
+                      borderRadius: 0,
+                      border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
+                      backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
+                      color: showDetailedSolution ? '#E31B23' : '#172033',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
-                      padding: '6px 12px',
-                      borderRadius: 0,
-                      border: '1px solid #CBD5E1',
-                      backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                      color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                      gap: 6,
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
                     onMouseEnter={(e) => {
-                      if (questionIndex < totalQuestions - 1) {
+                      if (!showDetailedSolution) {
                         e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E31B23';
-                        e.currentTarget.style.color = '#E31B23';
+                        e.currentTarget.style.borderColor = '#94A3B8';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (questionIndex < totalQuestions - 1) {
+                      if (!showDetailedSolution) {
                         e.currentTarget.style.backgroundColor = '#FFFFFF';
                         e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.color = '#172033';
                       }
                     }}
                   >
-                    <span>Next</span>
-                    <ChevronRight size={15} />
+                    {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
                   </button>
-                )}
-              </div>
-
-              {/* Right: Action Buttons */}
-              <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
-                {onRevealAnswer && (
-                  <>
-                    {/* Button 1: Submit */}
-                    <button
-                      type="button"
-                      onClick={onRevealAnswer}
-                      disabled={!selectedOptionId || !!revealResult}
-                      style={{
-                        padding: '8px 18px',
-                        borderRadius: 0,
-                        border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #E31B23',
-                        backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#E31B23',
-                        color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
-                        boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(227, 27, 35, 0.22)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!revealResult && selectedOptionId) {
-                          e.currentTarget.style.backgroundColor = '#C1121F';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!revealResult && selectedOptionId) {
-                          e.currentTarget.style.backgroundColor = '#E31B23';
-                        }
-                      }}
-                    >
-                      {revealResult ? '✓ Submitted' : 'Submit'}
-                    </button>
-
-                    {/* Button 2: Show Solution */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!revealResult && selectedOptionId) {
-                          onRevealAnswer();
-                        }
-                        const nextState = !showDetailedSolution;
-                        setShowDetailedSolution(nextState);
-                        if (nextState && onShowSolution) {
-                          onShowSolution();
-                        }
-                      }}
-                      style={{
-                        padding: '8px 18px',
-                        borderRadius: 0,
-                        border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
-                        backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
-                        color: showDetailedSolution ? '#E31B23' : '#172033',
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!showDetailedSolution) {
-                          e.currentTarget.style.backgroundColor = '#F8FAFC';
-                          e.currentTarget.style.borderColor = '#94A3B8';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!showDetailedSolution) {
-                          e.currentTarget.style.backgroundColor = '#FFFFFF';
-                          e.currentTarget.style.borderColor = '#CBD5E1';
-                        }
-                      }}
-                    >
-                      {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
-                    </button>
-                  </>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
         </div>

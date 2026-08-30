@@ -1773,18 +1773,18 @@ export function StudentPracticeExamPage() {
         style={{
           display: 'flex',
           flex: 1,
-          marginTop: 0,
-          marginBottom: 0,
+          minHeight: 0,
           overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAFC',
-          minHeight: 'calc(100vh - 180px)',
           gap: isMobile ? 0 : 20,
+          paddingTop: 12,
+          paddingBottom: 16,
           paddingRight: isMobile ? 12 : 24,
-          paddingLeft: isMobile ? 12 : 0,
+          paddingLeft: isMobile ? 12 : 24,
         }}
       >
-        {/* Left Side Recommended Questions Sidebar (Desktop) */}
+        {/* Left Side Recommended Questions Fixed Sidebar (Desktop) */}
         {!isMobile && (
           <aside
             style={{
@@ -1798,13 +1798,7 @@ export function StudentPracticeExamPage() {
               gap: 14,
               overflowY: 'auto',
               flexShrink: 0,
-              alignSelf: 'flex-start',
-              position: 'sticky',
-              top: 12,
-              maxHeight: 'calc(100vh - 200px)',
-              marginLeft: 24,
-              marginTop: 12,
-              marginBottom: 28,
+              height: '100%',
               boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
             }}
           >
