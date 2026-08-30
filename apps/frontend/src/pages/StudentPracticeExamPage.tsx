@@ -1033,8 +1033,8 @@ export function StudentPracticeExamPage() {
       responses: responsesPayload,
     };
 
-    setGuestScoreData(scorePayload);
-    saveGuestAttempt(scorePayload);
+    const savedAttempt = saveGuestAttempt(scorePayload);
+    setGuestScoreData({ ...scorePayload, attemptId: savedAttempt.id });
     setScoreCountdown(null);
     setShowScoreModal(true);
   };
@@ -1774,7 +1774,7 @@ export function StudentPracticeExamPage() {
                               const isCorrect = opt.is_correct;
                               const isWrongSelected = isSelected && !isCorrect;
                               const showResult = !!answeredOptId;
-                              const optionDesc = opt.distractor_analysis || opt.explanation || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
+                              const optionDesc = opt.distractor_analysis || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
 
                               let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                               let bgStyle = '#FFFFFF';
@@ -1993,7 +1993,7 @@ export function StudentPracticeExamPage() {
                               const isCorrect = opt.is_correct;
                               const isWrongSelected = isSelected && !isCorrect;
                               const showResult = !!answeredOptId;
-                              const optionDesc = opt.distractor_analysis || opt.explanation || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
+                              const optionDesc = opt.distractor_analysis || opt.description || (isCorrect ? 'Correct option matching standard syllabus concepts.' : 'Incorrect distractor option.');
 
                               let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
                               let bgStyle = '#FFFFFF';

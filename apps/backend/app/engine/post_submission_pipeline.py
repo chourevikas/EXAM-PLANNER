@@ -39,7 +39,7 @@ logger = setup_logger("PostSubmissionPipeline")
 
 # 5-Second Short Sliding Window Memory Cache for Exam Solutions
 EXAM_SOLUTIONS_SLIDING_CACHE: Dict[str, Dict[str, Any]] = {}
-CACHE_TTL_SECONDS = 5  # 5 seconds to ensure real-time fresh solutions
+CACHE_TTL_SECONDS = 0  # 0 seconds to disable cache due to issues
 
 
 def get_cached_solutions_data(exam_code: str) -> Optional[Dict[str, Any]]:

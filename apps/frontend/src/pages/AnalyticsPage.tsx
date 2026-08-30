@@ -395,30 +395,7 @@ export function AnalyticsPage() {
           })()}
         </div>
 
-        {/* Back to Master Cumulative Overview Button (When viewing single exam) */}
-        {selectedAttemptId !== 'CUMULATIVE_ALL' && (
-          <button
-            onClick={handleBackToCumulative}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
-              borderRadius: 0,
-              backgroundColor: 'var(--bg-subtle)',
-              border: '1px solid var(--accent-primary)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-color-base)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <BarChart3 size={16} color="#E31B23" />
-            ← Back to Master Cumulative Report
-          </button>
-        )}
+
       </section>
 
       {/* Per-Exam Attempt Switcher (When viewing an individual exam that has multiple attempts) */}
