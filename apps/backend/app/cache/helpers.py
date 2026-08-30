@@ -123,3 +123,20 @@ async def invalidate_taxonomy_cache() -> None:
     settings = get_settings()
     prefix = settings.CACHE_KEY_PREFIX or "ep"
     await cache.delete(f"{prefix}:questions:taxonomy")
+
+
+async def invalidate_attempt_cache(attempt_id: int | str, user_id: Optional[int | str] = None) -> None:
+    """Invalidates all cached telemetry, 12 matrices, question reports, and delta reports for an attempt."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    att_str = str(attempt_id)
+    await cache.delete_pattern(f"{prefix}:analytics:attempt_q:{att_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:attempt_exam:{att_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:attempt_delta:{att_str}*")
+    await cache.delete_pattern(f"{prefix}:attempts:detail:{att_str}*")
+    await cache.delete_pattern(f"{prefix}:attempts:status:{att_str}*")
+
+    if user_id:
+        await invalidate_user_cache(str(user_id))

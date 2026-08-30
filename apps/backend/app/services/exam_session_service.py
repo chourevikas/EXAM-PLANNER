@@ -1543,8 +1543,8 @@ class ExamSessionService:
 
         await self.session.commit()
 
-        from app.cache import invalidate_user_cache
-        await invalidate_user_cache(str(user_id))
+        from app.cache import invalidate_attempt_cache
+        await invalidate_attempt_cache(attempt.id, str(user_id))
 
         # Enqueue async post-submission pipeline
         from app.engine.post_submission_pipeline import run_post_submission_pipeline

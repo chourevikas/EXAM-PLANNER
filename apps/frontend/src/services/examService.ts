@@ -440,8 +440,8 @@ export async function retryAttemptEvaluation(attemptId: number | string): Promis
 export async function pollAttemptReportUntilReady(
   attemptId: number | string,
   onUpdate: (status: any) => void,
-  maxRetries: number = 80,
-  delay: number = 1500
+  maxRetries: number = 60,
+  delay: number = 3500
 ): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
     try {

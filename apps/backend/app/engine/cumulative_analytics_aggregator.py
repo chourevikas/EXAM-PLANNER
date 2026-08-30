@@ -988,6 +988,8 @@ class CumulativeAnalyticsAggregator:
             session.add(profile)
 
         await session.commit()
+        from app.cache import invalidate_user_cache
+        await invalidate_user_cache(str(user.id))
         return full_aggregate_report
 
     @classmethod

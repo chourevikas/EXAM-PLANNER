@@ -399,7 +399,7 @@ class AnalyticsService:
         # Auto-recovery for stuck attempts
         if not is_ready:
             time_since = (datetime.now(timezone.utc) - (attempt.submitted_at.replace(tzinfo=timezone.utc) if attempt.submitted_at else datetime.now(timezone.utc))).total_seconds()
-            if time_since >= 2 and attempt_id not in _RETRIGGERED_ATTEMPTS:
+            if time_since >= 15 and attempt_id not in _RETRIGGERED_ATTEMPTS:
                 _RETRIGGERED_ATTEMPTS.add(attempt_id)
                 logger.info(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-triggering pipeline.")
                 if attempt.id:
@@ -442,6 +442,9 @@ class AnalyticsService:
         # Remove from in-flight caches to allow immediate re-run
         _IN_FLIGHT_PIPELINES.discard(attempt_id)
         _RETRIGGERED_ATTEMPTS.discard(attempt_id)
+
+        from app.cache import invalidate_attempt_cache
+        await invalidate_attempt_cache(attempt_id, attempt.user_id)
 
         # Launch pipeline
         asyncio.create_task(run_post_submission_pipeline(attempt_id))

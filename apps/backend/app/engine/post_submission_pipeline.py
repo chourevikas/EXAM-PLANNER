@@ -1187,6 +1187,10 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     }
     session.add(attempt)
     await session.commit()
+
+    from app.cache import invalidate_attempt_cache
+    await invalidate_attempt_cache(attempt.id, user.id)
+
     logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
 
     # ─── Phase 2: AI synthesis ────────────────────────────────────────────────
@@ -1303,6 +1307,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)
     await session.commit()
+
+    await invalidate_attempt_cache(attempt.id, user.id)
 
     t_end = datetime.now(timezone.utc)
     total_pipeline_ms = round((t_end - t_start).total_seconds() * 1000, 1)
