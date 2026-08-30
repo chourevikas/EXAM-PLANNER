@@ -2582,16 +2582,36 @@ export function PsychometricReportView({
                 <Brain size={24} />
               </div>
               <div>
-                <h3
-                  style={{
-                    fontSize: 19,
-                    fontWeight: 800,
-                    margin: 0,
-                    color: isDark ? '#ffffff' : '#172033',
-                  }}
-                >
-                  AI Cognitive Diagnostic Report
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 800,
+                      margin: 0,
+                      color: isDark ? '#ffffff' : '#172033',
+                    }}
+                  >
+                    AI Cognitive Diagnostic Report
+                  </h3>
+                  {!((report as any)?.llm_insight || (report as any)?.part_2_exam_macro_scorecard?.llm_insight || (report as any)?.part_3_aggregated_user_report?.llm_insight) && (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                        color: '#E31B23',
+                        border: '1px solid rgba(227, 27, 35, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Sparkles size={11} /> Synthesizing live mentor advice...
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
                   Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
                 </div>
