@@ -78,15 +78,33 @@ export function PsychometricReportView({
     report?.is_cumulative ||
     report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
 
+  const hasAiInsight = Boolean(
+    report?.llm_insight?.executive_summary ||
+    (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
+    (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
+    ((report?.llm_insight?.study_plan_tasks || []).length > 0) ||
+    (((report as any)?.part_2_exam_macro_scorecard?.actionable_tasks || []).length > 0) ||
+    (((report as any)?.part_3_aggregated_user_report?.actionable_tasks || []).length > 0)
+  );
+
+  const rawTasksList = (
+    report?.llm_insight?.study_plan_tasks ||
+    (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
+    (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
+    (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
+    (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.study_plan_tasks ||
+    []
+  );
+
   const [activeTab, setActiveTab] = useState<
-    'questions' | 'exam-matrices' | 'topics' | 'user-aggregate'
-  >(isCumulative ? 'exam-matrices' : 'questions');
+    'exam-scorecard' | 'questions' | 'ai-insights' | 'user-trajectory' | 'topics'
+  >(isCumulative ? 'user-trajectory' : 'exam-scorecard');
 
   useEffect(() => {
-    if (isCumulative && activeTab === 'questions') {
-      setActiveTab('exam-matrices');
-    } else if (!isCumulative && activeTab === 'user-aggregate') {
-      setActiveTab('questions');
+    if (isCumulative && (activeTab === 'exam-scorecard' || activeTab === 'questions')) {
+      setActiveTab('user-trajectory');
+    } else if (!isCumulative && activeTab === 'user-trajectory') {
+      setActiveTab('exam-scorecard');
     }
   }, [isCumulative]);
 
@@ -134,12 +152,12 @@ export function PsychometricReportView({
   };
 
   const handleScheduleSingleTask = async (task: any) => {
-    if (!attemptId) return;
+    const targetAttemptId = attemptId || 'CUMULATIVE_ALL';
     const taskId = task.task_id || task.title;
     setIsAddingTask((prev) => ({ ...prev, [taskId]: true }));
     try {
       await bulkAddStudyTasksFromReport({
-        attempt_id: attemptId,
+        attempt_id: String(targetAttemptId),
         tasks: [task],
       });
       const fullTitle = `[${task.subject || 'Core'}] ${task.title}`;
@@ -153,11 +171,12 @@ export function PsychometricReportView({
   };
 
   const handleScheduleAllTasks = async (tasks: any[]) => {
-    if (!attemptId || !tasks.length) return;
+    const targetAttemptId = attemptId || 'CUMULATIVE_ALL';
+    if (!tasks.length) return;
     setIsBulkAdding(true);
     try {
       await bulkAddStudyTasksFromReport({
-        attempt_id: attemptId,
+        attempt_id: String(targetAttemptId),
         tasks,
       });
       const nextTitles = new Set(scheduledTaskTitles);
@@ -984,47 +1003,71 @@ export function PsychometricReportView({
           </p>
         </div>
 
-        {/* Score & Accuracy Badges */}
-        <div style={{ display: 'flex', gap: 16 }}>
+        {/* Score, Accuracy & AI Data Status Badges */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           <div
             style={{
               backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
-              padding: '12px 20px',
+              padding: '10px 18px',
               borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
               textAlign: 'center',
             }}
           >
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Marks</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#E31B23' }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#E31B23' }}>
               {metadata?.exam_attempt?.total_score_awarded !== undefined
                 ? metadata.exam_attempt.total_score_awarded.toFixed(2)
                 : (metadata?.exam_attempt as any)?.total_score !== undefined
                   ? Number((metadata?.exam_attempt as any)?.total_score).toFixed(2)
                   : '0.00'}
-              <span style={{ fontSize: 13, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
+              <span style={{ fontSize: 12, color: '#64748b' }}> / {metadata?.exam_attempt?.max_possible_score || 200}</span>
             </div>
           </div>
 
           <div
             style={{
               backgroundColor: isDark ? 'rgba(15,23,42,0.6)' : '#ffffff',
-              padding: '12px 20px',
+              padding: '10px 18px',
               borderRadius: 0,
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
               textAlign: 'center',
             }}
           >
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>ICRS Index</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#3A8B53' }}>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#3A8B53' }}>
               {icrs?.icrs_score || 82}
-              <span style={{ fontSize: 13, color: '#64748b' }}> / 100</span>
+              <span style={{ fontSize: 12, color: '#64748b' }}> / 100</span>
+            </div>
+          </div>
+
+          {/* AI Diagnostic Status Sign Badge */}
+          <div
+            style={{
+              padding: '10px 16px',
+              borderRadius: 0,
+              border: hasAiInsight ? '1px solid #A7F3D0' : '1px solid #FDE68A',
+              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 2,
+            }}
+          >
+            <div style={{ fontSize: 10.5, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {hasAiInsight ? <Sparkles size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
+              AI Diagnostic Status
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: hasAiInsight ? '#059669' : '#D97706' }}>
+              {hasAiInsight ? 'Data Loaded' : 'Generating...'}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Navigation Tabs (4 Standardized Sections) */}
+      {/* Navigation Tabs (Separated Sub-Pages for Exam Report & User Report) */}
       <div
         style={{
           display: 'flex',
@@ -1034,18 +1077,19 @@ export function PsychometricReportView({
           overflowX: 'auto',
         }}
       >
-        {[
-          { id: 'questions', label: '1. Per-Question Diagnostics & Solutions', icon: Target },
-          { id: 'exam-matrices', label: isCumulative ? '1. Cumulative Performance Scorecards' : '2. Exam Performance & Cognitive Scorecard', icon: Zap },
-          { id: 'topics', label: isCumulative ? '2. Syllabus & Category Mastery' : '3. Syllabus & Category Mastery', icon: BookOpen },
-          { id: 'user-aggregate', label: '3. Longitudinal Evolution & Trends', icon: TrendingUp },
-        ].filter((tab) => {
-          if (isCumulative) {
-            return tab.id !== 'questions';
-          } else {
-            return tab.id !== 'user-aggregate';
-          }
-        }).map((tab) => {
+        {(isCumulative
+          ? [
+              { id: 'user-trajectory', label: '1. Longitudinal Trajectory & Core Mastery', icon: TrendingUp },
+              { id: 'topics', label: '2. Syllabus & Subject Mastery Heatmap', icon: BookOpen },
+              { id: 'ai-insights', label: '3. AI Strategic Roadmap & Study Plan', icon: Sparkles },
+            ]
+          : [
+              { id: 'exam-scorecard', label: '1. Exam Scorecard & Performance Metrics', icon: Zap },
+              { id: 'questions', label: '2. Question Solutions & Distractor Traps', icon: Target },
+              { id: 'ai-insights', label: '3. AI Insights & Actionable Study Plan', icon: Sparkles },
+              { id: 'topics', label: '4. Syllabus & Category Mastery', icon: BookOpen },
+            ]
+        ).map((tab) => {
           const IconComp = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1070,6 +1114,24 @@ export function PsychometricReportView({
             >
               <IconComp size={16} />
               <span>{tab.label}</span>
+              {tab.id === 'ai-insights' && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 2,
+                    backgroundColor: hasAiInsight
+                      ? (isActive ? 'rgba(255,255,255,0.25)' : '#ECFDF5')
+                      : (isActive ? 'rgba(255,255,255,0.25)' : '#FEF3C7'),
+                    color: hasAiInsight
+                      ? (isActive ? '#FFFFFF' : '#059669')
+                      : (isActive ? '#FFFFFF' : '#D97706'),
+                  }}
+                >
+                  {hasAiInsight ? 'READY' : 'GENERATING'}
+                </span>
+              )}
             </button>
           );
         })}
@@ -2108,19 +2170,417 @@ export function PsychometricReportView({
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Personalized Actionable Revision Tasks (Interactive Recommendation Board with Study Plan Sync) */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          PAGE 3: AI COGNITIVE INSIGHTS & ACTIONABLE REVISION PLAN (Tab 3)
+      ────────────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'ai-insights' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* AI Status Banner */}
+          <div
+            style={{
+              padding: '16px 20px',
+              borderRadius: 0,
+              backgroundColor: hasAiInsight ? '#ECFDF5' : '#FEF3C7',
+              border: `1px solid ${hasAiInsight ? '#A7F3D0' : '#FDE68A'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {hasAiInsight ? (
+                <div style={{ padding: 8, backgroundColor: '#D1FAE5', color: '#059669' }}>
+                  <Sparkles size={22} />
+                </div>
+              ) : (
+                <div style={{ padding: 8, backgroundColor: '#FDE68A', color: '#D97706' }}>
+                  <Loader2 size={22} className="animate-spin" />
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E' }}>
+                  {hasAiInsight
+                    ? (isCumulative ? '✨ AI Longitudinal Strategic Diagnostic: Ready & Synthesized' : '✨ AI Cognitive Diagnostic & Revision Plan: Ready')
+                    : '⏳ AI Mentorship Engine: Synthesizing Cognitive Insights & Tasks...'}
+                </div>
+                <div style={{ fontSize: 12.5, color: hasAiInsight ? '#047857' : '#B45309' }}>
+                  {hasAiInsight
+                    ? (isCumulative
+                        ? 'Deep longitudinal evaluation across all attempts with custom strategic study tasks.'
+                        : 'Personalized evaluation of errors, option distractors, and high-yield revision tasks for this test.')
+                    : 'Analyzing distractor choices, mistake patterns, and timing matrices in the background. Please wait a moment...'}
+                </div>
+              </div>
+            </div>
+
+            {hasAiInsight && (
+              <span
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  padding: '4px 12px',
+                  backgroundColor: '#059669',
+                  color: '#FFFFFF',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                AI DATA VERIFIED
+              </span>
+            )}
+          </div>
+
+          {/* AI Cognitive Diagnostic Insights Narrative Card */}
+          <div
+            style={{
+              ...cardStyle,
+              gridColumn: '1 / -1',
+              background: isDark
+                ? 'linear-gradient(135deg, #131d36 0%, #172033 100%)'
+                : 'linear-gradient(135deg, #f8fafc 0%, #F8FAFC 100%)',
+              border: '1px solid rgba(227, 27, 35, 0.3)',
+              padding: 24,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+              <div
+                style={{
+                  padding: 10,
+                  borderRadius: 0,
+                  backgroundColor: 'rgba(227, 27, 35,0.2)',
+                  color: '#E31B23',
+                }}
+              >
+                <Brain size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 800,
+                      margin: 0,
+                      color: isDark ? '#ffffff' : '#172033',
+                    }}
+                  >
+                    {isCumulative ? 'AI Longitudinal Strategic Master Evaluation' : 'AI Cognitive Diagnostic Report'}
+                  </h3>
+                  {!hasAiInsight && (
+                    <span
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        borderRadius: 12,
+                        backgroundColor: 'rgba(227, 27, 35, 0.1)',
+                        color: '#E31B23',
+                        border: '1px solid rgba(227, 27, 35, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <Sparkles size={11} /> Synthesizing live mentor advice...
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                  Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
+                </div>
+              </div>
+            </div>
+
+        {(() => {
+          const insightObj: Record<string, any> =
+            (report as any)?.llm_insight ||
+            (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
+            (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
+            (report as any)?.part_3_aggregated_user_report?.llm_insight ||
+            (report as any)?.part_3_aggregated_user_report?.mentorship_insight ||
+            {};
+
+          const execSummary =
+            insightObj.executive_summary ||
+            'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
+          const benchmarkVerdict =
+            insightObj.benchmark_verdict ||
+            'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
+          const strengths: string[] =
+            insightObj.tactical_strengths ||
+            insightObj.strengths || [
+              'High accuracy on conceptual elimination questions.',
+              'Controlled guessing tendency on high-uncertainty items.',
+            ];
+          const weaknesses: string[] =
+            insightObj.critical_vulnerabilities ||
+            insightObj.weaknesses || [
+              'Susceptibility to extreme qualifier statement traps.',
+              'Negative switch regret on revised answers in final section.',
+            ];
+          const pacingDiag =
+            insightObj.pacing_and_unattempted_diagnosis ||
+            'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
+          const distractorCritique =
+            insightObj.distractor_trap_critique ||
+            'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
+          const closingAdvice =
+            insightObj.closing_mentorship_advice ||
+            insightObj.closing ||
+            'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Executive Summary & Benchmark Verdict Callout */}
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 0,
+                  backgroundColor: isDark
+                    ? 'rgba(227, 27, 35,0.1)'
+                    : 'rgba(227, 27, 35,0.08)',
+                  border: '1px solid rgba(227, 27, 35,0.25)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: '#E31B23',
+                    textTransform: 'uppercase',
+                    marginBottom: 4,
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  🎯 Executive Summary & UPSC Benchmark Verdict
+                </div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: isDark ? '#ffffff' : '#172033',
+                    marginBottom: 8,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {benchmarkVerdict}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: isDark ? '#cbd5e1' : '#334155',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {execSummary}
+                </div>
+              </div>
+
+              {/* Strengths & Critical Vulnerabilities Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: 16,
+                }}
+              >
+                {/* Strengths */}
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#3A8B53',
+                      marginBottom: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <CheckCircle2 size={18} /> Tactical Strengths Observed
+                  </div>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      fontSize: 12.5,
+                      color: isDark ? '#e2e8f0' : '#166534',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {strengths.map((s: string, sIdx: number) => (
+                      <li key={sIdx} style={{ margin: '4px 0' }}>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Critical Vulnerabilities */}
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark ? 'rgba(227, 27, 35,0.1)' : '#fef2f2',
+                    border: '1px solid rgba(227, 27, 35,0.25)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#ef4444',
+                      marginBottom: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
+                  </div>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      fontSize: 12.5,
+                      color: isDark ? '#e2e8f0' : '#991b1b',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {weaknesses.map((w: string, wIdx: number) => (
+                      <li key={wIdx} style={{ margin: '4px 0' }}>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Behavioral Pacing & Distractor Critique */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(139,92,246,0.08)'
+                      : 'rgba(139,92,246,0.05)',
+                    border: '1px solid rgba(139,92,246,0.2)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#8b5cf6',
+                      marginBottom: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: isDark ? '#cbd5e1' : '#334155',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {pacingDiag}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(245,158,11,0.08)'
+                      : 'rgba(245,158,11,0.05)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: '#F2B623',
+                      marginBottom: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <ShieldAlert size={16} /> Distractor & Option Revision Critique
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: isDark ? '#cbd5e1' : '#334155',
+                      lineHeight: 1.55,
+                    }}
+                  >
+                    {distractorCritique}
+                  </div>
+                </div>
+              </div>
+
+              {/* Closing Advice */}
+              {closingAdvice && (
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: 0,
+                    backgroundColor: isDark
+                      ? 'rgba(255,255,255,0.03)'
+                      : 'rgba(0,0,0,0.02)',
+                    borderLeft: '4px solid #E31B23',
+                    fontSize: 12.5,
+                    fontStyle: 'italic',
+                    color: isDark ? '#93c5fd' : '#A4161A',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  💡 Mentor's Guidance: "{closingAdvice}"
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Actionable Study Plan Tasks Section - SHOWN ONLY WHEN AI DATA ARRIVES */}
+      {hasAiInsight && rawTasksList.length > 0 ? (
+        <div
+          style={{
+            ...cardStyle,
+            gridColumn: '1 / -1',
+            padding: 24,
+            border: '1px solid rgba(227, 27, 35,0.3)',
+            background: isDark
+              ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
+          }}
+        >
           {(() => {
-            const rawTasksList = (
-              (report as any)?.part_2_exam_macro_scorecard?.actionable_tasks ||
-              (report as any)?.part_3_aggregated_user_report?.actionable_tasks ||
-              (report as any)?.llm_insight?.study_plan_tasks ||
-              (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks ||
-              []
-            ).slice(0, 4);
-
-            if (!rawTasksList || rawTasksList.length === 0) return null;
-
             const unaddedCount = rawTasksList.filter(
               (t: any) =>
                 !scheduledTaskTitles.has(t.title) &&
@@ -2129,17 +2589,7 @@ export function PsychometricReportView({
             ).length;
 
             return (
-              <div
-                style={{
-                  ...cardStyle,
-                  gridColumn: '1 / -1',
-                  padding: 24,
-                  border: '1px solid rgba(227, 27, 35,0.3)',
-                  background: isDark
-                    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%)'
-                    : 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)',
-                }}
-              >
+              <div>
                 <div
                   style={{
                     display: 'flex',
@@ -2171,7 +2621,7 @@ export function PsychometricReportView({
                             color: isDark ? '#ffffff' : '#172033',
                           }}
                         >
-                          AI-Recommended Study Plan Tasks (4 Priorities)
+                          AI-Recommended Study Plan Tasks ({rawTasksList.length} Action Items)
                         </h3>
                         <span
                           style={{
@@ -2183,7 +2633,7 @@ export function PsychometricReportView({
                             color: '#E31B23',
                           }}
                         >
-                          4 Action Steps
+                          {rawTasksList.length} Priorities
                         </span>
                       </div>
                       <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>
@@ -2239,7 +2689,7 @@ export function PsychometricReportView({
                           fontWeight: 800,
                         }}
                       >
-                        <CheckCircle2 size={16} /> All 4 Tasks Added
+                        <CheckCircle2 size={16} /> All Tasks Added to Plan
                       </div>
                     )}
                   </div>
@@ -2258,288 +2708,113 @@ export function PsychometricReportView({
                     const isAdded =
                       scheduledTaskTitles.has(t.title) ||
                       scheduledTaskTitles.has(fullTitle) ||
-                      addedTaskPlanSuccess[taskId] === 'ADDED';
-                    const isDone = !!completedTasks[taskId];
-                    const loading = !!isAddingTask[taskId];
-                    const priority = (t.priority || 'HIGH').toUpperCase();
-                    const isCritical = priority === 'CRITICAL';
-                    const isHigh = priority === 'HIGH';
+                      addedTaskPlanSuccess[taskId] === 'ADDED' ||
+                      t.is_added_to_plan;
+                    const isDone = completedTasks[taskId];
+                    const isAdding = isAddingTask[taskId];
+
+                    const priorityColor =
+                      t.priority === 'CRITICAL' ? '#ef4444' : t.priority === 'HIGH' ? '#f59e0b' : '#3b82f6';
 
                     return (
                       <div
                         key={taskId}
                         style={{
-                          padding: 20,
+                          padding: 18,
                           borderRadius: 0,
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-                          border: `1px solid ${isAdded
-                              ? 'rgba(16,185,129,0.35)'
-                              : isCritical
-                                ? 'rgba(227, 27, 35,0.3)'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.08)'
-                                  : '#e2e8f0'
-                            }`,
-                          boxShadow: isAdded
-                            ? '0 2px 12px rgba(16,185,129,0.08)'
-                            : '0 2px 8px rgba(0,0,0,0.03)',
+                          backgroundColor: isDark ? '#1a2234' : '#ffffff',
+                          border: `1px solid ${isAdded ? '#10b981' : isDark ? '#334155' : '#e2e8f0'}`,
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'space-between',
-                          gap: 14,
-                          transition: 'all 0.2s ease',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
                         }}
                       >
                         <div>
-                          {/* Badges Bar */}
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              gap: 8,
-                              marginBottom: 10,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <span
-                                style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 900,
-                                  padding: '2px 7px',
-                                  borderRadius: 0,
-                                  backgroundColor: isDark ? 'rgba(227, 27, 35,0.15)' : '#F8FAFC',
-                                  color: '#E31B23',
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Task 0{idx + 1}
-                              </span>
-
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 800,
-                                  padding: '2px 8px',
-                                  borderRadius: 0,
-                                  backgroundColor: isCritical
-                                    ? 'rgba(227, 27, 35,0.15)'
-                                    : isHigh
-                                      ? 'rgba(245,158,11,0.15)'
-                                      : 'rgba(227, 27, 35,0.15)',
-                                  color: isCritical
-                                    ? '#ef4444'
-                                    : isHigh
-                                      ? '#F2B623'
-                                      : '#E31B23',
-                                }}
-                              >
-                                {priority} PRIORITY
-                              </span>
-
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  padding: '2px 8px',
-                                  borderRadius: 0,
-                                  backgroundColor: isDark
-                                    ? 'rgba(255,255,255,0.06)'
-                                    : 'rgba(0,0,0,0.05)',
-                                  color: isDark ? '#cbd5e1' : '#475569',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 3,
-                                }}
-                              >
-                                <Clock size={12} /> {t.allocated_time_minutes || 30} Mins
-                              </span>
-
-                              {t.activity_type && (
-                                <span
-                                  style={{
-                                    fontSize: 10.5,
-                                    fontWeight: 700,
-                                    padding: '2px 8px',
-                                    borderRadius: 0,
-                                    backgroundColor: 'rgba(139,92,246,0.12)',
-                                    color: '#8b5cf6',
-                                  }}
-                                >
-                                  {t.activity_type.replace(/_/g, ' ')}
-                                </span>
-                              )}
-                            </div>
-
-                            <span style={{ fontSize: 11, color: '#64748b' }}>
-                              Due in {t.due_in_days || 2}d
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: 0,
+                                backgroundColor: `${priorityColor}15`,
+                                color: priorityColor,
+                                border: `1px solid ${priorityColor}30`,
+                              }}
+                            >
+                              {t.priority || 'HIGH'} PRIORITY
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+                              ⏱️ {t.allocated_time_minutes || 30} mins
                             </span>
                           </div>
 
-                          {/* Task Title */}
-                          <h4
-                            style={{
-                              fontSize: 15.5,
-                              fontWeight: 800,
-                              margin: '0 0 6px 0',
-                              textDecoration: isDone ? 'line-through' : 'none',
-                              color: isDark ? '#ffffff' : '#172033',
-                              lineHeight: 1.35,
-                            }}
-                          >
+                          <h4 style={{ fontSize: 14.5, fontWeight: 800, color: isDark ? '#ffffff' : '#172033', margin: '0 0 4px 0' }}>
                             {t.title}
                           </h4>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#E31B23', marginBottom: 8 }}>
+                            📚 {t.subject} • {t.topic}
+                          </div>
 
-                          {/* Reasoning */}
                           {t.reasoning && (
-                            <div
-                              style={{
-                                fontSize: 12.5,
-                                color: isDark ? '#94a3b8' : '#64748b',
-                                marginBottom: 10,
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {t.reasoning}
-                            </div>
+                            <p style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', margin: '0 0 10px 0', lineHeight: 1.45 }}>
+                              💡 {t.reasoning}
+                            </p>
                           )}
 
-                          {/* Action Checklist */}
                           {t.action_checklist && t.action_checklist.length > 0 && (
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 6,
-                                borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9'
-                                  }`,
-                                paddingTop: 10,
-                                marginTop: 6,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  color: isDark ? '#64748b' : '#94a3b8',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px',
-                                }}
-                              >
-                                Action Checklist:
-                              </div>
-                              {t.action_checklist.map((step: string, sIdx: number) => (
-                                <div
-                                  key={sIdx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    fontSize: 12,
-                                    color: isDark ? '#cbd5e1' : '#334155',
-                                    lineHeight: 1.4,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      width: 5,
-                                      height: 5,
-                                      borderRadius: 0,
-                                      backgroundColor: '#E31B23',
-                                      marginTop: 6,
-                                      flexShrink: 0,
-                                    }}
-                                  />
-                                  <span>{step}</span>
-                                </div>
+                            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.4 }}>
+                              {t.action_checklist.map((item: string, cIdx: number) => (
+                                <li key={cIdx}>{item}</li>
                               ))}
-                            </div>
-                          )}
-
-                          {/* Linked Questions */}
-                          {t.linked_question_numbers && t.linked_question_numbers.length > 0 && (
-                            <div
-                              style={{
-                                marginTop: 10,
-                                fontSize: 11.5,
-                                color: '#64748b',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <span>Linked Exam Questions:</span>
-                              <strong style={{ color: isDark ? '#cbd5e1' : '#172033' }}>
-                                Q{t.linked_question_numbers.join(', Q')}
-                              </strong>
-                            </div>
+                            </ul>
                           )}
                         </div>
 
-                        {/* Action Footer */}
-                        <div
-                          style={{
-                            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'
-                              }`,
-                            paddingTop: 12,
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          {isAdded ? (
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                fontSize: 12,
-                                fontWeight: 800,
-                                color: '#3A8B53',
-                              }}
-                            >
-                              <CheckCircle2 size={16} /> Scheduled in Study Plan
-                            </div>
-                          ) : (
-                            <button
-                              disabled={loading}
-                              onClick={() => handleScheduleSingleTask(t)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '7px 14px',
-                                borderRadius: 0,
-                                backgroundColor: isDark
-                                  ? 'rgba(227, 27, 35,0.15)'
-                                  : '#F8FAFC',
-                                color: '#E31B23',
-                                border: '1px solid rgba(227, 27, 35,0.3)',
-                                fontSize: 12,
-                                fontWeight: 800,
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s ease',
-                              }}
-                            >
-                              <CalendarPlus size={14} />
-                              {loading ? 'Adding...' : '+ Add to Study Plan'}
-                            </button>
-                          )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: `1px solid ${isDark ? '#334155' : '#f1f5f9'}` }}>
+                          <button
+                            disabled={isAdded || isAdding}
+                            onClick={() => handleScheduleSingleTask(t)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '6px 12px',
+                              borderRadius: 0,
+                              backgroundColor: isAdded ? '#10b981' : '#E31B23',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: isAdded || isAdding ? 'default' : 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {isAdding ? (
+                              <>
+                                <Loader2 size={13} className="animate-spin" /> Scheduling...
+                              </>
+                            ) : isAdded ? (
+                              <>
+                                <CheckCircle2 size={13} /> ✓ Added to Plan
+                              </>
+                            ) : (
+                              <>
+                                <CalendarPlus size={13} /> Add to Study Plan
+                              </>
+                            )}
+                          </button>
 
                           <button
                             onClick={() => toggleTaskCompleted(taskId)}
                             style={{
-                              padding: '4px 10px',
+                              padding: '6px 10px',
                               borderRadius: 0,
-                              backgroundColor: isDone
-                                ? '#3A8B53'
-                                : isDark
-                                  ? 'rgba(255,255,255,0.06)'
-                                  : '#f1f5f9',
-                              color: isDone ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
-                              border: 'none',
-                              fontSize: 11,
+                              backgroundColor: isDone ? 'rgba(16,185,129,0.15)' : 'transparent',
+                              color: isDone ? '#10b981' : '#64748b',
+                              border: `1px solid ${isDone ? '#10b981' : '#cbd5e1'}`,
+                              fontSize: 11.5,
                               fontWeight: 700,
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -2557,345 +2832,13 @@ export function PsychometricReportView({
               </div>
             );
           })()}
-
-          {/* AI Cognitive Diagnostic Insights Section (Structured LLM Synthesis) */}
-          <div
-            style={{
-              ...cardStyle,
-              gridColumn: '1 / -1',
-              background: isDark
-                ? 'linear-gradient(135deg, #131d36 0%, #172033 100%)'
-                : 'linear-gradient(135deg, #f8fafc 0%, #F8FAFC 100%)',
-              border: '1px solid rgba(227, 27, 35, 0.3)',
-              padding: 24,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-              <div
-                style={{
-                  padding: 10,
-                  borderRadius: 0,
-                  backgroundColor: 'rgba(227, 27, 35,0.2)',
-                  color: '#E31B23',
-                }}
-              >
-                <Brain size={24} />
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <h3
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 800,
-                      margin: 0,
-                      color: isDark ? '#ffffff' : '#172033',
-                    }}
-                  >
-                    AI Cognitive Diagnostic Report
-                  </h3>
-                  {!((report as any)?.llm_insight || (report as any)?.part_2_exam_macro_scorecard?.llm_insight || (report as any)?.part_3_aggregated_user_report?.llm_insight) && (
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        borderRadius: 12,
-                        backgroundColor: 'rgba(227, 27, 35, 0.1)',
-                        color: '#E31B23',
-                        border: '1px solid rgba(227, 27, 35, 0.25)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <Sparkles size={11} /> Synthesizing live mentor advice...
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12.5, color: isDark ? '#94a3b8' : '#64748b' }}>
-                  Structured Psychometric Evaluation & Behavioral Diagnostic Analysis
-                </div>
-              </div>
-            </div>
-
-            {(() => {
-              const insightObj: Record<string, any> =
-                (report as any)?.llm_insight ||
-                (report as any)?.part_2_exam_macro_scorecard?.llm_insight ||
-                (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight ||
-                (report as any)?.part_3_aggregated_user_report?.llm_insight ||
-                {};
-
-              const execSummary =
-                insightObj.executive_summary ||
-                'Candidate demonstrates strong foundational grasp across core subjects with disciplined pacing and strategic question selection.';
-              const benchmarkVerdict =
-                insightObj.benchmark_verdict ||
-                'COMPETITIVE QUALIFYING ZONE: Performance clears the expected prelims threshold with solid conceptual accuracy.';
-              const strengths: string[] =
-                insightObj.tactical_strengths ||
-                insightObj.strengths || [
-                  'High accuracy on conceptual elimination questions.',
-                  'Controlled guessing tendency on high-uncertainty items.',
-                ];
-              const weaknesses: string[] =
-                insightObj.critical_vulnerabilities ||
-                insightObj.weaknesses || [
-                  'Susceptibility to extreme qualifier statement traps.',
-                  'Negative switch regret on revised answers in final section.',
-                ];
-              const pacingDiag =
-                insightObj.pacing_and_unattempted_diagnosis ||
-                'Time allocation remained balanced with efficient velocity throughout the first two quartiles.';
-              const distractorCritique =
-                insightObj.distractor_trap_critique ||
-                'Moderate vulnerability to high-closeness distractors featuring inverted factual clauses.';
-              const closingAdvice =
-                insightObj.closing_mentorship_advice ||
-                insightObj.closing ||
-                'Focus on targeted topic drills for flagged weak syllabus areas while maintaining current pacing discipline.';
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {/* Executive Summary & Benchmark Verdict Callout */}
-                  <div
-                    style={{
-                      padding: 16,
-                      borderRadius: 0,
-                      backgroundColor: isDark
-                        ? 'rgba(227, 27, 35,0.1)'
-                        : 'rgba(227, 27, 35,0.08)',
-                      border: '1px solid rgba(227, 27, 35,0.25)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 800,
-                        color: '#E31B23',
-                        textTransform: 'uppercase',
-                        marginBottom: 4,
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      🎯 Executive Summary & UPSC Benchmark Verdict
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: isDark ? '#ffffff' : '#172033',
-                        marginBottom: 8,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {benchmarkVerdict}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: isDark ? '#cbd5e1' : '#334155',
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      {execSummary}
-                    </div>
-                  </div>
-
-                  {/* Strengths & Critical Vulnerabilities Grid */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: 16,
-                    }}
-                  >
-                    {/* Strengths */}
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#f0fdf4',
-                        border: '1px solid rgba(16,185,129,0.25)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#3A8B53',
-                          marginBottom: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <CheckCircle2 size={18} /> Tactical Strengths Observed
-                      </div>
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 18,
-                          fontSize: 12.5,
-                          color: isDark ? '#e2e8f0' : '#166534',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {strengths.map((s: string, sIdx: number) => (
-                          <li key={sIdx} style={{ margin: '4px 0' }}>
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Critical Vulnerabilities */}
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark ? 'rgba(227, 27, 35,0.1)' : '#fef2f2',
-                        border: '1px solid rgba(227, 27, 35,0.25)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#ef4444',
-                          marginBottom: 10,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <AlertTriangle size={18} /> Critical Vulnerabilities & Traps
-                      </div>
-                      <ul
-                        style={{
-                          margin: 0,
-                          paddingLeft: 18,
-                          fontSize: 12.5,
-                          color: isDark ? '#e2e8f0' : '#991b1b',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {weaknesses.map((w: string, wIdx: number) => (
-                          <li key={wIdx} style={{ margin: '4px 0' }}>
-                            {w}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-
-                  {/* Behavioral Pacing & Distractor Critique */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: 16,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(139,92,246,0.08)'
-                          : 'rgba(139,92,246,0.05)',
-                        border: '1px solid rgba(139,92,246,0.2)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#8b5cf6',
-                          marginBottom: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Clock size={16} /> Pacing & Unattempted Questions Diagnosis
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: isDark ? '#cbd5e1' : '#334155',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {pacingDiag}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: 16,
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(245,158,11,0.08)'
-                          : 'rgba(245,158,11,0.05)',
-                        border: '1px solid rgba(245,158,11,0.2)',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#F2B623',
-                          marginBottom: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <ShieldAlert size={16} /> Distractor & Option Revision Critique
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: isDark ? '#cbd5e1' : '#334155',
-                          lineHeight: 1.55,
-                        }}
-                      >
-                        {distractorCritique}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Closing Advice */}
-                  {closingAdvice && (
-                    <div
-                      style={{
-                        padding: '12px 18px',
-                        borderRadius: 0,
-                        backgroundColor: isDark
-                          ? 'rgba(255,255,255,0.03)'
-                          : 'rgba(0,0,0,0.02)',
-                        borderLeft: '4px solid #E31B23',
-                        fontSize: 12.5,
-                        fontStyle: 'italic',
-                        color: isDark ? '#93c5fd' : '#A4161A',
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      💡 Mentor's Guidance: "{closingAdvice}"
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
         </div>
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          PLACE 2: USER LONGITUDINAL SKILL PROFILE (Tab 2)
+          PAGE 1: USER LONGITUDINAL TRAJECTORY (Tab 1 for Cumulative Profile)
       ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'user-aggregate' && (
+      {activeTab === 'user-trajectory' && isCumulative && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Header Banner */}
           <div

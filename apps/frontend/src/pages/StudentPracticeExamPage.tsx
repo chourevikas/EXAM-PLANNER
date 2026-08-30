@@ -78,10 +78,17 @@ export function StudentPracticeExamPage() {
   }, [recUserResponses]);
 
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
+  const [isRecsExhausted, setIsRecsExhausted] = useState(false);
+
+  // Reset recommendations exhaustion when exam/subject/topic filters change
+  useEffect(() => {
+    setIsRecsExhausted(false);
+    setRecommendedPool([]);
+  }, [gExam, gSubject, gTopic, gSubtopic]);
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
-    if (isPrefetchingRecs) return;
+    if (isPrefetchingRecs || isRecsExhausted) return;
     setIsPrefetchingRecs(true);
 
     try {
@@ -90,6 +97,7 @@ export function StudentPracticeExamPage() {
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
       Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
+      Object.keys(recUserResponsesRef.current || {}).forEach((qId) => existingIds.add(qId));
 
       const excludeIdsParam = Array.from(existingIds).join(',');
 
@@ -110,32 +118,49 @@ export function StudentPracticeExamPage() {
         }
       }
 
-      // Step 1: Exact subject + topic with exclude_ids
-      const params = new URLSearchParams({ limit: '5' });
-      if (querySubject) params.append('subject_name', querySubject);
-      if (queryTopic) params.append('topic_name', queryTopic);
-      if (targetExam) params.append('exam_name', targetExam);
-      if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
-
-      let res = await fetch(`/api/v1/questions?${params.toString()}`);
       let newFetched: any[] = [];
-      if (res.ok) {
-        const data = await res.json();
-        newFetched = data.items || [];
+
+      // Step 1: Query API by Topic first if a topic is selected
+      if (queryTopic) {
+        const topicParams = new URLSearchParams({ limit: '5' });
+        topicParams.append('topic_name', queryTopic);
+        if (querySubject) topicParams.append('subject_name', querySubject);
+        if (targetExam) topicParams.append('exam_name', targetExam);
+        if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
+
+        try {
+          const res = await fetch(`/api/v1/questions?${topicParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
+          }
+        } catch (err) {
+          console.warn('Topic recommendation fetch failed:', err);
+        }
       }
 
-      // Step 2: Fallback - relax topic while preserving subject
+      // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
       if (newFetched.length === 0 && querySubject) {
-        const fallbackParams = new URLSearchParams({ limit: '5' });
-        fallbackParams.append('subject_name', querySubject);
-        if (targetExam) fallbackParams.append('exam_name', targetExam);
-        if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
+        const subjParams = new URLSearchParams({ limit: '5' });
+        subjParams.append('subject_name', querySubject);
+        if (targetExam) subjParams.append('exam_name', targetExam);
+        if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
-        res = await fetch(`/api/v1/questions?${fallbackParams.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          newFetched = data.items || [];
+        try {
+          const res = await fetch(`/api/v1/questions?${subjParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
+          }
+        } catch (err) {
+          console.warn('Subject recommendation fetch failed:', err);
         }
+      }
+
+      // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+      if (newFetched.length === 0) {
+        setIsRecsExhausted(true);
+        return;
       }
 
       if (newFetched.length > 0) {
@@ -210,16 +235,17 @@ export function StudentPracticeExamPage() {
       }
     } catch (err) {
       console.warn('Background recommendation prefetch error:', err);
+      setIsRecsExhausted(true);
     } finally {
       setIsPrefetchingRecs(false);
     }
-  }, [gSubject, gTopic, gExam, isPrefetchingRecs]);
+  }, [gSubject, gTopic, gExam, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted]);
 
   useEffect(() => {
-    if (allQuestions.length > 0 && recommendedPool.length < 15 && !isPrefetchingRecs) {
+    if (allQuestions.length > 0 && recommendedPool.length < 15 && !isPrefetchingRecs && !isRecsExhausted) {
       prefetchRecommendations(allQuestions, recommendedPool);
     }
-  }, [allQuestions, recommendedPool.length, isPrefetchingRecs, prefetchRecommendations]);
+  }, [allQuestions, recommendedPool.length, isPrefetchingRecs, isRecsExhausted, prefetchRecommendations]);
 
   // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
@@ -461,23 +487,42 @@ export function StudentPracticeExamPage() {
           option_label: cleanOptionLabel(o.option_label || '', oIdx),
           text: o.option_text || o.text || `Option ${o.option_label || oIdx + 1}`,
           is_correct: Boolean(o.is_correct),
+          distractor_analysis: o.distractor_analysis || null,
         }));
 
-        const expText = q.explanation || q.explanation_text || q.description || q.solution || q.solution_text || '';
+        const expObj = q.explanation;
+        let expText = '';
+        if (typeof expObj === 'object' && expObj !== null) {
+          expText = expObj.detailed_solution || expObj.solution || expObj.text || '';
+        } else if (typeof expObj === 'string') {
+          expText = expObj;
+        }
+
+        const primaryH = (q.hierarchy || []).find((h: any) => h.is_primary) || (q.hierarchy || [])[0] || {};
+        const subjName = primaryH.subject_name || q.subject_name || (gSubject && !gSubject.startsWith('All Subjects') ? gSubject : 'General Studies');
+        const topName = primaryH.topic_name || q.topic_name || (gTopic && !gTopic.startsWith('All Topics') ? gTopic : subjName);
+        const subtopName = primaryH.subtopic_name || q.subtopic_name || (gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '');
 
         return {
           question_id: q.question_id || `q-practice-${idx + 1}`,
           question_number: idx + 1,
           text: q.question_text || q.text || '',
+          passage_text: q.passage_text || null,
           options: optionsList,
-          section_code: q.subtopic_name || q.topic_name || q.subject_name || gSubject || '',
-          topic_name: q.topic_name || gTopic,
-          subtopic_name: q.subtopic_name || gSubtopic,
+          section_code: topName || subjName || 'General Studies',
+          subject_name: subjName,
+          topic_name: topName,
+          subtopic_name: subtopName,
+          concept_name: primaryH.concept_name || '',
+          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : 'UPSC CSE'),
+          source_year: q.source_year || (gYear && gYear.replace(/\D/g, '') ? Number(gYear.replace(/\D/g, '')) : 2023),
+          stage: q.stage || 'Prelims',
+          paper_set_code: q.paper_set_code || 'SET_A',
           difficulty: q.difficulty || 'MEDIUM',
           marks: q.marks || 2.0,
           negative_marks: q.negative_marks || 0.66,
           expected_time_seconds: q.expected_time_seconds || 60,
-          explanation: expText,
+          explanation: expObj || expText,
         } as any;
       };
 
@@ -707,13 +752,12 @@ export function StudentPracticeExamPage() {
   const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
+    if (revealedMap[qId]) return; // Locked once submitted
 
     setUserResponses((prev) => ({
       ...prev,
       [qId]: { optionId, optionLabel },
     }));
-
-    handleRevealAnswer(qId, optionId, optionLabel);
   };
 
   // Helper to expand subject questions when current topic questions are finished
@@ -794,13 +838,8 @@ export function StudentPracticeExamPage() {
       }
     }
 
-    if (recommendedPool.length > 0) {
-      handleLoadRecommendedIntoExam(recommendedPool[0]);
-      return true;
-    }
-
     return false;
-  }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, recommendedPool, userResponses, revealedMap, handleLoadRecommendedIntoExam]);
+  }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, userResponses, revealedMap]);
 
   // Reveal Instant Per-Question Answer & Description with Full Solution
   const handleRevealAnswer = async (qId?: number | string, overrideOptId?: number | string, overrideOptLbl?: string) => {
@@ -1643,131 +1682,164 @@ export function StudentPracticeExamPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {displayRecs.map((rec, idx) => {
-                const isExpanded = expandedRecId === rec.question_id;
-                const answeredOptId = recUserResponses[rec.question_id as string];
+              {displayRecs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '24px 0' }}>
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
+                </div>
+              ) : (
+                displayRecs.map((rec, idx) => {
+                  const isExpanded = expandedRecId === rec.question_id;
+                  const answeredOptId = recUserResponses[rec.question_id as string];
 
-                return (
-                  <div
-                    key={rec.question_id || idx}
-                    style={{
-                      backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
-                      border: '1px solid',
-                      borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
-                      borderRadius: 6,
-                      transition: 'all 0.15s ease',
-                      boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
-                      overflow: 'hidden',
-                    }}
-                  >
+                  return (
                     <div
-                      onClick={() => handleSelectRecommendation(rec)}
-                      style={{ cursor: 'pointer', padding: '10px 12px' }}
+                      key={rec.question_id || idx}
+                      style={{
+                        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                        borderRadius: 6,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                        overflow: 'hidden',
+                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
-                        </span>
-                        <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
-                        {rec.text ? (isExpanded ? rec.text : (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text)) : `Practice Question ${idx + 1}`}
-                      </div>
-                    </div>
-
-                    {/* Inline Options Dropdown (mobile) */}
-                    {isExpanded && (
-                      <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
-                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {rec.options?.map(opt => {
-                            const isSelected = answeredOptId === opt.option_id;
-                            const isCorrect = opt.is_correct;
-                            const isWrongSelected = isSelected && !isCorrect;
-                            const showResult = !!answeredOptId;
-                            let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
-                            let bgStyle = '#FFFFFF';
-                            if (showResult) {
-                              if (isCorrect) { borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5'; }
-                              else if (isWrongSelected) { borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2'; }
-                            }
-                            return (
-                              <button
-                                key={opt.option_id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!answeredOptId) setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
-                                }}
-                                style={{
-                                  textAlign: 'left', padding: '6px 8px', border: borderStyle,
-                                  backgroundColor: bgStyle, borderRadius: 4, fontSize: 11.5, color: '#334155',
-                                  cursor: answeredOptId ? 'default' : 'pointer', display: 'flex',
-                                  alignItems: 'flex-start', gap: 6, width: '100%'
-                                }}
-                              >
-                                <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
-                                  {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
-                                </div>
-                                <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
-                              </button>
-                            );
-                          })}
+                      <div
+                        onClick={() => handleSelectRecommendation(rec)}
+                        style={{ cursor: 'pointer', padding: '10px 12px' }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                          </span>
+                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
                         </div>
-
-                        {/* Show Solution button + explanation panel (mobile) */}
-                        {(() => {
-                          const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
-                          const explanation = typeof _rawExpl === 'string'
-                            ? _rawExpl
-                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
-                          const isLoadingSolution = recSolutionLoading[rec.question_id];
-                          const solutionOpen = recShowSolution[rec.question_id];
-                          return (
-                            <>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
-                                style={{
-                                  marginTop: 10, width: '100%', padding: '6px 10px',
-                                  border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
-                                  borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
-                                  color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
-                                  cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                  justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
-                                }}
-                              >
-                                <Lightbulb size={12} />
-                                {solutionOpen ? 'Hide Solution' : 'Show Solution'}
-                              </button>
-                              {solutionOpen && (
-                                <div style={{
-                                  marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
-                                  border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
-                                  color: '#1E3A8A', lineHeight: 1.55,
-                                }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    <Lightbulb size={12} color="#2563EB" />
-                                    Explanation
-                                  </div>
-                                  {isLoadingSolution
-                                    ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
-                                    : explanation
-                                      ? explanation
-                                      : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
-                                  }
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                          {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                      {/* Inline Options Dropdown */}
+                      {isExpanded && (
+                        <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {rec.options?.map(opt => {
+                              const isSelected = answeredOptId === opt.option_id;
+                              const isCorrect = opt.is_correct;
+                              const isWrongSelected = isSelected && !isCorrect;
+                              const showResult = !!answeredOptId;
+
+                              let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                              let bgStyle = '#FFFFFF';
+
+                              if (showResult) {
+                                if (isCorrect) {
+                                  borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                                } else if (isWrongSelected) {
+                                  borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={opt.option_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!answeredOptId) {
+                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                    }
+                                  }}
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '6px 8px',
+                                    border: borderStyle,
+                                    backgroundColor: bgStyle,
+                                    borderRadius: 4,
+                                    fontSize: 11.5,
+                                    color: '#334155',
+                                    cursor: answeredOptId ? 'default' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    width: '100%',
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                    {opt.option_label}.
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Show Solution button + explanation panel (mobile) */}
+                          {(() => {
+                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                            const explanation = typeof _rawExpl === 'string'
+                              ? _rawExpl
+                              : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                            const isLoadingSolution = recSolutionLoading[rec.question_id];
+                            const solutionOpen = recShowSolution[rec.question_id];
+                            return (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                  style={{
+                                    marginTop: 10, width: '100%', padding: '6px 10px',
+                                    border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                    borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                    color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  <Lightbulb size={12} />
+                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                                </button>
+                                {solutionOpen && (
+                                  <div style={{
+                                    marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                    border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                    color: '#1E3A8A', lineHeight: 1.55,
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      <Lightbulb size={12} color="#2563EB" />
+                                      Explanation
+                                    </div>
+                                    {isLoadingSolution
+                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                      : explanation
+                                        ? explanation
+                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                    }
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
       )}
-
       {/* Main Console Workspace */}
       <div
         style={{
@@ -1830,7 +1902,7 @@ export function StudentPracticeExamPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayRecs.length === 0 ? (
                 <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
-                  Loading recommendations...
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
@@ -2036,13 +2108,9 @@ export function StudentPracticeExamPage() {
               if (subjectFallbackPool.length > 0) {
                 const loaded = handleLoadSubjectFallbackQuestions();
                 if (loaded) handleSelectQuestion(currentQIndex + 1);
-              } else if (recommendedPool.length > 0) {
-                handleLoadRecommendedIntoExam(recommendedPool[0]);
               } else {
                 setShowNoMoreQuestionsModal(true);
               }
-            } else if (recommendedPool.length > 0) {
-              handleLoadRecommendedIntoExam(recommendedPool[0]);
             } else {
               setShowNoMoreQuestionsModal(true);
             }

@@ -351,11 +351,69 @@ export function AnalyticsPage() {
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
             {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Student Performance & Mastery Profile' : 'Exam Performance & Cognitive Diagnostic'}
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
             {selectedAttemptId === 'CUMULATIVE_ALL'
               ? 'Multi-exam weighted synthesis across all completed tests with AI contextual diagnosis, subject mastery, and actionable study plans.'
               : 'Detailed question-by-question breakdown, macro scores, and AI mentorship guidance for this completed test.'}
           </p>
+
+          {/* AI Data Loaded Sign Badge */}
+          {(() => {
+            const hasAi = Boolean(
+              report?.llm_insight?.executive_summary ||
+              (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
+              (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
+              ((report?.llm_insight?.study_plan_tasks || []).length > 0) ||
+              (((report as any)?.part_2_exam_macro_scorecard?.actionable_tasks || []).length > 0) ||
+              (((report as any)?.part_3_aggregated_user_report?.actionable_tasks || []).length > 0)
+            );
+
+            if (isLoading) return null;
+
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                {hasAi ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 12px',
+                      backgroundColor: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      borderRadius: 0,
+                      color: '#059669',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    <Sparkles size={14} color="#059669" />
+                    AI Data: Loaded & Verified
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 12px',
+                      backgroundColor: '#FEF3C7',
+                      border: '1px solid #FDE68A',
+                      borderRadius: 0,
+                      color: '#D97706',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    <Loader2 size={14} className="animate-spin" color="#D97706" />
+                    AI Data: Generating Insights...
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Back to Master Cumulative Overview Button (When viewing single exam) */}

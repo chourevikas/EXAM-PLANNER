@@ -358,20 +358,20 @@ export async function getAllAttemptQuestionsBulk(
   language: string = 'ENGLISH',
   presignedUrl?: string | null
 ): Promise<any> {
-  // 1. Primary Strategy: Fetch directly from S3 presigned URL for instant loading & 0 server load
-  if (presignedUrl) {
-    try {
-      const res = await fetch(presignedUrl);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (Array.isArray(data.questions) || Array.isArray(data))) {
-          return { questions: data.questions || data };
-        }
-      }
-    } catch (err) {
-      console.warn('Presigned URL fetch failed, falling back to API bulk endpoint:', err);
-    }
-  }
+  // --- S3 Presigned URL Fetch Commented Out (DB is single source of truth) ---
+  // if (presignedUrl) {
+  //   try {
+  //     const res = await fetch(presignedUrl);
+  //     if (res.ok) {
+  //       const data = await res.json();
+  //       if (data && (Array.isArray(data.questions) || Array.isArray(data))) {
+  //         return { questions: data.questions || data };
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.warn('Presigned URL fetch failed, falling back to API bulk endpoint:', err);
+  //   }
+  // }
 
   // 2. Secondary Strategy: Fetch from FastAPI backend bulk questions endpoint
   try {

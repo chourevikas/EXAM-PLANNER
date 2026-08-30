@@ -348,6 +348,36 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               </button>
             </div>
 
+            {/* In-Page Question & Solution Review Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '100%',
+                padding: '11px 16px',
+                borderRadius: 0,
+                border: '1px solid #CBD5E1',
+                backgroundColor: '#F8FAFC',
+                color: '#1E293B',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F1F5F9';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#F8FAFC';
+              }}
+            >
+              <span>Review Questions & Solutions on This Page</span>
+            </button>
+
             {!isLoggedIn && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
                 <span style={{ fontSize: 12, color: '#64748B' }}>Already registered?</span>

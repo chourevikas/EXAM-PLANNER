@@ -131,6 +131,13 @@ export function GuestExamPage() {
   }, [recUserResponses]);
 
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
+  const [isRecsExhausted, setIsRecsExhausted] = useState(false);
+
+  // Reset recommendations exhaustion when exam/subject/topic filters change
+  useEffect(() => {
+    setIsRecsExhausted(false);
+    setRecommendedPool([]);
+  }, [gExam, gSubject, gTopic, gSubtopic]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isMobile, isTabletOrBelow } = useBreakpoint();
@@ -142,13 +149,14 @@ export function GuestExamPage() {
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(async (currentTestQuestions: QuestionOut[], currentPool: QuestionOut[]) => {
-    if (isPrefetchingRecs) return;
+    if (isPrefetchingRecs || isRecsExhausted) return;
     setIsPrefetchingRecs(true);
 
     try {
       const existingIds = new Set<string | number>();
       currentTestQuestions.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
       currentPool.forEach((q) => { if (q.question_id) existingIds.add(q.question_id); });
+      Object.keys(recUserResponsesRef.current || {}).forEach((qId) => existingIds.add(qId));
 
       const excludeIdsParam = Array.from(existingIds).join(',');
 
@@ -169,32 +177,49 @@ export function GuestExamPage() {
         }
       }
 
-      // Step 1: Exact subject + topic with exclude_ids
-      const params = new URLSearchParams({ limit: '5' });
-      if (querySubject) params.append('subject_name', querySubject);
-      if (queryTopic) params.append('topic_name', queryTopic);
-      if (targetExam) params.append('exam_name', targetExam);
-      if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
-
-      let res = await fetch(`/api/v1/questions?${params.toString()}`);
       let newFetched: any[] = [];
-      if (res.ok) {
-        const data = await res.json();
-        newFetched = data.items || [];
+
+      // Step 1: Query API by Topic first if a topic is selected
+      if (queryTopic) {
+        const topicParams = new URLSearchParams({ limit: '5' });
+        topicParams.append('topic_name', queryTopic);
+        if (querySubject) topicParams.append('subject_name', querySubject);
+        if (targetExam) topicParams.append('exam_name', targetExam);
+        if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
+
+        try {
+          const res = await fetch(`/api/v1/questions?${topicParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
+          }
+        } catch (err) {
+          console.warn('Topic recommendation fetch failed:', err);
+        }
       }
 
-      // Step 2: Fallback - relax topic while preserving subject
+      // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
       if (newFetched.length === 0 && querySubject) {
-        const fallbackParams = new URLSearchParams({ limit: '5' });
-        fallbackParams.append('subject_name', querySubject);
-        if (targetExam) fallbackParams.append('exam_name', targetExam);
-        if (excludeIdsParam) fallbackParams.append('exclude_ids', excludeIdsParam);
+        const subjParams = new URLSearchParams({ limit: '5' });
+        subjParams.append('subject_name', querySubject);
+        if (targetExam) subjParams.append('exam_name', targetExam);
+        if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
-        res = await fetch(`/api/v1/questions?${fallbackParams.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          newFetched = data.items || [];
+        try {
+          const res = await fetch(`/api/v1/questions?${subjParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
+          }
+        } catch (err) {
+          console.warn('Subject recommendation fetch failed:', err);
         }
+      }
+
+      // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+      if (newFetched.length === 0) {
+        setIsRecsExhausted(true);
+        return;
       }
 
       if (newFetched.length > 0) {
@@ -268,10 +293,11 @@ export function GuestExamPage() {
       }
     } catch (err) {
       console.warn('Background recommendation prefetch error:', err);
+      setIsRecsExhausted(true);
     } finally {
       setIsPrefetchingRecs(false);
     }
-  }, [gSubject, gTopic, gExam, isPrefetchingRecs]);
+  }, [gSubject, gTopic, gExam, isPrefetchingRecs, isRecsExhausted]);
 
   // Timer countdown
   useEffect(() => {
@@ -309,23 +335,42 @@ export function GuestExamPage() {
           option_label: o.option_label || String.fromCharCode(65 + oIdx),
           text: o.option_text || o.text || `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
           is_correct: Boolean(o.is_correct),
+          distractor_analysis: o.distractor_analysis || null,
         }));
 
-        const expText = q.explanation || q.explanation_text || q.description || q.solution || q.solution_text || '';
+        const expObj = q.explanation;
+        let expText = '';
+        if (typeof expObj === 'object' && expObj !== null) {
+          expText = expObj.detailed_solution || expObj.solution || expObj.text || '';
+        } else if (typeof expObj === 'string') {
+          expText = expObj;
+        }
+
+        const primaryH = (q.hierarchy || []).find((h: any) => h.is_primary) || (q.hierarchy || [])[0] || {};
+        const subjName = primaryH.subject_name || q.subject_name || (gSubject && !gSubject.startsWith('All Subjects') ? gSubject : 'General Studies');
+        const topName = primaryH.topic_name || q.topic_name || (gTopic && !gTopic.startsWith('All Topics') ? gTopic : subjName);
+        const subtopName = primaryH.subtopic_name || q.subtopic_name || (gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '');
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
           question_number: idx + 1,
           text: q.question_text || q.text || '',
+          passage_text: q.passage_text || null,
           options: optionsList,
-          section_code: q.topic_name || q.subject_name || gTopic || 'General Studies',
-          topic_name: q.topic_name || gTopic,
-          subtopic_name: q.subtopic_name || gSubtopic,
+          section_code: topName || subjName || 'General Studies',
+          subject_name: subjName,
+          topic_name: topName,
+          subtopic_name: subtopName,
+          concept_name: primaryH.concept_name || '',
+          exam_name: q.exam_name || (gExam && !gExam.startsWith('All Exams') ? gExam : 'UPSC CSE'),
+          source_year: q.source_year || (gYear && gYear.replace(/\D/g, '') ? Number(gYear.replace(/\D/g, '')) : 2023),
+          stage: q.stage || 'Prelims',
+          paper_set_code: q.paper_set_code || 'SET_A',
           difficulty: q.difficulty || 'MEDIUM',
           marks: q.marks || 2.0,
           negative_marks: q.negative_marks || 0.66,
           expected_time_seconds: q.expected_time_seconds || 60,
-          explanation: expText,
+          explanation: expObj || expText,
         } as any;
       };
 
@@ -364,7 +409,7 @@ export function GuestExamPage() {
       const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
 
       // 1. Try with subject + topic + year + selected exam
-      const p1 = new URLSearchParams({ limit: gCount.toString() });
+      const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
       if (querySubject) {
         p1.append('subject_name', querySubject);
       }
@@ -382,7 +427,7 @@ export function GuestExamPage() {
 
       // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
       if (fetchedMap.size === 0 && queryTopic) {
-        const p2 = new URLSearchParams({ limit: gCount.toString() });
+        const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (querySubject) {
           p2.append('subject_name', querySubject);
         }
@@ -395,7 +440,7 @@ export function GuestExamPage() {
 
       // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
       if (fetchedMap.size === 0 && querySubject) {
-        const p3 = new URLSearchParams({ limit: gCount.toString() });
+        const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p3.append('subject_name', querySubject);
         if (targetExam) {
           p3.append('exam_name', targetExam);
@@ -405,7 +450,7 @@ export function GuestExamPage() {
 
       // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
       if (fetchedMap.size === 0 && rawSubject && rawSubject !== querySubject) {
-        const p4 = new URLSearchParams({ limit: gCount.toString() });
+        const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p4.append('subject_name', rawSubject);
         if (targetExam) {
           p4.append('exam_name', targetExam);
@@ -415,14 +460,14 @@ export function GuestExamPage() {
 
       // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
       if (fetchedMap.size === 0 && (querySubject || rawSubject)) {
-        const p5 = new URLSearchParams({ limit: gCount.toString() });
+        const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         p5.append('subject_name', querySubject || rawSubject);
         await fetchWithParams(p5);
       }
 
       // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
       if (fetchedMap.size === 0 && !rawSubject) {
-        const p6 = new URLSearchParams({ limit: gCount.toString() });
+        const p6 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (targetExam) {
           p6.append('exam_name', targetExam);
         }
@@ -524,10 +569,10 @@ export function GuestExamPage() {
 
   // Auto-prefetch background recommendations whenever pool has fewer than 5 items
   useEffect(() => {
-    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs) {
+    if (allQuestions.length > 0 && recommendedPool.length < 5 && !isPrefetchingRecs && !isRecsExhausted) {
       prefetchRecommendations(allQuestions, recommendedPool);
     }
-  }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
+  }, [allQuestions, recommendedPool.length, isPrefetchingRecs, isRecsExhausted, prefetchRecommendations]);
 
   // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
@@ -582,6 +627,7 @@ export function GuestExamPage() {
   const handleSelectOption = (optId: number | string, optLabel: string) => {
     if (!activeQuestion) return;
     const qId = activeQuestion.question_id;
+    if (revealedMap[qId]) return; // Locked once submitted
 
     setUserResponses((prev) => ({
       ...prev,
@@ -1585,7 +1631,12 @@ export function GuestExamPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {displayRecs.map((rec, idx) => {
+              {displayRecs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '24px 0' }}>
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
+                </div>
+              ) : (
+                displayRecs.map((rec, idx) => {
                 const isExpanded = expandedRecId === rec.question_id;
                 const answeredOptId = recUserResponses[rec.question_id];
 
@@ -1732,7 +1783,8 @@ export function GuestExamPage() {
                     )}
                   </div>
                 );
-              })}
+              })
+            )}
             </div>
           </div>
         </div>
@@ -1800,7 +1852,7 @@ export function GuestExamPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayRecs.length === 0 ? (
                 <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
-                  Loading recommendations...
+                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {

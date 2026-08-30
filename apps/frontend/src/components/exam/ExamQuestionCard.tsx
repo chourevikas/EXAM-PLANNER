@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Eye, CheckCircle2, XCircle, Menu, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
+import { CheckCircle2, XCircle, ChevronLeft, ChevronRight, Bookmark, Clock, Award, Sparkles, Lightbulb } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -9,11 +9,28 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 interface ExamQuestionCardProps {
   question: QuestionOut | {
     id: number | string;
+    question_id?: number | string;
     sectionId?: string;
     sectionName?: string;
-    subtopic_name?: string;
+    section_code?: string;
+    subject_name?: string;
+    subject?: string;
     topic_name?: string;
+    topic?: string;
+    subtopic_name?: string;
+    subtopic?: string;
+    concept_name?: string;
+    exam_name?: string;
+    examName?: string;
+    exam_type?: string;
+    source_year?: number;
+    exam_year?: number;
+    year?: number;
     difficulty?: string;
+    expected_time_seconds?: number;
+    time_tier?: string;
+    marks?: number;
+    negative_marks?: number;
     text: string;
     textHindi?: string;
     text_hindi?: string;
@@ -24,11 +41,14 @@ interface ExamQuestionCardProps {
     passage_text_hindi?: string | null;
     passage_translations?: Record<string, string>;
     options: {
-      label: string;
+      label?: string;
+      option_label?: string;
       text: string;
       textHindi?: string;
       text_hindi?: string;
       option_id?: number | string;
+      id?: number | string;
+      is_correct?: boolean;
       translations?: Record<string, any>;
     }[];
   };
@@ -137,26 +157,78 @@ export function ExamQuestionCard({
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
 
   useEffect(() => {
-    setShowDetailedSolution(false);
-  }, [questionIndex]);
+    if (revealResult) {
+      setShowDetailedSolution(true);
+    } else {
+      setShowDetailedSolution(false);
+    }
+  }, [questionIndex, revealResult]);
 
-  const sectionLabel =
-    ('subject' in question && (question as any).subject) ||
-    ('topic_name' in question && (question as any).topic_name) ||
-    ('section_code' in question ? question.section_code : (question as any).sectionName) ||
-    'INDIAN POLITY & GOVERNANCE';
+  // Extract Question Tags & Metadata
+  const examName =
+    (question as any).exam_name ||
+    (question as any).examName ||
+    (question as any).exam_type ||
+    'UPSC CSE';
+
+  const sourceYear =
+    (question as any).source_year ||
+    (question as any).exam_year ||
+    (question as any).year ||
+    '';
+
+  const examYearDisplay = sourceYear ? `${examName} ${sourceYear}` : examName;
+
+  const subjectLabel =
+    (question as any).subject_name ||
+    (question as any).subject ||
+    '';
+
+  const topicLabel =
+    (question as any).topic_name ||
+    (question as any).topic ||
+    (question as any).section_code ||
+    (question as any).sectionName ||
+    '';
 
   const subtopicLabel =
-    ('subtopic_name' in question && (question as any).subtopic_name) ||
-    ('subtopic' in question && (question as any).subtopic) ||
+    (question as any).subtopic_name ||
+    (question as any).subtopic ||
     '';
 
   const difficultyLabel = String(question.difficulty || 'MEDIUM').toUpperCase();
 
+  // Difficulty tag styling
+  const getDifficultyColors = (diff: string) => {
+    switch (diff) {
+      case 'EASY':
+        return { text: '#059669', bg: '#ECFDF5', border: '#A7F3D0' };
+      case 'HARD':
+        return { text: '#E11D48', bg: '#FFE4E6', border: '#FECDD3' };
+      case 'MEDIUM':
+      default:
+        return { text: '#D97706', bg: '#FEF3C7', border: '#FDE68A' };
+    }
+  };
+  const diffColors = getDifficultyColors(difficultyLabel);
+
+  // Time & Tier Tag
+  const expectedTimeSeconds = (question as any).expected_time_seconds || 60;
+  const getTimeTierLabel = (secs: number) => {
+    if (secs <= 45) return `Fast Tier (⏱️ ${secs}s)`;
+    if (secs <= 75) return `Standard Tier (⏱️ ${secs}s)`;
+    return `Deep Analysis (⏱️ ${secs}s)`;
+  };
+  const timeTierLabel = getTimeTierLabel(expectedTimeSeconds);
+
+  // Marks
+  const marksVal = (question as any).marks != null ? (question as any).marks : 2.0;
+  const negMarksVal = (question as any).negative_marks != null ? (question as any).negative_marks : 0.66;
+
   const passageContent = getPassageText(question, language);
   const questionContent = getQuestionText(question, language);
 
-  const options = question.options.map((opt: any, optIdx: number) => {
+  const options = (question.options || []).map((opt: any, optIdx: number) => {
     const rawLabel = opt.option_label || opt.label;
     const cleanLbl = cleanOptionLabel(rawLabel, optIdx);
     return {
@@ -172,7 +244,7 @@ export function ExamQuestionCard({
       <p
         style={{
           margin: '6px 0',
-          lineHeight: 1.5,
+          lineHeight: 1.55,
           fontSize: 15,
           fontWeight: 600,
           color: '#172033',
@@ -190,7 +262,6 @@ export function ExamQuestionCard({
             borderCollapse: 'collapse',
             fontSize: 12.5,
             border: '1px solid #E2E8F0',
-            borderRadius: 0,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
           }}
           {...props}
@@ -282,9 +353,8 @@ export function ExamQuestionCard({
             style={{
               backgroundColor: '#FFFFFF',
               padding: 'clamp(12px, 2.5vw, 18px)',
-              borderRadius: 0,
               border: '1px solid #E2E8F0',
-              borderLeft: '4px solid #E31B23',
+              borderLeft: '4px solid #1E3A8A',
               fontSize: 'clamp(13px, 2vw, 15px)',
               color: '#334155',
               lineHeight: 1.55,
@@ -315,86 +385,202 @@ export function ExamQuestionCard({
             overflow: 'hidden',
           }}
         >
-          {/* UPSC Exam Header Metadata Bar */}
+          {/* Question Metadata Header Bar with Comprehensive Tags */}
           <div
             style={{
               display: 'flex',
-              flexDirection: isSmallScreen ? 'column' : 'row',
-              justifyContent: 'space-between',
-              alignItems: isSmallScreen ? 'stretch' : 'center',
+              flexDirection: 'column',
+              gap: 8,
               marginBottom: 14,
               paddingBottom: 12,
               borderBottom: '1.5px solid #F1F5F9',
               flexShrink: 0,
-              gap: isSmallScreen ? 10 : 12,
             }}
           >
-            {/* Left: Difficulty Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: '#F2B623',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#FEF3C7',
-                  border: '1px solid #FDE68A',
-                  padding: '4px 10px',
-                  borderRadius: 0,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#F2B623', display: 'inline-block' }} />
-                {difficultyLabel}
-              </span>
-            </div>
-
-            {/* Center: Question Counter Pill */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 800,
-                  color: '#1E3A8A',
-                  letterSpacing: '0.04em',
-                  fontVariantNumeric: 'tabular-nums',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  backgroundColor: '#F8FAFC',
-                  padding: '5px 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                }}
-              >
-                QUESTION {((question as any)?.question_number || questionIndex + 1)} {totalQuestions ? `OF ${totalQuestions}` : ''}
-              </span>
-            </div>
-
-            {/* Right: Bookmark Button */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {onToggleBookmark && (
-                <button
-                  type="button"
-                  onClick={onToggleBookmark}
-                  title={isBookmarked ? "Remove Bookmark" : "Bookmark Question"}
+            {/* Top Row: Question Counter, Difficulty, Time Tier, Marks, and Bookmark */}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
+            >
+              {/* Left group: Counter + Difficulty + Time + Marks */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                {/* Question Counter Pill */}
+                <span
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: isBookmarked ? '#E31B23' : '#94A3B8',
-                    transition: 'color 0.15s ease'
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: '#1E3A8A',
+                    backgroundColor: '#EFF6FF',
+                    border: '1px solid #BFDBFE',
+                    padding: '3px 10px',
+                    borderRadius: 2,
+                    letterSpacing: '0.04em',
+                    fontVariantNumeric: 'tabular-nums',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#E31B23'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8'; }}
                 >
-                  <Bookmark size={18} fill={isBookmarked ? '#E31B23' : 'none'} />
-                </button>
+                  QUESTION {((question as any)?.question_number || questionIndex + 1)} {totalQuestions ? `OF ${totalQuestions}` : ''}
+                </span>
+
+                {/* Difficulty Badge */}
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: diffColors.text,
+                    backgroundColor: diffColors.bg,
+                    border: `1px solid ${diffColors.border}`,
+                    padding: '3px 8px',
+                    borderRadius: 2,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    letterSpacing: '0.03em',
+                  }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: diffColors.text }} />
+                  {difficultyLabel}
+                </span>
+
+                {/* Time & Tier Badge */}
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#334155',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    padding: '3px 8px',
+                    borderRadius: 2,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  title={`Target solve time: ${expectedTimeSeconds} seconds`}
+                >
+                  <Clock size={12} color="#64748B" />
+                  {timeTierLabel}
+                </span>
+
+                {/* Marks Badge */}
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#475569',
+                    backgroundColor: '#F1F5F9',
+                    border: '1px solid #E2E8F0',
+                    padding: '3px 8px',
+                    borderRadius: 2,
+                  }}
+                >
+                  +{marksVal} / -{negMarksVal}
+                </span>
+              </div>
+
+              {/* Right: Bookmark Button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {onToggleBookmark && (
+                  <button
+                    type="button"
+                    onClick={onToggleBookmark}
+                    title={isBookmarked ? "Remove Bookmark" : "Bookmark Question"}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isBookmarked ? '#E31B23' : '#94A3B8',
+                      transition: 'color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#E31B23'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8'; }}
+                  >
+                    <Bookmark size={18} fill={isBookmarked ? '#E31B23' : 'none'} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Second Row: Exam Year, Subject, Topic, Subtopic Tags */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+              {/* Exam & Year Tag */}
+              {examYearDisplay && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#1E3A8A',
+                    backgroundColor: '#F0F9FF',
+                    border: '1px solid #BAE6FD',
+                    padding: '2px 8px',
+                    borderRadius: 2,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Award size={12} color="#0284C7" />
+                  {examYearDisplay}
+                </span>
+              )}
+
+              {/* Subject Tag */}
+              {subjectLabel && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#4338CA',
+                    backgroundColor: '#EEF2FF',
+                    border: '1px solid #C7D2FE',
+                    padding: '2px 8px',
+                    borderRadius: 2,
+                  }}
+                >
+                  {subjectLabel}
+                </span>
+              )}
+
+              {/* Topic Tag */}
+              {topicLabel && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#334155',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    padding: '2px 8px',
+                    borderRadius: 2,
+                  }}
+                >
+                  {topicLabel}
+                </span>
+              )}
+
+              {/* Subtopic Tag */}
+              {subtopicLabel && (
+                <span
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 500,
+                    color: '#64748B',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px dashed #CBD5E1',
+                    padding: '2px 7px',
+                    borderRadius: 2,
+                  }}
+                >
+                  ↳ {subtopicLabel}
+                </span>
               )}
             </div>
           </div>
@@ -409,14 +595,14 @@ export function ExamQuestionCard({
               flexDirection: 'column',
             }}
           >
-            {/* Question Body (Compact 15px font, 600 weight) */}
+            {/* Question Body */}
             <div
               style={{
-                marginBottom: 14,
+                marginBottom: 16,
                 fontSize: 15,
                 color: '#172033',
                 fontWeight: 600,
-                lineHeight: 1.5,
+                lineHeight: 1.55,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
               }}
             >
@@ -425,19 +611,19 @@ export function ExamQuestionCard({
               </ReactMarkdown>
             </div>
 
-            {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+            {/* Answer Choice Radio Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 'auto' }}>
               {options.map((opt) => {
                 const isSelected = selectedOptionId === opt.id || selectedOptionLabel === opt.cleanLabel || selectedOptionLabel === opt.rawLabel;
 
                 const isCorrectOpt = revealResult && (revealResult.correct_option_id === opt.id || revealResult.correct_option_label === opt.cleanLabel);
                 const isWrongSelectedOpt = revealResult && isSelected && !isCorrectOpt;
 
-                let borderStyle = isSelected ? '1.5px solid #E31B23' : '1px solid #E2E8F0';
-                let bgStyle = isSelected ? '#F8FAFC' : '#F8FAFC';
-                let badgeBg = isSelected ? '#E31B23' : '#FFFFFF';
+                let borderStyle = isSelected ? '1.5px solid #1E3A8A' : '1px solid #E2E8F0';
+                let bgStyle = isSelected ? '#F0F9FF' : '#F8FAFC';
+                let badgeBg = isSelected ? '#1E3A8A' : '#FFFFFF';
                 let badgeColor = isSelected ? '#FFFFFF' : '#475569';
-                let badgeBorder = isSelected ? '1px solid #E31B23' : '1px solid #CBD5E1';
+                let badgeBorder = isSelected ? '1px solid #1E3A8A' : '1px solid #CBD5E1';
 
                 if (revealResult) {
                   if (isCorrectOpt) {
@@ -459,35 +645,55 @@ export function ExamQuestionCard({
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => onSelectOption(opt.id, opt.cleanLabel)}
+                    onClick={() => {
+                      if (revealResult) return; // Locked after submission!
+                      onSelectOption(opt.id, opt.cleanLabel);
+                    }}
+                    disabled={!!revealResult}
                     className="touch-target"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
                       padding: '10px 14px',
-                      borderRadius: 0,
+                      borderRadius: 4,
                       border: borderStyle,
                       backgroundColor: bgStyle,
                       color: '#172033',
-                      cursor: 'pointer',
+                      cursor: revealResult ? 'default' : 'pointer',
                       textAlign: 'left',
                       transition: 'all 0.18s ease-out',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                       minHeight: 44,
                     }}
                   >
+                    {/* Radio Button Circle Indicator */}
+                    <div
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        border: revealResult
+                          ? (isCorrectOpt ? '5px solid #3A8B53' : (isWrongSelectedOpt ? '5px solid #EF4444' : '1.5px solid #CBD5E1'))
+                          : (isSelected ? '5px solid #1E3A8A' : '1.5px solid #CBD5E1'),
+                        backgroundColor: '#FFFFFF',
+                        flexShrink: 0,
+                        boxSizing: 'border-box',
+                        transition: 'all 0.18s ease-out',
+                      }}
+                    />
+
                     {/* Option Label Badge ([A], [B], [C], [D]) */}
                     <div
                       style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 0,
+                        width: 26,
+                        height: 26,
+                        borderRadius: 3,
                         backgroundColor: badgeBg,
                         color: badgeColor,
                         border: badgeBorder,
                         fontWeight: 700,
-                        fontSize: 13,
+                        fontSize: 12.5,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -515,25 +721,12 @@ export function ExamQuestionCard({
                       </ReactMarkdown>
                     </div>
 
-                    {/* Right Status Indicator */}
-                    {isCorrectOpt ? (
+                    {/* Right Status Indicator once submitted */}
+                    {revealResult && isCorrectOpt ? (
                       <CheckCircle2 size={18} style={{ color: '#3A8B53', flexShrink: 0 }} />
-                    ) : isWrongSelectedOpt ? (
+                    ) : revealResult && isWrongSelectedOpt ? (
                       <XCircle size={18} style={{ color: '#EF4444', flexShrink: 0 }} />
-                    ) : (
-                      <div
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 0,
-                          border: isSelected ? '4.5px solid #E31B23' : '1.5px solid #CBD5E1',
-                          backgroundColor: isSelected ? '#FFFFFF' : 'transparent',
-                          flexShrink: 0,
-                          boxSizing: 'border-box',
-                          transition: 'all 0.18s ease-out',
-                        }}
-                      />
-                    )}
+                    ) : null}
                   </button>
                 );
               })}
@@ -575,9 +768,9 @@ export function ExamQuestionCard({
               {/* Left spacing for center alignment balance */}
               <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}></div>
 
-              {/* Center: Prev | Question X | Next */}
+              {/* Center: Prev | Next Buttons */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, justifyContent: 'center' }}>
-                {/* Prominent Previous Question Button */}
+                {/* Previous Question Button */}
                 {onPrev && (
                   <button
                     type="button"
@@ -587,8 +780,8 @@ export function ExamQuestionCard({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: '6px 12px',
-                      borderRadius: 0,
+                      padding: '7px 14px',
+                      borderRadius: 3,
                       border: '1px solid #CBD5E1',
                       backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
                       color: questionIndex === 0 ? '#94A3B8' : '#172033',
@@ -599,27 +792,13 @@ export function ExamQuestionCard({
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
-                    onMouseEnter={(e) => {
-                      if (questionIndex > 0) {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E31B23';
-                        e.currentTarget.style.color = '#E31B23';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (questionIndex > 0) {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.color = '#172033';
-                      }
-                    }}
                   >
                     <ChevronLeft size={15} />
                     <span>Prev</span>
                   </button>
                 )}
 
-                {/* Prominent Next Question Button */}
+                {/* Next Question Button */}
                 {onNext && (
                   <button
                     type="button"
@@ -629,8 +808,8 @@ export function ExamQuestionCard({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 5,
-                      padding: '6px 12px',
-                      borderRadius: 0,
+                      padding: '7px 14px',
+                      borderRadius: 3,
                       border: '1px solid #CBD5E1',
                       backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
                       color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
@@ -641,20 +820,6 @@ export function ExamQuestionCard({
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
-                    onMouseEnter={(e) => {
-                      if (questionIndex < totalQuestions - 1) {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E31B23';
-                        e.currentTarget.style.color = '#E31B23';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (questionIndex < totalQuestions - 1) {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.color = '#172033';
-                      }
-                    }}
                   >
                     <span>Next</span>
                     <ChevronRight size={15} />
@@ -662,89 +827,73 @@ export function ExamQuestionCard({
                 )}
               </div>
 
-              {/* Right: Action Buttons */}
+              {/* Right: Single Action Button */}
               <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
-                {onRevealAnswer && (
+                {mode !== 'EXAM' && (
                   <>
-                    {/* Button 1: Submit */}
-                    <button
-                      type="button"
-                      onClick={onRevealAnswer}
-                      disabled={!selectedOptionId || !!revealResult}
-                      style={{
-                        padding: '8px 18px',
-                        borderRadius: 0,
-                        border: revealResult || !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #E31B23',
-                        backgroundColor: revealResult ? '#F1F5F9' : !selectedOptionId ? '#E2E8F0' : '#E31B23',
-                        color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: revealResult ? 'default' : !selectedOptionId ? 'not-allowed' : 'pointer',
-                        boxShadow: revealResult || !selectedOptionId ? 'none' : '0 2px 8px rgba(227, 27, 35, 0.22)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!revealResult && selectedOptionId) {
-                          e.currentTarget.style.backgroundColor = '#C1121F';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!revealResult && selectedOptionId) {
-                          e.currentTarget.style.backgroundColor = '#E31B23';
-                        }
-                      }}
-                    >
-                      {revealResult ? '✓ Submitted' : 'Submit'}
-                    </button>
-
-                    {/* Button 2: Show Solution */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!revealResult && selectedOptionId) {
-                          onRevealAnswer();
-                        }
-                        const nextState = !showDetailedSolution;
-                        setShowDetailedSolution(nextState);
-                        if (nextState && onShowSolution) {
-                          onShowSolution();
-                        }
-                      }}
-                      style={{
-                        padding: '8px 18px',
-                        borderRadius: 0,
-                        border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
-                        backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
-                        color: showDetailedSolution ? '#E31B23' : '#172033',
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!showDetailedSolution) {
-                          e.currentTarget.style.backgroundColor = '#F8FAFC';
-                          e.currentTarget.style.borderColor = '#94A3B8';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!showDetailedSolution) {
-                          e.currentTarget.style.backgroundColor = '#FFFFFF';
-                          e.currentTarget.style.borderColor = '#CBD5E1';
-                        }
-                      }}
-                    >
-                      {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
-                    </button>
+                    {!revealResult ? (
+                      /* Single Button: Submit & Show Solution */
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedOptionId) return;
+                          setShowDetailedSolution(true);
+                          if (onRevealAnswer) onRevealAnswer();
+                          if (onShowSolution) onShowSolution();
+                        }}
+                        disabled={!selectedOptionId || isRevealing}
+                        style={{
+                          padding: '8px 20px',
+                          borderRadius: 3,
+                          border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #1E3A8A',
+                          backgroundColor: !selectedOptionId ? '#E2E8F0' : '#1E3A8A',
+                          color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
+                          boxShadow: !selectedOptionId ? 'none' : '0 2px 8px rgba(30, 58, 138, 0.25)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.15s ease',
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedOptionId) e.currentTarget.style.backgroundColor = '#1E3A8A';
+                        }}
+                      >
+                        <Sparkles size={14} />
+                        <span>Submit & Show Solution</span>
+                      </button>
+                    ) : (
+                      /* Toggle Solution Button */
+                      <button
+                        type="button"
+                        onClick={() => setShowDetailedSolution(prev => !prev)}
+                        style={{
+                          padding: '8px 18px',
+                          borderRadius: 3,
+                          border: showDetailedSolution ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                          backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
+                          color: showDetailedSolution ? '#1E3A8A' : '#172033',
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.15s ease',
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        }}
+                      >
+                        <Lightbulb size={14} color={showDetailedSolution ? '#1E3A8A' : '#64748B'} />
+                        <span>{showDetailedSolution ? 'Hide Solution' : 'Show Solution'}</span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -755,3 +904,4 @@ export function ExamQuestionCard({
     </main>
   );
 }
+
