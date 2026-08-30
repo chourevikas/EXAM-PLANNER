@@ -153,6 +153,7 @@ class UserRepository:
         if not user:
             return None
         user.role = new_role
+        user.custom_role_id = None
         if new_role == UserRole.ADMIN and user.status == UserStatus.PENDING:
             user.status = UserStatus.ACTIVE
         self.session.add(user)

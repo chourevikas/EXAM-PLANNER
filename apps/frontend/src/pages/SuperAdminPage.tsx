@@ -21,6 +21,9 @@ import { PendingApprovalsTab } from '../components/superadmin/PendingApprovalsTa
 import { ActiveAdminsTab } from '../components/superadmin/ActiveAdminsTab';
 import { AuditLogsTab } from '../components/superadmin/AuditLogsTab';
 import { AllUsersTab } from '../components/superadmin/AllUsersTab';
+import { RolesPermissionsTab } from '../components/superadmin/RolesPermissionsTab';
+import { Role } from '../types/auth';
+import { fetchRoles, updateUserRoleAssignment } from '../services/rolesService';
 import { TestimonialApprovalsTab } from '../components/superadmin/TestimonialApprovalsTab';
 import { RejectionModal } from '../components/superadmin/RejectionModal';
 import {
@@ -51,6 +54,8 @@ export function SuperAdminPage() {
 
   const [allUsers, setAllUsers] = useState<UserDirectoryItem[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+
+  const [assignableRoles, setAssignableRoles] = useState<Role[]>([]);
 
   const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
@@ -84,6 +89,16 @@ export function SuperAdminPage() {
     loadLogs();
     loadUsers();
     loadTestimonials();
+    loadAssignableRoles();
+  };
+
+  const loadAssignableRoles = async () => {
+    try {
+      const data = await fetchRoles();
+      setAssignableRoles(data);
+    } catch (err: any) {
+      console.error('Failed roles fetch:', err);
+    }
   };
 
   const loadTestimonials = async () => {
@@ -236,6 +251,17 @@ export function SuperAdminPage() {
     }
   };
 
+  const handleRoleAssignment = async (userId: number | string, roleId: number, userName: string) => {
+    try {
+      const role = assignableRoles.find((r) => r.id === roleId);
+      await updateUserRoleAssignment(userId, roleId);
+      showToast(`Assigned role "${role?.name || roleId}" to ${userName}`);
+      loadAllData();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to assign role', true);
+    }
+  };
+
   const handleApproveTestimonial = async (id: number | string, name: string) => {
     setProcessingId(id);
     try {
@@ -315,8 +341,12 @@ export function SuperAdminPage() {
             loading={usersLoading}
             onRefresh={loadUsers}
             onRoleChange={handleRoleChange}
+            onRoleAssignment={handleRoleAssignment}
+            assignableRoles={assignableRoles}
           />
         );
+      case 'roles-permissions':
+        return <RolesPermissionsTab />;
       case 'testimonials':
         return (
           <TestimonialApprovalsTab

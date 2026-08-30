@@ -37,6 +37,8 @@ export function DashboardPage() {
       navigate('/superadmin', { replace: true });
     } else if (user?.role === 'ADMIN') {
       navigate('/admin', { replace: true });
+    } else if (user?.role === 'TEACHER') {
+      navigate('/teacher', { replace: true });
     }
   }, [user, navigate]);
 

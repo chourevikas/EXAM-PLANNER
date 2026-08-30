@@ -73,6 +73,8 @@ from app.db.models.answer_key import (
 from app.db.models.gamification import Badge, UserBadge, XPLog
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.notification import Notification
+from app.db.models.roles import Permission, Role, RolePermission, RoleAssignmentLog
+from app.db.models.teacher import TeacherProfile, ReviewPointsLog, TeacherReward
 
 __all__ = [
     "UserRole",
@@ -144,6 +146,13 @@ __all__ = [
     "StudyActivity",
     "ExamStatus",
     "Notification",
+    "Permission",
+    "Role",
+    "RolePermission",
+    "RoleAssignmentLog",
+    "TeacherProfile",
+    "ReviewPointsLog",
+    "TeacherReward",
 ]
 
 from app.db.models.testimonial import Testimonial, TestimonialStatus

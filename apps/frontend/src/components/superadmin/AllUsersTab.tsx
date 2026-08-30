@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserDirectoryItem, UserRole, UserStatus } from '../../types/auth';
+import { UserDirectoryItem, UserRole, UserStatus, Role } from '../../types/auth';
 import { Search, RefreshCw, Users, Shield, GraduationCap, UserCheck, ChevronDown } from 'lucide-react';
 
 interface AllUsersTabProps {
@@ -7,11 +7,13 @@ interface AllUsersTabProps {
   loading: boolean;
   onRefresh: () => void;
   onRoleChange: (userId: number | string, newRole: string, userName: string) => void;
+  onRoleAssignment?: (userId: number | string, roleId: number, userName: string) => void;
+  assignableRoles?: Role[];
   onSuspend?: (userId: number | string, userName: string) => void;
   onReactivate?: (userId: number | string, userName: string) => void;
 }
 
-export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend, onReactivate }: AllUsersTabProps) {
+export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAssignment, assignableRoles = [], onSuspend, onReactivate }: AllUsersTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
@@ -332,8 +334,16 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                     <td style={{ padding: '18px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
                         <select
-                          value={u.role}
-                          onChange={(e) => onRoleChange(u.id, e.target.value, u.full_name)}
+                          value={u.custom_role_id ? `role:${u.custom_role_id}` : u.role}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.startsWith('role:')) {
+                              const roleId = Number(val.slice(5));
+                              onRoleAssignment && onRoleAssignment(u.id, roleId, u.full_name);
+                            } else {
+                              onRoleChange(u.id, val, u.full_name);
+                            }
+                          }}
                           style={{
                             padding: '6px 10px',
                             fontSize: 12,
@@ -346,9 +356,20 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onSuspend
                             outline: 'none',
                           }}
                         >
-                          <option value={UserRole.STUDENT}>STUDENT</option>
-                          <option value={UserRole.ADMIN}>ADMIN</option>
-                          <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>
+                          <optgroup label="Standard Roles">
+                            <option value={UserRole.STUDENT}>STUDENT</option>
+                            <option value={UserRole.ADMIN}>ADMIN</option>
+                            <option value={UserRole.SUPER_ADMIN}>SUPER_ADMIN</option>
+                          </optgroup>
+                          {assignableRoles.length > 0 && (
+                            <optgroup label="Custom & Teacher Roles">
+                              {assignableRoles.map((role) => (
+                                <option key={role.id} value={`role:${role.id}`}>
+                                  {role.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
                         </select>
 
                         {u.role !== UserRole.SUPER_ADMIN && (

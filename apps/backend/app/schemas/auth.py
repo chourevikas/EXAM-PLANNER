@@ -172,6 +172,7 @@ class UserDirectoryItemOut(BaseModel):
     created_at: datetime
     suspended_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    custom_role_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

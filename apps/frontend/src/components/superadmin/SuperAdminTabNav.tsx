@@ -1,6 +1,6 @@
-import { ShieldAlert, Users, History, UserCheck, MessageSquareQuote } from 'lucide-react';
+import { ShieldAlert, Users, History, UserCheck, MessageSquareQuote, KeyRound } from 'lucide-react';
 
-export type SuperAdminTab = 'pending' | 'active' | 'audit' | 'users' | 'testimonials';
+export type SuperAdminTab = 'pending' | 'active' | 'audit' | 'users' | 'testimonials' | 'roles-permissions';
 
 interface SuperAdminTabNavProps {
   activeTab: SuperAdminTab;
@@ -15,6 +15,7 @@ export function SuperAdminTabNav({ activeTab, onTabChange, pendingCount, pending
     { id: 'active', label: 'Manage Active Admins', icon: Users },
     { id: 'audit', label: 'Approval Audit Logs', icon: History },
     { id: 'users', label: 'All Users & Roles', icon: UserCheck },
+    { id: 'roles-permissions', label: 'Roles & Permissions', icon: KeyRound },
     { id: 'testimonials', label: 'Testimonial Approvals', icon: MessageSquareQuote, count: pendingTestimonialsCount },
   ];
 

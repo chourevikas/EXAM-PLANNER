@@ -164,3 +164,73 @@ def require_roles(allowed_roles: list[UserRole]):
         return current_user
 
     return role_checker
+
+
+async def _user_has_permission(
+    session: AsyncSession, current_user: User, permission_key: str
+) -> bool:
+    """Resolves the user's effective custom-role permissions.
+
+    A user's fine-grained permissions come from `custom_role_id` when set. A
+    TEACHER-role user with no custom_role_id (e.g. promoted via the legacy
+    PUT /admin/users/{id}/role endpoint) falls back to the single seeded
+    system "Teacher" role, so plain role promotion still grants the Teacher
+    permission set without requiring the admin to also assign a custom role.
+    """
+    from app.db.models.roles import Role, RolePermission, Permission
+
+    effective_role_id = current_user.custom_role_id
+    if effective_role_id is None and current_user.role == UserRole.TEACHER:
+        result = await session.exec(select(Role.id).where(Role.slug == "teacher"))
+        effective_role_id = result.first()
+
+    if effective_role_id is None:
+        return False
+
+    query = (
+        select(RolePermission.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .where(
+            RolePermission.role_id == effective_role_id,
+            Permission.key == permission_key,
+        )
+    )
+    result = await session.exec(query)
+    return result.first() is not None
+
+
+def require_permission(permission_key: str):
+    async def permission_checker(
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        if current_user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+            return current_user
+        if await _user_has_permission(session, current_user, permission_key):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Missing required permission '{permission_key}'",
+        )
+
+    return permission_checker
+
+
+def require_roles_or_permission(allowed_roles: list[UserRole], permission_key: str):
+    async def checker(
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session),
+    ) -> User:
+        if current_user.role in allowed_roles:
+            return current_user
+        if await _user_has_permission(session, current_user, permission_key):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"User role '{current_user.role}' is not authorized for this "
+                f"resource and lacks permission '{permission_key}'"
+            ),
+        )
+
+    return checker

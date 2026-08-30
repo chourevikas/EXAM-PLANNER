@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     SUPERADMIN_PASSWORD: str = Field(default="SuperAdmin#2026!")
     SUPERADMIN_NAME: str = Field(default="System Super Admin")
 
+    # RBAC / Teacher Review Rewards
+    REVIEW_POINTS_PER_ACTION: int = Field(
+        default=10,
+        description="Flat points awarded to a TEACHER-role user for each question review action (approve/reject).",
+    )
+
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
     DB_MIGRATION: bool = Field(

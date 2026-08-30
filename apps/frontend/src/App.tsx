@@ -43,6 +43,9 @@ const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default:
 const SuperAdminPage = lazy(() =>
   import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage })),
 );
+const TeacherPage = lazy(() =>
+  import('./pages/TeacherPage').then((m) => ({ default: m.TeacherPage })),
+);
 const PYQSelectionPage = lazy(() =>
   import('./pages/PYQSelectionPage').then((m) => ({ default: m.PYQSelectionPage })),
 );
@@ -268,6 +271,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
                 <SuperAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.TEACHER]}>
+                <TeacherPage />
               </ProtectedRoute>
             }
           />

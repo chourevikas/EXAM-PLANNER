@@ -23,6 +23,7 @@ from app.pipeline.vision_extractor import (
     ainvoke_extraction_llm,
 )
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
+from app.services.review_points_service import ReviewPointsService
 from app.config.logger import setup_logger
 
 logger = setup_logger("HITLService")
@@ -67,8 +68,16 @@ class HumanReviewService:
         if cached_data is not None:
             return [HumanReviewTask(**t) for t in cached_data]
 
-        query = select(HumanReviewTask).where(
-            HumanReviewTask.review_status == "PENDING_REVIEW"
+        # Join Question so tasks left behind by the legacy admin publish/reject
+        # path (which updates Question.status directly without touching
+        # HumanReviewTask) don't linger in the queue as already-finalized work.
+        query = (
+            select(HumanReviewTask)
+            .join(Question, Question.id == HumanReviewTask.question_id)
+            .where(
+                HumanReviewTask.review_status == "PENDING_REVIEW",
+                Question.status == QuestionStatus.PENDING_HUMAN_REVIEW,
+            )
         )
         if parsed_exam_id:
             query = query.where(HumanReviewTask.exam_id == parsed_exam_id)
@@ -408,6 +417,13 @@ class HumanReviewService:
         await self.session.commit()
         await self.session.refresh(question)
 
+        await ReviewPointsService(self.session).award_for_review_action(
+            reviewer_id=parsed_admin_id,
+            action="APPROVE",
+            review_task_id=review_task.id if review_task else None,
+            question_id=question.id,
+        )
+
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
 
@@ -521,13 +537,24 @@ class HumanReviewService:
         }
 
     async def reject_question(
-        self, question_id: int | str, rejection_reason: str, reviewer_notes: Optional[str] = None
+        self,
+        question_id: int | str,
+        rejection_reason: str,
+        reviewer_notes: Optional[str] = None,
+        admin_id: Optional[int | str] = None,
     ) -> Question:
         """Flags question as REJECTED and records reviewer failure reason."""
         try:
             q_id = int(question_id)
         except (ValueError, TypeError):
             raise ValueError(f"Question with ID {question_id} not found.")
+
+        parsed_admin_id = None
+        if admin_id is not None:
+            try:
+                parsed_admin_id = int(admin_id)
+            except (ValueError, TypeError):
+                parsed_admin_id = None
 
         question = await self.session.get(Question, q_id)
         if not question:
@@ -546,10 +573,20 @@ class HumanReviewService:
             task.reviewer_notes = reviewer_notes
             task.failure_reasons_json = reasons
             task.reviewed_at = datetime.now(timezone.utc)
+            if parsed_admin_id is not None:
+                task.assigned_admin_id = parsed_admin_id
             self.session.add(task)
 
         await self.session.commit()
         await self.session.refresh(question)
+
+        await ReviewPointsService(self.session).award_for_review_action(
+            reviewer_id=parsed_admin_id,
+            action="REJECT",
+            review_task_id=task.id if task else None,
+            question_id=question.id,
+        )
+
         if question.exam_id:
             exam = await self.session.get(Exam, question.exam_id)
             if exam:

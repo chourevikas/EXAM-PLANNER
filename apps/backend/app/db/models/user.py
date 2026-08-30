@@ -32,6 +32,9 @@ class User(SQLModel, table=True):
     clerk_id: Optional[str] = Field(default=None, unique=True, index=True, max_length=255)
     password_hash: Optional[str] = Field(default=None)
     role: UserRole = Field(default=UserRole.STUDENT)
+    custom_role_id: Optional[int] = Field(
+        default=None, foreign_key="roles.id", ondelete="SET NULL"
+    )
     status: UserStatus = Field(default=UserStatus.ACTIVE)
     is_verified: bool = Field(default=False)
     profile_image: Optional[str] = Field(default=None)

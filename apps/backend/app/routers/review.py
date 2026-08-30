@@ -7,11 +7,16 @@ from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
 
 from app.db.models import LanguageCode, QuestionStatus
+from app.db.models.user import User, UserRole
+from app.core.deps import require_roles_or_permission
 from app.schemas.question import ExamReviewQuestionsResponse
 from app.services.question_service import QuestionService
 
 
 router = APIRouter(prefix="/admin/review", tags=["Admin QA Review"])
+
+view_review = require_roles_or_permission([UserRole.ADMIN, UserRole.SUPER_ADMIN], "questions.review")
+manage_review = require_roles_or_permission([UserRole.ADMIN, UserRole.SUPER_ADMIN], "questions.review.manage")
 
 
 class OptionEditRequest(BaseModel):
@@ -40,6 +45,7 @@ async def get_exam_questions_review(
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(view_review),
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
     try:
@@ -81,6 +87,7 @@ async def get_pending_tasks(
     exam_id: Optional[int | str] = Query(default=None),
     only_flagged: bool = Query(default=False),
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(view_review),
 ):
     parsed_exam_id = None
     if exam_id is not None:
@@ -110,7 +117,9 @@ async def get_pending_tasks(
 
 @router.get("/tasks/{question_id}")
 async def get_question_detail(
-    question_id: int | str, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(view_review),
 ):
     try:
         qid = int(question_id)
@@ -140,6 +149,7 @@ async def approve_question(
     question_id: int | str,
     req: ApproveQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(manage_review),
 ):
     try:
         qid = int(question_id)
@@ -156,6 +166,7 @@ async def approve_question(
         )
         question = await service.update_and_approve_question(
             question_id=qid,
+            admin_id=current_user.id,
             updated_passage_text=req.updated_passage_text,
             updated_question_text=req.updated_question_text,
             updated_options=options_dicts,
@@ -189,7 +200,9 @@ class UpdateExplanationRequest(BaseModel):
 
 @router.post("/tasks/{question_id}/reextract")
 async def trigger_reextraction(
-    question_id: int | str, session: AsyncSession = Depends(get_async_session)
+    question_id: int | str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(manage_review),
 ):
     """Triggers sequential LLM re-extraction retry targeting the specific pages of the flawed question/passage."""
     try:
@@ -212,6 +225,7 @@ async def reject_question(
     question_id: int | str,
     req: RejectQuestionRequest,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(manage_review),
 ):
     """Rejects/flags a question during QA review with a specific rejection reason."""
     try:
@@ -226,6 +240,7 @@ async def reject_question(
             question_id=qid,
             rejection_reason=req.rejection_reason,
             reviewer_notes=req.reviewer_notes,
+            admin_id=current_user.id,
         )
         await invalidate_question_cache(str(qid))
         return {
@@ -242,6 +257,7 @@ async def update_explanation(
     question_id: int | str,
     req: UpdateExplanationRequest,
     session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(manage_review),
 ):
     """Allows QA reviewers to manually edit and save question explanations."""
     try:
