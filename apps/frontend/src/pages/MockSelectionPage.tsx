@@ -12,7 +12,7 @@ import {
   Zap,
   ArrowRight,
   ChevronRight,
-  Target
+  Target,
 } from 'lucide-react';
 
 interface DisplayMock {
@@ -111,7 +111,6 @@ export function MockSelectionPage() {
     return defaultList;
   }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
 
-
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
       setIsLoading(true);
@@ -195,9 +194,9 @@ export function MockSelectionPage() {
       topic: finalTopic,
     });
 
+
     navigate(`/practice-exam?${queryParams.toString()}`);
   };
-
 
   return (
     <StudentLayout pageTitle="Practice Tests">
@@ -215,6 +214,7 @@ export function MockSelectionPage() {
         justifyContent: 'space-between',
         boxShadow: '0 4px 20px rgba(99, 102, 241, 0.05)'
       }}>
+
         <div style={{ maxWidth: '600px', zIndex: 2 }}>
           {/* Capsule Pill Badge */}
           <div style={{
@@ -341,16 +341,9 @@ export function MockSelectionPage() {
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
                 style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FAFAFC',
-                  color: '#172033',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  outline: 'none',
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
                 }}
               >
                 <option value="UPSC CSE">UPSC CSE (Civil Services)</option>
@@ -366,16 +359,9 @@ export function MockSelectionPage() {
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FAFAFC',
-                  color: '#172033',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  outline: 'none',
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
                 }}
               >
                 {yearOptions.map((y) => (
@@ -396,16 +382,9 @@ export function MockSelectionPage() {
                   setSelectedTopic('All Topics (Entire Subject)');
                 }}
                 style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FAFAFC',
-                  color: '#172033',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  outline: 'none',
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
                 }}
               >
                 {subjectsList.map((s) => (
@@ -421,20 +400,11 @@ export function MockSelectionPage() {
               </label>
               <select
                 value={selectedTopic}
-                onChange={(e) => {
-                  setSelectedTopic(e.target.value);
-                }}
+                onChange={(e) => setSelectedTopic(e.target.value)}
                 style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 14px',
-                  borderRadius: 0,
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FAFAFC',
-                  color: '#172033',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  outline: 'none',
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
                 }}
               >
                 {availableTopics.map((t) => (
@@ -444,30 +414,19 @@ export function MockSelectionPage() {
             </div>
           </div>
 
-
           {/* CTA Button Row */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            paddingTop: 20,
-            borderTop: '1px dashed #E2E8F0'
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+            paddingTop: 20, borderTop: '1px dashed #E2E8F0'
           }}>
             <button
               type="submit"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '12px 24px',
-                borderRadius: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '12px 24px', borderRadius: 0,
                 background: 'linear-gradient(135deg, #4F46E5 0%, #E31B23 100%)',
-                color: '#FFFFFF',
-                fontWeight: 700,
-                fontSize: 14,
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(227, 27, 35, 0.35)',
+                color: '#FFFFFF', fontWeight: 700, fontSize: 14, border: 'none',
+                cursor: 'pointer', boxShadow: '0 4px 14px rgba(227, 27, 35, 0.35)',
                 transition: 'transform 0.15s ease, boxShadow 0.15s ease',
               }}
             >
