@@ -1168,10 +1168,30 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
             existing_q_rep.final_score = float(q_item.get("marks_awarded", 0.0))
             session.add(existing_q_rep)
 
+    # Persist ExamAttemptReport with full 12-matrix math evaluation so reports are instantly available
+    attempt_rep_stmt_p1 = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt.id)
+    existing_att_rep_p1 = (await session.exec(attempt_rep_stmt_p1)).first()
+    if not existing_att_rep_p1:
+        session.add(ExamAttemptReport(
+            attempt_id=attempt.id,
+            user_id=user.id,
+            exam_id=exam.id,
+            matrices_summary_json=report.get("part_3_aggregated_user_report", {}),
+            taxonomy_breakdown_json=report.get("part_2_taxonomy_analysis", {}),
+            llm_insight_json=None,
+            full_report_json=report,
+            s3_report_url=None,
+        ))
+    else:
+        existing_att_rep_p1.matrices_summary_json = report.get("part_3_aggregated_user_report", {})
+        existing_att_rep_p1.taxonomy_breakdown_json = report.get("part_2_taxonomy_analysis", {})
+        existing_att_rep_p1.full_report_json = report
+        session.add(existing_att_rep_p1)
+
     # Slim metadata summary stored on attempt (NOT the full 100-question report)
     _score_summary = part_2.get("score_summary", {})
     attempt.report_metadata_json = {
-        "is_ready": False,
+        "is_ready": True,
         "phase": "MATH_COMPLETE",
         "exam_name": traceable_exam_name,
         "scoring": {

@@ -304,10 +304,38 @@ export interface AttemptHistoryItem {
   submitted_at?: string;
 }
 
-/** 12. Fetch Candidate Attempts History */
-export async function listCandidateAttempts(customToken?: string): Promise<AttemptHistoryItem[]> {
+function cleanAttemptId(attemptId: number | string): number | string {
+  if (typeof attemptId === 'number') return attemptId;
+  const str = String(attemptId).trim();
+  const parsed = parseInt(str, 10);
+  return (!isNaN(parsed) && String(parsed) === str) ? parsed : attemptId;
+}
+
+/** 12. Fetch Candidate Attempts History with clean pagination */
+export async function listCandidateAttempts(
+  options?: { page?: number; limit?: number; status?: string; customToken?: string } | string
+): Promise<AttemptHistoryItem[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/attempts?limit=500`, {
+    let customToken: string | undefined;
+    let page = 1;
+    let limit = 20;
+    let statusFilter: string | undefined;
+
+    if (typeof options === 'string') {
+      customToken = options;
+    } else if (options && typeof options === 'object') {
+      page = options.page || 1;
+      limit = options.limit || 20;
+      statusFilter = options.status;
+      customToken = options.customToken;
+    }
+
+    let url = `${API_BASE_URL}/attempts?page=${page}&page_size=${limit}`;
+    if (statusFilter) {
+      url += `&status_filter=${encodeURIComponent(statusFilter)}`;
+    }
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(customToken),
     });
@@ -315,7 +343,7 @@ export async function listCandidateAttempts(customToken?: string): Promise<Attem
       return [];
     }
     const data = await response.json();
-    return data.items || [];
+    return data.items || (Array.isArray(data) ? data : []);
   } catch (err) {
     console.warn('Failed to fetch candidate attempt history:', err);
     return [];
@@ -411,7 +439,11 @@ export async function getResponseBatchStatus(attemptId: number | string, batchId
 
 export async function getAttemptEvaluationStatus(attemptId: number | string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/status`, {
+    const cleanId = cleanAttemptId(attemptId);
+    if (String(cleanId) === 'CUMULATIVE_ALL' || isNaN(Number(cleanId))) {
+      return { is_ready: true, status: 'COMPLETED' };
+    }
+    const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/status`, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
@@ -426,7 +458,8 @@ export async function getAttemptEvaluationStatus(attemptId: number | string): Pr
 }
 
 export async function retryAttemptEvaluation(attemptId: number | string): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/retry`, {
+  const cleanId = cleanAttemptId(attemptId);
+  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(cleanId)}/retry`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -440,12 +473,16 @@ export async function retryAttemptEvaluation(attemptId: number | string): Promis
 export async function pollAttemptReportUntilReady(
   attemptId: number | string,
   onUpdate: (status: any) => void,
-  maxRetries: number = 60,
-  delay: number = 3500
+  maxRetries: number = 30,
+  delay: number = 6000,
+  isCancelled?: () => boolean
 ): Promise<boolean> {
+  const cleanId = cleanAttemptId(attemptId);
   for (let i = 0; i < maxRetries; i++) {
+    if (isCancelled && isCancelled()) return false;
     try {
-      const status = await getAttemptEvaluationStatus(attemptId);
+      const status = await getAttemptEvaluationStatus(cleanId);
+      if (isCancelled && isCancelled()) return false;
       if (onUpdate) onUpdate(status);
       if (status) {
         if (status.is_failed || status.status === 'FAILED') {
@@ -458,6 +495,8 @@ export async function pollAttemptReportUntilReady(
     } catch (err) {
       console.warn('Polling error:', err);
     }
+    if (isCancelled && isCancelled()) return false;
+    // Wait strictly AFTER previous request responded before polling again
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
   return false;

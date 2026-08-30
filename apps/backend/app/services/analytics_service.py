@@ -40,6 +40,13 @@ class AnalyticsService:
         attempt_id: Optional[int] = None,
     ) -> Response:
         try:
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.full_report_json:
+                    json_content = format_report_to_json(rep_db.full_report_json)
+                    return Response(content=json_content, media_type="application/json")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -382,10 +389,12 @@ class AnalyticsService:
                 "total_questions": attempt.total_questions,
             }
 
-        # Check if actual full 12-matrix evaluated report exists
+        # Check if actual full 12-matrix evaluated report exists or Phase 1 is complete
         has_evaluated_report = False
         if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
-            if "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
+            if attempt.report_metadata_json.get("phase") in ("MATH_COMPLETE", "EVALUATED") or attempt.report_metadata_json.get("is_ready"):
+                has_evaluated_report = True
+            elif "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
                 has_evaluated_report = True
 
         if not has_evaluated_report:
@@ -405,12 +414,12 @@ class AnalyticsService:
                 if attempt.id:
                     asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
-        status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
-        progress = 100 if is_ready else (70 if attempt.status == AttemptStatus.SUBMITTED else 30)
+        status_str = "COMPLETED" if (attempt.status == AttemptStatus.EVALUATED or has_evaluated_report) else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
+        progress = 100 if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready"))) else (85 if has_evaluated_report else (70 if attempt.status == AttemptStatus.SUBMITTED else 30))
         message = (
             "Psychometric and cognitive evaluation completed successfully."
-            if is_ready
-            else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance..."
+            if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready")))
+            else ("Cognitive score analysis ready. AI mentorship synthesis in progress..." if has_evaluated_report else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance...")
         )
 
         return {

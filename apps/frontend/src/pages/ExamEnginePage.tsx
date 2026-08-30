@@ -673,11 +673,28 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     total: liveTotal,
   };
 
+  const markAsVisited = (idx: number) => {
+    setPalette((prev) => {
+      if (!prev || idx >= prev.length) return prev;
+      const copy = [...prev];
+      const curStatus = copy[idx]?.question_status;
+      if (!curStatus || curStatus === 'UNVISITED') {
+        copy[idx] = {
+          ...copy[idx],
+          question_number: idx + 1,
+          question_status: 'VISITED',
+        };
+      }
+      return copy;
+    });
+  };
+
   const handleNext = async () => {
     saveCurrentResponse();
     if (currentQIndex < totalQuestions - 1) {
       const nextIdx = currentQIndex + 1;
       setCurrentQIndex(nextIdx);
+      markAsVisited(nextIdx);
       if (attemptId) {
         await loadQuestion(attemptId, nextIdx + 1);
       }
@@ -690,6 +707,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (currentQIndex > 0) {
       const prevIdx = currentQIndex - 1;
       setCurrentQIndex(prevIdx);
+      markAsVisited(prevIdx);
       if (attemptId) {
         await loadQuestion(attemptId, prevIdx + 1);
       }
@@ -700,6 +718,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const handleSelectQuestionFromPalette = async (idx: number) => {
     saveCurrentResponse();
     setCurrentQIndex(idx);
+    markAsVisited(idx);
     if (attemptId) {
       await loadQuestion(attemptId, idx + 1);
     }
@@ -1005,6 +1024,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+                onPrev={handlePrev}
+                onNext={handleNext}
                 isPYQ={isPYQ}
               />
             ) : null}

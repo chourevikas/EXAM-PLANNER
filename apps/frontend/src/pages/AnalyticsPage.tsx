@@ -60,7 +60,7 @@ export function AnalyticsPage() {
     async function loadAttemptHistory() {
       setIsHistoryLoading(true);
       try {
-        const history = await listCandidateAttempts();
+        const history = await listCandidateAttempts({ page: 1, limit: 100 });
         const completed = history.filter(
           (a) => a.status === 'COMPLETED' || a.status === 'EVALUATED' || a.status === 'SUBMITTED' || a.status === 'AUTO_SUBMITTED' || a.status === 'FAILED'
         );
@@ -116,9 +116,18 @@ export function AnalyticsPage() {
         return;
       }
 
+      // Validate numeric attempt ID
+      const numId = parseInt(String(targetId), 10);
+      if (isNaN(numId)) {
+        setError(`Invalid attempt ID '${targetId}'.`);
+        setIsLoading(false);
+        setIsEvaluating(false);
+        return;
+      }
+
       try {
         // Step 1: Check status via lightweight polling endpoint
-        const initialStatus = await getAttemptEvaluationStatus(targetId);
+        const initialStatus = await getAttemptEvaluationStatus(numId);
 
         if (initialStatus && (initialStatus.is_failed || initialStatus.status === 'FAILED')) {
           setError(initialStatus.message || 'Psychometric evaluation failed for this attempt. Please click Retry below to re-evaluate.');
@@ -130,25 +139,26 @@ export function AnalyticsPage() {
         if (initialStatus && !initialStatus.is_ready && initialStatus.status !== 'COMPLETED' && initialStatus.status !== 'EVALUATED') {
           setIsEvaluating(true);
           setEvalProgress(initialStatus.progress_percentage || 40);
-          setEvalMessage(initialStatus.message || 'Synthesizing 11 psychometric matrices & smart mentor recommendations...');
+          setEvalMessage(initialStatus.message || 'Synthesizing psychometric matrices & smart mentor recommendations...');
 
-          // Long-polling loop (every 1.5s)
+          // Long-polling loop with 6s delay strictly AFTER previous response completes
           const isReady = await pollAttemptReportUntilReady(
-            targetId,
+            numId,
             (statusUpdate) => {
               if (isCancelled) return;
               setEvalProgress(statusUpdate.progress_percentage || 60);
               setEvalMessage(statusUpdate.message || 'Computing knowledge ability and decay curves...');
             },
-            60,
-            4500
+            30,
+            6000,
+            () => isCancelled
           );
 
           if (isCancelled) return;
           setIsEvaluating(false);
 
           if (!isReady) {
-            const checkLatest = await getAttemptEvaluationStatus(targetId);
+            const checkLatest = await getAttemptEvaluationStatus(numId);
             if (checkLatest && (checkLatest.is_failed || checkLatest.status === 'FAILED')) {
               setError(checkLatest.message || 'Psychometric evaluation failed. Please click Retry below.');
             } else {
@@ -163,9 +173,9 @@ export function AnalyticsPage() {
 
         // Step 2: Fetch structured JSON reports in parallel (no raw markdown calls)
         const [jsonRes, qRes, progRes] = await Promise.allSettled([
-          getPsychometricReportJson(targetId),
-          getAttemptQuestionReport(targetId),
-          getAttemptUserProgressionReport(targetId),
+          getPsychometricReportJson(numId),
+          getAttemptQuestionReport(numId),
+          getAttemptUserProgressionReport(numId),
         ]);
 
         if (isCancelled) return;
@@ -174,17 +184,17 @@ export function AnalyticsPage() {
           const loadedReport = jsonRes.value;
           setReport(loadedReport);
 
-          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with backoff until resolved
+          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with 6s interval after each response
           if (targetId !== 'CUMULATIVE_ALL' && !loadedReport?.llm_insight) {
             let attempts = 0;
-            const maxAttempts = 10; // Poll up to 10 times (max ~25 seconds)
-            const pollIntervalMs = 3500;
+            const maxAttempts = 10;
+            const pollIntervalMs = 6000;
 
             const pollAiInsight = async () => {
               if (isCancelled || attempts >= maxAttempts) return;
               attempts++;
               try {
-                const refreshedReport = await getPsychometricReportJson(targetId);
+                const refreshedReport = await getPsychometricReportJson(numId);
                 if (refreshedReport && refreshedReport.llm_insight && !isCancelled) {
                   setReport((prev) => (prev ? { ...prev, llm_insight: refreshedReport.llm_insight } : refreshedReport));
                   return; // Resolved successfully
@@ -198,7 +208,7 @@ export function AnalyticsPage() {
               }
             };
 
-            setTimeout(pollAiInsight, 2000);
+            setTimeout(pollAiInsight, pollIntervalMs);
           }
         } else {
           setError(jsonRes.reason?.message || 'Report is currently compiling in background. Please refresh in a moment.');

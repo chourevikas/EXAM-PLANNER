@@ -102,6 +102,8 @@ async def invalidate_user_cache(user_id: str) -> None:
     await cache.delete_pattern(f"{prefix}:attempts:user:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:skill_profile:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:aggregate:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:cumulative:{u_id_str}*")
+    await cache.delete_pattern(f"{prefix}:analytics:subj_perf:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:rank:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:monthly_benchmark:{u_id_str}*")
 

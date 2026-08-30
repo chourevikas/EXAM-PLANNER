@@ -583,18 +583,23 @@ class ExamSessionService:
                 opts_by_qid.setdefault(opt.question_id, {})[opt.option_label.upper()] = opt.id
 
         def _sync_question_ids(q_list_in: list) -> list:
-            for q_data in q_list_in:
+            for idx, q_data in enumerate(q_list_in, 1):
                 if not isinstance(q_data, dict):
                     continue
-                q_num = q_data.get("question_number")
-                if q_num and q_num in db_questions:
+                raw_num = q_data.get("question_number")
+                try:
+                    q_num = int(raw_num) if raw_num is not None else idx
+                except (ValueError, TypeError):
+                    q_num = idx
+                q_data["question_number"] = q_num
+                if q_num in db_questions:
                     db_q = db_questions[q_num]
                     q_data["question_id"] = str(db_q.id)
                     q_opt_map = opts_by_qid.get(db_q.id, {})
                     if "options" in q_data and isinstance(q_data["options"], list):
-                        for idx, o in enumerate(q_data["options"], 1):
+                        for opt_idx, o in enumerate(q_data["options"], 1):
                             if isinstance(o, dict):
-                                lbl = (o.get("option_label") or o.get("label") or chr(64 + idx)).strip().upper()
+                                lbl = (o.get("option_label") or o.get("label") or chr(64 + opt_idx)).strip().upper()
                                 if lbl in q_opt_map:
                                     o["option_id"] = str(q_opt_map[lbl])
                                     o["id"] = str(q_opt_map[lbl])
@@ -1596,13 +1601,18 @@ class ExamSessionService:
         if cached_data is not None:
             return cached_data
 
-        stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
+        base_stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
         if exam_id:
-            stmt = stmt.where(ExamAttempt.exam_id == exam_id)
+            base_stmt = base_stmt.where(ExamAttempt.exam_id == exam_id)
         if status_filter:
-            stmt = stmt.where(ExamAttempt.status == status_filter)
+            base_stmt = base_stmt.where(ExamAttempt.status == status_filter)
 
-        stmt = stmt.order_by(col(ExamAttempt.created_at).desc()).offset(skip).limit(limit)
+        from sqlmodel import func
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_res = await self.session.exec(count_stmt)
+        total_count = total_res.first() or 0
+
+        stmt = base_stmt.order_by(col(ExamAttempt.created_at).desc()).offset(skip).limit(limit)
         res = await self.session.exec(stmt)
         attempts = res.all()
 
@@ -1637,7 +1647,7 @@ class ExamSessionService:
                 "submitted_at": att.submitted_at.isoformat() if att.submitted_at else None,
             })
 
-        result_dict = {"items": items, "skip": skip, "limit": limit}
+        result_dict = {"items": items, "total": total_count, "skip": skip, "limit": limit}
         await cache.set(cache_key, result_dict, ttl_seconds=120)
         return result_dict
 

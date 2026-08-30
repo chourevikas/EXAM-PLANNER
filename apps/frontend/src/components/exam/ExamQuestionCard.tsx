@@ -368,7 +368,7 @@ export function ExamQuestionCard({
                   border: '1px solid #E2E8F0',
                 }}
               >
-                QUESTION {questionIndex + 1}
+                QUESTION {((question as any)?.question_number || questionIndex + 1)} {totalQuestions ? `OF ${totalQuestions}` : ''}
               </span>
             </div>
 
