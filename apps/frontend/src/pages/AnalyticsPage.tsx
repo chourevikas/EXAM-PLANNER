@@ -140,8 +140,8 @@ export function AnalyticsPage() {
               setEvalProgress(statusUpdate.progress_percentage || 60);
               setEvalMessage(statusUpdate.message || 'Computing knowledge ability and decay curves...');
             },
-            200,
-            1500
+            60,
+            4500
           );
 
           if (isCancelled) return;
