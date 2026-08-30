@@ -607,8 +607,8 @@ export async function fetchExamSyllabusTree(examId: number | string): Promise<an
 export async function fetchExamIntegrityQuestions(examId: string, status?: string): Promise<any> {
   try {
     const url = status
-      ? `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?status=${encodeURIComponent(status)}`
-      : `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions`;
+      ? `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?page=1&limit=250&issue_type=${encodeURIComponent(status)}`
+      : `${API_BASE_URL}/exams/${encodeURIComponent(examId)}/integrity-questions?page=1&limit=250`;
     const response = await guardedFetch(url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },

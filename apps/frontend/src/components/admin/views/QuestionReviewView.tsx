@@ -153,7 +153,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
   useEffect(() => {
     if (selectedExam?.id) {
-      fetchExamIntegrityQuestions(selectedExam.id)
+      fetchExamIntegrityQuestions(selectedExam.id, 'ALL', 1, 250)
         .then((res) => setExamIntegrity(res))
         .catch((err) => console.warn('Failed to fetch exam integrity:', err));
     } else {
@@ -2033,6 +2033,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 const isSelected = activeQuestion && activeQuestion.id === q.id;
                 const isPublished = q.status === 'PUBLISHED';
                 const isRejected = q.status === 'REJECTED';
+                const isMissingText = !q.question_text || !q.question_text.trim();
+                const isMissingOptions = !q.options || q.options.length === 0;
+                const isCorrupted = isMissingText || isMissingOptions || Boolean((q as any).is_corrupted);
 
                 return (
                   <div
@@ -2043,9 +2046,15 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       borderRadius: 0,
                       marginBottom: 8,
                       cursor: 'pointer',
-                      border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                      borderLeft: isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0',
-                      backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
+                      border: isCorrupted
+                        ? (isSelected ? '1px solid #FCA5A5' : '1px solid #FECACA')
+                        : (isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0'),
+                      borderLeft: isCorrupted
+                        ? '4px solid #DC2626'
+                        : (isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0'),
+                      backgroundColor: isCorrupted
+                        ? (isSelected ? '#FEF2F2' : '#FFFBFB')
+                        : (isSelected ? '#F8FAFC' : '#FFFFFF'),
                       boxShadow: isSelected ? '0 1px 3px rgba(227, 27, 35, 0.08)' : 'none',
                       transition: 'all 150ms ease-out',
                     }}
@@ -2055,8 +2064,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         style={{
                           fontSize: 12,
                           fontWeight: 800,
-                          color: isSelected ? '#E31B23' : '#172033',
-                          backgroundColor: isSelected ? '#E2E8F0' : '#F1F5F9',
+                          color: isCorrupted ? '#DC2626' : (isSelected ? '#E31B23' : '#172033'),
+                          backgroundColor: isCorrupted ? '#FEE2E2' : (isSelected ? '#E2E8F0' : '#F1F5F9'),
                           padding: '2px 7px',
                           borderRadius: 0,
                         }}
@@ -2070,20 +2079,20 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           fontWeight: 600,
                           padding: '2px 7px',
                           borderRadius: 0,
-                          backgroundColor: isPublished ? '#DCFCE7' : isRejected ? '#FEF2F2' : '#FEF3C7',
-                          color: isPublished ? '#15803D' : isRejected ? '#B42318' : '#B45309',
-                          border: `1px solid ${isPublished ? '#86EFAC' : isRejected ? '#FECDCA' : '#FDE68A'}`,
+                          backgroundColor: isCorrupted ? '#FEF2F2' : isPublished ? '#DCFCE7' : isRejected ? '#FEF2F2' : '#FEF3C7',
+                          color: isCorrupted ? '#DC2626' : isPublished ? '#15803D' : isRejected ? '#B42318' : '#B45309',
+                          border: isCorrupted ? '1px solid #FCA5A5' : `1px solid ${isPublished ? '#86EFAC' : isRejected ? '#FECDCA' : '#FDE68A'}`,
                         }}
                       >
-                        {isPublished ? 'Verified' : isRejected ? 'Rejected' : 'Pending'}
+                        {isCorrupted ? 'Corrupted' : isPublished ? 'Verified' : isRejected ? 'Rejected' : 'Pending'}
                       </span>
                     </div>
 
                     <div
                       style={{
                         fontSize: 12.5,
-                        color: isSelected ? '#172033' : '#475569',
-                        fontWeight: isSelected ? 600 : 400,
+                        color: isCorrupted ? '#B91C1C' : (isSelected ? '#172033' : '#475569'),
+                        fontWeight: isCorrupted ? 700 : (isSelected ? 600 : 400),
                         lineHeight: 1.4,
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -2397,6 +2406,57 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   </button>
                 </div>
               </div>
+
+              {/* Question Corrupted / Incomplete Banner */}
+              {(!activeQuestion.question_text || !activeQuestion.question_text.trim() || !activeQuestion.options || activeQuestion.options.length === 0) && (
+                <div
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderLeft: '4px solid #DC2626',
+                    padding: '12px 16px',
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <ShieldAlert size={20} color="#DC2626" />
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B91C1C' }}>
+                        Database Record Corrupted / Incomplete
+                      </div>
+                      <div style={{ fontSize: 12, color: '#991B1B', marginTop: 2 }}>
+                        {!activeQuestion.question_text || !activeQuestion.question_text.trim()
+                          ? `Question #${activeQuestion.question_number_in_paper} has blank or missing question statement text in database. Click "Modify Question & Solutions" to repair data.`
+                          : `Question #${activeQuestion.question_number_in_paper} has 0 answer options in database. Click "Modify Question & Solutions" to configure options.`}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleOpenEditModal(activeQuestion)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#DC2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 0,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Edit3 size={13} />
+                    Repair Question
+                  </button>
+                </div>
+              )}
 
               {/* Taxonomy & Metadata Details Bar */}
               <div

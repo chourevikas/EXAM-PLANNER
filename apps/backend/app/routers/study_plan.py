@@ -281,7 +281,7 @@ async def bulk_add_tasks_from_report(
             scheduled_date=task_date,
             is_completed=False,
             is_ai_recommended=True,
-            source_attempt_id=int(req.attempt_id) if req.attempt_id is not None else None
+            source_attempt_id=int(req.attempt_id) if req.attempt_id is not None and str(req.attempt_id).isdigit() else None
         )
         session.add(new_task)
         created_task_ids.append(str(new_task.id))

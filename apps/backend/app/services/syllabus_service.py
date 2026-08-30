@@ -371,7 +371,7 @@ class SyllabusService:
         exam_id: int,
         issue_type: Optional[str] = None,
         page: int = 1,
-        limit: int = 10,
+        limit: int = 250,
         language: LanguageCode = LanguageCode.ENGLISH,
     ) -> ExamIntegrityQuestionsResponse:
         """
@@ -393,7 +393,7 @@ class SyllabusService:
         q_by_num = {q.question_number_in_paper: q for q in questions}
 
         total_extracted = len(questions)
-        total_expected = exam.total_questions or (max(q_by_num.keys()) if q_by_num else 100)
+        total_expected = max(exam.total_questions or 100, max(q_by_num.keys()) if q_by_num else 100)
 
         # Batch fetch translations, options, and subtopics for display preview
         q_ids = [q.id for q in questions]
@@ -551,7 +551,7 @@ class SyllabusService:
 
         # 4. Apply pagination
         page = max(1, page)
-        limit = max(1, min(100, limit))
+        limit = max(1, min(500, limit))
         total_items = len(filtered_items)
         pages = max(1, (total_items + limit - 1) // limit)
         start_idx = (page - 1) * limit

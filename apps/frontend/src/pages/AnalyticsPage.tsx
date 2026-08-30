@@ -332,11 +332,11 @@ export function AnalyticsPage() {
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
             {selectedAttemptId === 'CUMULATIVE_ALL'
-              ? 'Multi-exam weighted synthesis across all completed tests with AI contextual diagnosis, subject mastery, and actionable study plans.'
-              : 'Detailed question-by-question breakdown, macro scores, and AI mentorship guidance for this completed test.'}
+              ? 'Multi-exam weighted synthesis across all completed tests with contextual diagnosis, subject mastery, and actionable study plans.'
+              : 'Detailed question-by-question breakdown, macro scores, and mentorship guidance for this completed test.'}
           </p>
 
-          {/* AI Data Loaded Sign Badge */}
+          {/* Diagnostic Data Loaded Sign Badge */}
           {(() => {
             const hasAi = Boolean(
               report?.llm_insight?.executive_summary ||
@@ -368,7 +368,7 @@ export function AnalyticsPage() {
                     }}
                   >
                     <Sparkles size={14} color="#059669" />
-                    AI Data: Loaded & Verified
+                    Diagnostic Data: Loaded & Verified
                   </span>
                 ) : (
                   <span
@@ -387,7 +387,7 @@ export function AnalyticsPage() {
                     }}
                   >
                     <Loader2 size={14} className="animate-spin" color="#D97706" />
-                    AI Data: Generating Insights...
+                    Diagnostic Data: Generating Insights...
                   </span>
                 )}
               </div>
@@ -496,7 +496,7 @@ export function AnalyticsPage() {
           </h2>
 
           <p style={{ fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 500, margin: 0 }}>
-            You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep AI Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
+            You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
           </p>
 
           <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' }}>

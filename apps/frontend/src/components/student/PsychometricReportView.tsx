@@ -950,17 +950,109 @@ export function PsychometricReportView({
 
   const expandAllHierarchy = () => {
     const allIds: Record<string, boolean> = {};
-    hierarchyData.forEach((s: any) => {
-      allIds[`subj_${s.name}`] = true;
-      s.topics?.forEach((t: any) => {
-        allIds[`top_${s.name}_${t.name}`] = true;
-      });
-    });
+    const traverse = (node: any, currentId: string) => {
+      allIds[currentId] = true;
+      node.topics?.forEach((t: any) => traverse(t, `${currentId}_${t.name}`));
+      node.subtopics?.forEach((s: any) => traverse(s, `${currentId}_${s.name}`));
+    };
+    hierarchyData.forEach((s: any) => traverse(s, `node_${s.name}`));
     setExpandedHierarchyNodes(allIds);
   };
 
   const collapseAllHierarchy = () => {
     setExpandedHierarchyNodes({});
+  };
+
+  const renderHierarchyNode = (node: any, level: number, nodeId: string) => {
+    const isExpanded = !!expandedHierarchyNodes[nodeId];
+    const hasChildren = (node.topics && node.topics.length > 0) || (node.subtopics && node.subtopics.length > 0);
+    const hasQuestions = node.question_numbers && node.question_numbers.length > 0;
+    const isLeaf = !hasChildren;
+
+    const accColor = node.accuracy >= 85 ? '#3A8B53' : node.accuracy >= 70 ? '#10b981' : node.accuracy >= 50 ? '#F2B623' : node.accuracy >= 30 ? '#F47B35' : '#ef4444';
+
+    return (
+      <div key={nodeId} style={{ marginBottom: 4 }}>
+        <div
+          onClick={() => hasChildren ? toggleHierarchyNode(nodeId) : undefined}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            marginLeft: level * 20,
+            backgroundColor: level === 0 ? (isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc') : 'transparent',
+            border: level === 0 ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : 'none',
+            borderBottom: level > 0 ? `1px dashed ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` : undefined,
+            borderRadius: 0,
+            cursor: hasChildren ? 'pointer' : 'default',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {hasChildren ? (
+              isExpanded ? <ChevronDown size={16} color="#64748b" /> : <ChevronRight size={16} color="#64748b" />
+            ) : (
+              <div style={{ width: 16 }} />
+            )}
+            <span style={{
+              fontSize: level === 0 ? 14 : level === 1 ? 13 : 12,
+              fontWeight: level === 0 ? 800 : level === 1 ? 700 : 600,
+              color: isDark ? '#e2e8f0' : '#1e293b'
+            }}>
+              {node.name || 'Unnamed Node'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
+              {node.correct || 0} / {node.total || 0}
+            </span>
+            <span style={{
+              display: 'inline-block',
+              width: 48,
+              textAlign: 'right',
+              fontSize: 12,
+              fontWeight: 800,
+              color: accColor
+            }}>
+              {node.accuracy || 0}%
+            </span>
+          </div>
+        </div>
+
+        {isExpanded && hasChildren && (
+          <div style={{ marginTop: 4 }}>
+            {node.topics && node.topics.map((child: any) => renderHierarchyNode(child, level + 1, `${nodeId}_${child.name}`))}
+            {node.subtopics && node.subtopics.map((child: any) => renderHierarchyNode(child, level + 1, `${nodeId}_${child.name}`))}
+          </div>
+        )}
+        
+        {isExpanded && isLeaf && hasQuestions && !isCumulative && (
+          <div style={{ marginLeft: level * 20 + 36, marginTop: 4, marginBottom: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {node.question_numbers.map((qNum: number) => (
+              <button
+                key={qNum}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleJumpToQuestion(qNum);
+                }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                  color: isDark ? '#cbd5e1' : '#475569',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                  borderRadius: 0,
+                  cursor: 'pointer'
+                }}
+              >
+                Q{qNum}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1060,7 +1152,7 @@ export function PsychometricReportView({
           >
             <div style={{ fontSize: 10.5, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
               {hasAiInsight ? <Sparkles size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
-              AI Diagnostic Status
+              Diagnostic Status
             </div>
             <div style={{ fontSize: 13, fontWeight: 800, color: hasAiInsight ? '#059669' : '#D97706' }}>
               {hasAiInsight ? 'Data Loaded' : 'Generating...'}
@@ -1082,14 +1174,14 @@ export function PsychometricReportView({
         {(isCumulative
           ? [
               { id: 'user-trajectory', label: '1. Longitudinal Trajectory & Core Mastery', icon: TrendingUp },
-              { id: 'topics', label: '2. Syllabus & Subject Mastery Heatmap', icon: BookOpen },
-              { id: 'ai-insights', label: '3. AI Strategic Roadmap & Study Plan', icon: Sparkles },
+              { id: 'topics', label: '2. Topic Hierarchy & Subject Mastery', icon: BookOpen },
+              { id: 'ai-insights', label: '3. Strategic Roadmap & Study Plan', icon: Sparkles },
             ]
           : [
               { id: 'exam-scorecard', label: '1. Exam Scorecard & Performance Metrics', icon: Zap },
               { id: 'questions', label: '2. Question Solutions & Distractor Traps', icon: Target },
-              { id: 'ai-insights', label: '3. AI Insights & Actionable Study Plan', icon: Sparkles },
-              { id: 'topics', label: '4. Syllabus & Category Mastery', icon: BookOpen },
+              { id: 'ai-insights', label: '3. Insights & Actionable Study Plan', icon: Sparkles },
+              { id: 'topics', label: '4. Topic Hierarchy & Category Mastery', icon: BookOpen },
             ]
         ).map((tab) => {
           const IconComp = tab.icon;
@@ -1340,7 +1432,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#E31B23', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.exam_readiness_insight || aiInsights.benchmark_verdict || icrs?.interpretation || 'Multi-factor readiness index evaluating net score against qualification benchmarks.'}
               </div>
@@ -1421,7 +1513,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#3A8B53', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.knowledge_depth_insight || 'Measures underlying conceptual strength independently of question difficulty variations.'}
               </div>
@@ -1510,7 +1602,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#F2B623', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.guessing_and_confidence_insight || gti?.recommendation || 'Differentiates educated 50:50 eliminations from blind impulsive guesses under time pressure.'}
               </div>
@@ -1599,7 +1691,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#8b5cf6', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.elimination_skill_insight || 'Measures how reliably you convert 50:50 elimination choices into net positive marks.'}
               </div>
@@ -1685,7 +1777,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.stamina_and_consistency_insight || satoi?.recommendation || 'Evaluates whether your attempt accuracy and focus remained stable across all quarters of the paper.'}
               </div>
@@ -1771,7 +1863,7 @@ export function PsychometricReportView({
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 800, color: '#ec4899', textTransform: 'uppercase', marginBottom: 2 }}>
-                  💡 AI Diagnostic Context
+                  💡 Mentor's Diagnostic Context
                 </div>
                 {aiInsights.pacing_and_time_insight || 'Tracks whether you allocated sufficient time per question without running into end-of-test time pressure.'}
               </div>
@@ -1861,7 +1953,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.decision_confidence_insight || 'Measures whether second-guessing and switching options produced positive gains or costly negative penalties.'}
                     </div>
@@ -1964,7 +2056,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.trap_resistance_insight || (totalTrapsFallen === 0 ? 'You exhibit strong trap resistance, successfully avoiding high-closeness and inverse fact distractors in the questions you chose to answer.' : `Detected ${totalTrapsFallen} trap selections. Strengthen factual boundary precision on extreme statement options.`)}
                     </div>
@@ -2057,7 +2149,7 @@ export function PsychometricReportView({
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', marginBottom: 2 }}>
-                        💡 AI Diagnostic Context
+                        💡 Mentor's Diagnostic Context
                       </div>
                       {aiInsights.critical_vulnerabilities?.[0] || 'Focus on high-yield revision tasks listed below to maximize your score.'}
                     </div>
@@ -2207,8 +2299,8 @@ export function PsychometricReportView({
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E' }}>
                   {hasAiInsight
-                    ? (isCumulative ? '✨ AI Longitudinal Strategic Diagnostic: Ready & Synthesized' : '✨ AI Cognitive Diagnostic & Revision Plan: Ready')
-                    : '⏳ AI Mentorship Engine: Synthesizing Cognitive Insights & Tasks...'}
+                    ? (isCumulative ? '✨ Longitudinal Strategic Diagnostic: Ready & Synthesized' : '✨ Cognitive Diagnostic & Revision Plan: Ready')
+                    : '⏳ Mentorship Engine: Synthesizing Cognitive Insights & Tasks...'}
                 </div>
                 <div style={{ fontSize: 12.5, color: hasAiInsight ? '#047857' : '#B45309' }}>
                   {hasAiInsight
@@ -2231,7 +2323,7 @@ export function PsychometricReportView({
                   letterSpacing: '0.04em',
                 }}
               >
-                AI DATA VERIFIED
+                DATA VERIFIED
               </span>
             )}
           </div>
@@ -2269,7 +2361,7 @@ export function PsychometricReportView({
                       color: isDark ? '#ffffff' : '#172033',
                     }}
                   >
-                    {isCumulative ? 'AI Longitudinal Strategic Master Evaluation' : 'AI Cognitive Diagnostic Report'}
+                    {isCumulative ? 'Longitudinal Strategic Master Evaluation' : 'Cognitive Diagnostic Report'}
                   </h3>
                   {!hasAiInsight && (
                     <span
@@ -2623,7 +2715,7 @@ export function PsychometricReportView({
                             color: isDark ? '#ffffff' : '#172033',
                           }}
                         >
-                          AI-Recommended Study Plan Tasks ({rawTasksList.length} Action Items)
+                          Mentor-Recommended Study Plan Tasks ({rawTasksList.length} Action Items)
                         </h3>
                         <span
                           style={{
@@ -4570,6 +4662,19 @@ export function PsychometricReportView({
                     );
                   });
                 })()}
+              </div>
+            </div>
+
+            {/* Interactive Hierarchy Tree */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Layers size={18} color="#E31B23" />
+                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
+                  Subject & Topic Hierarchy Breakdown
+                </h4>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {hierarchyData.map((node: any) => renderHierarchyNode(node, 0, `node_${node.name}`))}
               </div>
             </div>
 

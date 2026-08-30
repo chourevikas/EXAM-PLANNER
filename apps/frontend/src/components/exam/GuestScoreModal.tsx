@@ -41,7 +41,19 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
   };
 
   const handlePrimaryAction = () => {
+    if (!isLoggedIn) {
+      handleOpenAuth('signup');
+      return;
+    }
     onClose();
+    if (scoreData.attemptId) {
+      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
+    } else {
+      navigate('/analytics');
+    }
+  };
+
+  const handleAuthSuccess = () => {
     if (scoreData.attemptId) {
       navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
     } else {
@@ -51,6 +63,14 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
   return (
     <>
+      <AuthModal
+        isOpen={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSwitchMode={setAuthMode}
+        onSuccess={handleAuthSuccess}
+        redirectUrl={scoreData?.attemptId ? `/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}` : '/analytics'}
+      />
       <div
         style={{
           position: 'fixed',

@@ -1755,6 +1755,9 @@ export function GuestExamPage() {
                                     width: '100%',
                                   }}
                                 >
+                                  <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
+                                    {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
+                                  </div>
                                   <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
                                     {opt.option_label}.
                                   </span>
@@ -1975,6 +1978,9 @@ export function GuestExamPage() {
                                       width: '100%',
                                     }}
                                   >
+                                    <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
+                                      {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
+                                    </div>
                                     <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
                                       {opt.option_label}.
                                     </span>

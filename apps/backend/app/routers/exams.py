@@ -629,7 +629,7 @@ async def get_exam_integrity_questions(
     ),
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Language"),
     page: int = Query(default=1, ge=1, description="Page number"),
-    limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
+    limit: int = Query(default=250, ge=1, le=500, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
