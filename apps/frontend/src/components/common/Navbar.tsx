@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Logo } from './Logo';
 import { Ico } from './Icons';
@@ -12,6 +12,7 @@ interface NavbarProps {
 
 export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,6 +72,12 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
 
   const handleNavClick = (targetId: string) => {
     setMobileMenuOpen(false);
+    // These anchors only exist on the landing page - navigate home first if elsewhere,
+    // and let LandingPage's hash-scroll effect handle the actual scroll on arrival.
+    if (location.pathname !== '/') {
+      navigate(`/${targetId}`);
+      return;
+    }
     const element = document.querySelector(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -85,12 +92,29 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     onLogin();
   };
 
-  const navItems = [
+  const handleSignupClick = () => {
+    setMobileMenuOpen(false);
+    onSignup();
+  };
+
+  const navItems: Array<{ label: string; targetId?: string; to?: string }> = [
     { label: 'Platform', targetId: '#features' },
     { label: 'Methodology', targetId: '#how-it-works' },
-    { label: 'Plans', targetId: '#pricing' },
-    { label: 'About Us', targetId: '#footer' },
+    { label: 'Plans', to: '/plans' },
+    { label: 'About Us', to: '/about' },
+    { label: 'Contact Us', to: '/contact' },
   ];
+
+  const handleNavItemClick = (item: { targetId?: string; to?: string }) => {
+    if (item.to) {
+      setMobileMenuOpen(false);
+      navigate(item.to);
+      return;
+    }
+    if (item.targetId) {
+      handleNavClick(item.targetId);
+    }
+  };
 
   return (
     <>
@@ -138,7 +162,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                   display: 'inline-flex',
                   alignItems: 'center',
                 }}
-                onClick={() => handleNavClick(item.targetId)}
+                onClick={() => handleNavItemClick(item)}
               >
                 {item.label}
               </button>
@@ -156,13 +180,22 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                 Go to Dashboard
               </button>
             ) : (
-              <button
-                className="btn btn-primary anim-glow touch-target"
-                style={{ padding: '10px 24px', fontSize: 14 }}
-                onClick={onLogin}
-              >
-                Get Started
-              </button>
+              <>
+                <button
+                  className="btn btn-ghost touch-target"
+                  style={{ padding: '10px 20px', fontSize: 14 }}
+                  onClick={onLogin}
+                >
+                  Login
+                </button>
+                <button
+                  className="btn btn-primary anim-glow touch-target"
+                  style={{ padding: '10px 24px', fontSize: 14 }}
+                  onClick={onSignup}
+                >
+                  Get Started
+                </button>
+              </>
             )}
           </div>
 
@@ -207,7 +240,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                     width: '100%',
                     justifyContent: 'flex-start',
                   }}
-                  onClick={() => handleNavClick(item.targetId)}
+                  onClick={() => handleNavItemClick(item)}
                 >
                   {item.label}
                 </button>
@@ -234,13 +267,22 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                     Go to Dashboard
                   </button>
                 ) : (
-                  <button
-                    className="btn btn-primary anim-glow"
-                    style={{ width: '100%', padding: '12px', fontSize: 15 }}
-                    onClick={handleLoginClick}
-                  >
-                    Get Started
-                  </button>
+                  <>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                      onClick={handleLoginClick}
+                    >
+                      Login
+                    </button>
+                    <button
+                      className="btn btn-primary anim-glow"
+                      style={{ width: '100%', padding: '12px', fontSize: 15 }}
+                      onClick={handleSignupClick}
+                    >
+                      Get Started
+                    </button>
+                  </>
                 )}
               </div>
             </div>

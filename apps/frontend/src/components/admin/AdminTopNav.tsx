@@ -6,7 +6,6 @@ import {
   Search,
   Bell,
   ChevronRight,
-  Shield,
   Upload,
   User,
   LogOut,
@@ -151,20 +150,16 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
           onClick={() => onNavigate('dashboard')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
         >
-          <div
+          <img
+            src="/logo.jpeg"
+            alt="ExamPlanner"
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 0,
-              background: '#E31B23',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              objectFit: 'contain',
               flexShrink: 0
             }}
-          >
-            <Shield size={16} color="#ffffff" />
-          </div>
+          />
           {!isSmallScreen && (
             <span
               style={{

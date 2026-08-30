@@ -41,6 +41,12 @@ logger = setup_logger("PostSubmissionPipeline")
 EXAM_SOLUTIONS_SLIDING_CACHE: Dict[str, Dict[str, Any]] = {}
 CACHE_TTL_SECONDS = 0  # 0 seconds to disable cache due to issues
 
+# Per-Process Cache: remembers which (folder-prefix, filename-pattern) combo resolved a question/solution
+# file for a given exam code, so subsequent questions and future attempts on the same exam skip straight
+# to the known-good path instead of re-probing every prefix/pattern combination from scratch.
+_S3_QUESTION_PATTERN_CACHE: Dict[str, Tuple[int, int]] = {}
+_S3_SOLUTION_PATTERN_CACHE: Dict[str, Tuple[int, int]] = {}
+
 
 def get_cached_solutions_data(exam_code: str) -> Optional[Dict[str, Any]]:
     now = datetime.now(timezone.utc).timestamp()
@@ -247,14 +253,17 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         select(UserMemoryState).where(UserMemoryState.user_id == user.id)
     )
     user_memories = mem_res.all()
-    _mem_subtopic_ids = list({m.subtopic_id for m in user_memories if m.subtopic_id})
-    _mem_subtopic_map: Dict[Any, Subtopic] = {}
-    if _mem_subtopic_ids:
-        _st_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(_mem_subtopic_ids)))
-        _mem_subtopic_map = {s.id: s for s in _st_res.all()}
+
+    # Batch-load all referenced Subtopics in 1 query instead of 1-per-memory-record
+    mem_subtopic_ids = [m.subtopic_id for m in user_memories if m.subtopic_id]
+    mem_subtopic_map: Dict[Any, Subtopic] = {}
+    if mem_subtopic_ids:
+        mem_sub_res = await session.exec(select(Subtopic).where(col(Subtopic.id).in_(mem_subtopic_ids)))
+        mem_subtopic_map = {s.id: s for s in mem_sub_res.all()}
+
     topic_mem_records = []
     for m in user_memories:
-        sub = _mem_subtopic_map.get(m.subtopic_id) if m.subtopic_id else None
+        sub = mem_subtopic_map.get(m.subtopic_id) if m.subtopic_id else None
         last_rev = m.last_reviewed_at.replace(tzinfo=timezone.utc) if m.last_reviewed_at.tzinfo is None else m.last_reviewed_at
         elapsed = (datetime.now(timezone.utc) - last_rev).total_seconds() / 86400.0
         topic_mem_records.append({
@@ -331,48 +340,69 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         except Exception as sol_err:
             logger.debug(f"Master solutions JSON load failed: {sol_err}")
 
+    # Helper: attempt a single direct download instead of exists()-then-download (halves round trips,
+    # since a miss now costs 1 call instead of 2 and a hit costs 1 call instead of 2).
+    async def _try_download(path: str) -> Optional[Dict[str, Any]]:
+        try:
+            return await storage.download_json(path)
+        except Exception:
+            return None
+
+    # Resolve a question/solution file for this exam, trying the previously-discovered prefix/pattern
+    # combo first (all questions in an exam share the same naming convention), and only falling back to
+    # the full brute-force probe if that cached guess misses.
+    async def _resolve_variant(
+        prefixes: List[str], patterns: List[str], cache: Dict[str, Tuple[int, int]]
+    ) -> Optional[Dict[str, Any]]:
+        cached = cache.get(exam.code)
+        if cached:
+            p_idx, pat_idx = cached
+            if p_idx < len(prefixes) and pat_idx < len(patterns):
+                data = await _try_download(f"{prefixes[p_idx].rstrip('/')}/{patterns[pat_idx]}")
+                if data:
+                    return data
+        for p_idx, prefix in enumerate(prefixes):
+            for pat_idx, pattern in enumerate(patterns):
+                if cached == (p_idx, pat_idx):
+                    continue  # already tried above
+                data = await _try_download(f"{prefix.rstrip('/')}/{pattern}")
+                if data:
+                    cache[exam.code] = (p_idx, pat_idx)
+                    return data
+        return None
+
     # Helper function to fetch individual S3 question and solution JSON
     async def _fetch_individual_s3_pair(q_num: int):
-        q_data = None
-        for q_prefix in [q_folder, alt_q_folder]:
-            for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"]:
-                q_file = f"{q_prefix.rstrip('/')}/{pattern}"
-                try:
-                    if await storage.exists(q_file):
-                        q_data = await storage.download_json(q_file)
-                        if q_data:
-                            break
-                except Exception:
-                    pass
-            if q_data:
-                break
-
-        sol_data = None
-        for s_prefix in [s_folder, alt_s_folder]:
-            for pattern in [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"]:
-                s_file = f"{s_prefix.rstrip('/')}/{pattern}"
-                try:
-                    if await storage.exists(s_file):
-                        sol_data = await storage.download_json(s_file)
-                        if sol_data:
-                            break
-                except Exception:
-                    pass
-            if sol_data:
-                break
-
+        q_data = await _resolve_variant(
+            [q_folder, alt_q_folder],
+            [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"],
+            _S3_QUESTION_PATTERN_CACHE,
+        )
+        sol_data = await _resolve_variant(
+            [s_folder, alt_s_folder],
+            [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"],
+            _S3_SOLUTION_PATTERN_CACHE,
+        )
         return q_num, q_data, sol_data
 
-    # For practice/guest exams, batch fetch individual S3 question/solution JSONs in parallel
+    # For practice/guest exams, batch fetch individual S3 question/solution JSONs in parallel.
+    # Resolve question 1 first (sequentially) to warm the per-exam pattern cache, so the remaining
+    # questions - fetched concurrently - go straight to the discovered pattern in 1 call each instead
+    # of every question independently probing up to 12 prefix/pattern combinations.
     indiv_s3_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
     if is_practice_or_guest:
         q_nums_to_fetch = list(range(1, len(responses_db) + 1))
-        fetch_tasks = [_fetch_individual_s3_pair(num) for num in q_nums_to_fetch]
-        fetch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
-        for res in fetch_results:
-            if isinstance(res, tuple) and len(res) == 3:
-                num, q_d, s_d = res
-                indiv_s3_map[num] = (q_d, s_d)
+        if q_nums_to_fetch:
+            first_num, first_q, first_sol = await _fetch_individual_s3_pair(q_nums_to_fetch[0])
+            indiv_s3_map[first_num] = (first_q, first_sol)
+            remaining_nums = q_nums_to_fetch[1:]
+            if remaining_nums:
+                fetch_tasks = [_fetch_individual_s3_pair(num) for num in remaining_nums]
+                fetch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
+                for res in fetch_results:
+                    if isinstance(res, tuple) and len(res) == 3:
+                        num, q_d, s_d = res
+                        indiv_s3_map[num] = (q_d, s_d)
 
     # For full exams: pre-batch any questions missing from master JSON to avoid serial awaits in loop
     _full_exam_fallback_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
@@ -890,6 +920,9 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         tax_map[(norm_t, norm_c)] = m
         tax_map[(norm_t, norm_n)] = m
 
+    # Compute all taxonomy row updates in-memory first (no DB calls), then persist in a single
+    # bulk upsert statement instead of 1 upsert exec per distinct taxonomy item.
+    tax_rows: List[Dict[str, Any]] = []
     for (norm_type, norm_code), item in aggregated_tax.items():
         m_obj = tax_map.get((norm_type, norm_code)) or tax_map.get((norm_type, item["taxonomy_name"].strip().upper()))
         if not m_obj:
@@ -903,27 +936,59 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
             acc = round((cor / max(1, tot)) * 100.0, 1)
             st = "STRONG" if acc >= 75.0 else ("MODERATE" if acc >= 50.0 else "WEAK_REVISION_REQUIRED")
 
-        if not m_obj:
-            m_obj = UserTaxonomyMastery(
-                user_id=user.id,
-                taxonomy_type=norm_type,
-                taxonomy_id_code=norm_code,
-                taxonomy_name=item["taxonomy_name"],
-                total_attempts=tot,
-                correct_attempts=cor,
-                mastery_percentage=acc,
-                strength_status=st,
-                updated_at=datetime.now(timezone.utc),
+        tax_rows.append({
+            "id": uuid.uuid4(),
+            "user_id": user.id,
+            "taxonomy_type": norm_type,
+            "taxonomy_id_code": norm_code,
+            "taxonomy_name": item["taxonomy_name"],
+            "total_attempts": tot,
+            "correct_attempts": cor,
+            "mastery_percentage": acc,
+            "strength_status": st,
+            "updated_at": datetime.now(timezone.utc),
+        })
+
+    if tax_rows:
+        try:
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            stmt = pg_insert(UserTaxonomyMastery).values(tax_rows)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
+                set_={
+                    "taxonomy_name": stmt.excluded.taxonomy_name,
+                    "total_attempts": stmt.excluded.total_attempts,
+                    "correct_attempts": stmt.excluded.correct_attempts,
+                    "mastery_percentage": stmt.excluded.mastery_percentage,
+                    "strength_status": stmt.excluded.strength_status,
+                    "updated_at": stmt.excluded.updated_at,
+                },
             )
-            tax_map[(norm_type, norm_code)] = m_obj
-        else:
-            m_obj.taxonomy_name = item["taxonomy_name"]
-            m_obj.total_attempts = tot
-            m_obj.correct_attempts = cor
-            m_obj.mastery_percentage = acc
-            m_obj.strength_status = st
-            m_obj.updated_at = datetime.now(timezone.utc)
-        session.add(m_obj)
+            await session.exec(stmt)
+        except Exception:
+            # Fallback for non-Postgres backends without multi-row ON CONFLICT support
+            for row in tax_rows:
+                m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
+                    (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
+                )
+                if not m_obj:
+                    session.add(UserTaxonomyMastery(
+                        user_id=row["user_id"],
+                        taxonomy_type=row["taxonomy_type"],
+                        taxonomy_id_code=row["taxonomy_id_code"],
+                        taxonomy_name=row["taxonomy_name"],
+                        total_attempts=row["total_attempts"],
+                        correct_attempts=row["correct_attempts"],
+                        mastery_percentage=row["mastery_percentage"],
+                        strength_status=row["strength_status"],
+                    ))
+                else:
+                    m_obj.total_attempts = row["total_attempts"]
+                    m_obj.correct_attempts = row["correct_attempts"]
+                    m_obj.mastery_percentage = row["mastery_percentage"]
+                    m_obj.strength_status = row["strength_status"]
+                    m_obj.updated_at = row["updated_at"]
+                    session.add(m_obj)
 
     # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
     now_t = datetime.now(timezone.utc)

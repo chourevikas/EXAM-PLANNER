@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus } from 'lucide-react';
+import { Sparkles, ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home } from 'lucide-react';
 import { AuthModal, AuthMode } from '../auth/AuthModal';
 
 interface GuestScoreModalProps {
@@ -61,6 +61,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
     }
   };
 
+  const handleGoHome = () => {
+    onClose();
+    navigate('/');
+  };
+
   return (
     <>
       <AuthModal
@@ -102,6 +107,40 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             overflow: 'hidden',
           }}
         >
+          {/* Close & Go Home Button */}
+          <button
+            type="button"
+            onClick={handleGoHome}
+            aria-label="Close and go to homepage"
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              zIndex: 2,
+              width: 32,
+              height: 32,
+              borderRadius: 0,
+              border: '1.5px solid #E2E8F0',
+              backgroundColor: '#FFFFFF',
+              color: '#64748B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#F8FAFC';
+              e.currentTarget.style.color = '#172033';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#FFFFFF';
+              e.currentTarget.style.color = '#64748B';
+            }}
+          >
+            <X size={16} strokeWidth={2.2} />
+          </button>
+
           {/* Playful Floating Bubbly Accents */}
           <div
             style={{
@@ -420,6 +459,28 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                 </button>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={handleGoHome}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                background: 'none',
+                border: 'none',
+                color: '#64748B',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '2px 0',
+                marginTop: 2,
+              }}
+            >
+              <Home size={13} strokeWidth={2.2} />
+              <span>Back to Home</span>
+            </button>
           </div>
         </div>
       </div>
