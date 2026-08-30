@@ -498,4 +498,143 @@ export async function fetchAdminOverviewStats(): Promise<AdminOverviewStats> {
 }
 
 
+export interface QuestionOptionPayload {
+  option_id?: string | number;
+  option_label: string;
+  display_order?: number;
+  option_text: string;
+  is_correct: boolean;
+  distractor_analysis?: string;
+  closeness_score?: number;
+}
+
+export interface QuestionCreatePayload {
+  exam_id: string | number;
+  question_number_in_paper: number;
+  question_text: string;
+  paper_set_code?: string;
+  section_code?: string;
+  question_type?: string;
+  difficulty?: string;
+  marks?: number;
+  negative_marks?: number;
+  expected_time_seconds?: number;
+  options?: QuestionOptionPayload[];
+  passage_text?: string;
+  core_concept?: string;
+  detailed_solution?: string;
+  common_traps?: string[];
+  key_takeaways?: string[];
+  subject_name?: string;
+  topic_name?: string;
+  subtopic_name?: string;
+  subject_id?: string | number;
+  topic_id?: string | number;
+  subtopic_id?: string | number;
+  language?: string;
+}
+
+export interface QuestionIssueDetail {
+  question_id?: string | null;
+  question_number_in_paper: number;
+  status: string;
+  issue_category: 'MISSING_IN_PAPER' | 'CORRUPTED' | 'PARTIALLY_CORRUPTED' | 'VALID';
+  issues: string[];
+  has_statement?: boolean;
+  has_options?: boolean;
+  has_correct_option?: boolean;
+  has_explanation?: boolean;
+  has_valid_syllabus?: boolean;
+  subject?: string | null;
+  topic?: string | null;
+  subtopic?: string | null;
+  question_text_preview?: string | null;
+  options_count?: number;
+  is_complete?: boolean;
+  requires_human_review?: boolean;
+}
+
+export interface ExamIntegrityQuestionsResponse {
+  exam_id: string | number;
+  exam_name?: string;
+  paper_set_code?: string;
+  total_expected_questions: number;
+  total_extracted_questions: number;
+  corrupted_count: number;
+  partially_corrupted_count: number;
+  missing_count: number;
+  valid_count: number;
+  missing_question_numbers: number[];
+  page: number;
+  limit: number;
+  total_items: number;
+  pages: number;
+  items: QuestionIssueDetail[];
+}
+
+export async function createAdminQuestion(payload: QuestionCreatePayload): Promise<any> {
+  const res = await fetch('/api/v1/questions', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to create question' }));
+    throw new Error(errorData.detail || 'Question creation failed.');
+  }
+  return await res.json();
+}
+
+export async function fetchExamIntegrityQuestions(
+  examId: string | number,
+  issueType?: string,
+  page: number = 1,
+  limit: number = 100
+): Promise<ExamIntegrityQuestionsResponse> {
+  let url = `/api/v1/exams/${encodeURIComponent(examId)}/integrity-questions?page=${page}&limit=${limit}`;
+  if (issueType && issueType !== 'ALL') {
+    url += `&issue_type=${encodeURIComponent(issueType)}`;
+  }
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam integrity questions' }));
+    throw new Error(errorData.detail || 'Could not fetch exam integrity questions.');
+  }
+  return await res.json();
+}
+
+export async function fetchExamsByYear(): Promise<any> {
+  const res = await fetch('/api/v1/exams/by-year', { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exams grouped by year' }));
+    throw new Error(errorData.detail || 'Could not fetch exams by year.');
+  }
+  return await res.json();
+}
+
+export async function fetchMasterSyllabus(examId?: string | number): Promise<any> {
+  const url = examId ? `/api/v1/exams/${encodeURIComponent(examId)}/syllabus` : '/api/v1/syllabus';
+  const res = await fetch(url, { headers: getAuthHeader() });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch syllabus hierarchy' }));
+    throw new Error(errorData.detail || 'Could not fetch syllabus.');
+  }
+  return await res.json();
+}
+
+export async function verifySyllabusTaxonomy(subject: string, topic: string, subtopic: string): Promise<any> {
+  const res = await fetch('/api/v1/syllabus/verify', {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify({ subject, topic, subtopic }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to verify syllabus node' }));
+    throw new Error(errorData.detail || 'Syllabus node verification failed.');
+  }
+  return await res.json();
+}
+
+
+
 

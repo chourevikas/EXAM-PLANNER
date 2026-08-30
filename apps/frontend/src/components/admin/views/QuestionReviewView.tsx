@@ -46,8 +46,13 @@ import {
   updateAdminQuestionStatus,
   approveAndPublishExam,
   syncExamToS3,
+  fetchExamIntegrityQuestions,
   ExamPipelineStatusItem,
+  ExamIntegrityQuestionsResponse,
 } from '../../../services/adminService';
+import { MissingQuestionsView } from './MissingQuestionsView';
+import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
+
 
 interface QuestionOptionItem {
   option_id?: string;
@@ -139,8 +144,26 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     }
   }, [initialExam]);
 
+  // Top Navigation Tab state ('review' | 'missing')
+  const [qaTab, setQaTab] = useState<'review' | 'missing'>('review');
+
+  // Integrity & Missing Question Diagnostics State for Selected Exam
+  const [examIntegrity, setExamIntegrity] = useState<ExamIntegrityQuestionsResponse | null>(null);
+  const [isAddMissingModalOpen, setIsAddMissingModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (selectedExam?.id) {
+      fetchExamIntegrityQuestions(selectedExam.id)
+        .then((res) => setExamIntegrity(res))
+        .catch((err) => console.warn('Failed to fetch exam integrity:', err));
+    } else {
+      setExamIntegrity(null);
+    }
+  }, [selectedExam?.id]);
+
   // Exams List & Directory State
   const [examsList, setExamsList] = useState<ExamPipelineStatusItem[]>([]);
+
   const [loadingExams, setLoadingExams] = useState<boolean>(true);
   const [examSearchQuery, setExamSearchQuery] = useState<string>('');
   const [examStatusFilter, setExamStatusFilter] = useState<string>('ALL');
@@ -909,15 +932,77 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           </div>
         )}
 
-        {/* Page Header */}
+        {/* Page Header & Sub-Tab Navigation Bar */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
-            Question & Solution QA Review Hub
-          </h1>
-          <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
-            Inspect extracted questions, verify 4-parameter solutions & option distractor analyses, update taxonomy, and approve exam packages for S3 release.
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
+                Question & Solution QA Review Hub
+              </h1>
+              <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
+                Inspect extracted questions, verify 4-parameter solutions & option distractor analyses, update taxonomy, and approve exam packages for S3 release.
+              </p>
+            </div>
+
+            {/* QA Sub-Tab Navigation */}
+            <div style={{ display: 'flex', backgroundColor: '#E2E8F0', padding: 4, borderRadius: 8 }}>
+              <button
+                onClick={() => setQaTab('review')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: qaTab === 'review' ? '#ffffff' : 'transparent',
+                  color: qaTab === 'review' ? '#0F172A' : '#64748B',
+                  boxShadow: qaTab === 'review' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <BookOpen size={16} />
+                <span>Paper Review Directory</span>
+              </button>
+              <button
+                onClick={() => setQaTab('missing')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  backgroundColor: qaTab === 'missing' ? '#ffffff' : 'transparent',
+                  color: qaTab === 'missing' ? '#DC2626' : '#64748B',
+                  boxShadow: qaTab === 'missing' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <AlertTriangle size={16} color={qaTab === 'missing' ? '#DC2626' : '#64748B'} />
+                <span>Missing Questions Screen</span>
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* If Missing Questions Tab is active */}
+        {qaTab === 'missing' ? (
+          <MissingQuestionsView
+            onSelectExam={(exam) => {
+              setSelectedExam(exam);
+              setQaTab('review');
+            }}
+          />
+        ) : (
+          <>
+
 
         {/* Filters and Search Bar */}
         <div
@@ -1096,6 +1181,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </table>
           )}
         </div>
+        </>
+        )}
       </div>
     );
   }
@@ -1213,8 +1300,29 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
           </div>
 
-          {/* S3 Publish Action Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Action Buttons: Add Missing Question & S3 Publish */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setIsAddMissingModalOpen(true)}
+              style={{
+                padding: '9px 16px',
+                backgroundColor: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                color: '#DC2626',
+                borderRadius: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              title="Manually add a missing question to this exam paper"
+            >
+              <Plus size={16} color="#DC2626" />
+              Add Missing Question
+            </button>
+
             {s3PublishStatus.is_published ? (
               <button
                 disabled={true}
@@ -1329,6 +1437,97 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             )}
           </div>
         </div>
+
+        {/* Missing Questions Alert Banner */}
+        {examIntegrity && examIntegrity.missing_count > 0 && (
+          <div
+            style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.03)',
+              backdropFilter: 'blur(4px)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: 10,
+              padding: '14px 20px',
+              marginTop: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+              boxShadow: '0 1px 3px rgba(220, 38, 38, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#DC2626',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#991B1B' }}>
+                  {examIntegrity.missing_count} Missing Question{examIntegrity.missing_count > 1 ? 's' : ''} in this Exam Paper ({examIntegrity.total_extracted_questions} / {examIntegrity.total_expected_questions} Extracted)
+                </div>
+                <div style={{ fontSize: 12, color: '#B91C1C', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>Missing Question Numbers:</span>
+                  {examIntegrity.missing_question_numbers.slice(0, 12).map((n) => (
+                    <span
+                      key={n}
+                      style={{
+                        fontWeight: 600,
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.22)',
+                        color: '#B91C1C',
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        fontSize: 11.5,
+                      }}
+                    >
+                      #{n}
+                    </span>
+                  ))}
+                  {examIntegrity.missing_question_numbers.length > 12 && (
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: '#DC2626' }}>
+                      +{examIntegrity.missing_question_numbers.length - 12} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsAddMissingModalOpen(true)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#E31B23',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 4px rgba(227, 27, 35, 0.2)',
+              }}
+            >
+              <Plus size={16} />
+              <span>Add Missing Question #{examIntegrity.missing_question_numbers[0]}</span>
+            </button>
+          </div>
+        )}
+
+
 
         {/* Dedicated S3 Pipeline Status Banner (In-Progress vs Out-of-Sync vs In-Sync vs Failed) */}
         {s3PublishStatus.is_syncing && (
@@ -3600,6 +3799,30 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           </div>
         </div>
       )}
+
+      {/* Add Missing Question Modal */}
+      {selectedExam && (
+        <AddMissingQuestionModal
+          isOpen={isAddMissingModalOpen}
+          onClose={() => setIsAddMissingModalOpen(false)}
+          exam={{
+            id: selectedExam.id,
+            name: selectedExam.name,
+            code: selectedExam.code,
+            paper_set_code: selectedExam.paper_set_code,
+            missing_question_numbers: examIntegrity?.missing_question_numbers || [],
+          }}
+          onSuccess={() => {
+            showToast('success', 'Missing question created and published successfully!');
+            loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex);
+            fetchExamIntegrityQuestions(selectedExam.id)
+              .then((res) => setExamIntegrity(res))
+              .catch(() => {});
+          }}
+        />
+      )}
     </div>
   );
 }
+
+
