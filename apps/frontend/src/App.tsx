@@ -4,70 +4,66 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { UserRole } from './types/auth';
 
 const LandingPage = lazy(() =>
-  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage }))
+  import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })),
 );
 const SignInPage = lazy(() =>
-  import('./pages/SignInPage').then((m) => ({ default: m.SignInPage }))
+  import('./pages/SignInPage').then((m) => ({ default: m.SignInPage })),
 );
 const SignUpPage = lazy(() =>
-  import('./pages/SignUpPage').then((m) => ({ default: m.SignUpPage }))
+  import('./pages/SignUpPage').then((m) => ({ default: m.SignUpPage })),
 );
 const DashboardPage = lazy(() =>
-  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
 const StudyPlannerPage = lazy(() =>
-  import('./pages/StudyPlannerPage').then((m) => ({ default: m.StudyPlannerPage }))
+  import('./pages/StudyPlannerPage').then((m) => ({ default: m.StudyPlannerPage })),
 );
 const AnalyticsPage = lazy(() =>
-  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
+  import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 );
 const WeeklyInsightsPage = lazy(() =>
-  import('./pages/WeeklyInsightsPage').then((m) => ({ default: m.WeeklyInsightsPage }))
+  import('./pages/WeeklyInsightsPage').then((m) => ({ default: m.WeeklyInsightsPage })),
 );
 const MonthlyReportPage = lazy(() =>
-  import('./pages/MonthlyReportPage').then((m) => ({ default: m.MonthlyReportPage }))
+  import('./pages/MonthlyReportPage').then((m) => ({ default: m.MonthlyReportPage })),
 );
 const ProfilePage = lazy(() =>
-  import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+  import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
 const GuestExamPage = lazy(() =>
-  import('./pages/GuestExamPage').then((m) => ({ default: m.GuestExamPage }))
+  import('./pages/GuestExamPage').then((m) => ({ default: m.GuestExamPage })),
 );
 const StudentPracticeExamPage = lazy(() =>
-  import('./pages/StudentPracticeExamPage').then((m) => ({ default: m.StudentPracticeExamPage }))
+  import('./pages/StudentPracticeExamPage').then((m) => ({ default: m.StudentPracticeExamPage })),
 );
 const ExamEnginePage = lazy(() =>
-  import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage }))
+  import('./pages/ExamEnginePage').then((m) => ({ default: m.ExamEnginePage })),
 );
-const AdminPage = lazy(() =>
-  import('./pages/AdminPage').then((m) => ({ default: m.AdminPage }))
-);
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const SuperAdminPage = lazy(() =>
-  import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage }))
+  import('./pages/SuperAdminPage').then((m) => ({ default: m.SuperAdminPage })),
 );
 const PYQSelectionPage = lazy(() =>
-  import('./pages/PYQSelectionPage').then((m) => ({ default: m.PYQSelectionPage }))
+  import('./pages/PYQSelectionPage').then((m) => ({ default: m.PYQSelectionPage })),
 );
 const MockSelectionPage = lazy(() =>
-  import('./pages/MockSelectionPage').then((m) => ({ default: m.MockSelectionPage }))
+  import('./pages/MockSelectionPage').then((m) => ({ default: m.MockSelectionPage })),
 );
 const PricingPage = lazy(() =>
-  import('./pages/PricingPage').then((m) => ({ default: m.PricingPage }))
+  import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })),
 );
-const PlansPage = lazy(() =>
-  import('./pages/PlansPage').then((m) => ({ default: m.PlansPage }))
-);
+const PlansPage = lazy(() => import('./pages/PlansPage').then((m) => ({ default: m.PlansPage })));
 const AboutUsPage = lazy(() =>
-  import('./pages/AboutUsPage').then((m) => ({ default: m.AboutUsPage }))
+  import('./pages/AboutUsPage').then((m) => ({ default: m.AboutUsPage })),
 );
 const ContactUsPage = lazy(() =>
-  import('./pages/ContactUsPage').then((m) => ({ default: m.ContactUsPage }))
+  import('./pages/ContactUsPage').then((m) => ({ default: m.ContactUsPage })),
 );
 const VerifyEmailPage = lazy(() =>
-  import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage }))
+  import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })),
 );
 const BookmarksPage = lazy(() =>
-  import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage }))
+  import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })),
 );
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
@@ -86,7 +82,16 @@ function LoadingFallback() {
         fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
       }}
     >
-      <div style={{ position: 'relative', width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'relative',
+          width: 64,
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <div
           style={{
             position: 'absolute',
@@ -104,7 +109,7 @@ function LoadingFallback() {
         />
       </div>
       <div style={{ color: '#172033', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>
-        Loading ExamPlanner...
+        ExamPlanner
       </div>
     </div>
   );
@@ -131,7 +136,9 @@ export default function App() {
           <Route
             path="/practice-exam"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <StudentPracticeExamPage />
               </ProtectedRoute>
             }
@@ -141,7 +148,9 @@ export default function App() {
           <Route
             path="/exam/:examId"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <ExamEnginePage />
               </ProtectedRoute>
             }
@@ -149,7 +158,9 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -157,7 +168,9 @@ export default function App() {
           <Route
             path="/study-planner"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <StudyPlannerPage />
               </ProtectedRoute>
             }
@@ -165,7 +178,9 @@ export default function App() {
           <Route
             path="/analytics"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <AnalyticsPage />
               </ProtectedRoute>
             }
@@ -173,7 +188,9 @@ export default function App() {
           <Route
             path="/reports/weekly"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <WeeklyInsightsPage />
               </ProtectedRoute>
             }
@@ -181,7 +198,9 @@ export default function App() {
           <Route
             path="/reports/monthly"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <MonthlyReportPage />
               </ProtectedRoute>
             }
@@ -189,7 +208,9 @@ export default function App() {
           <Route
             path="/pyq"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <PYQSelectionPage />
               </ProtectedRoute>
             }
@@ -197,7 +218,9 @@ export default function App() {
           <Route
             path="/mocks"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <MockSelectionPage />
               </ProtectedRoute>
             }
@@ -205,7 +228,9 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <ProfilePage />
               </ProtectedRoute>
             }
@@ -213,7 +238,9 @@ export default function App() {
           <Route
             path="/bookmarks"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <BookmarksPage />
               </ProtectedRoute>
             }
@@ -221,7 +248,9 @@ export default function App() {
           <Route
             path="/pricing"
             element={
-              <ProtectedRoute allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
                 <PricingPage />
               </ProtectedRoute>
             }
