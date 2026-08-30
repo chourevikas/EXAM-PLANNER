@@ -15,7 +15,6 @@ import {
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { formatEnum } from '../../utils/formatEnum';
 
 interface ExamQuestionCardProps {
   question:
@@ -319,11 +318,7 @@ export function ExamQuestionCard({
   const optionMarkdownComponents: any = {
     p: ({ node, ...props }: any) => (
       <span
-        style={{
-          display: 'inline',
-          margin: 0,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-        }}
+        style={{ display: 'inline', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         {...props}
       />
     ),
@@ -471,7 +466,7 @@ export function ExamQuestionCard({
                       backgroundColor: diffColors.text,
                     }}
                   />
-                  {formatEnum(difficultyLabel)}
+                  {difficultyLabel}
                 </span>
 
                 {/* Time & Tier Badge */}
@@ -560,7 +555,7 @@ export function ExamQuestionCard({
                   }}
                 >
                   <Award size={12} color="#0284C7" />
-                  {formatEnum(examName)} {sourceYear ? `${sourceYear}` : ''}
+                  {examYearDisplay}
                 </span>
               )}
 
@@ -577,7 +572,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  {formatEnum(subjectLabel)}
+                  {subjectLabel}
                 </span>
               )}
 
@@ -594,7 +589,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  {formatEnum(topicLabel)}
+                  {topicLabel}
                 </span>
               )}
 
@@ -611,7 +606,7 @@ export function ExamQuestionCard({
                     borderRadius: 2,
                   }}
                 >
-                  ↳ {formatEnum(subtopicLabel)}
+                  ↳ {subtopicLabel}
                 </span>
               )}
             </div>
@@ -622,7 +617,6 @@ export function ExamQuestionCard({
             style={{
               overflowY: 'auto',
               flex: 1,
-              minHeight: 0,
               paddingRight: 6,
               display: 'flex',
               flexDirection: 'column',
@@ -644,14 +638,8 @@ export function ExamQuestionCard({
               </ReactMarkdown>
             </div>
 
-            {/* Answer Choice Cards (Compact 13.5px font, 9px 12px padding) */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
+            {/* Answer Choice Radio Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 'auto' }}>
               {options.map((opt) => {
                 const isSelected =
                   selectedOptionId === opt.id ||
@@ -842,229 +830,161 @@ export function ExamQuestionCard({
                 }}
               />
             )}
-          </div>
 
-          {/* Action Buttons & Navigation - Fixed Footer (always visible, outside the scrollable body) */}
-          <div
-            style={{
-              paddingTop: 12,
-              borderTop: '1px solid #F1F5F9',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexShrink: 0,
-            }}
-          >
-            {/* Left spacing for center alignment balance */}
+            {/* Action Buttons & Navigation */}
             <div
               style={{
-                flex: 1,
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: '1px solid #F1F5F9',
                 display: 'flex',
-                justifyContent: 'flex-start',
-              }}
-            ></div>
-
-            {/* Center: Prev | Question X | Next */}
-            <div
-              style={{
-                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: 12,
-                flex: 1,
-                justifyContent: 'center',
+                flexShrink: 0,
               }}
             >
-              {/* Prominent Previous Question Button */}
-              {onPrev && (
-                <button
-                  type="button"
-                  onClick={onPrev}
-                  disabled={questionIndex === 0}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex === 0 ? '#94A3B8' : '#172033',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (questionIndex > 0) {
-                      e.currentTarget.style.backgroundColor = '#F8FAFC';
-                      e.currentTarget.style.borderColor = '#E31B23';
-                      e.currentTarget.style.color = '#E31B23';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (questionIndex > 0) {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#172033';
-                    }
-                  }}
-                >
-                  <ChevronLeft size={15} />
-                  <span>Prev</span>
-                </button>
-              )}
+              {/* Left spacing for center alignment balance */}
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}></div>
 
-              {/* Prominent Next Question Button */}
-              {onNext && (
-                <button
-                  type="button"
-                  onClick={onNext}
-                  disabled={questionIndex >= totalQuestions - 1}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '6px 12px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
-                    color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (questionIndex < totalQuestions - 1) {
-                      e.currentTarget.style.backgroundColor = '#F8FAFC';
-                      e.currentTarget.style.borderColor = '#E31B23';
-                      e.currentTarget.style.color = '#E31B23';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (questionIndex < totalQuestions - 1) {
-                      e.currentTarget.style.backgroundColor = '#FFFFFF';
-                      e.currentTarget.style.borderColor = '#CBD5E1';
-                      e.currentTarget.style.color = '#172033';
-                    }
-                  }}
-                >
-                  <span>Next</span>
-                  <ChevronRight size={15} />
-                </button>
-              )}
-            </div>
-
-            {/* Right: Action Buttons */}
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                flex: 1,
-                justifyContent: 'flex-end',
-              }}
-            >
-              {onRevealAnswer && (
-                <>
-                  {/* Button 1: Submit */}
+              {/* Center: Prev | Next Buttons */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  flex: 1,
+                  justifyContent: 'center',
+                }}
+              >
+                {/* Previous Question Button */}
+                {onPrev && (
                   <button
                     type="button"
-                    onClick={onRevealAnswer}
-                    disabled={!selectedOptionId || !!revealResult}
+                    onClick={onPrev}
+                    disabled={questionIndex === 0}
                     style={{
-                      padding: '8px 18px',
-                      borderRadius: 0,
-                      border:
-                        revealResult || !selectedOptionId
-                          ? '1px solid #CBD5E1'
-                          : '1px solid #E31B23',
-                      backgroundColor: revealResult
-                        ? '#F1F5F9'
-                        : !selectedOptionId
-                          ? '#E2E8F0'
-                          : '#E31B23',
-                      color: revealResult ? '#64748B' : !selectedOptionId ? '#94A3B8' : '#FFFFFF',
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: revealResult
-                        ? 'default'
-                        : !selectedOptionId
-                          ? 'not-allowed'
-                          : 'pointer',
-                      boxShadow:
-                        revealResult || !selectedOptionId
-                          ? 'none'
-                          : '0 2px 8px rgba(227, 27, 35, 0.22)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 5,
+                      padding: '7px 14px',
+                      borderRadius: 3,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: questionIndex === 0 ? '#F1F5F9' : '#FFFFFF',
+                      color: questionIndex === 0 ? '#94A3B8' : '#172033',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: questionIndex === 0 ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s ease',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
-                    onMouseEnter={(e) => {
-                      if (!revealResult && selectedOptionId) {
-                        e.currentTarget.style.backgroundColor = '#C1121F';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!revealResult && selectedOptionId) {
-                        e.currentTarget.style.backgroundColor = '#E31B23';
-                      }
-                    }}
                   >
-                    {revealResult ? '✓ Submitted' : 'Submit'}
+                    <ChevronLeft size={15} />
+                    <span>Prev</span>
                   </button>
+                )}
 
-                  {/* Button 2: Show Solution */}
+                {/* Next Question Button */}
+                {onNext && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!revealResult && selectedOptionId) {
-                        onRevealAnswer();
-                      }
-                      const nextState = !showDetailedSolution;
-                      setShowDetailedSolution(nextState);
-                      if (nextState && onShowSolution) {
-                        onShowSolution();
-                      }
-                    }}
+                    onClick={onNext}
+                    disabled={questionIndex >= totalQuestions - 1}
                     style={{
-                      padding: '8px 18px',
-                      borderRadius: 0,
-                      border: showDetailedSolution ? '1px solid #E31B23' : '1px solid #CBD5E1',
-                      backgroundColor: showDetailedSolution ? '#F8FAFC' : '#FFFFFF',
-                      color: showDetailedSolution ? '#E31B23' : '#172033',
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: 5,
+                      padding: '7px 14px',
+                      borderRadius: 3,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: questionIndex >= totalQuestions - 1 ? '#F1F5F9' : '#FFFFFF',
+                      color: questionIndex >= totalQuestions - 1 ? '#94A3B8' : '#172033',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: questionIndex >= totalQuestions - 1 ? 'not-allowed' : 'pointer',
                       transition: 'all 0.15s ease',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                       fontFamily: "'Plus Jakarta Sans', sans-serif",
                     }}
-                    onMouseEnter={(e) => {
-                      if (!showDetailedSolution) {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#94A3B8';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!showDetailedSolution) {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                      }
-                    }}
                   >
-                    {showDetailedSolution ? 'Hide Solution' : 'Show Solution'}
+                    <span>Next</span>
+                    <ChevronRight size={15} />
                   </button>
-                </>
-              )}
+                )}
+              </div>
+
+              {/* Right: Single Action Button */}
+              <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                {mode !== 'EXAM' && (
+                  <>
+                    {!revealResult ? (
+                      /* Single Button: Submit & Show Solution */
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedOptionId) return;
+                          setShowDetailedSolution(true);
+                          if (onRevealAnswer) onRevealAnswer();
+                          if (onShowSolution) onShowSolution();
+                        }}
+                        disabled={!selectedOptionId || isRevealing}
+                        style={{
+                          padding: '8px 20px',
+                          borderRadius: 3,
+                          border: !selectedOptionId ? '1px solid #CBD5E1' : '1px solid #1E3A8A',
+                          backgroundColor: !selectedOptionId ? '#E2E8F0' : '#1E3A8A',
+                          color: !selectedOptionId ? '#94A3B8' : '#FFFFFF',
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: !selectedOptionId ? 'not-allowed' : 'pointer',
+                          boxShadow: !selectedOptionId
+                            ? 'none'
+                            : '0 2px 8px rgba(30, 58, 138, 0.25)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.15s ease',
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (selectedOptionId) e.currentTarget.style.backgroundColor = '#172554';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (selectedOptionId) e.currentTarget.style.backgroundColor = '#1E3A8A';
+                        }}
+                      >
+                        <Sparkles size={14} />
+                        <span>Submit & Show Solution</span>
+                      </button>
+                    ) : (
+                      /* Toggle Solution Button */
+                      <button
+                        type="button"
+                        onClick={() => setShowDetailedSolution((prev) => !prev)}
+                        style={{
+                          padding: '8px 18px',
+                          borderRadius: 3,
+                          border: showDetailedSolution ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                          backgroundColor: showDetailedSolution ? '#EFF6FF' : '#FFFFFF',
+                          color: showDetailedSolution ? '#1E3A8A' : '#172033',
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          transition: 'all 0.15s ease',
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        }}
+                      >
+                        <Lightbulb size={14} color={showDetailedSolution ? '#1E3A8A' : '#64748B'} />
+                        <span>{showDetailedSolution ? 'Hide Solution' : 'Show Solution'}</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

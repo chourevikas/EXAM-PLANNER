@@ -262,86 +262,95 @@ export function GuestExamPage() {
           } catch (err) {
             console.warn('Subject recommendation fetch failed:', err);
           }
+        }
 
-          // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
-          if (newFetched.length === 0) {
-            setIsRecsExhausted(true);
-            return;
-          }
-          if (newFetched.length > 0) {
-            const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
-              const rawOptions = item.options || [];
-              const optionsList = rawOptions.map((o: any, oIdx: number) => ({
-                option_id:
-                  o.option_id ||
-                  `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                option_label: o.option_label || String.fromCharCode(65 + oIdx),
-                text:
-                  o.option_text ||
-                  o.text ||
-                  `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                is_correct: Boolean(o.is_correct),
-              }));
-              return {
-                question_id: item.question_id,
-                question_number: 0,
-                text: item.question_text || item.text || '',
-                options: optionsList,
-                section_code: item.topic_name || item.subject_name || querySubject || 'Recommended',
-                topic_name: item.topic_name || queryTopic,
-                subtopic_name: item.subtopic_name,
-                difficulty: item.difficulty || 'MEDIUM',
-                marks: item.marks || 2.0,
-                negative_marks: item.negative_marks || 0.66,
-                expected_time_seconds: item.expected_time_seconds || 60,
-                explanation: item.explanation || item.explanation_text || '',
-              } as any;
-            });
+        // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+        if (newFetched.length === 0) {
+          setIsRecsExhausted(true);
+          return;
+        }
 
-            setRecommendedPool((prev) => {
-              let newList = [...prev];
-              const existingIds = new Set(prev.map((q) => q.question_id));
+        if (newFetched.length > 0) {
+          const formatted: QuestionOut[] = newFetched.map((item: any, idx: number) => {
+            const rawOptions = item.options || [];
+            const optionsList = rawOptions.map((o: any, oIdx: number) => ({
+              option_id:
+                o.option_id || `opt-rec-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
+              option_label: o.option_label || String.fromCharCode(65 + oIdx),
+              text:
+                o.option_text ||
+                o.text ||
+                `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
+              is_correct: Boolean(o.is_correct),
+              distractor_analysis:
+                o.distractor_analysis ||
+                o.explanation ||
+                o.description ||
+                (o.is_correct
+                  ? 'Correct option matching core syllabus concepts.'
+                  : 'Distractor option.'),
+            }));
+            return {
+              question_id: item.question_id,
+              question_number: 0,
+              text: item.question_text || item.text || '',
+              options: optionsList,
+              section_code: item.subject_name || querySubject || 'Recommended',
+              subject: item.subject_name || querySubject || gSubject || 'General Studies',
+              topic_name: item.topic_name || queryTopic,
+              subtopic_name: item.subtopic_name,
+              difficulty: item.difficulty || 'MEDIUM',
+              marks: item.marks || 2.0,
+              negative_marks: item.negative_marks || 0.66,
+              expected_time_seconds: item.expected_time_seconds || 60,
+              source_year: item.source_year || item.exam_year || gYear,
+              exam_name: item.exam_name || gExam || 'UPSC CSE',
+            } as any;
+          });
 
-              for (let i = formatted.length - 1; i >= 0; i--) {
-                const q = formatted[i];
-                if (!existingIds.has(q.question_id)) {
-                  newList.unshift(q);
+          setRecommendedPool((prev) => {
+            let newList = [...prev];
+            const existingIds = new Set(prev.map((q) => q.question_id));
+
+            for (let i = formatted.length - 1; i >= 0; i--) {
+              const q = formatted[i];
+              if (!existingIds.has(q.question_id)) {
+                newList.unshift(q);
+              }
+            }
+
+            while (newList.length > 15) {
+              let evictIdx = -1;
+              const currentExpanded = expandedRecIdRef.current;
+              const currentResponses = recUserResponsesRef.current;
+
+              // Prefer removing already-answered questions that are not expanded
+              for (let i = newList.length - 1; i >= 0; i--) {
+                const q = newList[i];
+                if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
+                  evictIdx = i;
+                  break;
                 }
               }
 
-              while (newList.length > 15) {
-                let evictIdx = -1;
-                const currentExpanded = expandedRecIdRef.current;
-                const currentResponses = recUserResponsesRef.current;
-
-                // Prefer removing already-answered questions that are not expanded
+              // If none found, just find the oldest not expanded
+              if (evictIdx === -1) {
                 for (let i = newList.length - 1; i >= 0; i--) {
-                  const q = newList[i];
-                  if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
+                  if (newList[i].question_id !== currentExpanded) {
                     evictIdx = i;
                     break;
                   }
                 }
-
-                // If none found, just find the oldest not expanded
-                if (evictIdx === -1) {
-                  for (let i = newList.length - 1; i >= 0; i--) {
-                    if (newList[i].question_id !== currentExpanded) {
-                      evictIdx = i;
-                      break;
-                    }
-                  }
-                }
-
-                if (evictIdx !== -1) {
-                  newList.splice(evictIdx, 1);
-                } else {
-                  break;
-                }
               }
-              return newList;
-            });
-          }
+
+              if (evictIdx !== -1) {
+                newList.splice(evictIdx, 1);
+              } else {
+                break;
+              }
+            }
+            return newList;
+          });
         }
       } catch (err) {
         console.warn('Background recommendation prefetch error:', err);
@@ -464,10 +473,7 @@ export function GuestExamPage() {
 
       if (querySubject || queryTopic) {
         try {
-          const verifyRes = await verifySyllabusNode({
-            subject: querySubject,
-            topic: queryTopic,
-          });
+          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic });
           if (verifyRes && verifyRes.is_valid) {
             if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
             if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
@@ -940,8 +946,8 @@ export function GuestExamPage() {
       responses: responsesPayload,
     };
 
-    const savedAttempt = saveGuestAttempt(scorePayload);
-    setGuestScoreData({ ...scorePayload, attemptId: savedAttempt.id });
+    setGuestScoreData(scorePayload);
+    saveGuestAttempt(scorePayload);
 
     if (startCountdown) {
       setScoreCountdown(10);
@@ -1059,37 +1065,17 @@ export function GuestExamPage() {
           >
             <AlertCircle size={28} />
           </div>
-          <h2
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: '#172033',
-              margin: '0 0 8px 0',
-            }}
-          >
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
             No Questions Found
           </h2>
-          <p
-            style={{
-              fontSize: 14,
-              color: '#64748B',
-              lineHeight: 1.6,
-              margin: '0 0 24px 0',
-            }}
-          >
-            No questions match your current selection (Subject: <strong>{gSubject}</strong>
-            {gTopic ? `, Topic: ${gTopic}` : ''}
-            {gSubtopic ? `, Subtopic: ${gSubtopic}` : ''}).
+          <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
+            No questions match your current selection (Subject:{' '}
+            <strong>{formatEnum(gSubject)}</strong>
+            {gTopic ? `, Topic: ${formatEnum(gTopic)}` : ''}
+            {gSubtopic ? `, Subtopic: ${formatEnum(gSubtopic)}` : ''}).
           </p>
 
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() =>
@@ -1396,13 +1382,7 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span
-                style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {gExam}
               </span>
               <ChevronDown
@@ -1507,14 +1487,8 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span
-                style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {gSubject}
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {formatEnum(gSubject)}
               </span>
               <ChevronDown
                 size={14}
@@ -1667,14 +1641,8 @@ export function GuestExamPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span
-                style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {gTopic || 'All Topics'}
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {gTopic ? formatEnum(gTopic) : 'All Topics'}
               </span>
               <ChevronDown
                 size={14}
@@ -1936,12 +1904,7 @@ export function GuestExamPage() {
         >
           <div
             className="auth-modal-card"
-            style={{
-              maxWidth: 440,
-              maxHeight: '80vh',
-              overflowY: 'auto',
-              padding: 16,
-            }}
+            style={{ maxWidth: 440, maxHeight: '80vh', overflowY: 'auto', padding: 16 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -2162,6 +2125,7 @@ export function GuestExamPage() {
                               const showResult = !!answeredOptId;
                               const optionDesc =
                                 opt.distractor_analysis ||
+                                opt.explanation ||
                                 opt.description ||
                                 (isCorrect
                                   ? 'Correct option matching standard syllabus concepts.'
@@ -2212,31 +2176,6 @@ export function GuestExamPage() {
                                       width: '100%',
                                     }}
                                   >
-                                    <div
-                                      style={{
-                                        width: 14,
-                                        height: 14,
-                                        flexShrink: 0,
-                                        marginTop: 2,
-                                        borderRadius: '50%',
-                                        border: '1px solid #CBD5E1',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: isSelected ? '#1E3A8A' : '#FFF',
-                                      }}
-                                    >
-                                      {isSelected && (
-                                        <div
-                                          style={{
-                                            width: 6,
-                                            height: 6,
-                                            borderRadius: '50%',
-                                            backgroundColor: '#FFF',
-                                          }}
-                                        />
-                                      )}
-                                    </div>
                                     <span
                                       style={{
                                         fontWeight: 800,
@@ -2346,12 +2285,7 @@ export function GuestExamPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: 0,
-                      backgroundColor: '#1E3A8A',
-                    }}
+                    style={{ width: 7, height: 7, borderRadius: 0, backgroundColor: '#1E3A8A' }}
                   />
                   <span
                     style={{
@@ -2378,14 +2312,7 @@ export function GuestExamPage() {
                   {displayRecs.length} Qs
                 </span>
               </div>
-              <p
-                style={{
-                  fontSize: 11.5,
-                  color: '#64748B',
-                  margin: 0,
-                  lineHeight: 1.35,
-                }}
-              >
+              <p style={{ fontSize: 11.5, color: '#64748B', margin: 0, lineHeight: 1.35 }}>
                 Matched questions for {gSubject || 'your focus area'}.
               </p>
             </div>
@@ -2576,6 +2503,7 @@ export function GuestExamPage() {
                               const showResult = !!answeredOptId;
                               const optionDesc =
                                 opt.distractor_analysis ||
+                                opt.explanation ||
                                 opt.description ||
                                 (isCorrect
                                   ? 'Correct option matching standard syllabus concepts.'
@@ -2597,139 +2525,84 @@ export function GuestExamPage() {
                               }
 
                               return (
-                                <button
+                                <div
                                   key={opt.option_id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (!answeredOptId) {
-                                      setRecUserResponses((p) => ({
-                                        ...p,
-                                        [rec.question_id]: opt.option_id,
-                                      }));
-                                    }
-                                  }}
-                                  style={{
-                                    textAlign: 'left',
-                                    padding: '6px 8px',
-                                    border: borderStyle,
-                                    backgroundColor: bgStyle,
-                                    borderRadius: 4,
-                                    fontSize: 11.5,
-                                    color: '#334155',
-                                    cursor: answeredOptId ? 'default' : 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    width: '100%',
-                                  }}
+                                  style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
                                 >
-                                  <span
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!answeredOptId) {
+                                        setRecUserResponses((p) => ({
+                                          ...p,
+                                          [rec.question_id]: opt.option_id,
+                                        }));
+                                      }
+                                    }}
                                     style={{
-                                      fontWeight: 800,
-                                      color: showResult && isCorrect ? '#059669' : '#64748B',
+                                      textAlign: 'left',
+                                      padding: '8px 10px',
+                                      border: borderStyle,
+                                      backgroundColor: bgStyle,
+                                      borderRadius: 4,
+                                      fontSize: 11.5,
+                                      color: '#334155',
+                                      cursor: answeredOptId ? 'default' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: 6,
+                                      width: '100%',
                                     }}
                                   >
-                                    {opt.option_label}.
-                                  </span>
-                                  <span>{opt.text}</span>
-                                </button>
+                                    <span
+                                      style={{
+                                        fontWeight: 800,
+                                        color: showResult && isCorrect ? '#059669' : '#64748B',
+                                      }}
+                                    >
+                                      {opt.option_label}.
+                                    </span>
+                                    <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                                  </button>
+
+                                  {/* Option-level description directly underneath */}
+                                  {showResult && optionDesc && (
+                                    <div
+                                      style={{
+                                        marginLeft: 16,
+                                        padding: '5px 8px',
+                                        fontSize: 11,
+                                        lineHeight: 1.4,
+                                        borderRadius: 3,
+                                        backgroundColor: isCorrect
+                                          ? '#F0FDF4'
+                                          : isWrongSelected
+                                            ? '#FEF2F2'
+                                            : '#F8FAFC',
+                                        borderLeft: `3px solid ${isCorrect ? '#10B981' : isWrongSelected ? '#EF4444' : '#CBD5E1'}`,
+                                        color: isCorrect
+                                          ? '#166534'
+                                          : isWrongSelected
+                                            ? '#991B1B'
+                                            : '#475569',
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          fontSize: 10,
+                                          textTransform: 'uppercase',
+                                          marginRight: 4,
+                                        }}
+                                      >
+                                        Option {opt.option_label}:
+                                      </strong>
+                                      {optionDesc}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
-
-                          {/* Show Solution button + explanation panel (desktop) */}
-                          {(() => {
-                            const _rawExpl =
-                              recExplanations[rec.question_id] || (rec as any).explanation;
-                            const explanation =
-                              typeof _rawExpl === 'string'
-                                ? _rawExpl
-                                : _rawExpl?.detailed_solution || _rawExpl?.core_concept || null;
-                            const isLoadingSolution = recSolutionLoading[rec.question_id];
-                            const solutionOpen = recShowSolution[rec.question_id];
-                            return (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRecShowSolution(rec);
-                                  }}
-                                  style={{
-                                    marginTop: 10,
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    border: '1px solid',
-                                    borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
-                                    borderRadius: 5,
-                                    backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
-                                    color: solutionOpen ? '#4338CA' : '#475569',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 5,
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                >
-                                  <Lightbulb size={12} />
-                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
-                                </button>
-                                {solutionOpen && (
-                                  <div
-                                    style={{
-                                      marginTop: 8,
-                                      padding: '10px 12px',
-                                      backgroundColor: '#EFF6FF',
-                                      border: '1px solid #BFDBFE',
-                                      borderRadius: 5,
-                                      fontSize: 11.5,
-                                      color: '#1E3A8A',
-                                      lineHeight: 1.55,
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 5,
-                                        marginBottom: 6,
-                                        fontWeight: 800,
-                                        fontSize: 11,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                      }}
-                                    >
-                                      <Lightbulb size={12} color="#2563EB" />
-                                      Explanation
-                                    </div>
-                                    {isLoadingSolution ? (
-                                      <span
-                                        style={{
-                                          color: '#64748B',
-                                          fontStyle: 'italic',
-                                        }}
-                                      >
-                                        Loading solution…
-                                      </span>
-                                    ) : explanation ? (
-                                      explanation
-                                    ) : (
-                                      <span
-                                        style={{
-                                          color: '#64748B',
-                                          fontStyle: 'italic',
-                                        }}
-                                      >
-                                        No explanation available.
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
                         </div>
                       )}
                     </div>
@@ -2753,10 +2626,7 @@ export function GuestExamPage() {
           revealResult={currentRevealedResult}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() =>
-            setBookmarkedQs((prev) => ({
-              ...prev,
-              [currentQIndex]: !prev[currentQIndex],
-            }))
+            setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))
           }
           onRevealAnswer={() => handleRevealAnswer()}
           onShowSolution={() => handleShowSolution()}
@@ -2790,13 +2660,7 @@ export function GuestExamPage() {
           }}
         >
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 13,
-              fontWeight: 600,
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}
           >
             <span
               style={{
@@ -2909,25 +2773,11 @@ export function GuestExamPage() {
               <span style={{ fontSize: 22, fontWeight: 800 }}>!</span>
             </div>
 
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: '#172033',
-                margin: '0 0 8px 0',
-              }}
-            >
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: '0 0 8px 0' }}>
               Leave Practice Session?
             </h3>
 
-            <p
-              style={{
-                fontSize: 13,
-                color: '#64748B',
-                lineHeight: 1.5,
-                margin: '0 0 22px 0',
-              }}
-            >
+            <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.5, margin: '0 0 22px 0' }}>
               Your current test progress is temporarily cached in your browser. You can return
               anytime or start fresh.
             </p>
@@ -3067,14 +2917,7 @@ export function GuestExamPage() {
               Log in to Unlock More Questions
             </h3>
 
-            <p
-              style={{
-                fontSize: 13.5,
-                color: '#64748B',
-                lineHeight: 1.5,
-                margin: '0 0 24px 0',
-              }}
-            >
+            <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 24px 0' }}>
               You've experienced your 10 free practice questions limit for guest users. Log in or
               create your free account to access 10,000+ PYQs, subtopic filters, detailed
               explanations, and unlimited test series!
