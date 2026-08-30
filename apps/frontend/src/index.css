@@ -2,7 +2,7 @@
    Global CSS — ExamPlanner
    ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@300;400;500&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@300;400;500&display=swap');
 
 /* ── 1. Design Tokens ── */
 :root {
@@ -29,9 +29,9 @@
   --border-color: #e2e8f0;
 
   /* Fonts */
-  --font-display: "Outfit", sans-serif;
-  --font-body: "DM Sans", sans-serif;
-  --font-mono: "DM Mono", monospace;
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 
   /* ── Fluid Spacing Scale (4px base, scales down on mobile) ── */
   --space-1: clamp(2px, 0.25vw + 1px, 4px);
@@ -123,7 +123,7 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family:
-    "Inter",
+    'Inter',
     system-ui,
     -apple-system,
     sans-serif;
@@ -364,7 +364,7 @@ body {
   button,
   a,
   select,
-  [role="button"] {
+  [role='button'] {
     min-height: 44px;
   }
 
@@ -445,7 +445,7 @@ body {
   min-height: 100dvh;
   background-color: #f8fafc;
   font-family:
-    "Plus Jakarta Sans",
+    'Plus Jakarta Sans',
     system-ui,
     -apple-system,
     sans-serif;
@@ -601,7 +601,7 @@ body {
   -webkit-backdrop-filter: blur(6px);
   padding: 24px 16px;
   font-family:
-    "Manrope",
+    'Manrope',
     -apple-system,
     system-ui,
     sans-serif;
@@ -655,14 +655,12 @@ body {
 }
 
 .exam-palette-sidebar {
-  width: 270px;
+  width: 300px;
   flex-shrink: 0;
-  position: sticky;
-  top: calc(var(--header-height) + 12px);
-  height: fit-content;
-  max-height: calc(100dvh - var(--header-height) - var(--footer-height) - 24px);
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   margin-right: 24px;
-  margin-top: 12px;
 }
 
 /* On mobile: hide desktop palette, show via full-screen overlay */

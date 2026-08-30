@@ -445,13 +445,12 @@ export function ExamQuestionCard({
               paddingRight: 6,
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between',
             }}
           >
             {/* Question Body (Compact 15px font, 600 weight) */}
             <div
               style={{
-                marginBottom: 0,
+                marginBottom: 18,
                 fontSize: 15,
                 color: '#172033',
                 fontWeight: 600,
@@ -470,7 +469,6 @@ export function ExamQuestionCard({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 8,
-                marginTop: 'auto',
               }}
             >
               {options.map((opt) => {

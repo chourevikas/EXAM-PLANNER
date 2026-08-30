@@ -971,11 +971,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       {/* Main Viewport Body */}
       <div
         style={{
-          marginTop: isMobile ? 104 : 60,
-          marginBottom: 64,
+          marginTop: isMobile ? 116 : 76,
+          marginBottom: isMobile ? 76 : 80,
           display: 'flex',
-          flex: 1,
-          height: isMobile ? 'calc(100vh - 168px)' : 'calc(100vh - 124px)',
+          height: isMobile ? 'calc(100vh - 192px)' : 'calc(100vh - 156px)',
+          minHeight: 0,
           boxSizing: 'border-box',
           overflow: 'hidden',
           backgroundColor: '#F8FAFC',
@@ -983,7 +983,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       >
         {/* Center: Question Card Workspace with Collapsible Trigger Button */}
         {(!isMobile || mobileTab === 'question') && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="#E31B23" />

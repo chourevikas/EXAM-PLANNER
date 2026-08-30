@@ -165,16 +165,29 @@ export function ExamQuestionPalette({
             gap: 2,
           }}
         >
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#166534',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
             Answered
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: '#15803D', fontVariantNumeric: 'tabular-nums' }}>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: '#15803D',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               {answeredCount}
             </span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#166534' }}>
-              / {totalCount}
-            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#166534' }}>/ {totalCount}</span>
           </div>
         </div>
 
@@ -190,11 +203,26 @@ export function ExamQuestionPalette({
             gap: 2,
           }}
         >
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#92400E',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
             Marked
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: '#B45309',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               {markedCount}
             </span>
           </div>
@@ -260,14 +288,16 @@ export function ExamQuestionPalette({
         className="no-scrollbar"
         style={{
           display: 'grid',
-          gridTemplateColumns: isOverlay ? 'repeat(auto-fill, minmax(44px, 1fr))' : 'repeat(5, 1fr)',
+          gridTemplateColumns: isOverlay
+            ? 'repeat(auto-fill, minmax(44px, 1fr))'
+            : 'repeat(5, 1fr)',
           gap: 6,
           overflowY: 'auto',
           overflowX: 'hidden',
           alignContent: 'start',
           padding: 2,
           marginBottom: 14,
-          maxHeight: isOverlay ? '55vh' : 240,
+          maxHeight: isOverlay ? '55vh' : 'auto',
           boxSizing: 'border-box',
         }}
       >
@@ -275,9 +305,23 @@ export function ExamQuestionPalette({
           const status = getQStatus(idx);
           const isCurrent = currentQIndex === idx;
 
-          if (paletteFilter === 'answered' && status !== 'ANSWERED' && status !== 'ANSWERED_AND_MARKED') return null;
-          if (paletteFilter === 'marked' && status !== 'MARKED_FOR_REVIEW' && status !== 'ANSWERED_AND_MARKED') return null;
-          if (paletteFilter === 'unanswered' && (status === 'ANSWERED' || status === 'ANSWERED_AND_MARKED')) return null;
+          if (
+            paletteFilter === 'answered' &&
+            status !== 'ANSWERED' &&
+            status !== 'ANSWERED_AND_MARKED'
+          )
+            return null;
+          if (
+            paletteFilter === 'marked' &&
+            status !== 'MARKED_FOR_REVIEW' &&
+            status !== 'ANSWERED_AND_MARKED'
+          )
+            return null;
+          if (
+            paletteFilter === 'unanswered' &&
+            (status === 'ANSWERED' || status === 'ANSWERED_AND_MARKED')
+          )
+            return null;
 
           // Default styling variables
           let bgColor = '#F8FAFC';
@@ -430,12 +474,7 @@ export function ExamQuestionPalette({
 
   if (isOverlay) {
     return (
-      <div
-        className="auth-modal-overlay"
-        onClick={onCloseOverlay}
-        role="dialog"
-        aria-modal="true"
-      >
+      <div className="auth-modal-overlay" onClick={onCloseOverlay} role="dialog" aria-modal="true">
         <div
           className="auth-modal-card"
           style={{ maxWidth: 480, maxHeight: '85vh', overflowY: 'auto' }}
