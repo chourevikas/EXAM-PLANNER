@@ -289,28 +289,6 @@ export function AnalyticsPage() {
               {attemptsHistory.find((a) => a.attempt_id === selectedAttemptId)?.exam_name || 'Selected Exam Paper'}
             </span>
           </div>
-
-          <button
-            onClick={handleBackToCumulative}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 0,
-              backgroundColor: '#E31B23',
-              color: '#ffffff',
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <ArrowLeft size={16} />
-            <span>← Back to Cumulative User Report</span>
-          </button>
         </div>
       )}
 
