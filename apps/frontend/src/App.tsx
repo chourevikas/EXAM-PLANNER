@@ -54,6 +54,15 @@ const MockSelectionPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('./pages/PricingPage').then((m) => ({ default: m.PricingPage }))
 );
+const PlansPage = lazy(() =>
+  import('./pages/PlansPage').then((m) => ({ default: m.PlansPage }))
+);
+const AboutUsPage = lazy(() =>
+  import('./pages/AboutUsPage').then((m) => ({ default: m.AboutUsPage }))
+);
+const ContactUsPage = lazy(() =>
+  import('./pages/ContactUsPage').then((m) => ({ default: m.ContactUsPage }))
+);
 const VerifyEmailPage = lazy(() =>
   import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage }))
 );
@@ -96,6 +105,9 @@ export default function App() {
           <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/contact" element={<ContactUsPage />} />
 
           {/* Student Practice Exam - Protected Route */}
           <Route

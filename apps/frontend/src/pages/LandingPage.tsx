@@ -41,6 +41,18 @@ export function LandingPage({ initialAuthMode }: LandingPageProps) {
   const [authModalOpen, setAuthModalOpen] = useState(getInitialOpen());
   const [authMode, setAuthMode] = useState<AuthMode>(getInitialMode());
 
+  // Scroll to a section anchor on arrival (e.g. Navbar links clicked from /plans or /about,
+  // which navigate here as `/#features` since those anchors only exist on this page).
+  useEffect(() => {
+    if (!location.hash) return;
+    const hash = location.hash;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [location.hash]);
+
   useEffect(() => {
     const p = location.pathname;
     if (initialAuthMode) {

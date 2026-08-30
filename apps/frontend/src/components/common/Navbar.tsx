@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { Logo } from './Logo';
 import { Ico } from './Icons';
@@ -12,6 +12,7 @@ interface NavbarProps {
 
 export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isSignedIn, isLoaded } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -71,6 +72,12 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
 
   const handleNavClick = (targetId: string) => {
     setMobileMenuOpen(false);
+    // These anchors only exist on the landing page - navigate home first if elsewhere,
+    // and let LandingPage's hash-scroll effect handle the actual scroll on arrival.
+    if (location.pathname !== '/') {
+      navigate(`/${targetId}`);
+      return;
+    }
     const element = document.querySelector(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -90,12 +97,23 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
     onSignup();
   };
 
-  const navItems = [
+  const navItems: Array<{ label: string; targetId?: string; to?: string }> = [
     { label: 'Platform', targetId: '#features' },
     { label: 'Methodology', targetId: '#how-it-works' },
-    { label: 'Plans', targetId: '#pricing' },
-    { label: 'About Us', targetId: '#footer' },
+    { label: 'Plans', to: '/plans' },
+    { label: 'About Us', to: '/about' },
   ];
+
+  const handleNavItemClick = (item: { targetId?: string; to?: string }) => {
+    if (item.to) {
+      setMobileMenuOpen(false);
+      navigate(item.to);
+      return;
+    }
+    if (item.targetId) {
+      handleNavClick(item.targetId);
+    }
+  };
 
   return (
     <>
@@ -143,7 +161,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                   display: 'inline-flex',
                   alignItems: 'center',
                 }}
-                onClick={() => handleNavClick(item.targetId)}
+                onClick={() => handleNavItemClick(item)}
               >
                 {item.label}
               </button>
@@ -221,7 +239,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
                     width: '100%',
                     justifyContent: 'flex-start',
                   }}
-                  onClick={() => handleNavClick(item.targetId)}
+                  onClick={() => handleNavItemClick(item)}
                 >
                   {item.label}
                 </button>

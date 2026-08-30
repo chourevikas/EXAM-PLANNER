@@ -1,15 +1,19 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 
 export function Footer() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const cols = [
     {
       h: 'Platform',
-      links: ['Features', 'How It Works', 'Pricing'],
+      links: ['Features', 'How It Works', 'Plans'],
     },
     {
-      h: 'Support',
-      links: ['Contact Us'],
+      h: 'Company',
+      links: ['About Us', 'Contact Us'],
     },
   ];
 
@@ -81,20 +85,23 @@ export function Footer() {
                   {col.links.map((l) => {
                     const handleFooterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
                       e.preventDefault();
-                      if (l === 'Contact Us') {
-                        window.location.href = 'mailto:support@examplanner.in';
-                        return;
-                      }
 
+                      if (l === 'Plans') return navigate('/plans');
+                      if (l === 'About Us') return navigate('/about');
+                      if (l === 'Contact Us') return navigate('/contact');
+
+                      // Features / How It Works: anchors on the landing page only.
                       let targetId = '';
                       if (l === 'Features') targetId = '#features';
                       else if (l === 'How It Works') targetId = '#how-it-works';
-                      else if (l === 'Pricing') targetId = '#pricing';
+                      if (!targetId) return;
 
-                      if (targetId) {
-                        const el = document.querySelector(targetId);
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      if (location.pathname !== '/') {
+                        navigate(`/${targetId}`);
+                        return;
                       }
+                      const el = document.querySelector(targetId);
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
                       if (window.location.hash) {
                         window.history.replaceState(null, '', window.location.pathname);
                       }
