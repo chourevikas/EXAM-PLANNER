@@ -218,6 +218,7 @@ export function StudentSidebar({
             </button>
           )}
 
+          {/* Mobile close button */}
           {isMobile && (
             <button
               onClick={onCloseMobile}

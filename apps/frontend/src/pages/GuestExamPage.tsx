@@ -4,7 +4,7 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap, X } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft, RotateCcw, Search, ChevronDown, ChevronRight, Check, SlidersHorizontal, Sparkles, GraduationCap, X, Lightbulb } from 'lucide-react';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
@@ -114,6 +114,22 @@ export function GuestExamPage() {
 
   // Dynamic Recommended Questions Pool
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
+  const [expandedRecId, setExpandedRecId] = useState<number | string | null>(null);
+  const [recUserResponses, setRecUserResponses] = useState<Record<string, number | string>>({});
+  const [recShowSolution, setRecShowSolution] = useState<Record<string | number, boolean>>({});
+  const [recExplanations, setRecExplanations] = useState<Record<string | number, string>>({});
+  const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>({});
+  const expandedRecIdRef = React.useRef<number | string | null>(null);
+  const recUserResponsesRef = React.useRef<Record<string, number | string>>({});
+
+  useEffect(() => {
+    expandedRecIdRef.current = expandedRecId;
+  }, [expandedRecId]);
+
+  useEffect(() => {
+    recUserResponsesRef.current = recUserResponses;
+  }, [recUserResponses]);
+
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
 
   // Mobile Responsiveness & Custom Dropdown Search State
@@ -207,14 +223,47 @@ export function GuestExamPage() {
         });
 
         setRecommendedPool((prev) => {
-          const combinedMap = new Map<string | number, QuestionOut>();
-          prev.forEach((q) => combinedMap.set(q.question_id, q));
-          formatted.forEach((q) => {
-            if (!existingIds.has(q.question_id) && !combinedMap.has(q.question_id)) {
-              combinedMap.set(q.question_id, q);
+          let newList = [...prev];
+          const existingIds = new Set(prev.map((q) => q.question_id));
+
+          for (let i = formatted.length - 1; i >= 0; i--) {
+            const q = formatted[i];
+            if (!existingIds.has(q.question_id)) {
+              newList.unshift(q);
             }
-          });
-          return Array.from(combinedMap.values()).slice(0, 5);
+          }
+
+          while (newList.length > 15) {
+            let evictIdx = -1;
+            const currentExpanded = expandedRecIdRef.current;
+            const currentResponses = recUserResponsesRef.current;
+
+            // Prefer removing already-answered questions that are not expanded
+            for (let i = newList.length - 1; i >= 0; i--) {
+              const q = newList[i];
+              if (q.question_id !== currentExpanded && currentResponses[q.question_id]) {
+                evictIdx = i;
+                break;
+              }
+            }
+
+            // If none found, just find the oldest not expanded
+            if (evictIdx === -1) {
+              for (let i = newList.length - 1; i >= 0; i--) {
+                if (newList[i].question_id !== currentExpanded) {
+                  evictIdx = i;
+                  break;
+                }
+              }
+            }
+
+            if (evictIdx !== -1) {
+              newList.splice(evictIdx, 1);
+            } else {
+              break;
+            }
+          }
+          return newList;
         });
       }
     } catch (err) {
@@ -480,34 +529,38 @@ export function GuestExamPage() {
     }
   }, [allQuestions, recommendedPool, isPrefetchingRecs, prefetchRecommendations]);
 
-  // Handler to jump to or prompt login for recommended question outside 10 Q limit
+  // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
-    const existingIdx = allQuestions.findIndex((q) => q.question_id === recQ.question_id);
-    if (existingIdx !== -1) {
-      setCurrentQIndex(existingIdx);
-      setActiveQuestion(allQuestions[existingIdx]);
-      return;
-    }
-
-    // Guest user limit reached (10 questions max) -> Show Login Pop-up Modal
-    setShowLoginModal(true);
+    setExpandedRecId(prev => (prev === recQ.question_id ? null : recQ.question_id));
   };
 
-  // Compute 5 recommendation cards to display (upcoming test questions + prefetched pool)
-  const displayRecs = useMemo(() => {
-    const combinedMap = new Map<string | number, QuestionOut>();
-    recommendedPool.forEach((q) => {
-      if (q.question_id !== activeQuestion?.question_id) {
-        combinedMap.set(q.question_id, q);
+  // Toggle Show Solution for a recommended card (fetches from API if needed)
+  const handleRecShowSolution = async (rec: QuestionOut) => {
+    const qId = rec.question_id;
+    setRecShowSolution(prev => ({ ...prev, [qId]: !prev[qId] }));
+    if (recExplanations[qId] || (rec as any).explanation) return;
+    setRecSolutionLoading(prev => ({ ...prev, [qId]: true }));
+    try {
+      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      if (res.ok) {
+        const data = await res.json();
+        // API returns { explanation: { detailed_solution, core_concept, ... } }
+        const expl = data.explanation?.detailed_solution
+          || data.explanation?.core_concept
+          || (typeof data.explanation === 'string' ? data.explanation : null)
+          || data.detailed_solution
+          || null;
+        if (expl) setRecExplanations(prev => ({ ...prev, [qId]: expl }));
       }
-    });
-    allQuestions.forEach((q) => {
-      if (!combinedMap.has(q.question_id) && q.question_id !== activeQuestion?.question_id) {
-        combinedMap.set(q.question_id, q);
-      }
-    });
-    return Array.from(combinedMap.values()).slice(0, 5);
-  }, [allQuestions, activeQuestion, recommendedPool]);
+    } catch (err) {
+      console.warn('Rec solution fetch error:', err);
+    } finally {
+      setRecSolutionLoading(prev => ({ ...prev, [qId]: false }));
+    }
+  };
+
+  // All up to 15 recommended items to display
+  const displayRecs = recommendedPool;
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1532,29 +1585,154 @@ export function GuestExamPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {displayRecs.map((rec, idx) => (
-                <div
-                  key={rec.question_id || idx}
-                  onClick={() => {
-                    handleSelectRecommendation(rec);
-                    setShowMobileRecs(false);
-                  }}
-                  style={{
-                    backgroundColor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 0,
-                    padding: '10px 12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 4 }}>
-                    {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+              {displayRecs.map((rec, idx) => {
+                const isExpanded = expandedRecId === rec.question_id;
+                const answeredOptId = recUserResponses[rec.question_id];
+
+                return (
+                  <div
+                    key={rec.question_id || idx}
+                    style={{
+                      backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                      border: '1px solid',
+                      borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                      borderRadius: 6,
+                      transition: 'all 0.15s ease',
+                      boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      onClick={() => handleSelectRecommendation(rec)}
+                      style={{ cursor: 'pointer', padding: '10px 12px' }}
+                      onMouseEnter={(e) => {
+                        if (!isExpanded) {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isExpanded) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        </span>
+                        <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                        {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                      </div>
+                    </div>
+
+                    {/* Inline Options Dropdown */}
+                    {isExpanded && (
+                      <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {rec.options?.map(opt => {
+                            const isSelected = answeredOptId === opt.option_id;
+                            const isCorrect = opt.is_correct;
+                            const isWrongSelected = isSelected && !isCorrect;
+                            const showResult = !!answeredOptId;
+
+                            let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                            let bgStyle = '#FFFFFF';
+
+                            if (showResult) {
+                              if (isCorrect) {
+                                borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                              } else if (isWrongSelected) {
+                                borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                              }
+                            }
+
+                            return (
+                              <button
+                                key={opt.option_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!answeredOptId) {
+                                    setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                  }
+                                }}
+                                style={{
+                                  textAlign: 'left',
+                                  padding: '6px 8px',
+                                  border: borderStyle,
+                                  backgroundColor: bgStyle,
+                                  borderRadius: 4,
+                                  fontSize: 11.5,
+                                  color: '#334155',
+                                  cursor: answeredOptId ? 'default' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 6,
+                                  width: '100%'
+                                }}
+                              >
+                                <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                  {opt.option_label}.
+                                </span>
+                                <span>{opt.text}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Show Solution button + explanation panel (mobile) */}
+                        {(() => {
+                          const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                          const explanation = typeof _rawExpl === 'string'
+                            ? _rawExpl
+                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                          const isLoadingSolution = recSolutionLoading[rec.question_id];
+                          const solutionOpen = recShowSolution[rec.question_id];
+                          return (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                style={{
+                                  marginTop: 10, width: '100%', padding: '6px 10px',
+                                  border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                  borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                  color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <Lightbulb size={12} />
+                                {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                              </button>
+                              {solutionOpen && (
+                                <div style={{
+                                  marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                  border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                  color: '#1E3A8A', lineHeight: 1.55,
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <Lightbulb size={12} color="#2563EB" />
+                                    Explanation
+                                  </div>
+                                  {isLoadingSolution
+                                    ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                    : explanation
+                                      ? explanation
+                                      : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                  }
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
-                    {rec.text ? (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1626,37 +1804,150 @@ export function GuestExamPage() {
                 </div>
               ) : (
                 displayRecs.map((rec, idx) => {
+                  const isExpanded = expandedRecId === rec.question_id;
+                  const answeredOptId = recUserResponses[rec.question_id];
+
                   return (
                     <div
                       key={rec.question_id || idx}
-                      onClick={() => handleSelectRecommendation(rec)}
                       style={{
-                        backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 0,
-                        padding: '10px 12px',
-                        cursor: 'pointer',
+                        backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                        borderRadius: 6,
                         transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.borderColor = '#CBD5E1';
-                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderColor = '#E2E8F0';
-                        e.currentTarget.style.boxShadow = 'none';
+                        boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                        overflow: 'hidden'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
-                        </span>
+                      <div
+                        onClick={() => handleSelectRecommendation(rec)}
+                        style={{ cursor: 'pointer', padding: '10px 12px' }}
+                        onMouseEnter={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExpanded) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                            {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                          </span>
+                          <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
+                          {rec.text ? (isExpanded ? rec.text : (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.3 }}>
-                        {rec.text ? (rec.text.length > 70 ? `${rec.text.substring(0, 70)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                      </div>
+
+                      {/* Inline Options Dropdown */}
+                      {isExpanded && (
+                        <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {rec.options?.map(opt => {
+                              const isSelected = answeredOptId === opt.option_id;
+                              const isCorrect = opt.is_correct;
+                              const isWrongSelected = isSelected && !isCorrect;
+                              const showResult = !!answeredOptId;
+
+                              let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                              let bgStyle = '#FFFFFF';
+
+                              if (showResult) {
+                                if (isCorrect) {
+                                  borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5';
+                                } else if (isWrongSelected) {
+                                  borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2';
+                                }
+                              }
+
+                              return (
+                                <button
+                                  key={opt.option_id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!answeredOptId) {
+                                      setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                    }
+                                  }}
+                                  style={{
+                                    textAlign: 'left',
+                                    padding: '6px 8px',
+                                    border: borderStyle,
+                                    backgroundColor: bgStyle,
+                                    borderRadius: 4,
+                                    fontSize: 11.5,
+                                    color: '#334155',
+                                    cursor: answeredOptId ? 'default' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    width: '100%'
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 800, color: (showResult && isCorrect) ? '#059669' : '#64748B' }}>
+                                    {opt.option_label}.
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Show Solution button + explanation panel (desktop) */}
+                          {(() => {
+                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                            const explanation = typeof _rawExpl === 'string'
+                              ? _rawExpl
+                              : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                            const isLoadingSolution = recSolutionLoading[rec.question_id];
+                            const solutionOpen = recShowSolution[rec.question_id];
+                            return (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                  style={{
+                                    marginTop: 10, width: '100%', padding: '6px 10px',
+                                    border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                    borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                    color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                    justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  <Lightbulb size={12} />
+                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                                </button>
+                                {solutionOpen && (
+                                  <div style={{
+                                    marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                    border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                    color: '#1E3A8A', lineHeight: 1.55,
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      <Lightbulb size={12} color="#2563EB" />
+                                      Explanation
+                                    </div>
+                                    {isLoadingSolution
+                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                      : explanation
+                                        ? explanation
+                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                    }
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                   );
                 })

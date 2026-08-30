@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2, Sparkles, X } from 'lucide-react';
+import { SlidersHorizontal, ChevronDown, Check, Search, CheckCircle2, Sparkles, X, Lightbulb } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
@@ -63,6 +63,9 @@ export function StudentPracticeExamPage() {
   const [recommendedPool, setRecommendedPool] = useState<QuestionOut[]>([]);
   const [expandedRecId, setExpandedRecId] = useState<number | string | null>(null);
   const [recUserResponses, setRecUserResponses] = useState<Record<string, number | string>>({});
+  const [recShowSolution, setRecShowSolution] = useState<Record<string | number, boolean>>({});
+  const [recExplanations, setRecExplanations] = useState<Record<string | number, string>>({});
+  const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>({});
   const expandedRecIdRef = React.useRef<number | string | null>(null);
   const recUserResponsesRef = React.useRef<Record<string, number | string>>({});
 
@@ -218,12 +221,58 @@ export function StudentPracticeExamPage() {
     }
   }, [allQuestions, recommendedPool.length, isPrefetchingRecs, prefetchRecommendations]);
 
-  // Handler to toggle recommended question accordion
+  // Handler to toggle recommended question accordion (NEVER touches the center card)
   const handleSelectRecommendation = (recQ: QuestionOut) => {
     setExpandedRecId(prev => (prev === recQ.question_id ? null : recQ.question_id));
   };
 
-  // The sidebar will render all up to 15 recommended items
+  // Handler to load a recommended question into the main exam flow (used by onNext when pool exhausted)
+  const handleLoadRecommendedIntoExam = (recQ: QuestionOut) => {
+    const existingIdx = allQuestions.findIndex(q => q.question_id === recQ.question_id);
+    if (existingIdx !== -1) {
+      handleSelectQuestion(existingIdx);
+      return;
+    }
+    // Append to allQuestions and navigate to it
+    setAllQuestions(prev => {
+      const next = [...prev, recQ];
+      setTotalQuestions(next.length);
+      setCurrentQIndex(next.length - 1);
+      setActiveQuestion(recQ);
+      return next;
+    });
+    // Remove from recommended pool since it's now a main question
+    setRecommendedPool(prev => prev.filter(q => q.question_id !== recQ.question_id));
+  };
+
+  // Toggle Show Solution for a recommended card (fetches from API if needed)
+  const handleRecShowSolution = async (rec: QuestionOut) => {
+    const qId = rec.question_id;
+    setRecShowSolution(prev => ({ ...prev, [qId]: !prev[qId] }));
+    // If we already have the explanation cached, nothing to fetch
+    if (recExplanations[qId] || (rec as any).explanation) return;
+    setRecSolutionLoading(prev => ({ ...prev, [qId]: true }));
+    try {
+      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      if (res.ok) {
+        const data = await res.json();
+        // API returns { explanation: { detailed_solution, core_concept, ... } }
+        const expl = data.explanation?.detailed_solution
+          || data.explanation?.core_concept
+          || (typeof data.explanation === 'string' ? data.explanation : null)
+          || data.detailed_solution
+          || data.solution_text
+          || null;
+        if (expl) {
+          setRecExplanations(prev => ({ ...prev, [qId]: expl }));
+        }
+      }
+    } catch (err) {
+      console.warn('Rec solution fetch error:', err);
+    } finally {
+      setRecSolutionLoading(prev => ({ ...prev, [qId]: false }));
+    }
+  };
   const displayRecs = recommendedPool;
 
   // Subject-Wide Fallback Pool & Topic Completion Banner
@@ -746,12 +795,12 @@ export function StudentPracticeExamPage() {
     }
 
     if (recommendedPool.length > 0) {
-      handleSelectRecommendation(recommendedPool[0]);
+      handleLoadRecommendedIntoExam(recommendedPool[0]);
       return true;
     }
 
     return false;
-  }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, recommendedPool, userResponses, revealedMap, handleSelectRecommendation]);
+  }, [allQuestions, subjectFallbackPool, handleLoadSubjectFallbackQuestions, gTopic, gSubject, gExam, recommendedPool, userResponses, revealedMap, handleLoadRecommendedIntoExam]);
 
   // Reveal Instant Per-Question Answer & Description with Full Solution
   const handleRevealAnswer = async (qId?: number | string, overrideOptId?: number | string, overrideOptLbl?: string) => {
@@ -1594,29 +1643,126 @@ export function StudentPracticeExamPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {displayRecs.map((rec, idx) => (
-                <div
-                  key={rec.question_id || idx}
-                  onClick={() => {
-                    handleSelectRecommendation(rec);
-                    setShowMobileRecs(false);
-                  }}
-                  style={{
-                    backgroundColor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 0,
-                    padding: '10px 12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 4 }}>
-                    {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+              {displayRecs.map((rec, idx) => {
+                const isExpanded = expandedRecId === rec.question_id;
+                const answeredOptId = recUserResponses[rec.question_id as string];
+
+                return (
+                  <div
+                    key={rec.question_id || idx}
+                    style={{
+                      backgroundColor: isExpanded ? '#FFFFFF' : '#F8FAFC',
+                      border: '1px solid',
+                      borderColor: isExpanded ? '#CBD5E1' : '#E2E8F0',
+                      borderRadius: 6,
+                      transition: 'all 0.15s ease',
+                      boxShadow: isExpanded ? '0 4px 12px rgba(15, 23, 42, 0.05)' : 'none',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      onClick={() => handleSelectRecommendation(rec)}
+                      style={{ cursor: 'pointer', padding: '10px 12px' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          {rec.topic_name || rec.section_code || gSubject || 'PYQ'}
+                        </span>
+                        <ChevronDown size={14} style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', color: '#94A3B8' }} />
+                      </div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
+                        {rec.text ? (isExpanded ? rec.text : (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text)) : `Practice Question ${idx + 1}`}
+                      </div>
+                    </div>
+
+                    {/* Inline Options Dropdown (mobile) */}
+                    {isExpanded && (
+                      <div style={{ padding: '0 12px 12px 12px', borderTop: '1px solid #F1F5F9' }}>
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {rec.options?.map(opt => {
+                            const isSelected = answeredOptId === opt.option_id;
+                            const isCorrect = opt.is_correct;
+                            const isWrongSelected = isSelected && !isCorrect;
+                            const showResult = !!answeredOptId;
+                            let borderStyle = isSelected ? '1px solid #94A3B8' : '1px solid #E2E8F0';
+                            let bgStyle = '#FFFFFF';
+                            if (showResult) {
+                              if (isCorrect) { borderStyle = '1px solid #3A8B53'; bgStyle = '#ECFDF5'; }
+                              else if (isWrongSelected) { borderStyle = '1px solid #EF4444'; bgStyle = '#FEF2F2'; }
+                            }
+                            return (
+                              <button
+                                key={opt.option_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!answeredOptId) setRecUserResponses(p => ({ ...p, [rec.question_id]: opt.option_id }));
+                                }}
+                                style={{
+                                  textAlign: 'left', padding: '6px 8px', border: borderStyle,
+                                  backgroundColor: bgStyle, borderRadius: 4, fontSize: 11.5, color: '#334155',
+                                  cursor: answeredOptId ? 'default' : 'pointer', display: 'flex',
+                                  alignItems: 'flex-start', gap: 6, width: '100%'
+                                }}
+                              >
+                                <div style={{ width: 14, height: 14, flexShrink: 0, marginTop: 2, borderRadius: '50%', border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isSelected ? '#1E3A8A' : '#FFF' }}>
+                                  {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FFF' }} />}
+                                </div>
+                                <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Show Solution button + explanation panel (mobile) */}
+                        {(() => {
+                          const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                          const explanation = typeof _rawExpl === 'string'
+                            ? _rawExpl
+                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                          const isLoadingSolution = recSolutionLoading[rec.question_id];
+                          const solutionOpen = recShowSolution[rec.question_id];
+                          return (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                style={{
+                                  marginTop: 10, width: '100%', padding: '6px 10px',
+                                  border: '1px solid', borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                  borderRadius: 5, backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                  color: solutionOpen ? '#4338CA' : '#475569', fontSize: 11, fontWeight: 700,
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                  justifyContent: 'center', gap: 5, transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <Lightbulb size={12} />
+                                {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                              </button>
+                              {solutionOpen && (
+                                <div style={{
+                                  marginTop: 8, padding: '10px 12px', backgroundColor: '#EFF6FF',
+                                  border: '1px solid #BFDBFE', borderRadius: 5, fontSize: 11.5,
+                                  color: '#1E3A8A', lineHeight: 1.55,
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <Lightbulb size={12} color="#2563EB" />
+                                    Explanation
+                                  </div>
+                                  {isLoadingSolution
+                                    ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                    : explanation
+                                      ? explanation
+                                      : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                  }
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
-                    {rec.text ? (rec.text.length > 80 ? `${rec.text.substring(0, 80)}...` : rec.text) : `Practice Question ${idx + 1}`}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1784,12 +1930,68 @@ export function StudentPracticeExamPage() {
                               );
                             })}
                           </div>
-                          {answeredOptId && (rec as any).explanation && (
-                            <div style={{ marginTop: 10, padding: 8, backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, fontSize: 11, color: '#1E3A8A' }}>
-                              <strong>Explanation:</strong> <br />
-                              {(rec as any).explanation}
-                            </div>
-                          )}
+
+                          {/* Show Solution button + explanation panel */}
+                          {(() => {
+                            const _rawExpl = recExplanations[rec.question_id] || (rec as any).explanation;
+                          const explanation = typeof _rawExpl === 'string'
+                            ? _rawExpl
+                            : (_rawExpl?.detailed_solution || _rawExpl?.core_concept || null);
+                          const isLoadingSolution = recSolutionLoading[rec.question_id];
+                            const solutionOpen = recShowSolution[rec.question_id];
+                            return (
+                              <>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRecShowSolution(rec); }}
+                                  style={{
+                                    marginTop: 10,
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    border: '1px solid',
+                                    borderColor: solutionOpen ? '#6366F1' : '#CBD5E1',
+                                    borderRadius: 5,
+                                    backgroundColor: solutionOpen ? '#EEF2FF' : '#F8FAFC',
+                                    color: solutionOpen ? '#4338CA' : '#475569',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 5,
+                                    transition: 'all 0.15s ease',
+                                    letterSpacing: '0.03em',
+                                  }}
+                                >
+                                  <Lightbulb size={12} />
+                                  {solutionOpen ? 'Hide Solution' : 'Show Solution'}
+                                </button>
+                                {solutionOpen && (
+                                  <div style={{
+                                    marginTop: 8,
+                                    padding: '10px 12px',
+                                    backgroundColor: '#EFF6FF',
+                                    border: '1px solid #BFDBFE',
+                                    borderRadius: 5,
+                                    fontSize: 11.5,
+                                    color: '#1E3A8A',
+                                    lineHeight: 1.55,
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6, fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      <Lightbulb size={12} color="#2563EB" />
+                                      Explanation
+                                    </div>
+                                    {isLoadingSolution
+                                      ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>Loading solution…</span>
+                                      : explanation
+                                        ? explanation
+                                        : <span style={{ color: '#64748B', fontStyle: 'italic' }}>No explanation available.</span>
+                                    }
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -1835,12 +2037,12 @@ export function StudentPracticeExamPage() {
                 const loaded = handleLoadSubjectFallbackQuestions();
                 if (loaded) handleSelectQuestion(currentQIndex + 1);
               } else if (recommendedPool.length > 0) {
-                handleSelectRecommendation(recommendedPool[0]);
+                handleLoadRecommendedIntoExam(recommendedPool[0]);
               } else {
                 setShowNoMoreQuestionsModal(true);
               }
             } else if (recommendedPool.length > 0) {
-              handleSelectRecommendation(recommendedPool[0]);
+              handleLoadRecommendedIntoExam(recommendedPool[0]);
             } else {
               setShowNoMoreQuestionsModal(true);
             }

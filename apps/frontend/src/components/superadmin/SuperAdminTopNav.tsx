@@ -177,40 +177,6 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
       <span>Admin Profile</span>
     </button>
 
-    {/* User Initial Avatar Circle */}
-    <button
-      onClick={() => setShowProfileCard((prev) => !prev)}
-      title="Super Admin Profile"
-      aria-label="Super Admin Profile"
-      style={{
-        width: 38,
-        height: 38,
-        borderRadius: 0,
-        background: 'linear-gradient(135deg, #F47B35 0%, #ea580c 100%)',
-        border: '2px solid rgba(255, 255, 255, 0.35)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#ffffff',
-        fontSize: 13.5,
-        fontWeight: 800,
-        fontFamily: 'Inter, sans-serif',
-        cursor: 'pointer',
-        flexShrink: 0,
-        boxShadow: '0 2px 10px rgba(249, 115, 22, 0.4)',
-        transition: 'transform 0.15s ease, border-color 0.15s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.06)';
-        e.currentTarget.style.borderColor = '#ffffff';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)';
-      }}
-    >
-      {userInitials}
-    </button>
 
     {/* Mobile Search Modal */}
     {isSmallScreen && showMobileSearch && (

@@ -102,6 +102,19 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return list(res.all())
 
+    async def get_active_admins(self) -> List[User]:
+        stmt = (
+            select(User)
+            .where(User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE)
+            .options(selectinload(User.admin_profile))
+            .order_by(col(User.created_at).desc())
+        )
+        res = await self.session.exec(stmt)
+        return list(res.all())
+
+    async def get_all_users(self) -> List[User]:
+        return await self.get_all_users_for_superadmin(limit=1000)
+
     async def get_all_users_for_superadmin(
         self,
         role: Optional[UserRole] = None,
@@ -230,7 +243,7 @@ class UserRepository:
         await self.session.commit()
         return await self.get_by_id(user.id)
 
-    async def get_approval_audit_logs(self, limit: int = 50) -> List[AdminApprovalLog]:
+    async def get_approval_logs(self, limit: int = 50) -> List[AdminApprovalLog]:
         stmt = (
             select(AdminApprovalLog)
             .order_by(col(AdminApprovalLog.created_at).desc())
@@ -239,7 +252,7 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return list(res.all())
 
-    async def get_system_audit_stats(self) -> Dict[str, Any]:
+    async def get_system_stats(self) -> Dict[str, Any]:
         total_users = (await self.session.exec(select(func.count(User.id)))).one()
         active_users = (
             await self.session.exec(

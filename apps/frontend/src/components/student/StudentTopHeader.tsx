@@ -255,46 +255,33 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           </button>
         )}
 
-        <Link
-          to="/dashboard"
+        <a
+          href="https://examplanner.in"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 9,
             textDecoration: 'none',
             flexShrink: 0
           }}
         >
-          <div
+          <img
+            src="/logo.jpeg"
+            alt="ExamPlanner"
             style={{
               width: 28,
               height: 28,
-              borderRadius: 0,
-              backgroundColor: '#E31B23',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              color: '#ffffff',
-              fontSize: 14,
+              objectFit: 'contain',
+              borderRadius: 4,
             }}
-          >
-            EP
-          </div>
+          />
           {!isMobile && (
-            <span
-              style={{
-                fontSize: 16,
-                fontWeight: 800,
-                color: '#ffffff',
-                letterSpacing: '-0.02em',
-                fontFamily: 'Inter, sans-serif'
-              }}
-            >
-              ExamPlanner
-            </span>
+            <div style={{ lineHeight: 1.15, display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff', fontFamily: 'Inter, sans-serif' }}>Exam</span>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#E31B23', fontFamily: 'Inter, sans-serif' }}>Planner</span>
+            </div>
           )}
-        </Link>
+        </a>
 
         {!isTabletOrBelow && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
