@@ -305,7 +305,6 @@ class ExamAttemptReport(SQLModel, table=True):
     full_report_json: Optional[dict] = Field(
         default=None, sa_column=Column(PortableJSON)
     )
-    markdown_audit_text: Optional[str] = Field(default=None)
     s3_report_url: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

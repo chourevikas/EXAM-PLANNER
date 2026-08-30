@@ -169,7 +169,23 @@ export function AnalyticsPage() {
         if (isCancelled) return;
 
         if (jsonRes.status === 'fulfilled') {
-          setReport(jsonRes.value);
+          const loadedReport = jsonRes.value;
+          setReport(loadedReport);
+
+          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently to hot-swap it in
+          if (targetId !== 'CUMULATIVE_ALL' && !loadedReport?.llm_insight) {
+            setTimeout(async () => {
+              if (isCancelled) return;
+              try {
+                const refreshedReport = await getPsychometricReportJson(targetId);
+                if (refreshedReport && refreshedReport.llm_insight && !isCancelled) {
+                  setReport(refreshedReport);
+                }
+              } catch {
+                // Silent catch - user already has full phase-1 matrices
+              }
+            }, 3500);
+          }
         } else {
           setError(jsonRes.reason?.message || 'Report is currently compiling in background. Please refresh in a moment.');
         }

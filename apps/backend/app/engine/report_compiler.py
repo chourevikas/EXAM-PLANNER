@@ -75,6 +75,12 @@ async def compile_comprehensive_psychometric_report(
         await session.commit()
         raise ValueError(f"Evaluation failed for Attempt '{attempt.id}': {pipe_err}")
 
+    # 4. Check ExamAttemptReport in DB after pipeline execution
+    rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt.id)
+    rep_db = (await session.exec(rep_stmt)).first()
+    if rep_db and rep_db.full_report_json is not None:
+        return rep_db.full_report_json
+
     if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
         if "part_2_exam_macro_scorecard" in attempt.report_metadata_json or "part_3_aggregated_user_report" in attempt.report_metadata_json:
             return attempt.report_metadata_json

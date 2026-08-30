@@ -43,7 +43,6 @@ import {
   bulkAddStudyTasksFromReport,
   getAttemptScheduledTasksStatus,
 } from '../../services/examService';
-import { MarkdownPreviewer } from '../common/MarkdownPreviewer';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -64,14 +63,12 @@ import {
 
 interface PsychometricReportViewProps {
   report: PsychometricReport;
-  markdownContent?: string;
   questionReportData?: QuestionReportItem[];
   userProgressionData?: UserProgressionReportData | null;
 }
 
 export function PsychometricReportView({
   report,
-  markdownContent,
   questionReportData,
   userProgressionData,
 }: PsychometricReportViewProps) {
@@ -82,7 +79,7 @@ export function PsychometricReportView({
     report?.metadata?.report_type === 'CUMULATIVE_MULTI_EXAM_AGGREGATE';
 
   const [activeTab, setActiveTab] = useState<
-    'questions' | 'exam-matrices' | 'topics' | 'user-aggregate' | 'markdown'
+    'questions' | 'exam-matrices' | 'topics' | 'user-aggregate'
   >(isCumulative ? 'exam-matrices' : 'questions');
 
   useEffect(() => {

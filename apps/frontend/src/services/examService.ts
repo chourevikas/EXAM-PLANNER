@@ -250,24 +250,6 @@ export async function getPsychometricReportJson(attemptId: number | string): Pro
   return data;
 }
 
-/** 10. Fetch Psychometric Diagnostic Report Markdown */
-export async function getPsychometricReportMarkdown(attemptId: number | string): Promise<string> {
-  const headers = getAuthHeaders();
-  delete headers['Content-Type']; // Expect text/markdown
-
-  const response = await fetch(`${API_BASE_URL}/analytics/reports/attempts/${encodeURIComponent(attemptId)}/markdown`, {
-    method: 'GET',
-    headers,
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({ detail: 'Failed to fetch markdown report' }));
-    throw new Error(data.detail || 'Failed to fetch markdown report');
-  }
-
-  return await response.text();
-}
-
 export interface ExamItem {
   id: number | string;
   code: string;
@@ -521,23 +503,6 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
   } catch (err) {
     console.warn('Failed to fetch user cumulative aggregate report:', err);
     return null;
-  }
-}
-
-export async function getUserCumulativeAggregateMarkdown(userId?: number | string): Promise<string> {
-  try {
-    const target = userId || 'me';
-    const headers = getAuthHeaders();
-    delete headers['Content-Type'];
-    const response = await fetch(`${API_BASE_URL}/analytics/users/${encodeURIComponent(target)}/aggregate-report/markdown`, {
-      method: 'GET',
-      headers,
-    });
-    if (!response.ok) return '';
-    return await response.text();
-  } catch (err) {
-    console.warn('Failed to fetch user cumulative markdown:', err);
-    return '';
   }
 }
 

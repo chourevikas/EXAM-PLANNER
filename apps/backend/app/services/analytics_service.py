@@ -86,12 +86,6 @@ class AnalyticsService:
         attempt_id: Optional[int] = None,
     ) -> Response:
         try:
-            if attempt_id:
-                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
-                rep_db = (await self.session.exec(rep_stmt)).first()
-                if rep_db and rep_db.markdown_audit_text is not None:
-                    return Response(content=rep_db.markdown_audit_text, media_type="text/markdown")
-
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -400,7 +394,7 @@ class AnalyticsService:
             if rep_db and rep_db.full_report_json is not None:
                 has_evaluated_report = True
 
-        is_ready = (attempt.status == AttemptStatus.EVALUATED) and has_evaluated_report
+        is_ready = (attempt.status == AttemptStatus.EVALUATED) or has_evaluated_report
 
         # Auto-recovery for stuck attempts
         if not is_ready:
@@ -408,7 +402,8 @@ class AnalyticsService:
             if time_since >= 2 and attempt_id not in _RETRIGGERED_ATTEMPTS:
                 _RETRIGGERED_ATTEMPTS.add(attempt_id)
                 logger.info(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-triggering pipeline.")
-                asyncio.create_task(run_post_submission_pipeline(attempt.id))
+                if attempt.id:
+                    asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
         status_str = "COMPLETED" if is_ready else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
         progress = 100 if is_ready else (70 if attempt.status == AttemptStatus.SUBMITTED else 30)
@@ -449,7 +444,7 @@ class AnalyticsService:
         _RETRIGGERED_ATTEMPTS.discard(attempt_id)
 
         # Launch pipeline
-        asyncio.create_task(run_post_submission_pipeline(attempt.id))
+        asyncio.create_task(run_post_submission_pipeline(attempt_id))
 
         return {
             "attempt_id": str(attempt_id),

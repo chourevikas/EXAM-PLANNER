@@ -118,6 +118,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const lastSyncedSnapshotRef = useRef<Map<string | number, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
   const optionSwitchesCountRef = useRef<Map<string | number, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
+  const autoSubmittedRef = useRef<boolean>(false);
 
   // Queue a modified response if it passes dirty-check verification
   const queueResponseUpdate = (
@@ -511,6 +512,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     return () => clearInterval(timer);
   }, []);
 
+  // Immediate Auto-Submission when Timer reaches 0
+  useEffect(() => {
+    if (isLoadingSession || !attemptId || timeLeft > 0 || autoSubmittedRef.current) return;
+    autoSubmittedRef.current = true;
+    handleConfirmSubmit('TIMER_EXPIRED');
+  }, [timeLeft, isLoadingSession, attemptId]);
+
   useEffect(() => {
     if (!attemptId) return;
 
@@ -523,7 +531,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         });
 
         if (hbRes.auto_submitted) {
-          alert('Time has expired! Your exam has been automatically submitted.');
           navigate(`/analytics?attemptId=${attemptId}`);
         }
       } catch (err) {
@@ -699,7 +706,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (isMobile) setMobileTab('question');
   };
 
-  const handleConfirmSubmit = async () => {
+  const handleConfirmSubmit = async (reason: 'USER_CLICKED_SUBMIT' | 'TIMER_EXPIRED' = 'USER_CLICKED_SUBMIT') => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
@@ -796,7 +803,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         });
 
         await submitExamAttempt(attemptId, {
-          submission_reason: 'USER_CLICKED_SUBMIT',
+          submission_reason: reason,
           responses: allFinalResponses.length > 0 ? allFinalResponses : undefined,
         });
         navigate(`/analytics?attemptId=${attemptId}`);

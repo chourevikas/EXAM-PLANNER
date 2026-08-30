@@ -1,4 +1,3 @@
-import uuid
 import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
@@ -132,32 +131,32 @@ class ExamSessionService:
             else:
                 logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
                 status_res = await self.get_exam_status(existing_attempt.id, user_id)
-            q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
-            # Generate presigned URLs for questions JSON
-            q_presigned_url = None
-            q_f_url = None
-            try:
-                q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-                if await self.storage.exists(q_path):
-                    q_presigned_url = await self.storage.generate_presigned_url(q_path)
-                if q_folder and await self.storage.exists(q_folder):
-                    q_f_url = await self.storage.generate_presigned_url(q_folder)
-            except Exception as presign_err:
-                logger.warning(f"Could not generate presigned question URLs: {presign_err}")
+                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
+                # Generate presigned URLs for questions JSON
+                q_presigned_url = None
+                q_f_url = None
+                try:
+                    q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
+                    if await self.storage.exists(q_path):
+                        q_presigned_url = await self.storage.generate_presigned_url(q_path)
+                    if q_folder and await self.storage.exists(q_folder):
+                        q_f_url = await self.storage.generate_presigned_url(q_folder)
+                except Exception as presign_err:
+                    logger.warning(f"Could not generate presigned question URLs: {presign_err}")
 
-            return StartExamResponse(
-                attempt_id=str(existing_attempt.id),
-                exam_id=str(exam.id),
-                status=existing_attempt.status,
-                mode=existing_attempt.mode,
-                started_at=existing_attempt.started_at,
-                max_duration_seconds=existing_attempt.max_duration_seconds,
-                total_questions=existing_attempt.total_questions,
-                first_question=q_nav,
-                palette=status_res.palette,
-                questions_presigned_url=q_presigned_url,
-                questions_folder_url=q_f_url,
-            )
+                return StartExamResponse(
+                    attempt_id=str(existing_attempt.id),
+                    exam_id=str(exam.id),
+                    status=existing_attempt.status,
+                    mode=existing_attempt.mode,
+                    started_at=existing_attempt.started_at,
+                    max_duration_seconds=existing_attempt.max_duration_seconds,
+                    total_questions=existing_attempt.total_questions,
+                    first_question=q_nav,
+                    palette=status_res.palette,
+                    questions_presigned_url=q_presigned_url,
+                    questions_folder_url=q_f_url,
+                )
 
         # Fast Question Metadata Retrieval using DB index scan or folder
 
@@ -1548,10 +1547,12 @@ class ExamSessionService:
         await invalidate_user_cache(str(user_id))
 
         # Enqueue async post-submission pipeline
-        if background_tasks:
-            from app.engine.post_submission_pipeline import run_post_submission_pipeline
-
-            background_tasks.add_task(run_post_submission_pipeline, attempt.id)
+        from app.engine.post_submission_pipeline import run_post_submission_pipeline
+        if attempt.id:
+            if background_tasks:
+                background_tasks.add_task(run_post_submission_pipeline, attempt.id)
+            else:
+                asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
         acc_pct = round((tot_correct / max(1, attempt.total_questions)) * 100.0, 1)
 
