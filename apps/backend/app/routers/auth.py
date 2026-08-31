@@ -21,6 +21,7 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.core.deps import get_current_user, require_roles
+from app.cache import get_cache, build_cache_key
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -273,7 +274,13 @@ async def read_current_user(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    stats = await _get_user_question_stats(session, current_user.id)
+    cache = get_cache()
+    cache_key = build_cache_key("auth:me:stats", str(current_user.id))
+    stats = await cache.get(cache_key)
+    if stats is None:
+        stats = await _get_user_question_stats(session, current_user.id)
+        await cache.set(cache_key, stats, ttl_seconds=300)
+        
     return UserOut(
         id=current_user.id,
         full_name=current_user.full_name,
