@@ -247,6 +247,14 @@ async def get_todays_activities(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Get all study activities logged today for the current user."""
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("analytics:activity_today", str(current_user.id))
+
+    cached_val = await cache.get(cache_key)
+    if cached_val is not None:
+        return cached_val
+
     today = datetime.now(timezone.utc).date()
     statement = select(StudyActivity).where(
         StudyActivity.user_id == current_user.id,
@@ -254,7 +262,31 @@ async def get_todays_activities(
     ).order_by(col(StudyActivity.created_at).desc())
     
     result = await session.exec(statement)
-    return result.all()
+    activities = result.all()
+    
+    # We must serialize to dicts to cache them, since the router uses model_dump,
+    # but the cache requires JSON serializable objects.
+    # Alternatively we just cache the raw models if the cache handles it.
+    # Actually, returning them directly to FastAPI allows FastAPI to serialize them.
+    # We will just cache the dict representations.
+    out_list = []
+    for a in activities:
+        out_list.append({
+            "id": a.id,
+            "subject": a.subject,
+            "topic": a.topic,
+            "duration_minutes": a.duration_minutes,
+            "activity_type": a.activity_type.value if hasattr(a.activity_type, 'value') else str(a.activity_type),
+            "questions_attempted": a.questions_attempted,
+            "questions_correct": a.questions_correct,
+            "confidence_rating": a.confidence_rating,
+            "notes": a.notes,
+            "date": a.date.isoformat() if a.date else None,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+            "activity_source": a.activity_source.value if hasattr(a.activity_source, 'value') else str(a.activity_source)
+        })
+    await cache.set(cache_key, out_list, ttl_seconds=300)
+    return out_list
 
 
 @router.get("/predicted-rank", summary="Get User's Estimated All India Rank (AIR) & Percentile")

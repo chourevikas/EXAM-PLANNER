@@ -7,8 +7,9 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import select, col, SQLModel, func
 from sqlmodel.ext.asyncio.session import AsyncSession
+import asyncio
 
-from app.db.session import get_async_session
+from app.db.session import get_async_session, async_session_factory
 from app.db.models.user import User
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.enums import StudyActivityType, ActivitySource
@@ -546,21 +547,26 @@ async def get_weekly_schedule(
 
     end_date = base_date + timedelta(days=6)  # Sunday
 
-    # Fetch tasks for this week
-    stmt_tasks = select(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date
-    )
-    tasks = (await session.exec(stmt_tasks)).all()
+    # Run tasks and activities queries concurrently
+    async def get_tasks():
+        async with async_session_factory() as s:
+            stmt = select(StudyTask).where(
+                StudyTask.user_id == current_user.id,
+                StudyTask.scheduled_date >= base_date,
+                StudyTask.scheduled_date <= end_date
+            )
+            return (await s.exec(stmt)).all()
 
-    # Fetch study activities for this week
-    stmt_activities = select(StudyActivity).where(
-        StudyActivity.user_id == current_user.id,
-        StudyActivity.date >= base_date,
-        StudyActivity.date <= end_date
-    )
-    activities = (await session.exec(stmt_activities)).all()
+    async def get_activities():
+        async with async_session_factory() as s:
+            stmt = select(StudyActivity).where(
+                StudyActivity.user_id == current_user.id,
+                StudyActivity.date >= base_date,
+                StudyActivity.date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    tasks, activities = await asyncio.gather(get_tasks(), get_activities())
 
     # Group by date
     days_data = []
@@ -649,24 +655,42 @@ async def get_weekly_insights(
 
     end_date = base_date + timedelta(days=6)  # Sunday
 
-    # 1. Fetch tasks for this week
-    stmt_tasks = select(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date
-    )
-    tasks = (await session.exec(stmt_tasks)).all()
+    # Run all 3 queries concurrently
+    async def get_tasks():
+        async with async_session_factory() as s:
+            stmt = select(StudyTask).where(
+                StudyTask.user_id == current_user.id,
+                StudyTask.scheduled_date >= base_date,
+                StudyTask.scheduled_date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    async def get_activities():
+        async with async_session_factory() as s:
+            stmt = select(StudyActivity).where(
+                StudyActivity.user_id == current_user.id,
+                StudyActivity.date >= base_date,
+                StudyActivity.date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    async def get_attempts():
+        async with async_session_factory() as s:
+            start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
+            end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+            stmt = select(ExamAttempt).where(
+                ExamAttempt.user_id == current_user.id,
+                ExamAttempt.started_at >= start_dt,
+                ExamAttempt.started_at <= end_dt
+            )
+            return (await s.exec(stmt)).all()
+
+    tasks, activities, attempts = await asyncio.gather(get_tasks(), get_activities(), get_attempts())
+
     total_tasks = len(tasks)
     completed_tasks = sum(1 for t in tasks if t.is_completed)
     completion_rate = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
 
-    # 2. Fetch study activities for this week
-    stmt_activities = select(StudyActivity).where(
-        StudyActivity.user_id == current_user.id,
-        StudyActivity.date >= base_date,
-        StudyActivity.date <= end_date
-    )
-    activities = (await session.exec(stmt_activities)).all()
     logged_minutes = sum(a.duration_minutes or 0 for a in activities)
     logged_hours = round(logged_minutes / 60, 1)
     
@@ -674,16 +698,6 @@ async def get_weekly_insights(
     correct_from_logs = sum(a.questions_correct or 0 for a in activities)
     
     active_days_set = {str(a.date) for a in activities}
-
-    # 3. Fetch exam attempts for this week
-    start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
-    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
-    stmt_attempts = select(ExamAttempt).where(
-        ExamAttempt.user_id == current_user.id,
-        ExamAttempt.started_at >= start_dt,
-        ExamAttempt.started_at <= end_dt
-    )
-    attempts = (await session.exec(stmt_attempts)).all()
     
     exam_questions = 0
     exam_correct = 0

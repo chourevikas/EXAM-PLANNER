@@ -1892,24 +1892,49 @@ class ExamSessionService:
         """
         Retrieves aggregate statistics and recent exam attempts for the student dashboard.
         """
-        attempts_res = await self.session.exec(
-            select(ExamAttempt).where(ExamAttempt.user_id == user_id).order_by(col(ExamAttempt.created_at).desc())
-        )
-        attempts = attempts_res.all()
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:student_dashboard_stats", str(user_id))
 
-        total_exams = len(attempts)
-        total_questions_attempted = sum(
-            (a.total_questions_attempted if (a.total_questions_attempted is not None and a.total_questions_attempted > 0) else ((a.total_correct or 0) + (a.total_incorrect or 0)))
-            for a in attempts
-        )
-        total_correct = sum((a.total_correct or 0) for a in attempts)
-        total_questions = sum((a.total_questions or 0) for a in attempts)
-        total_time_seconds = sum(int(a.time_spent_seconds or 0) for a in attempts)
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
+        from sqlmodel import func, case
+        
+        # 1. Aggregate Stats Query (Executes in DB, no JSON transfer)
+        agg_stmt = select(
+            func.count(ExamAttempt.id).label("total_exams"),
+            func.sum(
+                case((ExamAttempt.total_questions_attempted > 0, ExamAttempt.total_questions_attempted),
+                     else_=(func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)))
+            ).label("total_questions_attempted"),
+            func.sum(func.coalesce(ExamAttempt.total_correct, 0)).label("total_correct"),
+            func.sum(func.coalesce(ExamAttempt.total_questions, 0)).label("total_questions"),
+            func.sum(func.coalesce(ExamAttempt.time_spent_seconds, 0)).label("total_time_seconds")
+        ).where(ExamAttempt.user_id == user_id)
+        
+        agg_res = (await self.session.exec(agg_stmt)).first()
+        
+        total_exams = int(getattr(agg_res, "total_exams", 0) or 0)
+        total_questions_attempted = int(getattr(agg_res, "total_questions_attempted", 0) or 0)
+        total_correct = int(getattr(agg_res, "total_correct", 0) or 0)
+        total_questions = int(getattr(agg_res, "total_questions", 0) or 0)
+        total_time_seconds = int(getattr(agg_res, "total_time_seconds", 0) or 0)
 
         overall_accuracy = round((total_correct / total_questions_attempted) * 100, 1) if total_questions_attempted > 0 else 0.0
 
+        # 2. Fetch only the 15 most recent attempts (Avoids downloading MBs of JSON for older attempts)
+        recent_stmt = (
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id)
+            .order_by(col(ExamAttempt.created_at).desc())
+            .limit(15)
+        )
+        recent_db_attempts = (await self.session.exec(recent_stmt)).all()
+
         recent_attempts = []
-        for a in attempts[:15]:
+        for a in recent_db_attempts:
             meta = a.report_metadata_json or {}
             is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
             is_practice = (a.mode == AttemptMode.PRACTICE) or is_guest or bool(meta.get("topic_name"))
@@ -1942,7 +1967,7 @@ class ExamSessionService:
                 "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
             })
 
-        return {
+        result = {
             "totalExams": total_exams,
             "totalQuestionsAttempted": total_questions_attempted,
             "totalCorrect": total_correct,
@@ -1951,4 +1976,6 @@ class ExamSessionService:
             "totalTimeSeconds": total_time_seconds,
             "recentAttempts": recent_attempts,
         }
+        await cache.set(cache_key, result, ttl_seconds=900)
+        return result
 
