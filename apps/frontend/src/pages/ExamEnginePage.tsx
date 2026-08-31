@@ -88,7 +88,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   });
 
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
-  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { isTabletOrBelow } = useBreakpoint();
   const [mobileTab, setMobileTab] = useState<'question' | 'palette'>('question');
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
@@ -237,31 +237,34 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           }
         }
 
-        try {
-          const liveExams: ExamItem[] = await listExams();
-          const targetId = examId || paramAttemptId;
-          const match = liveExams.find(
-            (e: ExamItem) => e.id === targetId || e.code === targetId || e.name === targetId
-          );
-          if (match) {
-            if (
-              match.exam_type === 'PYQ' ||
-              match.code?.toLowerCase().includes('pyq') ||
-              match.name?.toLowerCase().includes('pyq')
-            ) {
-              isPyqTest = true;
-            } else if (
-              match.exam_type === 'STATIC_MOCK' ||
-              match.exam_type === 'MOCK' ||
-              match.code?.toLowerCase().includes('mock') ||
-              match.name?.toLowerCase().includes('mock')
-            ) {
-              isPyqTest = false;
+        // Exam-type (PYQ vs Mock) confirmation runs in the background — a
+        // synchronous heuristic above already set a reasonable default, and
+        // this lookup doesn't gate correctness of starting/resuming the
+        // attempt, so it must never block that critical path.
+        listExams()
+          .then((liveExams: ExamItem[]) => {
+            const targetId = examId || paramAttemptId;
+            const match = liveExams.find(
+              (e: ExamItem) => e.id === targetId || e.code === targetId || e.name === targetId
+            );
+            if (match) {
+              if (
+                match.exam_type === 'PYQ' ||
+                match.code?.toLowerCase().includes('pyq') ||
+                match.name?.toLowerCase().includes('pyq')
+              ) {
+                setIsPYQ(true);
+              } else if (
+                match.exam_type === 'STATIC_MOCK' ||
+                match.exam_type === 'MOCK' ||
+                match.code?.toLowerCase().includes('mock') ||
+                match.name?.toLowerCase().includes('mock')
+              ) {
+                setIsPYQ(false);
+              }
             }
-          }
-        } catch (e) {
-          console.warn('Exam type lookup warning:', e);
-        }
+          })
+          .catch((e) => console.warn('Exam type lookup warning:', e));
 
         setIsPYQ(isPyqTest);
 
@@ -276,24 +279,18 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setResponseSummary(sessionStatus.response_summary);
           setCurrentQIndex(sessionStatus.current_question_index);
 
-          // 1-Call Bulk Preload for Zero-Lag Question Switching & Language Toggle
-          try {
-            const bulkData = await getAllAttemptQuestionsBulk(
-              sessionStatus.attempt_id,
-              'ENGLISH',
-              sessionStatus.questions_presigned_url
-            );
-            if (bulkData.questions && bulkData.questions.length > 0) {
-              setAllQuestions(bulkData.questions);
-              const curQ = bulkData.questions[sessionStatus.current_question_index] || bulkData.questions[0];
-              setActiveQuestion(curQ);
-            } else {
-              await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
-            }
-          } catch (bulkErr) {
-            console.warn('Bulk preload fallback to single fetch:', bulkErr);
-            await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
-          }
+          // Load just the current question first so the user can start
+          // immediately — don't wait on the full bulk preload for that.
+          await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
+
+          // Background: preload the rest for zero-lag switching/language toggle later.
+          getAllAttemptQuestionsBulk(sessionStatus.attempt_id, 'ENGLISH')
+            .then((bulkData) => {
+              if (bulkData.questions && bulkData.questions.length > 0) {
+                setAllQuestions(bulkData.questions);
+              }
+            })
+            .catch((bulkErr) => console.warn('Bulk preload warning (resume):', bulkErr));
         } else if (examId) {
           // Start new attempt session
           const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM' });
@@ -306,19 +303,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           setSelectedOptionId(startRes.first_question.response_state.selected_option_id as string | null);
           setIsMarkedForReview(startRes.first_question.response_state.is_marked_for_review);
 
-          // Preload rest in background
-          try {
-            const bulkData = await getAllAttemptQuestionsBulk(
-              startRes.attempt_id,
-              'ENGLISH',
-              startRes.questions_presigned_url
-            );
-            if (bulkData.questions && bulkData.questions.length > 0) {
-              setAllQuestions(bulkData.questions);
-            }
-          } catch (bulkErr) {
-            console.warn('Bulk preload warning:', bulkErr);
-          }
+          // Background: preload the rest for zero-lag switching — the first
+          // question is already visible, so this must not block the loading state.
+          getAllAttemptQuestionsBulk(startRes.attempt_id, 'ENGLISH')
+            .then((bulkData) => {
+              if (bulkData.questions && bulkData.questions.length > 0) {
+                setAllQuestions(bulkData.questions);
+              }
+            })
+            .catch((bulkErr) => console.warn('Bulk preload warning:', bulkErr));
         } else {
           // Fallback demo questions if no examId/attemptId provided in route
           loadFallbackDemoData();
@@ -699,7 +692,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (attemptId) {
         await loadQuestion(attemptId, nextIdx + 1);
       }
-      if (isMobile) setMobileTab('question');
+      if (isTabletOrBelow) setMobileTab('question');
     }
   };
 
@@ -712,7 +705,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (attemptId) {
         await loadQuestion(attemptId, prevIdx + 1);
       }
-      if (isMobile) setMobileTab('question');
+      if (isTabletOrBelow) setMobileTab('question');
     }
   };
 
@@ -723,7 +716,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (attemptId) {
       await loadQuestion(attemptId, idx + 1);
     }
-    if (isMobile) setMobileTab('question');
+    if (isTabletOrBelow) setMobileTab('question');
   };
 
   const handleConfirmSubmit = async (reason: 'USER_CLICKED_SUBMIT' | 'TIMER_EXPIRED' = 'USER_CLICKED_SUBMIT') => {
@@ -939,7 +932,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         <div
           style={{
             position: 'fixed',
-            top: isMobile ? 104 : 64,
+            top: isTabletOrBelow ? 104 : 64,
             right: 24,
             zIndex: 100,
             display: 'flex',
@@ -972,8 +965,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         </div>
       )}
 
-      {/* Mobile Tab Switcher Bar (< 1024px) */}
-      {isMobile && isPYQ && (
+      {/* Mobile/Tablet Tab Switcher Bar (<= 834px) */}
+      {isTabletOrBelow && isPYQ && (
         <div
           style={{
             marginTop: 60,
@@ -1029,10 +1022,10 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       {/* Main Viewport Body */}
       <div
         style={{
-          marginTop: isMobile ? 116 : 76,
-          marginBottom: isMobile ? 76 : 80,
+          marginTop: isTabletOrBelow ? 116 : 76,
+          marginBottom: isTabletOrBelow ? 76 : 80,
           display: 'flex',
-          height: isMobile ? 'calc(100vh - 192px)' : 'calc(100vh - 156px)',
+          height: isTabletOrBelow ? 'calc(100vh - 192px)' : 'calc(100vh - 156px)',
           minHeight: 0,
           boxSizing: 'border-box',
           overflow: 'hidden',
@@ -1040,7 +1033,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         }}
       >
         {/* Center: Question Card Workspace with Collapsible Trigger Button */}
-        {(!isMobile || mobileTab === 'question') && (
+        {(!isTabletOrBelow || mobileTab === 'question') && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
@@ -1063,8 +1056,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-                onPrev={handlePrev}
-                onNext={handleNext}
                 isPYQ={isPYQ}
               />
             ) : null}
@@ -1072,7 +1063,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         )}
 
         {/* Right: Question Palette (Kept for PYQ Tests) */}
-        {isPYQ && (!isMobile || mobileTab === 'palette') && (
+        {isPYQ && (!isTabletOrBelow || mobileTab === 'palette') && (
           <ExamQuestionPalette
             palette={palette.length > 0 ? palette : undefined}
             currentQIndex={currentQIndex}

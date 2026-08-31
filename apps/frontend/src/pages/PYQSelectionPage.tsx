@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
-import { listExams, listCandidateAttempts, ExamItem, AttemptHistoryItem, formatCanonicalExamTitle } from '../services/examService';
-import { CheckCircle2, PlayCircle, BarChart2, RotateCcw } from 'lucide-react';
+import { listExams, getAttemptStatusByExam, ExamItem, formatCanonicalExamTitle } from '../services/examService';
+import { CheckCircle2, PlayCircle, BarChart2, RotateCcw, SlidersHorizontal, Search } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 
 interface DisplayExam {
@@ -26,6 +26,11 @@ export function PYQSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
 
+  // Filter bar state
+  const [selectedYear, setSelectedYear] = useState<string>('All Years');
+  const [selectedExamTarget, setSelectedExamTarget] = useState<string>('UPSC CSE');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   useEffect(() => {
     async function fetchLiveExamsAndAttempts() {
       setIsLoading(true);
@@ -34,9 +39,9 @@ export function PYQSelectionPage() {
         if (token) {
           localStorage.setItem('access_token', token);
         }
-        const [liveExams, userAttempts] = await Promise.all([
+        const [liveExams, statusByExam] = await Promise.all([
           listExams('PUBLISHED', true, token || undefined),
-          listCandidateAttempts(token || undefined),
+          getAttemptStatusByExam(token || undefined),
         ]);
 
         // Only display exams that have been Approved & Published by Admin with is_active = True
@@ -46,28 +51,19 @@ export function PYQSelectionPage() {
 
         if (publishedPyqs.length > 0) {
           const mapped: DisplayExam[] = publishedPyqs.map((e) => {
-            // Find attempts for this exam and sort by newest first
-            const examAttempts = userAttempts.filter(
-              (att) => att.exam_id === e.id || att.exam_id === e.code
-            );
-            examAttempts.sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime());
-
-            const completedAttempt = examAttempts.find((att) =>
-              ['COMPLETED', 'SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(att.status)
-            );
-            const inProgressAttempt = examAttempts.find((att) => att.status === 'IN_PROGRESS');
+            const attemptStatus = statusByExam[String(e.id)];
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
             let scoreText: string | undefined = undefined;
 
-            if (inProgressAttempt) {
+            if (attemptStatus?.in_progress_attempt_id) {
               status = 'IN_PROGRESS';
-            } else if (completedAttempt) {
+            } else if (attemptStatus?.completed_attempt_id) {
               status = 'COMPLETED';
             }
 
-            if (completedAttempt) {
-              scoreText = `${completedAttempt.total_score} / ${completedAttempt.max_possible_score}`;
+            if (attemptStatus?.completed_attempt_id) {
+              scoreText = `${attemptStatus.total_score} / ${attemptStatus.max_possible_score}`;
             }
 
             return {
@@ -78,8 +74,8 @@ export function PYQSelectionPage() {
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
-              completedAttemptId: completedAttempt?.attempt_id,
-              inProgressAttemptId: inProgressAttempt?.attempt_id,
+              completedAttemptId: attemptStatus?.completed_attempt_id,
+              inProgressAttemptId: attemptStatus?.in_progress_attempt_id,
               scoreText,
             };
           });
@@ -96,6 +92,20 @@ export function PYQSelectionPage() {
 
     fetchLiveExamsAndAttempts();
   }, []);
+
+  const yearOptions = useMemo(() => {
+    const years = Array.from(new Set(examsList.map((e) => String(e.year)))).sort((a, b) => Number(b) - Number(a));
+    return ['All Years', ...years];
+  }, [examsList]);
+
+  const filteredExamsList = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return examsList.filter((e) => {
+      if (selectedYear !== 'All Years' && String(e.year) !== selectedYear) return false;
+      if (query && !e.title.toLowerCase().includes(query) && !String(e.code || '').toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [examsList, selectedYear, searchQuery]);
 
   return (
     <StudentLayout pageTitle="Previous Year Questions">
@@ -114,6 +124,85 @@ export function PYQSelectionPage() {
         <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Select an active paper to attempt or view your generated psychometric diagnostic report.</p>
       </section>
 
+      {/* Filter Bar */}
+      <div
+        style={{
+          marginBottom: 24,
+          padding: '14px 18px',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          gap: '10px 16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 12, borderRight: '1px solid var(--border-default)' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 0, backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <SlidersHorizontal size={16} />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Filters</span>
+        </div>
+
+        <div style={{ minWidth: 150 }}>
+          <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            Exam
+          </label>
+          <select
+            value={selectedExamTarget}
+            onChange={(e) => setSelectedExamTarget(e.target.value)}
+            style={{
+              width: '100%', height: 38, padding: '0 12px', borderRadius: 0,
+              border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
+              color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none',
+            }}
+          >
+            <option value="UPSC CSE">UPSC CSE (Civil Services)</option>
+          </select>
+        </div>
+
+        <div style={{ minWidth: 130 }}>
+          <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            Year
+          </label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            style={{
+              width: '100%', height: 38, padding: '0 12px', borderRadius: 0,
+              border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
+              color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, outline: 'none',
+            }}
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            Search
+          </label>
+          <div style={{ position: 'relative' }}>
+            <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by paper title or code..."
+              style={{
+                width: '100%', height: 38, padding: '0 12px 0 34px', borderRadius: 0,
+                border: '1px solid var(--border-default)', backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Grid */}
       {isLoading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -130,9 +219,19 @@ export function PYQSelectionPage() {
             Previous year exam papers uploaded to S3 will appear here as soon as they are approved & published by an administrator.
           </p>
         </div>
+      ) : filteredExamsList.length === 0 ? (
+        <div style={{ padding: 60, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 0, border: '1px solid var(--border-default)' }}>
+          <div style={{ margin: '0 auto 12px auto', opacity: 0.5 }}>
+            <Ico.Book size={40} />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Papers Match Your Filters</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+            Try a different year or clear your search query.
+          </p>
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-          {examsList.map((exam) => {
+          {filteredExamsList.map((exam) => {
             const hasCompleted = Boolean(exam.completedAttemptId);
             const hasInProgress = Boolean(exam.inProgressAttemptId);
 

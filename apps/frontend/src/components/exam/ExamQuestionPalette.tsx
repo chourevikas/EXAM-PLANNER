@@ -288,9 +288,7 @@ export function ExamQuestionPalette({
         className="no-scrollbar"
         style={{
           display: 'grid',
-          gridTemplateColumns: isOverlay
-            ? 'repeat(auto-fill, minmax(44px, 1fr))'
-            : 'repeat(5, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))',
           gap: 6,
           overflowY: 'auto',
           overflowX: 'hidden',
