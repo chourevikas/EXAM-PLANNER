@@ -1,15 +1,15 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
-from sqlalchemy.orm import selectinload
+from sqlmodel import select, col, and_, func
 
 from app.db.session import get_async_session
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.user_service import UserService
 from app.db.models.user import User, UserRole, QuestionBookmark
-from app.db.models.question import Question
+from app.db.models.question import Question, QuestionTranslation
+from app.db.models.enums import LanguageCode
 from app.core.deps import get_current_user, require_roles
 from app.cache import get_cache, build_cache_key, invalidate_user_cache
 
@@ -18,36 +18,59 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/me/bookmarks")
 async def list_bookmarks(
+    skip: int = 0,
+    limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    if not current_user.id:
+        return []
+
+    cache = get_cache()
+    cache_key = build_cache_key("users:bookmarks", str(current_user.id), skip=skip, limit=limit)
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    # Single-pass optimized query selecting only needed scalar columns
     stmt = (
-        select(QuestionBookmark, Question)
-        .join(Question, QuestionBookmark.question_id == Question.id)
-        .options(selectinload(Question.translations))
-        .where(QuestionBookmark.user_id == current_user.id)
-        .order_by(QuestionBookmark.created_at.desc())
+        select(
+            col(QuestionBookmark.id).label("bookmark_id"),
+            col(Question.id).label("question_id"),
+            col(Question.difficulty),
+            col(QuestionBookmark.created_at),
+            func.coalesce(col(QuestionTranslation.question_text), "").label("question_text"),
+        )
+        .join(Question, col(QuestionBookmark.question_id) == col(Question.id))
+        .join(
+            QuestionTranslation,
+            and_(
+                col(QuestionTranslation.question_id) == col(Question.id),
+                col(QuestionTranslation.language) == LanguageCode.ENGLISH,
+            ),
+            isouter=True,
+        )
+        .where(col(QuestionBookmark.user_id) == current_user.id)
+        .order_by(col(QuestionBookmark.created_at).desc())
+        .offset(skip)
+        .limit(limit)
     )
     result = await session.exec(stmt)
     rows = result.all()
     
     out = []
-    for bk, q in rows:
-        text = ""
-        if q.translations:
-            en_trans = next((t for t in q.translations if t.language == "EN"), None)
-            if en_trans:
-                text = en_trans.question_text
-            else:
-                text = q.translations[0].question_text
-        
+    for row in rows:
+        difficulty_raw = getattr(row, "difficulty", None)
+        diff_val = difficulty_raw.value if hasattr(difficulty_raw, "value") else (difficulty_raw or "MEDIUM")
         out.append({
-            "bookmark_id": str(bk.id),
-            "question_id": str(q.id),
-            "question_text": text,
-            "difficulty": q.difficulty.value if hasattr(q, 'difficulty') else "MEDIUM",
-            "created_at": bk.created_at.isoformat() if bk.created_at else None,
+            "bookmark_id": str(getattr(row, "bookmark_id", "")),
+            "question_id": str(getattr(row, "question_id", "")),
+            "question_text": getattr(row, "question_text", "") or "",
+            "difficulty": diff_val,
+            "created_at": row.created_at.isoformat() if getattr(row, "created_at", None) else None,
         })
+        
+    await cache.set(cache_key, out, ttl_seconds=300)
     return out
 
 
@@ -57,6 +80,10 @@ async def add_bookmark(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    user_id = current_user.id
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     try:
         qid_int = int(question_id)
     except (ValueError, TypeError):
@@ -69,19 +96,20 @@ async def add_bookmark(
         
     # Check if already bookmarked
     stmt = select(QuestionBookmark).where(
-        QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == qid_int
+        col(QuestionBookmark.user_id) == user_id,
+        col(QuestionBookmark.question_id) == qid_int
     )
     result = await session.exec(stmt)
     if result.first():
         return {"message": "Already bookmarked"}
         
     bk = QuestionBookmark(
-        user_id=current_user.id,
+        user_id=user_id,
         question_id=qid_int
     )
     session.add(bk)
     await session.commit()
+    await invalidate_user_cache(str(user_id))
     return {"message": "Bookmark added", "bookmark_id": str(bk.id)}
 
 
@@ -91,14 +119,18 @@ async def remove_bookmark(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    user_id = current_user.id
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     try:
         qid_int = int(question_id)
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Bookmark not found")
 
     stmt = select(QuestionBookmark).where(
-        QuestionBookmark.user_id == current_user.id,
-        QuestionBookmark.question_id == qid_int
+        col(QuestionBookmark.user_id) == user_id,
+        col(QuestionBookmark.question_id) == qid_int
     )
     result = await session.exec(stmt)
     bk = result.first()
@@ -107,6 +139,7 @@ async def remove_bookmark(
         
     await session.delete(bk)
     await session.commit()
+    await invalidate_user_cache(str(user_id))
     return {"message": "Bookmark removed"}
 
 

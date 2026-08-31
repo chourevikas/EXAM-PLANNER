@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, Index
 from app.db.models.enums import UserRole, UserStatus
 from app.db.models.types import DateTimeTZ
 
@@ -249,6 +249,9 @@ class RefreshToken(SQLModel, table=True):
 
 class QuestionBookmark(SQLModel, table=True):
     __tablename__ = "question_bookmarks"
+    __table_args__ = (
+        Index("ix_question_bookmarks_user_created", "user_id", "created_at"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)

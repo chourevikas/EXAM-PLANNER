@@ -1,68 +1,395 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listBookmarks, removeBookmark } from '../services/bookmarkService';
-import { fetchCurrentUser } from '../services/authService';
-
+import { listBookmarks, removeBookmark, BookmarkItem } from '../services/bookmarkService';
 import { formatEnum } from '../utils/formatEnum';
+import { Search, Bookmark, Trash2, Filter, AlertCircle, RefreshCw } from 'lucide-react';
+
+interface BookmarkCardProps {
+  bookmark: BookmarkItem;
+  onRemove: (questionId: string) => void;
+  isRemoving: boolean;
+}
+
+const BookmarkCard = React.memo(function BookmarkCard({
+  bookmark,
+  onRemove,
+  isRemoving,
+}: BookmarkCardProps) {
+  const getDifficultyBadgeStyle = (difficulty: string) => {
+    switch (difficulty?.toUpperCase()) {
+      case 'EASY':
+        return { color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0' };
+      case 'HARD':
+        return { color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA' };
+      default:
+        return { color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A' };
+    }
+  };
+
+  const badgeStyle = getDifficultyBadgeStyle(bookmark.difficulty);
+
+  return (
+    <div
+      style={{
+        padding: 20,
+        border: '1px solid #E2E8F0',
+        borderRadius: 12,
+        background: '#FFFFFF',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease',
+        opacity: isRemoving ? 0.4 : 1,
+        pointerEvents: isRemoving ? 'none' : 'auto',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 14,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              padding: '4px 10px',
+              borderRadius: 6,
+              letterSpacing: '0.02em',
+              ...badgeStyle,
+            }}
+          >
+            {formatEnum(bookmark.difficulty)}
+          </span>
+          {bookmark.created_at && (
+            <span style={{ fontSize: 12, color: '#94A3B8' }}>
+              {new Date(bookmark.created_at).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => onRemove(bookmark.question_id)}
+          disabled={isRemoving}
+          aria-label="Remove bookmark"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'transparent',
+            border: 'none',
+            color: '#EF4444',
+            cursor: isRemoving ? 'not-allowed' : 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            padding: '4px 8px',
+            borderRadius: 6,
+            transition: 'background-color 0.15s ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          <Trash2 size={15} />
+          <span>{isRemoving ? 'Removing...' : 'Remove'}</span>
+        </button>
+      </div>
+      <div
+        style={{
+          fontSize: 15,
+          color: '#1E293B',
+          lineHeight: 1.6,
+          wordBreak: 'break-word',
+        }}
+        dangerouslySetInnerHTML={{ __html: bookmark.question_text }}
+      />
+    </div>
+  );
+});
+
+function BookmarkSkeleton() {
+  return (
+    <div
+      style={{
+        padding: 20,
+        border: '1px solid #E2E8F0',
+        borderRadius: 12,
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ width: 80, height: 22, background: '#E2E8F0', borderRadius: 4 }} />
+        <div style={{ width: 60, height: 18, background: '#E2E8F0', borderRadius: 4 }} />
+      </div>
+      <div style={{ width: '100%', height: 16, background: '#F1F5F9', borderRadius: 4 }} />
+      <div style={{ width: '80%', height: 16, background: '#F1F5F9', borderRadius: 4 }} />
+    </div>
+  );
+}
 
 export function BookmarksPage(): React.ReactElement {
-  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
 
-  useEffect(() => {
-    fetchCurrentUser().then(u => setUser(u)).catch(console.error);
-    fetchBookmarks();
-  }, []);
-
-  const fetchBookmarks = async () => {
+  const fetchBookmarksData = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
-      const res = await listBookmarks();
+      setErrorMessage(null);
+      const res = await listBookmarks({ forceRefresh });
       setBookmarks(res);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Failed to load bookmarks:', err);
+      setErrorMessage('Failed to load bookmarks. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleRemove = async (questionId: string) => {
-    try {
-      await removeBookmark(questionId);
-      setBookmarks(bookmarks.filter(b => b.question_id !== questionId));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  useEffect(() => {
+    fetchBookmarksData();
+  }, [fetchBookmarksData]);
+
+  // Optimistic removal with rollback
+  const handleRemove = useCallback(
+    async (questionId: string) => {
+      setRemovingId(questionId);
+      const previousBookmarks = [...bookmarks];
+
+      // Optimistic update
+      setBookmarks((prev) => prev.filter((b) => b.question_id !== questionId));
+
+      try {
+        await removeBookmark(questionId);
+      } catch (err) {
+        console.error('Failed to remove bookmark:', err);
+        // Rollback state on error
+        setBookmarks(previousBookmarks);
+        alert('Failed to remove bookmark. Please try again.');
+      } finally {
+        setRemovingId(null);
+      }
+    },
+    [bookmarks],
+  );
+
+  // Memoized filtered bookmarks
+  const filteredBookmarks = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return bookmarks.filter((b) => {
+      const matchesDifficulty =
+        difficultyFilter === 'ALL' || b.difficulty?.toUpperCase() === difficultyFilter;
+      const matchesQuery =
+        !query ||
+        b.question_text?.toLowerCase().includes(query) ||
+        b.difficulty?.toLowerCase().includes(query);
+      return matchesDifficulty && matchesQuery;
+    });
+  }, [bookmarks, searchQuery, difficultyFilter]);
 
   return (
     <StudentLayout pageTitle="Bookmarked Questions">
-      <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: '#172033' }}>Bookmarked Questions</h1>
+      <div style={{ padding: '24px 16px', maxWidth: 960, margin: '0 auto', width: '100%' }}>
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                fontSize: 24,
+                fontWeight: 800,
+                color: '#0F172A',
+                letterSpacing: '-0.02em',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <Bookmark size={24} color="#334EAC" />
+              Bookmarked Questions
+            </h1>
+            <p style={{ margin: '4px 0 0 0', fontSize: 14, color: '#64748B' }}>
+              Review and practice questions you saved for later revision.
+            </p>
+          </div>
+          <button
+            onClick={() => fetchBookmarksData(true)}
+            disabled={loading}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              padding: '8px 14px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#334EAC',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.15s ease',
+            }}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Search and Filters */}
+        {bookmarks.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              marginBottom: 20,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                minWidth: 240,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Search
+                size={16}
+                color="#94A3B8"
+                style={{ position: 'absolute', left: 12, pointerEvents: 'none' }}
+              />
+              <input
+                type="text"
+                placeholder="Search bookmarks by keyword..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px 9px 36px',
+                  borderRadius: 8,
+                  border: '1px solid #E2E8F0',
+                  fontSize: 14,
+                  outline: 'none',
+                  background: '#FFFFFF',
+                  color: '#1E293B',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Filter size={16} color="#64748B" />
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #E2E8F0',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: '#FFFFFF',
+                  color: '#1E293B',
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <option value="ALL">All Difficulties</option>
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Error Alert */}
+        {errorMessage && (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: 8,
+              color: '#DC2626',
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            <AlertCircle size={18} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Content Section */}
         {loading ? (
-          <div>Loading bookmarks...</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <BookmarkSkeleton />
+            <BookmarkSkeleton />
+            <BookmarkSkeleton />
+          </div>
         ) : bookmarks.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', background: '#F8FAFC', borderRadius: 8, color: '#64748B' }}>
-            No bookmarked questions yet. Start practicing and bookmark questions to review later!
+          <div
+            style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              background: '#FFFFFF',
+              border: '1px dashed #CBD5E1',
+              borderRadius: 12,
+              color: '#64748B',
+            }}
+          >
+            <Bookmark size={40} color="#94A3B8" style={{ marginBottom: 12, opacity: 0.7 }} />
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 6px 0' }}>
+              No bookmarked questions yet
+            </h3>
+            <p style={{ fontSize: 14, margin: 0, color: '#64748B' }}>
+              Start practicing exam questions and bookmark tricky questions to review them here!
+            </p>
+          </div>
+        ) : filteredBookmarks.length === 0 ? (
+          <div
+            style={{
+              padding: '36px 20px',
+              textAlign: 'center',
+              background: '#F8FAFC',
+              borderRadius: 10,
+              color: '#64748B',
+              fontSize: 14,
+            }}
+          >
+            No bookmarks match your search or filter criteria.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {bookmarks.map((b) => (
-              <div key={b.bookmark_id} style={{ padding: 20, border: '1px solid #E2E8F0', borderRadius: 8, background: '#FFFFFF' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#334EAC', background: '#EFF6FF', padding: '4px 8px', borderRadius: 4 }}>
-                    {formatEnum(b.difficulty)}
-                  </span>
-                  <button 
-                    onClick={() => handleRemove(b.question_id)}
-                    style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
-                  >
-                    Remove Bookmark
-                  </button>
-                </div>
-                <div style={{ fontSize: 15, color: '#1E293B', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: b.question_text }} />
-              </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filteredBookmarks.map((b) => (
+              <BookmarkCard
+                key={b.bookmark_id}
+                bookmark={b}
+                onRemove={handleRemove}
+                isRemoving={removingId === b.question_id}
+              />
             ))}
           </div>
         )}
