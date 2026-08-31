@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Response, status, HTTPException
-from sqlmodel import select, func
+from sqlmodel import select, func, case
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -49,7 +49,7 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
             func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)
         ).label("q_sum"),
         func.sum(
-            func.case(
+            case(
                 (ExamAttempt.submitted_at >= today_start, func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)),
                 else_=0
             )
@@ -99,7 +99,7 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
     act_stmt = select(
         func.sum(StudyActivity.questions_attempted).label("act_sum"),
         func.sum(
-            func.case(
+            case(
                 (StudyActivity.date == today_date, StudyActivity.questions_attempted),
                 else_=0
             )
@@ -317,23 +317,6 @@ async def update_current_user(
 
 
 @router.get("/admin-only", response_model=dict)
-async def admin_dashboard_access(
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
-):
-    return {
-        "message": f"Welcome Admin {current_user.full_name}",
-        "role": current_user.role,
-    }
-
-
-@router.get("/super-admin-only", response_model=dict)
-async def super_admin_access(
-    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
-):
-    return {
-        "message": f"Welcome Super Admin {current_user.full_name}",
-        "role": current_user.role,
-    }
 async def admin_dashboard_access(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):

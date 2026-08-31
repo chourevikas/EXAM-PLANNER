@@ -1,5 +1,6 @@
 import uuid
 import jwt
+import asyncio
 from datetime import datetime, timedelta
 from typing import Tuple, Optional
 from fastapi import HTTPException
@@ -150,8 +151,13 @@ class AuthService:
         return token_response, refresh_token
 
     async def authenticate_user(self, user_in: UserLogin) -> Tuple[TokenResponse, str]:
-        user = await self.user_repo.get_by_email(user_in.email)
-        if not user or not verify_password(user_in.password, user.password_hash):
+        user = await self.user_repo.get_by_email_for_auth(user_in.email)
+        # Always run bcrypt (even for missing users) to prevent timing-based user enumeration
+        _DUMMY_HASH = "$2b$12$placeholderHashToPreventTimingLeakOnMissingUser000000000"
+        hash_to_check = user.password_hash if user else _DUMMY_HASH
+        loop = asyncio.get_event_loop()
+        password_ok = await loop.run_in_executor(None, verify_password, user_in.password, hash_to_check)
+        if not user or not password_ok:
             raise InvalidCredentialsException()
 
         if user.status == UserStatus.PENDING:
@@ -169,15 +175,13 @@ class AuthService:
                 actual_role=user.role.value, requested_role=user_in.role.value
             )
 
-        await self.user_repo.update_last_login(user.id)
-
         access_token = create_access_token(subject=user.id, role=user.role.value)
         refresh_token = create_refresh_token(subject=user.id, role=user.role.value)
 
         expires_at = datetime.utcnow() + timedelta(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
-        await self.user_repo.save_refresh_token(
+        await self.user_repo.perform_login_housekeeping_and_save_token(
             user_id=user.id,
             token_hash=get_token_hash(refresh_token),
             expires_at=expires_at,

@@ -31,6 +31,13 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return res.first()
 
+    async def get_by_email_for_auth(self, email: str) -> Optional[User]:
+        """Lean login-path lookup: fetches only the User row, no eager relationship loading.
+        Saves 2 extra SELECT round-trips to RDS (student_profile + admin_profile)."""
+        stmt = select(User).where(User.email == email.lower())
+        res = await self.session.exec(stmt)
+        return res.first()
+
     async def get_by_id(self, user_id: int | str) -> Optional[User]:
         try:
             uid = int(user_id)
@@ -283,21 +290,41 @@ class UserRepository:
         }
 
     async def update_last_login(self, user_id: int | str) -> None:
-        user = await self.get_by_id(user_id)
-        if user:
-            user.last_login = datetime.now(timezone.utc)
-            self.session.add(user)
-            await self.session.commit()
+        from sqlalchemy import update as sa_update
+        uid = int(user_id)
+        await self.session.exec(
+            sa_update(User)
+            .where(User.id == uid)
+            .values(last_login=datetime.now(timezone.utc))
+        )
+        await self.session.commit()
 
-    async def save_refresh_token(
+    async def perform_login_housekeeping_and_save_token(
         self,
         user_id: int | str,
         token_hash: str,
         expires_at: datetime,
         device_name: Optional[str] = None,
         ip_address: Optional[str] = None,
-    ) -> RefreshToken:
+    ) -> None:
+        from sqlalchemy import update as sa_update
         uid = int(user_id)
+        now = datetime.now(timezone.utc)
+        
+        # Fire both UPDATEs without intermediate commits
+        await self.session.exec(
+            sa_update(RefreshToken)
+            .where(RefreshToken.user_id == uid)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        await self.session.exec(
+            sa_update(User)
+            .where(User.id == uid)
+            .values(last_login=now)
+        )
+        
+        # Insert new token
         token_record = RefreshToken(
             user_id=uid,
             token_hash=token_hash,
@@ -307,18 +334,28 @@ class UserRepository:
         )
         self.session.add(token_record)
         await self.session.commit()
-        await self.session.refresh(token_record)
-        return token_record
+
+    async def cleanup_old_refresh_tokens(self, user_id: int | str) -> None:
+        """Revoke all existing tokens for user before issuing a new one.
+        Keeps the refresh_tokens table from growing unboundedly and avoids
+        slow queries caused by thousands of stale rows per user."""
+        from sqlalchemy import update as sa_update
+        uid = int(user_id)
+        await self.session.exec(
+            sa_update(RefreshToken)
+            .where(RefreshToken.user_id == uid)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(timezone.utc))
+        )
+        await self.session.commit()
 
     async def revoke_user_refresh_tokens(self, user_id: int | str) -> None:
+        from sqlalchemy import update as sa_update
         uid = int(user_id)
-        stmt = select(RefreshToken).where(
-            RefreshToken.user_id == uid, RefreshToken.revoked_at.is_(None)
+        await self.session.exec(
+            sa_update(RefreshToken)
+            .where(RefreshToken.user_id == uid)
+            .where(RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(timezone.utc))
         )
-        res = await self.session.exec(stmt)
-        tokens = res.all()
-        now = datetime.now(timezone.utc)
-        for tok in tokens:
-            tok.revoked_at = now
-            self.session.add(tok)
         await self.session.commit()

@@ -43,8 +43,8 @@ if db_url.startswith("sqlite"):
         cursor.execute("PRAGMA busy_timeout=60000;") # 60 second busy timeout
         cursor.close()
 else:
-    pool_size = getattr(settings, "DB_POOL_SIZE", 20)
-    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 10)
+    pool_size = getattr(settings, "DB_POOL_SIZE", 5)  # smaller = faster first-connect with high-latency RDS
+    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 5)
     logger.info(
         f"Initializing Database Engine (pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle=1800, pool_pre_ping=True)..."
     )
@@ -52,9 +52,9 @@ else:
         "echo": False,
         "pool_size": pool_size,
         "max_overflow": max_overflow,
-        "pool_timeout": 30,
+        "pool_timeout": 60,
         "pool_recycle": 1800,
-        "pool_pre_ping": True,
+        "pool_pre_ping": False,  # pre_ping pings ALL idle connections on first use — catastrophic with high-latency RDS
     }
     engine = create_async_engine(db_url, **engine_kwargs)
 
