@@ -46,20 +46,6 @@ async def list_candidate_attempts(
     effective_limit = min(page_size if page_size and page_size > 0 else limit, 100)
     effective_skip = ((page - 1) * effective_limit) if (page and page >= 1) else skip
 
-    from app.cache import get_cache, build_cache_key
-    cache = get_cache()
-    cache_key = build_cache_key(
-        "attempts:user",
-        str(current_user.id),
-        skip=effective_skip,
-        limit=effective_limit,
-        exam_id=str(parsed_exam_id) if parsed_exam_id else None,
-        status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
-    )
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return JSONResponse(content=cached_data)
-
     from fastapi.encoders import jsonable_encoder
     service = ExamSessionService(session)
     res = await service.list_user_attempts(
@@ -75,10 +61,25 @@ async def list_candidate_attempts(
             res["page_size"] = effective_limit
             import math
             res["total_pages"] = max(1, math.ceil((res.get("total", 0)) / effective_limit))
-        serialized = jsonable_encoder(res)
-        await cache.set(cache_key, serialized, ttl_seconds=5)
-        return JSONResponse(content=serialized)
+        return JSONResponse(content=jsonable_encoder(res))
     return JSONResponse(content={"items": [], "total": 0})
+
+
+@router.get("/status-by-exam", summary="Lightweight per-exam attempt status for catalog/listing pages")
+async def get_attempt_status_by_exam(
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns a compact {exam_id: {in_progress_attempt_id?, completed_attempt_id?,
+    total_score?, max_possible_score?}} map for the current user, without the
+    per-attempt metadata, exam-name resolution, or pagination that the full
+    attempts list carries. Meant for pages that only need status badges
+    (e.g. PYQ/mock catalog listings), not attempt history.
+    """
+    service = ExamSessionService(session)
+    summary = await service.get_attempt_status_summary(current_user.id)
+    return JSONResponse(content=summary)
 
 
 @router.post("/start", response_model=StartExamResponse, status_code=status.HTTP_201_CREATED)

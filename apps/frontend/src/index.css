@@ -655,18 +655,20 @@ body {
 }
 
 .exam-palette-sidebar {
-  width: 300px;
+  width: 100%;
   flex-shrink: 0;
   height: 100%;
   max-height: 100%;
   min-height: 0;
-  margin-right: 24px;
 }
 
-/* On mobile: hide desktop palette, show via full-screen overlay */
-@media (max-width: 834px) {
+/* Above the tablet breakpoint, the question card and palette render side by
+   side (see ExamEnginePage's isTabletOrBelow gating), so the palette becomes
+   a fixed-width sidebar instead of taking the full row. */
+@media (min-width: 835px) {
   .exam-palette-sidebar {
-    display: none;
+    width: 300px;
+    margin-right: 24px;
   }
 }
 

@@ -73,108 +73,75 @@ export function DashboardPage() {
   const [guestSessionsPage, setGuestSessionsPage] = useState<number>(0);
   const SESSIONS_PER_PAGE = 3;
 
-  const fetchActivities = async () => {
-    const token = await getToken();
-    if (token) {
-      fetch('/api/v1/analytics/activity/today', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) setTodayActivities(data);
-        })
-        .catch(err => console.error("Failed to fetch activities:", err));
-    }
-  };
-
-  const fetchDashboardStats = async () => {
-    const token = (await getToken()) || localStorage.getItem('access_token');
-    if (token) {
-      // Auto-sync any guest attempts stored in localStorage to backend DB first
-      await syncGuestSessionsOnAuth(token);
-      sessionStorage.removeItem('latest_synced_attempt_id');
-
-      try {
-        const res = await fetch('/api/v1/attempts/student-dashboard-stats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.totalExams !== undefined) {
-            setDashboardStats(data);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch student dashboard stats:", err);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    } else {
-      setIsLoadingStats(false);
-    }
-  };
-
-
-  const fetchSubjectPerformance = async () => {
-    try {
-      const token = (await getToken()) || localStorage.getItem('access_token');
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('/api/v1/analytics/subject-performance', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setSubjectData(data);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch subject performance:", err);
-    } finally {
-      setIsLoadingSubjects(false);
-    }
-  };
-
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
 
-    listExams().then(exams => {
-      if (Array.isArray(exams) && exams.length > 0) {
-        const published = exams.find(e => e.is_active || (e.status && String(e.status).includes('PUBLISHED')));
-        setActiveExam(published || exams[0]);
-      }
-    }).catch(err => console.error("Failed to fetch live exams:", err));
+    const loadDashboard = async () => {
+      // Acquire token once — reused by all parallel requests
+      const token = (await getToken()) || localStorage.getItem('access_token');
+      const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-    getToken().then((token) => {
-      fetchCurrentUser(token || undefined).then(data => {
-        setUser(data);
-      }).catch(err => {
-        console.error("Failed to fetch fresh user data:", err);
-      });
-    });
-
-    fetchActivities();
-    fetchDashboardStats();
-    fetchSubjectPerformance();
-    fetchPredictedRank().then(data => setPredictedRank(data)).catch(err => console.error("Failed to fetch predicted rank:", err));
-
-    // Fetch user badges
-    getToken().then((token: string | null) => {
+      // Sync guest sessions before firing dashboard queries
       if (token) {
-        fetch('/api/v1/study-plan/badges', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.unlocked && data.locked) {
-              setBadges(data);
-            }
-          })
-          .catch(err => console.error("Failed to fetch badges:", err));
+        syncGuestSessionsOnAuth(token).catch(() => {});
+        sessionStorage.removeItem('latest_synced_attempt_id');
       }
+
+      // Fire ALL dashboard requests in parallel — no more sequential waterfall
+      const [
+        userResult,
+        statsResult,
+        subjectResult,
+        activityResult,
+        rankResult,
+        badgesResult,
+        examsResult,
+      ] = await Promise.allSettled([
+        fetchCurrentUser(token || undefined),
+        fetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        fetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        fetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        fetchPredictedRank(),
+        token ? fetch('/api/v1/study-plan/badges', { headers: authHeaders }).then(r => r.ok ? r.json() : null) : Promise.resolve(null),
+        listExams(),
+      ]);
+
+      // Apply results — each is independent so a failure in one doesn't block others
+      if (userResult.status === 'fulfilled' && userResult.value) {
+        setUser(userResult.value);
+      }
+      if (statsResult.status === 'fulfilled' && statsResult.value?.totalExams !== undefined) {
+        setDashboardStats(statsResult.value);
+      }
+      if (subjectResult.status === 'fulfilled' && Array.isArray(subjectResult.value)) {
+        setSubjectData(subjectResult.value);
+      }
+      if (activityResult.status === 'fulfilled' && Array.isArray(activityResult.value)) {
+        setTodayActivities(activityResult.value);
+      }
+      if (rankResult.status === 'fulfilled' && rankResult.value) {
+        setPredictedRank(rankResult.value);
+      }
+      if (badgesResult.status === 'fulfilled' && badgesResult.value?.unlocked) {
+        setBadges(badgesResult.value);
+      }
+      if (examsResult.status === 'fulfilled' && Array.isArray(examsResult.value) && examsResult.value.length > 0) {
+        const published = examsResult.value.find((e: any) => e.is_active || (e.status && String(e.status).includes('PUBLISHED')));
+        setActiveExam(published || examsResult.value[0]);
+      }
+
+      // Done loading
+      setIsLoadingStats(false);
+      setIsLoadingSubjects(false);
+    };
+
+    loadDashboard().catch(err => {
+      console.error('Dashboard load error:', err);
+      setIsLoadingStats(false);
+      setIsLoadingSubjects(false);
     });
   }, []);
+
 
 
   const isFreeTier = user.subscription_tier !== 'PREMIUM';
@@ -948,10 +915,18 @@ export function DashboardPage() {
       <LogStudyModal
         isOpen={showLogModal}
         onClose={() => setShowLogModal(false)}
-        onSuccess={() => {
-          fetchActivities();
-          fetchDashboardStats();
-          fetchSubjectPerformance();
+        onSuccess={async () => {
+          // Reload activity + stats in parallel after logging study
+          const token = (await getToken()) || localStorage.getItem('access_token');
+          const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+          const [actRes, statsRes, subjRes] = await Promise.allSettled([
+            fetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            fetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            fetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+          ]);
+          if (actRes.status === 'fulfilled' && Array.isArray(actRes.value)) setTodayActivities(actRes.value);
+          if (statsRes.status === 'fulfilled' && statsRes.value?.totalExams !== undefined) setDashboardStats(statsRes.value);
+          if (subjRes.status === 'fulfilled' && Array.isArray(subjRes.value)) setSubjectData(subjRes.value);
         }}
       />
     </StudentLayout>

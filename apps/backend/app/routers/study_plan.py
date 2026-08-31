@@ -8,8 +8,9 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel import select, col, SQLModel, func
 from sqlalchemy import case, cast, Date
 from sqlmodel.ext.asyncio.session import AsyncSession
+import asyncio
 
-from app.db.session import get_async_session
+from app.db.session import get_async_session, async_session_factory
 from app.db.models.user import User
 from app.db.models.study_plan import StudyTask, StudyActivity
 from app.db.models.enums import StudyActivityType, ActivitySource
@@ -547,21 +548,26 @@ async def get_weekly_schedule(
 
     end_date = base_date + timedelta(days=6)  # Sunday
 
-    # Fetch tasks for this week
-    stmt_tasks = select(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date
-    )
-    tasks = (await session.exec(stmt_tasks)).all()
+    # Run tasks and activities queries concurrently
+    async def get_tasks():
+        async with async_session_factory() as s:
+            stmt = select(StudyTask).where(
+                StudyTask.user_id == current_user.id,
+                StudyTask.scheduled_date >= base_date,
+                StudyTask.scheduled_date <= end_date
+            )
+            return (await s.exec(stmt)).all()
 
-    # Fetch study activities for this week
-    stmt_activities = select(StudyActivity).where(
-        StudyActivity.user_id == current_user.id,
-        StudyActivity.date >= base_date,
-        StudyActivity.date <= end_date
-    )
-    activities = (await session.exec(stmt_activities)).all()
+    async def get_activities():
+        async with async_session_factory() as s:
+            stmt = select(StudyActivity).where(
+                StudyActivity.user_id == current_user.id,
+                StudyActivity.date >= base_date,
+                StudyActivity.date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    tasks, activities = await asyncio.gather(get_tasks(), get_activities())
 
     # Group by date
     days_data = []

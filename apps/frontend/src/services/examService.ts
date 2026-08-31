@@ -351,7 +351,32 @@ export async function listCandidateAttempts(
   }
 }
 
+export interface ExamAttemptStatusEntry {
+  in_progress_attempt_id?: number | string;
+  completed_attempt_id?: number | string;
+  total_score?: number;
+  max_possible_score?: number;
+}
 
+/** Lightweight per-exam attempt status map, for catalog/listing pages (e.g. PYQ list)
+ * that only need status badges — not the full attempt history payload. */
+export async function getAttemptStatusByExam(
+  customToken?: string
+): Promise<Record<string, ExamAttemptStatusEntry>> {
+  try {
+    const response = await guardedFetch(`${API_BASE_URL}/attempts/status-by-exam`, {
+      method: 'GET',
+      headers: getAuthHeaders(customToken),
+    });
+    if (!response.ok) {
+      return {};
+    }
+    return await response.json();
+  } catch (err) {
+    console.warn('Failed to fetch attempt status summary:', err);
+    return {};
+  }
+}
 
 
 export async function getAllAttemptQuestionsBulk(

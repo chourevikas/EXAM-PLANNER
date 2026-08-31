@@ -435,7 +435,7 @@ export function StudentPracticeExamPage() {
   }, [allQuestions, subjectFallbackPool, gTopic, gSubject]);
 
   // Mobile Responsiveness
-  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { isTabletOrBelow } = useBreakpoint();
   const [showMobileRecs, setShowMobileRecs] = useState(false);
 
   const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
@@ -1632,8 +1632,8 @@ export function StudentPracticeExamPage() {
         </div>
       </div>
 
-      {/* Mobile Recommended Questions Toggle Button */}
-      {isMobile && displayRecs.length > 0 && (
+      {/* Mobile/Tablet Recommended Questions Toggle Button */}
+      {isTabletOrBelow && displayRecs.length > 0 && (
         <div style={{ padding: '0 clamp(10px, 2.5vw, 24px) 8px', display: 'flex', justifyContent: 'flex-start' }}>
           <button
             type="button"
@@ -1660,8 +1660,8 @@ export function StudentPracticeExamPage() {
         </div>
       )}
 
-      {/* Mobile Recommended Questions Modal */}
-      {isMobile && showMobileRecs && (
+      {/* Mobile/Tablet Recommended Questions Modal */}
+      {isTabletOrBelow && showMobileRecs && (
         <div
           className="auth-modal-overlay"
           onClick={() => setShowMobileRecs(false)}
@@ -1860,15 +1860,15 @@ export function StudentPracticeExamPage() {
           overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAFC',
-          gap: isMobile ? 0 : 20,
+          gap: isTabletOrBelow ? 0 : 20,
           paddingTop: 12,
           paddingBottom: 16,
-          paddingRight: isMobile ? 12 : 24,
-          paddingLeft: isMobile ? 12 : 24,
+          paddingRight: isTabletOrBelow ? 12 : 24,
+          paddingLeft: isTabletOrBelow ? 12 : 24,
         }}
       >
         {/* Left Side Recommended Questions Fixed Sidebar (Desktop) */}
-        {!isMobile && (
+        {!isTabletOrBelow && (
           <aside
             style={{
               width: 380,

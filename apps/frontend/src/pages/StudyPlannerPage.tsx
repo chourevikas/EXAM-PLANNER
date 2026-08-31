@@ -285,25 +285,34 @@ export function StudyPlannerPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      let schData = await fetchWeeklySchedule();
-
-      // Auto-generate full 7-day weekly plan if schedule is empty for the current week
-      const totalWeekTasks = schData?.days?.reduce((acc, d) => acc + (d.tasks?.length || 0), 0) || 0;
-      if (schData && schData.days && totalWeekTasks === 0) {
-        await generateWeeklyStudyPlan(undefined, true);
-        schData = await fetchWeeklySchedule();
-      }
-
-      const [tasksData, actData, sumData] = await Promise.all([
+      const [schRes, tasksRes, actRes, sumRes] = await Promise.allSettled([
+        fetchWeeklySchedule(),
         fetchStudyTasks(),
         fetchStudyActivities(),
         fetchStudyActivitiesSummary()
       ]);
 
-      setSchedule(schData);
+      let schData = schRes.status === 'fulfilled' ? schRes.value : null;
+      let tasksData = tasksRes.status === 'fulfilled' ? tasksRes.value : [];
+      let actData = actRes.status === 'fulfilled' ? actRes.value : [];
+      let sumData = sumRes.status === 'fulfilled' ? sumRes.value : null;
+
+      // Auto-generate full 7-day weekly plan if schedule is empty for the current week
+      const totalWeekTasks = schData?.days?.reduce((acc: any, d: any) => acc + (d.tasks?.length || 0), 0) || 0;
+      if (schData && schData.days && totalWeekTasks === 0) {
+        await generateWeeklyStudyPlan(undefined, true);
+        const [newSch, newTasks] = await Promise.all([
+          fetchWeeklySchedule(),
+          fetchStudyTasks()
+        ]);
+        schData = newSch;
+        tasksData = newTasks;
+      }
+
+      if (schData) setSchedule(schData);
       setTasks(tasksData);
       setActivities(actData);
-      setSummary(sumData);
+      if (sumData) setSummary(sumData);
     } catch (err) {
       console.error('Error loading study planner data:', err);
     } finally {

@@ -109,11 +109,6 @@ class ExamSessionService:
             self.session.add(u_obj)
             await self.session.flush()
 
-        # Resolve Question folder path for exam
-        paper_set = exam.paper_set_code or "SET_A"
-        clean_set = str(paper_set).strip().lower().replace("_", "-")
-        q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-
         # Check for existing IN_PROGRESS attempt
         existing = await self.session.exec(
             select(ExamAttempt).where(
@@ -132,17 +127,6 @@ class ExamSessionService:
                 logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
                 status_res = await self.get_exam_status(existing_attempt.id, user_id)
                 q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
-                # Generate presigned URLs for questions JSON
-                q_presigned_url = None
-                q_f_url = None
-                try:
-                    q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-                    if await self.storage.exists(q_path):
-                        q_presigned_url = await self.storage.generate_presigned_url(q_path)
-                    if q_folder and await self.storage.exists(q_folder):
-                        q_f_url = await self.storage.generate_presigned_url(q_folder)
-                except Exception as presign_err:
-                    logger.warning(f"Could not generate presigned question URLs: {presign_err}")
 
                 return StartExamResponse(
                     attempt_id=str(existing_attempt.id),
@@ -154,8 +138,8 @@ class ExamSessionService:
                     total_questions=existing_attempt.total_questions,
                     first_question=q_nav,
                     palette=status_res.palette,
-                    questions_presigned_url=q_presigned_url,
-                    questions_folder_url=q_f_url,
+                    questions_presigned_url=None,
+                    questions_folder_url=None,
                 )
 
         # Fast Question Metadata Retrieval using DB index scan or folder
@@ -213,8 +197,6 @@ class ExamSessionService:
         )
         self.session.add(user_test_attempt)
         await self.session.commit()
-        await self.session.refresh(attempt)
-        await self.session.refresh(user_test_attempt)
 
         # Fast Bulk Pre-creation of ExamQuestionResponse and UserQuestionResponse rows
         exam_responses = []
@@ -257,24 +239,12 @@ class ExamSessionService:
             self.session.add_all(user_responses)
             await self.session.commit()
 
-        # Load first question directly from JSON folder artifact
+        # Load first question directly from the database
         q_nav = await self.get_question(
             attempt_id=attempt.id,
             user_id=user_id,
             question_number=1,
         )
-
-        # Generate presigned URLs for questions JSON
-        q_presigned_url = None
-        q_f_url = None
-        try:
-            q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-            if await self.storage.exists(q_path):
-                q_presigned_url = await self.storage.generate_presigned_url(q_path)
-            if q_folder and await self.storage.exists(q_folder):
-                q_f_url = await self.storage.generate_presigned_url(q_folder)
-        except Exception as presign_err:
-            logger.warning(f"Could not generate presigned question URLs: {presign_err}")
 
         return StartExamResponse(
             attempt_id=str(attempt.id),
@@ -286,8 +256,8 @@ class ExamSessionService:
             total_questions=attempt.total_questions,
             first_question=q_nav,
             palette=palette_items,
-            questions_presigned_url=q_presigned_url,
-            questions_folder_url=q_f_url,
+            questions_presigned_url=None,
+            questions_folder_url=None,
         )
 
     async def get_question(
@@ -374,11 +344,18 @@ class ExamSessionService:
                         "question_text": t.question_text
                     }
 
+                opt_trans_by_option: Dict[int, list] = {}
+                if db_opts:
+                    all_opt_trans_stmt = select(OptionTranslation).where(
+                        col(OptionTranslation.option_id).in_([o.id for o in db_opts])
+                    )
+                    all_opt_trans_res = await self.session.exec(all_opt_trans_stmt)
+                    for ot in all_opt_trans_res.all():
+                        opt_trans_by_option.setdefault(ot.option_id, []).append(ot)
+
                 opts_list = []
                 for o in db_opts:
-                    opt_trans_stmt = select(OptionTranslation).where(OptionTranslation.option_id == o.id)
-                    opt_trans_res = await self.session.exec(opt_trans_stmt)
-                    db_opt_trans = opt_trans_res.all()
+                    db_opt_trans = opt_trans_by_option.get(o.id, [])
                     opt_trans_map = {}
                     for ot in db_opt_trans:
                         opt_trans_map[ot.language.value if hasattr(ot.language, "value") else str(ot.language)] = ot.option_text
@@ -572,42 +549,6 @@ class ExamSessionService:
                 status_code=404, detail="EXAM_NOT_FOUND: Associated exam not found."
             )
 
-        # Preload DB questions and options for ID mapping
-        db_q_res = await self.session.exec(
-            select(Question).where(Question.exam_id == exam.id).order_by(col(Question.question_number_in_paper))
-        )
-        db_questions = {q.question_number_in_paper: q for q in db_q_res.all()}
-        opts_by_qid = {}
-        if db_questions:
-            opt_res = await self.session.exec(
-                select(QuestionOption).where(col(QuestionOption.question_id).in_([q.id for q in db_questions.values()]))
-            )
-            for opt in opt_res.all():
-                opts_by_qid.setdefault(opt.question_id, {})[opt.option_label.upper()] = opt.id
-
-        def _sync_question_ids(q_list_in: list) -> list:
-            for idx, q_data in enumerate(q_list_in, 1):
-                if not isinstance(q_data, dict):
-                    continue
-                raw_num = q_data.get("question_number")
-                try:
-                    q_num = int(raw_num) if raw_num is not None else idx
-                except (ValueError, TypeError):
-                    q_num = idx
-                q_data["question_number"] = q_num
-                if q_num in db_questions:
-                    db_q = db_questions[q_num]
-                    q_data["question_id"] = str(db_q.id)
-                    q_opt_map = opts_by_qid.get(db_q.id, {})
-                    if "options" in q_data and isinstance(q_data["options"], list):
-                        for opt_idx, o in enumerate(q_data["options"], 1):
-                            if isinstance(o, dict):
-                                lbl = (o.get("option_label") or o.get("label") or chr(64 + opt_idx)).strip().upper()
-                                if lbl in q_opt_map:
-                                    o["option_id"] = str(q_opt_map[lbl])
-                                    o["id"] = str(q_opt_map[lbl])
-            return q_list_in
-
         # 1. Direct High-Performance Database Query (Loads all questions for the exam without solutions)
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(self.session)
@@ -621,11 +562,11 @@ class ExamSessionService:
         questions = res.all()
 
         if questions:
-            preloaded_data = await builder.preload_batch_question_data(questions)
+            preloaded_data = await builder.preload_batch_question_data(questions, include_solution_data=False)
             questions_payload = []
             for q in questions:
                 # q_card contains question text, metadata, and options WITHOUT is_correct or solutions
-                q_card, _ = await builder.build_single_question_cards(q, preloaded=preloaded_data)
+                q_card, _ = await builder.build_single_question_cards(q, preloaded=preloaded_data, include_solution_data=False)
                 questions_payload.append(q_card)
 
             return {
@@ -1327,20 +1268,6 @@ class ExamSessionService:
 
         summary = await self._compute_response_summary(attempt.id)
 
-        q_presigned_url = None
-        q_f_url = None
-        try:
-            paper_set = exam.paper_set_code or "SET_A"
-            clean_set = str(paper_set).strip().lower().replace("_", "-")
-            q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-            q_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-            if await self.storage.exists(q_path):
-                q_presigned_url = await self.storage.generate_presigned_url(q_path)
-            if q_folder and await self.storage.exists(q_folder):
-                q_f_url = await self.storage.generate_presigned_url(q_folder)
-        except Exception as presign_err:
-            logger.warning(f"Could not generate presigned question URLs: {presign_err}")
-
         return ExamStatusResponse(
             attempt_id=str(attempt.id),
             exam_id=str(exam.id),
@@ -1354,8 +1281,8 @@ class ExamSessionService:
             total_questions=attempt.total_questions,
             response_summary=summary,
             palette=palette,
-            questions_presigned_url=q_presigned_url,
-            questions_folder_url=q_f_url,
+            questions_presigned_url=None,
+            questions_folder_url=None,
         )
 
     async def submit_exam(
@@ -1621,38 +1548,71 @@ class ExamSessionService:
         if cached_data is not None:
             return cached_data
 
-        base_stmt = select(ExamAttempt).where(ExamAttempt.user_id == user_id)
+        filters = [ExamAttempt.user_id == user_id]
         if exam_id:
-            base_stmt = base_stmt.where(ExamAttempt.exam_id == exam_id)
+            filters.append(ExamAttempt.exam_id == exam_id)
         if status_filter:
-            base_stmt = base_stmt.where(ExamAttempt.status == status_filter)
+            filters.append(ExamAttempt.status == status_filter)
 
         from sqlmodel import func
-        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        count_stmt = select(func.count()).select_from(ExamAttempt).where(*filters)
         total_res = await self.session.exec(count_stmt)
         total_count = total_res.first() or 0
 
-        stmt = base_stmt.order_by(col(ExamAttempt.created_at).desc()).offset(skip).limit(limit)
-        res = await self.session.exec(stmt)
+        # report_metadata_json can be hundreds of KB (occasionally >1MB) per
+        # attempt, but only a handful of small keys are needed here. Extract
+        # just those server-side instead of pulling the full ORM entity (and
+        # the whole blob) over the wire for every row in the page.
+        meta_col = ExamAttempt.report_metadata_json
+        list_stmt = (
+            select(
+                ExamAttempt.id,
+                ExamAttempt.exam_id,
+                ExamAttempt.mode,
+                ExamAttempt.status,
+                ExamAttempt.total_score,
+                ExamAttempt.max_possible_score,
+                ExamAttempt.total_questions,
+                ExamAttempt.total_questions_attempted,
+                ExamAttempt.started_at,
+                ExamAttempt.submitted_at,
+                meta_col.op("->>")("is_guest_synced").label("is_guest_synced"),
+                meta_col.op("->>")("guest_session_id").label("guest_session_id"),
+                meta_col.op("->>")("topic_name").label("topic_name"),
+                meta_col.op("->>")("subtopic_name").label("subtopic_name"),
+                meta_col.op("->>")("traceable_exam_name").label("traceable_exam_name"),
+                meta_col.op("->")("metadata").op("->")("exam_attempt").op("->>")("exam_name").label("meta_exam_name"),
+            )
+            .where(*filters)
+            .order_by(col(ExamAttempt.created_at).desc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        res = await self.session.exec(list_stmt)
         attempts = res.all()
+
+        exam_ids = {att.exam_id for att in attempts if att.exam_id is not None}
+        exam_names_by_id: Dict[int, str] = {}
+        if exam_ids:
+            exams_res = await self.session.exec(select(Exam.id, Exam.name).where(col(Exam.id).in_(exam_ids)))
+            exam_names_by_id = {e_id: e_name for e_id, e_name in exams_res.all()}
 
         items = []
         for att in attempts:
-            exam = await self.session.get(Exam, att.exam_id)
-            meta = att.report_metadata_json or {}
-            is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
-            is_practice = (att.mode == AttemptMode.PRACTICE) or is_guest or bool(meta.get("topic_name"))
+            is_guest = bool((att.is_guest_synced or "").lower() == "true" or att.guest_session_id)
+            is_practice = (att.mode == AttemptMode.PRACTICE) or is_guest or bool(att.topic_name)
 
-            topic_desc = meta.get("subtopic_name") or meta.get("topic_name")
+            topic_desc = att.subtopic_name or att.topic_name
             q_cnt = att.total_questions or (att.total_questions_attempted or 0)
             if is_guest:
                 name_str = f"Guest Practice: {topic_desc or 'Topic Practice'} ({q_cnt} Qs)"
             elif is_practice:
                 name_str = f"Practice Test: {topic_desc or 'Topic Practice'} ({q_cnt} Qs)"
             else:
-                name_str = exam.name if exam else "Full Paper Mock"
+                name_str = exam_names_by_id.get(att.exam_id) or "Full Paper Mock"
 
-            resolved_title = meta.get("traceable_exam_name") or meta.get("metadata", {}).get("exam_attempt", {}).get("exam_name") or name_str
+            resolved_title = att.traceable_exam_name or att.meta_exam_name or name_str
 
             items.append({
                 "attempt_id": str(att.id),
@@ -1670,6 +1630,48 @@ class ExamSessionService:
         result_dict = {"items": items, "total": total_count, "skip": skip, "limit": limit}
         await cache.set(cache_key, result_dict, ttl_seconds=120)
         return result_dict
+
+    async def get_attempt_status_summary(self, user_id: int) -> Dict[str, Dict[str, Any]]:
+        """Lightweight per-exam attempt status for catalog/listing pages (e.g. PYQ list).
+
+        Unlike list_user_attempts, this skips report_metadata_json, exam-name
+        resolution, and pagination entirely — it only returns the latest
+        in-progress/completed attempt id and score per exam, for status badges.
+        """
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("attempts:status-summary", str(user_id))
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+
+        stmt = (
+            select(
+                ExamAttempt.exam_id,
+                ExamAttempt.id,
+                ExamAttempt.status,
+                ExamAttempt.total_score,
+                ExamAttempt.max_possible_score,
+            )
+            .where(ExamAttempt.user_id == user_id)
+            .order_by(col(ExamAttempt.created_at).desc())
+        )
+        res = await self.session.exec(stmt)
+        rows = res.all()
+
+        completed_statuses = {AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED}
+        summary: Dict[str, Dict[str, Any]] = {}
+        for exam_id, attempt_id, att_status, total_score, max_score in rows:
+            entry = summary.setdefault(str(exam_id), {})
+            if att_status == AttemptStatus.IN_PROGRESS and "in_progress_attempt_id" not in entry:
+                entry["in_progress_attempt_id"] = attempt_id
+            elif att_status in completed_statuses and "completed_attempt_id" not in entry:
+                entry["completed_attempt_id"] = attempt_id
+                entry["total_score"] = total_score
+                entry["max_possible_score"] = max_score
+
+        await cache.set(cache_key, summary, ttl_seconds=60)
+        return summary
 
     async def get_attempt_result(self, attempt_id: int | str, user_id: int) -> Dict[str, Any]:
         """Parameter 14: Dedicated result view for a submitted/evaluated attempt."""
@@ -1890,24 +1892,49 @@ class ExamSessionService:
         """
         Retrieves aggregate statistics and recent exam attempts for the student dashboard.
         """
-        attempts_res = await self.session.exec(
-            select(ExamAttempt).where(ExamAttempt.user_id == user_id).order_by(col(ExamAttempt.created_at).desc())
-        )
-        attempts = attempts_res.all()
+        from app.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("analytics:student_dashboard_stats", str(user_id))
 
-        total_exams = len(attempts)
-        total_questions_attempted = sum(
-            (a.total_questions_attempted if (a.total_questions_attempted is not None and a.total_questions_attempted > 0) else ((a.total_correct or 0) + (a.total_incorrect or 0)))
-            for a in attempts
-        )
-        total_correct = sum((a.total_correct or 0) for a in attempts)
-        total_questions = sum((a.total_questions or 0) for a in attempts)
-        total_time_seconds = sum(int(a.time_spent_seconds or 0) for a in attempts)
+        cached_val = await cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
+        from sqlmodel import func, case
+        
+        # 1. Aggregate Stats Query (Executes in DB, no JSON transfer)
+        agg_stmt = select(
+            func.count(ExamAttempt.id).label("total_exams"),
+            func.sum(
+                case((ExamAttempt.total_questions_attempted > 0, ExamAttempt.total_questions_attempted),
+                     else_=(func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)))
+            ).label("total_questions_attempted"),
+            func.sum(func.coalesce(ExamAttempt.total_correct, 0)).label("total_correct"),
+            func.sum(func.coalesce(ExamAttempt.total_questions, 0)).label("total_questions"),
+            func.sum(func.coalesce(ExamAttempt.time_spent_seconds, 0)).label("total_time_seconds")
+        ).where(ExamAttempt.user_id == user_id)
+        
+        agg_res = (await self.session.exec(agg_stmt)).first()
+        
+        total_exams = int(getattr(agg_res, "total_exams", 0) or 0)
+        total_questions_attempted = int(getattr(agg_res, "total_questions_attempted", 0) or 0)
+        total_correct = int(getattr(agg_res, "total_correct", 0) or 0)
+        total_questions = int(getattr(agg_res, "total_questions", 0) or 0)
+        total_time_seconds = int(getattr(agg_res, "total_time_seconds", 0) or 0)
 
         overall_accuracy = round((total_correct / total_questions_attempted) * 100, 1) if total_questions_attempted > 0 else 0.0
 
+        # 2. Fetch only the 15 most recent attempts (Avoids downloading MBs of JSON for older attempts)
+        recent_stmt = (
+            select(ExamAttempt)
+            .where(ExamAttempt.user_id == user_id)
+            .order_by(col(ExamAttempt.created_at).desc())
+            .limit(15)
+        )
+        recent_db_attempts = (await self.session.exec(recent_stmt)).all()
+
         recent_attempts = []
-        for a in attempts[:15]:
+        for a in recent_db_attempts:
             meta = a.report_metadata_json or {}
             is_guest = bool(meta.get("is_guest_synced") or meta.get("guest_session_id"))
             is_practice = (a.mode == AttemptMode.PRACTICE) or is_guest or bool(meta.get("topic_name"))
@@ -1940,7 +1967,7 @@ class ExamSessionService:
                 "createdAt": a.created_at.isoformat() if a.created_at else datetime.now(timezone.utc).isoformat(),
             })
 
-        return {
+        result = {
             "totalExams": total_exams,
             "totalQuestionsAttempted": total_questions_attempted,
             "totalCorrect": total_correct,
@@ -1949,4 +1976,6 @@ class ExamSessionService:
             "totalTimeSeconds": total_time_seconds,
             "recentAttempts": recent_attempts,
         }
+        await cache.set(cache_key, result, ttl_seconds=900)
+        return result
 

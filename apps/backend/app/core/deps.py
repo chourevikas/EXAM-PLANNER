@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import jwt
 from typing import Optional
@@ -15,6 +16,20 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False
 )
 http_bearer = HTTPBearer(auto_error=False)
+
+# Cache PyJWKClient instances per issuer so Clerk's JWKS is fetched once and
+# reused (cache_jwk_set/cache_keys) instead of being re-fetched over the
+# network on every single request.
+_jwks_clients: dict[str, jwt.PyJWKClient] = {}
+
+
+def _get_jwks_client(issuer: str) -> jwt.PyJWKClient:
+    client = _jwks_clients.get(issuer)
+    if client is None:
+        jwks_url = f"{issuer}/.well-known/jwks.json"
+        client = jwt.PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
+        _jwks_clients[issuer] = client
+    return client
 
 
 async def get_current_user(
@@ -57,10 +72,13 @@ async def get_current_user(
 
         if issuer and "clerk" in issuer:
             try:
-                # Verify Clerk JWT using JWKS
-                jwks_url = f"{issuer}/.well-known/jwks.json"
-                jwks_client = jwt.PyJWKClient(jwks_url)
-                signing_key = jwks_client.get_signing_key_from_jwt(token)
+                # Verify Clerk JWT using JWKS. The client is cached per-issuer
+                # and the blocking fetch is offloaded to a thread so it
+                # doesn't stall the event loop for other concurrent requests.
+                jwks_client = _get_jwks_client(issuer)
+                signing_key = await asyncio.to_thread(
+                    jwks_client.get_signing_key_from_jwt, token
+                )
                 payload = jwt.decode(
                     token, 
                     signing_key.key, 

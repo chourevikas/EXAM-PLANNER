@@ -176,7 +176,7 @@ export function GuestExamPage() {
   }, [gExam, gSubject, gTopic, gSubtopic]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
-  const { isMobile, isTabletOrBelow } = useBreakpoint();
+  const { isTabletOrBelow } = useBreakpoint();
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
@@ -1863,8 +1863,8 @@ export function GuestExamPage() {
         </div>
       </div>
 
-      {/* Mobile Recommended Questions Toggle Button */}
-      {isMobile && displayRecs.length > 0 && (
+      {/* Mobile/Tablet Recommended Questions Toggle Button */}
+      {isTabletOrBelow && displayRecs.length > 0 && (
         <div
           style={{
             padding: '0 clamp(10px, 2.5vw, 24px) 8px',
@@ -1897,8 +1897,8 @@ export function GuestExamPage() {
         </div>
       )}
 
-      {/* Mobile Recommended Questions Modal */}
-      {isMobile && showMobileRecs && (
+      {/* Mobile/Tablet Recommended Questions Modal */}
+      {isTabletOrBelow && showMobileRecs && (
         <div
           className="auth-modal-overlay"
           onClick={() => setShowMobileRecs(false)}
@@ -2250,17 +2250,17 @@ export function GuestExamPage() {
           minHeight: 0,
           paddingTop: 12,
           paddingBottom: 16,
-          paddingRight: isMobile ? 12 : 24,
-          paddingLeft: isMobile ? 12 : 24,
+          paddingRight: isTabletOrBelow ? 12 : 24,
+          paddingLeft: isTabletOrBelow ? 12 : 24,
           overflow: 'visible',
           position: 'relative',
           backgroundColor: '#F8FAF8',
           boxSizing: 'border-box',
-          gap: isMobile ? 0 : 20,
+          gap: isTabletOrBelow ? 0 : 20,
         }}
       >
         {/* Left Recommended Fixed Panel (Desktop) */}
-        {!isMobile && (
+        {!isTabletOrBelow && (
           <aside
             style={{
               width: 380,

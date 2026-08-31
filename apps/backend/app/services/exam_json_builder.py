@@ -39,11 +39,17 @@ class ExamJsonBuilder:
         self.storage = get_storage_provider()
 
     async def preload_batch_question_data(
-        self, questions: list[Question]
+        self, questions: list[Question], include_solution_data: bool = True
     ) -> Dict[str, Any]:
         """
         Preloads all child tables, options, translations, taxonomies, and hierarchies
         for a batch of questions in a minimal number of O(1) SQL roundtrips to eliminate N+1 queries.
+
+        `include_solution_data=False` skips QuestionMetadata/QuestionExplanation/
+        QuestionHierarchyLink entirely — these are only consumed by the `sol_card`
+        half of build_single_question_cards, so callers that only need the
+        question-facing `q_card` (e.g. the no-solutions bulk questions endpoint)
+        can avoid those round trips altogether.
         """
         if not questions:
             return {}
@@ -79,40 +85,41 @@ class ExamJsonBuilder:
             for ot in ot_res.all():
                 opt_trans_map.setdefault(ot.option_id, []).append(ot)
 
-        # 3. Question Metadata
-        meta_res = await self.session.exec(
-            select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
-        )
-        meta_map: Dict[int, QuestionMetadata] = {
-            m.question_id: m for m in meta_res.all()
-        }
-
-        # 4. Question Explanations
-        expl_res = await self.session.exec(
-            select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
-        )
+        meta_map: Dict[int, QuestionMetadata] = {}
         expl_map: Dict[int, list[QuestionExplanation]] = {}
-        for e in expl_res.all():
-            expl_map.setdefault(e.question_id, []).append(e)
-
-        # 5. Question Hierarchy Links
-        h_res = await self.session.exec(
-            select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
-        )
         h_map: Dict[int, list[QuestionHierarchyLink]] = {}
-        h_links = h_res.all()
         subtopic_ids = set()
         topic_ids = set()
         subject_ids = set()
 
-        for hl in h_links:
-            h_map.setdefault(hl.question_id, []).append(hl)
-            if hl.subtopic_id:
-                subtopic_ids.add(hl.subtopic_id)
-            if hl.topic_id:
-                topic_ids.add(hl.topic_id)
-            if hl.subject_id:
-                subject_ids.add(hl.subject_id)
+        if include_solution_data:
+            # 3. Question Metadata
+            meta_res = await self.session.exec(
+                select(QuestionMetadata).where(col(QuestionMetadata.question_id).in_(q_ids))
+            )
+            meta_map = {m.question_id: m for m in meta_res.all()}
+
+            # 4. Question Explanations
+            expl_res = await self.session.exec(
+                select(QuestionExplanation).where(col(QuestionExplanation.question_id).in_(q_ids))
+            )
+            for e in expl_res.all():
+                expl_map.setdefault(e.question_id, []).append(e)
+
+            # 5. Question Hierarchy Links
+            h_res = await self.session.exec(
+                select(QuestionHierarchyLink).where(col(QuestionHierarchyLink.question_id).in_(q_ids))
+            )
+            h_links = h_res.all()
+
+            for hl in h_links:
+                h_map.setdefault(hl.question_id, []).append(hl)
+                if hl.subtopic_id:
+                    subtopic_ids.add(hl.subtopic_id)
+                if hl.topic_id:
+                    topic_ids.add(hl.topic_id)
+                if hl.subject_id:
+                    subject_ids.add(hl.subject_id)
 
         for q in questions:
             if q.subtopic_id:
@@ -171,9 +178,14 @@ class ExamJsonBuilder:
         }
 
     async def build_single_question_cards(
-        self, q: Question, preloaded: Optional[Dict[str, Any]] = None
+        self, q: Question, preloaded: Optional[Dict[str, Any]] = None, include_solution_data: bool = True
     ) -> tuple[Dict[str, Any], Dict[str, Any]]:
-        """Constructs standardized q_card and sol_card payloads for a single Question."""
+        """Constructs standardized q_card and sol_card payloads for a single Question.
+
+        `include_solution_data=False` skips building `sol_card` (and the
+        QuestionMetadata/QuestionExplanation/QuestionHierarchyLink lookups behind
+        it) entirely, returning `{}` for it — for callers that only need `q_card`.
+        """
         # 1. Question Translations
         if preloaded is not None:
             trans_list = preloaded.get("trans_map", {}).get(q.id, [])
@@ -232,57 +244,58 @@ class ExamJsonBuilder:
         top_name = topic.name if topic else "General Studies"
         sub_name = subtopic.name if subtopic else "Core Concepts"
 
-        # 4. Multi-Concept Hierarchy
-        if preloaded is not None:
-            h_links = preloaded.get("h_map", {}).get(q.id, [])
-        else:
-            h_stmt = select(QuestionHierarchyLink).where(
-                QuestionHierarchyLink.question_id == q.id
-            )
-            h_links = (await self.session.exec(h_stmt)).all()
-
+        # 4. Multi-Concept Hierarchy (sol_card only — skipped when include_solution_data=False)
         hierarchy_concepts = []
-        for hl in h_links:
-            subtop_freq = 0
-            subtop_name = None
-            topic_name = None
-            subj_name_l = None
-            if hl.subtopic_id:
-                if preloaded is not None:
-                    subtop = preloaded.get("subtopics_map", {}).get(hl.subtopic_id)
-                    if subtop:
-                        subtop_name = subtop.name
-                        subtop_freq = subtop.pyq_frequency
-                        top = preloaded.get("topics_map", {}).get(subtop.topic_id) if subtop.topic_id else None
-                        if top:
-                            topic_name = top.name
-                            subj = preloaded.get("subjects_map", {}).get(top.subject_id) if top.subject_id else None
-                            if subj:
-                                subj_name_l = subj.name
-                else:
-                    subtop = await self.session.get(Subtopic, hl.subtopic_id)
-                    if subtop:
-                        subtop_name = subtop.name
-                        subtop_freq = subtop.pyq_frequency
-                        top = await self.session.get(Topic, subtop.topic_id)
-                        if top:
-                            topic_name = top.name
-                            subj = await self.session.get(Subject, top.subject_id)
-                            if subj:
-                                subj_name_l = subj.name
+        if include_solution_data:
+            if preloaded is not None:
+                h_links = preloaded.get("h_map", {}).get(q.id, [])
+            else:
+                h_stmt = select(QuestionHierarchyLink).where(
+                    QuestionHierarchyLink.question_id == q.id
+                )
+                h_links = (await self.session.exec(h_stmt)).all()
 
-            hierarchy_concepts.append({
-                "subject": subj_name_l or subj_name,
-                "topic": topic_name or top_name,
-                "subtopic": subtop_name or sub_name,
-                "subject_id": str(hl.subject_id) if hl.subject_id else None,
-                "topic_id": str(hl.topic_id) if hl.topic_id else None,
-                "subtopic_id": str(hl.subtopic_id) if hl.subtopic_id else None,
-                "is_primary": hl.is_primary,
-                "relevance_weight": hl.relevance_weight,
-                "concept_name": hl.concept_name,
-                "subtopic_pyq_frequency": subtop_freq,
-            })
+            for hl in h_links:
+                subtop_freq = 0
+                subtop_name = None
+                topic_name = None
+                subj_name_l = None
+                if hl.subtopic_id:
+                    if preloaded is not None:
+                        subtop = preloaded.get("subtopics_map", {}).get(hl.subtopic_id)
+                        if subtop:
+                            subtop_name = subtop.name
+                            subtop_freq = subtop.pyq_frequency
+                            top = preloaded.get("topics_map", {}).get(subtop.topic_id) if subtop.topic_id else None
+                            if top:
+                                topic_name = top.name
+                                subj = preloaded.get("subjects_map", {}).get(top.subject_id) if top.subject_id else None
+                                if subj:
+                                    subj_name_l = subj.name
+                    else:
+                        subtop = await self.session.get(Subtopic, hl.subtopic_id)
+                        if subtop:
+                            subtop_name = subtop.name
+                            subtop_freq = subtop.pyq_frequency
+                            top = await self.session.get(Topic, subtop.topic_id)
+                            if top:
+                                topic_name = top.name
+                                subj = await self.session.get(Subject, top.subject_id)
+                                if subj:
+                                    subj_name_l = subj.name
+
+                hierarchy_concepts.append({
+                    "subject": subj_name_l or subj_name,
+                    "topic": topic_name or top_name,
+                    "subtopic": subtop_name or sub_name,
+                    "subject_id": str(hl.subject_id) if hl.subject_id else None,
+                    "topic_id": str(hl.topic_id) if hl.topic_id else None,
+                    "subtopic_id": str(hl.subtopic_id) if hl.subtopic_id else None,
+                    "is_primary": hl.is_primary,
+                    "relevance_weight": hl.relevance_weight,
+                    "concept_name": hl.concept_name,
+                    "subtopic_pyq_frequency": subtop_freq,
+                })
 
         # 5. Options
         if preloaded is not None:
@@ -344,51 +357,62 @@ class ExamJsonBuilder:
                 "distractor_analysis_translations": opt_distractor_analyses,
             }
 
-        # 6. Metadata
-        if preloaded is not None:
-            q_meta = preloaded.get("meta_map", {}).get(q.id)
-        else:
-            meta_res = await self.session.exec(
-                select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
-            )
-            q_meta = meta_res.first()
-
-        blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
-        cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
-        primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
-        irt_a = q_meta.irt_discrimination_a if (q_meta and q_meta.irt_discrimination_a is not None) else 1.50
-        irt_b = q_meta.irt_difficulty_b if (q_meta and q_meta.irt_difficulty_b is not None) else 0.00
-        irt_c = q_meta.irt_pseudo_guessing_c if (q_meta and q_meta.irt_pseudo_guessing_c is not None) else 0.25
-
-        # 7. Explanations
-        if preloaded is not None:
-            expl_list = preloaded.get("expl_map", {}).get(q.id, [])
-        else:
-            expl_res = await self.session.exec(
-                select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
-            )
-            expl_list = expl_res.all()
-
+        # 6 & 7. Metadata & Explanations (sol_card only — skipped when include_solution_data=False)
+        blooms_level = "ANALYZE"
+        cognitive_skill = "Conceptual Reasoning"
+        primary_concept_tag = None
+        irt_a, irt_b, irt_c = 1.50, 0.00, 0.25
         explanation_translations = {}
-        for q_expl in expl_list:
-            lang_str = q_expl.language.value if hasattr(q_expl.language, "value") else str(q_expl.language)
-            explanation_translations[lang_str] = {
-                "core_concept": q_expl.core_concept,
-                "detailed_solution": q_expl.detailed_solution,
-                "common_traps": q_expl.common_traps_json or [],
-                "key_takeaways": q_expl.key_takeaways_json or [],
-            }
-
-        eng_expl = next(
-            (e for e in expl_list if (e.language.value if hasattr(e.language, "value") else str(e.language)) == "ENGLISH"), None
-        ) or (expl_list[0] if expl_list else None)
-
         default_expl_dict = {
-            "core_concept": eng_expl.core_concept if eng_expl else "Core concept analysis",
-            "detailed_solution": eng_expl.detailed_solution if eng_expl else "Detailed solution breakdown",
-            "common_traps": eng_expl.common_traps_json if (eng_expl and eng_expl.common_traps_json) else [],
-            "key_takeaways": eng_expl.key_takeaways_json if (eng_expl and eng_expl.key_takeaways_json) else [],
+            "core_concept": "Core concept analysis",
+            "detailed_solution": "Detailed solution breakdown",
+            "common_traps": [],
+            "key_takeaways": [],
         }
+
+        if include_solution_data:
+            if preloaded is not None:
+                q_meta = preloaded.get("meta_map", {}).get(q.id)
+            else:
+                meta_res = await self.session.exec(
+                    select(QuestionMetadata).where(QuestionMetadata.question_id == q.id)
+                )
+                q_meta = meta_res.first()
+
+            blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
+            cognitive_skill = q_meta.cognitive_skill if q_meta and q_meta.cognitive_skill else "Conceptual Reasoning"
+            primary_concept_tag = q_meta.primary_concept_tag if q_meta and q_meta.primary_concept_tag else None
+            irt_a = q_meta.irt_discrimination_a if (q_meta and q_meta.irt_discrimination_a is not None) else 1.50
+            irt_b = q_meta.irt_difficulty_b if (q_meta and q_meta.irt_difficulty_b is not None) else 0.00
+            irt_c = q_meta.irt_pseudo_guessing_c if (q_meta and q_meta.irt_pseudo_guessing_c is not None) else 0.25
+
+            if preloaded is not None:
+                expl_list = preloaded.get("expl_map", {}).get(q.id, [])
+            else:
+                expl_res = await self.session.exec(
+                    select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
+                )
+                expl_list = expl_res.all()
+
+            for q_expl in expl_list:
+                lang_str = q_expl.language.value if hasattr(q_expl.language, "value") else str(q_expl.language)
+                explanation_translations[lang_str] = {
+                    "core_concept": q_expl.core_concept,
+                    "detailed_solution": q_expl.detailed_solution,
+                    "common_traps": q_expl.common_traps_json or [],
+                    "key_takeaways": q_expl.key_takeaways_json or [],
+                }
+
+            eng_expl = next(
+                (e for e in expl_list if (e.language.value if hasattr(e.language, "value") else str(e.language)) == "ENGLISH"), None
+            ) or (expl_list[0] if expl_list else None)
+
+            default_expl_dict = {
+                "core_concept": eng_expl.core_concept if eng_expl else "Core concept analysis",
+                "detailed_solution": eng_expl.detailed_solution if eng_expl else "Detailed solution breakdown",
+                "common_traps": eng_expl.common_traps_json if (eng_expl and eng_expl.common_traps_json) else [],
+                "key_takeaways": eng_expl.key_takeaways_json if (eng_expl and eng_expl.key_takeaways_json) else [],
+            }
 
         q_card = {
             "question_id": str(q.id),
@@ -411,7 +435,7 @@ class ExamJsonBuilder:
             "options": public_options,
         }
 
-        sol_card = {
+        sol_card = {} if not include_solution_data else {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
             "correct_option_id": correct_option_id,
