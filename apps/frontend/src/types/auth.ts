@@ -102,4 +102,67 @@ export interface UserDirectoryItem {
   created_at: string;
   suspended_at?: string;
   updated_at?: string;
+  custom_role_id?: number | null;
+}
+
+export interface Permission {
+  id: number;
+  key: string;
+  label: string;
+  description?: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  slug: string;
+  base_role_type: UserRole;
+  is_system: boolean;
+  description?: string;
+  permission_keys: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewPointsLogEntry {
+  id: number;
+  action: 'APPROVE' | 'REJECT';
+  points: number;
+  question_id?: number | null;
+  created_at: string;
+}
+
+export interface TeacherPointsSummary {
+  total_review_points: number;
+  reviews_completed_count: number;
+  recent_logs: ReviewPointsLogEntry[];
+}
+
+export interface TeacherReward {
+  id: number;
+  teacher_id: number;
+  admin_id?: number | null;
+  title: string;
+  description?: string;
+  points_value?: number | null;
+  created_at: string;
+}
+
+export interface TeacherLeaderboardEntry {
+  teacher_id: number;
+  full_name: string;
+  email: string;
+  total_review_points: number;
+  reviews_completed_count: number;
+}
+
+export interface HumanReviewTaskSummary {
+  id: number;
+  question_id: number;
+  exam_id: number;
+  review_status: string;
+  is_flagged_by_validator: boolean;
+  reviewer_notes?: string | null;
+  created_at: string;
+  reviewed_at?: string | null;
 }

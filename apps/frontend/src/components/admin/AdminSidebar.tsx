@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Users,
   BarChart2,
+  Award,
   X
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -65,6 +66,7 @@ export function AdminSidebar({
 
   const managementNavItems = [
     { icon: Users, label: 'Users', id: 'users' },
+    { icon: Award, label: 'Teacher Rewards', id: 'teacher-rewards' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
   ];
 

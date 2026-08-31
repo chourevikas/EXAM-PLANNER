@@ -41,6 +41,8 @@ class AuthService:
             return "/superadmin"
         elif role == UserRole.ADMIN:
             return "/admin"
+        elif role == UserRole.TEACHER:
+            return "/teacher"
         return "/dashboard"
 
     async def register_user(

@@ -38,6 +38,7 @@ const breadcrumbMap: Record<string, string> = {
   'mock-tests': 'Mock Tests',
   resources: 'Learning Resources',
   users: 'Users Management',
+  'teacher-rewards': 'Teacher Rewards',
   analytics: 'Reports & Analytics',
   subscriptions: 'Subscriptions & Billing',
 };

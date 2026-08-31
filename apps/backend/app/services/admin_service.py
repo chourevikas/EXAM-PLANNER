@@ -95,6 +95,7 @@ class AdminService:
                     created_at=u.created_at,
                     suspended_at=u.suspended_at,
                     updated_at=u.updated_at,
+                    custom_role_id=u.custom_role_id,
                 )
             )
         return result

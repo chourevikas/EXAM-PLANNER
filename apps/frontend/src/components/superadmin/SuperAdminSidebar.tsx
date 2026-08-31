@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Menu, ShieldAlert, Users, History, UserCheck, MessageSquareQuote, X } from 'lucide-react';
+import { Menu, ShieldAlert, Users, History, UserCheck, MessageSquareQuote, KeyRound, X } from 'lucide-react';
 import { SuperAdminTab } from './SuperAdminTabNav';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -55,6 +55,7 @@ export function SuperAdminSidebar({
     { id: 'active', label: 'Active Admins', icon: Users },
     { id: 'audit', label: 'Approval Audit Logs', icon: History },
     { id: 'users', label: 'All Users & Roles', icon: UserCheck },
+    { id: 'roles-permissions', label: 'Roles & Permissions', icon: KeyRound },
     { id: 'testimonials', label: 'Testimonial Approvals', icon: MessageSquareQuote, badge: pendingTestimonialsCount },
   ];
 

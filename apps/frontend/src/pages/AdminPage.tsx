@@ -13,6 +13,7 @@ import { MockTestsView } from '../components/admin/views/MockTestsView';
 import { UsersView } from '../components/admin/views/UsersView';
 import { AnalyticsView } from '../components/admin/views/AnalyticsView';
 import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineStatusView';
+import { TeacherRewardsView } from '../components/admin/views/TeacherRewardsView';
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -81,6 +82,8 @@ export function AdminPage() {
         return <MockTestsView />;
       case 'users':
         return <UsersView />;
+      case 'teacher-rewards':
+        return <TeacherRewardsView />;
       case 'analytics':
         return <AnalyticsView />;
       default:
