@@ -2,10 +2,11 @@ import uuid
 import datetime as dt_mod
 from datetime import datetime, timezone, timedelta, date
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import select, col, SQLModel, func
+from sqlalchemy import case, cast, Date
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
@@ -633,6 +634,7 @@ async def get_weekly_schedule(
 
 @router.get("/weekly-insights")
 async def get_weekly_insights(
+    response: Response,
     start_date: Optional[str] = Query(None, description="Start date of week YYYY-MM-DD"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
@@ -648,69 +650,106 @@ async def get_weekly_insights(
         base_date = today - timedelta(days=today.weekday())  # Monday of current week
 
     end_date = base_date + timedelta(days=6)  # Sunday
-
-    # 1. Fetch tasks for this week
-    stmt_tasks = select(StudyTask).where(
-        StudyTask.user_id == current_user.id,
-        StudyTask.scheduled_date >= base_date,
-        StudyTask.scheduled_date <= end_date
-    )
-    tasks = (await session.exec(stmt_tasks)).all()
-    total_tasks = len(tasks)
-    completed_tasks = sum(1 for t in tasks if t.is_completed)
-    completion_rate = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
-
-    # 2. Fetch study activities for this week
-    stmt_activities = select(StudyActivity).where(
-        StudyActivity.user_id == current_user.id,
-        StudyActivity.date >= base_date,
-        StudyActivity.date <= end_date
-    )
-    activities = (await session.exec(stmt_activities)).all()
-    logged_minutes = sum(a.duration_minutes or 0 for a in activities)
-    logged_hours = round(logged_minutes / 60, 1)
-    
-    questions_from_logs = sum(a.questions_attempted or 0 for a in activities)
-    correct_from_logs = sum(a.questions_correct or 0 for a in activities)
-    
-    active_days_set = {str(a.date) for a in activities}
-
-    # 3. Fetch exam attempts for this week
     start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
     end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
-    stmt_attempts = select(ExamAttempt).where(
-        ExamAttempt.user_id == current_user.id,
-        ExamAttempt.started_at >= start_dt,
-        ExamAttempt.started_at <= end_dt
+
+    # 1. Aggregate Study Tasks (count & completion via SQL)
+    stmt_tasks = select(
+        func.count(col(StudyTask.id)),
+        func.coalesce(func.sum(case((col(StudyTask.is_completed) == True, 1), else_=0)), 0)
+    ).where(
+        col(StudyTask.user_id) == current_user.id,
+        col(StudyTask.scheduled_date) >= base_date,
+        col(StudyTask.scheduled_date) <= end_date
     )
-    attempts = (await session.exec(stmt_attempts)).all()
-    
-    exam_questions = 0
-    exam_correct = 0
-    for att in attempts:
-        if att.started_at:
-            active_days_set.add(str(att.started_at.date()))
-        if att.total_correct is not None:
-            exam_correct += att.total_correct
-            q_cnt = att.total_correct + (att.total_incorrect or 0)
-            exam_questions += q_cnt
+    task_res = (await session.exec(stmt_tasks)).first()
+    total_tasks = int(task_res[0]) if task_res and task_res[0] is not None else 0
+    completed_tasks = int(task_res[1]) if task_res and task_res[1] is not None else 0
+    completion_rate = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
+
+    # 2. Aggregate Study Activities (duration & questions via SQL)
+    stmt_activities = select(
+        func.coalesce(func.sum(col(StudyActivity.duration_minutes)), 0),
+        func.coalesce(func.sum(col(StudyActivity.questions_attempted)), 0),
+        func.coalesce(func.sum(col(StudyActivity.questions_correct)), 0)
+    ).where(
+        col(StudyActivity.user_id) == current_user.id,
+        col(StudyActivity.date) >= base_date,
+        col(StudyActivity.date) <= end_date
+    )
+    act_res = (await session.exec(stmt_activities)).first()
+    logged_minutes = int(act_res[0]) if act_res and act_res[0] is not None else 0
+    logged_hours = round(logged_minutes / 60, 1)
+    questions_from_logs = int(act_res[1]) if act_res and act_res[1] is not None else 0
+    correct_from_logs = int(act_res[2]) if act_res and act_res[2] is not None else 0
+
+    # 3. Active dates from activities and exam attempts
+    stmt_act_dates = select(col(StudyActivity.date)).where(
+        col(StudyActivity.user_id) == current_user.id,
+        col(StudyActivity.date) >= base_date,
+        col(StudyActivity.date) <= end_date
+    ).distinct()
+    act_dates = {str(d) for d in (await session.exec(stmt_act_dates)).all() if d}
+
+    # 4. Aggregate Exam Attempts (questions & correct via SQL)
+    stmt_attempts = select(
+        func.coalesce(func.sum(col(ExamAttempt.total_correct)), 0),
+        func.coalesce(func.sum(col(ExamAttempt.total_correct) + func.coalesce(col(ExamAttempt.total_incorrect), 0)), 0)
+    ).where(
+        col(ExamAttempt.user_id) == current_user.id,
+        col(ExamAttempt.started_at) >= start_dt,
+        col(ExamAttempt.started_at) <= end_dt
+    )
+    att_res = (await session.exec(stmt_attempts)).first()
+    exam_correct = int(att_res[0]) if att_res and att_res[0] is not None else 0
+    exam_questions = int(att_res[1]) if att_res and att_res[1] is not None else 0
+
+    # Distinct attempt dates
+    stmt_att_dates = select(cast(col(ExamAttempt.started_at), Date)).where(
+        col(ExamAttempt.user_id) == current_user.id,
+        col(ExamAttempt.started_at) >= start_dt,
+        col(ExamAttempt.started_at) <= end_dt
+    ).distinct()
+    att_dates = {str(d) for d in (await session.exec(stmt_att_dates)).all() if d}
+
+    active_days_set = act_dates.union(att_dates)
 
     total_questions = questions_from_logs + exam_questions
     total_correct = correct_from_logs + exam_correct
     avg_accuracy = round((total_correct / total_questions * 100)) if total_questions > 0 else 78
 
-    # 4. Determine Top Subject
+    # 5. Top Subject Determination via SQL GROUP BY
+    stmt_act_subj = select(
+        col(StudyActivity.subject),
+        func.coalesce(func.sum(col(StudyActivity.duration_minutes)), 0)
+    ).where(
+        col(StudyActivity.user_id) == current_user.id,
+        col(StudyActivity.date) >= base_date,
+        col(StudyActivity.date) <= end_date
+    ).group_by(col(StudyActivity.subject))
+    act_subjects = (await session.exec(stmt_act_subj)).all()
+
+    stmt_task_subj = select(
+        col(StudyTask.subject),
+        func.coalesce(func.sum(col(StudyTask.allocated_time_minutes)), 0)
+    ).where(
+        col(StudyTask.user_id) == current_user.id,
+        col(StudyTask.scheduled_date) >= base_date,
+        col(StudyTask.scheduled_date) <= end_date
+    ).group_by(col(StudyTask.subject))
+    task_subjects = (await session.exec(stmt_task_subj)).all()
+
     subject_duration_map = {}
-    for a in activities:
-        subj = a.subject or "General Studies"
-        subject_duration_map[subj] = subject_duration_map.get(subj, 0) + (a.duration_minutes or 0)
-    for t in tasks:
-        subj = t.subject or "General Studies"
-        subject_duration_map[subj] = subject_duration_map.get(subj, 0) + (t.allocated_time_minutes or 30)
+    for subj, duration in act_subjects:
+        s_name = subj or "General Studies"
+        subject_duration_map[s_name] = subject_duration_map.get(s_name, 0) + (int(duration) if duration else 0)
+    for subj, duration in task_subjects:
+        s_name = subj or "General Studies"
+        subject_duration_map[s_name] = subject_duration_map.get(s_name, 0) + (int(duration) if duration else 0)
 
     top_subject = max(subject_duration_map.items(), key=lambda x: x[1])[0] if subject_duration_map else "Polity & Governance"
 
-    # 5. Build Dynamic Highlights List
+    # 6. Build Dynamic Highlights List
     highlights = []
     if total_questions > 0:
         highlights.append(f"Completed {total_questions} practice questions with {avg_accuracy}% average accuracy.")
@@ -725,9 +764,17 @@ async def get_weekly_insights(
     else:
         highlights.append(f"Dedicated major focus to {top_subject} revision.")
 
-    # 6. Build Dynamic Focus Next Week Recommendations List
+    # 7. Incomplete Subjects for Focus Next Week (SQL distinct)
+    stmt_incomplete_subj = select(col(StudyTask.subject)).where(
+        col(StudyTask.user_id) == current_user.id,
+        col(StudyTask.scheduled_date) >= base_date,
+        col(StudyTask.scheduled_date) <= end_date,
+        col(StudyTask.is_completed) == False,
+        col(StudyTask.subject).isnot(None)
+    ).distinct().limit(3)
+    incomplete_subjects = [s for s in (await session.exec(stmt_incomplete_subj)).all() if s]
+
     focus_next_week = []
-    incomplete_subjects = list({t.subject for t in tasks if not t.is_completed and t.subject})
     if incomplete_subjects:
         focus_next_week.append(f"Revise {incomplete_subjects[0]} (Core concepts & high-yield revision topics).")
     else:
@@ -738,6 +785,9 @@ async def get_weekly_insights(
 
     # Format date strings for header (e.g. "Aug 24 - Aug 30, 2026")
     date_range_str = f"{base_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')}"
+
+    # Cache control: weekly report is static intra-session
+    response.headers["Cache-Control"] = "private, max-age=120, stale-while-revalidate=300"
 
     return {
         "start_date": str(base_date),

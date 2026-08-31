@@ -1,5 +1,6 @@
 import { UserRole, AuthResponse } from '../types/auth';
 import { getGuestAttempts, clearGuestAttempts } from '../utils/guestStorage';
+import { guardedFetch } from '../utils/apiGuard';
 
 const API_BASE_URL = '/api/v1/auth';
 
@@ -116,7 +117,7 @@ export async function fetchCurrentUser(customToken?: string): Promise<any> {
   const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');
 
-  const res = await fetch(`${API_BASE_URL}/me`, {
+  const res = await guardedFetch(`${API_BASE_URL}/me`, {
     headers: {
       'Authorization': `Bearer ${token}`
     }

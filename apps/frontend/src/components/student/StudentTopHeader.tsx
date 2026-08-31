@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { UserAvatar } from '../common/UserAvatar';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { guardedFetch } from '../../utils/apiGuard';
 
 interface StudentTopHeaderProps {
   user: any;
@@ -70,7 +71,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/v1/notifications', { headers });
+      const res = await guardedFetch('/api/v1/notifications', { headers });
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications || []);

@@ -220,12 +220,51 @@ export interface WeeklyInsightsResponse {
   focus_next_week: string[];
 }
 
-export async function fetchWeeklyInsights(startDate?: string): Promise<WeeklyInsightsResponse> {
+interface InsightsCacheEntry {
+  data: WeeklyInsightsResponse;
+  timestamp: number;
+}
+const insightsCache = new Map<string, InsightsCacheEntry>();
+const INSIGHTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute client-side TTL
+
+export async function fetchWeeklyInsights(
+  startDate?: string,
+  options?: { signal?: AbortSignal; forceRefresh?: boolean }
+): Promise<WeeklyInsightsResponse> {
+  const cacheKey = startDate || 'current';
+  if (!options?.forceRefresh) {
+    const cached = insightsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < INSIGHTS_CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   const url = startDate
     ? `${STUDY_PLAN_API_BASE_URL}/weekly-insights?start_date=${startDate}`
     : `${STUDY_PLAN_API_BASE_URL}/weekly-insights`;
-  const res = await guardedFetch(url, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch weekly insights report');
-  return await res.json();
+
+  const res = await guardedFetch(url, {
+    headers: getAuthHeaders(),
+    signal: options?.signal,
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    const error: any = new Error(errData?.detail || 'Failed to fetch weekly insights report');
+    error.status = res.status;
+    throw error;
+  }
+
+  const data: WeeklyInsightsResponse = await res.json();
+  insightsCache.set(cacheKey, { data, timestamp: Date.now() });
+  return data;
+}
+
+export function invalidateWeeklyInsightsCache(startDate?: string): void {
+  if (startDate) {
+    insightsCache.delete(startDate);
+  } else {
+    insightsCache.clear();
+  }
 }
 
