@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Target, Zap, CheckCircle2, ArrowRight, Search } from 'lucide-react';
+import { FLAT_SYLLABUS_NODES, FlatSyllabusNode } from '../../constants/syllabusData';
 import { fetchMasterSyllabus } from '../../services/examService';
 
 interface HeroSectionProps {
@@ -17,6 +18,9 @@ export function HeroSection({ }: HeroSectionProps) {
   const [hoveredSyllabusResult, setHoveredSyllabusResult] = useState<number | null>(null);
   const syllabusSearchRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic supplementary nodes if backend provides extra taxonomy nodes
+  const [dynamicNodes, setDynamicNodes] = useState<FlatSyllabusNode[]>([]);
+
   // Close search dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -28,122 +32,193 @@ export function HeroSection({ }: HeroSectionProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Global search state (legacy, kept for reference)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-
+  // Background sync for any dynamically configured custom subjects/topics from API
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults(null);
-      return;
-    }
-    const delayDebounceFn = setTimeout(async () => {
-      setIsSearching(true);
+    let isCancelled = false;
+    async function loadBackgroundTaxonomy() {
       try {
-        const response = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQuery)}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSearchResults(data);
-        }
-      } catch (err) {
-        console.error('Search error:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+        const taxData = await fetchMasterSyllabus();
+        if (isCancelled || !taxData) return;
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
-
-  // Dynamic 3-level taxonomy state fetched directly from Syllabus API (/api/v1/syllabus)
-  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
-  const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
-  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
-
-  // Syllabus search nodes (flat list for search bar)
-  const allSyllabusNodes = useMemo(() => {
-    const nodes: { type: 'subject' | 'topic' | 'subtopic'; subject: string; topic?: string; subtopic?: string; label: string; breadcrumb: string }[] = [];
-    masterSubjects.forEach((subj) => {
-      const subjName = subj.name || '';
-      if (!subjName) return;
-      nodes.push({ type: 'subject', subject: subjName, label: subjName, breadcrumb: subjName });
-      (subj.topics || []).forEach((topic: any) => {
-        const topicName = topic.name || '';
-        if (!topicName) return;
-        nodes.push({ type: 'topic', subject: subjName, topic: topicName, label: topicName, breadcrumb: `${subjName} › ${topicName}` });
-        (topic.subtopics || []).forEach((sub: any) => {
-          const subName = typeof sub === 'string' ? sub : sub.name || '';
-          if (!subName) return;
-          nodes.push({ type: 'subtopic', subject: subjName, topic: topicName, subtopic: subName, label: subName, breadcrumb: `${subjName} › ${topicName} › ${subName}` });
-        });
-      });
-    });
-    Object.entries(threeLevelHierarchy).forEach(([subjKey, topicMap]) => {
-      if (!nodes.some(n => n.type === 'subject' && n.subject === subjKey)) {
-        nodes.push({ type: 'subject', subject: subjKey, label: subjKey, breadcrumb: subjKey });
-      }
-      if (topicMap && typeof topicMap === 'object') {
-        Object.entries(topicMap).forEach(([topicKey, subtopics]) => {
-          if (!nodes.some(n => n.type === 'topic' && n.subject === subjKey && n.topic === topicKey)) {
-            nodes.push({ type: 'topic', subject: subjKey, topic: topicKey, label: topicKey, breadcrumb: `${subjKey} › ${topicKey}` });
-          }
-          if (Array.isArray(subtopics)) {
-            subtopics.forEach((sub) => {
-              const subName = typeof sub === 'string' ? sub : '';
-              if (!subName || nodes.some(n => n.type === 'subtopic' && n.topic === topicKey && n.subtopic === subName)) return;
-              nodes.push({ type: 'subtopic', subject: subjKey, topic: topicKey, subtopic: subName, label: subName, breadcrumb: `${subjKey} › ${topicKey} › ${subName}` });
+        const extraNodes: FlatSyllabusNode[] = [];
+        if (taxData.subjects && Array.isArray(taxData.subjects)) {
+          taxData.subjects.forEach((subj: any) => {
+            const subjName = subj.name || '';
+            if (!subjName) return;
+            (subj.topics || []).forEach((topic: any) => {
+              const topicName = topic.name || '';
+              if (!topicName) return;
+              (topic.subtopics || []).forEach((sub: any) => {
+                const subName = typeof sub === 'string' ? sub : sub.name || '';
+                if (!subName) return;
+                if (!FLAT_SYLLABUS_NODES.some(n => n.type === 'subtopic' && n.label.toLowerCase() === subName.toLowerCase())) {
+                  extraNodes.push({
+                    type: 'subtopic',
+                    subject: subjName,
+                    topic: topicName,
+                    subtopic: subName,
+                    label: subName,
+                    breadcrumb: `${subjName} › ${topicName} › ${subName}`,
+                    keywords: `${subjName} ${topicName} ${subName}`.toLowerCase(),
+                  });
+                }
+              });
             });
-          }
-        });
+          });
+        }
+        if (!isCancelled && extraNodes.length > 0) {
+          setDynamicNodes(extraNodes);
+        }
+      } catch {
+        // Silently keep pre-bundled static syllabus
       }
-    });
-    return nodes;
-  }, [masterSubjects, threeLevelHierarchy]);
+    }
 
+    loadBackgroundTaxonomy();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Combined searchable syllabus nodes (pre-bundled canonical + any runtime additions)
+  const allSyllabusNodes = useMemo(() => {
+    if (dynamicNodes.length === 0) return FLAT_SYLLABUS_NODES;
+    return [...FLAT_SYLLABUS_NODES, ...dynamicNodes];
+  }, [dynamicNodes]);
+
+  // Fast, ranked search across all Subjects, Topics, and Subtopics
   const syllabusSearchResults = useMemo(() => {
-    const q = syllabusSearchQuery.trim().toLowerCase();
-    if (!q || q.length < 2) return [];
-    return allSyllabusNodes
-      .filter(n => n.label.toLowerCase().includes(q) || n.breadcrumb.toLowerCase().includes(q))
-      .slice(0, 10);
+    const rawQuery = syllabusSearchQuery.trim().toLowerCase();
+    if (!rawQuery || rawQuery.length < 2) return [];
+
+    const queryTokens = rawQuery.split(/\s+/).filter(Boolean);
+
+    const scoredResults: { node: FlatSyllabusNode; score: number }[] = [];
+
+    for (const node of allSyllabusNodes) {
+      const labelLower = node.label.toLowerCase();
+      const breadcrumbLower = node.breadcrumb.toLowerCase();
+      const keywordsLower = node.keywords;
+
+      let score = 0;
+
+      // Exact label match
+      if (labelLower === rawQuery) {
+        score += 100;
+      } else if (labelLower.startsWith(rawQuery)) {
+        // Prefix match on label
+        score += 80;
+      } else if (labelLower.includes(rawQuery)) {
+        // Substring match on label
+        score += 60;
+      } else if (breadcrumbLower.includes(rawQuery) || keywordsLower.includes(rawQuery)) {
+        // Match in hierarchy breadcrumb
+        score += 40;
+      }
+
+      // Check multi-word tokens
+      if (score === 0 && queryTokens.length > 1) {
+        const allTokensMatch = queryTokens.every(
+          token => labelLower.includes(token) || breadcrumbLower.includes(token) || keywordsLower.includes(token)
+        );
+        if (allTokensMatch) {
+          score += 50;
+        }
+      }
+
+      if (score > 0) {
+        // Bonus for specific topics/subtopics vs broad subjects when searching specific concepts
+        if (node.type === 'topic') score += 5;
+        if (node.type === 'subtopic') score += 10;
+        scoredResults.push({ node, score });
+      }
+    }
+
+    // Sort descending by relevance score
+    scoredResults.sort((a, b) => b.score - a.score);
+    return scoredResults.slice(0, 10).map(r => r.node);
   }, [syllabusSearchQuery, allSyllabusNodes]);
 
-  const handleSyllabusResultClick = (result: typeof allSyllabusNodes[number]) => {
+  // Launch the exam with proper filters (Subject, Topic, Subtopic; ignoring exam year)
+  const handleSyllabusResultClick = (result: FlatSyllabusNode) => {
     const params = new URLSearchParams({ exam: 'UPSC CSE' });
     params.set('subject', result.subject);
-    if (result.topic) params.set('topic', result.topic);
-    if (result.subtopic) params.set('subtopic', result.subtopic);
+    if (result.topic) {
+      params.set('topic', result.topic);
+    }
+    if (result.subtopic) {
+      params.set('subtopic', result.subtopic);
+    }
     params.set('count', '10');
     setSyllabusSearchQuery('');
     setIsSyllabusSearchFocused(false);
     navigate(`/guest-exam?${params.toString()}`);
   };
 
-  // Fetch Dynamic 3-level Taxonomy from Backend API (/api/v1/syllabus)
-  useEffect(() => {
-    async function loadDynamicData() {
-      setIsTaxonomyLoading(true);
-      try {
-        const taxData = await fetchMasterSyllabus();
-        if (taxData) {
-          if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
-            setMasterSubjects(taxData.subjects);
-          }
-          if (taxData.hierarchy && typeof taxData.hierarchy === 'object') {
-            setThreeLevelHierarchy(taxData.hierarchy);
-          }
-        }
-      } catch (err) {
-        console.warn('Taxonomy fetch warning:', err);
-      } finally {
-        setIsTaxonomyLoading(false);
+  // Keyboard navigation inside search input
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHoveredSyllabusResult(prev => {
+        if (prev === null || prev >= syllabusSearchResults.length - 1) return 0;
+        return prev + 1;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHoveredSyllabusResult(prev => {
+        if (prev === null || prev <= 0) return syllabusSearchResults.length - 1;
+        return prev - 1;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (syllabusSearchResults.length > 0) {
+        const targetIndex = hoveredSyllabusResult !== null && hoveredSyllabusResult < syllabusSearchResults.length
+          ? hoveredSyllabusResult
+          : 0;
+        handleSyllabusResultClick(syllabusSearchResults[targetIndex]);
       }
+    } else if (e.key === 'Escape') {
+      setIsSyllabusSearchFocused(false);
+    }
+  };
+
+  // Canonical chip launcher for popular subject quick picks
+  const handleQuickPickClick = (chipName: string) => {
+    let targetSubject = 'Indian Polity & Governance';
+    let targetTopic: string | undefined = undefined;
+
+    if (chipName === 'Polity') {
+      targetSubject = 'Indian Polity & Governance';
+    } else if (chipName === 'Modern History') {
+      targetSubject = 'History';
+      targetTopic = 'Modern History';
+    } else if (chipName === 'Indian Economy') {
+      targetSubject = 'Economy';
+    } else if (chipName === 'Geography') {
+      targetSubject = 'Geography';
+    } else if (chipName === 'Environment & Ecology') {
+      targetSubject = 'Ecology & Environment';
+    } else if (chipName === 'Science & Tech') {
+      targetSubject = 'Science & Technology';
+    } else {
+      const match = allSyllabusNodes.find(n => n.label.toLowerCase() === chipName.toLowerCase() || n.label.toLowerCase().includes(chipName.toLowerCase()));
+      if (match) {
+        handleSyllabusResultClick(match);
+        return;
+      }
+      targetSubject = chipName;
     }
 
-    loadDynamicData();
-  }, []);
+    const params = new URLSearchParams({ exam: 'UPSC CSE' });
+    params.set('subject', targetSubject);
+    if (targetTopic) {
+      params.set('topic', targetTopic);
+    }
+    params.set('count', '10');
+    setSyllabusSearchQuery('');
+    setIsSyllabusSearchFocused(false);
+    navigate(`/guest-exam?${params.toString()}`);
+  };
 
   return (
     <section
@@ -251,10 +326,13 @@ export function HeroSection({ }: HeroSectionProps) {
               id="hero-topic-search"
               type="text"
               value={syllabusSearchQuery}
-              onChange={(e) => setSyllabusSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSyllabusSearchQuery(e.target.value);
+                setHoveredSyllabusResult(null);
+              }}
               onFocus={() => setIsSyllabusSearchFocused(true)}
-              placeholder={isTaxonomyLoading ? 'Loading syllabus…' : 'Search a topic, subject, or subtopic (e.g. Fundamental Rights, Indian Economy)'}
-              disabled={isTaxonomyLoading}
+              onKeyDown={handleKeyDown}
+              placeholder="Search a topic, subject, or subtopic (e.g. Fundamental Rights, Indian Economy)"
               style={{
                 flex: 1,
                 height: 58,
@@ -268,14 +346,18 @@ export function HeroSection({ }: HeroSectionProps) {
             />
             {syllabusSearchQuery && (
               <button
-                onClick={() => setSyllabusSearchQuery('')}
+                type="button"
+                onClick={() => {
+                  setSyllabusSearchQuery('');
+                  setHoveredSyllabusResult(null);
+                }}
                 style={{ padding: '0 16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', flexShrink: 0, fontSize: 18 }}
               >✕</button>
             )}
           </div>
 
           {/* Results Dropdown */}
-          {isSyllabusSearchFocused && syllabusSearchQuery.length >= 2 && (
+          {isSyllabusSearchFocused && syllabusSearchQuery.trim().length >= 2 && (
             <div
               style={{
                 position: 'absolute',
@@ -302,12 +384,13 @@ export function HeroSection({ }: HeroSectionProps) {
                     {syllabusSearchResults.length} result{syllabusSearchResults.length !== 1 ? 's' : ''} — click to start instantly
                   </div>
                   {syllabusSearchResults.map((result, idx) => {
+                    const isHovered = hoveredSyllabusResult === idx;
                     const typeBg = result.type === 'subject' ? '#FFF1F2' : result.type === 'topic' ? '#F0F9FF' : '#F0FDF4';
                     const typeColor = result.type === 'subject' ? '#E31B23' : result.type === 'topic' ? '#0369A1' : '#059669';
                     const typeLabel = result.type === 'subject' ? 'Subject' : result.type === 'topic' ? 'Topic' : 'Subtopic';
                     return (
                       <div
-                        key={idx}
+                        key={`${result.type}_${result.subject}_${result.topic || ''}_${result.subtopic || ''}_${idx}`}
                         onMouseEnter={() => setHoveredSyllabusResult(idx)}
                         onMouseLeave={() => setHoveredSyllabusResult(null)}
                         onClick={() => handleSyllabusResultClick(result)}
@@ -317,7 +400,7 @@ export function HeroSection({ }: HeroSectionProps) {
                           gap: 12,
                           padding: '11px 16px',
                           cursor: 'pointer',
-                          background: hoveredSyllabusResult === idx ? '#F8FAFC' : '#FFFFFF',
+                          background: isHovered ? '#F8FAFC' : '#FFFFFF',
                           borderBottom: idx < syllabusSearchResults.length - 1 ? '1px solid #F8FAFC' : 'none',
                           transition: 'background 0.1s ease',
                         }}
@@ -343,40 +426,31 @@ export function HeroSection({ }: HeroSectionProps) {
           )}
 
           {/* Quick-pick hint chips */}
-          {!isTaxonomyLoading && allSyllabusNodes.length > 0 && (
-            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {['Polity', 'Modern History', 'Indian Economy', 'Geography', 'Environment & Ecology', 'Science & Tech'].map((hint) => (
-                <button
-                  key={hint}
-                  type="button"
-                  onClick={() => {
-                    const node = allSyllabusNodes.find(n => n.type === 'subject' && (n.label === hint || n.label.includes(hint)));
-                    if (node) {
-                      handleSyllabusResultClick(node);
-                    } else {
-                      handleSyllabusResultClick({ type: 'subject', subject: hint, label: hint, breadcrumb: hint });
-                    }
-                  }}
-                  style={{
-                    padding: '5px 14px',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 0,
-                    background: '#FFFFFF',
-                    color: '#475569',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.12s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E31B23'; e.currentTarget.style.color = '#E31B23'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
-                >
-                  {hint}
-                </button>
-              ))}
-            </div>
-          )}
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+            {['Polity', 'Modern History', 'Indian Economy', 'Geography', 'Environment & Ecology', 'Science & Tech'].map((hint) => (
+              <button
+                key={hint}
+                type="button"
+                onClick={() => handleQuickPickClick(hint)}
+                style={{
+                  padding: '5px 14px',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 0,
+                  background: '#FFFFFF',
+                  color: '#475569',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 0.12s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E31B23'; e.currentTarget.style.color = '#E31B23'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
+              >
+                {hint}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Trust strip */}
