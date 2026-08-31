@@ -546,6 +546,14 @@ async def get_weekly_schedule(
         base_date = today - timedelta(days=today.weekday())  # Monday of current week
 
     end_date = base_date + timedelta(days=6)  # Sunday
+    
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_schedule", f"{current_user.id}:{base_date}")
+
+    cached_val = await cache.get(cache_key)
+    if cached_val is not None:
+        return cached_val
 
     # Run tasks and activities queries concurrently
     async def get_tasks():
@@ -628,11 +636,13 @@ async def get_weekly_schedule(
             ]
         })
 
-    return {
+    result = {
         "start_date": str(base_date),
         "end_date": str(end_date),
         "days": days_data
     }
+    await cache.set(cache_key, result, ttl_seconds=300)
+    return result
 
 
 # ==================== WEEKLY INSIGHTS EXECUTIVE REPORT ====================
@@ -652,6 +662,14 @@ async def get_weekly_insights(
             base_date = today - timedelta(days=today.weekday())
     else:
         base_date = today - timedelta(days=today.weekday())  # Monday of current week
+
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_insights", f"{current_user.id}:{base_date}")
+
+    cached_val = await cache.get(cache_key)
+    if cached_val is not None:
+        return cached_val
 
     end_date = base_date + timedelta(days=6)  # Sunday
 
@@ -753,7 +771,7 @@ async def get_weekly_insights(
     # Format date strings for header (e.g. "Aug 24 - Aug 30, 2026")
     date_range_str = f"{base_date.strftime('%b %d')} - {end_date.strftime('%b %d, %Y')}"
 
-    return {
+    result = {
         "start_date": str(base_date),
         "end_date": str(end_date),
         "date_range_formatted": date_range_str,
@@ -768,6 +786,12 @@ async def get_weekly_insights(
         "highlights": highlights,
         "focus_next_week": focus_next_week
     }
+    
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_insights", f"{current_user.id}:{base_date}")
+    await cache.set(cache_key, result, ttl_seconds=300)
+    return result
 
 
 # ==================== STUDY LOGGING (ACTIVITIES) ENDPOINTS ====================
