@@ -2,7 +2,7 @@ import asyncio
 import random
 import functools
 from typing import AsyncGenerator, Callable, Any, Optional
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 from sqlalchemy import event
 from sqlalchemy.exc import OperationalError, DBAPIError
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
@@ -43,8 +43,15 @@ if db_url.startswith("sqlite"):
         cursor.execute("PRAGMA busy_timeout=60000;") # 60 second busy timeout
         cursor.close()
 else:
-    pool_size = getattr(settings, "DB_POOL_SIZE", 5)  # smaller = faster first-connect with high-latency RDS
-    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 5)
+    # Some read paths (e.g. QuestionService batch-preloading) fan a single
+    # request out across several concurrent short-lived connections via
+    # asyncio.gather, since one AsyncSession can't run overlapping queries.
+    # pool_size needs enough headroom to cover that fan-out (plus the
+    # request's own held connection) from the warm pool rather than falling
+    # back to max_overflow's throwaway connections, which would each pay the
+    # full cold-connect handshake cost against this high-latency RDS instance.
+    pool_size = getattr(settings, "DB_POOL_SIZE", 10)
+    max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 10)
     logger.info(
         f"Initializing Database Engine (pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle=1800, pool_pre_ping=True)..."
     )
@@ -190,6 +197,30 @@ async def async_init_db():
         async with engine.begin() as conn:
             await conn.run_sync(SQLModel.metadata.create_all)
         logger.info("Database initialization complete.")
+
+
+async def warm_connection_pool():
+    """Opens `pool_size` connections concurrently against RDS up front, at
+    server boot, so every one of them has already paid its TCP+TLS+auth
+    handshake before the first real request arrives. Without this, that
+    handshake cost (0.3-0.6s+ per connection against this remote,
+    high-latency RDS instance) gets paid lazily by whichever requests
+    happen to be the first to need a given pool slot — including well
+    after startup, any time traffic briefly needs more concurrent
+    connections than are currently open (e.g. pool_recycle=1800s cycling
+    an idle connection back out). Doing it once here means steady-state
+    requests only ever check out an already-warm connection."""
+    if db_url.startswith("sqlite"):
+        return
+    try:
+        async def _touch():
+            async with async_session_factory() as s:
+                await s.exec(select(1))
+
+        await asyncio.gather(*(_touch() for _ in range(pool_size)))
+        logger.info(f"Warmed {pool_size} database connections in the pool.")
+    except Exception as warm_err:
+        logger.warning(f"Could not fully warm database connection pool: {warm_err}")
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

@@ -50,36 +50,6 @@ async def list_questions(
     with pagination ordered by question number in paper.
     By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
-    from app.cache import get_cache, build_cache_key
-    cache = get_cache()
-    cache_key = build_cache_key(
-        "questions:list",
-        subject_id=str(subject_id) if subject_id else None,
-        subject_name=subject_name.strip() if subject_name else None,
-        subject_code=subject_code.strip() if subject_code else None,
-        topic_id=str(topic_id) if topic_id else None,
-        topic_name=topic_name.strip() if topic_name else None,
-        topic_code=topic_code.strip() if topic_code else None,
-        subtopic_id=str(subtopic_id) if subtopic_id else None,
-        subtopic_name=subtopic_name.strip() if subtopic_name else None,
-        subtopic_code=subtopic_code.strip() if subtopic_code else None,
-        exam_id=str(exam_id) if exam_id else None,
-        exam_name=exam_name.strip() if exam_name else None,
-        exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
-        year=exam_year,
-        set=paper_set_code,
-        stage=stage,
-        status=str(status.value if hasattr(status, "value") else status) if status else None,
-        lang=str(language.value if hasattr(language, "value") else language),
-        sols=include_solutions,
-        exclude=exclude_ids.strip() if exclude_ids else None,
-        page=page,
-        limit=limit,
-    )
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return JSONResponse(content=cached_data)
-
     service = QuestionService(session)
     res = await service.list_questions_paginated(
         subject_id=subject_id,
@@ -106,7 +76,6 @@ async def list_questions(
     )
     if res is not None:
         serialized = res.model_dump(mode="json") if hasattr(res, "model_dump") else (res.dict() if hasattr(res, "dict") else res)
-        await cache.set(cache_key, serialized, ttl_seconds=1800)
         return JSONResponse(content=serialized)
     return JSONResponse(content={})
 
@@ -244,6 +213,37 @@ async def create_question(
     if payload.exam_id:
         await invalidate_exam_cache(str(payload.exam_id))
     return res
+
+
+@router.get("/recommended", summary="Lightweight Recommended Questions (no passages/metadata/hierarchy-detail/solutions)")
+async def list_recommended_questions(
+    subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
+    topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
+    exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
+    exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
+    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language for response text"),
+    limit: int = Query(default=15, ge=1, le=50, description="Max recommended questions to return"),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Minimal per-question payload (text + options + subject/topic/subtopic
+    names) for "recommended questions" sidebars/cards. Unlike the general
+    listing endpoint above, this skips passages, metadata, multi-concept
+    hierarchy detail, and explanations entirely — a recommendation card
+    doesn't render any of that, and solutions are still fetched lazily via
+    GET /questions/{question_id}/solution only when a recommendation is
+    actually revealed.
+    """
+    service = QuestionService(session)
+    res = await service.list_recommended_questions(
+        subject_name=subject_name,
+        topic_name=topic_name,
+        exam_name=exam_name,
+        exclude_ids=exclude_ids,
+        language=language,
+        limit=limit,
+    )
+    return JSONResponse(content=res)
 
 
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")

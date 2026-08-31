@@ -547,6 +547,14 @@ async def get_weekly_schedule(
         base_date = today - timedelta(days=today.weekday())  # Monday of current week
 
     end_date = base_date + timedelta(days=6)  # Sunday
+    
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_schedule", f"{current_user.id}:{base_date}")
+
+    cached_val = await cache.get(cache_key)
+    if cached_val is not None:
+        return cached_val
 
     # Run tasks and activities queries concurrently
     async def get_tasks():
@@ -629,11 +637,13 @@ async def get_weekly_schedule(
             ]
         })
 
-    return {
+    result = {
         "start_date": str(base_date),
         "end_date": str(end_date),
         "days": days_data
     }
+    await cache.set(cache_key, result, ttl_seconds=300)
+    return result
 
 
 # ==================== WEEKLY INSIGHTS EXECUTIVE REPORT ====================
@@ -655,22 +665,50 @@ async def get_weekly_insights(
     else:
         base_date = today - timedelta(days=today.weekday())  # Monday of current week
 
-    end_date = base_date + timedelta(days=6)  # Sunday
-    start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
-    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_insights", f"{current_user.id}:{base_date}")
 
-    # 1. Aggregate Study Tasks (count & completion via SQL)
-    stmt_tasks = select(
-        func.count(col(StudyTask.id)),
-        func.coalesce(func.sum(case((col(StudyTask.is_completed) == True, 1), else_=0)), 0)
-    ).where(
-        col(StudyTask.user_id) == current_user.id,
-        col(StudyTask.scheduled_date) >= base_date,
-        col(StudyTask.scheduled_date) <= end_date
-    )
-    task_res = (await session.exec(stmt_tasks)).first()
-    total_tasks = int(task_res[0]) if task_res and task_res[0] is not None else 0
-    completed_tasks = int(task_res[1]) if task_res and task_res[1] is not None else 0
+    cached_val = await cache.get(cache_key)
+    if cached_val is not None:
+        return cached_val
+
+    end_date = base_date + timedelta(days=6)  # Sunday
+
+    # Run all 3 queries concurrently
+    async def get_tasks():
+        async with async_session_factory() as s:
+            stmt = select(StudyTask).where(
+                StudyTask.user_id == current_user.id,
+                StudyTask.scheduled_date >= base_date,
+                StudyTask.scheduled_date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    async def get_activities():
+        async with async_session_factory() as s:
+            stmt = select(StudyActivity).where(
+                StudyActivity.user_id == current_user.id,
+                StudyActivity.date >= base_date,
+                StudyActivity.date <= end_date
+            )
+            return (await s.exec(stmt)).all()
+
+    async def get_attempts():
+        async with async_session_factory() as s:
+            start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
+            end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+            stmt = select(ExamAttempt).where(
+                ExamAttempt.user_id == current_user.id,
+                ExamAttempt.started_at >= start_dt,
+                ExamAttempt.started_at <= end_dt
+            )
+            return (await s.exec(stmt)).all()
+
+    tasks, activities, attempts = await asyncio.gather(get_tasks(), get_activities(), get_attempts())
+
+    total_tasks = len(tasks)
+    completed_tasks = sum(1 for t in tasks if t.is_completed)
     completion_rate = round((completed_tasks / total_tasks * 100)) if total_tasks > 0 else 0
 
     # 2. Aggregate Study Activities (duration & questions via SQL)
@@ -795,7 +833,7 @@ async def get_weekly_insights(
     # Cache control: weekly report is static intra-session
     response.headers["Cache-Control"] = "private, max-age=120, stale-while-revalidate=300"
 
-    return {
+    result = {
         "start_date": str(base_date),
         "end_date": str(end_date),
         "date_range_formatted": date_range_str,
@@ -810,6 +848,12 @@ async def get_weekly_insights(
         "highlights": highlights,
         "focus_next_week": focus_next_week
     }
+    
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    cache_key = build_cache_key("studyplan:weekly_insights", f"{current_user.id}:{base_date}")
+    await cache.set(cache_key, result, ttl_seconds=300)
+    return result
 
 
 # ==================== STUDY LOGGING (ACTIVITIES) ENDPOINTS ====================

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listExams, listCandidateAttempts, formatCanonicalExamTitle, fetchMasterSyllabus, fetchExamsByYear } from '../services/examService';
+import { listExams, getAttemptStatusByExam, formatCanonicalExamTitle, fetchMasterSyllabus, fetchExamsByYear } from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   CheckCircle2,
@@ -55,18 +55,19 @@ export function MockSelectionPage() {
       try {
         const taxData = await fetchMasterSyllabus();
         if (taxData) {
+          // The API returns subjects as an array (each with its own nested
+          // `topics`), not a flat `subjects_list`/`hierarchy` field — this
+          // used to read fields that don't exist in the actual response, so
+          // the Subject dropdown here was silently always empty.
           if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
             setMasterSubjects(taxData.subjects);
-          }
-          if (taxData.subjects_list && Array.isArray(taxData.subjects_list) && taxData.subjects_list.length > 0) {
-            const cleanSubs = taxData.subjects_list.filter((s: string) => s !== 'All Subjects' && s.trim() !== '');
+            const cleanSubs = taxData.subjects
+              .map((s: any) => s.name)
+              .filter((s: string) => s && s !== 'All Subjects' && s.trim() !== '');
             if (cleanSubs.length > 0) {
               setSubjectsList(cleanSubs);
               setSelectedSubject((prev) => (prev && cleanSubs.includes(prev) ? prev : cleanSubs[0]));
             }
-          }
-          if (taxData.hierarchy && typeof taxData.hierarchy === 'object') {
-            setThreeLevelHierarchy(taxData.hierarchy);
           }
         }
 
@@ -119,9 +120,9 @@ export function MockSelectionPage() {
         if (token) {
           localStorage.setItem('access_token', token);
         }
-        const [liveExams, userAttempts] = await Promise.all([
+        const [liveExams, statusByExam] = await Promise.all([
           listExams(undefined, true, token || undefined),
-          listCandidateAttempts(token || undefined),
+          getAttemptStatusByExam(token || undefined),
         ]);
 
         const mocks = liveExams.filter(
@@ -132,26 +133,18 @@ export function MockSelectionPage() {
 
         if (targetList.length > 0) {
           const mapped: DisplayMock[] = targetList.map((e, index) => {
-            const examAttempts = userAttempts.filter(
-              (att) => att.exam_id === e.id || att.exam_id === e.code
-            );
-            examAttempts.sort((a, b) => new Date(b.started_at || 0).getTime() - new Date(a.started_at || 0).getTime());
-
-            const completedAttempt = examAttempts.find((att) =>
-              ['COMPLETED', 'SUBMITTED', 'AUTO_SUBMITTED', 'EVALUATED'].includes(att.status)
-            );
-            const inProgressAttempt = examAttempts.find((att) => att.status === 'IN_PROGRESS');
+            const attemptStatus = statusByExam[String(e.id)];
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
             let scoreText: string | undefined = undefined;
             let progressPercent: number | undefined = undefined;
 
-            if (inProgressAttempt) {
+            if (attemptStatus?.in_progress_attempt_id) {
               status = 'IN_PROGRESS';
               progressPercent = 65;
-            } else if (completedAttempt) {
+            } else if (attemptStatus?.completed_attempt_id) {
               status = 'COMPLETED';
-              scoreText = `${completedAttempt.total_score || 0} / ${completedAttempt.max_possible_score || 200}`;
+              scoreText = `${attemptStatus.total_score || 0} / ${attemptStatus.max_possible_score || 200}`;
             }
 
             return {
@@ -161,8 +154,8 @@ export function MockSelectionPage() {
               totalQuestions: 100,
               duration: `${e.total_duration_minutes || 120} mins`,
               status,
-              completedAttemptId: completedAttempt?.attempt_id,
-              inProgressAttemptId: inProgressAttempt?.attempt_id,
+              completedAttemptId: attemptStatus?.completed_attempt_id,
+              inProgressAttemptId: attemptStatus?.in_progress_attempt_id,
               scoreText,
               progressPercent,
             };

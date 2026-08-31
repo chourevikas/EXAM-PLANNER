@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config.settings import settings
-from app.db.session import async_init_db
+from app.db.session import async_init_db, warm_connection_pool
 from app.core.exceptions import BaseAppException
 from app.config.logger import setup_logger
 
@@ -38,6 +38,7 @@ from app.routers.teacher import teacher_router, admin_teacher_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await async_init_db()
+    await warm_connection_pool()
 
     # Detect and mark interrupted pipeline runs on server startup
     try:
