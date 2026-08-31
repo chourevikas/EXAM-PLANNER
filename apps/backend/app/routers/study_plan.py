@@ -299,7 +299,7 @@ async def bulk_add_tasks_from_report(
 
 @router.get("/tasks/attempt/{attempt_id}/status")
 async def get_attempt_tasks_status(
-    attempt_id: int,
+    attempt_id: int | str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):

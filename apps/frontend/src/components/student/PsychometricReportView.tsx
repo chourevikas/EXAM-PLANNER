@@ -131,15 +131,16 @@ export function PsychometricReportView({
   const [matrixPage, setMatrixPage] = useState<number>(1);
   const matrixPageSize = 10;
 
-  const attemptId =
-    (report as any)?.metadata?.exam_attempt?.attempt_id ||
-    (report as any)?.attempt_id ||
-    (report as any)?.exam_attempt?.attempt_id;
+  const attemptId = isCumulative
+    ? null
+    : (report as any)?.metadata?.exam_attempt?.attempt_id ||
+      (report as any)?.attempt_id ||
+      (report as any)?.exam_attempt?.attempt_id;
 
   // Sync already scheduled tasks for this attempt from backend
   useEffect(() => {
-    if (attemptId && attemptId !== 'CUMULATIVE_ALL') {
-      getAttemptScheduledTasksStatus(attemptId)
+    if (attemptId && attemptId !== 'CUMULATIVE_ALL' && !isCumulative) {
+      getAttemptScheduledTasksStatus(String(attemptId))
         .then((res) => {
           if (res?.scheduled_task_titles) {
             setScheduledTaskTitles(new Set(res.scheduled_task_titles));
@@ -147,7 +148,7 @@ export function PsychometricReportView({
         })
         .catch(() => { });
     }
-  }, [attemptId]);
+  }, [attemptId, isCumulative]);
 
   const toggleTaskCompleted = (taskId: string) => {
     setCompletedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));

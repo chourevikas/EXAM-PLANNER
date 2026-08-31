@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { PerformanceAnalyticsCharts } from '../components/student/PerformanceAnalyticsCharts';
 import { PsychometricReportView } from '../components/student/PsychometricReportView';
 import { Ico } from '../components/common/Icons';
 import {
@@ -14,12 +13,13 @@ import {
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport } from '../types/exam';
-import { Loader2, FileCheck, Sparkles, Cpu, Activity, RefreshCw, AlertCircle, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Loader2, Sparkles, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
 import { formatEnum } from '../utils/formatEnum';
 
-// ─── Static Style Constants (extracted from inline style={{...}} to avoid per-render allocation) ───
+// ─── Static Style Constants (extracted to avoid per-render allocation) ───
 
 const backBannerStyle: React.CSSProperties = {
   marginBottom: 20,
@@ -34,7 +34,7 @@ const backBannerStyle: React.CSSProperties = {
   gap: 12,
 };
 
-const backBannerInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10 };
+const backBannerInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
 const backBannerLabelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' };
 const backBannerValueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 800, color: '#E31B23' };
 
@@ -65,8 +65,6 @@ const headerBadgeStyle: React.CSSProperties = {
 };
 
 const headerBadgeTextStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' };
-const headerTitleStyle: React.CSSProperties = { fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px 0' };
-const headerDescStyle: React.CSSProperties = { fontSize: 14, color: 'var(--text-muted)', margin: '0 0 10px 0' };
 const hasAiWrapperStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 };
 
 const aiBadgeLoadedStyle: React.CSSProperties = {
@@ -155,10 +153,6 @@ const emptyStateIconStyle: React.CSSProperties = {
   fontSize: 36,
 };
 
-const emptyStateTitleStyle: React.CSSProperties = { fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: 0 };
-const emptyStateDescStyle: React.CSSProperties = { fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 500, margin: 0 };
-const emptyStateActionsStyle: React.CSSProperties = { display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' };
-
 const emptyStateCTAStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -185,8 +179,6 @@ const historyTableSectionStyle: React.CSSProperties = {
 };
 
 const historyTableHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 };
-const historyTableTitleStyle: React.CSSProperties = { fontSize: 16, fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 };
-const historyTableSubtitleStyle: React.CSSProperties = { fontSize: 12.5, color: 'var(--text-muted)', margin: 0 };
 const tableContainerStyle: React.CSSProperties = { overflowX: 'auto' };
 const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
 const theadRowStyle: React.CSSProperties = { borderBottom: '2px solid var(--border-default)', textAlign: 'left' };
@@ -214,12 +206,12 @@ const tdScoreMaxStyle: React.CSSProperties = { fontSize: 11, color: 'var(--text-
 const tdActionStyle: React.CSSProperties = { padding: '12px', textAlign: 'right' };
 
 const viewReportBtnStyle: React.CSSProperties = {
-  padding: '6px 14px',
+  padding: '8px 16px',
   borderRadius: 0,
   backgroundColor: '#E31B23',
   color: '#ffffff',
   border: 'none',
-  fontSize: 12,
+  fontSize: 12.5,
   fontWeight: 700,
   cursor: 'pointer',
   boxShadow: '0 2px 8px rgba(227, 27, 35, 0.2)',
@@ -255,9 +247,6 @@ const evaluatingContainerStyle: React.CSSProperties = {
 };
 
 const evaluatingIconsStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, color: '#E31B23' };
-const evaluatingTitleStyle: React.CSSProperties = { fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-primary)' };
-const evaluatingMsgStyle: React.CSSProperties = { fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 520 };
-
 const progressBarOuterStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 480,
@@ -284,7 +273,7 @@ const errorBannerStyle: React.CSSProperties = {
   gap: 16,
 };
 
-const errorBannerContentStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 };
+const errorBannerContentStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 };
 const errorBannerTextStyle: React.CSSProperties = { fontSize: 13.5, lineHeight: 1.5 };
 const errorBannerLabelStyle: React.CSSProperties = { color: '#ef4444' };
 
@@ -331,12 +320,8 @@ const noReportIconStyle: React.CSSProperties = {
   fontSize: 28,
 };
 
-const noReportTitleStyle: React.CSSProperties = { fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 };
-const noReportDescStyle: React.CSSProperties = { fontSize: 14.5, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 520, margin: 0 };
-const noReportActionsStyle: React.CSSProperties = { display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap', justifyContent: 'center' };
-
 const refreshBtnStyle: React.CSSProperties = {
-  padding: '10px 20px',
+  padding: '12px 20px',
   borderRadius: 0,
   border: '1px solid var(--border-default)',
   backgroundColor: 'var(--bg-subtle)',
@@ -345,10 +330,13 @@ const refreshBtnStyle: React.CSSProperties = {
   fontWeight: 700,
   cursor: 'pointer',
   transition: 'all 0.15s ease',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 const practiceExamBtnStyle: React.CSSProperties = {
-  padding: '10px 22px',
+  padding: '12px 22px',
   borderRadius: 0,
   border: 'none',
   backgroundColor: 'var(--accent-primary, #E31B23)',
@@ -358,6 +346,9 @@ const practiceExamBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   boxShadow: '0 4px 14px rgba(227, 27, 35, 0.3)',
   transition: 'all 0.15s ease',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
 
 const skeletonWrapperStyle: React.CSSProperties = { marginTop: 16 };
@@ -370,6 +361,10 @@ export function AnalyticsPage() {
 
   // Single source of truth: selectedAttemptId derived directly from searchParams
   const selectedAttemptId = attemptIdParam || 'CUMULATIVE_ALL';
+
+  // Responsive Breakpoint Hook
+  const { isMobile, isTabletOrBelow, width } = useBreakpoint();
+  const isSmallScreen = width < 768;
 
   const [attemptsHistory, setAttemptsHistory] = useState<AttemptHistoryItem[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
@@ -450,11 +445,6 @@ export function AnalyticsPage() {
 
   const handleViewSingleExam = useCallback((attemptId: number | string) => {
     setSearchParams({ attemptId: String(attemptId) });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [setSearchParams]);
-
-  const handleBackToCumulative = useCallback(() => {
-    setSearchParams({});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [setSearchParams]);
 
@@ -564,40 +554,13 @@ export function AnalyticsPage() {
           setIsEvaluating(false);
         }
 
-        // Step 2: Fetch structured JSON report in 1 single call (PsychometricReport includes part_1_per_question_analysis and macro metrics)
+        // Step 2: Fetch structured JSON report in 1 single call
         const loadedReport = await getPsychometricReportJson(numId);
 
         if (isCancelled) return;
 
         if (loadedReport) {
           setReport(loadedReport);
-
-          // If Phase 2 AI Mentorship is still synthesizing in background, poll silently with 6s interval after each response
-          if (targetId !== 'CUMULATIVE_ALL' && !loadedReport?.llm_insight) {
-            let attempts = 0;
-            const maxAttempts = 10;
-            const pollIntervalMs = 6000;
-
-            const pollAiInsight = async () => {
-              if (isCancelled || attempts >= maxAttempts) return;
-              attempts++;
-              try {
-                const refreshedReport = await getPsychometricReportJson(numId);
-                if (refreshedReport && refreshedReport.llm_insight && !isCancelled) {
-                  setReport((prev) => (prev ? { ...prev, llm_insight: refreshedReport.llm_insight } : refreshedReport));
-                  return; // Resolved successfully
-                }
-              } catch {
-                // Silent catch - will retry next interval
-              }
-
-              if (!isCancelled && attempts < maxAttempts) {
-                aiPollTimeoutId = setTimeout(pollAiInsight, pollIntervalMs);
-              }
-            };
-
-            aiPollTimeoutId = setTimeout(pollAiInsight, pollIntervalMs);
-          }
         } else {
           setError('Report is currently compiling in background. Please refresh in a moment.');
         }
@@ -617,20 +580,25 @@ export function AnalyticsPage() {
 
     return () => {
       isCancelled = true;
-      // Clear any orphaned AI insight polling timeout
       if (aiPollTimeoutId !== null) {
         clearTimeout(aiPollTimeoutId);
       }
     };
   }, [selectedAttemptId, reloadTrigger]);
 
-  // G. handleSelectAttempt removed — was dead code (never used in JSX)
-
   return (
     <StudentLayout pageTitle="Deep Analytics">
       {/* Single Exam Mode Back Banner */}
       {selectedAttemptId !== 'CUMULATIVE_ALL' && (
-        <div style={backBannerStyle}>
+        <div
+          style={{
+            ...backBannerStyle,
+            padding: isMobile ? '10px 14px' : '12px 20px',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? 6 : 12,
+          }}
+        >
           <div style={backBannerInnerStyle}>
             <span style={backBannerLabelStyle}>Viewing Individual Exam Report:</span>
             <span style={backBannerValueStyle}>
@@ -641,7 +609,14 @@ export function AnalyticsPage() {
       )}
 
       {/* Header Banner */}
-      <section style={headerSectionStyle}>
+      <section
+        style={{
+          ...headerSectionStyle,
+          padding: isMobile ? '18px 14px' : isTabletOrBelow ? '24px 20px' : 32,
+          marginBottom: isMobile ? 16 : 24,
+          gap: isMobile ? 14 : 20,
+        }}
+      >
         <div>
           <div style={headerBadgeStyle}>
             <Ico.Chart size={14} />
@@ -649,16 +624,31 @@ export function AnalyticsPage() {
               {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Longitudinal Master Report' : 'Single Exam Psychometric Diagnostic'}
             </span>
           </div>
-          <h1 style={headerTitleStyle}>
+          <h1
+            style={{
+              fontSize: isMobile ? 20 : isTabletOrBelow ? 24 : 28,
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              margin: '0 0 6px 0',
+              lineHeight: 1.25,
+            }}
+          >
             {selectedAttemptId === 'CUMULATIVE_ALL' ? 'Cumulative Student Performance & Mastery Profile' : 'Exam Performance & Cognitive Diagnostic'}
           </h1>
-          <p style={headerDescStyle}>
+          <p
+            style={{
+              fontSize: isMobile ? 13 : 14,
+              color: 'var(--text-muted)',
+              margin: '0 0 10px 0',
+              lineHeight: 1.5,
+            }}
+          >
             {selectedAttemptId === 'CUMULATIVE_ALL'
               ? 'Multi-exam weighted synthesis across all completed tests with contextual diagnosis, subject mastery, and actionable study plans.'
               : 'Detailed question-by-question breakdown, macro scores, and mentorship guidance for this completed test.'}
           </p>
 
-          {/* Diagnostic Data Loaded Sign Badge — C. uses memoized hasAi */}
+          {/* Diagnostic Data Loaded Sign Badge */}
           {!isLoading && (
             <div style={hasAiWrapperStyle}>
               {hasAi ? (
@@ -675,24 +665,44 @@ export function AnalyticsPage() {
             </div>
           )}
         </div>
-
-
       </section>
 
-      {/* Per-Exam Attempt Switcher — D. uses memoized attemptSwitcherData */}
+      {/* Per-Exam Attempt Switcher */}
       {attemptSwitcherData && (
-        <div style={attemptSwitcherStyle}>
+        <div
+          style={{
+            ...attemptSwitcherStyle,
+            padding: isMobile ? '12px 14px' : '14px 20px',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: isMobile ? 10 : 12,
+          }}
+        >
           <div style={attemptSwitcherLabelStyle}>
             <span style={attemptSwitcherTitleStyle}>
               🔄 Multiple Attempts Found for this Exam ({attemptSwitcherData.sameExamAttempts.length} Total):
             </span>
           </div>
-          <div style={attemptSwitcherControlStyle}>
+          <div
+            style={{
+              ...attemptSwitcherControlStyle,
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: isMobile ? 'stretch' : 'center',
+              width: isMobile ? '100%' : 'auto',
+              gap: isMobile ? 6 : 8,
+            }}
+          >
             <span style={attemptSwitcherHintStyle}>Switch Attempt:</span>
             <select
               value={selectedAttemptId}
               onChange={(e) => handleViewSingleExam(e.target.value)}
-              style={attemptSwitcherSelectStyle}
+              style={{
+                ...attemptSwitcherSelectStyle,
+                width: isMobile ? '100%' : 'auto',
+                minHeight: isMobile ? 44 : 'auto',
+                padding: isMobile ? '10px 14px' : '6px 14px',
+                fontSize: isMobile ? 13 : 12.5,
+              }}
             >
               {attemptSwitcherData.sameExamAttempts.map((att, idx) => (
                 <option key={att.attempt_id} value={att.attempt_id}>
@@ -706,23 +716,66 @@ export function AnalyticsPage() {
 
       {/* No Exams Taken Empty State Screen */}
       {!isHistoryLoading && attemptsHistory.length === 0 ? (
-        <div style={emptyStateContainerStyle}>
-          <div style={emptyStateIconStyle}>
+        <div
+          style={{
+            ...emptyStateContainerStyle,
+            padding: isMobile ? '32px 16px' : isTabletOrBelow ? '48px 24px' : '64px 32px',
+            maxWidth: isMobile ? '100%' : 640,
+            margin: isMobile ? '16px auto' : '40px auto',
+          }}
+        >
+          <div
+            style={{
+              ...emptyStateIconStyle,
+              width: isMobile ? 60 : 80,
+              height: isMobile ? 60 : 80,
+              fontSize: isMobile ? 28 : 36,
+            }}
+          >
             📊
           </div>
 
-          <h2 style={emptyStateTitleStyle}>
+          <h2
+            style={{
+              fontSize: isMobile ? 19 : 24,
+              fontWeight: 800,
+              color: 'var(--text-primary)',
+              margin: 0,
+            }}
+          >
             No Exam Analytics Available Yet
           </h2>
 
-          <p style={emptyStateDescStyle}>
+          <p
+            style={{
+              fontSize: isMobile ? 13.5 : 15,
+              color: 'var(--text-muted)',
+              lineHeight: 1.6,
+              maxWidth: 500,
+              margin: 0,
+            }}
+          >
             You haven't completed any practice tests or mock exams yet. Take your first exam to unlock deep Performance Analytics, Subject Mastery Heatmaps, Speed-Accuracy Matrix, and AIR Rank Predictions!
           </p>
 
-          <div style={emptyStateActionsStyle}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              marginTop: 12,
+              flexDirection: isMobile ? 'column' : 'row',
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: 'center',
+            }}
+          >
             <button
               onClick={() => (window.location.href = '/practice-exam')}
-              style={emptyStateCTAStyle}
+              style={{
+                ...emptyStateCTAStyle,
+                width: isMobile ? '100%' : 'auto',
+                minHeight: 46,
+                justifyContent: 'center',
+              }}
             >
               <span>✍️ Take Practice Exam Now</span>
             </button>
@@ -730,185 +783,401 @@ export function AnalyticsPage() {
         </div>
       ) : (
         <>
-          {/* Completed Exam History Quick-Access Table (When in Cumulative Mode) */}
+          {/* Completed Exam History Quick-Access Table/Cards (When in Cumulative Mode) */}
           {selectedAttemptId === 'CUMULATIVE_ALL' && attemptsHistory.length > 0 && (
-            <section style={historyTableSectionStyle}>
+            <section
+              style={{
+                ...historyTableSectionStyle,
+                padding: isMobile ? '16px 12px' : isTabletOrBelow ? '20px 16px' : 24,
+                marginBottom: isMobile ? 16 : 24,
+              }}
+            >
               <div style={historyTableHeaderStyle}>
                 <div>
-                  <h3 style={historyTableTitleStyle}>
+                  <h3
+                    style={{
+                      fontSize: isMobile ? 15 : 16,
+                      fontWeight: 800,
+                      margin: '0 0 4px 0',
+                      color: 'var(--text-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
                     <BarChart3 size={18} color="#E31B23" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
                   </h3>
-                  <p style={historyTableSubtitleStyle}>
+                  <p
+                    style={{
+                      fontSize: isMobile ? 12 : 12.5,
+                      color: 'var(--text-muted)',
+                      margin: 0,
+                    }}
+                  >
                     Click "View Exam Report" on any exam below to inspect its individual question solutions, cognitive breakdown, and metrics.
                   </p>
                 </div>
               </div>
 
-              <div style={tableContainerStyle}>
-                <table style={tableStyle}>
-                  <thead>
-                    <tr style={theadRowStyle}>
-                      <th style={thStyle}>#</th>
-                      <th style={thStyle}>Exam Paper & Attempt</th>
-                      <th style={thStyle}>Mode</th>
-                      <th style={thStyle}>Date</th>
-                      <th style={thStyle}>Marks Scored / Max Marks</th>
-                      <th style={thStyle}>Questions</th>
-                      <th style={thRightStyle}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* B. Uses memoized paginationData instead of IIFE */}
-                    {paginationData.paginatedItems.map((att, idx) => {
-                      const globalIdx = paginationData.startIndex + idx;
-                      // A. O(1) lookup from memoized map instead of O(n) filter
-                      const sameExamList = examAttemptsMap.get(String(att.exam_id)) || [att];
-                      const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
-                      const attemptNum = sameExamList.length - attemptIndex;
+              {/* ─── Responsive View: Stacked Cards on Mobile (<768px), Table on Desktop/Tablet (≥768px) ─── */}
+              {isSmallScreen ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {paginationData.paginatedItems.map((att, idx) => {
+                    const globalIdx = paginationData.startIndex + idx;
+                    const sameExamList = examAttemptsMap.get(String(att.exam_id)) || [att];
+                    const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
+                    const attemptNum = sameExamList.length - attemptIndex;
 
-                      return (
-                        <tr
-                          key={att.attempt_id}
-                          style={tbodyRowStyle}
-                        >
-                          <td style={tdIndexStyle}>{globalIdx + 1}</td>
-                          <td style={tdNameStyle}>
-                            <div style={tdNameInnerStyle}>
-                              <span>{att.exam_name}</span>
-                              {sameExamList.length > 1 && (
-                                <span style={attemptBadgeStyle}>
-                                  Attempt #{attemptNum}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={tdCellStyle}>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                padding: '3px 8px',
-                                borderRadius: 0,
-                                backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                                color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
-                              }}
-                            >
-                              {formatEnum(att.mode)}
-                            </span>
-                          </td>
-                          <td style={tdMutedStyle}>
-                            {new Date(att.started_at).toLocaleDateString()}
-                          </td>
-                          <td style={tdScoreStyle}>
-                            <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
-                              {att.total_score}
-                            </span>{' '}
-                            <span style={tdScoreMaxStyle}>/ {att.max_possible_score} Marks</span>
-                          </td>
-                          <td style={tdMutedStyle}>
-                            {att.total_questions} Questions
-                          </td>
-                          <td style={tdActionStyle}>
-                            <button
-                              onClick={() => handleViewSingleExam(att.attempt_id)}
-                              style={viewReportBtnStyle}
-                            >
-                              View Exam Report →
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Controls — B. uses shared memoized paginationData */}
-              {attemptsHistory.length > historyPageSize && (
-                <div style={paginationWrapperStyle}>
-                  <div style={paginationInfoStyle}>
-                    Showing <strong style={{ color: 'var(--text-primary)' }}>{paginationData.startItem} - {paginationData.endItem}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{attemptsHistory.length}</strong> attempts
-                  </div>
-
-                  <div style={paginationControlsStyle}>
-                    <button
-                      disabled={historyPage <= 1}
-                      onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 0,
-                        border: '1px solid var(--border-default)',
-                        backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
-                        color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
-                        cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        opacity: historyPage <= 1 ? 0.5 : 1,
-                      }}
-                    >
-                      ← Previous
-                    </button>
-
-                    {Array.from({ length: paginationData.totalPages }, (_, i) => i + 1).map((pageNum) => (
-                      <button
-                        key={`page_${pageNum}`}
-                        onClick={() => setHistoryPage(pageNum)}
+                    return (
+                      <div
+                        key={att.attempt_id}
                         style={{
-                          padding: '6px 11px',
+                          padding: '14px 14px',
+                          backgroundColor: 'var(--bg-subtle)',
+                          border: '1px solid var(--border-default)',
                           borderRadius: 0,
-                          border: pageNum === historyPage ? '1px solid #E31B23' : '1px solid var(--border-default)',
-                          backgroundColor: pageNum === historyPage ? '#E31B23' : 'var(--bg-subtle)',
-                          color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
-                          cursor: 'pointer',
-                          fontSize: 12,
-                          fontWeight: 700,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
                         }}
                       >
-                        {pageNum}
-                      </button>
-                    ))}
+                        {/* Card Top: Index, Exam Name, Attempt Badge & Mode */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+                            <span style={{ fontWeight: 800, color: '#E31B23', fontSize: 13 }}>#{globalIdx + 1}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{att.exam_name}</span>
+                            {sameExamList.length > 1 && (
+                              <span style={attemptBadgeStyle}>
+                                Attempt #{attemptNum}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              padding: '2px 7px',
+                              borderRadius: 0,
+                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {formatEnum(att.mode)}
+                          </span>
+                        </div>
 
-                    <button
-                      disabled={historyPage >= paginationData.totalPages}
-                      onClick={() => setHistoryPage((p) => Math.min(paginationData.totalPages, p + 1))}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 0,
-                        border: '1px solid var(--border-default)',
-                        backgroundColor: historyPage >= paginationData.totalPages ? 'transparent' : 'var(--bg-subtle)',
-                        color: historyPage >= paginationData.totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
-                        cursor: historyPage >= paginationData.totalPages ? 'not-allowed' : 'pointer',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        opacity: historyPage >= paginationData.totalPages ? 0.5 : 1,
-                      }}
-                    >
-                      Next →
-                    </button>
-                  </div>
+                        {/* Card Metrics Grid */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 1fr)',
+                            gap: 8,
+                            padding: '8px 0',
+                            borderTop: '1px solid var(--border-default)',
+                            borderBottom: '1px solid var(--border-default)',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Date</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 600 }}>
+                              {new Date(att.started_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Score</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 800 }}>
+                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
+                                {att.total_score}
+                              </span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/{att.max_possible_score}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Questions</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--text-primary)', fontWeight: 600 }}>
+                              {att.total_questions} Qs
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Full-width Touch-Friendly Button */}
+                        <button
+                          onClick={() => handleViewSingleExam(att.attempt_id)}
+                          style={{
+                            ...viewReportBtnStyle,
+                            width: '100%',
+                            minHeight: 42,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 13,
+                          }}
+                        >
+                          View Exam Report →
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
+              ) : (
+                <div style={tableContainerStyle}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr style={theadRowStyle}>
+                        <th style={thStyle}>#</th>
+                        <th style={thStyle}>Exam Paper & Attempt</th>
+                        <th style={thStyle}>Mode</th>
+                        <th style={thStyle}>Date</th>
+                        <th style={thStyle}>Marks Scored / Max Marks</th>
+                        <th style={thStyle}>Questions</th>
+                        <th style={thRightStyle}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginationData.paginatedItems.map((att, idx) => {
+                        const globalIdx = paginationData.startIndex + idx;
+                        const sameExamList = examAttemptsMap.get(String(att.exam_id)) || [att];
+                        const attemptIndex = sameExamList.findIndex((a) => a.attempt_id === att.attempt_id);
+                        const attemptNum = sameExamList.length - attemptIndex;
+
+                        return (
+                          <tr
+                            key={att.attempt_id}
+                            style={tbodyRowStyle}
+                          >
+                            <td style={tdIndexStyle}>{globalIdx + 1}</td>
+                            <td style={tdNameStyle}>
+                              <div style={tdNameInnerStyle}>
+                                <span>{att.exam_name}</span>
+                                {sameExamList.length > 1 && (
+                                  <span style={attemptBadgeStyle}>
+                                    Attempt #{attemptNum}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td style={tdCellStyle}>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '3px 8px',
+                                  borderRadius: 0,
+                                  backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                  color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
+                                }}
+                              >
+                                {formatEnum(att.mode)}
+                              </span>
+                            </td>
+                            <td style={tdMutedStyle}>
+                              {new Date(att.started_at).toLocaleDateString()}
+                            </td>
+                            <td style={tdScoreStyle}>
+                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
+                                {att.total_score}
+                              </span>{' '}
+                              <span style={tdScoreMaxStyle}>/ {att.max_possible_score} Marks</span>
+                            </td>
+                            <td style={tdMutedStyle}>
+                              {att.total_questions} Questions
+                            </td>
+                            <td style={tdActionStyle}>
+                              <button
+                                onClick={() => handleViewSingleExam(att.attempt_id)}
+                                style={viewReportBtnStyle}
+                              >
+                                View Exam Report →
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {attemptsHistory.length > historyPageSize && (
+                isSmallScreen ? (
+                  /* Mobile Compact Pagination */
+                  <div
+                    style={{
+                      ...paginationWrapperStyle,
+                      flexDirection: 'column',
+                      gap: 12,
+                      alignItems: 'stretch',
+                    }}
+                  >
+                    <div style={{ ...paginationInfoStyle, textAlign: 'center' }}>
+                      Page <strong style={{ color: 'var(--text-primary)' }}>{paginationData.validPage}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{paginationData.totalPages}</strong> ({attemptsHistory.length} attempts)
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <button
+                        disabled={historyPage <= 1}
+                        onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                        style={{
+                          minHeight: 44,
+                          padding: '10px 16px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          opacity: historyPage <= 1 ? 0.5 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        ← Previous
+                      </button>
+
+                      <button
+                        disabled={historyPage >= paginationData.totalPages}
+                        onClick={() => setHistoryPage((p) => Math.min(paginationData.totalPages, p + 1))}
+                        style={{
+                          minHeight: 44,
+                          padding: '10px 16px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage >= paginationData.totalPages ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage >= paginationData.totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage >= paginationData.totalPages ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          opacity: historyPage >= paginationData.totalPages ? 0.5 : 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Desktop / Tablet Full Pagination */
+                  <div style={paginationWrapperStyle}>
+                    <div style={paginationInfoStyle}>
+                      Showing <strong style={{ color: 'var(--text-primary)' }}>{paginationData.startItem} - {paginationData.endItem}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{attemptsHistory.length}</strong> attempts
+                    </div>
+
+                    <div style={paginationControlsStyle}>
+                      <button
+                        disabled={historyPage <= 1}
+                        onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                        style={{
+                          minHeight: 36,
+                          padding: '6px 12px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage <= 1 ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage <= 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage <= 1 ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: historyPage <= 1 ? 0.5 : 1,
+                        }}
+                      >
+                        ← Previous
+                      </button>
+
+                      {Array.from({ length: paginationData.totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={`page_${pageNum}`}
+                          onClick={() => setHistoryPage(pageNum)}
+                          style={{
+                            minHeight: 36,
+                            minWidth: 36,
+                            padding: '6px 11px',
+                            borderRadius: 0,
+                            border: pageNum === historyPage ? '1px solid #E31B23' : '1px solid var(--border-default)',
+                            backgroundColor: pageNum === historyPage ? '#E31B23' : 'var(--bg-subtle)',
+                            color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+
+                      <button
+                        disabled={historyPage >= paginationData.totalPages}
+                        onClick={() => setHistoryPage((p) => Math.min(paginationData.totalPages, p + 1))}
+                        style={{
+                          minHeight: 36,
+                          padding: '6px 12px',
+                          borderRadius: 0,
+                          border: '1px solid var(--border-default)',
+                          backgroundColor: historyPage >= paginationData.totalPages ? 'transparent' : 'var(--bg-subtle)',
+                          color: historyPage >= paginationData.totalPages ? 'var(--text-muted)' : 'var(--text-primary)',
+                          cursor: historyPage >= paginationData.totalPages ? 'not-allowed' : 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          opacity: historyPage >= paginationData.totalPages ? 0.5 : 1,
+                        }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )
               )}
             </section>
           )}
 
           {/* Long-Polling Evaluation State (Zero Deployment Timeout Guarantee) */}
           {isEvaluating && (
-            <div style={evaluatingContainerStyle}>
+            <div
+              style={{
+                ...evaluatingContainerStyle,
+                padding: isMobile ? '20px 14px' : isTabletOrBelow ? '24px 20px' : 32,
+                marginBottom: isMobile ? 18 : 28,
+              }}
+            >
               <div style={evaluatingIconsStyle}>
                 <Cpu size={28} className="animate-spin" />
                 <Sparkles size={24} color="#8b5cf6" />
               </div>
 
-              <h2 style={evaluatingTitleStyle}>
+              <h2
+                style={{
+                  fontSize: isMobile ? 17 : 20,
+                  fontWeight: 800,
+                  margin: 0,
+                  color: 'var(--text-primary)',
+                }}
+              >
                 Psychometric Evaluation Engine Active
               </h2>
 
-              <p style={evaluatingMsgStyle}>
+              <p
+                style={{
+                  fontSize: isMobile ? 13 : 14,
+                  color: 'var(--text-muted)',
+                  margin: 0,
+                  maxWidth: isMobile ? '100%' : 520,
+                  lineHeight: 1.5,
+                }}
+              >
                 {evalMessage}
               </p>
 
               {/* Progress Bar */}
-              <div style={progressBarOuterStyle}>
+              <div
+                style={{
+                  ...progressBarOuterStyle,
+                  maxWidth: isMobile ? '100%' : 480,
+                }}
+              >
                 <div
                   style={{
                     height: '100%',
@@ -935,7 +1204,15 @@ export function AnalyticsPage() {
 
           {/* Error / Processing Banner */}
           {error && !isEvaluating && (
-            <div style={errorBannerStyle}>
+            <div
+              style={{
+                ...errorBannerStyle,
+                padding: isMobile ? '14px 14px' : '20px 24px',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: isMobile ? 14 : 16,
+              }}
+            >
               <div style={errorBannerContentStyle}>
                 <AlertCircle size={24} color="#ef4444" style={{ flexShrink: 0 }} />
                 <div style={errorBannerTextStyle}>
@@ -950,6 +1227,9 @@ export function AnalyticsPage() {
                   disabled={isRetrying}
                   style={{
                     ...retryBtnStyle,
+                    width: isMobile ? '100%' : 'auto',
+                    minHeight: 44,
+                    justifyContent: 'center',
                     cursor: isRetrying ? 'not-allowed' : 'pointer',
                     opacity: isRetrying ? 0.7 : 1,
                   }}
@@ -968,24 +1248,59 @@ export function AnalyticsPage() {
             />
           ) : (
             !isLoading && !isEvaluating && (
-              <div style={noReportContainerStyle}>
+              <div
+                style={{
+                  ...noReportContainerStyle,
+                  padding: isMobile ? '28px 14px' : isTabletOrBelow ? '36px 20px' : 48,
+                  maxWidth: isMobile ? '100%' : 680,
+                  margin: isMobile ? '16px auto' : '32px auto',
+                }}
+              >
                 <div style={noReportIconStyle}>
                   ⚠️
                 </div>
 
-                <h2 style={noReportTitleStyle}>
+                <h2
+                  style={{
+                    fontSize: isMobile ? 18 : 22,
+                    fontWeight: 800,
+                    color: 'var(--text-primary)',
+                    margin: 0,
+                  }}
+                >
                   Unable to Generate Report
                 </h2>
 
-                <p style={noReportDescStyle}>
+                <p
+                  style={{
+                    fontSize: isMobile ? 13.5 : 14.5,
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.6,
+                    maxWidth: 520,
+                    margin: 0,
+                  }}
+                >
                   No evaluated telemetry or psychometric data is available for this exam attempt yet. Complete and submit a practice exam or mock test to generate your 12-matrix diagnostic report.
                 </p>
 
-                <div style={noReportActionsStyle}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 12,
+                    marginTop: 12,
+                    flexDirection: isMobile ? 'column' : 'row',
+                    width: isMobile ? '100%' : 'auto',
+                    justifyContent: 'center',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    style={refreshBtnStyle}
+                    style={{
+                      ...refreshBtnStyle,
+                      width: isMobile ? '100%' : 'auto',
+                      minHeight: 44,
+                    }}
                   >
                     ↻ Refresh Analysis
                   </button>
@@ -993,7 +1308,11 @@ export function AnalyticsPage() {
                   <button
                     type="button"
                     onClick={() => (window.location.href = '/practice')}
-                    style={practiceExamBtnStyle}
+                    style={{
+                      ...practiceExamBtnStyle,
+                      width: isMobile ? '100%' : 'auto',
+                      minHeight: 44,
+                    }}
                   >
                     Take a Practice Exam →
                   </button>
