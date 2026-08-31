@@ -59,17 +59,46 @@ export interface MonthlyBenchmarkResponse {
   subject_benchmark: SubjectBenchmark[];
 }
 
-export async function fetchMonthlyBenchmark(overrideToken?: string): Promise<MonthlyBenchmarkResponse> {
+interface MonthlyBenchmarkCacheEntry {
+  data: MonthlyBenchmarkResponse;
+  timestamp: number;
+}
+const monthlyBenchmarkCache = new Map<string, MonthlyBenchmarkCacheEntry>();
+const MONTHLY_BENCHMARK_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute client-side TTL
+
+export async function fetchMonthlyBenchmark(
+  overrideToken?: string,
+  options?: { signal?: AbortSignal; forceRefresh?: boolean }
+): Promise<MonthlyBenchmarkResponse> {
   const token = overrideToken || localStorage.getItem('access_token');
+  const cacheKey = token ? token.slice(-16) : 'default';
+
+  if (!options?.forceRefresh) {
+    const cached = monthlyBenchmarkCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < MONTHLY_BENCHMARK_CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await guardedFetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, { headers });
+  const res = await guardedFetch(`${ANALYTICS_API_BASE_URL}/monthly-benchmark`, {
+    headers,
+    signal: options?.signal,
+  });
+
   if (!res.ok) {
     throw new Error(`Failed to fetch monthly benchmarking analytics (Status ${res.status})`);
   }
 
-  return await res.json();
+  const data: MonthlyBenchmarkResponse = await res.json();
+  monthlyBenchmarkCache.set(cacheKey, { data, timestamp: Date.now() });
+  return data;
+}
+
+export function invalidateMonthlyBenchmarkCache(): void {
+  monthlyBenchmarkCache.clear();
 }

@@ -1,4 +1,4 @@
-import uuid
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
@@ -745,21 +745,30 @@ class AnalyticsService:
         if cached_val is not None:
             return cached_val
 
-        # 1. Base predicted rank & percentile
-        rank_data = await self.get_predicted_rank(user_id)
+        # Run independent sub-operations concurrently
+        rank_data_task = self.get_predicted_rank(user_id)
+        subj_perf_task = self.get_user_subject_performance(user_id)
+        prof_res_task = self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == user_id))
+        user_obj_task = self.session.get(User, user_id)
+
+        rank_data, subj_perf, prof_res, user_obj = await asyncio.gather(
+            rank_data_task,
+            subj_perf_task,
+            prof_res_task,
+            user_obj_task
+        )
+
         overall_percentile = rank_data["predicted_percentile"]
         predicted_rank = rank_data["predicted_rank"]
         top_percentage = rank_data["top_percentage"]
         active_aspirants = 24000  # Benchmark active monthly aspirants pool
 
         # 2. Derive subject performance & overall accuracy
-        subj_perf = await self.get_user_subject_performance(user_id)
         tot_att = sum(s["total_attempted"] for s in subj_perf)
         tot_corr = sum(s["total_correct"] for s in subj_perf)
         overall_accuracy = round((tot_corr / tot_att) * 100, 1) if tot_att > 0 else 60.0
 
         # 3. User skill profile for cognitive ICRS
-        prof_res = await self.session.exec(select(UserSkillProfile).where(UserSkillProfile.user_id == user_id))
         profile = prof_res.first()
         icrs_score = profile.cumulative_icrs if profile else 65.0
 
@@ -782,7 +791,6 @@ class AnalyticsService:
             readiness_status = "Revision required - Below projected Prelims cutoff threshold"
 
         # 6. Determine Signup Date & Build Month Range Dynamically
-        user_obj = await self.session.get(User, user_id)
         now_dt = datetime.now(timezone.utc)
 
         signup_dt = user_obj.created_at if (user_obj and user_obj.created_at) else now_dt

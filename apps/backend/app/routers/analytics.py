@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -269,10 +269,12 @@ async def get_user_predicted_rank(
 
 @router.get("/monthly-benchmark", summary="Get User's National Benchmarking & Monthly Performance Metrics")
 async def get_user_monthly_benchmark(
+    response: Response,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     """Calculates candidate's national benchmarking, percentile growth, readiness index, and subject comparisons."""
+    response.headers["Cache-Control"] = "private, max-age=300, stale-while-revalidate=600"
     service = AnalyticsService(session)
     return await service.get_monthly_benchmark(current_user.id)
 
