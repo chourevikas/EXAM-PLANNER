@@ -135,11 +135,19 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
         if topic_name and topic_name != "All Topics" and topic_name.strip():
             clean_t = topic_name.strip().lower()
+            topic_stop_words = ("and", "the", "for", "all", "of", "in", "to")
+            t_tokens = [t for t in clean_t.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in topic_stop_words]
+            
             topic_conds = [
                 func.lower(Topic.name).contains(clean_t),
                 func.lower(Question.section_code).contains(clean_t),
                 func.lower(QuestionHierarchyLink.concept_name).contains(clean_t)
             ]
+            for token in t_tokens:
+                topic_conds.append(func.lower(Topic.name).contains(token))
+                topic_conds.append(func.lower(Question.section_code).contains(token))
+                topic_conds.append(func.lower(QuestionHierarchyLink.concept_name).contains(token))
+                
             id_stmt = id_stmt.where(or_(*topic_conds))
 
             # Exclude corrupt hierarchy concept links that belong to law/finance/politics when science topics are requested
@@ -159,10 +167,18 @@ class QuestionRepository:
             id_stmt = id_stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
         if subtopic_name and subtopic_name != "All Subtopics" and subtopic_name.strip():
             clean_st = subtopic_name.strip().lower()
-            id_stmt = id_stmt.where(or_(
+            st_stop_words = ("and", "the", "for", "all", "of", "in", "to")
+            st_tokens = [t for t in clean_st.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in st_stop_words]
+            
+            subtopic_conds = [
                 func.lower(Subtopic.name).contains(clean_st),
                 func.lower(QuestionHierarchyLink.concept_name).contains(clean_st)
-            ))
+            ]
+            for token in st_tokens:
+                subtopic_conds.append(func.lower(Subtopic.name).contains(token))
+                subtopic_conds.append(func.lower(QuestionHierarchyLink.concept_name).contains(token))
+                
+            id_stmt = id_stmt.where(or_(*subtopic_conds))
         if subtopic_code:
             id_stmt = id_stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 

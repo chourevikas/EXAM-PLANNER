@@ -855,8 +855,8 @@ def get_canonical_parents(
         c_top, c_subj = TOPIC_TO_PARENT_MAP[clean_top.lower()]
         return c_subj, c_top, clean_subtop
 
-    final_subj = clean_subj if clean_subj else "General Science"
-    final_top = clean_top if clean_top else "General Concepts"
+    final_subj = clean_subj
+    final_top = clean_top
     return final_subj, final_top, clean_subtop
 
 

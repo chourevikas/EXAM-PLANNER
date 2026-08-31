@@ -497,6 +497,9 @@ export function GuestExamPage() {
       if (queryTopic) {
         p1.append('topic_name', queryTopic);
       }
+      if (gSubtopic && !gSubtopic.startsWith('All Subtopics')) {
+        p1.append('subtopic_name', gSubtopic.trim());
+      }
       const rawYearDigits = gYear.replace(/\D/g, '');
       if (
         rawYearDigits &&
@@ -518,6 +521,9 @@ export function GuestExamPage() {
           p2.append('subject_name', querySubject);
         }
         p2.append('topic_name', queryTopic);
+        if (gSubtopic && !gSubtopic.startsWith('All Subtopics')) {
+          p2.append('subtopic_name', gSubtopic.trim());
+        }
         if (targetExam) {
           p2.append('exam_name', targetExam);
         }

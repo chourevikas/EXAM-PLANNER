@@ -349,7 +349,14 @@ export function HeroSection({ }: HeroSectionProps) {
                 <button
                   key={hint}
                   type="button"
-                  onClick={() => { setSyllabusSearchQuery(hint); setIsSyllabusSearchFocused(true); }}
+                  onClick={() => {
+                    const node = allSyllabusNodes.find(n => n.type === 'subject' && (n.label === hint || n.label.includes(hint)));
+                    if (node) {
+                      handleSyllabusResultClick(node);
+                    } else {
+                      handleSyllabusResultClick({ type: 'subject', subject: hint, label: hint, breadcrumb: hint });
+                    }
+                  }}
                   style={{
                     padding: '5px 14px',
                     border: '1px solid #E2E8F0',
