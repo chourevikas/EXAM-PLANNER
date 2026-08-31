@@ -405,18 +405,29 @@ export function AnalyticsPage() {
     return { totalPages, validPage, startIndex, paginatedItems, startItem, endItem };
   }, [attemptsHistory, historyPage]);
 
-  // ─── C. Memoized hasAi badge ───
-  const hasAi = useMemo(() => {
-    if (!report) return false;
+  // ─── C. Helper to verify if AI mentorship results have already been generated/fetched ───
+  const checkHasAi = useCallback((rep: any): boolean => {
+    if (!rep) return false;
     return Boolean(
-      report?.llm_insight?.executive_summary ||
-      (report as any)?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
-      (report as any)?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
-      ((report?.llm_insight?.study_plan_tasks || []).length > 0) ||
-      (((report as any)?.part_2_exam_macro_scorecard?.actionable_tasks || []).length > 0) ||
-      (((report as any)?.part_3_aggregated_user_report?.actionable_tasks || []).length > 0)
+      rep?.llm_insight?.executive_summary ||
+      rep?.llm_insight?.study_plan_tasks?.length ||
+      rep?.ai_cognitive_insights?.executive_summary ||
+      rep?.ai_cognitive_insights?.study_plan_tasks?.length ||
+      rep?.ai_cognitive_insights?.actionable_study_tasks?.length ||
+      rep?.part_2_exam_macro_scorecard?.mentorship_insight?.executive_summary ||
+      rep?.part_2_exam_macro_scorecard?.mentorship_insight?.study_plan_tasks?.length ||
+      rep?.part_2_exam_macro_scorecard?.actionable_tasks?.length ||
+      rep?.part_2_exam_macro_scorecard?.ai_cognitive_insights?.executive_summary ||
+      rep?.part_3_aggregated_user_report?.mentorship_insight?.executive_summary ||
+      rep?.part_3_aggregated_user_report?.mentorship_insight?.study_plan_tasks?.length ||
+      rep?.part_3_aggregated_user_report?.actionable_tasks?.length ||
+      rep?.part_3_aggregated_user_report?.ai_cognitive_insights?.executive_summary ||
+      (rep?.llm_insight && typeof rep.llm_insight === 'object' && Object.keys(rep.llm_insight).length > 0)
     );
-  }, [report]);
+  }, []);
+
+  // ─── C2. Memoized hasAi badge ───
+  const hasAi = useMemo(() => checkHasAi(report), [report, checkHasAi]);
 
   // ─── D. Memoized attempt switcher data ───
   const attemptSwitcherData = useMemo(() => {
@@ -554,13 +565,47 @@ export function AnalyticsPage() {
           setIsEvaluating(false);
         }
 
-        // Step 2: Fetch structured JSON report in 1 single call
+        // Step 2: Fetch structured JSON report
         const loadedReport = await getPsychometricReportJson(numId);
 
         if (isCancelled) return;
 
         if (loadedReport) {
           setReport(loadedReport);
+
+          // Check if AI results are ALREADY present in the report
+          const alreadyHasAi = checkHasAi(loadedReport);
+
+          // If AI phase is still generating in background (no AI results yet), poll with a strict bounded retry count
+          if (targetId !== 'CUMULATIVE_ALL' && !alreadyHasAi) {
+            let aiPollCount = 0;
+            const maxAiPolls = 4; // Bounded: stops after max 4 checks, never loops infinitely
+            const pollIntervalMs = 6000;
+
+            const pollAiInsight = async () => {
+              if (isCancelled || aiPollCount >= maxAiPolls) return;
+              aiPollCount++;
+              try {
+                const refreshedReport = await getPsychometricReportJson(numId);
+                if (refreshedReport && !isCancelled) {
+                  if (checkHasAi(refreshedReport)) {
+                    // AI Phase completed! Update report and STOP polling immediately.
+                    setReport(refreshedReport);
+                    return;
+                  }
+                }
+              } catch {
+                // Ignore transient errors
+              }
+
+              // Only continue if not cancelled and still under maxAiPolls
+              if (!isCancelled && aiPollCount < maxAiPolls) {
+                aiPollTimeoutId = setTimeout(pollAiInsight, pollIntervalMs);
+              }
+            };
+
+            aiPollTimeoutId = setTimeout(pollAiInsight, pollIntervalMs);
+          }
         } else {
           setError('Report is currently compiling in background. Please refresh in a moment.');
         }

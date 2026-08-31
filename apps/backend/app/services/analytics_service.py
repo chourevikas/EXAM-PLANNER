@@ -47,6 +47,11 @@ class AnalyticsService:
                     json_content = format_report_to_json(rep_db.full_report_json)
                     return Response(content=json_content, media_type="application/json")
 
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                    json_content = format_report_to_json(attempt.report_metadata_json)
+                    return Response(content=json_content, media_type="application/json")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -70,6 +75,18 @@ class AnalyticsService:
         attempt_id: Optional[int] = None,
     ) -> Response:
         try:
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.full_report_json:
+                    yaml_content = format_report_to_yaml(rep_db.full_report_json)
+                    return Response(content=yaml_content, media_type="text/yaml")
+
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                    yaml_content = format_report_to_yaml(attempt.report_metadata_json)
+                    return Response(content=yaml_content, media_type="text/yaml")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -93,6 +110,18 @@ class AnalyticsService:
         attempt_id: Optional[int] = None,
     ) -> Response:
         try:
+            if attempt_id:
+                rep_stmt = select(ExamAttemptReport).where(ExamAttemptReport.attempt_id == attempt_id)
+                rep_db = (await self.session.exec(rep_stmt)).first()
+                if rep_db and rep_db.full_report_json:
+                    markdown_content = format_report_to_markdown(rep_db.full_report_json)
+                    return Response(content=markdown_content, media_type="text/markdown")
+
+                attempt = await self.session.get(ExamAttempt, attempt_id)
+                if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                    markdown_content = format_report_to_markdown(attempt.report_metadata_json)
+                    return Response(content=markdown_content, media_type="text/markdown")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -230,11 +259,19 @@ class AnalyticsService:
         attempt = await self.session.get(ExamAttempt, attempt_id)
         if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
             meta = attempt.report_metadata_json
+            ai_insight = (
+                meta.get("llm_insight")
+                or meta.get("ai_cognitive_insights")
+                or meta.get("part_3_aggregated_user_report", {}).get("llm_insight")
+                or meta.get("part_3_aggregated_user_report", {}).get("mentorship_insight")
+                or meta.get("part_2_exam_macro_scorecard", {}).get("mentorship_insight")
+                or meta.get("part_2_exam_macro_scorecard", {}).get("ai_cognitive_insights")
+            )
             res_data = {
                 "attempt_id": str(attempt_id),
-                "matrices_summary": meta.get("part_3_aggregated_user_report", {}),
-                "taxonomy_breakdown": meta.get("part_2_taxonomy_analysis", {}),
-                "llm_insight": meta.get("part_3_aggregated_user_report", {}).get("llm_insight"),
+                "matrices_summary": meta.get("part_3_aggregated_user_report", {}) or meta.get("part_2_exam_macro_scorecard", {}),
+                "taxonomy_breakdown": meta.get("part_2_taxonomy_analysis", {}) or meta.get("part_3_taxonomy_hierarchy_retention", {}),
+                "llm_insight": ai_insight,
                 "metadata": meta.get("metadata", {}),
             }
             await cache.set(cache_key, res_data, ttl_seconds=5)
@@ -247,11 +284,19 @@ class AnalyticsService:
             self.session.add(attempt)
             await self.session.commit()
 
+        ai_insight_compiled = (
+            full_rep.get("llm_insight")
+            or full_rep.get("ai_cognitive_insights")
+            or full_rep.get("part_3_aggregated_user_report", {}).get("llm_insight")
+            or full_rep.get("part_3_aggregated_user_report", {}).get("mentorship_insight")
+            or full_rep.get("part_2_exam_macro_scorecard", {}).get("mentorship_insight")
+            or full_rep.get("part_2_exam_macro_scorecard", {}).get("ai_cognitive_insights")
+        )
         res_data = {
             "attempt_id": str(attempt_id),
-            "matrices_summary": full_rep.get("part_3_aggregated_user_report", {}),
-            "taxonomy_breakdown": full_rep.get("part_2_taxonomy_analysis", {}),
-            "llm_insight": full_rep.get("part_3_aggregated_user_report", {}).get("llm_insight"),
+            "matrices_summary": full_rep.get("part_3_aggregated_user_report", {}) or full_rep.get("part_2_exam_macro_scorecard", {}),
+            "taxonomy_breakdown": full_rep.get("part_2_taxonomy_analysis", {}) or full_rep.get("part_3_taxonomy_hierarchy_retention", {}),
+            "llm_insight": ai_insight_compiled,
             "metadata": full_rep.get("metadata", {}),
         }
         await cache.set(cache_key, res_data, ttl_seconds=86400)
