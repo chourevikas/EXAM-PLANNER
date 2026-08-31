@@ -521,9 +521,14 @@ export async function pollAttemptReportUntilReady(
     } catch (err) {
       console.warn('Polling error:', err);
     }
-    if (isCancelled && isCancelled()) return false;
-    // Wait strictly AFTER previous request responded before polling again
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    // Responsive wait that aborts immediately if isCancelled is triggered
+    const sleepInterval = 200;
+    let elapsed = 0;
+    while (elapsed < delay) {
+      if (isCancelled && isCancelled()) return false;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(sleepInterval, delay - elapsed)));
+      elapsed += sleepInterval;
+    }
   }
   return false;
 }

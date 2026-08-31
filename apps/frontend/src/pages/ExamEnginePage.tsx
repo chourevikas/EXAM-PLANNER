@@ -60,6 +60,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isRevealing, setIsRevealing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -93,20 +94,22 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   // Question Time Telemetry tracking & Multi-Visit Dwell Accumulator
   const questionStartTimeRef = useRef<number>(Date.now());
-  const accumulatedTimePerQuestionRef = useRef<Map<string | number, number>>(new Map());
+  const accumulatedTimePerQuestionRef = useRef<Map<string, number>>(new Map());
 
   const getActiveQuestionTotalTime = (qId?: string | number) => {
-    const targetId = qId || activeQuestion?.question_id;
-    if (!targetId) return 0;
+    const rawId = qId || activeQuestion?.question_id;
+    if (!rawId) return 0;
+    const targetId = String(rawId);
     const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
-    const isActive = !qId || qId === activeQuestion?.question_id;
+    const isActive = !qId || String(qId) === String(activeQuestion?.question_id);
     const currentVisit = isActive ? Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0) : 0;
     return Math.max(0, prevAcc + currentVisit);
   };
 
   const saveQuestionVisitTime = (qId?: string | number) => {
-    const targetId = qId || activeQuestion?.question_id;
-    if (!targetId) return;
+    const rawId = qId || activeQuestion?.question_id;
+    if (!rawId) return;
+    const targetId = String(rawId);
     const elapsed = Math.max(0, (Date.now() - questionStartTimeRef.current) / 1000.0);
     const prevAcc = accumulatedTimePerQuestionRef.current.get(targetId) || 0;
     const newAcc = prevAcc + elapsed;
@@ -115,9 +118,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   };
 
   // ─── Asynchronous Batch Queue & Smart Dirty-Check Manager ─────────────────
-  const pendingBatchQueueRef = useRef<Map<string | number, BatchSaveItem>>(new Map());
-  const lastSyncedSnapshotRef = useRef<Map<string | number, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
-  const optionSwitchesCountRef = useRef<Map<string | number, number>>(new Map());
+  const pendingBatchQueueRef = useRef<Map<string, BatchSaveItem>>(new Map());
+  const lastSyncedSnapshotRef = useRef<Map<string, { selected_option_id: string | number | null; is_marked_for_review: boolean; time_spent_seconds: number }>>(new Map());
+  const optionSwitchesCountRef = useRef<Map<string, number>>(new Map());
   const isSyncingBatchRef = useRef<boolean>(false);
   const autoSubmittedRef = useRef<boolean>(false);
 
@@ -129,15 +132,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     forcedTimeSpent?: number
   ) => {
     if (!questionId) return;
+    const qKey = String(questionId);
     const timeSpent = forcedTimeSpent !== undefined ? forcedTimeSpent : getActiveQuestionTotalTime(questionId);
-    const last = lastSyncedSnapshotRef.current.get(questionId);
+    const last = lastSyncedSnapshotRef.current.get(qKey);
 
     // Dirty-check verification: verify if genuinely modified to avoid false flags
-    const isOptionModified = !last ? optId !== null : last.selected_option_id !== optId;
+    const isOptionModified = !last ? optId !== null : String(last.selected_option_id ?? '') !== String(optId ?? '');
     const isReviewModified = !last ? markedForRev : last.is_marked_for_review !== markedForRev;
     const isTimeModified = !last ? timeSpent > 0.2 : Math.abs((last.time_spent_seconds || 0) - timeSpent) >= 1.0;
 
-    const switchCount = optionSwitchesCountRef.current.get(questionId) || 0;
+    const switchCount = optionSwitchesCountRef.current.get(qKey) || 0;
 
     if (isOptionModified || isReviewModified || isTimeModified) {
       const item: BatchSaveItem = {
@@ -149,7 +153,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         option_switch_count: switchCount,
         client_timestamp: new Date().toISOString(),
       };
-      pendingBatchQueueRef.current.set(questionId, item);
+      pendingBatchQueueRef.current.set(qKey, item);
     }
   };
 
@@ -172,13 +176,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (ack.status === 'ACCEPTED' || ack.status === 'PROCESSED') {
         // Record successfully synced snapshot for dirty-checking
         for (const item of itemsToSend) {
-          lastSyncedSnapshotRef.current.set(item.question_id, {
+          const k = String(item.question_id);
+          lastSyncedSnapshotRef.current.set(k, {
             selected_option_id: item.selected_option_id ?? null,
             is_marked_for_review: Boolean(item.is_marked_for_review),
             time_spent_seconds: item.time_spent_seconds ?? 0,
           });
           // Remove confirmed item from pending queue
-          pendingBatchQueueRef.current.delete(item.question_id);
+          pendingBatchQueueRef.current.delete(k);
         }
 
         if (ack.response_summary) {
@@ -187,7 +192,6 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       }
     } catch (err) {
       console.warn(`[ExamEngine:FLUSH_ERROR] Batch '${batchId}' failed to sync, retaining ${itemsToSend.length} items in retry buffer:`, err);
-      // Items remain in pendingBatchQueueRef for automatic retry on next flush
     } finally {
       isSyncingBatchRef.current = false;
     }
@@ -456,11 +460,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       questionStartTimeRef.current = Date.now();
       const q = allQuestions[qNum - 1];
       setActiveQuestion(q);
-      const saved = lastSyncedSnapshotRef.current.get(q.question_id) || pendingBatchQueueRef.current.get(q.question_id);
+      const qKey = String(q.question_id);
+      const saved = lastSyncedSnapshotRef.current.get(qKey) || pendingBatchQueueRef.current.get(qKey);
       if (saved) {
-        setSelectedOptionId(saved.selected_option_id || null);
+        setSelectedOptionId(saved.selected_option_id != null ? String(saved.selected_option_id) : null);
         setIsMarkedForReview(Boolean(saved.is_marked_for_review));
-        const matched = q.options?.find((o: any) => o.option_id === saved.selected_option_id);
+        const matched = q.options?.find((o: any) => String(o.option_id) === String(saved.selected_option_id));
         setSelectedOptionLabel(matched ? matched.option_label : null);
       } else {
         setSelectedOptionId(null);
@@ -559,11 +564,11 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
   const handleSelectOption = (optionId: number | string, optionLabel: string) => {
     if (activeQuestion) {
-      const qId = activeQuestion.question_id;
-      const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
-      if (prevOpt && prevOpt !== optionId) {
-        const curCount = (optionSwitchesCountRef.current.get(qId) || 0) + 1;
-        optionSwitchesCountRef.current.set(qId, curCount);
+      const qKey = String(activeQuestion.question_id);
+      const prevOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qKey)?.selected_option_id;
+      if (prevOpt && String(prevOpt) !== String(optionId)) {
+        const curCount = (optionSwitchesCountRef.current.get(qKey) || 0) + 1;
+        optionSwitchesCountRef.current.set(qKey, curCount);
       }
     }
 
@@ -719,9 +724,15 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     if (isTabletOrBelow) setMobileTab('question');
   };
 
-  const handleConfirmSubmit = async (reason: 'USER_CLICKED_SUBMIT' | 'TIMER_EXPIRED' = 'USER_CLICKED_SUBMIT') => {
+  const handleConfirmSubmit = async (reasonInput?: unknown) => {
+    const reason: 'USER_CLICKED_SUBMIT' | 'TIMER_EXPIRED' =
+      typeof reasonInput === 'string' && (reasonInput === 'TIMER_EXPIRED' || reasonInput === 'USER_CLICKED_SUBMIT')
+        ? reasonInput
+        : 'USER_CLICKED_SUBMIT';
+
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
 
     if (isGuestMode || !attemptId) {
       let correctCount = 0;
@@ -729,12 +740,13 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       let unattemptedCount = 0;
 
       allQuestions.forEach((q) => {
-        const saved = lastSyncedSnapshotRef.current.get(q.question_id) || pendingBatchQueueRef.current.get(q.question_id);
+        const qKey = String(q.question_id);
+        const saved = lastSyncedSnapshotRef.current.get(qKey) || pendingBatchQueueRef.current.get(qKey);
         const selId = saved?.selected_option_id;
         if (!selId) {
           unattemptedCount++;
         } else {
-          const opt = q.options?.find((o: any) => o.option_id === selId);
+          const opt = q.options?.find((o: any) => String(o.option_id) === String(selId));
           if (opt && opt.is_correct) {
             correctCount++;
           } else {
@@ -753,13 +765,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
       const responsesPayload = (allQuestions || []).map((q) => {
         const qId = q.question_id;
-        const selOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qId)?.selected_option_id;
-        const rev = revealResults[qId];
+        const qKey = String(qId);
+        const selOpt = selectedOptionId || lastSyncedSnapshotRef.current.get(qKey)?.selected_option_id;
+        const rev = revealResults[qKey] || revealResults[qId];
         return {
           question_id: qId,
           selected_option_id: selOpt || null,
           is_correct: Boolean(rev?.is_user_correct),
-          time_taken_seconds: accumulatedTimePerQuestionRef.current.get(qId) || 60.0,
+          time_taken_seconds: accumulatedTimePerQuestionRef.current.get(qKey) || 60.0,
           expected_time_seconds: 60.0,
           is_switched: false,
         };
@@ -793,21 +806,25 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       if (attemptId) {
         // Zero-Data-Loss Guarantee: Lock in active question dwell time and flush pending batches
         saveQuestionVisitTime();
+        if (activeQuestion) {
+          queueResponseUpdate(activeQuestion.question_id, selectedOptionId, isMarkedForReview);
+        }
         await flushPendingBatches();
 
         const allFinalResponses = (allQuestions || []).map((q) => {
           const qId = q.question_id;
-          const isCurrentActive = activeQuestion?.question_id === qId;
-          const saved = lastSyncedSnapshotRef.current.get(qId) || pendingBatchQueueRef.current.get(qId);
+          const qKey = String(qId);
+          const isCurrentActive = String(activeQuestion?.question_id) === qKey;
+          const saved = lastSyncedSnapshotRef.current.get(qKey) || pendingBatchQueueRef.current.get(qKey);
           const selOpt = isCurrentActive ? selectedOptionId : (saved?.selected_option_id ?? null);
           const isMarked = isCurrentActive ? isMarkedForReview : Boolean(saved?.is_marked_for_review);
-          const tSpent = accumulatedTimePerQuestionRef.current.get(qId) || saved?.time_spent_seconds || 0;
+          const tSpent = accumulatedTimePerQuestionRef.current.get(qKey) || saved?.time_spent_seconds || 0;
 
-          const switchCount = optionSwitchesCountRef.current.get(qId) || 0;
+          const switchCount = optionSwitchesCountRef.current.get(qKey) || 0;
 
           return {
             question_id: qId,
-            selected_option_id: selOpt,
+            selected_option_id: selOpt != null ? String(selOpt) : null,
             is_marked_for_review: isMarked,
             time_spent_seconds: Math.round(tSpent * 10) / 10,
             is_switched: switchCount > 0,
@@ -819,16 +836,17 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           submission_reason: reason,
           responses: allFinalResponses.length > 0 ? allFinalResponses : undefined,
         });
+        setShowSubmitModal(false);
         navigate(`/analytics?attemptId=${attemptId}`);
       } else {
+        setShowSubmitModal(false);
         navigate('/analytics');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to submit exam attempt:', err);
-      navigate(attemptId ? `/analytics?attemptId=${attemptId}` : '/analytics');
+      setSubmitError(err.message || 'Failed to submit exam attempt. Please try again.');
     } finally {
       setIsSubmitting(false);
-      setShowSubmitModal(false);
     }
   };
 
@@ -1095,8 +1113,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         markedCount={liveResponseSummary.marked_for_review_count}
         unattemptedCount={liveResponseSummary.unattempted_count}
         isSubmitting={isSubmitting}
-        onResume={() => !isSubmitting && setShowSubmitModal(false)}
-        onConfirmSubmit={handleConfirmSubmit}
+        errorMessage={submitError}
+        onResume={() => {
+          if (!isSubmitting) {
+            setSubmitError(null);
+            setShowSubmitModal(false);
+          }
+        }}
+        onConfirmSubmit={() => handleConfirmSubmit('USER_CLICKED_SUBMIT')}
       />
 
       {/* Guest Performance Scorecard Modal */}

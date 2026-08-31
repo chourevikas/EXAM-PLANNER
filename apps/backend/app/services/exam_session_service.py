@@ -246,6 +246,18 @@ class ExamSessionService:
             question_number=1,
         )
 
+        # Pre-cache full questions and solutions data from DB into memory/Redis for instant evaluation
+        async def _precache_exam_solutions():
+            try:
+                from app.engine.post_submission_pipeline import load_exam_solutions_data
+                from app.db.session import managed_async_session
+                async with managed_async_session() as pre_sess:
+                    await load_exam_solutions_data(exam, pre_sess)
+            except Exception as precache_err:
+                logger.warning(f"Exam solutions background pre-cache warning for exam '{exam.code}': {precache_err}")
+
+        asyncio.create_task(_precache_exam_solutions())
+
         return StartExamResponse(
             attempt_id=str(attempt.id),
             exam_id=str(exam.id),
@@ -834,7 +846,7 @@ class ExamSessionService:
         logger.info(f"[BATCH:INGEST_START] Ingesting batch '{batch_key}' with {len(req.responses)} responses for attempt {attempt_id}")
 
         try:
-            # Preload all exam responses for this attempt
+            # Preload all exam responses for this attempt in 1 query
             eq_res = await self.session.exec(
                 select(ExamQuestionResponse)
                 .where(ExamQuestionResponse.attempt_id == attempt.id)
@@ -842,6 +854,30 @@ class ExamSessionService:
             )
             all_resps = eq_res.all()
             resp_by_qid = {r.question_id: r for r in all_resps}
+
+            # Batch preload solutions & exam once (not in loop)
+            sol_map: Dict[str, Any] = {}
+            sol_num_map: Dict[int, Any] = {}
+            try:
+                exam_obj = await self.session.get(Exam, attempt.exam_id)
+                if exam_obj:
+                    sol_doc = await load_exam_solutions_data(exam_obj, self.session, self.storage)
+                    sol_list = sol_doc.get("questions", [])
+                    sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
+                    sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
+            except Exception as e_load_err:
+                logger.debug(f"Batch sol load skipped: {e_load_err}")
+
+            # Batch preload UserQuestionResponses in 1 single query
+            all_resp_ids = [r.id for r in all_resps if r.id]
+            u_resp_map: Dict[int, UserQuestionResponse] = {}
+            if all_resp_ids:
+                u_resp_res = await self.session.exec(
+                    select(UserQuestionResponse).where(col(UserQuestionResponse.exam_response_id).in_(all_resp_ids))
+                )
+                u_resp_map = {u.exam_response_id: u for u in u_resp_res.all() if u.exam_response_id}
+
+            switch_logs_to_add: List[QuestionSwitchLog] = []
 
             for idx, item in enumerate(req.responses):
                 q_id = None
@@ -864,18 +900,6 @@ class ExamSessionService:
                         opt_id = int(item.selected_option_id)
                     except (ValueError, TypeError):
                         opt_id = None
-
-                if opt_id is None and item.selected_option_id is not None and resp.question_id:
-                    lbl_str = str(item.selected_option_id).strip().upper()
-                    if len(lbl_str) <= 2:
-                        opt_obj = (await self.session.exec(
-                            select(QuestionOption).where(
-                                QuestionOption.question_id == resp.question_id,
-                                QuestionOption.option_label == lbl_str,
-                            )
-                        )).first()
-                        if opt_obj:
-                            opt_id = opt_obj.id
 
                 prev_opt_id = resp.selected_option_id
 
@@ -908,57 +932,40 @@ class ExamSessionService:
                         else QuestionResponseStatus.VISITED
                     )
 
-                # Real-time scoring and closeness evaluation for visited question in batch
-                try:
-                    exam_obj = await self.session.get(Exam, attempt.exam_id)
-                    if exam_obj and resp.selected_option_id:
-                        sol_doc = await load_exam_solutions_data(exam_obj, self.session, self.storage)
-                        sol_list = sol_doc.get("questions", [])
-                        sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
-                        sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
-                        
-                        q_sol = sol_map.get(str(resp.question_id))
-                        if not q_sol and resp.question_id:
-                            q_model = await self.session.get(Question, resp.question_id)
-                            if q_model and q_model.question_number_in_paper:
-                                q_sol = sol_num_map.get(int(q_model.question_number_in_paper))
+                # Real-time scoring and closeness evaluation in-memory
+                if resp.selected_option_id and sol_map:
+                    q_sol = sol_map.get(str(resp.question_id))
+                    if q_sol:
+                        correct_opt_id = q_sol.get("correct_option_id")
+                        is_corr = str(resp.selected_option_id) == str(correct_opt_id) if correct_opt_id else False
+                        distractors = q_sol.get("distractor_scores", {})
+                        user_dist = distractors.get(str(resp.selected_option_id), {})
+                        c_score = float(user_dist.get("closeness_score", 1.0 if is_corr else 0.0))
 
-                        if q_sol:
-                            correct_opt_id = q_sol.get("correct_option_id")
-                            is_corr = str(resp.selected_option_id) == str(correct_opt_id) if correct_opt_id else False
-                            distractors = q_sol.get("distractor_scores", {})
-                            user_dist = distractors.get(str(resp.selected_option_id), {})
-                            c_score = float(user_dist.get("closeness_score", 1.0 if is_corr else 0.0))
+                        resp.is_correct = is_corr
+                        resp.closeness_score_awarded = c_score
 
-                            resp.is_correct = is_corr
-                            resp.closeness_score_awarded = c_score
+                        irt_p = q_sol.get("irt_params", {"a": 1.5, "b": 0.0, "c": 0.25})
+                        resp.gti_item_score = GuessingTendencyStrategy.compute_item_guessing(
+                            time_taken_sec=resp.time_taken_seconds,
+                            expected_time_sec=resp.expected_time_seconds or 60.0,
+                            option_closeness=c_score,
+                            is_correct=is_corr,
+                            irt_difficulty_b=float(irt_p.get("b", 0.0)),
+                            irt_pseudo_guessing_c=float(irt_p.get("c", 0.25)),
+                        )
 
-                            irt_p = q_sol.get("irt_params", {"a": 1.5, "b": 0.0, "c": 0.25})
-                            resp.gti_item_score = GuessingTendencyStrategy.compute_item_guessing(
-                                time_taken_sec=resp.time_taken_seconds,
-                                expected_time_sec=resp.expected_time_seconds or 60.0,
-                                option_closeness=c_score,
-                                is_correct=is_corr,
-                                irt_difficulty_b=float(irt_p.get("b", 0.0)),
-                                irt_pseudo_guessing_c=float(irt_p.get("c", 0.25)),
-                            )
-
-                            scoring_eval = TimeTieredScoringStrategy.calculate_score(
-                                is_correct=is_corr,
-                                time_taken_sec=resp.time_taken_seconds,
-                                expected_time_sec=resp.expected_time_seconds or 60.0,
-                                closeness_score=c_score,
-                            )
-                            resp.final_score = scoring_eval["final_score"]
-                except Exception as eval_err:
-                    logger.debug(f"Batch real-time evaluation skipped: {eval_err}")
+                        scoring_eval = TimeTieredScoringStrategy.calculate_score(
+                            is_correct=is_corr,
+                            time_taken_sec=resp.time_taken_seconds,
+                            expected_time_sec=resp.expected_time_seconds or 60.0,
+                            closeness_score=c_score,
+                        )
+                        resp.final_score = scoring_eval["final_score"]
 
                 self.session.add(resp)
 
-                u_resp_res = await self.session.exec(
-                    select(UserQuestionResponse).where(UserQuestionResponse.exam_response_id == resp.id)
-                )
-                u_resp = u_resp_res.first()
+                u_resp = u_resp_map.get(resp.id)
                 if u_resp:
                     u_resp.selected_option_id = resp.selected_option_id
                     u_resp.initial_selected_option_id = resp.initial_option_id
@@ -968,15 +975,19 @@ class ExamSessionService:
                     self.session.add(u_resp)
 
                 if prev_opt_id != resp.selected_option_id:
-                    switch_log = QuestionSwitchLog(
-                        response_id=u_resp.id if u_resp else None,
-                        exam_response_id=resp.id,
-                        from_option_id=prev_opt_id,
-                        to_option_id=resp.selected_option_id,
-                        timestamp_offset_sec=int(resp.time_taken_seconds),
-                        created_at=item.client_timestamp or datetime.now(timezone.utc),
+                    switch_logs_to_add.append(
+                        QuestionSwitchLog(
+                            response_id=u_resp.id if u_resp else None,
+                            exam_response_id=resp.id,
+                            from_option_id=prev_opt_id,
+                            to_option_id=resp.selected_option_id,
+                            timestamp_offset_sec=int(resp.time_taken_seconds),
+                            created_at=item.client_timestamp or datetime.now(timezone.utc),
+                        )
                     )
-                    self.session.add(switch_log)
+
+            if switch_logs_to_add:
+                self.session.add_all(switch_logs_to_add)
 
             await self.session.flush()
             await self.session.commit()
@@ -985,7 +996,18 @@ class ExamSessionService:
             BATCH_TRACKER[batch_key]["processed_count"] = len(req.responses)
             BATCH_TRACKER[batch_key]["updated_at"] = datetime.now(timezone.utc)
 
-            summary = await self._compute_response_summary(attempt.id)
+            # Instant in-memory summary calculation without extra DB queries
+            ans_count = sum(1 for r in all_resps if r.selected_option_id is not None)
+            mrk_count = sum(1 for r in all_resps if r.is_marked_for_review)
+            tot_count = len(all_resps) or attempt.total_questions
+            unatt_count = max(0, tot_count - ans_count)
+
+            summary = ResponseSummary(
+                answered_count=ans_count,
+                marked_for_review_count=mrk_count,
+                unattempted_count=unatt_count,
+                total=tot_count,
+            )
             logger.info(f"[BATCH:INGEST_SUCCESS] Successfully persisted batch '{batch_key}' ({len(req.responses)} items). Answered={summary.answered_count}, Marked={summary.marked_for_review_count}")
 
             return BatchSaveResponseAck(
@@ -1331,7 +1353,14 @@ class ExamSessionService:
 
         from app.engine.post_submission_pipeline import load_exam_solutions_data
 
-        # Ingest final batch responses if provided in submit payload
+        # 1. Batch preload all existing responses for this attempt in 1 query
+        resp_res = await self.session.exec(
+            select(ExamQuestionResponse).where(ExamQuestionResponse.attempt_id == attempt.id)
+        )
+        responses = list(resp_res.all())
+        resp_by_qid: Dict[int, ExamQuestionResponse] = {r.question_id: r for r in responses if r.question_id}
+
+        # 2. Ingest final batch responses if provided in submit payload
         if req.responses and len(req.responses) > 0:
             for item in req.responses:
                 try:
@@ -1339,12 +1368,7 @@ class ExamSessionService:
                     if not q_id:
                         continue
                     opt_id = int(item.selected_option_id) if item.selected_option_id and str(item.selected_option_id).isdigit() else None
-                    r_stmt = select(ExamQuestionResponse).where(
-                        ExamQuestionResponse.attempt_id == attempt.id,
-                        ExamQuestionResponse.question_id == q_id,
-                    )
-                    r_res = await self.session.exec(r_stmt)
-                    resp = r_res.first()
+                    resp = resp_by_qid.get(q_id)
                     if not resp:
                         resp = ExamQuestionResponse(
                             attempt_id=attempt.id,
@@ -1352,6 +1376,8 @@ class ExamSessionService:
                             question_status=QuestionResponseStatus.VISITED if opt_id else QuestionResponseStatus.UNVISITED,
                             expected_time_seconds=60.0,
                         )
+                        responses.append(resp)
+                        resp_by_qid[q_id] = resp
                     if opt_id:
                         resp.selected_option_id = opt_id
                         resp.question_status = QuestionResponseStatus.ANSWERED_AND_MARKED if item.is_marked_for_review else QuestionResponseStatus.ANSWERED
@@ -1365,20 +1391,14 @@ class ExamSessionService:
                     self.session.add(resp)
                 except Exception as resp_err:
                     logger.warning(f"Error persisting submit response item: {resp_err}")
-            await self.session.commit()
 
+        # 3. Load solutions doc & question paper number mapping once
         solutions_doc = await load_exam_solutions_data(exam, self.session, self.storage)
         sol_list = solutions_doc.get("questions", [])
         sol_map = {str(s.get("question_id")): s for s in sol_list if "question_id" in s}
         sol_num_map = {int(s["question_number"]): s for s in sol_list if s.get("question_number") is not None}
 
-        # Synchronous scoring pass
-        resp_res = await self.session.exec(
-            select(ExamQuestionResponse).where(ExamQuestionResponse.attempt_id == attempt.id)
-        )
-        responses = resp_res.all()
-
-        # If responses is empty, auto-seed from exam questions in DB or solutions_doc
+        # 4. If responses is empty, auto-seed from exam questions in DB or solutions_doc
         if not responses:
             seeded_resps = []
             q_res = await self.session.exec(
@@ -1418,8 +1438,13 @@ class ExamSessionService:
                         )
             if seeded_resps:
                 self.session.add_all(seeded_resps)
-                await self.session.commit()
                 responses = seeded_resps
+
+        # Batch preload question numbers to avoid N+1 DB queries in scoring loop
+        q_meta_res = await self.session.exec(
+            select(Question.id, Question.question_number_in_paper).where(Question.exam_id == exam.id)
+        )
+        q_paper_nums = {q_id: q_num for q_id, q_num in q_meta_res.all() if q_num is not None}
 
         tot_correct = 0
         tot_incorrect = 0
@@ -1434,10 +1459,9 @@ class ExamSessionService:
                 r.final_score = 0.0
             else:
                 q_sol = sol_map.get(str(r.question_id), {})
-                if not q_sol and r.question_id:
-                    q_model = await self.session.get(Question, r.question_id)
-                    if q_model and q_model.question_number_in_paper:
-                        q_sol = sol_num_map.get(int(q_model.question_number_in_paper), {})
+                if not q_sol and r.question_id in q_paper_nums:
+                    paper_num = q_paper_nums[r.question_id]
+                    q_sol = sol_num_map.get(paper_num, {})
 
                 correct_opt_id = q_sol.get("correct_option_id")
                 is_corr = (str(r.selected_option_id) == str(correct_opt_id)) if correct_opt_id else False
@@ -1493,6 +1517,7 @@ class ExamSessionService:
             u_att.submitted_at = now_dt
             self.session.add(u_att)
 
+        await self.session.flush()
         await self.session.commit()
 
         from app.cache import invalidate_attempt_cache
@@ -1531,18 +1556,19 @@ class ExamSessionService:
         skip: int = 0,
         limit: int = 20,
         exam_id: Optional[int] = None,
-        status_filter: Optional[AttemptStatus] = None,
+        status_filter: Optional[str | AttemptStatus] = None,
     ) -> Dict[str, Any]:
         """Parameter 13: List candidate's exam attempts history."""
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
+        status_str = str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None
         cache_key = build_cache_key(
             "attempts:user",
             str(user_id),
             skip=skip,
             limit=limit,
             exam_id=str(exam_id) if exam_id else None,
-            status=str(status_filter.value if hasattr(status_filter, "value") else status_filter) if status_filter else None,
+            status=status_str,
         )
         cached_data = await cache.get(cache_key)
         if cached_data is not None:
@@ -1552,7 +1578,20 @@ class ExamSessionService:
         if exam_id:
             filters.append(ExamAttempt.exam_id == exam_id)
         if status_filter:
-            filters.append(ExamAttempt.status == status_filter)
+            if isinstance(status_filter, str) and "," in status_filter:
+                raw_parts = [s.strip().upper() for s in status_filter.split(",") if s.strip()]
+                matched_statuses = []
+                for p in raw_parts:
+                    if hasattr(AttemptStatus, p):
+                        matched_statuses.append(AttemptStatus[p])
+                    elif p == "COMPLETED":
+                        matched_statuses.extend([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED])
+                if matched_statuses:
+                    filters.append(col(ExamAttempt.status).in_(list(set(matched_statuses))))
+            elif isinstance(status_filter, str) and hasattr(AttemptStatus, status_filter.upper()):
+                filters.append(ExamAttempt.status == AttemptStatus[status_filter.upper()])
+            elif isinstance(status_filter, AttemptStatus):
+                filters.append(ExamAttempt.status == status_filter)
 
         from sqlmodel import func
         count_stmt = select(func.count()).select_from(ExamAttempt).where(*filters)

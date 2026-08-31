@@ -37,15 +37,9 @@ from app.config.logger import setup_logger
 logger = setup_logger("PostSubmissionPipeline")
 
 
-# 5-Second Short Sliding Window Memory Cache for Exam Solutions
+# 24-Hour Sliding Window Memory Cache for Exam Solutions
 EXAM_SOLUTIONS_SLIDING_CACHE: Dict[str, Dict[str, Any]] = {}
-CACHE_TTL_SECONDS = 0  # 0 seconds to disable cache due to issues
-
-# Per-Process Cache: remembers which (folder-prefix, filename-pattern) combo resolved a question/solution
-# file for a given exam code, so subsequent questions and future attempts on the same exam skip straight
-# to the known-good path instead of re-probing every prefix/pattern combination from scratch.
-_S3_QUESTION_PATTERN_CACHE: Dict[str, Tuple[int, int]] = {}
-_S3_SOLUTION_PATTERN_CACHE: Dict[str, Tuple[int, int]] = {}
+CACHE_TTL_SECONDS = 86400  # 24 Hours in-memory sliding cache
 
 
 def get_cached_solutions_data(exam_code: str) -> Optional[Dict[str, Any]]:
@@ -72,17 +66,64 @@ def set_cached_solutions_data(exam_code: str, data: Dict[str, Any]) -> None:
     }
 
 
+async def get_cached_solutions_data_async(exam_code: str, exam_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    """Checks in-memory cache first, then Redis app cache."""
+    # 1. Memory cache check
+    mem = get_cached_solutions_data(exam_code)
+    if mem and mem.get("questions"):
+        return mem
+    if exam_id:
+        mem_id = get_cached_solutions_data(str(exam_id))
+        if mem_id and mem_id.get("questions"):
+            return mem_id
+
+    # 2. Redis cache check
+    try:
+        from app.cache.factory import get_cache
+        from app.config.settings import get_settings
+        cache = get_cache()
+        prefix = get_settings().CACHE_KEY_PREFIX or "ep"
+        val = await cache.get(f"{prefix}:exam_solutions:{exam_code}")
+        if not val and exam_id:
+            val = await cache.get(f"{prefix}:exam_solutions:{exam_id}")
+        if val and isinstance(val, dict) and val.get("questions"):
+            set_cached_solutions_data(exam_code, val)
+            if exam_id:
+                set_cached_solutions_data(str(exam_id), val)
+            return val
+    except Exception as cache_err:
+        logger.debug(f"Redis solutions cache lookup warning: {cache_err}")
+    return None
+
+
+async def set_cached_solutions_data_async(exam_code: str, exam_id: Optional[int], data: Dict[str, Any]) -> None:
+    """Stores solutions data in both in-memory cache and Redis app cache."""
+    set_cached_solutions_data(exam_code, data)
+    if exam_id:
+        set_cached_solutions_data(str(exam_id), data)
+    try:
+        from app.cache.factory import get_cache
+        from app.config.settings import get_settings
+        cache = get_cache()
+        prefix = get_settings().CACHE_KEY_PREFIX or "ep"
+        await cache.set(f"{prefix}:exam_solutions:{exam_code}", data, ttl_seconds=CACHE_TTL_SECONDS)
+        if exam_id:
+            await cache.set(f"{prefix}:exam_solutions:{exam_id}", data, ttl_seconds=CACHE_TTL_SECONDS)
+    except Exception as cache_err:
+        logger.debug(f"Redis solutions cache store warning: {cache_err}")
+
+
 async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: Any = None) -> Dict[str, Any]:
     """
-    Robust solution resolver with 20-minute sliding memory cache.
-    Uses direct PostgreSQL database queries via ExamJsonBuilder as primary source of truth.
-    S3/storage logic is preserved in comments per architecture requirements.
+    Direct Database & Redis/Memory cached solutions resolver.
+    Database is the single source of truth; caches are populated at exam start or first load.
+    Zero external S3 dependency.
     """
-    cached = get_cached_solutions_data(exam.code)
+    cached = await get_cached_solutions_data_async(exam.code, exam.id)
     if cached and cached.get("questions"):
         return cached
 
-    # Tier 0: Direct High-Performance Database Question & Solution Resolver
+    # Direct High-Performance Database Question & Solution Resolver via ExamJsonBuilder
     try:
         from app.services.exam_json_builder import ExamJsonBuilder
         builder = ExamJsonBuilder(session)
@@ -94,38 +135,39 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
         res = await session.exec(stmt)
         questions = list(res.all())
         if questions:
-            preloaded_data = await builder.preload_batch_question_data(questions)
+            preloaded_data = await builder.preload_batch_question_data(questions, include_solution_data=True)
             solutions_payload = []
             for q in questions:
                 q_card, sol_card = await builder.build_single_question_cards(q, preloaded=preloaded_data)
-                merged = {**q_card, **sol_card}
-                merged["question_text"] = q_card.get("text") or q_card.get("question_text")
+                
+                merged_options = []
+                for opt in q_card.get("options", []):
+                    opt_id_str = str(opt.get("option_id"))
+                    d_info = sol_card.get("distractor_scores", {}).get(opt_id_str, {})
+                    is_corr = bool(d_info.get("is_correct", opt_id_str == str(sol_card.get("correct_option_id"))))
+                    c_score = float(d_info.get("closeness_score", 1.0 if is_corr else 0.25))
+                    merged_options.append({
+                        "option_id": opt_id_str,
+                        "option_label": opt.get("option_label"),
+                        "text": opt.get("text"),
+                        "is_correct": is_corr,
+                        "closeness_score": c_score,
+                        "distractor_analysis": d_info.get("distractor_analysis"),
+                    })
+
+                merged = {
+                    **sol_card,
+                    "question_text": q_card.get("text") or q_card.get("question_text"),
+                    "options": merged_options,
+                }
                 solutions_payload.append(merged)
 
             res_dict = {"exam_id": str(exam.id), "exam_code": exam.code, "questions": solutions_payload}
-            set_cached_solutions_data(exam.code, res_dict)
-            logger.info(f"Loaded {len(solutions_payload)} solutions directly from database for exam '{exam.code}'.")
+            await set_cached_solutions_data_async(exam.code, exam.id, res_dict)
+            logger.info(f"Loaded and cached {len(solutions_payload)} questions/solutions directly from database for exam '{exam.code}'.")
             return res_dict
     except Exception as err:
         logger.error(f"Direct DB solutions generation failed for exam '{exam.code}': {err}", exc_info=True)
-
-    # --- S3 Storage Logic Commented Out (Using Database Directly) ---
-    # paper_set = exam.paper_set_code or "SET_A"
-    # clean_set = str(paper_set).strip().lower().replace("_", "-")
-    # s_rel_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
-    # s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
-    # alt_folder = f"exams/{exam.code}/solutions"
-    # q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-    # alt_q_folder = f"exams/{exam.code}/questions"
-    #
-    # if storage:
-    #     try:
-    #         solutions_data = await storage.download_json(s_rel_path)
-    #         if solutions_data and solutions_data.get("questions"):
-    #             set_cached_solutions_data(exam.code, solutions_data)
-    #             return solutions_data
-    #     except Exception as err:
-    #         logger.debug(f"S3 master solutions download failed: {err}")
 
     return {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
 
@@ -286,144 +328,27 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         "total_questions_answered": profile.total_questions_answered if profile else 0,
     }
 
-    # 3. High-Precision Question & Solution Resolution: S3-First with Lazy Database Fallback
-    paper_set = exam.paper_set_code or "SET_A"
-    clean_set = str(paper_set).strip().lower().replace("_", "-")
-    q_folder = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-    s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
-    alt_q_folder = f"exams/{exam.code}/questions"
-    alt_s_folder = f"exams/{exam.code}/solutions"
-    q_json_path = exam.questions_json_path or f"exams/{exam.code}/exam_questions.json"
-    s_json_path = exam.solutions_json_path or f"exams/{exam.code}/exam_solutions.json"
-
+    # 3. High-Performance Direct DB / Cached Question & Solution Resolution (Zero S3)
     meta_subtopic_override = (attempt.report_metadata_json or {}).get("subtopic_name")
     meta_topic_override = (attempt.report_metadata_json or {}).get("topic_name")
     meta_subject_override = (attempt.report_metadata_json or {}).get("subject_name") or (attempt.report_metadata_json or {}).get("target_exam") or "General Studies"
 
-    # Branch 1: FULL EXAMS -> Primary: Master JSONs (exam_questions.json & exam_solutions.json)
-    # Branch 2: PRACTICE / GUEST EXAMS -> Primary: Individual S3 JSONs (artifacts/{exam.code}/{clean_set}/json/.../Q{num}.json)
-
-    master_q_by_num: Dict[int, Dict[str, Any]] = {}
-    master_q_by_id: Dict[str, Dict[str, Any]] = {}
     master_sol_by_num: Dict[int, Dict[str, Any]] = {}
     master_sol_by_id: Dict[str, Dict[str, Any]] = {}
-    master_sol_doc: Optional[Dict[str, Any]] = None
 
-    if not is_practice_or_guest:
-        # Load master questions & solutions — try/except directly, no exists() pre-check
-        try:
-            for q_path in [q_json_path, f"artifacts/{exam.code}/exam_questions.json"]:
-                try:
-                    q_doc = await storage.download_json(q_path)
-                    if q_doc and q_doc.get("questions"):
-                        for q_item in q_doc["questions"]:
-                            if "question_number" in q_item:
-                                master_q_by_num[int(q_item["question_number"])] = q_item
-                            if "question_id" in q_item:
-                                master_q_by_id[str(q_item["question_id"])] = q_item
-                        logger.info(f"Loaded master questions JSON '{q_path}' ({len(q_doc['questions'])} questions).")
-                        break
-                except Exception:
-                    pass
-        except Exception as q_err:
-            logger.debug(f"Master questions JSON load failed: {q_err}")
+    try:
+        master_sol_doc = await load_exam_solutions_data(exam, session)
+        if master_sol_doc and master_sol_doc.get("questions"):
+            for s_item in master_sol_doc["questions"]:
+                if "question_number" in s_item:
+                    master_sol_by_num[int(s_item["question_number"])] = s_item
+                if "question_id" in s_item:
+                    master_sol_by_id[str(s_item["question_id"])] = s_item
+            logger.info(f"Loaded {len(master_sol_doc['questions'])} exam questions/solutions from DB cache for attempt '{attempt.id}'.")
+    except Exception as sol_err:
+        logger.warning(f"DB solutions cache load failed for exam '{exam.code}': {sol_err}")
 
-        try:
-            master_sol_doc = await load_exam_solutions_data(exam, session, storage)
-            if master_sol_doc and master_sol_doc.get("questions"):
-                for s_item in master_sol_doc["questions"]:
-                    if "question_number" in s_item:
-                        master_sol_by_num[int(s_item["question_number"])] = s_item
-                    if "question_id" in s_item:
-                        master_sol_by_id[str(s_item["question_id"])] = s_item
-                logger.info(f"Loaded master solutions JSON ({len(master_sol_doc['questions'])} questions).")
-        except Exception as sol_err:
-            logger.debug(f"Master solutions JSON load failed: {sol_err}")
-
-    # Helper: attempt a single direct download instead of exists()-then-download (halves round trips,
-    # since a miss now costs 1 call instead of 2 and a hit costs 1 call instead of 2).
-    async def _try_download(path: str) -> Optional[Dict[str, Any]]:
-        try:
-            return await storage.download_json(path)
-        except Exception:
-            return None
-
-    # Resolve a question/solution file for this exam, trying the previously-discovered prefix/pattern
-    # combo first (all questions in an exam share the same naming convention), and only falling back to
-    # the full brute-force probe if that cached guess misses.
-    async def _resolve_variant(
-        prefixes: List[str], patterns: List[str], cache: Dict[str, Tuple[int, int]]
-    ) -> Optional[Dict[str, Any]]:
-        cached = cache.get(exam.code)
-        if cached:
-            p_idx, pat_idx = cached
-            if p_idx < len(prefixes) and pat_idx < len(patterns):
-                data = await _try_download(f"{prefixes[p_idx].rstrip('/')}/{patterns[pat_idx]}")
-                if data:
-                    return data
-        for p_idx, prefix in enumerate(prefixes):
-            for pat_idx, pattern in enumerate(patterns):
-                if cached == (p_idx, pat_idx):
-                    continue  # already tried above
-                data = await _try_download(f"{prefix.rstrip('/')}/{pattern}")
-                if data:
-                    cache[exam.code] = (p_idx, pat_idx)
-                    return data
-        return None
-
-    # Helper function to fetch individual S3 question and solution JSON
-    async def _fetch_individual_s3_pair(q_num: int):
-        q_data = await _resolve_variant(
-            [q_folder, alt_q_folder],
-            [f"Q{q_num:03d}.json", f"Q{q_num:03d} Question.json", f"Q{q_num}.json"],
-            _S3_QUESTION_PATTERN_CACHE,
-        )
-        sol_data = await _resolve_variant(
-            [s_folder, alt_s_folder],
-            [f"Q{q_num:03d}.json", f"Q{q_num:03d} Solution.json", f"Q{q_num}.json"],
-            _S3_SOLUTION_PATTERN_CACHE,
-        )
-        return q_num, q_data, sol_data
-
-    # For practice/guest exams, batch fetch individual S3 question/solution JSONs in parallel.
-    # Resolve question 1 first (sequentially) to warm the per-exam pattern cache, so the remaining
-    # questions - fetched concurrently - go straight to the discovered pattern in 1 call each instead
-    # of every question independently probing up to 12 prefix/pattern combinations.
-    indiv_s3_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
-    if is_practice_or_guest:
-        q_nums_to_fetch = list(range(1, len(responses_db) + 1))
-        if q_nums_to_fetch:
-            first_num, first_q, first_sol = await _fetch_individual_s3_pair(q_nums_to_fetch[0])
-            indiv_s3_map[first_num] = (first_q, first_sol)
-            remaining_nums = q_nums_to_fetch[1:]
-            if remaining_nums:
-                fetch_tasks = [_fetch_individual_s3_pair(num) for num in remaining_nums]
-                fetch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
-                for res in fetch_results:
-                    if isinstance(res, tuple) and len(res) == 3:
-                        num, q_d, s_d = res
-                        indiv_s3_map[num] = (q_d, s_d)
-
-    # For full exams: pre-batch any questions missing from master JSON to avoid serial awaits in loop
-    _full_exam_fallback_map: Dict[int, Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]] = {}
-    if not is_practice_or_guest:
-        _missing_nums = [
-            i for i, r in enumerate(responses_db, 1)
-            if not (master_q_by_id.get(str(r.question_id)) or master_q_by_num.get(i))
-            and not (master_sol_by_id.get(str(r.question_id)) or master_sol_by_num.get(i))
-        ]
-        if _missing_nums:
-            logger.info(f"Pre-fetching {len(_missing_nums)} missing S3 pairs in parallel for full exam fallback.")
-            _fb_results = await asyncio.gather(
-                *[_fetch_individual_s3_pair(n) for n in _missing_nums],
-                return_exceptions=True
-            )
-            for _fb_res in _fb_results:
-                if isinstance(_fb_res, tuple) and len(_fb_res) == 3:
-                    _fn, _fq, _fs = _fb_res
-                    _full_exam_fallback_map[_fn] = (_fq, _fs)
-
-    # Lazy Database Fallback Cache (only populated if S3 is missing data for any question)
+    # Lazy Database Fallback Cache (only populated if cache is missing data for any question)
     db_loaded = False
     q_map: Dict[Any, Question] = {}
     opt_map: Dict[Any, QuestionOption] = {}
@@ -503,56 +428,46 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
 
     responses_payload = []
     resolved_sol_questions = []
+    unresolved_question_count = 0
 
     for index, r in enumerate(responses_db, 1):
         q_num = index
+        sol_data: Optional[Dict[str, Any]] = (
+            master_sol_by_id.get(str(r.question_id))
+            or master_sol_by_num.get(q_num)
+        )
 
-        # S3 Data Resolution
-        s3_q: Optional[Dict[str, Any]] = None
-        s3_sol: Optional[Dict[str, Any]] = None
-
-        if is_practice_or_guest:
-            s3_q, s3_sol = indiv_s3_map.get(q_num, (None, None))
-        else:
-            s3_q = master_q_by_id.get(str(r.question_id)) or master_q_by_num.get(q_num)
-            s3_sol = master_sol_by_id.get(str(r.question_id)) or master_sol_by_num.get(q_num)
-            # Fallback is pre-batched in _full_exam_fallback_map (fetched before loop)
-            if not s3_q and not s3_sol:
-                _fb = _full_exam_fallback_map.get(q_num, (None, None))
-                s3_q, s3_sol = _fb
-
-        # Trigger DB fallback only if S3 did not provide complete question/option/solution data
-        if not s3_q or not s3_sol or not s3_q.get("options") or not s3_sol.get("explanation"):
+        if not sol_data or not sol_data.get("options") or not sol_data.get("explanation"):
             await _ensure_db_fallback_loaded()
 
         q_model = q_map.get(r.question_id) if db_loaded else None
         selected_opt = opt_map.get(r.selected_option_id) if (db_loaded and r.selected_option_id) else None
 
-        # Taxonomy resolution (S3 -> DB -> Metadata Override -> Default)
+        # Taxonomy resolution
         sub_obj = subtopic_map.get(q_model.subtopic_id) if (q_model and q_model.subtopic_id) else None
         top_obj = topic_map.get(sub_obj.topic_id) if (sub_obj and sub_obj.topic_id) else None
         sbj_obj = subject_map.get(top_obj.subject_id) if (top_obj and top_obj.subject_id) else None
 
-        s3_subtopic = (s3_sol.get("subtopic") if s3_sol else None) or (s3_q.get("subtopic") if s3_q else None)
-        s3_topic = (s3_sol.get("topic") if s3_sol else None) or (s3_q.get("topic") if s3_q else None)
-        s3_subject = (s3_sol.get("subject") if s3_sol else None) or (s3_q.get("subject") if s3_q else None)
+        subtopic_name = (sol_data.get("subtopic") if sol_data else None) or (sub_obj.name if sub_obj else None) or meta_subtopic_override or "Core Concepts"
+        topic_name = (sol_data.get("topic") if sol_data else None) or (top_obj.name if top_obj else None) or meta_topic_override or (subtopic_name if not sub_obj else "General Knowledge")
+        subject_name = (sol_data.get("subject") if sol_data else None) or (sbj_obj.name if sbj_obj else None) or meta_subject_override or "General Studies"
 
-        subtopic_name = s3_subtopic or (sub_obj.name if sub_obj else None) or meta_subtopic_override or "Core Concepts"
-        topic_name = s3_topic or (top_obj.name if top_obj else None) or meta_topic_override or (subtopic_name if not sub_obj else "General Knowledge")
-        subject_name = s3_subject or (sbj_obj.name if sbj_obj else None) or meta_subject_override or "General Studies"
+        # Question text
+        sol_q_text = (sol_data.get("question_text") or sol_data.get("text")) if sol_data else None
+        db_q_text = q_trans_map.get(r.question_id)
+        if not sol_q_text and not db_q_text:
+            unresolved_question_count += 1
+            logger.warning(f"Question #{q_num} (ID: {r.question_id}) in attempt '{attempt.id}' used fallback text.")
+        q_text = sol_q_text or db_q_text or f"Question {q_num}"
 
-        # Question text (S3 -> DB translation -> Default)
-        s3_q_text = (s3_q.get("text") or s3_q.get("question_text") if s3_q else None) or (s3_sol.get("question_text") if s3_sol else None)
-        q_text = s3_q_text or q_trans_map.get(r.question_id) or f"Question {q_num}"
-
-        # Options resolution (S3 -> DB fallback)
+        # Options resolution
         options_payload = []
-        correct_option_id = None
-        correct_option_label = "A"
+        correct_option_id = sol_data.get("correct_option_id") if sol_data else None
+        correct_option_label = sol_data.get("correct_option_label", "A") if sol_data else "A"
 
-        s3_options = (s3_q.get("options") if s3_q else None) or (s3_sol.get("options") if s3_sol else None)
-        if s3_options and isinstance(s3_options, list) and len(s3_options) > 0:
-            for opt_idx, opt_raw in enumerate(s3_options):
+        sol_options = sol_data.get("options") if sol_data else None
+        if sol_options and isinstance(sol_options, list) and len(sol_options) > 0:
+            for opt_idx, opt_raw in enumerate(sol_options):
                 lbl = str(opt_raw.get("option_label") or opt_raw.get("label") or chr(65 + opt_idx))
                 opt_id_str = str(opt_raw.get("option_id") or opt_raw.get("id") or f"opt-{q_num}-{lbl}")
                 is_corr = bool(opt_raw.get("is_correct", False))
@@ -578,7 +493,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                 o_trans = opt_trans_map.get(o.id)
                 o_text = o_trans.option_text if o_trans else f"Option {o.option_label}"
                 o_dist_analysis = o_trans.distractor_analysis if o_trans else None
-                
+
                 if o.is_correct:
                     correct_option_id = str(o.id)
                     correct_option_label = o.option_label
@@ -592,21 +507,17 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                     "distractor_analysis": o_dist_analysis,
                 })
 
-        if not correct_option_id and s3_sol:
-            correct_option_id = str(s3_sol.get("correct_option_id") or "")
-            correct_option_label = str(s3_sol.get("correct_option_label") or "A")
-
-        # Explanations (S3 -> DB -> Default)
-        s3_expl = s3_sol.get("explanation") if (s3_sol and isinstance(s3_sol.get("explanation"), dict)) else None
+        # Explanations
+        sol_expl = sol_data.get("explanation") if (sol_data and isinstance(sol_data.get("explanation"), dict)) else None
         expl_record = expl_map.get(r.question_id)
 
-        if s3_expl:
-            detailed_sol = s3_expl.get("detailed_solution") or s3_expl.get("detailed_text") or f"**Option ({correct_option_label}) is correct.**"
+        if sol_expl:
+            detailed_sol = sol_expl.get("detailed_solution") or sol_expl.get("detailed_text") or f"**Option ({correct_option_label}) is correct.**"
             expl_dict = {
-                "core_concept": s3_expl.get("core_concept") or f"{topic_name} - {subtopic_name}",
+                "core_concept": sol_expl.get("core_concept") or f"{topic_name} - {subtopic_name}",
                 "detailed_solution": detailed_sol,
-                "common_traps": s3_expl.get("common_traps") or [],
-                "key_takeaways": s3_expl.get("key_takeaways") or ([s3_expl.get("key_takeaway")] if s3_expl.get("key_takeaway") else [f"Key focus area: {subtopic_name}"]),
+                "common_traps": sol_expl.get("common_traps") or [],
+                "key_takeaways": sol_expl.get("key_takeaways") or ([sol_expl.get("key_takeaway")] if sol_expl.get("key_takeaway") else [f"Key focus area: {subtopic_name}"]),
             }
         elif expl_record:
             detailed_sol = expl_record.detailed_solution or f"**Option ({correct_option_label}) is correct.**"
@@ -617,6 +528,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                 "key_takeaways": expl_record.key_takeaways_json or [f"Key focus area: {subtopic_name}"],
             }
         else:
+            logger.warning(f"Question #{q_num} (ID: {r.question_id}) in attempt '{attempt.id}' used fallback explanation.")
             expl_dict = {
                 "core_concept": f"{topic_name} - {subtopic_name}",
                 "detailed_solution": f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates mastery of {subtopic_name}.",
@@ -624,21 +536,21 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                 "key_takeaways": [f"Key focus area: {subtopic_name}"],
             }
 
-        # Metadata (Blooms, Cognitive Skill, IRT)
+        # Metadata (Blooms, Cognitive Skill, IRT, Difficulty)
         qm_record = meta_map.get(r.question_id)
-        s3_blooms = s3_sol.get("blooms_level") if s3_sol else None
-        s3_cognitive = s3_sol.get("cognitive_skill") if s3_sol else None
-        s3_irt = s3_sol.get("irt_params") if (s3_sol and isinstance(s3_sol.get("irt_params"), dict)) else None
-        s3_diff = (s3_sol.get("difficulty") if s3_sol else None) or (s3_q.get("difficulty") if s3_q else None)
+        sol_blooms = sol_data.get("blooms_level") if sol_data else None
+        sol_cognitive = sol_data.get("cognitive_skill") if sol_data else None
+        sol_irt = sol_data.get("irt_params") if (sol_data and isinstance(sol_data.get("irt_params"), dict)) else None
+        sol_diff = sol_data.get("difficulty") if sol_data else None
 
-        blooms_val = s3_blooms or ((qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE")
-        cognitive_skill = s3_cognitive or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
+        blooms_val = sol_blooms or ((qm_record.blooms_level.value if hasattr(qm_record.blooms_level, "value") else str(qm_record.blooms_level)) if (qm_record and qm_record.blooms_level) else "ANALYZE")
+        cognitive_skill = sol_cognitive or (qm_record.cognitive_skill if (qm_record and qm_record.cognitive_skill) else "Conceptual Reasoning")
 
-        if s3_irt:
+        if sol_irt:
             irt_params = {
-                "a": float(s3_irt.get("a", 1.50)),
-                "b": float(s3_irt.get("b", 0.00)),
-                "c": float(s3_irt.get("c", 0.25)),
+                "a": float(sol_irt.get("a", 1.50)),
+                "b": float(sol_irt.get("b", 0.00)),
+                "c": float(sol_irt.get("c", 0.25)),
             }
         else:
             irt_params = {
@@ -647,7 +559,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                 "c": qm_record.irt_pseudo_guessing_c if qm_record and qm_record.irt_pseudo_guessing_c is not None else 0.25,
             }
 
-        diff_val = s3_diff or ((q_model.difficulty.value if hasattr(q_model.difficulty, "value") else str(q_model.difficulty)) if q_model else "MEDIUM")
+        diff_val = sol_diff or ((q_model.difficulty.value if hasattr(q_model.difficulty, "value") else str(q_model.difficulty)) if q_model else "MEDIUM")
 
         # Match User Selected Label
         user_sel_label = "Unattempted"
@@ -937,7 +849,6 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
             st = "STRONG" if acc >= 75.0 else ("MODERATE" if acc >= 50.0 else "WEAK_REVISION_REQUIRED")
 
         tax_rows.append({
-            "id": uuid.uuid4(),
             "user_id": user.id,
             "taxonomy_type": norm_type,
             "taxonomy_id_code": norm_code,
@@ -950,45 +861,31 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         })
 
     if tax_rows:
-        try:
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-            stmt = pg_insert(UserTaxonomyMastery).values(tax_rows)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["user_id", "taxonomy_type", "taxonomy_id_code"],
-                set_={
-                    "taxonomy_name": stmt.excluded.taxonomy_name,
-                    "total_attempts": stmt.excluded.total_attempts,
-                    "correct_attempts": stmt.excluded.correct_attempts,
-                    "mastery_percentage": stmt.excluded.mastery_percentage,
-                    "strength_status": stmt.excluded.strength_status,
-                    "updated_at": stmt.excluded.updated_at,
-                },
+        for row in tax_rows:
+            m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
+                (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
             )
-            await session.exec(stmt)
-        except Exception:
-            # Fallback for non-Postgres backends without multi-row ON CONFLICT support
-            for row in tax_rows:
-                m_obj = tax_map.get((row["taxonomy_type"], row["taxonomy_id_code"])) or tax_map.get(
-                    (row["taxonomy_type"], row["taxonomy_name"].strip().upper())
+            if not m_obj:
+                new_m = UserTaxonomyMastery(
+                    user_id=row["user_id"],
+                    taxonomy_type=row["taxonomy_type"],
+                    taxonomy_id_code=row["taxonomy_id_code"],
+                    taxonomy_name=row["taxonomy_name"],
+                    total_attempts=row["total_attempts"],
+                    correct_attempts=row["correct_attempts"],
+                    mastery_percentage=row["mastery_percentage"],
+                    strength_status=row["strength_status"],
+                    updated_at=row["updated_at"],
                 )
-                if not m_obj:
-                    session.add(UserTaxonomyMastery(
-                        user_id=row["user_id"],
-                        taxonomy_type=row["taxonomy_type"],
-                        taxonomy_id_code=row["taxonomy_id_code"],
-                        taxonomy_name=row["taxonomy_name"],
-                        total_attempts=row["total_attempts"],
-                        correct_attempts=row["correct_attempts"],
-                        mastery_percentage=row["mastery_percentage"],
-                        strength_status=row["strength_status"],
-                    ))
-                else:
-                    m_obj.total_attempts = row["total_attempts"]
-                    m_obj.correct_attempts = row["correct_attempts"]
-                    m_obj.mastery_percentage = row["mastery_percentage"]
-                    m_obj.strength_status = row["strength_status"]
-                    m_obj.updated_at = row["updated_at"]
-                    session.add(m_obj)
+                session.add(new_m)
+                tax_map[(row["taxonomy_type"], row["taxonomy_id_code"])] = new_m
+            else:
+                m_obj.total_attempts = row["total_attempts"]
+                m_obj.correct_attempts = row["correct_attempts"]
+                m_obj.mastery_percentage = row["mastery_percentage"]
+                m_obj.strength_status = row["strength_status"]
+                m_obj.updated_at = row["updated_at"]
+                session.add(m_obj)
 
     # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
     now_t = datetime.now(timezone.utc)
@@ -1154,7 +1051,6 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     # ─── Phase 1: Flush all math results to DB immediately ───────────────────
     # Persist per-question diagnostics BEFORE LLM call so the report is readable
     # even if LLM is slow or fails. Frontend can show math report immediately.
-    part_1_items = report.get("part_1_per_question_analysis", [])
     existing_q_reps = await session.exec(select(ExamQuestionReport).where(ExamQuestionReport.attempt_id == attempt.id))
     q_rep_map = {r.question_id: r for r in existing_q_reps.all()}
     for q_item in part_1_items:
@@ -1221,6 +1117,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         },
         "icrs_score": icrs_obj.get("icrs_score", 65.0),
         "irt_theta": irt_obj.get("latent_ability_theta", 0.0),
+        "unresolved_question_count": unresolved_question_count,
     }
     session.add(attempt)
     await session.commit()
@@ -1230,12 +1127,19 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
 
     logger.info(f"⚡ [PHASE_1_DONE] Math results persisted for attempt '{attempt.id}'. Starting LLM synthesis...")
 
-    # ─── Phase 2: AI synthesis ────────────────────────────────────────────────
-    mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
-        candidate_info=candidate_dict,
-        exam_info=exam_dict,
-        precalculated_metrics=precalc_payload,
-    )
+    # ─── Phase 2: AI synthesis (with rule-based fallback) ────────────────────
+    try:
+        mentorship_insight = await ReportAISynthesizer.generate_diagnostic_insight(
+            candidate_info=candidate_dict,
+            exam_info=exam_dict,
+            precalculated_metrics=precalc_payload,
+        )
+    except Exception as llm_err:
+        logger.warning(f"LLM diagnostic insight generation failed for attempt '{attempt.id}': {llm_err}. Using rule-based insight fallback.")
+        mentorship_insight = _generate_rule_based_insight(
+            part_3=report.get("part_3_aggregated_user_report", {}),
+            taxonomy=report.get("part_2_taxonomy_analysis", {}),
+        )
 
     # Sync AI insights into report
     ai_tasks = mentorship_insight.get("study_plan_tasks", [])
@@ -1340,6 +1244,7 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
         "icrs_score": icrs_obj.get("icrs_score", 65.0),
         "irt_theta": irt_obj.get("latent_ability_theta", 0.0),
         "ai_ready": True,
+        "unresolved_question_count": unresolved_question_count,
     }
     attempt.status = AttemptStatus.EVALUATED
     session.add(attempt)
@@ -1368,13 +1273,8 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
     asyncio.create_task(_run_cumulative_update())
     logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All sections persisted. Status = EVALUATED.")
 
-    logger.info(f"Post-submission pipeline completed for attempt '{attempt_id}'. All 4 sections persisted. Status set to EVALUATED.")
-
 
 def _generate_rule_based_insight(
-    user: User,
-    exam: Exam,
-    attempt: ExamAttempt,
     part_3: Dict[str, Any],
     taxonomy: Dict[str, Any],
 ) -> Dict[str, Any]:

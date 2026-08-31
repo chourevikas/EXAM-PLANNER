@@ -13,6 +13,7 @@ interface ExamSubmitModalProps {
     total?: number;
   };
   isSubmitting?: boolean;
+  errorMessage?: string | null;
   onResume?: () => void;
   onClose?: () => void;
   onConfirmSubmit?: () => void;
@@ -26,6 +27,7 @@ export function ExamSubmitModal({
   unattemptedCount,
   summary,
   isSubmitting = false,
+  errorMessage,
   onResume,
   onClose,
   onConfirmSubmit,
@@ -35,8 +37,14 @@ export function ExamSubmitModal({
   const ans = answeredCount ?? summary?.answered_count ?? 0;
   const mrk = markedCount ?? summary?.marked_for_review_count ?? 0;
   const unatt = unattemptedCount ?? summary?.unattempted_count ?? 0;
-  const handleClose = onResume || onClose || (() => {});
-  const handleConfirm = onConfirmSubmit || onConfirm || (() => {});
+  const handleClose = () => {
+    if (onResume) onResume();
+    else if (onClose) onClose();
+  };
+  const handleConfirm = () => {
+    if (onConfirmSubmit) onConfirmSubmit();
+    else if (onConfirm) onConfirm();
+  };
 
   if (!isOpen) return null;
 
@@ -116,6 +124,24 @@ export function ExamSubmitModal({
             <div style={{ fontSize: 11, color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b' }}>Left</div>
           </div>
         </div>
+
+        {errorMessage && (
+          <div
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #F87171',
+              color: '#991B1B',
+              fontSize: 13,
+              fontWeight: 500,
+              marginBottom: 16,
+              textAlign: 'left',
+              lineHeight: 1.4,
+            }}
+          >
+            ⚠️ {errorMessage}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button

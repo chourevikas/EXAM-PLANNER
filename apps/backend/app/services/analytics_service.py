@@ -389,6 +389,20 @@ class AnalyticsService:
                 "total_questions": attempt.total_questions,
             }
 
+        if attempt.status == AttemptStatus.IN_PROGRESS:
+            return {
+                "attempt_id": str(attempt_id),
+                "status": "IN_PROGRESS",
+                "is_ready": False,
+                "is_failed": False,
+                "can_retry": False,
+                "progress_percentage": 0,
+                "message": "Exam is currently in progress. Finish and submit your exam to generate the evaluation report.",
+                "submitted_at": None,
+                "raw_score": attempt.total_score,
+                "total_questions": attempt.total_questions,
+            }
+
         # Check if actual full 12-matrix evaluated report exists or Phase 1 is complete
         has_evaluated_report = False
         if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
@@ -405,22 +419,31 @@ class AnalyticsService:
 
         is_ready = (attempt.status == AttemptStatus.EVALUATED) or has_evaluated_report
 
-        # Auto-recovery for stuck attempts
-        if not is_ready:
-            time_since = (datetime.now(timezone.utc) - (attempt.submitted_at.replace(tzinfo=timezone.utc) if attempt.submitted_at else datetime.now(timezone.utc))).total_seconds()
+        # Auto-recovery for stuck SUBMITTED attempts
+        if not is_ready and attempt.submitted_at:
+            time_since = (datetime.now(timezone.utc) - attempt.submitted_at.replace(tzinfo=timezone.utc)).total_seconds()
             if time_since >= 15 and attempt_id not in _RETRIGGERED_ATTEMPTS:
                 _RETRIGGERED_ATTEMPTS.add(attempt_id)
                 logger.info(f"Attempt {attempt_id} pending in SUBMITTED for {time_since:.1f}s. Auto-triggering pipeline.")
                 if attempt.id:
                     asyncio.create_task(run_post_submission_pipeline(attempt.id))
 
-        status_str = "COMPLETED" if (attempt.status == AttemptStatus.EVALUATED or has_evaluated_report) else ("PROCESSING" if attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED) else (attempt.status.value if hasattr(attempt.status, 'value') else str(attempt.status)))
-        progress = 100 if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready"))) else (85 if has_evaluated_report else (70 if attempt.status == AttemptStatus.SUBMITTED else 30))
-        message = (
-            "Psychometric and cognitive evaluation completed successfully."
-            if (attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready")))
-            else ("Cognitive score analysis ready. AI mentorship synthesis in progress..." if has_evaluated_report else "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance...")
-        )
+        if attempt.status == AttemptStatus.EVALUATED or (has_evaluated_report and isinstance(attempt.report_metadata_json, dict) and attempt.report_metadata_json.get("ai_ready")):
+            status_str = "COMPLETED"
+            progress = 100
+            message = "Psychometric and cognitive evaluation completed successfully."
+        elif has_evaluated_report:
+            status_str = "PROCESSING"
+            progress = 85
+            message = "Cognitive score analysis ready. AI mentorship synthesis in progress..."
+        elif attempt.status == AttemptStatus.SUBMITTED:
+            status_str = "PROCESSING"
+            progress = 70
+            message = "Synthesizing 12 psychometric matrices, IRT latent ability, and AI mentorship guidance..."
+        else:
+            status_str = attempt.status.value if hasattr(attempt.status, "value") else str(attempt.status)
+            progress = 30
+            message = "Evaluating exam submission..."
 
         return {
             "attempt_id": str(attempt_id),

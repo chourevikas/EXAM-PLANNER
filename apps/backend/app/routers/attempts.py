@@ -6,7 +6,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.core.deps import get_current_user
 from app.db.models.user import User
-from app.db.models.enums import AttemptStatus
 from app.services.exam_session_service import ExamSessionService
 from app.schemas.exam_attempt import (
     StartExamRequest,
@@ -35,7 +34,7 @@ async def list_candidate_attempts(
     skip: int = 0,
     limit: int = 50,
     exam_id: Optional[int | str] = None,
-    status_filter: Optional[AttemptStatus] = None,
+    status_filter: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):

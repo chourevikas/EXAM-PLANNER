@@ -33,7 +33,10 @@ async def get_attempt_evaluation_status(
         raise HTTPException(status_code=404, detail="Attempt not found")
     service = AnalyticsService(session)
     res = await service.get_attempt_evaluation_status(attempt_id=aid_int)
-    return JSONResponse(content=jsonable_encoder(res)) if isinstance(res, dict) else res
+    return JSONResponse(
+        content=jsonable_encoder(res) if isinstance(res, dict) else res,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
 
 
 @router.post("/reports/attempts/{attempt_id}/retry", summary="Retry Failed Post-Submission Evaluation")
