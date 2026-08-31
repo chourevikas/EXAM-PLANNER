@@ -28,12 +28,12 @@ export function AuthModal({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showApprovalPending, setShowApprovalPending] = useState(false);
-  
+
   const navigate = useNavigate();
   const clerk = useClerk();
   const { isSignedIn } = clerk;
@@ -478,6 +478,26 @@ export function AuthModal({
                 </div>
               </div>
 
+              {mode === 'login' && (
+                <div style={{ textAlign: 'right', marginTop: 4, marginBottom: 2 }}>
+                  <a
+                    href="/forgot-password"
+                    onClick={(e) => { e.preventDefault(); onClose(); navigate('/forgot-password'); }}
+                    style={{
+                      fontSize: 12.5,
+                      color: '#E31B23',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
@@ -570,8 +590,8 @@ export function AuthModal({
               onClick={() => {
                 sessionStorage.setItem('pending_guest_sync', 'true');
                 onClose();
-                const redirectTarget = redirectUrl 
-                  ? `${window.location.origin}${redirectUrl}` 
+                const redirectTarget = redirectUrl
+                  ? `${window.location.origin}${redirectUrl}`
                   : `${window.location.origin}/dashboard`;
                 clerk.openSignIn({
                   fallbackRedirectUrl: redirectTarget,

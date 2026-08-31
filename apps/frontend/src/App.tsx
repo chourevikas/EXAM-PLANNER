@@ -62,6 +62,8 @@ const ContactUsPage = lazy(() =>
 const VerifyEmailPage = lazy(() =>
   import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })),
 );
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const BookmarksPage = lazy(() =>
   import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })),
 );
@@ -127,6 +129,8 @@ export default function App() {
           <Route path="/signup" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/register" element={<LandingPage initialAuthMode="signup" />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/about" element={<AboutUsPage />} />
