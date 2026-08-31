@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Response
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, col, and_, func
@@ -18,11 +18,13 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/me/bookmarks")
 async def list_bookmarks(
+    response: Response,
     skip: int = 0,
     limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     if not current_user.id:
         return []
 

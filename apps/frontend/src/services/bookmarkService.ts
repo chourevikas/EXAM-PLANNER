@@ -24,6 +24,7 @@ export async function listBookmarks(options?: {
   forceRefresh?: boolean;
   limit?: number;
   skip?: number;
+  signal?: AbortSignal;
 }): Promise<BookmarkItem[]> {
   const now = Date.now();
   const isDefaultQuery = !options?.limit && !options?.skip;
@@ -40,6 +41,7 @@ export async function listBookmarks(options?: {
 
   const res = await guardedFetch(`/api/v1/users/me/bookmarks${queryString}`, {
     headers: { Authorization: `Bearer ${token}` },
+    signal: options?.signal,
   });
   if (!res.ok) throw new Error('Failed to fetch bookmarks');
   const data: BookmarkItem[] = await res.json();

@@ -10,53 +10,212 @@ interface BookmarkCardProps {
   isRemoving: boolean;
 }
 
+// ==================== STATIC MODULE STYLES (Zero GC churn) ====================
+
+const BADGE_EASY_STYLE: React.CSSProperties = { color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0' };
+const BADGE_HARD_STYLE: React.CSSProperties = { color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA' };
+const BADGE_DEFAULT_STYLE: React.CSSProperties = { color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A' };
+
+const CARD_BASE_STYLE: React.CSSProperties = {
+  padding: 20,
+  border: '1px solid #E2E8F0',
+  borderRadius: 12,
+  background: '#FFFFFF',
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+  transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease',
+};
+
+const CARD_HEADER_STYLE: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 14,
+};
+
+const BADGE_BASE_STYLE: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  padding: '4px 10px',
+  borderRadius: 6,
+  letterSpacing: '0.02em',
+};
+
+const DELETE_BTN_BASE_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  background: 'transparent',
+  border: 'none',
+  color: '#EF4444',
+  fontSize: 13,
+  fontWeight: 600,
+  padding: '4px 8px',
+  borderRadius: 6,
+  transition: 'background-color 0.15s ease',
+};
+
+const QUESTION_TEXT_STYLE: React.CSSProperties = {
+  fontSize: 15,
+  color: '#1E293B',
+  lineHeight: 1.6,
+  wordBreak: 'break-word',
+};
+
+const SKELETON_WRAPPER_STYLE: React.CSSProperties = {
+  padding: 20,
+  border: '1px solid #E2E8F0',
+  borderRadius: 12,
+  background: '#FFFFFF',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+};
+
+const PAGE_CONTAINER_STYLE: React.CSSProperties = {
+  padding: '24px 16px',
+  maxWidth: 960,
+  margin: '0 auto',
+  width: '100%',
+};
+
+const HEADER_WRAPPER_STYLE: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 24,
+  flexWrap: 'wrap',
+  gap: 12,
+};
+
+const TITLE_STYLE: React.CSSProperties = {
+  fontSize: 24,
+  fontWeight: 800,
+  color: '#0F172A',
+  letterSpacing: '-0.02em',
+  margin: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+};
+
+const SUBTITLE_STYLE: React.CSSProperties = {
+  margin: '4px 0 0 0',
+  fontSize: 14,
+  color: '#64748B',
+};
+
+const REFRESH_BTN_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  background: '#F8FAFC',
+  border: '1px solid #E2E8F0',
+  padding: '8px 14px',
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  color: '#334EAC',
+  transition: 'background-color 0.15s ease',
+};
+
+const FILTER_ROW_STYLE: React.CSSProperties = {
+  display: 'flex',
+  gap: 12,
+  marginBottom: 20,
+  flexWrap: 'wrap',
+};
+
+const SEARCH_BOX_STYLE: React.CSSProperties = {
+  flex: 1,
+  minWidth: 240,
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+};
+
+const SEARCH_INPUT_STYLE: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px 9px 36px',
+  borderRadius: 8,
+  border: '1px solid #E2E8F0',
+  fontSize: 14,
+  outline: 'none',
+  background: '#FFFFFF',
+  color: '#1E293B',
+};
+
+const FILTER_SELECT_STYLE: React.CSSProperties = {
+  padding: '9px 12px',
+  borderRadius: 8,
+  border: '1px solid #E2E8F0',
+  fontSize: 13,
+  fontWeight: 600,
+  background: '#FFFFFF',
+  color: '#1E293B',
+  cursor: 'pointer',
+  outline: 'none',
+};
+
+const ERROR_ALERT_STYLE: React.CSSProperties = {
+  padding: '12px 16px',
+  background: '#FEF2F2',
+  border: '1px solid #FECACA',
+  borderRadius: 8,
+  color: '#DC2626',
+  fontSize: 14,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginBottom: 16,
+};
+
+const EMPTY_CONTAINER_STYLE: React.CSSProperties = {
+  padding: '48px 24px',
+  textAlign: 'center',
+  background: '#FFFFFF',
+  border: '1px dashed #CBD5E1',
+  borderRadius: 12,
+  color: '#64748B',
+};
+
+const NO_MATCH_CONTAINER_STYLE: React.CSSProperties = {
+  padding: '36px 20px',
+  textAlign: 'center',
+  background: '#F8FAFC',
+  borderRadius: 10,
+  color: '#64748B',
+  fontSize: 14,
+};
+
 const BookmarkCard = React.memo(function BookmarkCard({
   bookmark,
   onRemove,
   isRemoving,
 }: BookmarkCardProps) {
-  const getDifficultyBadgeStyle = (difficulty: string) => {
-    switch (difficulty?.toUpperCase()) {
+  const badgeStyle = useMemo(() => {
+    switch (bookmark.difficulty?.toUpperCase()) {
       case 'EASY':
-        return { color: '#059669', background: '#ECFDF5', border: '1px solid #A7F3D0' };
+        return BADGE_EASY_STYLE;
       case 'HARD':
-        return { color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA' };
+        return BADGE_HARD_STYLE;
       default:
-        return { color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A' };
+        return BADGE_DEFAULT_STYLE;
     }
-  };
-
-  const badgeStyle = getDifficultyBadgeStyle(bookmark.difficulty);
+  }, [bookmark.difficulty]);
 
   return (
     <div
       style={{
-        padding: 20,
-        border: '1px solid #E2E8F0',
-        borderRadius: 12,
-        background: '#FFFFFF',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease',
+        ...CARD_BASE_STYLE,
         opacity: isRemoving ? 0.4 : 1,
         pointerEvents: isRemoving ? 'none' : 'auto',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 14,
-        }}
-      >
+      <div style={CARD_HEADER_STYLE}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              padding: '4px 10px',
-              borderRadius: 6,
-              letterSpacing: '0.02em',
+              ...BADGE_BASE_STYLE,
               ...badgeStyle,
             }}
           >
@@ -73,22 +232,13 @@ const BookmarkCard = React.memo(function BookmarkCard({
           )}
         </div>
         <button
+          type="button"
           onClick={() => onRemove(bookmark.question_id)}
           disabled={isRemoving}
           aria-label="Remove bookmark"
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'transparent',
-            border: 'none',
-            color: '#EF4444',
+            ...DELETE_BTN_BASE_STYLE,
             cursor: isRemoving ? 'not-allowed' : 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            padding: '4px 8px',
-            borderRadius: 6,
-            transition: 'background-color 0.15s ease',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -98,12 +248,7 @@ const BookmarkCard = React.memo(function BookmarkCard({
         </button>
       </div>
       <div
-        style={{
-          fontSize: 15,
-          color: '#1E293B',
-          lineHeight: 1.6,
-          wordBreak: 'break-word',
-        }}
+        style={QUESTION_TEXT_STYLE}
         dangerouslySetInnerHTML={{ __html: bookmark.question_text }}
       />
     </div>
@@ -112,17 +257,7 @@ const BookmarkCard = React.memo(function BookmarkCard({
 
 function BookmarkSkeleton() {
   return (
-    <div
-      style={{
-        padding: 20,
-        border: '1px solid #E2E8F0',
-        borderRadius: 12,
-        background: '#FFFFFF',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-      }}
-    >
+    <div style={SKELETON_WRAPPER_STYLE}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ width: 80, height: 22, background: '#E2E8F0', borderRadius: 4 }} />
         <div style={{ width: 60, height: 18, background: '#E2E8F0', borderRadius: 4 }} />
@@ -141,22 +276,32 @@ export function BookmarksPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<string>('ALL');
 
-  const fetchBookmarksData = useCallback(async (forceRefresh = false) => {
+  const fetchBookmarksData = useCallback(async (signal?: AbortSignal, forceRefresh = false) => {
     try {
       setLoading(true);
       setErrorMessage(null);
-      const res = await listBookmarks({ forceRefresh });
-      setBookmarks(res);
+      const res = await listBookmarks({ forceRefresh, signal });
+      if (!signal?.aborted) {
+        setBookmarks(res);
+      }
     } catch (err: any) {
+      if (err?.name === 'AbortError' || signal?.aborted) return;
       console.error('Failed to load bookmarks:', err);
       setErrorMessage('Failed to load bookmarks. Please try again.');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchBookmarksData();
+    const controller = new AbortController();
+    fetchBookmarksData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchBookmarksData]);
 
   // Optimistic removal with rollback
@@ -198,80 +343,36 @@ export function BookmarksPage(): React.ReactElement {
 
   return (
     <StudentLayout pageTitle="Bookmarked Questions">
-      <div style={{ padding: '24px 16px', maxWidth: 960, margin: '0 auto', width: '100%' }}>
+      <div style={PAGE_CONTAINER_STYLE}>
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 24,
-            flexWrap: 'wrap',
-            gap: 12,
-          }}
-        >
+        <div style={HEADER_WRAPPER_STYLE}>
           <div>
-            <h1
-              style={{
-                fontSize: 24,
-                fontWeight: 800,
-                color: '#0F172A',
-                letterSpacing: '-0.02em',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
+            <h1 style={TITLE_STYLE}>
               <Bookmark size={24} color="#334EAC" />
               Bookmarked Questions
             </h1>
-            <p style={{ margin: '4px 0 0 0', fontSize: 14, color: '#64748B' }}>
+            <p style={SUBTITLE_STYLE}>
               Review and practice questions you saved for later revision.
             </p>
           </div>
           <button
-            onClick={() => fetchBookmarksData(true)}
+            type="button"
+            onClick={() => fetchBookmarksData(undefined, true)}
             disabled={loading}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              padding: '8px 14px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#334EAC',
+              ...REFRESH_BTN_STYLE,
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.15s ease',
             }}
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            <span>Refresh</span>
           </button>
         </div>
 
         {/* Search and Filters */}
         {bookmarks.length > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              marginBottom: 20,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                minWidth: 240,
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
+          <div style={FILTER_ROW_STYLE}>
+            <div style={SEARCH_BOX_STYLE}>
               <Search
                 size={16}
                 color="#94A3B8"
@@ -282,16 +383,7 @@ export function BookmarksPage(): React.ReactElement {
                 placeholder="Search bookmarks by keyword..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px 9px 36px',
-                  borderRadius: 8,
-                  border: '1px solid #E2E8F0',
-                  fontSize: 14,
-                  outline: 'none',
-                  background: '#FFFFFF',
-                  color: '#1E293B',
-                }}
+                style={SEARCH_INPUT_STYLE}
               />
             </div>
 
@@ -300,17 +392,7 @@ export function BookmarksPage(): React.ReactElement {
               <select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #E2E8F0',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: '#FFFFFF',
-                  color: '#1E293B',
-                  cursor: 'pointer',
-                  outline: 'none',
-                }}
+                style={FILTER_SELECT_STYLE}
               >
                 <option value="ALL">All Difficulties</option>
                 <option value="EASY">Easy</option>
@@ -323,20 +405,7 @@ export function BookmarksPage(): React.ReactElement {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div
-            style={{
-              padding: '12px 16px',
-              background: '#FEF2F2',
-              border: '1px solid #FECACA',
-              borderRadius: 8,
-              color: '#DC2626',
-              fontSize: 14,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 16,
-            }}
-          >
+          <div style={ERROR_ALERT_STYLE}>
             <AlertCircle size={18} />
             <span>{errorMessage}</span>
           </div>
@@ -350,16 +419,7 @@ export function BookmarksPage(): React.ReactElement {
             <BookmarkSkeleton />
           </div>
         ) : bookmarks.length === 0 ? (
-          <div
-            style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              background: '#FFFFFF',
-              border: '1px dashed #CBD5E1',
-              borderRadius: 12,
-              color: '#64748B',
-            }}
-          >
+          <div style={EMPTY_CONTAINER_STYLE}>
             <Bookmark size={40} color="#94A3B8" style={{ marginBottom: 12, opacity: 0.7 }} />
             <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 6px 0' }}>
               No bookmarked questions yet
@@ -369,16 +429,7 @@ export function BookmarksPage(): React.ReactElement {
             </p>
           </div>
         ) : filteredBookmarks.length === 0 ? (
-          <div
-            style={{
-              padding: '36px 20px',
-              textAlign: 'center',
-              background: '#F8FAFC',
-              borderRadius: 10,
-              color: '#64748B',
-              fontSize: 14,
-            }}
-          >
+          <div style={NO_MATCH_CONTAINER_STYLE}>
             No bookmarks match your search or filter criteria.
           </div>
         ) : (
