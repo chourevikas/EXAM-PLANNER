@@ -13,6 +13,7 @@ export function HeroSection({ }: HeroSectionProps) {
 
   // Syllabus search state
   const [syllabusSearchQuery, setSyllabusSearchQuery] = useState('');
+  const [selectedExam, setSelectedExam] = useState('All Exams');
   const [isSyllabusSearchFocused, setIsSyllabusSearchFocused] = useState(false);
   const [hoveredSyllabusResult, setHoveredSyllabusResult] = useState<number | null>(null);
   const syllabusSearchRef = useRef<HTMLDivElement>(null);
@@ -28,7 +29,24 @@ export function HeroSection({ }: HeroSectionProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Global search state (legacy, kept for reference)
+  const FEATURED_CARDS = [
+    { badge: "GS Paper 1", meta: "UPSC 2024 · Q.14", exam: "UPSC", q: 'In the context of the Constitution of India, "Due Process of Law" implies:', qIndex: 0 },
+    { badge: "GS Paper 1", meta: "UPSC 2023 · Q.32", exam: "UPSC", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?", qIndex: 1 },
+    { badge: "GS Paper 1", meta: "UPSC 2022 · Q.45", exam: "UPSC", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?", qIndex: 2 },
+    { badge: "GS Paper 1", meta: "UPSC 2021 · Q.52", exam: "UPSC", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation.", qIndex: 0 },
+    { badge: "GS Paper 1", meta: "UPSC 2023 · Q.68", exam: "UPSC", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens.", qIndex: 1 },
+    { badge: "GS Paper 1", meta: "UPSC 2020 · Q.21", exam: "UPSC", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?", qIndex: 2 },
+  ];
+
+  const filteredCards = useMemo(() => {
+    const q = syllabusSearchQuery.trim().toLowerCase();
+    
+    return FEATURED_CARDS.filter(card => {
+      const matchesText = !q || card.q.toLowerCase().includes(q) || card.badge.toLowerCase().includes(q) || card.exam.toLowerCase().includes(q) || card.meta.toLowerCase().includes(q);
+      const matchesExam = selectedExam === 'All Exams' || card.exam === selectedExam;
+      return matchesText && matchesExam;
+    });
+  }, [syllabusSearchQuery, selectedExam]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -229,14 +247,14 @@ export function HeroSection({ }: HeroSectionProps) {
         </p>
 
         {/* ─── Centered Search Bar ─── */}
-        <div ref={syllabusSearchRef} style={{ position: 'relative', maxWidth: 640, margin: '0 auto' }}>
+        <div ref={syllabusSearchRef} style={{ position: 'relative', maxWidth: 800, margin: '0 auto' }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               background: '#FFFFFF',
               border: `2px solid ${isSyllabusSearchFocused ? '#E31B23' : '#E2E8F0'}`,
-              borderRadius: 0,
+              borderRadius: 8,
               boxShadow: isSyllabusSearchFocused
                 ? '0 0 0 4px rgba(227, 27, 35, 0.1), 0 8px 24px rgba(15,23,42,0.08)'
                 : '0 6px 20px rgba(15,23,42,0.07)',
@@ -244,8 +262,29 @@ export function HeroSection({ }: HeroSectionProps) {
               overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0 18px', color: isSyllabusSearchFocused ? '#E31B23' : '#94A3B8', flexShrink: 0 }}>
-              <Search size={20} />
+            <div style={{ padding: '0 16px', color: isSyllabusSearchFocused ? '#E31B23' : '#94A3B8', flexShrink: 0, display: 'flex', alignItems: 'center', borderRight: '1px solid #E2E8F0', height: 58 }}>
+              <select
+                value={selectedExam}
+                onChange={(e) => setSelectedExam(e.target.value)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#172033',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <option value="All Exams">All Exams</option>
+                <option value="UPSC">UPSC</option>
+                <option value="MPSC">MPSC</option>
+                <option value="SSC">SSC</option>
+                <option value="Banking">Banking</option>
+                <option value="Railways">Railways</option>
+                <option value="State PSC">State PSC</option>
+              </select>
             </div>
             <input
               id="hero-topic-search"
@@ -253,7 +292,7 @@ export function HeroSection({ }: HeroSectionProps) {
               value={syllabusSearchQuery}
               onChange={(e) => setSyllabusSearchQuery(e.target.value)}
               onFocus={() => setIsSyllabusSearchFocused(true)}
-              placeholder={isTaxonomyLoading ? 'Loading syllabus…' : 'Search a topic, subject, or subtopic (e.g. Fundamental Rights, Indian Economy)'}
+              placeholder={isTaxonomyLoading ? 'Loading syllabus…' : 'Search a topic, year, or question...'}
               disabled={isTaxonomyLoading}
               style={{
                 flex: 1,
@@ -264,6 +303,9 @@ export function HeroSection({ }: HeroSectionProps) {
                 color: '#172033',
                 outline: 'none',
                 fontFamily: 'inherit',
+                padding: '0 16px',
+                minWidth: 0,
+                textOverflow: 'ellipsis',
               }}
             />
             {syllabusSearchQuery && (
@@ -272,111 +314,31 @@ export function HeroSection({ }: HeroSectionProps) {
                 style={{ padding: '0 16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', flexShrink: 0, fontSize: 18 }}
               >✕</button>
             )}
+            <button
+              onClick={() => {
+                const searchSection = document.getElementById("featured-pyqs");
+                if (searchSection) searchSection.scrollIntoView({ behavior: 'smooth' });
+              }}
+              style={{
+                background: '#E31B23',
+                color: '#FFFFFF',
+                border: 'none',
+                height: 58,
+                padding: '0 24px',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#B91C1C'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#E31B23'}
+            >
+              Search
+            </button>
           </div>
 
-          {/* Results Dropdown */}
-          {isSyllabusSearchFocused && syllabusSearchQuery.length >= 2 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 200,
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 16px 40px rgba(15, 23, 42, 0.14)',
-                maxHeight: 360,
-                overflowY: 'auto',
-                marginTop: 6,
-                textAlign: 'left',
-              }}
-            >
-              {syllabusSearchResults.length === 0 ? (
-                <div style={{ padding: '20px 16px', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
-                  No matches for "<strong>{syllabusSearchQuery}</strong>"
-                </div>
-              ) : (
-                <>
-                  <div style={{ padding: '8px 16px 6px', fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid #F1F5F9' }}>
-                    {syllabusSearchResults.length} result{syllabusSearchResults.length !== 1 ? 's' : ''} — click to start instantly
-                  </div>
-                  {syllabusSearchResults.map((result, idx) => {
-                    const typeBg = result.type === 'subject' ? '#FFF1F2' : result.type === 'topic' ? '#F0F9FF' : '#F0FDF4';
-                    const typeColor = result.type === 'subject' ? '#E31B23' : result.type === 'topic' ? '#0369A1' : '#059669';
-                    const typeLabel = result.type === 'subject' ? 'Subject' : result.type === 'topic' ? 'Topic' : 'Subtopic';
-                    return (
-                      <div
-                        key={idx}
-                        onMouseEnter={() => setHoveredSyllabusResult(idx)}
-                        onMouseLeave={() => setHoveredSyllabusResult(null)}
-                        onClick={() => handleSyllabusResultClick(result)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                          padding: '11px 16px',
-                          cursor: 'pointer',
-                          background: hoveredSyllabusResult === idx ? '#F8FAFC' : '#FFFFFF',
-                          borderBottom: idx < syllabusSearchResults.length - 1 ? '1px solid #F8FAFC' : 'none',
-                          transition: 'background 0.1s ease',
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#172033', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {result.label}
-                          </div>
-                          <div style={{ fontSize: 11.5, color: '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
-                            {result.breadcrumb}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', background: typeBg, color: typeColor, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {typeLabel}
-                        </span>
-                        <ArrowRight size={14} color="#CBD5E1" style={{ flexShrink: 0 }} />
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Quick-pick hint chips */}
-          {!isTaxonomyLoading && allSyllabusNodes.length > 0 && (
-            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              {['Polity', 'Modern History', 'Indian Economy', 'Geography', 'Environment & Ecology', 'Science & Tech'].map((hint) => (
-                <button
-                  key={hint}
-                  type="button"
-                  onClick={() => {
-                    const node = allSyllabusNodes.find(n => n.type === 'subject' && (n.label === hint || n.label.includes(hint)));
-                    if (node) {
-                      handleSyllabusResultClick(node);
-                    } else {
-                      handleSyllabusResultClick({ type: 'subject', subject: hint, label: hint, breadcrumb: hint });
-                    }
-                  }}
-                  style={{
-                    padding: '5px 14px',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: 0,
-                    background: '#FFFFFF',
-                    color: '#475569',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.12s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E31B23'; e.currentTarget.style.color = '#E31B23'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
-                >
-                  {hint}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Results Dropdown (Removed in favor of inline grid below) */}
         </div>
 
         {/* Trust strip */}
@@ -403,6 +365,64 @@ export function HeroSection({ }: HeroSectionProps) {
             <Target size={13} style={{ color: '#6366F1' }} /> Topic-wise precision
           </span>
         </div>
+      </div>
+      
+      {/* Featured Solved PYQs Section (Filters dynamically) */}
+      <div id="featured-pyqs" style={{ maxWidth: 1080, margin: '64px auto 0', padding: '0 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: 0 }}>
+            {syllabusSearchQuery ? 'Suggested PYQs' : 'Featured Solved PYQs'}
+          </h2>
+          <a href="#" style={{ fontSize: 14, color: '#E31B23', fontWeight: 600, textDecoration: 'none' }}>View all questions &rarr;</a>
+        </div>
+        
+        {filteredCards.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#64748B', background: '#FFFFFF', border: '1px dashed #E2E8F0' }}>
+            No PYQs match "{syllabusSearchQuery}". Try another topic like "Fundamental Rights".
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
+            {filteredCards.map((card, i) => (
+              <div 
+                key={i}
+                onClick={() => navigate(`/guest-exam?subject=UPSC&topic=${encodeURIComponent(card.badge)}&count=10`)}
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 8,
+                  padding: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  cursor: 'pointer',
+                  transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+                  textAlign: 'left'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 18px rgba(15, 23, 42, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ background: '#FFF1F2', color: '#E31B23', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {card.badge}
+                  </span>
+                  <span style={{ color: '#94A3B8' }}>{card.meta}</span>
+                </div>
+                <p style={{ fontSize: 15, color: '#1E293B', lineHeight: 1.5, margin: 0, flex: 1, fontWeight: 500 }}>
+                  {card.q}
+                </p>
+                <span style={{ fontSize: 13, color: '#0369A1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  View solution &rarr;
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
