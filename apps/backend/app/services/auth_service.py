@@ -13,6 +13,7 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    get_token_hash,
 )
 from app.core.exceptions import (
     UserAlreadyExistsException,
@@ -115,7 +116,7 @@ class AuthService:
         )
         await self.user_repo.save_refresh_token(
             user_id=u_id,
-            token_hash=get_password_hash(refresh_token),
+            token_hash=get_token_hash(refresh_token),
             expires_at=expires_at,
         )
 
@@ -176,7 +177,7 @@ class AuthService:
         )
         await self.user_repo.save_refresh_token(
             user_id=user.id,
-            token_hash=get_password_hash(refresh_token),
+            token_hash=get_token_hash(refresh_token),
             expires_at=expires_at,
         )
 

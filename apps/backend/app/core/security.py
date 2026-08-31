@@ -23,6 +23,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
 
+import hashlib
+
+def get_token_hash(token: str) -> str:
+    """Use a fast SHA-256 hash for high-entropy tokens (like refresh tokens) instead of slow bcrypt."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def verify_token_hash(plain_token: str, hashed_token: str) -> bool:
+    return get_token_hash(plain_token) == hashed_token
+
+
 def create_access_token(
     subject: Union[str, Any], role: str, expires_delta: timedelta = None
 ) -> str:

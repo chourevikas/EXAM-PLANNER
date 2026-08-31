@@ -34,6 +34,7 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
             "streak_days": 0,
             "today_questions_solved": 0,
         }
+    
     now_utc = datetime.now(timezone.utc)
     today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     today_date = today_start.date()
@@ -41,29 +42,31 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
     activity_dates = set()
 
     # 1. Answered questions from completed/evaluated ExamAttempts
-    attempts_res = await session.exec(
-        select(ExamAttempt)
-        .where(ExamAttempt.user_id == u_id)
-        .where(ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
+    # We can approximate the count by summing (total_correct + total_incorrect) or (total_questions - total_unattempted)
+    completed_q_stmt = select(
+        func.sum(
+            func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)
+        ).label("q_sum"),
+        func.sum(
+            func.case(
+                (ExamAttempt.submitted_at >= today_start, func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)),
+                else_=0
+            )
+        ).label("today_q_sum")
+    ).where(
+        ExamAttempt.user_id == u_id,
+        ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED])
     )
-    attempts = attempts_res.all()
-    completed_q_count = 0
-    today_completed_q_count = 0
+    completed_res = (await session.exec(completed_q_stmt)).first()
+    completed_q_count = int(getattr(completed_res, "q_sum", 0) or 0)
+    today_completed_q_count = int(getattr(completed_res, "today_q_sum", 0) or 0)
 
-    for att in attempts:
-        q_count = 0
-        if att.total_correct is not None and att.total_incorrect is not None and (att.total_correct + att.total_incorrect) > 0:
-            q_count = att.total_correct + att.total_incorrect
-        elif att.total_unattempted is not None:
-            q_count = max(0, att.total_questions - att.total_unattempted)
-        
-        completed_q_count += q_count
-        if att.submitted_at:
-            att_dt = att.submitted_at
-            if hasattr(att_dt, "date"):
-                activity_dates.add(att_dt.date())
-            if att.submitted_at >= today_start:
-                today_completed_q_count += q_count
+    # Activity dates from ExamAttempts
+    dates_stmt = select(func.date(ExamAttempt.submitted_at)).where(
+        ExamAttempt.user_id == u_id, ExamAttempt.submitted_at.is_not(None)
+    ).distinct()
+    for dt in (await session.exec(dates_stmt)).all():
+        if dt: activity_dates.add(dt)
 
     # 2. Answered questions in active IN_PROGRESS ExamAttempts
     in_prog_res = await session.exec(
@@ -85,24 +88,29 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
     u_test_sum = u_test_res.first() or 0
 
     # Collect telemetry activity dates
-    u_att_res = await session.exec(
-        select(UserTestAttempt).where(UserTestAttempt.user_id == u_id)
-    )
-    for ua in u_att_res.all():
-        sub_at = getattr(ua, "submitted_at", None) or getattr(ua, "started_at", None)
-        if sub_at and hasattr(sub_at, "date"):
-            activity_dates.add(sub_at.date())
+    u_dates_stmt = select(func.coalesce(func.date(UserTestAttempt.submitted_at), func.date(UserTestAttempt.started_at))).where(
+        UserTestAttempt.user_id == u_id
+    ).distinct()
+    for dt in (await session.exec(u_dates_stmt)).all():
+        if dt: activity_dates.add(dt)
 
     # 4. Questions logged via StudyActivity
-    act_res = await session.exec(
-        select(StudyActivity).where(StudyActivity.user_id == u_id)
-    )
-    activities = act_res.all()
-    act_sum = sum(a.questions_attempted or 0 for a in activities)
-    today_act_sum = sum(a.questions_attempted or 0 for a in activities if a.date == today_date)
-    for a in activities:
-        if a.date:
-            activity_dates.add(a.date)
+    act_stmt = select(
+        func.sum(StudyActivity.questions_attempted).label("act_sum"),
+        func.sum(
+            func.case(
+                (StudyActivity.date == today_date, StudyActivity.questions_attempted),
+                else_=0
+            )
+        ).label("today_act_sum")
+    ).where(StudyActivity.user_id == u_id)
+    act_res = (await session.exec(act_stmt)).first()
+    act_sum = int(getattr(act_res, "act_sum", 0) or 0)
+    today_act_sum = int(getattr(act_res, "today_act_sum", 0) or 0)
+
+    act_dates_stmt = select(StudyActivity.date).where(StudyActivity.user_id == u_id).distinct()
+    for dt in (await session.exec(act_dates_stmt)).all():
+        if dt: activity_dates.add(dt)
 
     total_q = int(completed_q_count + in_prog_sum + u_test_sum + act_sum)
     today_q = int(today_completed_q_count + today_act_sum)
