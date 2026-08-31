@@ -180,6 +180,7 @@ export function GuestExamPage() {
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
@@ -1307,49 +1308,85 @@ export function GuestExamPage() {
             position: 'relative',
           }}
         >
-          {/* Filter Bar Badge */}
+          {/* Filter Bar Badge (+ Hide/Show toggle on mobile/tablet, grouped on their own row) */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: isTabletOrBelow ? 'space-between' : 'flex-start',
               gap: 8,
-              paddingRight: 12,
-              borderRight: '1px solid #F1F5F9',
+              paddingRight: isTabletOrBelow ? 0 : 12,
+              borderRight: isTabletOrBelow ? 'none' : '1px solid #F1F5F9',
               flexShrink: 0,
+              flexBasis: isTabletOrBelow ? '100%' : 'auto',
             }}
           >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 0,
-                backgroundColor: '#F8FAFC',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <SlidersHorizontal size={16} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
                 style={{
-                  fontSize: 11,
-                  fontWeight: 800,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 0,
+                  backgroundColor: '#F8FAFC',
                   color: '#1E3A8A',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                FILTERS
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
-                Practice Engine
-              </span>
+                <SlidersHorizontal size={16} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: '#1E3A8A',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  FILTERS
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                  Practice Engine
+                </span>
+              </div>
             </div>
+
+            {/* Hide/Show Filters Toggle — mobile/tablet only; filters always stay visible on desktop */}
+            {isTabletOrBelow && (
+              <button
+                type="button"
+                onClick={() => setFiltersCollapsed((prev) => !prev)}
+                className="touch-target"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '6px 10px',
+                  borderRadius: 0,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#F8FAFC',
+                  color: '#1E3A8A',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+                title={filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+              >
+                <span>{filtersCollapsed ? 'Show Filters' : 'Hide Filters'}</span>
+                <ChevronDown
+                  size={13}
+                  style={{ transform: filtersCollapsed ? 'none' : 'rotate(180deg)', transition: 'transform 0.15s ease' }}
+                />
+              </button>
+            )}
           </div>
 
+          {(!filtersCollapsed || !isTabletOrBelow) && (
+          <>
           {/* Filter 1: Exam */}
           <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
             <label
@@ -1409,6 +1446,7 @@ export function GuestExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 220,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1514,6 +1552,7 @@ export function GuestExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 250,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1668,6 +1707,7 @@ export function GuestExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 270,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1812,6 +1852,7 @@ export function GuestExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 170,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1860,11 +1901,13 @@ export function GuestExamPage() {
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
 
       {/* Mobile/Tablet Recommended Questions Toggle Button */}
-      {isTabletOrBelow && displayRecs.length > 0 && (
+      {isTabletOrBelow && (
         <div
           style={{
             padding: '0 clamp(10px, 2.5vw, 24px) 8px',

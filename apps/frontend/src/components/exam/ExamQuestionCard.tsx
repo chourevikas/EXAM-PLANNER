@@ -11,6 +11,7 @@ import {
   Award,
   Sparkles,
   Lightbulb,
+  Loader2,
 } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
@@ -838,22 +839,19 @@ export function ExamQuestionCard({
                   paddingTop: 12,
                   borderTop: '1px solid #F1F5F9',
                   display: 'flex',
+                  flexWrap: 'wrap',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  gap: 10,
                   flexShrink: 0,
                 }}
               >
-                {/* Left spacing for center alignment balance */}
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}></div>
-
-                {/* Center: Prev | Next Buttons */}
+                {/* Left: Prev | Next Buttons */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    flex: 1,
-                    justifyContent: 'center',
                   }}
                 >
                   {/* Previous Question Button */}
@@ -915,7 +913,7 @@ export function ExamQuestionCard({
                 </div>
 
                 {/* Right: Single Action Button */}
-                <div style={{ display: 'flex', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   {mode !== 'EXAM' && (
                     <>
                       {!revealResult ? (
@@ -954,8 +952,17 @@ export function ExamQuestionCard({
                             if (selectedOptionId) e.currentTarget.style.backgroundColor = '#1E3A8A';
                           }}
                         >
-                          <Sparkles size={14} />
-                          <span>Submit & Show Solution</span>
+                          {isRevealing ? (
+                            <>
+                              <Loader2 size={14} className="spin-loader" />
+                              <span>Loading solution...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={14} />
+                              <span>Submit & Show Solution</span>
+                            </>
+                          )}
                         </button>
                       ) : (
                         /* Toggle Solution Button */

@@ -152,6 +152,143 @@ class QuestionService:
             await cache.set(cache_key, response.model_dump(mode="json"), ttl_seconds=1800)
         return response
 
+    async def list_recommended_questions(
+        self,
+        subject_name: Optional[str] = None,
+        topic_name: Optional[str] = None,
+        exam_name: Optional[str] = None,
+        exclude_ids: Optional[str] = None,
+        language: LanguageCode = LanguageCode.ENGLISH,
+        limit: int = 15,
+    ) -> Dict[str, Any]:
+        """Lightweight recommended-questions listing — skips the caching,
+        passages, metadata, hierarchy-link detail, and explanations that the
+        general listing endpoint carries, since a recommendation card only
+        ever renders question text + options + subject/topic/subtopic names."""
+        limit = max(1, min(50, limit))
+
+        questions, _ = await self.repo.list_questions_filtered(
+            subject_name=subject_name,
+            topic_name=topic_name,
+            exam_name=exam_name,
+            exclude_ids=exclude_ids,
+            skip=0,
+            limit=limit,
+        )
+
+        items = await self._build_light_recommendation_cards(questions, target_lang=language)
+        return {"items": items, "total": len(items)}
+
+    async def _build_light_recommendation_cards(
+        self,
+        questions: List[Question],
+        target_lang: LanguageCode = LanguageCode.ENGLISH,
+    ) -> List[Dict[str, Any]]:
+        if not questions:
+            return []
+
+        q_ids = [q.id for q in questions]
+        subtopic_ids = list(set(q.subtopic_id for q in questions if q.subtopic_id))
+
+        # Wave 1: question translations, options, and subtopics (via each
+        # question's direct subtopic_id FK). No metadata/hierarchy-links/
+        # explanations/passages at all here, unlike the full detail-response
+        # builder. Run sequentially on self.session — against a remote,
+        # high-latency DB, a few round trips on one open connection beats
+        # each query paying its own connection handshake.
+        wave1_specs: List[tuple] = [
+            ("qt", select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))),
+            ("opt", select(QuestionOption)
+                .where(QuestionOption.question_id.in_(q_ids))
+                .order_by(QuestionOption.question_id, QuestionOption.display_order)),
+            ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids)) if subtopic_ids else None),
+        ]
+        active_wave1 = [(name, stmt) for name, stmt in wave1_specs if stmt is not None]
+        wave1 = {}
+        for name, stmt in active_wave1:
+            res = await self.session.exec(stmt)
+            wave1[name] = res.all()
+
+        qt_map: Dict[int, Dict[str, str]] = {}
+        for qt in wave1.get("qt", []):
+            qt_map.setdefault(qt.question_id, {})[qt.language] = qt.question_text
+
+        options = wave1.get("opt", [])
+        opt_map: Dict[int, list] = {}
+        opt_ids = []
+        for opt in options:
+            opt_map.setdefault(opt.question_id, []).append(opt)
+            opt_ids.append(opt.id)
+
+        subtopics_map = {st.id: st for st in wave1.get("subtopics", [])}
+        topic_ids = list(set(st.topic_id for st in subtopics_map.values() if st.topic_id))
+
+        # Wave 2: option translations (needs opt_ids from wave 1) and topics
+        # (needs topic_ids from wave 1's subtopics) — sequential on self.session.
+        wave2_specs: List[tuple] = [
+            ("ot", select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)) if opt_ids else None),
+            ("topics", select(Topic).where(Topic.id.in_(topic_ids)) if topic_ids else None),
+        ]
+        active_wave2 = [(name, stmt) for name, stmt in wave2_specs if stmt is not None]
+        wave2 = {}
+        for name, stmt in active_wave2:
+            res = await self.session.exec(stmt)
+            wave2[name] = res.all()
+
+        ot_map: Dict[int, Dict[str, str]] = {}
+        for ot in wave2.get("ot", []):
+            ot_map.setdefault(ot.option_id, {})[ot.language] = ot.option_text
+
+        topics_map = {t.id: t for t in wave2.get("topics", [])}
+        subject_ids = list(set(t.subject_id for t in topics_map.values() if t.subject_id))
+        subjects_map = {}
+        if subject_ids:
+            s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subject_ids)))
+            subjects_map = {s.id: s for s in s_res.all()}
+
+        lang_key = target_lang.value if hasattr(target_lang, "value") else str(target_lang)
+
+        results: List[Dict[str, Any]] = []
+        for q in questions:
+            q_trans = qt_map.get(q.id, {})
+            text = q_trans.get(lang_key) or (next(iter(q_trans.values())) if q_trans else f"Question #{q.question_number_in_paper}")
+
+            opt_list = []
+            for opt in opt_map.get(q.id, []):
+                opt_trans = ot_map.get(opt.id, {})
+                opt_text = opt_trans.get(lang_key) or (next(iter(opt_trans.values())) if opt_trans else f"Option {opt.option_label}")
+                opt_list.append({
+                    "option_id": str(opt.id),
+                    "option_label": opt.option_label,
+                    "text": opt_text,
+                    # Recommendation cards highlight correct/incorrect the moment
+                    # the user picks an answer (no separate reveal step), so
+                    # unlike the general listing endpoint this boolean travels
+                    # with the initial fetch. It costs nothing extra — it's
+                    # already a column on the same QuestionOption row being
+                    # fetched, no additional query.
+                    "is_correct": bool(opt.is_correct),
+                })
+
+            subtopic = subtopics_map.get(q.subtopic_id) if q.subtopic_id else None
+            topic = topics_map.get(subtopic.topic_id) if subtopic and subtopic.topic_id else None
+            subject = subjects_map.get(topic.subject_id) if topic and topic.subject_id else None
+
+            results.append({
+                "question_id": str(q.id),
+                "question_number": q.question_number_in_paper,
+                "question_text": text,
+                "options": opt_list,
+                "subject_name": subject.name if subject else None,
+                "topic_name": topic.name if topic else None,
+                "subtopic_name": subtopic.name if subtopic else None,
+                "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
+                "marks": q.marks,
+                "negative_marks": q.negative_marks,
+                "expected_time_seconds": q.expected_time_seconds,
+            })
+        return results
+
     async def get_exam_questions_for_review(
         self,
         exam_id: int,
@@ -1176,98 +1313,95 @@ class QuestionService:
             return []
 
         q_ids = [q.id for q in questions]
-
-        # 1. Batch Exams
         exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
-        exams_map = {}
-        if exam_ids:
-            e_res = await self.session.exec(select(Exam).where(Exam.id.in_(exam_ids)))
-            exams_map = {e.id: e for e in e_res.all()}
-
-        # 2. Batch Question Translations
-        qt_res = await self.session.exec(
-            select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
-        )
-        qt_map = {}
-        for qt in qt_res.all():
-            if qt.question_id not in qt_map:
-                qt_map[qt.question_id] = {}
-            qt_map[qt.question_id][qt.language] = qt.question_text
-
-        # 3. Batch Passages & Passage Translations
         passage_ids = list(set(q.passage_id for q in questions if q.passage_id))
-        pt_map = {}
-        if passage_ids:
-            pt_res = await self.session.exec(
-                select(PassageTranslation).where(PassageTranslation.passage_id.in_(passage_ids))
-            )
-            for pt in pt_res.all():
-                if pt.passage_id not in pt_map:
-                    pt_map[pt.passage_id] = {}
-                pt_map[pt.passage_id][pt.language] = pt.passage_text
 
-        # 4. Batch Question Options & Option Translations
-        opt_res = await self.session.exec(
-            select(QuestionOption)
-            .where(QuestionOption.question_id.in_(q_ids))
-            .order_by(QuestionOption.question_id, QuestionOption.display_order)
-        )
-        options = opt_res.all()
+        # Wave 1: these batch lookups only need ids already known from
+        # `questions`. They run sequentially on the single request-scoped
+        # session rather than each opening its own pooled connection —
+        # against a remote, high-latency DB, N round trips on one already-
+        # open connection beats N brand-new connections each paying their
+        # own handshake, especially once N gets past 2-3.
+        wave1_specs: List[tuple] = [
+            ("exams", select(Exam).where(Exam.id.in_(exam_ids)) if exam_ids else None),
+            ("qt", select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))),
+            ("pt", select(PassageTranslation).where(PassageTranslation.passage_id.in_(passage_ids)) if passage_ids else None),
+            ("opt", select(QuestionOption)
+                .where(QuestionOption.question_id.in_(q_ids))
+                .order_by(QuestionOption.question_id, QuestionOption.display_order)),
+            ("expl", select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids)) if include_solutions else None),
+            ("meta", select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids))),
+            ("links", select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id.in_(q_ids))),
+        ]
+        active_wave1 = [(name, stmt) for name, stmt in wave1_specs if stmt is not None]
+        wave1 = {}
+        for name, stmt in active_wave1:
+            res = await self.session.exec(stmt)
+            wave1[name] = res.all()
+
+        exams_map = {e.id: e for e in wave1.get("exams", [])}
+
+        qt_map = {}
+        for qt in wave1.get("qt", []):
+            qt_map.setdefault(qt.question_id, {})[qt.language] = qt.question_text
+
+        pt_map = {}
+        for pt in wave1.get("pt", []):
+            pt_map.setdefault(pt.passage_id, {})[pt.language] = pt.passage_text
+
+        options = wave1.get("opt", [])
         opt_map = {}
         opt_ids = []
         for opt in options:
-            if opt.question_id not in opt_map:
-                opt_map[opt.question_id] = []
-            opt_map[opt.question_id].append(opt)
+            opt_map.setdefault(opt.question_id, []).append(opt)
             opt_ids.append(opt.id)
 
-        ot_map = {}
-        if opt_ids:
-            ot_res = await self.session.exec(
-                select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
-            )
-            for ot in ot_res.all():
-                if ot.option_id not in ot_map:
-                    ot_map[ot.option_id] = {}
-                ot_map[ot.option_id][ot.language] = (ot.option_text, ot.distractor_analysis)
-
-        # 5. Batch Question Explanations
         expl_map = {}
-        if include_solutions:
-            expl_res = await self.session.exec(
-                select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids))
-            )
-            for expl in expl_res.all():
-                if expl.question_id not in expl_map:
-                    expl_map[expl.question_id] = {}
-                expl_map[expl.question_id][expl.language] = expl
+        for expl in wave1.get("expl", []):
+            expl_map.setdefault(expl.question_id, {})[expl.language] = expl
 
-        # 6. Batch Metadata & Hierarchy
-        meta_res = await self.session.exec(
-            select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids))
-        )
-        meta_map = {m.question_id: m for m in meta_res.all()}
+        meta_map = {m.question_id: m for m in wave1.get("meta", [])}
 
-        link_res = await self.session.exec(
-            select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id.in_(q_ids))
-        )
-        links = link_res.all()
-        subtopic_ids = list(set(l.subtopic_id for l in links if l.subtopic_id))
-        subtopics_map = {}
+        links = wave1.get("links", [])
+        subtopic_ids = set(l.subtopic_id for l in links if l.subtopic_id)
+        # Also preload each question's own direct subtopic_id FK — needed by
+        # the hierarchy_detail fallback below for questions with no
+        # QuestionHierarchyLink rows, so that fallback never has to issue its
+        # own per-question round trips.
+        subtopic_ids.update(q.subtopic_id for q in questions if q.subtopic_id)
+
+        # Wave 2: option translations (needs opt_ids from wave 1) and
+        # subtopics (needs subtopic_ids from wave 1) — same reasoning as
+        # wave 1, sequential on self.session.
+        wave2_specs: List[tuple] = [
+            ("ot", select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)) if opt_ids else None),
+            ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids)) if subtopic_ids else None),
+        ]
+        active_wave2 = [(name, stmt) for name, stmt in wave2_specs if stmt is not None]
+        wave2 = {}
+        for name, stmt in active_wave2:
+            res = await self.session.exec(stmt)
+            wave2[name] = res.all()
+
+        ot_map = {}
+        for ot in wave2.get("ot", []):
+            ot_map.setdefault(ot.option_id, {})[ot.language] = (ot.option_text, ot.distractor_analysis)
+
+        subtopics_map = {st.id: st for st in wave2.get("subtopics", [])}
         topics_map = {}
         subjects_map = {}
 
-        if subtopic_ids:
-            subt_res = await self.session.exec(select(Subtopic).where(Subtopic.id.in_(subtopic_ids)))
-            subtopics_map = {st.id: st for st in subt_res.all()}
-            top_ids = list(set(st.topic_id for st in subtopics_map.values() if st.topic_id))
-            if top_ids:
-                t_res = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
-                topics_map = {t.id: t for t in t_res.all()}
-                subj_ids = list(set(t.subject_id for t in topics_map.values() if t.subject_id))
-                if subj_ids:
-                    s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
-                    subjects_map = {s.id: s for s in s_res.all()}
+        # Waves 3 & 4: topics depend on subtopics' topic_ids, subjects depend
+        # on topics' subject_ids — each only known after the prior wave, so
+        # this short tail stays sequential (2 round trips at most).
+        top_ids = list(set(st.topic_id for st in subtopics_map.values() if st.topic_id))
+        if top_ids:
+            t_res = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
+            topics_map = {t.id: t for t in t_res.all()}
+            subj_ids = list(set(t.subject_id for t in topics_map.values() if t.subject_id))
+            if subj_ids:
+                s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
+                subjects_map = {s.id: s for s in s_res.all()}
 
         link_map = {}
         for l in links:
@@ -1382,10 +1516,10 @@ class QuestionService:
                 )
 
             if not hierarchy_detail and q.subtopic_id:
-                subtop = await self.session.get(Subtopic, q.subtopic_id)
+                subtop = subtopics_map.get(q.subtopic_id)
                 if subtop:
-                    top = await self.session.get(Topic, subtop.topic_id) if subtop.topic_id else None
-                    subj = await self.session.get(Subject, top.subject_id) if top and top.subject_id else None
+                    top = topics_map.get(subtop.topic_id) if subtop.topic_id else None
+                    subj = subjects_map.get(top.subject_id) if top and top.subject_id else None
                     hierarchy_detail.append(
                         HierarchyLinkDetail(
                             subject_id=str(subj.id) if subj else None,

@@ -13,6 +13,26 @@ import { saveGuestAttempt } from '../utils/guestStorage';
 import { formatEnum } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
 
+function RecommendationSkeletonCard() {
+  return (
+    <div
+      style={{
+        backgroundColor: '#F8FAFC',
+        border: '1px solid #E2E8F0',
+        borderRadius: 6,
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <div className="shimmer-block" style={{ height: 10, width: '35%' }} />
+      <div className="shimmer-block" style={{ height: 12, width: '92%' }} />
+      <div className="shimmer-block" style={{ height: 12, width: '68%' }} />
+    </div>
+  );
+}
+
 export function StudentPracticeExamPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -29,6 +49,7 @@ export function StudentPracticeExamPage() {
   // Interactive Filter Bar Popover State
   const [activeDropdown, setActiveDropdown] = useState<'exam' | 'subject' | 'topic' | 'difficulty' | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
@@ -68,6 +89,7 @@ export function StudentPracticeExamPage() {
   const [recShowSolution, setRecShowSolution] = useState<Record<string | number, boolean>>({});
   const [recExplanations, setRecExplanations] = useState<Record<string | number, string>>({});
   const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>({});
+  const [isSolutionLoading, setIsSolutionLoading] = useState(false);
   const expandedRecIdRef = React.useRef<number | string | null>(null);
   const recUserResponsesRef = React.useRef<Record<string, number | string>>({});
 
@@ -127,16 +149,23 @@ export function StudentPracticeExamPage() {
 
       let newFetched: any[] = [];
 
+      // Fetch exactly enough to fill the pool to its 15-item cap in one round
+      // trip, instead of always asking for 5 — the effect that calls this
+      // function re-fires as long as the pool is under 15, so a fixed
+      // limit:'5' meant filling an empty pool took 3 sequential rounds (up to
+      // 6 network calls) instead of 1.
+      const neededCount = Math.max(1, 15 - currentPool.length);
+
       // Step 1: Query API by Topic first if a topic is selected
       if (queryTopic) {
-        const topicParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+        const topicParams = new URLSearchParams({ limit: String(neededCount) });
         topicParams.append('topic_name', queryTopic);
         if (querySubject) topicParams.append('subject_name', querySubject);
         if (targetExam) topicParams.append('exam_name', targetExam);
         if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await guardedFetch(`/api/v1/questions?${topicParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions/recommended?${topicParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -148,13 +177,13 @@ export function StudentPracticeExamPage() {
 
       // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
       if (newFetched.length === 0 && querySubject) {
-        const subjParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+        const subjParams = new URLSearchParams({ limit: String(neededCount) });
         subjParams.append('subject_name', querySubject);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
         try {
-          const res = await guardedFetch(`/api/v1/questions?${subjParams.toString()}`);
+          const res = await guardedFetch(`/api/v1/questions/recommended?${subjParams.toString()}`);
           if (res.ok) {
             const data = await res.json();
             newFetched = data.items || [];
@@ -251,8 +280,13 @@ export function StudentPracticeExamPage() {
     }
   }, [gSubject, gTopic, gExam, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted]);
 
+  // Fires on mount (allQuestions is still [] at that point) so the
+  // recommendations fetch starts in parallel with the main question load
+  // instead of waiting for it to finish first — it only needs gSubject/
+  // gTopic/gExam (already known from the URL) to build its query, and an
+  // empty allQuestions/recommendedPool just means nothing to exclude yet.
   useEffect(() => {
-    if (allQuestions.length > 0 && recommendedPool.length < 15 && !isPrefetchingRecs && !isRecsExhausted) {
+    if (recommendedPool.length < 15 && !isPrefetchingRecs && !isRecsExhausted) {
       prefetchRecommendations(allQuestions, recommendedPool);
     }
   }, [allQuestions, recommendedPool.length, isPrefetchingRecs, isRecsExhausted, prefetchRecommendations]);
@@ -554,9 +588,12 @@ export function StudentPracticeExamPage() {
       }
 
 
-      // Extract numeric exam year if present
+      // Extract numeric exam year if the user picked a specific year — the
+      // default "All Years (min - max)" placeholder must NOT be parsed here,
+      // since its leftmost year token (the range's min) would otherwise be
+      // misread as an exact year filter and needlessly fail the first fetch.
       let numericYear: string | null = null;
-      if (gYear) {
+      if (gYear && !gYear.startsWith('All Years')) {
         const match = gYear.match(/\b(19\d\d|20\d\d)\b/);
         if (match) numericYear = match[1];
       }
@@ -580,8 +617,15 @@ export function StudentPracticeExamPage() {
       try {
         const targetExam = gExam ? (gExam.toLowerCase().includes('upsc') ? 'upsc' : gExam.toLowerCase().trim()) : '';
 
+        // Fetch enough for a comfortable session (3x what was requested,
+        // floor 20) instead of always asking for the API's max of 100 — the
+        // subject-fallback/expansion effects already top this up later if the
+        // user runs low, so there's no need to pull (and have the backend
+        // fully build detail cards for) far more than a session needs up front.
+        const initialFetchLimit = Math.min(100, Math.max(gCount * 3, 20));
+
         // 1. Try with subject + topic + year + selected exam
-        const p1 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+        const p1 = new URLSearchParams({ limit: String(initialFetchLimit) });
         if (reqSubject) p1.append('subject_name', reqSubject);
         if (reqTopic) p1.append('topic_name', reqTopic);
         if (numericYear) p1.append('exam_year', numericYear);
@@ -591,7 +635,7 @@ export function StudentPracticeExamPage() {
 
         // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
         if (fetchedMap.size === 0 && reqTopic) {
-          const p2 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          const p2 = new URLSearchParams({ limit: String(initialFetchLimit) });
           if (reqSubject) p2.append('subject_name', reqSubject);
           p2.append('topic_name', reqTopic);
           if (targetExam) p2.append('exam_name', targetExam);
@@ -600,7 +644,7 @@ export function StudentPracticeExamPage() {
 
         // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
         if (fetchedMap.size === 0 && reqSubject) {
-          const p3 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          const p3 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p3.append('subject_name', reqSubject);
           if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
@@ -608,7 +652,7 @@ export function StudentPracticeExamPage() {
 
         // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
         if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject) {
-          const p4 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          const p4 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p4.append('subject_name', rawSubject);
           if (targetExam) p4.append('exam_name', targetExam);
           await fetchWithParams(p4);
@@ -616,14 +660,14 @@ export function StudentPracticeExamPage() {
 
         // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
         if (fetchedMap.size === 0 && (reqSubject || rawSubject)) {
-          const p5 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          const p5 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p5.append('subject_name', reqSubject || rawSubject);
           await fetchWithParams(p5);
         }
 
         // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
         if (fetchedMap.size === 0 && !rawSubject) {
-          const p6 = new URLSearchParams({ limit: '100', include_solutions: 'true' });
+          const p6 = new URLSearchParams({ limit: String(initialFetchLimit) });
           if (targetExam) p6.append('exam_name', targetExam);
           await fetchWithParams(p6);
         }
@@ -699,7 +743,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gTopic, gSubtopic, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gCount]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -929,6 +973,7 @@ export function StudentPracticeExamPage() {
     if (targetId) {
       const existingRevealed = revealedMap[targetId];
       if (!existingRevealed || !existingRevealed.distractor_scores || Object.keys(existingRevealed.distractor_scores).length === 0) {
+        setIsSolutionLoading(true);
         try {
           const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
           if (solRes.ok) {
@@ -950,6 +995,8 @@ export function StudentPracticeExamPage() {
           }
         } catch (err) {
           console.warn('Lazy solution fetch error:', err);
+        } finally {
+          setIsSolutionLoading(false);
         }
       }
     }
@@ -1089,20 +1136,30 @@ export function StudentPracticeExamPage() {
     );
   };
 
-  // Dynamically extract subjects from API masterSyllabus tree and fetched questions
-  const syllabusSubjects = masterSyllabus ? Object.keys(masterSyllabus) : [];
+  // Dynamically extract subjects from API masterSyllabus tree and fetched questions.
+  // The syllabus API returns subjects as an array (each with its own nested
+  // `topics`), not a flat dict keyed by subject name — this used to do
+  // Object.keys(masterSyllabus) directly, which only ever returned the
+  // response's top-level field names (title, total_subjects, subjects, ...),
+  // never actual subject names, so this list silently never matched what the
+  // Instant Practice Test Generator (MockSelectionPage) shows.
+  const syllabusSubjectsArr: any[] = masterSyllabus?.subjects && Array.isArray(masterSyllabus.subjects) ? masterSyllabus.subjects : [];
+  const syllabusSubjects = syllabusSubjectsArr.map((s: any) => s.name).filter(Boolean);
   const questionSubjects = Array.from(new Set(allQuestions.map((q) => q.section_code || (q as any).subject_name).filter(Boolean)));
   const combinedSubjects = Array.from(new Set([...syllabusSubjects, ...questionSubjects]));
   const subjectsList = ['All Subjects', ...combinedSubjects];
 
   // Dynamically extract topics from API masterSyllabus tree and fetched questions
   let dynamicTopics: string[] = [];
-  if (gSubject && gSubject !== 'All Subjects' && masterSyllabus && masterSyllabus[gSubject]) {
-    dynamicTopics = Object.keys(masterSyllabus[gSubject]);
-  } else if (masterSyllabus) {
-    Object.keys(masterSyllabus).forEach((sKey) => {
-      if (masterSyllabus[sKey] && typeof masterSyllabus[sKey] === 'object') {
-        dynamicTopics.push(...Object.keys(masterSyllabus[sKey]));
+  if (gSubject && gSubject !== 'All Subjects') {
+    const matchedSubject = syllabusSubjectsArr.find((s: any) => s.name === gSubject);
+    if (matchedSubject && Array.isArray(matchedSubject.topics)) {
+      dynamicTopics = matchedSubject.topics.map((t: any) => t.name).filter(Boolean);
+    }
+  } else {
+    syllabusSubjectsArr.forEach((s: any) => {
+      if (Array.isArray(s.topics)) {
+        dynamicTopics.push(...s.topics.map((t: any) => t.name).filter(Boolean));
       }
     });
   }
@@ -1223,41 +1280,77 @@ export function StudentPracticeExamPage() {
             position: 'relative',
           }}
         >
-          {/* Filter Bar Badge */}
+          {/* Filter Bar Badge (+ Hide/Show toggle on mobile/tablet, grouped on their own row) */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: isTabletOrBelow ? 'space-between' : 'flex-start',
               gap: 8,
-              paddingRight: 12,
-              borderRight: '1px solid #F1F5F9',
+              paddingRight: isTabletOrBelow ? 0 : 12,
+              borderRight: isTabletOrBelow ? 'none' : '1px solid #F1F5F9',
               flexShrink: 0,
+              flexBasis: isTabletOrBelow ? '100%' : 'auto',
             }}
           >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 0,
-                backgroundColor: '#F8FAFC',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <SlidersHorizontal size={16} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 0,
+                  backgroundColor: '#F8FAFC',
+                  color: '#1E3A8A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <SlidersHorizontal size={16} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  FILTERS
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                  Practice Engine
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#1E3A8A', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                FILTERS
-              </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
-                Practice Engine
-              </span>
-            </div>
+
+            {/* Hide/Show Filters Toggle — mobile/tablet only; filters always stay visible on desktop */}
+            {isTabletOrBelow && (
+              <button
+                type="button"
+                onClick={() => setFiltersCollapsed((prev) => !prev)}
+                className="touch-target"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '6px 10px',
+                  borderRadius: 0,
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#F8FAFC',
+                  color: '#1E3A8A',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+                title={filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+              >
+                <span>{filtersCollapsed ? 'Show Filters' : 'Hide Filters'}</span>
+                <ChevronDown
+                  size={13}
+                  style={{ transform: filtersCollapsed ? 'none' : 'rotate(180deg)', transition: 'transform 0.15s ease' }}
+                />
+              </button>
+            )}
           </div>
 
+          {(!filtersCollapsed || !isTabletOrBelow) && (
+          <>
           {/* Filter 1: Exam Target */}
           <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
             <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4, display: 'block' }}>
@@ -1297,6 +1390,7 @@ export function StudentPracticeExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 220,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1374,6 +1468,7 @@ export function StudentPracticeExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 250,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1482,6 +1577,7 @@ export function StudentPracticeExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 270,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1588,6 +1684,7 @@ export function StudentPracticeExamPage() {
                   top: 'calc(100% + 8px)',
                   left: 0,
                   width: 170,
+                  maxWidth: 'calc(100vw - 32px)',
                   backgroundColor: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 0,
@@ -1629,11 +1726,13 @@ export function StudentPracticeExamPage() {
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
 
       {/* Mobile/Tablet Recommended Questions Toggle Button */}
-      {isTabletOrBelow && displayRecs.length > 0 && (
+      {isTabletOrBelow && (
         <div style={{ padding: '0 clamp(10px, 2.5vw, 24px) 8px', display: 'flex', justifyContent: 'flex-start' }}>
           <button
             type="button"
@@ -1693,9 +1792,17 @@ export function StudentPracticeExamPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {displayRecs.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '24px 0' }}>
-                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
-                </div>
+                isPrefetchingRecs ? (
+                  <>
+                    <RecommendationSkeletonCard />
+                    <RecommendationSkeletonCard />
+                    <RecommendationSkeletonCard />
+                  </>
+                ) : (
+                  <div style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '24px 0' }}>
+                    No questions available
+                  </div>
+                )
               ) : (
                 displayRecs.map((rec, idx) => {
                   const isExpanded = expandedRecId === rec.question_id;
@@ -1906,9 +2013,17 @@ export function StudentPracticeExamPage() {
             {/* Stacked Dynamic Recommendation Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {displayRecs.length === 0 ? (
-                <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
-                  {isPrefetchingRecs ? 'Loading recommendations...' : 'No questions available'}
-                </div>
+                isPrefetchingRecs ? (
+                  <>
+                    <RecommendationSkeletonCard />
+                    <RecommendationSkeletonCard />
+                    <RecommendationSkeletonCard />
+                  </>
+                ) : (
+                  <div style={{ fontSize: 11.5, color: '#94A3B8', textAlign: 'center', padding: '16px 0' }}>
+                    No questions available
+                  </div>
+                )
               ) : (
                 displayRecs.map((rec, idx) => {
                   const isExpanded = expandedRecId === rec.question_id;
@@ -2078,6 +2193,7 @@ export function StudentPracticeExamPage() {
           language={language}
           mode="PRACTICE"
           revealResult={currentRevealedResult}
+          isRevealing={isSolutionLoading}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={handleToggleBookmark}
           onRevealAnswer={() => handleRevealAnswer()}
@@ -2319,7 +2435,7 @@ export function StudentPracticeExamPage() {
                 type="button"
                 onClick={() => {
                   setShowLeaveModal(false);
-                  navigate('/dashboard');
+                  navigate('/mocks');
                 }}
                 style={{
                   flex: 1,

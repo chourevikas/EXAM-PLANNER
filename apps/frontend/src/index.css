@@ -697,6 +697,32 @@ body {
   }
 }
 
+.shimmer-block {
+  background: linear-gradient(90deg, #EEF1F4 25%, #F8FAFC 50%, #EEF1F4 75%);
+  background-size: 200% 100%;
+  animation: shimmerSweep 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmerSweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.spin-loader {
+  animation: spinLoader 0.8s linear infinite;
+}
+
+@keyframes spinLoader {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* ── 19. Exam Footer Responsive ── */
 .exam-footer-bar {
   height: var(--footer-height);
