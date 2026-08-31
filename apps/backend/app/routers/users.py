@@ -24,7 +24,7 @@ async def list_bookmarks(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Cache-Control"] = "private, max-age=15, stale-while-revalidate=30"
     if not current_user.id:
         return []
 

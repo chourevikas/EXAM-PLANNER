@@ -6,14 +6,13 @@ import { fetchMonthlyBenchmark, MonthlyBenchmarkResponse } from '../services/ana
 import { TrendingUp, Award, Target, BarChart2, ShieldCheck, RefreshCw, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { formatEnum } from '../utils/formatEnum';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 const ITEMS_PER_PAGE = 4;
 
-// ==================== STATIC MODULE STYLES (Zero GC churn per render) ====================
+// ==================== BASE MODULE STYLES ====================
 
-const BANNER_SECTION_STYLE: React.CSSProperties = {
-  marginBottom: 32,
-  padding: '24px 28px',
+const BANNER_BASE_STYLE: React.CSSProperties = {
   borderRadius: 0,
   backgroundColor: 'var(--bg-card)',
   border: '1px solid #E2E8F0',
@@ -43,8 +42,7 @@ const BANNER_BADGE_TEXT_STYLE: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-const BANNER_TITLE_STYLE: React.CSSProperties = {
-  fontSize: 26,
+const BANNER_TITLE_BASE_STYLE: React.CSSProperties = {
   fontWeight: 800,
   color: 'var(--text-primary)',
   margin: '0 0 6px 0',
@@ -55,21 +53,6 @@ const BANNER_SUBTITLE_STYLE: React.CSSProperties = {
   fontSize: 14,
   color: 'var(--text-muted)',
   margin: 0,
-};
-
-const REFRESH_BUTTON_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '9px 18px',
-  borderRadius: 0,
-  backgroundColor: 'var(--bg-base)',
-  border: '1px solid #E2E8F0',
-  color: 'var(--text-primary)',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  transition: 'all 0.2s ease',
 };
 
 const ERROR_BOX_STYLE: React.CSSProperties = {
@@ -85,13 +68,6 @@ const ERROR_BOX_STYLE: React.CSSProperties = {
   gap: 8,
 };
 
-const SKELETON_GRID_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: 20,
-  marginBottom: 32,
-};
-
 const SKELETON_CARD_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   padding: 24,
@@ -101,30 +77,14 @@ const SKELETON_CARD_STYLE: React.CSSProperties = {
   animation: 'pulse 1.5s infinite ease-in-out',
 };
 
-const METRIC_GRID_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: 20,
-  marginBottom: 32,
-};
-
-const ANALYTICS_GRID_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-  gap: 24,
-  marginBottom: 32,
-};
-
-const CARD_CONTAINER_STYLE: React.CSSProperties = {
+const CARD_BASE_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
-  padding: 24,
   borderRadius: 0,
   border: '1px solid #E2E8F0',
   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  height: 420,
   boxSizing: 'border-box',
 };
 
@@ -133,10 +93,12 @@ const CARD_HEADER_STYLE: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   marginBottom: 16,
+  flexWrap: 'wrap',
+  gap: 8,
 };
 
 const CARD_TITLE_STYLE: React.CSSProperties = {
-  fontSize: 16,
+  fontSize: 15.5,
   fontWeight: 700,
   color: 'var(--text-primary)',
   margin: 0,
@@ -169,6 +131,7 @@ const CARD_FOOTER_STYLE: React.CSSProperties = {
   alignItems: 'center',
   paddingTop: 14,
   borderTop: '1px solid #F1F5F9',
+  marginTop: 16,
 };
 
 const EMPTY_STATE_STYLE: React.CSSProperties = {
@@ -179,12 +142,15 @@ const EMPTY_STATE_STYLE: React.CSSProperties = {
 };
 
 const BASE_PAGE_BTN_STYLE: React.CSSProperties = {
-  padding: '5px 9px',
   borderRadius: 0,
   border: '1px solid #E2E8F0',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  minWidth: 40,
+  minHeight: 40,
+  padding: '6px 10px',
+  transition: 'all 0.15s ease',
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -198,13 +164,14 @@ export function MonthlyReportPage() {
   const [growthPage, setGrowthPage] = useState<number>(0);
   const [subjectPage, setSubjectPage] = useState<number>(0);
 
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+
   const loadBenchmarkData = useCallback(
     async (signal?: AbortSignal, forceRefresh: boolean = false) => {
       setLoading(true);
       setError(null);
       try {
         let token = localStorage.getItem('access_token');
-        // Only trigger async getToken() if no token cached or during explicit force refresh
         if (!token || forceRefresh) {
           try {
             const clerkToken = await getToken();
@@ -275,16 +242,72 @@ export function MonthlyReportPage() {
     loadBenchmarkData(undefined, true);
   };
 
+  // Responsive dynamic styles
+  const bannerSectionStyle: React.CSSProperties = {
+    ...BANNER_BASE_STYLE,
+    padding: isMobile ? '16px 14px' : isTabletOrBelow ? '20px 20px' : '24px 28px',
+    marginBottom: isMobile ? 20 : 32,
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'stretch' : 'center',
+  };
+
+  const bannerTitleStyle: React.CSSProperties = {
+    ...BANNER_TITLE_BASE_STYLE,
+    fontSize: isMobile ? 20 : isTabletOrBelow ? 23 : 26,
+  };
+
+  const refreshBtnStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '9px 18px',
+    minHeight: 44,
+    width: isMobile ? '100%' : 'auto',
+    borderRadius: 0,
+    backgroundColor: 'var(--bg-base)',
+    border: '1px solid #E2E8F0',
+    color: 'var(--text-primary)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  };
+
+  const metricGridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: isMobile
+      ? '1fr'
+      : isTabletOrBelow
+      ? 'repeat(2, 1fr)'
+      : 'repeat(3, 1fr)',
+    gap: isMobile ? 12 : 20,
+    marginBottom: isMobile ? 20 : 32,
+  };
+
+  const analyticsGridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: isTabletOrBelow ? '1fr' : 'repeat(2, 1fr)',
+    gap: isMobile ? 16 : 24,
+    marginBottom: isMobile ? 20 : 32,
+  };
+
+  const cardStyle: React.CSSProperties = {
+    ...CARD_BASE_STYLE,
+    padding: isMobile ? '18px 14px' : 24,
+    minHeight: isMobile ? 'auto' : 420,
+  };
+
   return (
     <StudentLayout pageTitle="Performance Rank & Monthly Report">
       {/* Header Banner */}
-      <section style={BANNER_SECTION_STYLE}>
+      <section style={bannerSectionStyle}>
         <div>
           <div style={BANNER_BADGE_STYLE}>
             <Ico.Trophy size={14} />
             <span style={BANNER_BADGE_TEXT_STYLE}>National Benchmarking</span>
           </div>
-          <h1 style={BANNER_TITLE_STYLE}>Monthly Performance & National Rank</h1>
+          <h1 style={bannerTitleStyle}>Monthly Performance & National Rank</h1>
           <p style={BANNER_SUBTITLE_STYLE}>
             Percentile growth curve and exam readiness index for {data?.period || 'August 2026'}.
           </p>
@@ -294,7 +317,7 @@ export function MonthlyReportPage() {
           type="button"
           onClick={handleRefresh}
           disabled={loading}
-          style={REFRESH_BUTTON_STYLE}
+          style={refreshBtnStyle}
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           <span>Refresh Metrics</span>
@@ -309,7 +332,7 @@ export function MonthlyReportPage() {
       )}
 
       {loading ? (
-        <div style={SKELETON_GRID_STYLE}>
+        <div style={metricGridStyle}>
           {[1, 2, 3].map((i) => (
             <div key={i} style={SKELETON_CARD_STYLE} />
           ))}
@@ -317,7 +340,7 @@ export function MonthlyReportPage() {
       ) : (
         <>
           {/* Main Stats Grid aligned with Dashboard StudentMetricCard */}
-          <div style={METRIC_GRID_STYLE}>
+          <div style={metricGridStyle}>
             {/* 1. Predicted AIR */}
             <StudentMetricCard
               title="PREDICTED ALL INDIA RANK"
@@ -355,9 +378,9 @@ export function MonthlyReportPage() {
           </div>
 
           {/* Detailed Analytics Grid: Symmetrical Heights & Pagination */}
-          <div style={ANALYTICS_GRID_STYLE}>
+          <div style={analyticsGridStyle}>
             {/* Monthly Percentile Growth Curve Card */}
-            <div style={CARD_CONTAINER_STYLE}>
+            <div style={cardStyle}>
               <div>
                 <div style={CARD_HEADER_STYLE}>
                   <h3 style={CARD_TITLE_STYLE}>
@@ -412,7 +435,7 @@ export function MonthlyReportPage() {
                     }}
                     aria-label="Previous growth page"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={16} />
                   </button>
                   <button
                     type="button"
@@ -426,14 +449,14 @@ export function MonthlyReportPage() {
                     }}
                     aria-label="Next growth page"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Subject National Benchmarking Card */}
-            <div style={CARD_CONTAINER_STYLE}>
+            <div style={cardStyle}>
               <div>
                 <div style={CARD_HEADER_STYLE}>
                   <h3 style={CARD_TITLE_STYLE}>
@@ -447,12 +470,14 @@ export function MonthlyReportPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                   {visibleSubjectItems.map((sb, idx) => (
                     <div key={`subject_${sb.subject}_${idx}`} style={{ padding: '8px 12px', borderRadius: 0, backgroundColor: 'var(--bg-base)', border: '1px solid #F1F5F9' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 700, marginBottom: 4 }}>
-                        <span style={{ color: 'var(--text-primary)' }}>{formatEnum(sb.subject)}</span>
-                        <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, fontWeight: 700, marginBottom: 4, gap: 8 }}>
+                        <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {formatEnum(sb.subject)}
+                        </span>
+                        <span style={{ color: sb.user_accuracy >= sb.national_avg_accuracy ? 'var(--success-green)' : 'var(--warning-yellow)', flexShrink: 0 }}>
                           {sb.user_accuracy}%{' '}
                           <span style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 400 }}>
-                            (National: {sb.national_avg_accuracy}%)
+                            (Nat: {sb.national_avg_accuracy}%)
                           </span>
                         </span>
                       </div>
@@ -496,7 +521,7 @@ export function MonthlyReportPage() {
                     }}
                     aria-label="Previous subject page"
                   >
-                    <ChevronLeft size={14} />
+                    <ChevronLeft size={16} />
                   </button>
                   <button
                     type="button"
@@ -510,7 +535,7 @@ export function MonthlyReportPage() {
                     }}
                     aria-label="Next subject page"
                   >
-                    <ChevronRight size={14} />
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               </div>
