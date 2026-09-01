@@ -34,23 +34,18 @@ export function HeroSection({ }: HeroSectionProps) {
   }, []);
 
   const FEATURED_CARDS = [
-    { badge: "GS Paper 1", meta: "UPSC 2024 · Q.14", exam: "UPSC", q: 'In the context of the Constitution of India, "Due Process of Law" implies:', qIndex: 0 },
-    { badge: "GS Paper 1", meta: "UPSC 2023 · Q.32", exam: "UPSC", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?", qIndex: 1 },
-    { badge: "GS Paper 1", meta: "UPSC 2022 · Q.45", exam: "UPSC", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?", qIndex: 2 },
-    { badge: "GS Paper 1", meta: "UPSC 2021 · Q.52", exam: "UPSC", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation.", qIndex: 0 },
-    { badge: "GS Paper 1", meta: "UPSC 2023 · Q.68", exam: "UPSC", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens.", qIndex: 1 },
-    { badge: "GS Paper 1", meta: "UPSC 2020 · Q.21", exam: "UPSC", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?", qIndex: 2 },
+    { badge: "Fundamental Rights", meta: "UPSC 2024", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: 'In the context of the Constitution of India, "Due Process of Law" implies:' },
+    { badge: "Fundamental Rights", meta: "UPSC 2023", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?" },
+    { badge: "Inflation", meta: "UPSC 2022", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "Inflation", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?" },
+    { badge: "Exchange Rates", meta: "UPSC 2021", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "External Sector", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation." },
+    { badge: "Conservation", meta: "UPSC 2023", exam: "UPSC", subject: "Environment & Ecology", topic: "Biodiversity", subtopic: "Conservation efforts", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens." },
+    { badge: "Parliament", meta: "UPSC 2020", exam: "UPSC", subject: "Polity", topic: "Indian Government", subtopic: "Parliament", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?" },
   ];
 
   const filteredCards = useMemo(() => {
-    const q = syllabusSearchQuery.trim().toLowerCase();
-
-    return FEATURED_CARDS.filter(card => {
-      const matchesText = !q || card.q.toLowerCase().includes(q) || card.badge.toLowerCase().includes(q) || card.exam.toLowerCase().includes(q) || card.meta.toLowerCase().includes(q);
-      const matchesExam = selectedExam === 'All Exams' || card.exam === selectedExam;
-      return matchesText && matchesExam;
-    });
-  }, [syllabusSearchQuery, selectedExam]);
+    if (selectedExam === 'All Exams') return FEATURED_CARDS;
+    return FEATURED_CARDS.filter(card => card.exam === selectedExam);
+  }, [selectedExam]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -402,6 +397,33 @@ export function HeroSection({ }: HeroSectionProps) {
                 style={{ padding: '0 16px', background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', flexShrink: 0, fontSize: 18 }}
               >✕</button>
             )}
+            <button
+              onClick={() => {
+                if (syllabusSearchQuery.trim()) {
+                  const params = new URLSearchParams({ count: '10' });
+                  if (selectedExam !== 'All Exams') params.set('exam', selectedExam);
+                  // Default mapping search query to subject for now so guest-exam can generate questions
+                  params.set('subject', syllabusSearchQuery.trim());
+                  navigate(`/guest-exam?${params.toString()}`);
+                }
+              }}
+              style={{
+                background: '#E31B23',
+                color: '#FFFFFF',
+                border: 'none',
+                height: 58,
+                padding: '0 24px',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#B91C1C'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#E31B23'}
+            >
+              Search
+            </button>
           </div>
 
           {/* Results Dropdown */}
@@ -531,21 +553,21 @@ export function HeroSection({ }: HeroSectionProps) {
       <div id="featured-pyqs" style={{ maxWidth: 1080, margin: '64px auto 0', padding: '0 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: 0 }}>
-            {syllabusSearchQuery ? 'Suggested PYQs' : 'Featured Solved PYQs'}
+            Featured Solved PYQs
           </h2>
           <a href="#" style={{ fontSize: 14, color: '#E31B23', fontWeight: 600, textDecoration: 'none' }}>View all questions &rarr;</a>
         </div>
 
         {filteredCards.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: '#64748B', background: '#FFFFFF', border: '1px dashed #E2E8F0' }}>
-            No PYQs match "{syllabusSearchQuery}". Try another topic like "Fundamental Rights".
+            No featured PYQs match this exam.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
             {filteredCards.map((card, i) => (
               <div
                 key={i}
-                onClick={() => navigate(`/guest-exam?subject=UPSC&topic=${encodeURIComponent(card.badge)}&count=10`)}
+                onClick={() => navigate(`/guest-exam?exam=${encodeURIComponent(card.exam)}&subject=${encodeURIComponent(card.subject)}&topic=${encodeURIComponent(card.topic)}&subtopic=${encodeURIComponent(card.subtopic)}&count=10`)}
                 style={{
                   background: '#FFFFFF',
                   border: '1px solid #E2E8F0',
