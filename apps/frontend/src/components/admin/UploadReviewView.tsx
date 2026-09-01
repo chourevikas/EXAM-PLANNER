@@ -16,7 +16,6 @@ import {
   Clock,
   FileSpreadsheet,
   Layers,
-  Sparkles,
   ClipboardCheck,
   Activity,
   ArrowRight,
@@ -149,7 +148,7 @@ function FiveStagePipelinePreview() {
   const stages = [
     { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
     { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: Sparkles, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
+    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: FileText, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
     { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#F2B623', bg: '#FEF3C7', border: '#FDE68A' },
     { num: '05', title: 'Publish', desc: 'Live S3 catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
   ];
@@ -466,7 +465,7 @@ function TableRowItem({
               position: 'relative',
             }}
           >
-            {s3Completed ? <CheckCircle2 size={12} /> : s3InProgress ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+            {s3Completed ? <CheckCircle2 size={12} /> : s3InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
             <span>03 Explanations ({expCount}/{targetQ})</span>
 
             {/* Stage Hover Tooltip Popover */}

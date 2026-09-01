@@ -7,7 +7,6 @@ import {
   BookOpen,
   Brain,
   BarChart2,
-  Sparkles,
   Trophy,
   Crown,
   X,
@@ -69,7 +68,7 @@ export function StudentSidebar({
   ];
 
   const reportItems = [
-    { icon: Sparkles, label: 'Weekly Insights', to: '/reports/weekly' },
+    { icon: BarChart2, label: 'Weekly Insights', to: '/reports/weekly' },
     { icon: Trophy, label: 'Performance Rank', to: '/reports/monthly' },
   ];
 

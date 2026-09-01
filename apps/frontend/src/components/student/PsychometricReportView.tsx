@@ -23,7 +23,6 @@ import {
   ShieldAlert,
   Lightbulb,
   Check,
-  Sparkles,
   Compass,
   Gauge,
   Sliders,
@@ -1152,7 +1151,7 @@ export function PsychometricReportView({
             }}
           >
             <div style={{ fontSize: 10.5, fontWeight: 800, color: hasAiInsight ? '#065F46' : '#92400E', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
-              {hasAiInsight ? <Sparkles size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
+              {hasAiInsight ? <CheckCircle2 size={12} color="#059669" /> : <Loader2 size={12} className="animate-spin" color="#D97706" />}
               Diagnostic Status
             </div>
             <div style={{ fontSize: 13, fontWeight: 800, color: hasAiInsight ? '#059669' : '#D97706' }}>
@@ -1176,12 +1175,12 @@ export function PsychometricReportView({
           ? [
               { id: 'user-trajectory', label: '1. Longitudinal Trajectory & Core Mastery', icon: TrendingUp },
               { id: 'topics', label: '2. Topic Hierarchy & Subject Mastery', icon: BookOpen },
-              { id: 'ai-insights', label: '3. Strategic Roadmap & Study Plan', icon: Sparkles },
+              { id: 'ai-insights', label: '3. Strategic Roadmap & Study Plan', icon: Lightbulb },
             ]
           : [
               { id: 'exam-scorecard', label: '1. Exam Scorecard & Performance Metrics', icon: Zap },
               { id: 'questions', label: '2. Question Solutions & Distractor Traps', icon: Target },
-              { id: 'ai-insights', label: '3. Insights & Actionable Study Plan', icon: Sparkles },
+              { id: 'ai-insights', label: '3. Insights & Actionable Study Plan', icon: Lightbulb },
               { id: 'topics', label: '4. Topic Hierarchy & Category Mastery', icon: BookOpen },
             ]
         ).map((tab) => {
@@ -2290,7 +2289,7 @@ export function PsychometricReportView({
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {hasAiInsight ? (
                 <div style={{ padding: 8, backgroundColor: '#D1FAE5', color: '#059669' }}>
-                  <Sparkles size={22} />
+                  
                 </div>
               ) : (
                 <div style={{ padding: 8, backgroundColor: '#FDE68A', color: '#D97706' }}>
@@ -2379,7 +2378,7 @@ export function PsychometricReportView({
                         gap: 4,
                       }}
                     >
-                      <Sparkles size={11} /> Synthesizing live mentor advice...
+                       Synthesizing live mentor advice...
                     </span>
                   )}
                 </div>
@@ -2767,7 +2766,7 @@ export function PsychometricReportView({
                           transition: 'all 0.2s ease',
                         }}
                       >
-                        <Sparkles size={15} />
+                        
                         {isBulkAdding ? 'Scheduling All...' : `⚡ Add All (${unaddedCount}) to Study Plan`}
                       </button>
                     ) : (
