@@ -206,7 +206,7 @@ class AnswerKeyService:
         Maps stored AnswerKeyMapping entries directly from the database to newly extracted questions.
         Performs 0 LLM vision calls and 0 PDF processing operations.
         """
-        from sqlmodel import select
+        from sqlmodel import select, col
         from app.db.models import AnswerKeyMapping, Question, QuestionOption, MappingStatus
         from app.pipeline.answer_key_graph import normalize_option_label
 
@@ -217,24 +217,32 @@ class AnswerKeyService:
 
         total_newly_mapped = 0
 
+        # Batch pre-fetch all questions and options for this exam to eliminate N+1 queries
+        q_stmt = select(Question).where(Question.exam_id == exam_id)
+        questions = (await self.session.exec(q_stmt)).all()
+        q_by_num = {q.question_number_in_paper: q for q in questions if q.question_number_in_paper is not None}
+        q_ids = [q.id for q in questions if q.id is not None]
+
+        opts_by_qid: dict[int, list[QuestionOption]] = {}
+        if q_ids:
+            opts_stmt = select(QuestionOption).where(col(QuestionOption.question_id).in_(q_ids))
+            for opt in (await self.session.exec(opts_stmt)).all():
+                if opt.question_id:
+                    opts_by_qid.setdefault(opt.question_id, []).append(opt)
+
         for batch in batches:
             mappings_stmt = select(AnswerKeyMapping).where(AnswerKeyMapping.batch_id == batch.id)
             mappings = (await self.session.exec(mappings_stmt)).all()
 
             for mapping in mappings:
-                q_stmt = select(Question).where(
-                    Question.exam_id == exam_id,
-                    Question.question_number_in_paper == mapping.printed_question_number,
-                )
-                question = (await self.session.exec(q_stmt)).first()
+                question = q_by_num.get(mapping.printed_question_number)
                 if not question:
                     continue
 
                 mapping.question_id = question.id
                 norm_target_label = normalize_option_label(mapping.detected_option_label)
 
-                opts_stmt = select(QuestionOption).where(QuestionOption.question_id == question.id)
-                options = (await self.session.exec(opts_stmt)).all()
+                options = opts_by_qid.get(question.id, [])
 
                 found_opt = False
                 for opt in options:

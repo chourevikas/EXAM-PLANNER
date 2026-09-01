@@ -22,8 +22,33 @@ class RoleService:
 
     async def list_roles(self) -> List[dict]:
         result = await self.session.exec(select(Role).order_by(col(Role.name)))
-        roles = result.all()
-        return [await self._to_dict(role) for role in roles]
+        roles = list(result.all())
+        if not roles:
+            return []
+        role_ids = [r.id for r in roles if r.id is not None]
+        links_res = await self.session.exec(
+            select(RolePermission.role_id, Permission.key)
+            .join(Permission, col(RolePermission.permission_id) == col(Permission.id))
+            .where(col(RolePermission.role_id).in_(role_ids))
+        )
+        perms_by_role: dict[int, list[str]] = {}
+        for r_id, p_key in links_res.all():
+            perms_by_role.setdefault(r_id, []).append(p_key)
+
+        return [
+            {
+                "id": role.id,
+                "name": role.name,
+                "slug": role.slug,
+                "base_role_type": role.base_role_type,
+                "is_system": role.is_system,
+                "description": role.description,
+                "permission_keys": perms_by_role.get(role.id, []),
+                "created_at": role.created_at,
+                "updated_at": role.updated_at,
+            }
+            for role in roles
+        ]
 
     async def get_role(self, role_id: int) -> Role:
         role = await self.session.get(Role, role_id)

@@ -674,6 +674,8 @@ async def get_weekly_insights(
         return cached_val
 
     end_date = base_date + timedelta(days=6)  # Sunday
+    start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
+    end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
 
     # Run all 3 queries concurrently
     async def get_tasks():
@@ -696,8 +698,6 @@ async def get_weekly_insights(
 
     async def get_attempts():
         async with async_session_factory() as s:
-            start_dt = datetime.combine(base_date, datetime.min.time(), tzinfo=timezone.utc)
-            end_dt = datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
             stmt = select(ExamAttempt).where(
                 ExamAttempt.user_id == current_user.id,
                 ExamAttempt.started_at >= start_dt,

@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from fastapi import HTTPException, status, BackgroundTasks
 from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -877,6 +877,24 @@ class ExamSessionService:
                 )
                 u_resp_map = {u.exam_response_id: u for u in u_resp_res.all() if u.exam_response_id}
 
+            # Batch preload QuestionOption mappings for label-to-id resolution in 1 single query
+            all_q_ids = list({r.question_id for r in all_resps if r.question_id})
+            for item in req.responses:
+                if item.question_id is not None:
+                    try:
+                        all_q_ids.append(int(item.question_id))
+                    except (ValueError, TypeError):
+                        pass
+            all_q_ids = list(set(all_q_ids))
+            opt_label_map: Dict[Tuple[int, str], int] = {}
+            if all_q_ids:
+                opts_res = await self.session.exec(
+                    select(QuestionOption).where(col(QuestionOption.question_id).in_(all_q_ids))
+                )
+                for opt in opts_res.all():
+                    if opt.option_label and opt.id is not None and opt.question_id is not None:
+                        opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
+
             switch_logs_to_add: List[QuestionSwitchLog] = []
 
             for idx, item in enumerate(req.responses):
@@ -900,6 +918,12 @@ class ExamSessionService:
                         opt_id = int(item.selected_option_id)
                     except (ValueError, TypeError):
                         opt_id = None
+
+                # Fallback to label lookup from preloaded in-memory map
+                if opt_id is None and item.selected_option_id is not None and resp.question_id:
+                    lbl_str = str(item.selected_option_id).strip().upper()
+                    if len(lbl_str) <= 2:
+                        opt_id = opt_label_map.get((resp.question_id, lbl_str))
 
                 prev_opt_id = resp.selected_option_id
 
@@ -1362,12 +1386,36 @@ class ExamSessionService:
 
         # 2. Ingest final batch responses if provided in submit payload
         if req.responses and len(req.responses) > 0:
+            # Pre-collect question IDs needing QuestionOption label resolution
+            q_ids_needing_options = []
+            for item in req.responses:
+                q_id = int(item.question_id) if item.question_id and str(item.question_id).isdigit() else None
+                if not q_id:
+                    continue
+                opt_raw = item.selected_option_id
+                if opt_raw is not None and not (isinstance(opt_raw, int) or str(opt_raw).isdigit()):
+                    q_ids_needing_options.append(q_id)
+
+            submit_opt_label_map: Dict[Tuple[int, str], int] = {}
+            if q_ids_needing_options:
+                opt_res = await self.session.exec(
+                    select(QuestionOption).where(col(QuestionOption.question_id).in_(list(set(q_ids_needing_options))))
+                )
+                for opt in opt_res.all():
+                    if opt.option_label and opt.id is not None and opt.question_id is not None:
+                        submit_opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
+
             for item in req.responses:
                 try:
                     q_id = int(item.question_id) if item.question_id and str(item.question_id).isdigit() else None
                     if not q_id:
                         continue
                     opt_id = int(item.selected_option_id) if item.selected_option_id and str(item.selected_option_id).isdigit() else None
+                    if opt_id is None and item.selected_option_id is not None:
+                        lbl_str = str(item.selected_option_id).strip().upper()
+                        if len(lbl_str) <= 2:
+                            opt_id = submit_opt_label_map.get((q_id, lbl_str))
+
                     resp = resp_by_qid.get(q_id)
                     if not resp:
                         resp = ExamQuestionResponse(
@@ -1440,11 +1488,14 @@ class ExamSessionService:
                 self.session.add_all(seeded_resps)
                 responses = seeded_resps
 
-        # Batch preload question numbers to avoid N+1 DB queries in scoring loop
-        q_meta_res = await self.session.exec(
-            select(Question.id, Question.question_number_in_paper).where(Question.exam_id == exam.id)
-        )
-        q_paper_nums = {q_id: q_num for q_id, q_num in q_meta_res.all() if q_num is not None}
+        # Batch preload question numbers for all response questions to avoid N+1 DB queries in scoring loop
+        all_scoring_q_ids = list({r.question_id for r in responses if r.question_id})
+        q_paper_nums: Dict[int, int] = {}
+        if all_scoring_q_ids:
+            q_meta_res = await self.session.exec(
+                select(Question.id, Question.question_number_in_paper).where(col(Question.id).in_(all_scoring_q_ids))
+            )
+            q_paper_nums = {q_id: q_num for q_id, q_num in q_meta_res.all() if q_num is not None}
 
         tot_correct = 0
         tot_incorrect = 0
@@ -1813,6 +1864,37 @@ class ExamSessionService:
         synced_count = 0
         latest_attempt = None
 
+        # Batch preload QuestionOption mappings for all guest session responses needing label resolution
+        guest_q_ids_needing_options = set()
+        for item in sessions_list:
+            raw_resps = item.get("responses") or []
+            for r_item in raw_resps:
+                q_id_raw = r_item.get("question_id")
+                if not q_id_raw:
+                    continue
+                try:
+                    q_id_val = int(q_id_raw)
+                except (ValueError, TypeError):
+                    continue
+                opt_raw = r_item.get("selected_option_id")
+                if opt_raw is not None:
+                    try:
+                        int(opt_raw)
+                    except (ValueError, TypeError):
+                        opt_str = str(opt_raw).strip().upper()
+                        if opt_str in ("A", "B", "C", "D", "E"):
+                            guest_q_ids_needing_options.add(q_id_val)
+
+        guest_opt_label_map: Dict[Tuple[int, str], int] = {}
+        if guest_q_ids_needing_options:
+            guest_opt_stmt = select(QuestionOption).where(
+                col(QuestionOption.question_id).in_(list(guest_q_ids_needing_options))
+            )
+            guest_opt_rows = (await self.session.exec(guest_opt_stmt)).all()
+            for opt in guest_opt_rows:
+                if opt.option_label and opt.id is not None and opt.question_id is not None:
+                    guest_opt_label_map[(opt.question_id, opt.option_label.strip().upper())] = opt.id
+
         for item in sessions_list:
             t_exam = item.get("targetExam", "UPSC CSE")
             t_year = item.get("targetYear", "Target 2026")
@@ -1886,13 +1968,7 @@ class ExamSessionService:
                     if opt_id_val is None and opt_raw:
                         opt_str = str(opt_raw).strip().upper()
                         if opt_str in ("A", "B", "C", "D", "E"):
-                            opt_stmt = select(QuestionOption).where(
-                                QuestionOption.question_id == q_id_val,
-                                QuestionOption.option_label == opt_str,
-                            )
-                            opt_match = (await self.session.exec(opt_stmt)).first()
-                            if opt_match:
-                                opt_id_val = opt_match.id
+                            opt_id_val = guest_opt_label_map.get((q_id_val, opt_str))
 
                     is_corr = bool(r_item.get("is_correct", False))
 
