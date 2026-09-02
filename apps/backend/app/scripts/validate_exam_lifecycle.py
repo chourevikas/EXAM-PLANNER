@@ -240,7 +240,7 @@ async def main():
             req=StartExamRequest(exam_id=exam.id, mode=AttemptMode.PRACTICE),
         )
 
-        attempt_id = uuid.UUID(str(start_res.attempt_id))
+        attempt_id = int(start_res.attempt_id)
         print(f"   [OK] Session Started! Attempt ID: {attempt_id}")
         print(f"   - Duration: {start_res.max_duration_seconds}s ({start_res.max_duration_seconds // 60} mins)")
         print(f"   - Total Questions: {start_res.total_questions}")
@@ -267,8 +267,8 @@ async def main():
                     attempt_id=attempt_id,
                     user_id=user.id,
                     req=SaveResponseRequest(
-                        question_id=uuid.UUID(str(q_obj.question_id)),
-                        selected_option_id=uuid.UUID(str(chosen_opt.option_id)),
+                        question_id=int(q_obj.question_id),
+                        selected_option_id=int(chosen_opt.option_id),
                         is_marked_for_review=is_marked,
                         time_spent_seconds=time_spent,
                         option_switch_count=random.choice([0, 0, 1]),
@@ -282,7 +282,7 @@ async def main():
                     reveal_res = await service.reveal_answer(
                         attempt_id=attempt_id,
                         user_id=user.id,
-                        question_id=uuid.UUID(str(q_obj.question_id)),
+                        question_id=int(q_obj.question_id),
                     )
                     print(f"         Correct Option: {reveal_res.correct_option_label} | User Correct: {reveal_res.is_user_correct} | Score: {reveal_res.marks_awarded}")
             else:

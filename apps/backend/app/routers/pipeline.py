@@ -717,10 +717,10 @@ async def trigger_explanation_pipeline(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Manual endpoint allowing admins to trigger or re-run Pipeline 3 (Explanation & Multi-Concept Indexing)."""
-    target_uuid = parse_required_exam_id(exam_id)
+    target_exam_id = parse_required_exam_id(exam_id)
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
-        exam_id=target_uuid,
+        exam_id=target_exam_id,
         pipeline_type="EXPLANATION_INDEXING",
         status="RUNNING",
         current_step="MANUAL_TRIGGER_EXPLANATION_PIPELINE",
@@ -728,17 +728,17 @@ async def trigger_explanation_pipeline(
     )
 
     task_id = f"p3_{uuid.uuid4().hex[:8]}"
-    key = str(target_uuid)
+    key = str(target_exam_id)
 
     if has_active_celery_workers():
         celery_res = process_exam_explanations_task.delay(
-            str(target_uuid), language=language, task_id=task_id
+            str(target_exam_id), language=language, task_id=task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
             async_process_exam_explanations(
-                exam_id_str=str(target_uuid),
+                exam_id_str=str(target_exam_id),
                 language=language,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
@@ -748,7 +748,7 @@ async def trigger_explanation_pipeline(
 
     return {
         "status": "PIPELINE_3_INITIATED",
-        "exam_id": str(target_uuid),
+        "exam_id": str(target_exam_id),
         "task_id": task_id,
         "language": language,
         "message": "Explanation and multi-concept indexing pipeline has started.",
@@ -762,21 +762,21 @@ async def stop_pipeline_task(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Stops/cancels any running background pipeline task for the given exam_id."""
-    target_uuid = parse_required_exam_id(exam_id)
-    stopped_qp = task_registry.cancel_task(f"qp_{target_uuid}")
-    stopped_ak = task_registry.cancel_task(f"ak_{target_uuid}")
-    stopped_exp = task_registry.cancel_task(f"exp_{target_uuid}")
-    stopped_bare = task_registry.cancel_task(str(target_uuid))
+    target_exam_id = parse_required_exam_id(exam_id)
+    stopped_qp = task_registry.cancel_task(f"qp_{target_exam_id}")
+    stopped_ak = task_registry.cancel_task(f"ak_{target_exam_id}")
+    stopped_exp = task_registry.cancel_task(f"exp_{target_exam_id}")
+    stopped_bare = task_registry.cancel_task(str(target_exam_id))
     stopped = stopped_qp or stopped_ak or stopped_exp or stopped_bare
 
     pm_service = PipelineManagementService(db)
-    runs_overview = await pm_service.get_exam_pipeline_overview(target_uuid)
+    runs_overview = await pm_service.get_exam_pipeline_overview(target_exam_id)
 
     # Mark active RUNNING pipelines as STOPPED in DB
     for p_type, r_data in runs_overview.get("pipelines", {}).items():
         if isinstance(r_data, dict) and r_data.get("status") == "RUNNING":
             await pm_service.update_pipeline_status(
-                exam_id=target_uuid,
+                exam_id=target_exam_id,
                 pipeline_type=p_type,
                 status="STOPPED",
                 current_step="STOPPED_BY_ADMIN",
@@ -786,7 +786,7 @@ async def stop_pipeline_task(
 
     return {
         "status": "STOPPED",
-        "exam_id": str(target_uuid),
+        "exam_id": str(target_exam_id),
         "task_stopped": stopped,
         "message": "Pipeline task has been stopped successfully.",
     }
@@ -800,13 +800,13 @@ async def restart_pipeline_task(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Stops any existing task and restarts Pipeline 3 (Explanation & Knowledge Base) from scratch."""
-    target_uuid = parse_required_exam_id(exam_id)
-    key = f"exp_{target_uuid}"
+    target_exam_id = parse_required_exam_id(exam_id)
+    key = f"exp_{target_exam_id}"
     task_registry.cancel_task(key)
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
-        exam_id=target_uuid,
+        exam_id=target_exam_id,
         pipeline_type="EXPLANATION_INDEXING",
         status="RUNNING",
         current_step="RESTARTING_EXPLANATION_PIPELINE",
@@ -818,13 +818,13 @@ async def restart_pipeline_task(
 
     if has_active_celery_workers():
         celery_res = process_exam_explanations_task.delay(
-            str(target_uuid), language=language, task_id=task_id
+            str(target_exam_id), language=language, task_id=task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
             async_process_exam_explanations(
-                exam_id_str=str(target_uuid),
+                exam_id_str=str(target_exam_id),
                 language=language,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
@@ -834,7 +834,7 @@ async def restart_pipeline_task(
 
     return {
         "status": "RESTARTED",
-        "exam_id": str(target_uuid),
+        "exam_id": str(target_exam_id),
         "task_id": task_id,
         "message": "Pipeline task restarted from the beginning.",
     }
@@ -848,13 +848,13 @@ async def retry_pipeline_task(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Retries a stopped or failed pipeline task for the given exam_id."""
-    target_uuid = parse_required_exam_id(exam_id)
-    key = f"exp_{target_uuid}"
+    target_exam_id = parse_required_exam_id(exam_id)
+    key = f"exp_{target_exam_id}"
     task_registry.cancel_task(key)
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
-        exam_id=target_uuid,
+        exam_id=target_exam_id,
         pipeline_type="EXPLANATION_INDEXING",
         status="RUNNING",
         current_step="RETRYING_EXPLANATION_PIPELINE",
@@ -866,13 +866,13 @@ async def retry_pipeline_task(
 
     if has_active_celery_workers():
         celery_res = process_exam_explanations_task.delay(
-            str(target_uuid), language=language, task_id=task_id
+            str(target_exam_id), language=language, task_id=task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
             async_process_exam_explanations(
-                exam_id_str=str(target_uuid),
+                exam_id_str=str(target_exam_id),
                 language=language,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
@@ -882,7 +882,7 @@ async def retry_pipeline_task(
 
     return {
         "status": "RETRIED",
-        "exam_id": str(target_uuid),
+        "exam_id": str(target_exam_id),
         "task_id": task_id,
         "message": "Pipeline task retried successfully.",
     }

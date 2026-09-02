@@ -116,7 +116,6 @@ async def seed_psychometric_environment():
         user = user_res.first()
         if not user:
             user = User(
-                id=uuid.uuid4(),
                 full_name="Aarav Sharma",
                 email="student@examplatform.com",
                 password_hash="pbkdf2_sha256$hashed_secure_pass",

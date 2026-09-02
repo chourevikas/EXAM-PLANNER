@@ -1,4 +1,3 @@
-import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from sqlmodel import select, col

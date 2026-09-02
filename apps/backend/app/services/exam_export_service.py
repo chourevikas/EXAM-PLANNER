@@ -1,6 +1,5 @@
 import os
 import re
-import uuid
 import tempfile
 import zipfile
 from pathlib import Path

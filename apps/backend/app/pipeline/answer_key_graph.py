@@ -1,4 +1,3 @@
-import uuid
 import json
 import asyncio
 from typing import List, Dict, Any, Optional
@@ -134,7 +133,6 @@ async def node_validate_set_code_and_map_db(
                 f"⚠️ Exam ID {exam_id} not found in DB. Auto-registering baseline Exam record."
             )
             exam = Exam(
-                id=exam_id,
                 name=f"Exam {str(exam_id)[:8]}",
                 code=f"EXAM_{str(exam_id)[:8]}",
                 paper_set_code=target_set_code,
@@ -142,6 +140,7 @@ async def node_validate_set_code_and_map_db(
             session.add(exam)
             await session.commit()
             await session.refresh(exam)
+            exam_id = exam.id
 
         # Determine overall detected paper set code from page headers
         detected_set_code = "UNKNOWN"

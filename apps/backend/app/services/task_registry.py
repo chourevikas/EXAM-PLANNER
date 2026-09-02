@@ -1,4 +1,3 @@
-import uuid
 import asyncio
 from typing import Dict, Optional, Any
 from app.tasks.celery_app import celery_app, has_active_celery_workers

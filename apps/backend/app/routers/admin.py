@@ -1,6 +1,14 @@
-import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, UploadFile, File, Form, BackgroundTasks, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    UploadFile,
+    File,
+    Form,
+    BackgroundTasks,
+    HTTPException,
+    Query,
+)
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,11 +36,17 @@ from app.schemas.question import (
 from app.services.admin_service import AdminService
 from app.services.question_service import QuestionService
 from app.core.deps import require_roles
+from app.config.logger import setup_logger
 
+logger = setup_logger("AdminRouter")
 router = APIRouter(prefix="/admin", tags=["Admin Management"])
 
 
-@router.get("/overview-stats", response_model=AdminOverviewStatsOut, summary="Get Live Admin Dashboard Overview Metrics")
+@router.get(
+    "/overview-stats",
+    response_model=AdminOverviewStatsOut,
+    summary="Get Live Admin Dashboard Overview Metrics",
+)
 async def get_admin_overview_stats(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
@@ -42,6 +56,7 @@ async def get_admin_overview_stats(
     AI parsing accuracy, supported exam types, recent uploads feed, and subject distribution.
     """
     from app.cache import get_cache, build_cache_key
+
     cache = get_cache()
     cache_key = build_cache_key("admin:overview_stats")
     cached_data = await cache.get(cache_key)
@@ -55,7 +70,6 @@ async def get_admin_overview_stats(
         await cache.set(cache_key, serialized, ttl_seconds=300)
         return JSONResponse(content=serialized)
     return JSONResponse(content={})
-
 
 
 @router.get("/pending-requests", response_model=List[AdminApprovalRequestOut])
@@ -93,6 +107,7 @@ async def update_user_role(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
+
     service = AdminService(session)
     res = await service.update_user_role(user_id=user_id, new_role=payload.new_role)
     await invalidate_user_cache(str(user_id))
@@ -107,6 +122,7 @@ async def approve_admin_request(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
+
     service = AdminService(session)
     res = await service.approve_admin_request(
         user_id=user_id, current_super_admin=current_user
@@ -124,6 +140,7 @@ async def reject_admin_request(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
+
     service = AdminService(session)
     res = await service.reject_admin_request(
         user_id=user_id, payload=payload, current_super_admin=current_user
@@ -140,6 +157,7 @@ async def suspend_admin_user(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
+
     service = AdminService(session)
     res = await service.suspend_admin_user(user_id=user_id)
     await invalidate_user_cache(str(user_id))
@@ -154,6 +172,7 @@ async def reactivate_admin_user(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import invalidate_user_cache, get_cache
+
     service = AdminService(session)
     try:
         res = await service.reactivate_admin_user(user_id=user_id)
@@ -179,6 +198,7 @@ async def get_system_diagnostics(
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
     from app.cache import get_cache, build_cache_key
+
     cache = get_cache()
     cache_key = build_cache_key("admin:system_stats")
     cached_data = await cache.get(cache_key)
@@ -194,8 +214,10 @@ async def get_system_diagnostics(
     return JSONResponse(content={})
 
 
-
-@router.get("/exams/pipeline-status", summary="List All Exams with Pipeline Status & Question Metrics")
+@router.get(
+    "/exams/pipeline-status",
+    summary="List All Exams with Pipeline Status & Question Metrics",
+)
 async def list_exam_pipeline_statuses(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
@@ -205,6 +227,7 @@ async def list_exam_pipeline_statuses(
     answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
     """
     from app.cache import get_cache
+
     cache = get_cache()
     cache_key = "ep:admin:pipeline_status"
     cached_data = await cache.get(cache_key)
@@ -212,27 +235,46 @@ async def list_exam_pipeline_statuses(
         return JSONResponse(content=jsonable_encoder(cached_data))
 
     from sqlmodel import select, func, case
-    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, QuestionStatus
+    from app.db.models import (
+        Exam,
+        Question,
+        QuestionOption,
+        QuestionExplanation,
+        QuestionStatus,
+    )
     from app.db.models.pipeline_run import PipelineRun
     from sqlalchemy import cast, String
 
     # 1. Fetch all exams ordered by source year desc
-    res = await session.exec(select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc()))
+    res = await session.exec(
+        select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
+    )
     exams = res.all()
 
     # 2. Aggregated Question counts per exam
-    q_stmt = (
-        select(
-            Question.exam_id,
-            func.count(Question.id).label("total_q"),
-            func.sum(case((cast(Question.status, String) == "PUBLISHED", 1), else_=0)).label("pub_q"),
-            func.sum(case((cast(Question.status, String) == "PENDING_HUMAN_REVIEW", 1), else_=0)).label("pend_q"),
-            func.sum(case((cast(Question.status, String) == "REJECTED", 1), else_=0)).label("rej_q"),
-        )
-        .group_by(Question.exam_id)
-    )
+    q_stmt = select(
+        Question.exam_id,
+        func.count(Question.id).label("total_q"),
+        func.sum(
+            case((cast(Question.status, String) == "PUBLISHED", 1), else_=0)
+        ).label("pub_q"),
+        func.sum(
+            case((cast(Question.status, String) == "PENDING_HUMAN_REVIEW", 1), else_=0)
+        ).label("pend_q"),
+        func.sum(case((cast(Question.status, String) == "REJECTED", 1), else_=0)).label(
+            "rej_q"
+        ),
+    ).group_by(Question.exam_id)
     q_rows = (await session.exec(q_stmt)).all()
-    q_map = {row[0]: {"total": row[1] or 0, "pub": row[2] or 0, "pend": row[3] or 0, "rej": row[4] or 0} for row in q_rows}
+    q_map = {
+        row[0]: {
+            "total": row[1] or 0,
+            "pub": row[2] or 0,
+            "pend": row[3] or 0,
+            "rej": row[4] or 0,
+        }
+        for row in q_rows
+    }
 
     # 3. Aggregated correct answers per exam
     key_stmt = (
@@ -247,7 +289,9 @@ async def list_exam_pipeline_statuses(
 
     # 4. Aggregated valid explanations per exam (only non-empty detailed solutions)
     exp_stmt = (
-        select(Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id)))
+        select(
+            Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id))
+        )
         .select_from(Question)
         .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
         .where(
@@ -261,16 +305,14 @@ async def list_exam_pipeline_statuses(
 
     # 5. Check AnswerKeyBatch for extracted key counts
     from app.db.models.answer_key import AnswerKeyBatch
+
     ak_stmt = select(
         AnswerKeyBatch.exam_id,
         func.max(AnswerKeyBatch.total_keys_mapped),
         func.max(AnswerKeyBatch.total_keys_extracted),
     ).group_by(AnswerKeyBatch.exam_id)
     ak_rows = (await session.exec(ak_stmt)).all()
-    ak_map = {
-        row[0]: max(row[1] or 0, row[2] or 0)
-        for row in ak_rows
-    }
+    ak_map = {row[0]: max(row[1] or 0, row[2] or 0) for row in ak_rows}
 
     # 6. Fetch all PipelineRun records for real-time stage statuses
     run_stmt = select(PipelineRun)
@@ -304,20 +346,34 @@ async def list_exam_pipeline_statuses(
         has_paper = bool(exam.pdf_path or q_count > 0)
         has_key = bool(exam.answer_key_pdf_path or key_count > 0 or exam.paper_set_code)
 
-        status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        status_str = (
+            exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        )
 
         # PipelineRun lookups
         exam_runs = run_map.get(exam.id, {})
         p1 = exam_runs.get("QUESTION_EXTRACTION")
         p2 = exam_runs.get("ANSWER_KEY")
-        p3 = exam_runs.get("EXPLANATION_INDEXING") or exam_runs.get("EXPLANATION_GENERATION") or exam_runs.get("EXPLANATION")
+        p3 = (
+            exam_runs.get("EXPLANATION_INDEXING")
+            or exam_runs.get("EXPLANATION_GENERATION")
+            or exam_runs.get("EXPLANATION")
+        )
 
         # Stage 1: Extraction Status
         if p1:
             p1_status_upper = str(p1.status).upper()
-            if p1_status_upper in ("COMPLETED", "WAITING_FOR_ANSWER_KEY", "WAITING_FOR_HITL") or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
+            if p1_status_upper in (
+                "COMPLETED",
+                "WAITING_FOR_ANSWER_KEY",
+                "WAITING_FOR_HITL",
+            ) or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
                 stage1_status = "COMPLETED"
-            elif p1_status_upper in ("RUNNING", "PROCESSING", "INITIALIZING") or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+            elif p1_status_upper in (
+                "RUNNING",
+                "PROCESSING",
+                "INITIALIZING",
+            ) or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
                 stage1_status = "IN_PROGRESS"
             elif p1_status_upper in ("FAILED", "STOPPED", "CANCELLED"):
                 stage1_status = "FAILED"
@@ -328,7 +384,11 @@ async def list_exam_pipeline_statuses(
         else:
             if q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
                 stage1_status = "COMPLETED"
-            elif q_count > 0 or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+            elif q_count > 0 or status_str in (
+                "PROCESSING",
+                "PARSING_PDF",
+                "EXTRACTING",
+            ):
                 stage1_status = "IN_PROGRESS"
             elif not has_paper:
                 stage1_status = "MISSING_INPUT"
@@ -338,7 +398,11 @@ async def list_exam_pipeline_statuses(
         # Stage 2: Key Mapping Status
         if p2:
             p2_status_upper = str(p2.status).upper()
-            if p2_status_upper in ("COMPLETED", "MATCHED") or status_str == "PUBLISHED" or (key_count >= q_count and q_count > 0):
+            if (
+                p2_status_upper in ("COMPLETED", "MATCHED")
+                or status_str == "PUBLISHED"
+                or (key_count >= q_count and q_count > 0)
+            ):
                 stage2_status = "COMPLETED"
             elif p2_status_upper in ("RUNNING", "PROCESSING"):
                 stage2_status = "IN_PROGRESS"
@@ -363,7 +427,11 @@ async def list_exam_pipeline_statuses(
         # Stage 3: Explanations Status
         if p3:
             p3_status_upper = str(p3.status).upper()
-            if p3_status_upper == "COMPLETED" or status_str == "PUBLISHED" or (exp_count >= q_count and q_count > 0):
+            if (
+                p3_status_upper == "COMPLETED"
+                or status_str == "PUBLISHED"
+                or (exp_count >= q_count and q_count > 0)
+            ):
                 stage3_status = "COMPLETED"
             elif p3_status_upper in ("RUNNING", "PROCESSING") or exp_count > 0:
                 stage3_status = "IN_PROGRESS"
@@ -384,63 +452,82 @@ async def list_exam_pipeline_statuses(
                 stage3_status = "QUEUED"
 
         # Overall Status
-        is_s3_published = status_str == "PUBLISHED" and bool(exam.questions_json_path or exam.questions_json_folder_path)
+        is_s3_published = status_str == "PUBLISHED" and bool(
+            exam.questions_json_path or exam.questions_json_folder_path
+        )
         if is_s3_published:
             overall_status = "PUBLISHED"
         elif not has_paper or not has_key:
             overall_status = "MISSING_INPUTS"
-        elif stage1_status == "IN_PROGRESS" or stage2_status == "IN_PROGRESS" or stage3_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF"):
+        elif (
+            stage1_status == "IN_PROGRESS"
+            or stage2_status == "IN_PROGRESS"
+            or stage3_status == "IN_PROGRESS"
+            or status_str in ("PROCESSING", "PARSING_PDF")
+        ):
             overall_status = "PROCESSING"
-        elif stage1_status == "COMPLETED" and stage2_status == "COMPLETED" and stage3_status == "COMPLETED":
+        elif (
+            stage1_status == "COMPLETED"
+            and stage2_status == "COMPLETED"
+            and stage3_status == "COMPLETED"
+        ):
             overall_status = "READY_FOR_REVIEW"
         else:
             overall_status = "PENDING_REVIEW"
 
-        pipeline_list.append({
-            "id": str(exam.id),
-            "code": exam.code,
-            "name": exam.name,
-            "source_year": exam.source_year,
-            "stage": exam.stage,
-            "subject_code": exam.subject_code,
-            "paper_set_code": exam.paper_set_code,
-            "status": status_str,
-            "overall_status": overall_status,
-            "stage1_status": stage1_status,
-            "stage2_status": stage2_status,
-            "stage3_status": stage3_status,
-            "stage1_step": p1.current_step if p1 else None,
-            "stage2_step": p2.current_step if p2 else None,
-            "stage3_step": p3.current_step if p3 else None,
-            "stage3_progress": p3.progress_percent if p3 else (100.0 if stage3_status == "COMPLETED" else 0.0),
-            "is_active": exam.is_active,
-            "total_questions": total_exp,
-            "extracted_questions_count": q_count,
-            "missing_questions_count": exam.missing_questions_count or max(0, total_exp - q_count),
-            "published_questions_count": pub_count,
-            "pending_questions_count": pend_count,
-            "rejected_questions_count": rej_count,
-            "key_mapped_count": key_count,
-            "explanations_count": exp_count,
-            "has_question_paper": has_paper,
-            "has_answer_key": has_key,
-            "pdf_path": exam.pdf_path,
-            "answer_key_pdf_path": exam.answer_key_pdf_path,
-            "stage1_status": stage1_status,
-            "stage2_status": stage2_status,
-            "stage3_status": stage3_status,
-            "questions_json_path": exam.questions_json_path,
-            "solutions_json_path": exam.solutions_json_path,
-            "questions_json_folder_path": exam.questions_json_folder_path,
-            "solutions_json_folder_path": exam.solutions_json_folder_path,
-        })
+        pipeline_list.append(
+            {
+                "id": str(exam.id),
+                "code": exam.code,
+                "name": exam.name,
+                "source_year": exam.source_year,
+                "stage": exam.stage,
+                "subject_code": exam.subject_code,
+                "paper_set_code": exam.paper_set_code,
+                "status": status_str,
+                "overall_status": overall_status,
+                "stage1_status": stage1_status,
+                "stage2_status": stage2_status,
+                "stage3_status": stage3_status,
+                "stage1_step": p1.current_step if p1 else None,
+                "stage2_step": p2.current_step if p2 else None,
+                "stage3_step": p3.current_step if p3 else None,
+                "stage3_progress": p3.progress_percent
+                if p3
+                else (100.0 if stage3_status == "COMPLETED" else 0.0),
+                "is_active": exam.is_active,
+                "total_questions": total_exp,
+                "extracted_questions_count": q_count,
+                "missing_questions_count": exam.missing_questions_count
+                or max(0, total_exp - q_count),
+                "published_questions_count": pub_count,
+                "pending_questions_count": pend_count,
+                "rejected_questions_count": rej_count,
+                "key_mapped_count": key_count,
+                "explanations_count": exp_count,
+                "has_question_paper": has_paper,
+                "has_answer_key": has_key,
+                "pdf_path": exam.pdf_path,
+                "answer_key_pdf_path": exam.answer_key_pdf_path,
+                "stage1_status": stage1_status,
+                "stage2_status": stage2_status,
+                "stage3_status": stage3_status,
+                "questions_json_path": exam.questions_json_path,
+                "solutions_json_path": exam.solutions_json_path,
+                "questions_json_folder_path": exam.questions_json_folder_path,
+                "solutions_json_folder_path": exam.solutions_json_folder_path,
+            }
+        )
 
     encoded = jsonable_encoder(pipeline_list)
     await cache.set(cache_key, encoded, ttl_seconds=10)
     return JSONResponse(content=encoded)
 
 
-@router.get("/exams/stuck-pipelines", summary="List Interrupted / Stuck Pipelines Requiring Admin Action")
+@router.get(
+    "/exams/stuck-pipelines",
+    summary="List Interrupted / Stuck Pipelines Requiring Admin Action",
+)
 async def list_stuck_pipelines(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
@@ -450,6 +537,7 @@ async def list_stuck_pipelines(
     so the admin UI can display an action prompt to resume with skipped pre-extracted items.
     """
     from app.cache import get_cache
+
     cache = get_cache()
     cache_key = "ep:admin:stuck_pipelines"
     cached_data = await cache.get(cache_key)
@@ -457,7 +545,13 @@ async def list_stuck_pipelines(
         return JSONResponse(content=jsonable_encoder(cached_data))
 
     from sqlmodel import select, func
-    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, ExamStatus
+    from app.db.models import (
+        Exam,
+        Question,
+        QuestionOption,
+        QuestionExplanation,
+        ExamStatus,
+    )
     from app.db.models.pipeline_run import PipelineRun
     from app.services.task_registry import task_registry
 
@@ -470,12 +564,14 @@ async def list_stuck_pipelines(
         run_map[r.exam_id][r.pipeline_type] = r
 
     # 2. Fetch all exams that are not published
-    exams = (await session.exec(
-        select(Exam).where(cast(Exam.status, String) != "PUBLISHED")
-    )).all()
+    exams = (
+        await session.exec(select(Exam).where(cast(Exam.status, String) != "PUBLISHED"))
+    ).all()
 
     # 3. Batch aggregate question counts
-    q_stmt = select(Question.exam_id, func.count(Question.id)).group_by(Question.exam_id)
+    q_stmt = select(Question.exam_id, func.count(Question.id)).group_by(
+        Question.exam_id
+    )
     q_map = {row[0]: row[1] or 0 for row in (await session.exec(q_stmt)).all()}
 
     # 4. Batch aggregate key-mapped counts
@@ -490,7 +586,9 @@ async def list_stuck_pipelines(
 
     # 5. Batch aggregate explanation counts
     exp_stmt = (
-        select(Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id)))
+        select(
+            Question.exam_id, func.count(func.distinct(QuestionExplanation.question_id))
+        )
         .select_from(Question)
         .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
         .where(
@@ -521,7 +619,11 @@ async def list_stuck_pipelines(
         exam_runs = run_map.get(exam.id, {})
         p1 = exam_runs.get("QUESTION_EXTRACTION")
         p2 = exam_runs.get("ANSWER_KEY")
-        p3 = exam_runs.get("EXPLANATION_INDEXING") or exam_runs.get("EXPLANATION_GENERATION") or exam_runs.get("EXPLANATION")
+        p3 = (
+            exam_runs.get("EXPLANATION_INDEXING")
+            or exam_runs.get("EXPLANATION_GENERATION")
+            or exam_runs.get("EXPLANATION")
+        )
 
         # Determine if any stage is incomplete / interrupted
         is_stuck = False
@@ -529,27 +631,54 @@ async def list_stuck_pipelines(
         stuck_step = "INTERRUPTED"
         stuck_progress = 0.0
 
-        if p3 and p3.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+        if p3 and p3.status in (
+            "INTERRUPTED",
+            "FAILED",
+            "STOPPED",
+            "CANCELLED",
+            "RUNNING",
+        ):
             is_stuck = True
             stuck_stage = "EXPLANATION_INDEXING"
             stuck_step = p3.current_step
             stuck_progress = p3.progress_percent
-        elif p2 and p2.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+        elif p2 and p2.status in (
+            "INTERRUPTED",
+            "FAILED",
+            "STOPPED",
+            "CANCELLED",
+            "RUNNING",
+        ):
             is_stuck = True
             stuck_stage = "ANSWER_KEY"
             stuck_step = p2.current_step
             stuck_progress = p2.progress_percent
-        elif p1 and p1.status in ("INTERRUPTED", "FAILED", "STOPPED", "CANCELLED", "RUNNING"):
+        elif p1 and p1.status in (
+            "INTERRUPTED",
+            "FAILED",
+            "STOPPED",
+            "CANCELLED",
+            "RUNNING",
+        ):
             is_stuck = True
             stuck_stage = "QUESTION_EXTRACTION"
             stuck_step = p1.current_step
             stuck_progress = p1.progress_percent
-        elif q_count > 0 and exp_count < q_count and (p3 is None or p3.status != "COMPLETED"):
+        elif (
+            q_count > 0
+            and exp_count < q_count
+            and (p3 is None or p3.status != "COMPLETED")
+        ):
             is_stuck = True
             stuck_stage = "EXPLANATION_INDEXING"
             stuck_step = f"INCOMPLETE_EXPLANATIONS_({exp_count}/{q_count})"
             stuck_progress = round((exp_count / max(1, q_count)) * 100.0, 1)
-        elif q_count > 0 and key_count < q_count and exam.answer_key_pdf_path and (p2 is None or p2.status != "COMPLETED"):
+        elif (
+            q_count > 0
+            and key_count < q_count
+            and exam.answer_key_pdf_path
+            and (p2 is None or p2.status != "COMPLETED")
+        ):
             is_stuck = True
             stuck_stage = "ANSWER_KEY"
             stuck_step = f"INCOMPLETE_ANSWER_KEY_MAPPING_({key_count}/{q_count})"
@@ -560,27 +689,32 @@ async def list_stuck_pipelines(
             continue
 
         if is_stuck:
-            stuck_list.append({
-                "exam_id": str(exam.id),
-                "exam_name": exam.name,
-                "exam_code": exam.code,
-                "pipeline_type": stuck_stage,
-                "status": "INTERRUPTED",
-                "current_step": stuck_step,
-                "progress_percent": stuck_progress,
-                "extracted_questions_count": q_count,
-                "key_mapped_count": key_count,
-                "explanations_count": exp_count,
-                "total_questions": total_exp,
-                "can_resume": True,
-            })
+            stuck_list.append(
+                {
+                    "exam_id": str(exam.id),
+                    "exam_name": exam.name,
+                    "exam_code": exam.code,
+                    "pipeline_type": stuck_stage,
+                    "status": "INTERRUPTED",
+                    "current_step": stuck_step,
+                    "progress_percent": stuck_progress,
+                    "extracted_questions_count": q_count,
+                    "key_mapped_count": key_count,
+                    "explanations_count": exp_count,
+                    "total_questions": total_exp,
+                    "can_resume": True,
+                }
+            )
 
     encoded = jsonable_encoder(stuck_list)
     await cache.set(cache_key, encoded, ttl_seconds=10)
     return JSONResponse(content=encoded)
 
 
-@router.post("/exams/{exam_id}/resume-pipeline", summary="Resume Interrupted Pipeline Skipping Completed Parts")
+@router.post(
+    "/exams/{exam_id}/resume-pipeline",
+    summary="Resume Interrupted Pipeline Skipping Completed Parts",
+)
 async def resume_interrupted_pipeline(
     exam_id: str,
     background_tasks: BackgroundTasks,
@@ -592,10 +726,15 @@ async def resume_interrupted_pipeline(
     Automatically skips any questions/explanations that were already extracted or generated in the database.
     """
     import uuid
-    import asyncio
     from fastapi import HTTPException
     from sqlmodel import select, func
-    from app.db.models import Exam, Question, QuestionOption, QuestionExplanation, AnswerKeyBatch
+    from app.db.models import (
+        Exam,
+        Question,
+        QuestionOption,
+        QuestionExplanation,
+        AnswerKeyBatch,
+    )
     from app.db.models.pipeline_run import PipelineRun
     from app.services.pipeline_management_service import PipelineManagementService
     from app.services.task_registry import task_registry
@@ -611,32 +750,42 @@ async def resume_interrupted_pipeline(
 
     pm = PipelineManagementService(session)
 
-    q_count = (await session.exec(select(func.count(Question.id)).where(Question.exam_id == exam_id_int))).first() or 0
-    key_count = (await session.exec(
-        select(func.count(func.distinct(Question.id)))
-        .select_from(Question)
-        .join(QuestionOption, Question.id == QuestionOption.question_id)
-        .where(Question.exam_id == exam_id_int, QuestionOption.is_correct == True)
-    )).first() or 0
-    exp_count = (await session.exec(
-        select(func.count(func.distinct(QuestionExplanation.question_id)))
-        .select_from(Question)
-        .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
-        .where(
-            Question.exam_id == exam_id_int,
-            QuestionExplanation.detailed_solution != None,
-            QuestionExplanation.detailed_solution != "",
+    q_count = (
+        await session.exec(
+            select(func.count(Question.id)).where(Question.exam_id == exam_id_int)
         )
-    )).first() or 0
+    ).first() or 0
+    key_count = (
+        await session.exec(
+            select(func.count(func.distinct(Question.id)))
+            .select_from(Question)
+            .join(QuestionOption, Question.id == QuestionOption.question_id)
+            .where(Question.exam_id == exam_id_int, QuestionOption.is_correct == True)
+        )
+    ).first() or 0
+    exp_count = (
+        await session.exec(
+            select(func.count(func.distinct(QuestionExplanation.question_id)))
+            .select_from(Question)
+            .join(QuestionExplanation, Question.id == QuestionExplanation.question_id)
+            .where(
+                Question.exam_id == exam_id_int,
+                QuestionExplanation.detailed_solution != None,
+                QuestionExplanation.detailed_solution != "",
+            )
+        )
+    ).first() or 0
 
     key = str(exam_id_int)
 
     from app.tasks.celery_app import has_active_celery_workers
+
     use_celery = has_active_celery_workers()
 
     # Case 1: Stage 1 (Extraction) incomplete and pdf_path exists
     if q_count == 0 and exam.pdf_path:
         from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
+
         await pm.update_pipeline_status(
             exam_id=exam_id_int,
             pipeline_type="QUESTION_EXTRACTION",
@@ -646,7 +795,9 @@ async def resume_interrupted_pipeline(
         )
         task_id = f"resume_p1_{uuid.uuid4().hex[:8]}"
         if use_celery:
-            task_res = process_exam_pdf_task.delay(str(exam_id_int), exam.pdf_path, exam.name, task_id)
+            task_res = process_exam_pdf_task.delay(
+                str(exam_id_int), exam.pdf_path, exam.name, task_id
+            )
             task_registry.register_celery_task(key, getattr(task_res, "id", task_id))
         else:
             background_tasks.add_task(
@@ -663,17 +814,27 @@ async def resume_interrupted_pipeline(
         }
 
     # Case 2: Stage 2 (Answer Key Mapping) incomplete
-    ak_batch = (await session.exec(select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id_int))).first()
+    ak_batch = (
+        await session.exec(
+            select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id_int)
+        )
+    ).first()
     if ak_batch and key_count < q_count:
+
         async def _resume_stage_2():
             from app.db.session import managed_async_session
             from app.services.answer_key_service import AnswerKeyService
-            from app.services.pipeline_management_service import PipelineManagementService
+            from app.services.pipeline_management_service import (
+                PipelineManagementService,
+            )
+
             async with managed_async_session() as bg_session:
                 bg_ak = AnswerKeyService(bg_session)
                 bg_pm = PipelineManagementService(bg_session)
                 await bg_ak.map_stored_answers_from_db(exam_id_int)
-                await bg_pm.on_pipeline_2_completed(exam_id=exam_id_int, auto_trigger_pipeline_3=True)
+                await bg_pm.on_pipeline_2_completed(
+                    exam_id=exam_id_int, auto_trigger_pipeline_3=True
+                )
 
         background_tasks.add_task(_resume_stage_2)
         return {
@@ -683,7 +844,11 @@ async def resume_interrupted_pipeline(
         }
 
     # Case 3: Stage 3 (Explanation Generation) incomplete
-    from app.tasks.explanation_tasks import async_process_exam_explanations, process_exam_explanations_task
+    from app.tasks.explanation_tasks import (
+        async_process_exam_explanations,
+        process_exam_explanations_task,
+    )
+
     await pm.update_pipeline_status(
         exam_id=exam_id_int,
         pipeline_type="EXPLANATION_INDEXING",
@@ -693,8 +858,12 @@ async def resume_interrupted_pipeline(
     )
     task_id = f"resume_p3_{uuid.uuid4().hex[:8]}"
     if use_celery:
-        task_res = process_exam_explanations_task.delay(str(exam_id_int), None, "ENGLISH", task_id)
-        task_registry.register_celery_task(f"exp_{exam_id_int}", getattr(task_res, "id", task_id))
+        task_res = process_exam_explanations_task.delay(
+            str(exam_id_int), None, "ENGLISH", task_id
+        )
+        task_registry.register_celery_task(
+            f"exp_{exam_id_int}", getattr(task_res, "id", task_id)
+        )
     else:
         background_tasks.add_task(
             async_process_exam_explanations,
@@ -708,14 +877,16 @@ async def resume_interrupted_pipeline(
     }
 
 
-@router.post("/exams/{exam_id}/dismiss-stuck-pipeline", summary="Dismiss Interrupted Pipeline Prompt")
+@router.post(
+    "/exams/{exam_id}/dismiss-stuck-pipeline",
+    summary="Dismiss Interrupted Pipeline Prompt",
+)
 async def dismiss_stuck_pipeline(
     exam_id: str,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """Dismisses the interrupted status prompt for an exam."""
-    import uuid
     from fastapi import HTTPException
     from sqlmodel import select
     from app.db.models.pipeline_run import PipelineRun
@@ -725,12 +896,21 @@ async def dismiss_stuck_pipeline(
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid exam_id: '{exam_id}'")
 
-    runs = (await session.exec(select(PipelineRun).where(PipelineRun.exam_id == exam_id_int, PipelineRun.status == "INTERRUPTED"))).all()
+    runs = (
+        await session.exec(
+            select(PipelineRun).where(
+                PipelineRun.exam_id == exam_id_int, PipelineRun.status == "INTERRUPTED"
+            )
+        )
+    ).all()
     for r in runs:
         r.status = "DISMISSED"
         session.add(r)
     await session.commit()
-    return {"status": "DISMISSED", "message": f"Interrupted pipeline prompt dismissed for exam {exam_id}."}
+    return {
+        "status": "DISMISSED",
+        "message": f"Interrupted pipeline prompt dismissed for exam {exam_id}.",
+    }
 
 
 @router.get(
@@ -740,8 +920,12 @@ async def dismiss_stuck_pipeline(
 )
 async def get_exam_review_questions_admin(
     exam_id: int,
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
-    status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
+    language: LanguageCode = Query(
+        default=LanguageCode.ENGLISH, description="Target Language"
+    ),
+    status: Optional[QuestionStatus] = Query(
+        default=None, description="Filter by Question status"
+    ),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
     session: AsyncSession = Depends(get_async_session),
@@ -749,6 +933,7 @@ async def get_exam_review_questions_admin(
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
     from app.cache import get_cache, build_cache_key
+
     cache = get_cache()
     cache_key = build_cache_key(
         "admin:review",
@@ -756,7 +941,9 @@ async def get_exam_review_questions_admin(
         page=page,
         limit=limit,
         lang=str(language.value if hasattr(language, "value") else language),
-        status=str(status.value if hasattr(status, "value") else status) if status else None,
+        status=str(status.value if hasattr(status, "value") else status)
+        if status
+        else None,
     )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
@@ -790,7 +977,6 @@ async def approve_and_publish_exam(
     3. Saves questions_json_folder_path and solutions_json_folder_path on Exam DB record.
     4. Sets Exam.status = PUBLISHED and Exam.is_active = True.
     """
-    import uuid
     from fastapi import HTTPException
     from app.db.models import Exam, ExamStatus, Question, QuestionStatus
     from app.services.exam_json_builder import ExamJsonBuilder
@@ -803,7 +989,9 @@ async def approve_and_publish_exam(
 
     exam = await session.get(Exam, exam_id_int)
     if not exam:
-        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+        raise HTTPException(
+            status_code=404, detail=f"Exam with ID '{exam_id}' not found."
+        )
 
     q_res = await session.exec(select(Question).where(Question.exam_id == exam_id_int))
     questions = q_res.all()
@@ -811,14 +999,18 @@ async def approve_and_publish_exam(
     if not questions:
         raise HTTPException(
             status_code=422,
-            detail=f"EXAM_CANNOT_BE_APPROVED: Exam '{exam.code}' has no extracted questions."
+            detail=f"EXAM_CANNOT_BE_APPROVED: Exam '{exam.code}' has no extracted questions.",
         )
 
     # Validate that each and every question has been reviewed and published
     unreviewed_qs = [q for q in questions if q.status != QuestionStatus.PUBLISHED]
     if unreviewed_qs:
-        pending_count = sum(1 for q in unreviewed_qs if q.status == QuestionStatus.PENDING_HUMAN_REVIEW)
-        rejected_count = sum(1 for q in unreviewed_qs if q.status == QuestionStatus.REJECTED)
+        pending_count = sum(
+            1 for q in unreviewed_qs if q.status == QuestionStatus.PENDING_HUMAN_REVIEW
+        )
+        rejected_count = sum(
+            1 for q in unreviewed_qs if q.status == QuestionStatus.REJECTED
+        )
         raise HTTPException(
             status_code=400,
             detail=(
@@ -832,7 +1024,9 @@ async def approve_and_publish_exam(
     from app.db.models import PipelineRun, QuestionTranslation, QuestionOption
 
     for q in questions:
-        qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
+        qt_stmt = select(QuestionTranslation).where(
+            QuestionTranslation.question_id == q.id
+        )
         qt_res = await session.exec(qt_stmt)
         q_trans = qt_res.all()
         has_text = any(t.question_text and t.question_text.strip() for t in q_trans)
@@ -872,7 +1066,9 @@ async def approve_and_publish_exam(
     try:
         json_paths = await builder.generate_and_upload(exam_id_int, sync_all=True)
     except Exception as s3_err:
-        logger.error(f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True)
+        logger.error(
+            f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True
+        )
         # Record retryable failed pipeline run
         failed_run = PipelineRun(
             exam_id=exam_id_int,
@@ -908,6 +1104,7 @@ async def approve_and_publish_exam(
     await session.refresh(exam)
 
     from app.cache import invalidate_exam_cache
+
     await invalidate_exam_cache(str(exam.id))
 
     return {
@@ -915,26 +1112,40 @@ async def approve_and_publish_exam(
         "publish_status": "PUBLISHED",
         "exam_id": str(exam.id),
         "exam_code": exam.code,
-        "exam_status": exam.status.value if hasattr(exam.status, "value") else str(exam.status),
+        "exam_status": exam.status.value
+        if hasattr(exam.status, "value")
+        else str(exam.status),
         "is_active": exam.is_active,
         "questions_count": len(questions),
         "questions_json_path": exam.questions_json_path,
         "solutions_json_path": exam.solutions_json_path,
         "questions_json_folder_path": exam.questions_json_folder_path,
         "solutions_json_folder_path": exam.solutions_json_folder_path,
-        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "last_synced_at": exam.last_synced_at.isoformat()
+        if exam.last_synced_at
+        else None,
         "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
         "is_s3_out_of_sync": False,
         "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
     }
 
 
-@router.post("/exams/{exam_id}/sync", status_code=202, summary="Sync Exam Questions & Solutions to S3 (Background Task)")
+@router.post(
+    "/exams/{exam_id}/sync",
+    status_code=202,
+    summary="Sync Exam Questions & Solutions to S3 (Background Task)",
+)
 async def sync_exam_s3_artifacts(
     exam_id: str,
     background_tasks: BackgroundTasks,
-    sync_all: bool = Query(default=False, description="If True, re-syncs all individual questions + master JSON. If False (default), re-syncs only master exam JSONs."),
-    sync_target: str = Query(default="MASTERS_ONLY", description="Sync target scope: 'MASTERS_ONLY' (both masters), 'QUESTIONS_MASTER', 'SOLUTIONS_MASTER', 'FULL_ALL'"),
+    sync_all: bool = Query(
+        default=False,
+        description="If True, re-syncs all individual questions + master JSON. If False (default), re-syncs only master exam JSONs.",
+    ),
+    sync_target: str = Query(
+        default="MASTERS_ONLY",
+        description="Sync target scope: 'MASTERS_ONLY' (both masters), 'QUESTIONS_MASTER', 'SOLUTIONS_MASTER', 'FULL_ALL'",
+    ),
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
@@ -957,14 +1168,16 @@ async def sync_exam_s3_artifacts(
 
     exam = await session.get(Exam, exam_id_int)
     if not exam:
-        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+        raise HTTPException(
+            status_code=404, detail=f"Exam with ID '{exam_id}' not found."
+        )
 
     q_res = await session.exec(select(Question).where(Question.exam_id == exam_id_int))
     questions = q_res.all()
     if not questions:
         raise HTTPException(
             status_code=422,
-            detail=f"EXAM_CANNOT_BE_SYNCED: Exam '{exam.code}' has no questions in database."
+            detail=f"EXAM_CANNOT_BE_SYNCED: Exam '{exam.code}' has no questions in database.",
         )
 
     if sync_all:
@@ -1022,8 +1235,12 @@ async def sync_exam_s3_artifacts(
             task_id=task_id,
             execution_engine="Celery Worker",
         )
-        task_registry.register_celery_task(str(exam_id_int), getattr(celery_res, "id", task_id))
-        task_registry.register_celery_task(f"sync_{exam_id_int}", getattr(celery_res, "id", task_id))
+        task_registry.register_celery_task(
+            str(exam_id_int), getattr(celery_res, "id", task_id)
+        )
+        task_registry.register_celery_task(
+            f"sync_{exam_id_int}", getattr(celery_res, "id", task_id)
+        )
         execution_engine = "Celery Worker"
     else:
         background_tasks.add_task(
@@ -1084,7 +1301,9 @@ async def get_exam_sync_status(
 
     exam = await session.get(Exam, exam_id_int)
     if not exam:
-        raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+        raise HTTPException(
+            status_code=404, detail=f"Exam with ID '{exam_id}' not found."
+        )
 
     publish_run_stmt = (
         select(PipelineRun)
@@ -1096,18 +1315,33 @@ async def get_exam_sync_status(
     )
     publish_run = (await session.exec(publish_run_stmt)).first()
 
-    is_syncing = bool(publish_run and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING"))
+    is_syncing = bool(
+        publish_run
+        and publish_run.status in ("RUNNING", "IN_PROGRESS", "QUEUED", "PENDING")
+    )
 
-    exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
-    is_published = (exam_status_str == "PUBLISHED") and bool(exam.questions_json_path or exam.questions_json_folder_path)
+    exam_status_str = (
+        exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+    )
+    is_published = (exam_status_str == "PUBLISHED") and bool(
+        exam.questions_json_path or exam.questions_json_folder_path
+    )
 
     is_s3_out_of_sync = False
     if is_published:
         if exam.last_synced_at is None:
             is_s3_out_of_sync = True
         elif exam.updated_at:
-            upd = exam.updated_at if exam.updated_at.tzinfo else exam.updated_at.replace(tzinfo=timezone.utc)
-            sync = exam.last_synced_at if exam.last_synced_at.tzinfo else exam.last_synced_at.replace(tzinfo=timezone.utc)
+            upd = (
+                exam.updated_at
+                if exam.updated_at.tzinfo
+                else exam.updated_at.replace(tzinfo=timezone.utc)
+            )
+            sync = (
+                exam.last_synced_at
+                if exam.last_synced_at.tzinfo
+                else exam.last_synced_at.replace(tzinfo=timezone.utc)
+            )
             is_s3_out_of_sync = upd > sync
 
     return {
@@ -1119,7 +1353,9 @@ async def get_exam_sync_status(
         "current_step": publish_run.current_step if publish_run else None,
         "progress_percent": publish_run.progress_percent if publish_run else 0.0,
         "error_log": publish_run.error_log if publish_run else None,
-        "last_synced_at": exam.last_synced_at.isoformat() if exam.last_synced_at else None,
+        "last_synced_at": exam.last_synced_at.isoformat()
+        if exam.last_synced_at
+        else None,
         "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
         "is_s3_out_of_sync": is_s3_out_of_sync,
         "questions_json_path": exam.questions_json_path,
@@ -1129,7 +1365,12 @@ async def get_exam_sync_status(
     }
 
 
-@router.post("/questions", response_model=QuestionDetailResponse, status_code=201, summary="Admin Create or Fill Missing Question")
+@router.post(
+    "/questions",
+    response_model=QuestionDetailResponse,
+    status_code=201,
+    summary="Admin Create or Fill Missing Question",
+)
 async def admin_create_question(
     payload: QuestionCreatePayload,
     session: AsyncSession = Depends(get_async_session),
@@ -1143,7 +1384,11 @@ async def admin_create_question(
     return await service.create_question(payload=payload)
 
 
-@router.put("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Update Question")
+@router.put(
+    "/questions/{question_id}",
+    response_model=QuestionDetailResponse,
+    summary="Admin Update Question",
+)
 async def admin_update_question(
     question_id: int,
     payload: QuestionUpdatePayload,
@@ -1155,10 +1400,16 @@ async def admin_update_question(
     Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
     """
     service = QuestionService(session)
-    return await service.update_question_detail(question_id=question_id, payload=payload)
+    return await service.update_question_detail(
+        question_id=question_id, payload=payload
+    )
 
 
-@router.patch("/questions/{question_id}", response_model=QuestionDetailResponse, summary="Admin Partial Update Question")
+@router.patch(
+    "/questions/{question_id}",
+    response_model=QuestionDetailResponse,
+    summary="Admin Partial Update Question",
+)
 async def admin_patch_question(
     question_id: int,
     payload: QuestionUpdatePayload,
@@ -1170,10 +1421,14 @@ async def admin_patch_question(
     Automatically sets Question status to PUBLISHED and updates Exam missing question metrics.
     """
     service = QuestionService(session)
-    return await service.update_question_detail(question_id=question_id, payload=payload)
+    return await service.update_question_detail(
+        question_id=question_id, payload=payload
+    )
 
 
-@router.post("/upload-question-paper", status_code=202, summary="Admin Upload Question Paper PDF")
+@router.post(
+    "/upload-question-paper", status_code=202, summary="Admin Upload Question Paper PDF"
+)
 async def admin_upload_question_paper(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -1190,13 +1445,18 @@ async def admin_upload_question_paper(
     """
     from pathlib import Path
     from app.utils.file_utils import save_upload_file_temp
-    from app.services.storage_service import storage
+    from app.storage.factory import get_storage_provider
+
+    storage = get_storage_provider()
     from app.config.filename_parser import parse_question_paper_filename
     from app.db.models import Exam
     from sqlmodel import select, func
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported for Question Paper processing.")
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are supported for Question Paper processing.",
+        )
 
     try:
         meta = parse_question_paper_filename(
@@ -1215,21 +1475,22 @@ async def admin_upload_question_paper(
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)
 
-    rel_storage_path = f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    rel_storage_path = (
+        f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
+    )
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
     # Check if exam exists or create/update
     res = await session.exec(
         select(Exam).where(
-            (func.lower(Exam.code) == canonical_exam_code.lower()) |
-            (func.lower(Exam.name) == canonical_exam_code.lower())
+            (func.lower(Exam.code) == canonical_exam_code.lower())
+            | (func.lower(Exam.name) == canonical_exam_code.lower())
         )
     )
     exam = res.first()
 
     if not exam:
         exam = Exam(
-            id=uuid.uuid4(),
             code=canonical_exam_code,
             name=f"{exam_name.upper()} {stage.title()} {year} Set {clean_set.replace('SET_', '')}",
             source_year=year,
@@ -1247,6 +1508,7 @@ async def admin_upload_question_paper(
     await session.refresh(exam)
 
     from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+
     await invalidate_exam_cache(str(exam.id))
     await invalidate_pipeline_status_cache()
 
@@ -1259,7 +1521,9 @@ async def admin_upload_question_paper(
     }
 
 
-@router.post("/upload-answer-key", status_code=202, summary="Admin Upload Answer Key PDF")
+@router.post(
+    "/upload-answer-key", status_code=202, summary="Admin Upload Answer Key PDF"
+)
 async def admin_upload_answer_key(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -1276,12 +1540,31 @@ async def admin_upload_answer_key(
     """
     from pathlib import Path
     from app.utils.file_utils import save_upload_file_temp
-    from app.services.storage_service import storage
-    from app.services.filename_parser import parse_answer_key_filename
+    from app.storage.factory import get_storage_provider
+
+    storage = get_storage_provider()
+    from app.config.filename_parser import parse_answer_key_filename
     from app.db.models import Exam
     from sqlmodel import select, func
 
-    ALLOWED_SET_TOKENS = {"SET_A", "SET_B", "SET_C", "SET_D", "SET_1", "SET_2", "SET_3", "SET_4", "A", "B", "C", "D", "1", "2", "3", "4"}
+    ALLOWED_SET_TOKENS = {
+        "SET_A",
+        "SET_B",
+        "SET_C",
+        "SET_D",
+        "SET_1",
+        "SET_2",
+        "SET_3",
+        "SET_4",
+        "A",
+        "B",
+        "C",
+        "D",
+        "1",
+        "2",
+        "3",
+        "4",
+    }
     raw_set = str(set_code).strip().upper() if set_code else ""
     if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
         raise HTTPException(
@@ -1292,7 +1575,10 @@ async def admin_upload_answer_key(
     clean_set = raw_set if raw_set.startswith("SET_") else f"SET_{raw_set}"
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported for Answer Key processing.")
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are supported for Answer Key processing.",
+        )
 
     try:
         meta = parse_answer_key_filename(
@@ -1316,15 +1602,14 @@ async def admin_upload_answer_key(
     # Check if exam exists or create/update
     res = await session.exec(
         select(Exam).where(
-            (func.lower(Exam.code) == canonical_exam_code.lower()) |
-            (func.lower(Exam.name) == canonical_exam_code.lower())
+            (func.lower(Exam.code) == canonical_exam_code.lower())
+            | (func.lower(Exam.name) == canonical_exam_code.lower())
         )
     )
     exam = res.first()
 
     if not exam:
         exam = Exam(
-            id=uuid.uuid4(),
             code=canonical_exam_code,
             name=f"{exam_name.upper()} {stage.title()} {year} Set {clean_set.replace('SET_', '')}",
             source_year=year,
@@ -1342,6 +1627,7 @@ async def admin_upload_answer_key(
     await session.refresh(exam)
 
     from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
+
     await invalidate_exam_cache(str(exam.id))
     await invalidate_pipeline_status_cache()
 
@@ -1353,4 +1639,3 @@ async def admin_upload_answer_key(
         "target_set_code": clean_set,
         "s3_path": persistent_path,
     }
-

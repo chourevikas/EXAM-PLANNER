@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import datetime as dt
-import uuid
 from app.db.models.enums import StudyActivityType, ActivitySource
 
 class StudyActivityCreate(BaseModel):

@@ -1,4 +1,3 @@
-import uuid
 import json
 import aiofiles
 from pathlib import Path
@@ -121,11 +120,9 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
 
     async with managed_async_session() as session:
         for p_data in unified_passages:
-            p_id = uuid.uuid4()
             sec_code = p_data.get("section_code", "DEFAULT")
 
             passage = Passage(
-                id=p_id,
                 exam_id=exam_id,
                 section_code=sec_code,
                 memory_type=p_data.get("memory_type", "PASSAGE"),
@@ -135,6 +132,8 @@ async def node_python_reduce_and_stitch(state: OverallPipelineState) -> dict:
             )
             session.add(passage)
             await session.commit()
+            await session.refresh(passage)
+            p_id = passage.id
 
             for trans in p_data.get("translations", []):
                 lang_str = (

@@ -1,4 +1,3 @@
-import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import PlainTextResponse, JSONResponse

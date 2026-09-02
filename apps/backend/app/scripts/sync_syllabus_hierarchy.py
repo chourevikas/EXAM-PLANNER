@@ -23,7 +23,6 @@ async def sync_master_syllabus():
         syl_ver = (await session.exec(stmt_syl)).first()
         if not syl_ver:
             syl_ver = SyllabusVersion(
-                id=uuid.uuid4(),
                 exam_id=exam.id,
                 title="UPSC Prelims Master Syllabus (GS Micro-Topics)",
                 version_code="UPSC_PRELIMS_MASTER_V1",

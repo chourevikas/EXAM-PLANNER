@@ -1,4 +1,3 @@
-import uuid
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from app.db.models.enums import QuestionStatus, DifficultyLevel

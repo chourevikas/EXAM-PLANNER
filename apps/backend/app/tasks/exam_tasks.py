@@ -79,9 +79,10 @@ async def async_process_exam_pdf(
 
     try:
         from app.services.task_registry import task_registry
-        task_registry.register_current_task(str(exam_id_str))
+        exam_id = int(exam_id_str) if exam_id_str and str(exam_id_str).isdigit() else None
+        if exam_id:
+            task_registry.register_current_task(str(exam_id))
 
-        exam_id = int(exam_id_str)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         log.info(f"Reading total pages from PDF '{pdf_file.name}'...")
@@ -90,7 +91,7 @@ async def async_process_exam_pdf(
 
         # Asynchronously create or update Exam record in DB
         async with managed_async_session() as session:
-            exam = await session.get(Exam, exam_id)
+            exam = await session.get(Exam, exam_id) if exam_id else None
             if not exam:
                 try:
                     ym = re.search(r"\b(19\d\d|20\d\d)\b", pdf_file.name)
@@ -115,13 +116,12 @@ async def async_process_exam_pdf(
                     exam_id = exam.id
                     exam.pdf_path = str(pdf_path)
                     exam.total_pages = total_pages
-                    if not exam.name or exam_id_str in exam.name:
+                    if not exam.name or (exam_id_str and exam_id_str in exam.name):
                         exam.name = exam_title
                     session.add(exam)
                     await session.commit()
                 else:
                     exam = Exam(
-                        id=exam_id,
                         code=canonical_code,
                         name=exam_title,
                         stage=stage,
@@ -134,6 +134,8 @@ async def async_process_exam_pdf(
                     session.add(exam)
                     await session.commit()
                     await session.refresh(exam)
+                    exam_id = exam.id
+                    task_registry.register_current_task(str(exam_id))
                 log.info(
                     f"Created Exam DB record for '{exam.code}' (ID: {exam.id}) with total_pages={total_pages}"
                 )

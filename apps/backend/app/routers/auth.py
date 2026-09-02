@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Response, status, HTTPException, BackgroundTasks
 from sqlmodel import select, func, case
