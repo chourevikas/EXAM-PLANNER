@@ -9,7 +9,6 @@ import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
-import { StudentTestimonialForm } from '../components/student/StudentTestimonialForm';
 import { StudentMetricCardSkeleton } from '../components/student/StudentMetricCardSkeleton';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 
@@ -851,9 +850,6 @@ export function DashboardPage() {
           );
         })()}
       </section>
-
-      {/* Share Testimonial / Preparation Journey Section */}
-      <StudentTestimonialForm userExamDefault={`${user.target_exam || 'UPSC CSE'} ${user.target_year || '2026'} Aspirant`} />
 
       {/* Badges Modal */}
       {showBadgesModal && (

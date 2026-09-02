@@ -32,6 +32,7 @@ from app.routers.notifications import router as notifications_router
 from app.routers.testimonials import router as testimonials_router
 from app.routers.roles import router as roles_router
 from app.routers.teacher import teacher_router, admin_teacher_router
+from app.routers.current_affairs import router as current_affairs_router
 
 
 
@@ -172,6 +173,7 @@ app.include_router(testimonials_router, prefix=settings.API_V1_STR)
 app.include_router(roles_router, prefix=settings.API_V1_STR)
 app.include_router(teacher_router, prefix=settings.API_V1_STR)
 app.include_router(admin_teacher_router, prefix=settings.API_V1_STR)
+app.include_router(current_affairs_router, prefix=settings.API_V1_STR)
 
 
 

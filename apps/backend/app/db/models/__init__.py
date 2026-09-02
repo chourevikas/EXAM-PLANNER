@@ -156,5 +156,6 @@ __all__ = [
 ]
 
 from app.db.models.testimonial import Testimonial, TestimonialStatus
+from app.db.models.current_affairs import CurrentAffair
 
-__all__.extend(["Testimonial", "TestimonialStatus"])
+__all__.extend(["Testimonial", "TestimonialStatus", "CurrentAffair"])

@@ -102,11 +102,6 @@ async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pend
     if not pending_tasks:
         return True
 
-    task_list_items = "".join([
-        f"<li style='margin-bottom: 8px;'><strong>{t.get('title', 'Task')}</strong> ({t.get('subject', 'General')} — {t.get('allocated_time_minutes', 30)} mins)</li>"
-        for t in pending_tasks
-    ])
-
     html = f"""
     <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -117,15 +112,8 @@ async def send_pending_tasks_summary_email(email: EmailStr, user_name: str, pend
             <p>Hi <strong>{user_name}</strong>,</p>
             <p>You have <strong>{len(pending_tasks)} study task(s)</strong> remaining for today. Keep up the momentum for your target exam!</p>
             
-            <div style="background-color: #F9FAFB; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #E5E7EB;">
-                <h4 style="margin-top: 0; color: #374151;">Pending Tasks List:</h4>
-                <ul style="padding-left: 20px; color: #4B5563;">
-                    {task_list_items}
-                </ul>
-            </div>
-            
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://examplanner.in/planner" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Open Study Planner</a>
+                <a href="{settings.FRONTEND_URL}/study-planner" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Open Study Planner</a>
             </div>
             
             <p>Stay consistent and crush your goals!</p>

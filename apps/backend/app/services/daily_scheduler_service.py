@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from typing import Dict, List, Any, Optional
 from sqlmodel import select
 
@@ -29,7 +30,8 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
     - Deduplication: Never dispatches twice for the same date unless force=True.
     - Bounded async concurrency (max 5 simultaneous email transmissions).
     """
-    today = datetime.now(timezone.utc).date()
+    tz = ZoneInfo("Asia/Kolkata")
+    today = datetime.now(tz).date()
     date_str = today.isoformat()
     cache_key = f"daily_digest_dispatched:{date_str}"
     cache = get_cache()
@@ -80,7 +82,7 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                     })
 
             # Also create in-app notification in batch if not already present
-            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            today_start = datetime.now(ZoneInfo("Asia/Kolkata")).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
             for uid, data in user_tasks_map.items():
                 user = data["user"]
                 tasks_list = data["tasks"]
@@ -180,10 +182,13 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
 
 
 def _calculate_seconds_until_midnight() -> float:
-    """Calculates seconds until the next 00:00:00 UTC."""
-    now = datetime.now(timezone.utc)
-    next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    delay = (next_midnight - now).total_seconds()
+    """Calculates seconds until 23:55:00 IST (Asia/Kolkata)."""
+    tz = ZoneInfo("Asia/Kolkata")
+    now = datetime.now(tz)
+    target = now.replace(hour=23, minute=55, second=0, microsecond=0)
+    if now >= target:
+        target = (now + timedelta(days=1)).replace(hour=23, minute=55, second=0, microsecond=0)
+    delay = (target - now).total_seconds()
     return max(5.0, delay)
 
 

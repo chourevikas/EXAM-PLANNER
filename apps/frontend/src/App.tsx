@@ -70,6 +70,12 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const BookmarksPage = lazy(() =>
   import('./pages/BookmarksPage').then((m) => ({ default: m.BookmarksPage })),
 );
+const CurrentAffairsPage = lazy(() =>
+  import('./pages/CurrentAffairsPage').then((m) => ({ default: m.CurrentAffairsPage })),
+);
+const CurrentAffairsDetailPage = lazy(() =>
+  import('./pages/CurrentAffairsDetailPage').then((m) => ({ default: m.CurrentAffairsDetailPage })),
+);
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 
@@ -169,6 +175,26 @@ export default function App() {
                 allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
               >
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/current-affairs"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <CurrentAffairsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/current-affairs/:id"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <CurrentAffairsDetailPage />
               </ProtectedRoute>
             }
           />

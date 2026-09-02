@@ -10,7 +10,8 @@ import {
   Trophy,
   Crown,
   X,
-  Bookmark
+  Bookmark,
+  Globe
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -60,6 +61,7 @@ export function StudentSidebar({
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
+    { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
     { icon: Calendar, label: 'Study Planner', to: '/study-planner' },
     { icon: BookOpen, label: 'Previous Year Qs', to: '/pyq' },
     { icon: Brain, label: 'Practice Tests', to: '/mocks' },
