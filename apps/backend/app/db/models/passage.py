@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
 from app.db.models.enums import MemoryType, LanguageCode
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.hierarchy import Exam, Subtopic
@@ -16,7 +16,7 @@ class Passage(SQLModel, table=True):
         Index("ix_passages_subtopic", "subtopic_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
@@ -55,7 +55,7 @@ class PassageTranslation(SQLModel, table=True):
         Index("ix_passage_trans_unique", "passage_id", "language", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     passage_id: int = Field(
         foreign_key="passages.id", ondelete="CASCADE", index=True
     )

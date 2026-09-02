@@ -1,5 +1,6 @@
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
+from app.db.models.types import BigIntPK
 from app.db.models.enums import BloomsLevel
 
 if TYPE_CHECKING:
@@ -13,7 +14,7 @@ class QuestionMetadata(SQLModel, table=True):
         Index("ix_q_meta_concept", "primary_concept_tag"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", unique=True, index=True
     )

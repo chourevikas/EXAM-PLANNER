@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional, Dict, Any, Type
+from typing import Optional, Dict, Any, Type, Union
 from pydantic import Field, model_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.config.secret_loaders import get_secret_loader
@@ -60,9 +60,9 @@ class Settings(BaseSettings):
 
     # Async Database Configuration (Supports SQLite and PostgreSQL: postgresql+asyncpg://...)
     DATABASE_URL: str = Field(default="sqlite+aiosqlite:///exam_platform.db")
-    DB_MIGRATION: bool = Field(
-        default=False,
-        description="If True, automatically executes Alembic database migrations ('alembic upgrade head') on application startup.",
+    DB_MIGRATION: Union[bool, str] = Field(
+        default="false",
+        description="Alembic database migration mode: 'false' (disabled, create_all checkfirst), 'true' (safe sync & auto-stamp), or 'force' (forces execution of all alembic migrations).",
     )
 
     # Storage Abstraction Settings ('local' or 's3')

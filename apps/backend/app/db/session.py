@@ -140,10 +140,20 @@ def managed_async_session(max_retries: int = 5) -> ManagedAsyncSession:
 
 
 async def async_init_db():
-    """Asynchronously initializes database tables or executes automatic Alembic migrations."""
-    db_migration_enabled = getattr(settings, "DB_MIGRATION", True)
-    if db_migration_enabled:
-        logger.info("DB_MIGRATION is enabled. Executing automatic Alembic database migrations (alembic upgrade head)...")
+    """Asynchronously initializes database tables and synchronizes Alembic migrations.
+
+    Supported DB_MIGRATION modes:
+      - 'false' (disabled): runs SQLModel.metadata.create_all (checkfirst=True); skips Alembic.
+      - 'true'  (safe sync): creates missing tables, auto-stamps if unversioned, applies pending migrations.
+      - 'force' (forced): executes alembic upgrade head directly through Alembic's migration engine.
+    """
+    raw_mode = getattr(settings, "DB_MIGRATION", "false")
+    mode = str(raw_mode).strip().lower()
+
+    if mode == "force":
+        logger.info(
+            "DB_MIGRATION is set to 'force'. Forcing execution of all Alembic migrations (alembic upgrade head)..."
+        )
         try:
             from alembic.config import Config
             from alembic import command
@@ -151,52 +161,71 @@ async def async_init_db():
 
             alembic_ini_path = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
             if alembic_ini_path.exists():
-                from alembic.script import ScriptDirectory
-                from alembic.runtime.environment import EnvironmentContext
-
                 alembic_cfg = Config(str(alembic_ini_path))
+                alembic_cfg.attributes["dont_mutate_logger"] = True
                 alembic_dir = alembic_ini_path.parent / "alembic"
                 alembic_cfg.set_main_option("script_location", str(alembic_dir))
-                script = ScriptDirectory.from_config(alembic_cfg)
-
-                def do_upgrade(connection):
-                    def upgrade(rev, context):
-                        return script._upgrade_revs("head", rev)
-
-                    with EnvironmentContext(
-                        alembic_cfg,
-                        script,
-                        fn=upgrade,
-                        as_sql=False,
-                        starting_rev=None,
-                        destination_rev="head",
-                    ) as env_ctx:
-                        env_ctx.configure(
-                            connection=connection,
-                            target_metadata=SQLModel.metadata,
-                            render_as_batch=True,
-                        )
-                        with env_ctx.begin_transaction():
-                            env_ctx.run_migrations()
-
-                async with engine.begin() as conn:
-                    await conn.run_sync(do_upgrade)
-                logger.info("Automatic Alembic database migration completed successfully.")
+                await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+                logger.info("Alembic forced migrations completed successfully.")
             else:
-                logger.warning(f"alembic.ini not found at {alembic_ini_path}. Falling back to create_all.")
-                async with engine.begin() as conn:
-                    await conn.run_sync(SQLModel.metadata.create_all)
+                logger.warning(f"alembic.ini not found at {alembic_ini_path}.")
         except Exception as mig_err:
-            logger.error(f"Automatic Alembic migration encountered error: {mig_err}. Falling back to create_all.")
-            async with engine.begin() as conn:
-                await conn.run_sync(SQLModel.metadata.create_all)
-    else:
-        logger.info(
-            f"Initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
-        )
-        async with engine.begin() as conn:
-            await conn.run_sync(SQLModel.metadata.create_all)
-        logger.info("Database initialization complete.")
+            logger.error(f"Forced Alembic migration encountered error: {mig_err}")
+            raise mig_err
+        return
+
+    # 1. Guarantee that any missing tables defined in SQLModel are created safely (checkfirst=True)
+    logger.info(
+        f"Verifying/initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+    logger.info("SQLModel table check complete.")
+
+    # 2. If DB_MIGRATION is 'true', synchronize Alembic migration state safely
+    if mode in ("true", "1", "yes"):
+        logger.info("DB_MIGRATION is set to 'true'. Synchronizing Alembic migration state...")
+        try:
+            from alembic.config import Config
+            from alembic import command
+            from alembic.script import ScriptDirectory
+            from pathlib import Path
+            from sqlalchemy import text
+
+            alembic_ini_path = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
+            if alembic_ini_path.exists():
+                alembic_cfg = Config(str(alembic_ini_path))
+                alembic_cfg.attributes["dont_mutate_logger"] = True
+                alembic_dir = alembic_ini_path.parent / "alembic"
+                alembic_cfg.set_main_option("script_location", str(alembic_dir))
+
+                # Check if alembic_version table exists and get current revision
+                async with engine.connect() as conn:
+                    res = await conn.execute(text("SELECT to_regclass('public.alembic_version');"))
+                    has_version = res.scalar() is not None
+                    current_rev = None
+                    if has_version:
+                        v_res = await conn.execute(text("SELECT version_num FROM alembic_version LIMIT 1;"))
+                        current_rev = v_res.scalar()
+
+                if not has_version:
+                    logger.info("alembic_version table not found. Stamping database to head...")
+                    await asyncio.to_thread(command.stamp, alembic_cfg, "head")
+                    logger.info("Database stamped to head revision successfully.")
+                else:
+                    script_dir = ScriptDirectory.from_config(alembic_cfg)
+                    head_rev = script_dir.get_current_head()
+                    logger.info(f"Database revision: {current_rev} | Head revision: {head_rev}")
+                    if current_rev == head_rev:
+                        logger.info("Database schema is already at head revision. No migration needed.")
+                    else:
+                        logger.info(f"Applying pending Alembic migrations ({current_rev} -> {head_rev})...")
+                        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+                        logger.info("Alembic database synchronization completed successfully.")
+            else:
+                logger.warning(f"alembic.ini not found at {alembic_ini_path}.")
+        except Exception as mig_err:
+            logger.error(f"Alembic synchronization encountered error: {mig_err}")
 
 
 async def warm_connection_pool():

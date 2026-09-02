@@ -335,6 +335,23 @@ class UserRepository:
         self.session.add(token_record)
         await self.session.commit()
 
+    async def save_refresh_token(
+        self,
+        user_id: int | str,
+        token_hash: str,
+        expires_at: datetime,
+        device_name: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> None:
+        """Save a new refresh token for the user during registration or token issuance."""
+        await self.perform_login_housekeeping_and_save_token(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+            device_name=device_name,
+            ip_address=ip_address,
+        )
+
     async def cleanup_old_refresh_tokens(self, user_id: int | str) -> None:
         """Revoke all existing tokens for user before issuing a new one.
         Keeps the refresh_tokens table from growing unboundedly and avoids

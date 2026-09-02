@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from app.db.models.enums import UserRole
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class Permission(SQLModel, table=True):
     __tablename__ = "permissions"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     key: str = Field(unique=True, index=True, max_length=100)
     label: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
@@ -26,7 +26,7 @@ class Permission(SQLModel, table=True):
 class Role(SQLModel, table=True):
     __tablename__ = "roles"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     name: str = Field(unique=True, index=True, max_length=100)
     slug: str = Field(unique=True, index=True, max_length=100)
     base_role_type: UserRole = Field(default=UserRole.ADMIN)
@@ -68,7 +68,7 @@ class RolePermission(SQLModel, table=True):
 class RoleAssignmentLog(SQLModel, table=True):
     __tablename__ = "role_assignment_logs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     target_user_id: int = Field(
         foreign_key="users.id", ondelete="CASCADE", index=True
     )

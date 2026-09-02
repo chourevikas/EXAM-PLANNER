@@ -2,7 +2,7 @@ import datetime as dt
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 from app.db.models.enums import StudyActivityType, ActivitySource
 
 if TYPE_CHECKING:
@@ -15,7 +15,7 @@ class StudyTask(SQLModel, table=True):
         Index("ix_study_tasks_user_completed", "user_id", "is_completed"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     title: str = Field(max_length=255)
     description: Optional[str] = Field(default=None)
@@ -50,7 +50,7 @@ class StudyActivity(SQLModel, table=True):
         Index("ix_study_activities_user_date", "user_id", "date"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     date: dt.date = Field(default_factory=lambda: datetime.now(timezone.utc).date(), index=True)
     

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
 from app.db.models.enums import UserRole, UserStatus
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.subscription import UserSubscription
@@ -26,7 +26,7 @@ class SubscriptionTier(str, enum.Enum):
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     full_name: str = Field(max_length=255)
     email: str = Field(unique=True, index=True, max_length=255)
     clerk_id: Optional[str] = Field(default=None, unique=True, index=True, max_length=255)
@@ -214,7 +214,7 @@ class AdminProfile(SQLModel, table=True):
 class AdminApprovalLog(SQLModel, table=True):
     __tablename__ = "admin_approval_logs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     admin_user_id: int = Field(
         foreign_key="users.id", ondelete="CASCADE", index=True
     )
@@ -232,7 +232,7 @@ class AdminApprovalLog(SQLModel, table=True):
 class RefreshToken(SQLModel, table=True):
     __tablename__ = "refresh_tokens"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     token_hash: str
     device_name: Optional[str] = Field(default=None, max_length=255)
@@ -253,7 +253,7 @@ class QuestionBookmark(SQLModel, table=True):
         Index("ix_question_bookmarks_user_created", "user_id", "created_at"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     question_id: int = Field(foreign_key="questions.id", ondelete="CASCADE", index=True)
     notes: Optional[str] = Field(default=None)

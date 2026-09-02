@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index, Column
 from app.db.models.enums import QuestionSourceType, ExamStatus
-from app.db.models.types import DateTimeTZ, PortableJSON
+from app.db.models.types import DateTimeTZ, PortableJSON, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.question import Question
@@ -27,7 +27,7 @@ class Exam(SQLModel, table=True):
         ),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     code: str = Field(
         unique=True,
         index=True,
@@ -149,7 +149,7 @@ class SyllabusVersion(SQLModel, table=True):
         Index("ix_syllabus_exam_version", "exam_id", "version_code", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     version_code: str = Field(max_length=50)
     title: Optional[str] = Field(default=None)
@@ -171,7 +171,7 @@ class Subject(SQLModel, table=True):
         Index("ix_subjects_syllabus_order", "version_id", "display_order"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     version_id: int = Field(
         foreign_key="syllabus_versions.id", ondelete="CASCADE", index=True
     )
@@ -189,7 +189,7 @@ class Topic(SQLModel, table=True):
     __tablename__ = "topics"
     __table_args__ = (Index("ix_topics_subject_order", "subject_id", "display_order"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     subject_id: int = Field(
         foreign_key="subjects.id", ondelete="CASCADE", index=True
     )
@@ -207,7 +207,7 @@ class Subtopic(SQLModel, table=True):
     __tablename__ = "subtopics"
     __table_args__ = (Index("ix_subtopics_topic_order", "topic_id", "display_order"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     topic_id: int = Field(foreign_key="topics.id", ondelete="CASCADE", index=True)
     code: str = Field(default="DEFAULT", max_length=50)
     name: str = Field(max_length=200)

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.hierarchy import Exam
@@ -13,7 +13,7 @@ class PipelineRun(SQLModel, table=True):
         Index("ix_pipeline_runs_exam_type", "exam_id", "pipeline_type"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     
     pipeline_type: str = Field(

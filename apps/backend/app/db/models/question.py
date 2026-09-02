@@ -10,7 +10,7 @@ from app.db.models.enums import (
     QuestionSourceType,
     QuestionStatus,
 )
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.metadata import QuestionMetadata
@@ -37,7 +37,7 @@ class Question(SQLModel, table=True):
         Index("ix_questions_passage", "passage_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     exam_id: Optional[int] = Field(
         default=None, foreign_key="exams.id", ondelete="CASCADE", index=True
     )
@@ -174,7 +174,7 @@ class QuestionTranslation(SQLModel, table=True):
         Index("ix_q_trans_unique", "question_id", "language", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
@@ -192,7 +192,7 @@ class QuestionOption(SQLModel, table=True):
         Index("ix_options_question_order", "question_id", "display_order"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
@@ -218,7 +218,7 @@ class OptionTranslation(SQLModel, table=True):
         Index("ix_opt_trans_unique", "option_id", "language", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     option_id: int = Field(
         foreign_key="question_options.id", ondelete="CASCADE", index=True
     )
@@ -235,7 +235,7 @@ class QuestionAsset(SQLModel, table=True):
         Index("ix_assets_question_order", "question_id", "display_order"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )

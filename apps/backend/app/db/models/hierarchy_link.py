@@ -1,5 +1,6 @@
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
+from app.db.models.types import BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.question import Question
@@ -16,7 +17,7 @@ class QuestionHierarchyLink(SQLModel, table=True):
         Index("ix_qhl_subject", "subject_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )

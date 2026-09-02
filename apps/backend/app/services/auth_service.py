@@ -144,9 +144,9 @@ class AuthService:
             algorithm=settings.ALGORITHM,
         )
         try:
-            await email_service.send_verification_email(user_out.email, verification_token)
+            asyncio.create_task(email_service.send_verification_email(user_out.email, verification_token))
         except Exception as e:
-            logger.error(f"Failed to send verification email: {e}")
+            logger.error(f"Failed to dispatch verification email: {e}")
 
         return token_response, refresh_token
 

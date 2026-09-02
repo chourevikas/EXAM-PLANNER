@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.question import Question
@@ -16,7 +16,7 @@ class HumanReviewTask(SQLModel, table=True):
         Index("ix_review_tasks_flagged", "is_flagged_by_validator", "review_status"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )

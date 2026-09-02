@@ -111,3 +111,11 @@ class StudyActivityType(str, enum.Enum):
 class ActivitySource(str, enum.Enum):
     PLANNED = "PLANNED"
     UNPLANNED = "UNPLANNED"
+
+
+class RedemptionStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    PAID = "PAID"
+    REJECTED = "REJECTED"
+

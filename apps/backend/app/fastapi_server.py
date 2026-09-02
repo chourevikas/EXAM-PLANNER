@@ -69,6 +69,7 @@ async def lifespan(app: FastAPI):
     except Exception as err:
         logger.warning(f"Could not start daily midnight scheduler: {err}")
 
+    logger.info("Application startup complete. Uvicorn server is ready to accept connections.")
     try:
         yield
     finally:

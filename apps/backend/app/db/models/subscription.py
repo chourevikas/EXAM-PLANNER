@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -25,7 +25,7 @@ class PlatformFeature(SQLModel, table=True):
     __tablename__ = "platform_features"
     __table_args__ = (Index("ix_platform_features_code", "feature_code", unique=True),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     feature_code: str = Field(
         index=True,
         max_length=100,
@@ -50,7 +50,7 @@ class SubscriptionPlan(SQLModel, table=True):
         Index("ix_subscription_plans_active_display", "is_active", "display_order"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     plan_code: str = Field(
         index=True,
         max_length=100,
@@ -84,7 +84,7 @@ class PlanFeatureLink(SQLModel, table=True):
         Index("ix_plan_feature_unique", "plan_id", "feature_id", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     plan_id: int = Field(foreign_key="subscription_plans.id", index=True)
     feature_id: int = Field(foreign_key="platform_features.id", index=True)
     usage_limit: Optional[int] = Field(
@@ -104,7 +104,7 @@ class UserSubscription(SQLModel, table=True):
         Index("ix_user_subs_period_end", "current_period_end"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True)
     plan_id: int = Field(foreign_key="subscription_plans.id", index=True)
     status: SubscriptionStatus = Field(default=SubscriptionStatus.ACTIVE, index=True)

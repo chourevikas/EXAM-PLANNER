@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from sqlmodel import SQLModel, Field, Relationship, Index, Column
 from app.db.models.enums import LanguageCode
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.question import Question
@@ -16,7 +16,7 @@ class QuestionExplanation(SQLModel, table=True):
         Index("ix_q_expl_question_lang", "question_id", "language", unique=True),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )

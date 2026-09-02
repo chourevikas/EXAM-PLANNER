@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Column, Index
-from app.db.models.types import PortableJSON, DateTimeTZ
+from app.db.models.types import PortableJSON, DateTimeTZ, BigIntPK
 from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ class ExamAttempt(SQLModel, table=True):
         Index("ix_exam_attempts_user_status", "user_id", "status"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
 
@@ -93,7 +93,7 @@ class ExamQuestionResponse(SQLModel, table=True):
         Index("ix_eq_responses_question", "question_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(
         foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
@@ -155,7 +155,7 @@ class UserMemoryState(SQLModel, table=True):
         Index("ix_memory_next_review", "user_id", "next_scheduled_review"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     question_id: Optional[int] = Field(
         default=None, foreign_key="questions.id", ondelete="CASCADE", index=True
@@ -218,7 +218,7 @@ class UserTaxonomyMastery(SQLModel, table=True):
         ),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     taxonomy_type: str = Field(
         index=True,
@@ -252,7 +252,7 @@ class ExamQuestionReport(SQLModel, table=True):
         Index("ix_eq_reports_attempt_num", "attempt_id", "question_number"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(
         foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
@@ -287,7 +287,7 @@ class ExamQuestionReport(SQLModel, table=True):
 class ExamAttemptReport(SQLModel, table=True):
     __tablename__ = "exam_attempt_reports"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(
         foreign_key="exam_attempts.id", unique=True, index=True, ondelete="CASCADE"
     )
@@ -323,7 +323,7 @@ class UserSkillProgressionReport(SQLModel, table=True):
         Index("ix_skill_prog_user_created", "user_id", "created_at"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(
         foreign_key="exam_attempts.id", index=True, ondelete="CASCADE"
     )

@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.hierarchy import Exam
@@ -27,7 +27,7 @@ class AnswerKeyBatch(SQLModel, table=True):
     __tablename__ = "answer_key_batches"
     __table_args__ = (Index("ix_ak_batch_exam_status", "exam_id", "set_match_status"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     pdf_path: str = Field(description="Path or S3 key of uploaded answer key PDF/image")
     target_set_code: str = Field(
@@ -66,7 +66,7 @@ class AnswerKeyMapping(SQLModel, table=True):
         Index("ix_ak_mapping_status", "mapping_status"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     batch_id: int = Field(
         foreign_key="answer_key_batches.id", ondelete="CASCADE", index=True
     )

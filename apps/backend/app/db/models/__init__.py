@@ -157,5 +157,8 @@ __all__ = [
 
 from app.db.models.testimonial import Testimonial, TestimonialStatus
 from app.db.models.current_affairs import CurrentAffair
+from app.db.models.teacher import RedemptionRequest
+from app.db.models.enums import RedemptionStatus
 
-__all__.extend(["Testimonial", "TestimonialStatus", "CurrentAffair"])
+__all__.extend(["Testimonial", "TestimonialStatus", "CurrentAffair", "RedemptionRequest", "RedemptionStatus"])
+

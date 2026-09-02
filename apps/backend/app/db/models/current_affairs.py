@@ -2,12 +2,12 @@ from typing import Optional
 from datetime import datetime, timezone
 import datetime as dt
 from sqlmodel import SQLModel, Field
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 class CurrentAffair(SQLModel, table=True):
     __tablename__ = "current_affairs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     title: str = Field(max_length=255)
     content: str  # Markdown content
     

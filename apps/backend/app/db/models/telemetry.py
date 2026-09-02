@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship, Index
 from app.db.models.enums import TestType, AttemptStatus, AttemptMode
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -14,7 +14,7 @@ class Test(SQLModel, table=True):
     __tablename__ = "tests"
     __table_args__ = (Index("ix_tests_type_created", "test_type", "created_at"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     title: str = Field(max_length=200)
     test_type: TestType = Field(index=True)
     total_questions: int = Field(default=0)
@@ -49,7 +49,7 @@ class UserTestAttempt(SQLModel, table=True):
         Index("ix_attempts_test", "test_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     test_id: int = Field(foreign_key="tests.id", index=True)
     exam_attempt_id: Optional[int] = Field(
@@ -82,7 +82,7 @@ class UserQuestionResponse(SQLModel, table=True):
         Index("ix_responses_question", "question_id"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(
         foreign_key="user_test_attempts.id", ondelete="CASCADE", index=True
     )
@@ -113,7 +113,7 @@ class QuestionSwitchLog(SQLModel, table=True):
     __tablename__ = "question_switch_logs"
     __table_args__ = (Index("ix_switch_logs_response", "response_id"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     response_id: Optional[int] = Field(
         default=None, foreign_key="user_question_responses.id", ondelete="CASCADE", index=True
     )
@@ -143,7 +143,7 @@ class UserConceptRetention(SQLModel, table=True):
         Index("ix_retention_next_review", "user_id", "next_scheduled_review"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     subtopic_id: int = Field(
         foreign_key="subtopics.id", ondelete="CASCADE", index=True

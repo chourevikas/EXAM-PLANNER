@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True)
     title: str = Field(..., max_length=255)
     message: str = Field(...)

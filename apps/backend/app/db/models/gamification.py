@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
-from app.db.models.types import DateTimeTZ
+from app.db.models.types import DateTimeTZ, BigIntPK
 
 if TYPE_CHECKING:
     from app.db.models.user import User
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 class Badge(SQLModel, table=True):
     __tablename__ = "badges"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     name: str = Field(max_length=255)
     description: str
     icon_url: Optional[str] = Field(default=None)
@@ -24,7 +24,7 @@ class Badge(SQLModel, table=True):
 class UserBadge(SQLModel, table=True):
     __tablename__ = "user_badges"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     badge_id: int = Field(foreign_key="badges.id", index=True, ondelete="CASCADE")
     unlocked_at: datetime = Field(
@@ -38,7 +38,7 @@ class UserBadge(SQLModel, table=True):
 class XPLog(SQLModel, table=True):
     __tablename__ = "xp_logs"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     amount: int
     source: str = Field(max_length=100)
