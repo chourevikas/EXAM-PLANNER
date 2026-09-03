@@ -11,7 +11,7 @@ import {
   Crown,
   X,
   Bookmark,
-  Globe
+  Globe,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -28,7 +28,7 @@ export function StudentSidebar({
   collapsed,
   mobileOpen,
   onToggleCollapse,
-  onCloseMobile
+  onCloseMobile,
 }: StudentSidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
@@ -63,8 +63,8 @@ export function StudentSidebar({
     { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
     { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
     { icon: Calendar, label: 'Study Planner', to: '/study-planner' },
-    { icon: BookOpen, label: 'Previous Year Qs', to: '/pyq' },
-    { icon: Brain, label: 'Practice Tests', to: '/mocks' },
+    { icon: BookOpen, label: 'PYQs Simulation', to: '/pyq' },
+    { icon: Brain, label: 'Analyse & Practice PYQs', to: '/mocks' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
   ];
@@ -76,7 +76,7 @@ export function StudentSidebar({
 
   const isCollapsedDesktop = collapsed && !isMobile;
 
-  const renderNavItem = (item: { icon: any, label: string, to: string }) => {
+  const renderNavItem = (item: { icon: any; label: string; to: string }) => {
     const isActive = currentPath === item.to;
     const Icon = item.icon;
 
@@ -98,10 +98,11 @@ export function StudentSidebar({
           fontWeight: isActive ? 600 : 400,
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           backgroundColor: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
-          borderLeft: isActive && !isCollapsedDesktop ? '3px solid #E31B23' : '3px solid transparent',
+          borderLeft:
+            isActive && !isCollapsedDesktop ? '3px solid #E31B23' : '3px solid transparent',
           transition: 'all 0.15s ease',
           position: 'relative',
-          minHeight: 44, /* Touch target */
+          minHeight: 44 /* Touch target */,
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
@@ -116,7 +117,11 @@ export function StudentSidebar({
           }
         }}
       >
-        <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+        <Icon
+          size={17}
+          color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'}
+          style={{ flexShrink: 0 }}
+        />
         {!isCollapsedDesktop && <span>{item.label}</span>}
       </Link>
     );
@@ -127,17 +132,15 @@ export function StudentSidebar({
     'app-sidebar',
     isCollapsedDesktop ? 'collapsed' : '',
     isMobile && mobileOpen ? 'mobile-open' : '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <>
       {/* Mobile Backdrop Overlay */}
       {isMobile && mobileOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={onCloseMobile}
-          aria-hidden="true"
-        />
+        <div className="sidebar-backdrop" onClick={onCloseMobile} aria-hidden="true" />
       )}
 
       {/* Sidebar */}
@@ -188,7 +191,7 @@ export function StudentSidebar({
                   fontWeight: 700,
                   color: 'rgba(255, 255, 255, 0.4)',
                   letterSpacing: '0.08em',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 }}
               >
                 Main Navigation
@@ -229,7 +232,7 @@ export function StudentSidebar({
                 border: 'none',
                 color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
-                padding: 4
+                padding: 4,
               }}
               aria-label="Close navigation"
             >
@@ -246,7 +249,7 @@ export function StudentSidebar({
             gap: 4,
             padding: isCollapsedDesktop ? '8px' : '0 12px',
             flex: 1,
-            overflowY: 'auto'
+            overflowY: 'auto',
           }}
         >
           {navItems.map(renderNavItem)}
@@ -256,7 +259,7 @@ export function StudentSidebar({
               margin: '16px 0 8px 0',
               padding: isCollapsedDesktop ? '0' : '0 8px',
               borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              paddingTop: 16
+              paddingTop: 16,
             }}
           >
             {!isCollapsedDesktop && (
@@ -269,7 +272,7 @@ export function StudentSidebar({
                   letterSpacing: '0.08em',
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                   display: 'block',
-                  marginBottom: 8
+                  marginBottom: 8,
                 }}
               >
                 Performance Reports
@@ -293,10 +296,27 @@ export function StudentSidebar({
                 boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F2B623', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  color: '#F2B623',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  marginBottom: 6,
+                }}
+              >
                 <Crown size={16} /> Upgrade to PRO
               </div>
-              <p style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.7)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  margin: '0 0 10px 0',
+                  lineHeight: 1.4,
+                }}
+              >
                 Unlock AI insights, detailed analytics and unlimited test attempts.
               </p>
               <Link
@@ -314,7 +334,7 @@ export function StudentSidebar({
                   fontWeight: 600,
                   textDecoration: 'none',
                   transition: 'all 0.15s ease',
-                  minHeight: 44, /* Touch target */
+                  minHeight: 44 /* Touch target */,
                 }}
               >
                 Explore PRO &rarr;

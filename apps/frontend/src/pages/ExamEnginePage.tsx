@@ -1142,6 +1142,8 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             style={{
               width: '100%',
               maxWidth: 500,
+              maxHeight: '90vh',
+              overflowY: 'auto',
               backgroundColor: isDark ? '#172033' : '#ffffff',
               borderRadius: 0,
               padding: '32px',

@@ -105,7 +105,7 @@ export function ExamQuestionPalette({
               letterSpacing: '0.08em',
             }}
           >
-            QUESTION PALETTE
+            QUESTION Review
           </span>
           <span
             style={{

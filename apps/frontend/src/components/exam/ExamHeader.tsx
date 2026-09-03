@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, Focus, Minimize2 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamHeaderProps {
@@ -16,6 +16,8 @@ interface ExamHeaderProps {
   onBack?: () => void;
   onLanguageChange: (lang: 'en' | 'hi') => void;
   onSubmitClick?: () => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 export function ExamHeader({
@@ -32,6 +34,8 @@ export function ExamHeader({
   onBack,
   onLanguageChange,
   onSubmitClick,
+  focusMode = false,
+  onToggleFocusMode,
 }: ExamHeaderProps) {
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
@@ -185,6 +189,32 @@ export function ExamHeader({
 
       {/* Right: Submit Test CTA */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onToggleFocusMode && (
+          <button
+            type="button"
+            onClick={onToggleFocusMode}
+            className="touch-target"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 10px',
+              borderRadius: 0,
+              border: `1px solid ${focusMode ? 'rgba(227, 27, 35, 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
+              backgroundColor: focusMode ? 'rgba(227, 27, 35, 0.18)' : 'rgba(255, 255, 255, 0.09)',
+              color: '#FFFFFF',
+              fontSize: 'clamp(11.5px, 2.5vw, 12.5px)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+            title={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+          >
+            {focusMode ? <Minimize2 size={13} /> : <Focus size={13} />}
+            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Focus Mode'}</span>}
+          </button>
+        )}
         {showSubmitButton && onSubmitClick && (
           <button
             type="button"

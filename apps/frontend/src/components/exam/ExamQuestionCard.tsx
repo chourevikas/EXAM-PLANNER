@@ -777,6 +777,7 @@ export function ExamQuestionCard({
             {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
             {mode !== 'EXAM' && revealResult && showDetailedSolution && (
               <QuestionSolutionMarkdownCard
+                isLoading={isRevealing}
                 isUserCorrect={revealResult.is_user_correct}
                 selectedOptionLabel={
                   revealResult.user_selected_label || selectedOptionLabel || undefined

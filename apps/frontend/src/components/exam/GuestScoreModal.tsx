@@ -95,6 +95,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
           style={{
             width: '100%',
             maxWidth: 460,
+            maxHeight: '90vh',
             backgroundColor: '#FFFFFF',
             borderRadius: 0, // Extra rounded bubbly corners
             padding: '32px 28px',
@@ -104,7 +105,8 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             fontFamily: "'IBM Plex Sans', -apple-system, system-ui, sans-serif",
             boxSizing: 'border-box',
             position: 'relative',
-            overflow: 'hidden',
+            overflowY: 'auto',
+            overflowX: 'hidden',
           }}
         >
           {/* Close & Go Home Button */}

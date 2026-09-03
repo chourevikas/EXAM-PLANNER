@@ -313,7 +313,7 @@ export function QuestionSolutionMarkdownCard({
           </div>
         )}
 
-        {/* Section 2: Step-by-Step Detailed Solution (Markdown) */}
+        {/* Section 2: Detailed Explanation & Reference (Markdown + Option Breakdown, unified) */}
         <div>
           <div
             style={{
@@ -330,132 +330,142 @@ export function QuestionSolutionMarkdownCard({
             Detailed Explanation & Reference
           </div>
           <div
-            className="prose prose-slate max-w-none text-slate-800"
             style={{
-              fontSize: 14,
-              lineHeight: 1.7,
-              color: '#172033',
-              backgroundColor: '#FAFAFA',
-              padding: '16px 18px',
               borderRadius: 0,
               border: '1px solid #F1F5F9',
+              backgroundColor: '#FAFAFA',
+              overflow: 'hidden',
             }}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {detailedMarkdown}
-            </ReactMarkdown>
-          </div>
-        </div>
-
-        {/* Section 3: Option-by-Option Distractor Analysis */}
-        {distractorsList.length > 0 && (
-          <div>
             <div
+              className="prose prose-slate max-w-none text-slate-800"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
                 fontSize: 14,
-                fontWeight: 700,
+                lineHeight: 1.7,
                 color: '#172033',
-                marginBottom: 10,
+                padding: '16px 18px',
               }}
             >
-              <Target size={16} style={{ color: '#E31B23' }} />
-              Option & Distractor Breakdown ({distractorsList.length} Options)
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {detailedMarkdown}
+              </ReactMarkdown>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {distractorsList.map((item, idx) => {
-                const isOptionCorrect = item.is_correct || item.label === correctLabel;
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: 0,
-                      backgroundColor: isOptionCorrect ? '#F0FDF4' : '#F8FAFC',
-                      border: `1px solid ${isOptionCorrect ? '#BBF7D0' : '#E2E8F0'}`,
-                    }}
-                  >
+
+            {distractorsList.length > 0 && (
+              <div
+                style={{
+                  borderTop: '1px solid #E2E8F0',
+                  padding: '4px 18px 6px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '10px 0 8px',
+                  }}
+                >
+                  <Target size={13} style={{ color: '#E31B23' }} />
+                  Option-by-Option Analysis
+                </div>
+                {distractorsList.map((item, idx) => {
+                  const isOptionCorrect = item.is_correct || item.label === correctLabel;
+                  return (
                     <div
+                      key={idx}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 6,
+                        padding: '10px 0',
+                        borderTop: idx === 0 ? 'none' : '1px solid #F1F5F9',
                       }}
                     >
-                      <span
+                      <div
                         style={{
-                          fontSize: 13.5,
-                          fontWeight: 700,
-                          color: isOptionCorrect ? '#16A34A' : '#334155',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
+                          justifyContent: 'space-between',
+                          marginBottom: 4,
+                          gap: 8,
                         }}
                       >
-                        {isOptionCorrect ? (
-                          <CheckCircle2 size={16} style={{ color: '#16A34A' }} />
-                        ) : (
-                          <span
-                            style={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: 0,
-                              backgroundColor: '#E2E8F0',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: '#475569',
-                            }}
-                          >
-                            {item.label || String.fromCharCode(65 + idx)}
-                          </span>
-                        )}
-                        Option ({item.label || String.fromCharCode(65 + idx)})
-                        {item.text && (
-                          <span style={{ fontWeight: 500, color: '#475569' }}>
-                            — {item.text}
-                          </span>
-                        )}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 13.5,
+                            fontWeight: 700,
+                            color: isOptionCorrect ? '#16A34A' : '#334155',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          {isOptionCorrect ? (
+                            <CheckCircle2 size={16} style={{ color: '#16A34A' }} />
+                          ) : (
+                            <span
+                              style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: 0,
+                                backgroundColor: '#E2E8F0',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: '#475569',
+                              }}
+                            >
+                              {item.label || String.fromCharCode(65 + idx)}
+                            </span>
+                          )}
+                          Option ({item.label || String.fromCharCode(65 + idx)})
+                          {item.text && (
+                            <span style={{ fontWeight: 500, color: '#475569' }}>
+                              — {item.text}
+                            </span>
+                          )}
+                        </span>
 
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: 0,
-                          backgroundColor: isOptionCorrect ? '#DCFCE7' : '#F1F5F9',
-                          color: isOptionCorrect ? '#15803D' : '#64748B',
-                        }}
-                      >
-                        {isOptionCorrect
-                          ? 'Correct Key'
-                          : item.classification || `Distractor (${item.closeness_score ?? 0})`}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 0,
+                            backgroundColor: isOptionCorrect ? '#DCFCE7' : '#F1F5F9',
+                            color: isOptionCorrect ? '#15803D' : '#64748B',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isOptionCorrect
+                            ? 'Correct Key'
+                            : item.classification || `Distractor (${item.closeness_score ?? 0})`}
+                        </span>
+                      </div>
+
+                      {item.distractor_analysis ? (
+                        <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
+                          {item.distractor_analysis}
+                        </p>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
+                          {isOptionCorrect
+                            ? 'Correctly reflects standard constitutional provisions and syllabus references.'
+                            : 'Incorrect option formulated as a plausible distractor based on standard conceptual traps.'}
+                        </p>
+                      )}
                     </div>
-
-                    {item.distractor_analysis ? (
-                      <p style={{ margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.5 }}>
-                        {item.distractor_analysis}
-                      </p>
-                    ) : (
-                      <p style={{ margin: 0, fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
-                        {isOptionCorrect
-                          ? 'Correctly reflects standard constitutional provisions and syllabus references.'
-                          : 'Incorrect option formulated as a plausible distractor based on standard conceptual traps.'}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Section 4: Key Takeaways & Points to Remember */}
         {keyTakeaways.length > 0 && (

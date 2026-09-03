@@ -71,7 +71,7 @@ export function ExamFooterBar({
             aria-label="Open Question Palette"
           >
             <Grid size={14} />
-            <span>Palette</span>
+            <span>Review</span>
           </button>
         )}
 
@@ -125,7 +125,11 @@ export function ExamFooterBar({
             }}
             title="Mark for Review"
           >
-            <Flag size={13} fill={isMarkedForReview ? '#F2B623' : 'none'} color={isMarkedForReview ? '#F2B623' : '#64748B'} />
+            <Flag
+              size={13}
+              fill={isMarkedForReview ? '#F2B623' : 'none'}
+              color={isMarkedForReview ? '#F2B623' : '#64748B'}
+            />
             {!isMobile && <span>{isMarkedForReview ? 'Marked' : 'Mark'}</span>}
           </button>
         )}
