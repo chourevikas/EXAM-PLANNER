@@ -22,11 +22,16 @@ class QuestionExplanation(SQLModel, table=True):
     )
     language: LanguageCode = Field(default=LanguageCode.ENGLISH, index=True)
 
-    core_concept: str = Field(
-        description="Primary formula, theorem, or rule being tested in 1 sentence"
+    core_concept: Optional[str] = Field(
+        default=None,
+        description="Primary formula, theorem, or rule being tested in 1 sentence",
     )
     detailed_solution: str = Field(
         description="Step-by-step proof, calculation, or logical derivation"
+    )
+    common_mistake: Optional[str] = Field(
+        default=None,
+        description="Common mistake or pitfall identified in the solution",
     )
     common_traps_json: Optional[list] = Field(
         default=[],

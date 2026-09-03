@@ -6,3 +6,8 @@ dependencies = []
 
 [tool.uv.workspace]
 members = ["apps/backend"]
+
+[tool.uv]
+override-dependencies = [
+    "opencv-python ; sys_platform == 'never'",
+]

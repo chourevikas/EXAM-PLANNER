@@ -18,10 +18,7 @@ from app.db.models import (
 )
 from app.storage.factory import get_storage_provider
 from app.services.exam_json_builder import ExamJsonBuilder
-from app.pipeline.vision_extractor import (
-    load_pdf_page_image_lazily,
-    ainvoke_extraction_llm,
-)
+from app.utils.pdf_utils import load_pdf_page_image_lazily
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
 from app.services.review_points_service import ReviewPointsService
 from app.config.logger import setup_logger
@@ -466,67 +463,65 @@ class HumanReviewService:
             f"[HITL RE-EXTRACTION] Running sequential LLM re-extraction retry for Question {question.question_number_in_paper} on Pages {sorted(list(target_pages))}"
         )
 
-        # Execute Sequential Re-Extraction Pass for Target Pages
-        reextracted_payloads = []
-        for p_num in sorted(list(target_pages)):
-            page_img = await load_pdf_page_image_lazily(exam.pdf_path, p_num)
-            payload = await ainvoke_extraction_llm(page_img, p_num)
-            reextracted_payloads.append((p_num, payload))
-            del page_img
+        # Execute Deterministic Re-Extraction Pass
+        import asyncio
+        from app.pipeline.docling_ocr_extractor import DoclingOcrExtractor
+        from app.pipeline.regex_question_parser import split_into_question_blocks, parse_question_block
+        extractor = DoclingOcrExtractor()
+        loop = asyncio.get_running_loop()
+        res = await loop.run_in_executor(None, extractor.extract, exam.pdf_path)
+        blocks = split_into_question_blocks(res["full_markdown"])
+        target_rec = None
+        for b in blocks:
+            if b["question_number"] == question.question_number_in_paper:
+                target_rec = parse_question_block(b, pictures=res["pictures"], tables=res["tables"])
+                break
 
-        # Re-update Question Stem and Options from re-extracted payload
-        updated_count = 0
-        for p_num, payload in reextracted_payloads:
-            for extracted_q in payload.extracted_questions:
-                if (
-                    extracted_q.printed_question_number
-                    == question.question_number_in_paper
-                ):
-                    question.is_complete = extracted_q.is_complete
-                    question.has_image = extracted_q.has_image_or_complex_layout
-                    self.session.add(question)
+        if target_rec:
+            question.is_complete = target_rec.extraction_confidence >= 0.8
+            question.has_image = bool(target_rec.pictures)
+            question.difficulty = target_rec.difficulty
+            if target_rec.subject_raw:
+                question.subject_raw = target_rec.subject_raw
+            if target_rec.topic_raw:
+                question.topic_raw = target_rec.topic_raw
+            if target_rec.subtopic_raw:
+                question.subtopic_raw = target_rec.subtopic_raw
+            self.session.add(question)
 
-                    for trans in extracted_q.translations:
-                        lang_str = (
-                            trans.language.value
-                            if hasattr(trans.language, "value")
-                            else str(trans.language)
+            # Update English translation
+            q_trans_res = await self.session.exec(
+                select(QuestionTranslation).where(
+                    QuestionTranslation.question_id == question.id,
+                )
+            )
+            q_trans = q_trans_res.first()
+            if q_trans:
+                q_trans.question_text = target_rec.stem
+                self.session.add(q_trans)
+
+            # Re-bind options
+            for label, opt_text in target_rec.options.items():
+                opt_res = await self.session.exec(
+                    select(QuestionOption).where(
+                        QuestionOption.question_id == question.id,
+                        QuestionOption.option_label == label.upper(),
+                    )
+                )
+                opt = opt_res.first()
+                if opt:
+                    opt.is_correct = (label.upper() == target_rec.answer_label.upper())
+                    self.session.add(opt)
+                    opt_trans_res = await self.session.exec(
+                        select(OptionTranslation).where(
+                            OptionTranslation.option_id == opt.id
                         )
-                        q_trans_res = await self.session.exec(
-                            select(QuestionTranslation).where(
-                                QuestionTranslation.question_id == q_id,
-                                QuestionTranslation.language == lang_str,
-                            )
-                        )
-                        q_trans = q_trans_res.first()
-                        if q_trans:
-                            q_trans.question_text = trans.question_text
-                            q_trans.parent_context_override = (
-                                trans.parent_context_override
-                            )
-                            self.session.add(q_trans)
-
-                        # Re-bind options
-                        for opt_schema in trans.options:
-                            opt_res = await self.session.exec(
-                                select(QuestionOption).where(
-                                    QuestionOption.question_id == q_id,
-                                    QuestionOption.option_label
-                                    == opt_schema.display_label,
-                                )
-                            )
-                            opt = opt_res.first()
-                            if opt:
-                                opt_trans_res = await self.session.exec(
-                                    select(OptionTranslation).where(
-                                        OptionTranslation.option_id == opt.id
-                                    )
-                                )
-                                opt_trans = opt_trans_res.first()
-                                if opt_trans:
-                                    opt_trans.option_text = opt_schema.option_text
-                                    self.session.add(opt_trans)
-                    updated_count += 1
+                    )
+                    opt_trans = opt_trans_res.first()
+                    if opt_trans:
+                        opt_trans.option_text = opt_text
+                        self.session.add(opt_trans)
+            updated_count = 1
 
         await self.session.commit()
         return {

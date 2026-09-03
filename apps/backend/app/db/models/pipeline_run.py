@@ -17,8 +17,12 @@ class PipelineRun(SQLModel, table=True):
     exam_id: int = Field(foreign_key="exams.id", ondelete="CASCADE", index=True)
     
     pipeline_type: str = Field(
-        description="'QUESTION_EXTRACTION', 'ANSWER_KEY', 'EXPLANATION_INDEXING'",
+        description="'DOCUMENT_EXTRACTION', 'QUESTION_EXTRACTION', 'ANSWER_KEY', 'EXPLANATION_INDEXING'",
         max_length=50,
+    )
+    extraction_method: Optional[str] = Field(
+        default="DOCLING_REGEX",
+        max_length=20,
     )
     status: str = Field(
         default="PENDING",

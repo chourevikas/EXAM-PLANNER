@@ -1,6 +1,6 @@
 import operator
 import uuid
-from typing import TypedDict, List, Tuple, Optional, Annotated
+from typing import TypedDict, List, Tuple, Optional, Annotated, Any
 from pydantic import BaseModel, Field, ConfigDict
 import enum
 
@@ -144,7 +144,10 @@ class OverallPipelineState(TypedDict):
     execution_pass: int
     retry_count: int
     target_retry_pages: List[int]
-    raw_page_payloads: Annotated[
-        List[Tuple[int, Optional[PageExtractionPayload], Optional[str]]], operator.add
-    ]
     processed_question_keys: List[str]
+    detected_format: Optional[str]
+    full_markdown: Optional[str]
+    docling_pictures: Optional[List[dict]]
+    docling_tables: Optional[List[dict]]
+    docling_page_images: Optional[dict]
+    question_records: Optional[List[Any]]

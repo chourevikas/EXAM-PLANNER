@@ -499,19 +499,22 @@ class QuestionService:
 
         # Update Passage Translation or Create Passage
         if payload.passage_text is not None:
-            if not q.passage_id and payload.passage_text.strip():
+            q_passage_id = getattr(q, "passage_id", None)
+            if not q_passage_id and payload.passage_text.strip():
                 new_passage = Passage(
                     exam_id=q.exam_id,
                     is_complete=True,
                 )
                 self.session.add(new_passage)
                 await self.session.flush()
-                q.passage_id = new_passage.id
-                self.session.add(q)
+                if hasattr(q, "passage_id"):
+                    q.passage_id = new_passage.id
+                    self.session.add(q)
+                q_passage_id = new_passage.id
 
-            if q.passage_id:
+            if q_passage_id:
                 pt_stmt = select(PassageTranslation).where(
-                    PassageTranslation.passage_id == q.passage_id,
+                    PassageTranslation.passage_id == q_passage_id,
                     PassageTranslation.language == target_lang,
                 )
                 pt = (await self.session.exec(pt_stmt)).first()
@@ -520,7 +523,7 @@ class QuestionService:
                     self.session.add(pt)
                 else:
                     new_pt = PassageTranslation(
-                        passage_id=q.passage_id,
+                        passage_id=q_passage_id,
                         language=target_lang,
                         passage_text=payload.passage_text,
                     )
@@ -790,8 +793,9 @@ class QuestionService:
             )
             self.session.add(passage)
             await self.session.flush()
-            q.passage_id = passage.id
-            self.session.add(q)
+            if hasattr(q, "passage_id"):
+                q.passage_id = passage.id
+                self.session.add(q)
 
             pt = PassageTranslation(
                 passage_id=passage.id,
@@ -1142,8 +1146,9 @@ class QuestionService:
 
         # Fetch Passage
         passage_text = None
-        if q.passage_id:
-            pt_stmt = select(PassageTranslation).where(PassageTranslation.passage_id == q.passage_id)
+        q_passage_id = getattr(q, "passage_id", None)
+        if q_passage_id:
+            pt_stmt = select(PassageTranslation).where(PassageTranslation.passage_id == q_passage_id)
             pt_res = await self.session.exec(pt_stmt)
             p_translations = pt_res.all()
             for pt in p_translations:
@@ -1289,7 +1294,7 @@ class QuestionService:
             is_complete=q.is_complete,
             has_image=q.has_image,
             page_numbers=q.page_numbers_json or [],
-            passage_id=str(q.passage_id) if q.passage_id else None,
+            passage_id=str(getattr(q, "passage_id", None)) if getattr(q, "passage_id", None) else None,
             passage_text=passage_text,
             question_text=q_text,
             translations=trans_map,
@@ -1313,7 +1318,7 @@ class QuestionService:
 
         q_ids = [q.id for q in questions]
         exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
-        passage_ids = list(set(q.passage_id for q in questions if q.passage_id))
+        passage_ids = list(set(getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)))
 
         # Wave 1: these batch lookups only need ids already known from
         # `questions`. They run sequentially on the single request-scoped
@@ -1423,8 +1428,9 @@ class QuestionService:
 
             # Passage Text
             p_text = None
-            if q.passage_id:
-                p_text_dict = pt_map.get(q.passage_id, {})
+            q_passage_id = getattr(q, "passage_id", None)
+            if q_passage_id:
+                p_text_dict = pt_map.get(q_passage_id, {})
                 p_text = p_text_dict.get(target_lang) or (next(iter(p_text_dict.values())) if p_text_dict else None)
 
             # Options
@@ -1460,17 +1466,18 @@ class QuestionService:
                         (k.value if hasattr(k, "value") else str(k)): {
                             "core_concept": e.core_concept,
                             "detailed_solution": e.detailed_solution,
-                            "common_traps": e.common_traps_json or [],
+                            "common_traps": e.common_traps_json or ([e.common_mistake] if e.common_mistake else []),
                             "key_takeaways": e.key_takeaways_json or [],
                         }
                         for k, e in expl_dict.items()
                     }
+                    traps = expl_obj.common_traps_json or ([expl_obj.common_mistake] if expl_obj.common_mistake else [])
                     explanation_detail = QuestionExplanationDetail(
                         explanation_id=str(expl_obj.id),
                         language=expl_obj.language.value if hasattr(expl_obj.language, "value") else str(expl_obj.language),
                         core_concept=expl_obj.core_concept,
                         detailed_solution=expl_obj.detailed_solution,
-                        common_traps=expl_obj.common_traps_json or [],
+                        common_traps=traps,
                         key_takeaways=expl_obj.key_takeaways_json or [],
                         translations=expl_translations,
                     )
@@ -1559,7 +1566,7 @@ class QuestionService:
                     is_complete=q.is_complete,
                     has_image=q.has_image,
                     page_numbers=q.page_numbers_json or [],
-                    passage_id=str(q.passage_id) if q.passage_id else None,
+                    passage_id=str(getattr(q, "passage_id", None)) if getattr(q, "passage_id", None) else None,
                     passage_text=p_text,
                     question_text=q_text,
                     translations=q_text_dict_str,

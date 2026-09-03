@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.db.models.analytics import ExamQuestionResponse, ExamQuestionReport
     from app.db.models.answer_key import AnswerKeyMapping
     from app.db.models.review import HumanReviewTask
+    from app.db.models.question_option_reasoning import QuestionOptionReasoning
 
 
 class Question(SQLModel, table=True):
@@ -34,7 +35,6 @@ class Question(SQLModel, table=True):
         ),
         Index("ix_questions_status_exam", "status", "exam_id"),
         Index("ix_questions_subtopic", "subtopic_id"),
-        Index("ix_questions_passage", "passage_id"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
@@ -43,12 +43,6 @@ class Question(SQLModel, table=True):
     )
     subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
-    )
-    passage_id: Optional[int] = Field(
-        default=None, foreign_key="passages.id", ondelete="SET NULL", index=True
-    )
-    canonical_question_id: Optional[int] = Field(
-        default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
     )
 
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
@@ -82,44 +76,24 @@ class Question(SQLModel, table=True):
     page_numbers_json: Optional[list] = Field(
         default=[], sa_column=Column(PortableJSON)
     )
-    passage_page_numbers_json: Optional[list] = Field(
-        default=[], sa_column=Column(PortableJSON)
-    )
-    accuracy_percentage: Optional[float] = Field(
-        default=None,
-        description="Historical or mock candidate accuracy percentage (0.0 to 100.0)",
-    )
-    missing_fields_json: Optional[list] = Field(
-        default=[],
-        sa_column=Column(PortableJSON),
-        description="JSON array of missing field names e.g. ['options', 'hindi_text']",
-    )
     requires_human_review: bool = Field(
         default=False,
         index=True,
         description="True if confidence is low or text truncation detected",
     )
-    validation_status: Optional[str] = Field(
-        default="PENDING",
-        index=True,
-        description="PENDING, VALID, REJECTED, AUTO_FIXED, PARTIALLY_CORRUPTED, CORRUPTED",
-    )
-    validation_issues_json: Optional[list] = Field(
+
+    # Document Extraction Metadata
+    subject_raw: Optional[str] = Field(default=None, max_length=255)
+    topic_raw: Optional[str] = Field(default=None, max_length=255)
+    subtopic_raw: Optional[str] = Field(default=None, max_length=255)
+    difficulty_raw: Optional[str] = Field(default=None, max_length=50)
+    extraction_method: Optional[str] = Field(default="DOCLING_REGEX", max_length=20)
+    extraction_confidence: Optional[float] = Field(default=None)
+    extraction_issues_json: Optional[list] = Field(
         default=[],
         sa_column=Column(PortableJSON),
-        description="JSON array of validation error codes or issue descriptions",
+        description="JSON array of extraction issues or confidence warnings",
     )
-    integrity_status: Optional[str] = Field(
-        default="PENDING",
-        index=True,
-        description="VALID, PARTIALLY_CORRUPTED, CORRUPTED, PENDING",
-    )
-    integrity_reasons_json: Optional[list] = Field(
-        default=[],
-        sa_column=Column(PortableJSON),
-        description="JSON array of integrity diagnostics and issue reasons",
-    )
-    page_number_in_pdf: Optional[int] = Field(default=None)
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -132,7 +106,6 @@ class Question(SQLModel, table=True):
 
     exam: Optional["Exam"] = Relationship(back_populates="questions")
     subtopic: Optional["Subtopic"] = Relationship(back_populates="questions")
-    passage: Optional["Passage"] = Relationship(back_populates="questions")
     translations: list["QuestionTranslation"] = Relationship(
         back_populates="question", cascade_delete=True
     )
@@ -150,9 +123,6 @@ class Question(SQLModel, table=True):
     )
     hierarchy_links: list["QuestionHierarchyLink"] = Relationship(
         back_populates="question", cascade_delete=True
-    )
-    canonical_question: Optional["Question"] = Relationship(
-        sa_relationship_kwargs={"remote_side": "Question.id"}
     )
     exam_responses: list["ExamQuestionResponse"] = Relationship(
         back_populates="question", cascade_delete=True
@@ -210,6 +180,9 @@ class QuestionOption(SQLModel, table=True):
     translations: list["OptionTranslation"] = Relationship(
         back_populates="option", cascade_delete=True
     )
+    reasoning: Optional["QuestionOptionReasoning"] = Relationship(
+        back_populates="option", cascade_delete=True
+    )
 
 
 class OptionTranslation(SQLModel, table=True):
@@ -239,7 +212,8 @@ class QuestionAsset(SQLModel, table=True):
     question_id: int = Field(
         foreign_key="questions.id", ondelete="CASCADE", index=True
     )
-    asset_path: str
+    asset_path: Optional[str] = Field(default=None)
+    table_markdown: Optional[str] = Field(default=None)
     asset_type: AssetType = Field(default=AssetType.DIAGRAM, index=True)
     caption: Optional[str] = Field(default=None)
     bounding_box_json: Optional[list] = Field(

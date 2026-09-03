@@ -25,7 +25,6 @@ from app.db.models import (
     QuestionStatus,
 )
 from app.services.exam_export_service import ExamExportService
-from app.pipeline.explanation_graph import _generate_and_save_single_question_explanation
 
 
 class TestExportZipAndIntegrityFix(unittest.IsolatedAsyncioTestCase):

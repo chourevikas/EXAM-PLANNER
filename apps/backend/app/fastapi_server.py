@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -18,11 +18,9 @@ from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
 from app.routers.exams import router as exams_router
 from app.routers.questions import router as questions_router
-from app.routers.answer_keys import router as answer_keys_router
 from app.routers.analytics import router as analytics_router
 from app.routers.review import router as review_router
 from app.routers.webhooks import router as webhooks_router
-from app.routers.explanations import router as explanations_router
 from app.routers.pipeline import router as pipeline_router
 from app.routers.study_plan import router as study_plan_router
 from app.routers.attempts import router as attempts_router
@@ -159,11 +157,23 @@ app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)
-app.include_router(answer_keys_router, prefix=settings.API_V1_STR)
+# Deprecated pipeline router (410 Gone gate)
+deprecated_router = APIRouter(include_in_schema=False)
+
+@deprecated_router.api_route("/answer-keys", methods=["GET", "POST", "PUT", "DELETE"])
+@deprecated_router.api_route("/answer-keys/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+@deprecated_router.api_route("/explanations", methods=["GET", "POST", "PUT", "DELETE"])
+@deprecated_router.api_route("/explanations/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def deprecated_pipeline_endpoints():
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Endpoint deprecated. Answer keys and explanations are extracted deterministically in a single pass during document extraction.",
+    )
+
+app.include_router(deprecated_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(review_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
-app.include_router(explanations_router, prefix=settings.API_V1_STR)
 app.include_router(pipeline_router, prefix=settings.API_V1_STR)
 app.include_router(study_plan_router, prefix=settings.API_V1_STR)
 app.include_router(attempts_router, prefix=settings.API_V1_STR)

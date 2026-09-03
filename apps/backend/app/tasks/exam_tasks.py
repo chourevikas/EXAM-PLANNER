@@ -10,7 +10,7 @@ from app.config.logger import setup_logger, TaskLoggerAdapter
 from app.db.session import managed_async_session, async_init_db
 from app.db.models import Exam
 from app.pipeline.graph import build_langgraph_pipeline
-from app.pipeline.vision_extractor import get_pdf_total_pages
+from app.utils.pdf_utils import get_pdf_total_pages, clear_pdf_cache, ensure_local_pdf
 from app.config.filename_parser import parse_question_paper_filename
 from app.core.cleanup import cleanup_file
 
@@ -86,7 +86,8 @@ async def async_process_exam_pdf(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         log.info(f"Reading total pages from PDF '{pdf_file.name}'...")
-        total_pages = await get_pdf_total_pages(pdf_path)
+        local_pdf = await ensure_local_pdf(pdf_path)
+        total_pages = await get_pdf_total_pages(str(local_pdf))
         log.info(f"PDF Page Count: {total_pages} pages detected.")
 
         # Asynchronously create or update Exam record in DB
@@ -159,9 +160,9 @@ async def async_process_exam_pdf(
             pm = PipelineManagementService(session)
             await pm.update_pipeline_status(
                 exam_id=exam_id,
-                pipeline_type="QUESTION_EXTRACTION",
+                pipeline_type="DOCUMENT_EXTRACTION",
                 status="RUNNING",
-                current_step="EXTRACTING_QUESTIONS_WITH_VISION_LLM",
+                current_step="EXTRACTING_DOCUMENT_WITH_DOCLING_OCR",
                 progress_percent=30.0,
             )
 
@@ -170,7 +171,7 @@ async def async_process_exam_pdf(
         )
         result = await pipeline.ainvoke(
             {
-                "pdf_path": str(pdf_path),
+                "pdf_path": str(local_pdf),
                 "exam_title": exam_title,
                 "exam_id": str(exam_id),
                 "output_dir": str(output_dir),
@@ -213,7 +214,7 @@ async def async_process_exam_pdf(
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
                     exam_id=int(exam_id_str),
-                    pipeline_type="QUESTION_EXTRACTION",
+                    pipeline_type="DOCUMENT_EXTRACTION",
                     status="STOPPED",
                     current_step="CANCELLED_BY_ADMIN",
                     progress_percent=0.0,
@@ -234,7 +235,7 @@ async def async_process_exam_pdf(
                 pm = PipelineManagementService(session)
                 await pm.update_pipeline_status(
                     exam_id=int(exam_id_str),
-                    pipeline_type="QUESTION_EXTRACTION",
+                    pipeline_type="DOCUMENT_EXTRACTION",
                     status="FAILED",
                     current_step="FAILED_WITH_ERROR",
                     progress_percent=0.0,
@@ -247,7 +248,6 @@ async def async_process_exam_pdf(
         # End-of-pipeline cleanup: remove task-specific temporary processing cache and in-memory bytes
         log.info(f"🧹 Cleaning up temporary processing files and cache for Task ID '{t_id}'...")
         try:
-            from app.pipeline.vision_extractor import clear_pdf_cache
             clear_pdf_cache(pdf_path)
         except Exception:
             pass

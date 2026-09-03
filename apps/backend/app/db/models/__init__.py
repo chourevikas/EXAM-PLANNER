@@ -33,6 +33,7 @@ from app.db.models.question import (
     OptionTranslation,
     QuestionAsset,
 )
+from app.db.models.question_option_reasoning import QuestionOptionReasoning
 from app.db.models.metadata import QuestionMetadata
 from app.db.models.telemetry import (
     Test,
