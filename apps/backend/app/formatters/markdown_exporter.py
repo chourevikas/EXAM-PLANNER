@@ -64,9 +64,10 @@ async def async_export_question_to_markdown(
     lines = []
     lines.append(f"# Question {q_num:03d} - `{q_stem}`")
     lines.append("")
+    p_pages = getattr(question, "passage_page_numbers_json", None) or "[]"
     lines.append(
         f"**Canonical ID:** `{q_stem}` | **Section:** `{sec_code}` | **Status:** `{status_str}` | "
-        f"**Is MCQ:** `{question.is_mcq}` | **Question Pages:** `{question.page_numbers_json}` | **Passage Pages:** `{question.passage_page_numbers_json or '[]'}`"
+        f"**Is MCQ:** `{question.is_mcq}` | **Question Pages:** `{question.page_numbers_json}` | **Passage Pages:** `{p_pages}`"
     )
     lines.append("")
 
@@ -128,8 +129,9 @@ async def async_export_question_to_markdown(
     assets = assets_res.all()
 
     # Fetch Passage if linked
+    q_pass_id = getattr(question, "passage_id", None)
     passage = (
-        await session.get(Passage, question.passage_id) if question.passage_id else None
+        await session.get(Passage, q_pass_id) if q_pass_id else None
     )
 
     for q_trans in q_translations:

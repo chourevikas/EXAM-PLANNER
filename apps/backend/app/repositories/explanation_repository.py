@@ -48,7 +48,7 @@ class ExplanationRepository:
             return None
 
         # Check canonical question fallback
-        effective_q_id = q.canonical_question_id or q.id
+        effective_q_id = getattr(q, "canonical_question_id", None) or q.id
 
         # Fetch Question Text
         qt_stmt = select(QuestionTranslation).where(
@@ -118,8 +118,8 @@ class ExplanationRepository:
 
         return {
             "question_id": str(q.id),
-            "canonical_question_id": str(q.canonical_question_id)
-            if q.canonical_question_id
+            "canonical_question_id": str(getattr(q, "canonical_question_id", None))
+            if getattr(q, "canonical_question_id", None)
             else None,
             "language": language.value,
             "question_text": q_trans.question_text if q_trans else None,
@@ -140,7 +140,8 @@ class ExplanationRepository:
         q = await self.session.get(Question, question_id)
         if not q:
             return False
-        q.canonical_question_id = canonical_question_id
-        self.session.add(q)
-        await self.session.commit()
+        if hasattr(q, "canonical_question_id"):
+            q.canonical_question_id = canonical_question_id
+            self.session.add(q)
+            await self.session.commit()
         return True

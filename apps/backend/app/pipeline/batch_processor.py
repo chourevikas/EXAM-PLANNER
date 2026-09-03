@@ -1,7 +1,9 @@
+import io
 import json
 import uuid
 from typing import Dict, List, Optional, Tuple, Any
-from sqlmodel import select
+from sqlmodel import select, col
+from PIL import Image
 
 from app.config.logger import setup_logger
 from app.db.models import (
@@ -13,12 +15,21 @@ from app.db.models import (
     QuestionOption,
     QuestionStatus,
     QuestionTranslation,
+    QuestionExplanation,
+    QuestionOptionReasoning,
+    HumanReviewTask,
+    SyllabusVersion,
+    Subject,
+    Topic,
+    Subtopic,
+    QuestionHierarchyLink,
 )
-from app.db.models.enums import BloomsLevel
+from app.db.models.enums import BloomsLevel, LanguageCode, AssetType
 from app.config.settings import get_settings
 from app.db.session import managed_async_session
 from app.pipeline.batch_schema import BatchProcessingSummary
 from app.pipeline.dsu_stitcher import async_crop_and_save_asset
+from app.pipeline.regex_question_parser import QuestionRecord
 from app.pipeline.state import PageExtractionPayload
 from app.storage.base import BaseStorageProvider
 
@@ -261,8 +272,9 @@ class BatchQuestionRegistrar:
     Idempotently updates existing DB records without unique constraint crashes.
     """
 
-    def __init__(self, batch_size: Optional[int] = None):
+    def __init__(self, batch_size: Optional[int] = None, session_factory: Optional[Any] = None):
         self.batch_size = batch_size or get_settings().PIPELINE_BATCH_SIZE
+        self.session_factory = session_factory
 
     async def commit_questions_in_batches(
         self,
@@ -504,4 +516,515 @@ class BatchQuestionRegistrar:
             logger.info(
                 f"🎉 [BATCH REGISTRAR COMPLETE] Total committed: {summary.total_processed_questions} canonical question(s) ({total_translations_count} question translations across languages in DB)."
             )
+            return summary
+
+    async def commit_question_records_in_batches(
+        self,
+        exam_id: int,
+        records: List[QuestionRecord],
+        page_images: Optional[Dict[int, Image.Image]] = None,
+        storage: Optional[BaseStorageProvider] = None,
+    ) -> BatchProcessingSummary:
+        """
+        Commits QuestionRecord instances extracted from the single deterministic docling+regex pipeline.
+        Writes:
+        - questions (with raw subject/topic/subtopic/difficulty tags, extraction metadata)
+        - question_translations (English stem)
+        - question_options & option_translations (with is_correct computed directly from answer line)
+        - question_option_reasoning (Reverse Logic Box why_tempting / whats_actually_true)
+        - question_explanations (detailed solution and common mistake from PDF)
+        - question_assets (pictures cropped from page_images, tables stored as markdown)
+        - human_review_tasks (flagged if extraction_confidence < 0.8 or issues exist)
+        Leaves 3PL IRT psychometrics and taxonomy hierarchy links NULL.
+        """
+        async with _get_exam_lock(exam_id):
+            summary = BatchProcessingSummary()
+            logger.info(
+                f"📦 [DETERMINISTIC REGISTRAR] Total QuestionRecords to commit: {len(records)} in chunks of {self.batch_size}"
+            )
+
+            def _get_session():
+                return self.session_factory() if self.session_factory else managed_async_session()
+
+            # 1. Fetch Exam & Setup Syllabus Version
+            async with _get_session() as session:
+                exam = await session.get(Exam, exam_id)
+                exam_code = exam.code if exam else "EXAM"
+                exam_name = exam.name if exam else "Exam"
+                source_year = exam.source_year if exam else None
+                paper_set_code = exam.paper_set_code if exam else "SET_A"
+                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
+
+                s_ver_res = await session.exec(
+                    select(SyllabusVersion).where(
+                        SyllabusVersion.exam_id == exam_id,
+                        SyllabusVersion.is_active == True,
+                    )
+                )
+                s_ver = s_ver_res.first()
+                if not s_ver:
+                    s_ver = SyllabusVersion(
+                        exam_id=exam_id,
+                        version_code=f"{exam_code}_V1",
+                        title=f"{exam_name} Syllabus",
+                        is_active=True,
+                    )
+                    session.add(s_ver)
+                    await session.commit()
+                    await session.refresh(s_ver)
+                s_ver_id = s_ver.id
+
+                # Preload existing hierarchy in memory
+                subj_res = await session.exec(select(Subject).where(Subject.version_id == s_ver_id))
+                subjects_by_name = {s.name.strip().lower(): s for s in subj_res.all()}
+
+                topics_by_key = {}
+                if subjects_by_name:
+                    s_ids = [s.id for s in subjects_by_name.values()]
+                    top_res = await session.exec(select(Topic).where(Topic.subject_id.in_(s_ids)))
+                    for t in top_res.all():
+                        topics_by_key[(t.subject_id, t.name.strip().lower())] = t
+
+                subtopics_by_key = {}
+                if topics_by_key:
+                    t_ids = [t.id for t in topics_by_key.values()]
+                    sub_res = await session.exec(select(Subtopic).where(Subtopic.topic_id.in_(t_ids)))
+                    for st in sub_res.all():
+                        subtopics_by_key[(st.topic_id, st.name.strip().lower())] = st
+
+            marks = 2.0
+            if neg_rate is not None and isinstance(neg_rate, (int, float)):
+                neg_marks = round(marks * float(neg_rate), 2)
+            else:
+                neg_marks = round(marks / 3.0, 2)
+
+            for i in range(0, len(records), self.batch_size):
+                batch = records[i : i + self.batch_size]
+                async with _get_session() as session:
+                    try:
+                        q_nums = [rec.question_number for rec in batch]
+                        for q_num in q_nums:
+                            summary.processed_question_keys.append(f"DEFAULT::{q_num}")
+
+                        # Bulk fetch existing questions for this batch
+                        existing_qs_res = await session.exec(
+                            select(Question).where(
+                                Question.exam_id == exam_id,
+                                Question.question_number_in_paper.in_(q_nums),
+                            )
+                        )
+                        existing_qs = {q.question_number_in_paper: q for q in existing_qs_res.all()}
+                        existing_q_ids = [q.id for q in existing_qs.values()]
+
+                        # Bulk fetch related records for existing questions
+                        trans_by_qid = {}
+                        opts_by_qid_label = {}
+                        ot_by_optid = {}
+                        rl_by_optid = {}
+                        expl_by_qid = {}
+                        links_by_qid = {}
+
+                        if existing_q_ids:
+                            qt_res = await session.exec(
+                                select(QuestionTranslation).where(
+                                    QuestionTranslation.question_id.in_(existing_q_ids),
+                                    QuestionTranslation.language == LanguageCode.ENGLISH,
+                                )
+                            )
+                            trans_by_qid = {t.question_id: t for t in qt_res.all()}
+
+                            opt_res = await session.exec(
+                                select(QuestionOption).where(QuestionOption.question_id.in_(existing_q_ids))
+                            )
+                            existing_opts = opt_res.all()
+                            for opt in existing_opts:
+                                opts_by_qid_label[(opt.question_id, opt.option_label.upper())] = opt
+                            opt_ids = [opt.id for opt in existing_opts]
+
+                            if opt_ids:
+                                ot_res = await session.exec(
+                                    select(OptionTranslation).where(
+                                        OptionTranslation.option_id.in_(opt_ids),
+                                        OptionTranslation.language == LanguageCode.ENGLISH,
+                                    )
+                                )
+                                ot_by_optid = {ot.option_id: ot for ot in ot_res.all()}
+
+                                rl_res = await session.exec(
+                                    select(QuestionOptionReasoning).where(
+                                        QuestionOptionReasoning.question_option_id.in_(opt_ids)
+                                    )
+                                )
+                                rl_by_optid = {rl.question_option_id: rl for rl in rl_res.all()}
+
+                            exp_res = await session.exec(
+                                select(QuestionExplanation).where(
+                                    QuestionExplanation.question_id.in_(existing_q_ids),
+                                    QuestionExplanation.language == LanguageCode.ENGLISH,
+                                )
+                            )
+                            expl_by_qid = {e.question_id: e for e in exp_res.all()}
+
+                            link_res = await session.exec(
+                                select(QuestionHierarchyLink).where(
+                                    QuestionHierarchyLink.question_id.in_(existing_q_ids),
+                                    QuestionHierarchyLink.is_primary == True,
+                                )
+                            )
+                            links_by_qid = {l.question_id: l for l in link_res.all()}
+
+                        # 1. Resolve all subjects, topics, and subtopics for this batch in bulk
+                        new_subjs = []
+                        for rec in batch:
+                            s_name = (rec.subject_raw or "General Studies").strip()
+                            s_key = s_name.lower()
+                            if s_key not in subjects_by_name:
+                                new_subj = Subject(
+                                    version_id=s_ver_id,
+                                    name=s_name,
+                                    code=s_name[:10].upper().replace(" ", "_"),
+                                    display_order=len(subjects_by_name) + len(new_subjs) + 1,
+                                )
+                                session.add(new_subj)
+                                subjects_by_name[s_key] = new_subj
+                                new_subjs.append(new_subj)
+                        if new_subjs:
+                            await session.flush()
+
+                        new_tops = []
+                        for rec in batch:
+                            s_name = (rec.subject_raw or "General Studies").strip()
+                            subj = subjects_by_name[s_name.lower()]
+                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            t_key = (subj.id, t_name.lower())
+                            if t_key not in topics_by_key:
+                                new_top = Topic(
+                                    subject_id=subj.id,
+                                    name=t_name,
+                                    code=t_name[:10].upper().replace(" ", "_"),
+                                    display_order=len(topics_by_key) + len(new_tops) + 1,
+                                )
+                                session.add(new_top)
+                                topics_by_key[t_key] = new_top
+                                new_tops.append(new_top)
+                        if new_tops:
+                            await session.flush()
+
+                        new_subs = []
+                        for rec in batch:
+                            s_name = (rec.subject_raw or "General Studies").strip()
+                            subj = subjects_by_name[s_name.lower()]
+                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            top = topics_by_key[(subj.id, t_name.lower())]
+                            st_name = (rec.subtopic_raw or f"{t_name} - General").strip()
+                            st_key = (top.id, st_name.lower())
+                            if st_key not in subtopics_by_key:
+                                new_sub = Subtopic(
+                                    topic_id=top.id,
+                                    name=st_name,
+                                    code=st_name[:10].upper().replace(" ", "_"),
+                                    display_order=len(subtopics_by_key) + len(new_subs) + 1,
+                                )
+                                session.add(new_sub)
+                                subtopics_by_key[st_key] = new_sub
+                                new_subs.append(new_sub)
+                        if new_subs:
+                            await session.flush()
+
+                        # 2. Stage/update all Question objects for this batch
+                        new_qs = []
+                        for rec in batch:
+                            q_num = rec.question_number
+                            s_name = (rec.subject_raw or "General Studies").strip()
+                            subj = subjects_by_name[s_name.lower()]
+                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            top = topics_by_key[(subj.id, t_name.lower())]
+                            st_name = (rec.subtopic_raw or f"{t_name} - General").strip()
+                            subtopic_obj = subtopics_by_key[(top.id, st_name.lower())]
+
+                            is_complete = rec.extraction_confidence >= 0.8 and not any(
+                                "MISSING_OPTION" in is_str for is_str in rec.extraction_issues
+                            )
+
+                            if q_num not in existing_qs:
+                                q_obj = Question(
+                                    exam_id=exam_id,
+                                    subtopic_id=subtopic_obj.id,
+                                    section_code="DEFAULT",
+                                    paper_set_code=paper_set_code,
+                                    question_number_in_paper=q_num,
+                                    question_type="SINGLE_CHOICE",
+                                    difficulty=rec.difficulty,
+                                    marks=marks,
+                                    negative_marks=neg_marks,
+                                    expected_time_seconds=60,
+                                    source_year=source_year,
+                                    is_complete=is_complete,
+                                    has_image=bool(rec.pictures),
+                                    page_numbers_json=rec.page_numbers,
+                                    subject_raw=rec.subject_raw,
+                                    topic_raw=rec.topic_raw,
+                                    subtopic_raw=rec.subtopic_raw,
+                                    difficulty_raw=rec.difficulty_raw,
+                                    extraction_method="DOCLING_REGEX",
+                                    extraction_confidence=rec.extraction_confidence,
+                                    extraction_issues_json=rec.extraction_issues,
+                                    status=QuestionStatus.PENDING_HUMAN_REVIEW,
+                                    requires_human_review=(rec.extraction_confidence < 0.8 or bool(rec.extraction_issues)),
+                                )
+                                session.add(q_obj)
+                                existing_qs[q_num] = q_obj
+                                new_qs.append(q_obj)
+                            else:
+                                q_obj = existing_qs[q_num]
+                                q_obj.subtopic_id = subtopic_obj.id
+                                q_obj.difficulty = rec.difficulty
+                                q_obj.is_complete = is_complete
+                                q_obj.has_image = bool(rec.pictures)
+                                q_obj.page_numbers_json = rec.page_numbers
+                                q_obj.subject_raw = rec.subject_raw
+                                q_obj.topic_raw = rec.topic_raw
+                                q_obj.subtopic_raw = rec.subtopic_raw
+                                q_obj.difficulty_raw = rec.difficulty_raw
+                                q_obj.extraction_method = "DOCLING_REGEX"
+                                q_obj.extraction_confidence = rec.extraction_confidence
+                                q_obj.extraction_issues_json = rec.extraction_issues
+                                q_obj.requires_human_review = (rec.extraction_confidence < 0.8 or bool(rec.extraction_issues))
+                                session.add(q_obj)
+
+                        # Single bulk flush for new questions to populate IDs
+                        if new_qs:
+                            await session.flush()
+
+                        # 3. Stage Hierarchy Links, Translations, and Options
+                        new_opts = []
+                        for rec in batch:
+                            q_num = rec.question_number
+                            q_obj = existing_qs[q_num]
+                            question_id = q_obj.id
+
+                            # Hierarchy Link
+                            q_link = links_by_qid.get(question_id)
+                            if not q_link:
+                                q_link = QuestionHierarchyLink(
+                                    question_id=question_id,
+                                    subtopic_id=q_obj.subtopic_id,
+                                    is_primary=True,
+                                    relevance_weight=1.0,
+                                )
+                                session.add(q_link)
+                                links_by_qid[question_id] = q_link
+                            else:
+                                q_link.subtopic_id = q_obj.subtopic_id
+                                session.add(q_link)
+
+                            # Translation (Stem)
+                            q_trans = trans_by_qid.get(question_id)
+                            if not q_trans:
+                                q_trans = QuestionTranslation(
+                                    question_id=question_id,
+                                    language=LanguageCode.ENGLISH,
+                                    question_text=rec.stem,
+                                )
+                                session.add(q_trans)
+                                trans_by_qid[question_id] = q_trans
+                            else:
+                                q_trans.question_text = rec.stem
+                                session.add(q_trans)
+
+                            # Options
+                            for label, opt_text in rec.options.items():
+                                norm_label = label.upper()
+                                is_correct = norm_label == rec.answer_label.upper()
+                                display_order = ord(norm_label) - ord("A") + 1 if len(norm_label) == 1 else 1
+
+                                opt_key = (question_id, norm_label)
+                                q_opt = opts_by_qid_label.get(opt_key)
+                                if not q_opt:
+                                    q_opt = QuestionOption(
+                                        question_id=question_id,
+                                        option_label=norm_label,
+                                        display_order=display_order,
+                                        is_correct=is_correct,
+                                    )
+                                    session.add(q_opt)
+                                    opts_by_qid_label[opt_key] = q_opt
+                                    new_opts.append(q_opt)
+                                else:
+                                    q_opt.is_correct = is_correct
+                                    q_opt.display_order = display_order
+                                    session.add(q_opt)
+
+                        # Single bulk flush for new options to populate IDs
+                        if new_opts:
+                            await session.flush()
+
+                        # 4. Stage Option Translations, Reasonings, Explanations, and Assets
+                        for rec in batch:
+                            q_num = rec.question_number
+                            q_obj = existing_qs[q_num]
+                            question_id = q_obj.id
+
+                            for label, opt_text in rec.options.items():
+                                norm_label = label.upper()
+                                is_correct = norm_label == rec.answer_label.upper()
+                                opt_key = (question_id, norm_label)
+                                q_opt = opts_by_qid_label[opt_key]
+
+                                # Format Distractor Analysis
+                                if is_correct:
+                                    distractor_text = rec.solution_text or ""
+                                else:
+                                    rl_data = rec.reverse_logic.get(norm_label)
+                                    if rl_data:
+                                        why_t = rl_data.get("why_tempting", "").strip()
+                                        whats_t = rl_data.get("whats_actually_true", "").strip()
+                                        distractor_text = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+                                    else:
+                                        distractor_text = None
+
+                                # Option translation
+                                opt_trans = ot_by_optid.get(q_opt.id)
+                                if not opt_trans:
+                                    opt_trans = OptionTranslation(
+                                        option_id=q_opt.id,
+                                        language=LanguageCode.ENGLISH,
+                                        option_text=opt_text,
+                                        distractor_analysis=distractor_text,
+                                    )
+                                    session.add(opt_trans)
+                                    ot_by_optid[q_opt.id] = opt_trans
+                                else:
+                                    opt_trans.option_text = opt_text
+                                    opt_trans.distractor_analysis = distractor_text
+                                    session.add(opt_trans)
+
+                                # Question Option Reasoning
+                                if norm_label in rec.reverse_logic:
+                                    rl_data = rec.reverse_logic[norm_label]
+                                    q_reason = rl_by_optid.get(q_opt.id)
+                                    if not q_reason:
+                                        q_reason = QuestionOptionReasoning(
+                                            question_option_id=q_opt.id,
+                                            why_tempting=rl_data.get("why_tempting", ""),
+                                            whats_actually_true=rl_data.get("whats_actually_true", ""),
+                                        )
+                                        session.add(q_reason)
+                                        rl_by_optid[q_opt.id] = q_reason
+                                    else:
+                                        q_reason.why_tempting = rl_data.get("why_tempting", "")
+                                        q_reason.whats_actually_true = rl_data.get("whats_actually_true", "")
+                                        session.add(q_reason)
+
+                            # Question Explanation
+                            q_expl = expl_by_qid.get(question_id)
+                            core_concept_val = rec.subtopic_raw or rec.topic_raw or None
+                            traps_list = [rec.common_mistake] if rec.common_mistake else []
+                            if not q_expl:
+                                q_expl = QuestionExplanation(
+                                    question_id=question_id,
+                                    language=LanguageCode.ENGLISH,
+                                    core_concept=core_concept_val,
+                                    detailed_solution=rec.solution_text,
+                                    common_mistake=rec.common_mistake,
+                                    common_traps_json=traps_list,
+                                    key_takeaways_json=[],
+                                )
+                                session.add(q_expl)
+                                expl_by_qid[question_id] = q_expl
+                            else:
+                                q_expl.detailed_solution = rec.solution_text
+                                q_expl.common_mistake = rec.common_mistake
+                                q_expl.common_traps_json = traps_list
+                                if core_concept_val:
+                                    q_expl.core_concept = core_concept_val
+                                session.add(q_expl)
+
+                            # Assets
+                            for pic in rec.pictures:
+                                pic_page = pic.get("page_no", 1)
+                                bbox = pic.get("bbox")
+                                rel_path = None
+                                if page_images and pic_page in page_images and bbox and storage:
+                                    try:
+                                        p_img = page_images[pic_page]
+                                        img_w, img_h = p_img.size
+                                        left = max(0, min(img_w, bbox[0]))
+                                        top = max(0, min(img_h, bbox[1]))
+                                        right = max(left + 1, min(img_w, bbox[2]))
+                                        bottom = max(top + 1, min(img_h, bbox[3]))
+                                        cropped = p_img.crop((left, top, right, bottom))
+                                        dest_path = f"cropped_assets/{exam_code}_{paper_set_code}_q{q_num}_p{pic_page}_{uuid.uuid4().hex[:6]}.png"
+                                        rel_path = await storage.save_image(cropped, dest_path)
+                                    except Exception as crop_err:
+                                        logger.warning(f"Failed to crop/save picture for Q{q_num}: {crop_err}")
+
+                                q_asset = QuestionAsset(
+                                    question_id=question_id,
+                                    asset_path=rel_path,
+                                    asset_type=AssetType.DIAGRAM,
+                                    bounding_box_json=bbox,
+                                )
+                                session.add(q_asset)
+
+                            for tbl in rec.tables:
+                                q_tbl_asset = QuestionAsset(
+                                    question_id=question_id,
+                                    asset_path=None,
+                                    table_markdown=tbl.get("markdown", ""),
+                                    asset_type=AssetType.DIAGRAM,
+                                    bounding_box_json=tbl.get("bbox"),
+                                )
+                                session.add(q_tbl_asset)
+
+                            # Human Review Task
+                            if rec.extraction_confidence < 0.8 or rec.extraction_issues:
+                                hr_res = await session.exec(
+                                    select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
+                                )
+                                hr_task = hr_res.first()
+                                if not hr_task:
+                                    hr_task = HumanReviewTask(
+                                        exam_id=exam_id,
+                                        question_id=question_id,
+                                        review_status="PENDING_REVIEW",
+                                        is_flagged_by_validator=True,
+                                        failure_reasons_json=rec.extraction_issues or ["Low extraction confidence"],
+                                    )
+                                    session.add(hr_task)
+                                else:
+                                    hr_task.failure_reasons_json = rec.extraction_issues or ["Low extraction confidence"]
+                                    session.add(hr_task)
+
+                        await session.commit()
+                        summary.successful_batches += 1
+                        summary.total_processed_questions += len(batch)
+                        logger.info(
+                            f"Successfully committed deterministic DB batch {summary.successful_batches} of {len(batch)} question(s)."
+                        )
+                    except Exception as batch_err:
+                        await session.rollback()
+                        summary.failed_batches += 1
+                        summary.errors.append(str(batch_err))
+                        logger.error(
+                            f"❌ Failed to commit deterministic DB batch starting at index {i}: {batch_err}",
+                            exc_info=True,
+                        )
+
+            # Update Exam question counts
+            async with _get_session() as session:
+                exam_obj = await session.get(Exam, exam_id)
+                if exam_obj:
+                    all_qs_res = await session.exec(
+                        select(Question.question_number_in_paper).where(Question.exam_id == exam_id)
+                    )
+                    extracted_numbers = set(all_qs_res.all())
+                    tot_exp = exam_obj.total_questions or len(records)
+                    missing_nums = [num for num in range(1, tot_exp + 1) if num not in extracted_numbers]
+                    exam_obj.extracted_questions_count = len(extracted_numbers)
+                    exam_obj.missing_questions_count = len(missing_nums)
+                    exam_obj.missing_question_numbers_json = missing_nums
+                    session.add(exam_obj)
+                    await session.commit()
+
             return summary

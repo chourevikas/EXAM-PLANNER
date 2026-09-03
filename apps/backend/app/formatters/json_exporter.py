@@ -109,7 +109,7 @@ async def preload_questions_export_data(
             subtopics_map[st.id] = st
 
     # 7. Passages & Passage Translations
-    passage_ids = [q.passage_id for q in questions if q.passage_id]
+    passage_ids = [getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)]
     passages_map: Dict[int, Passage] = {}
     pass_trans_map: Dict[int, List[PassageTranslation]] = {}
     if passage_ids:
@@ -306,12 +306,13 @@ async def async_export_question_to_json_dict(
 
     # 7. Passage payload if linked
     passage_payload = None
-    if question.passage_id:
+    q_pass_id = getattr(question, "passage_id", None)
+    if q_pass_id:
         if preloaded is not None:
-            p_obj = preloaded.get("passages_map", {}).get(question.passage_id)
-            p_trans = preloaded.get("pass_trans_map", {}).get(question.passage_id, [])
+            p_obj = preloaded.get("passages_map", {}).get(q_pass_id)
+            p_trans = preloaded.get("pass_trans_map", {}).get(q_pass_id, [])
         else:
-            p_obj = await session.get(Passage, question.passage_id)
+            p_obj = await session.get(Passage, q_pass_id)
             if p_obj:
                 pt_stmt = select(PassageTranslation).where(
                     PassageTranslation.passage_id == p_obj.id
@@ -341,11 +342,10 @@ async def async_export_question_to_json_dict(
                 "translations": p_trans_dict,
             }
 
+    canonical_id = getattr(question, "canonical_question_id", None)
     return {
         "question_id": str(question.id),
-        "canonical_question_id": str(question.canonical_question_id)
-        if question.canonical_question_id
-        else str(question.id),
+        "canonical_question_id": str(canonical_id) if canonical_id else str(question.id),
         "exam_id": str(question.exam_id) if question.exam_id else None,
         "exam_code": exam.code if exam else "EXAM",
         "exam_type": exam.exam_type.value if (exam and hasattr(exam.exam_type, "value")) else "PYQ",

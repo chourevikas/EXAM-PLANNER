@@ -25,14 +25,6 @@ from app.storage.factory import get_storage_provider
 from app.utils.file_utils import save_upload_file_temp
 from app.core.cleanup import cleanup_file
 from app.tasks.exam_tasks import async_process_exam_pdf, process_exam_pdf_task
-from app.tasks.answer_key_tasks import (
-    async_process_answer_key_pdf,
-    process_answer_key_pdf_task,
-)
-from app.tasks.explanation_tasks import (
-    async_process_exam_explanations,
-    process_exam_explanations_task,
-)
 from app.tasks.celery_app import has_active_celery_workers
 from app.config.filename_parser import (
     parse_question_paper_filename,
@@ -349,218 +341,15 @@ async def upload_question_paper(
         "filename": file.filename,
         "message": "Question paper extraction pipeline has started.",
     }
-
-
-@router.post("/upload-answer-key", status_code=status.HTTP_202_ACCEPTED)
-async def upload_answer_key(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    set_code: Optional[str] = Form(default="SET_A"),
-    exam_name: Optional[str] = Form(default="UPSC"),
-    stage: Optional[str] = Form(default="prelims"),
-    exam_type: Optional[str] = Form(default="PYQ"),
-    total_questions: Optional[int] = Form(default=100),
-    year: int = Form(...),
-    conflict_resolution: str = Form(default="CHECK"),
-    db: AsyncSession = Depends(get_async_session),
-    _: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
-):
+@router.post("/upload-answer-key")
+async def upload_answer_key():
     """
-    Uploads an Answer Key PDF and initiates Pipeline 2.
-    Accepts set_code (defaulting to 'SET_A', or e.g. 'SET_B', 'SET_C', 'SET_D') and year.
+    Deprecated endpoint. Answer keys are extracted deterministically during document extraction.
     """
-    ALLOWED_SET_TOKENS = {
-        "SET_A",
-        "SET_B",
-        "SET_C",
-        "SET_D",
-        "SET_1",
-        "SET_2",
-        "SET_3",
-        "SET_4",
-        "A",
-        "B",
-        "C",
-        "D",
-        "1",
-        "2",
-        "3",
-        "4",
-    }
-    raw_set = str(set_code).strip().upper() if set_code else "SET_A"
-    if not raw_set or raw_set not in ALLOWED_SET_TOKENS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid paper set code. Allowed values: SET_A, SET_B, SET_C, SET_D, SET_1, SET_2, SET_3, SET_4, A, B, C, D, 1, 2, 3, 4.",
-        )
-
-    clean_set = raw_set if raw_set.startswith("SET_") else f"SET_{raw_set}"
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are supported for Answer Key processing.",
-        )
-
-    try:
-        meta = parse_answer_key_filename(
-            filename_or_code=file.filename,
-            year=year,
-            user_set_code=clean_set,
-            exam_name=exam_name,
-            stage=stage,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    canonical_exam_code = meta["canonical_code"]
-
-    stmt = select(Exam).where(
-        (func.lower(Exam.code) == canonical_exam_code.lower())
-        | (func.lower(Exam.name) == canonical_exam_code.lower())
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Standalone answer key uploads are deprecated. Question papers, verified answers, and explanations are now extracted deterministically in a single pass via POST /exams/upload.",
     )
-    res = await db.exec(stmt)
-    exam = res.first()
-
-    if exam:
-        key = f"ak_{exam.id}"
-        if task_registry.is_running(key):
-            if conflict_resolution.upper() == "RESTART":
-                logger.info(
-                    f"User confirmed RESTART for running answer key task on exam '{canonical_exam_code}'. Cancelling active task..."
-                )
-                task_registry.cancel_task(key)
-                pm_service = PipelineManagementService(db)
-                await pm_service.update_pipeline_status(
-                    exam_id=exam.id,
-                    pipeline_type="ANSWER_KEY",
-                    status="CANCELLED",
-                    current_step="CANCELLED_BY_USER_RESTART",
-                    progress_percent=0.0,
-                )
-            elif conflict_resolution.upper() != "OVERWRITE":
-                return JSONResponse(
-                    status_code=status.HTTP_409_CONFLICT,
-                    content={
-                        "status": "TASK_ALREADY_RUNNING_CONFIRM_OVERWRITE",
-                        "requires_confirmation": True,
-                        "pipeline_type": "ANSWER_KEY",
-                        "exam_id": str(exam.id),
-                        "canonical_exam_code": canonical_exam_code,
-                        "filename": file.filename,
-                        "message": f"An answer key extraction task is currently running for paper '{canonical_exam_code}'. Confirm to cancel the old task and restart?",
-                        "options": ["RESTART", "CANCEL"],
-                    },
-                )
-
-    temp_dir = Path("./temp_uploads").resolve()
-    temp_path = await save_upload_file_temp(file, temp_dir)
-
-    storage = get_storage_provider()
-    rel_storage_path = (
-        f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}.pdf"
-    )
-    persistent_path = await storage.upload_file(temp_path, rel_storage_path)
-
-    cleanup_file(temp_path)
-
-    tot_q = total_questions if total_questions is not None else 100
-    e_type_enum = QuestionSourceType.PYQ
-    if exam_type:
-        try:
-            e_type_enum = QuestionSourceType(exam_type.upper())
-        except ValueError:
-            pass
-
-    if not exam:
-        exam = Exam(
-            code=canonical_exam_code,
-            name=meta.get("exam_name", "UPSC"),
-            stage=meta.get("stage", "prelims"),
-            exam_type=e_type_enum,
-            total_questions=tot_q,
-            source_year=meta.get("year", 2024),
-            paper_set_code=clean_set,
-            pdf_path=None,
-            answer_key_pdf_path=persistent_path,
-            is_active=False,
-        )
-        db.add(exam)
-        try:
-            await db.commit()
-            await db.refresh(exam)
-        except Exception:
-            await db.rollback()
-            retry_stmt = select(Exam).where(
-                func.lower(Exam.code) == canonical_exam_code.lower()
-            )
-            exam = (await db.exec(retry_stmt)).first()
-            if not exam:
-                raise
-            exam.paper_set_code = clean_set
-            exam.answer_key_pdf_path = persistent_path
-            if total_questions is not None:
-                exam.total_questions = tot_q
-            db.add(exam)
-            await db.commit()
-            await db.refresh(exam)
-    else:
-        exam.paper_set_code = clean_set
-        exam.answer_key_pdf_path = persistent_path
-        if total_questions is not None:
-            exam.total_questions = tot_q
-        db.add(exam)
-        await db.commit()
-        await db.refresh(exam)
-
-    target_exam_id = exam.id
-    target_set_code = clean_set
-    task_id = f"p2_{uuid.uuid4().hex[:8]}"
-
-    logger.info(
-        f"Received Answer Key upload '{file.filename}'. Canonical Code: '{canonical_exam_code}', Target Exam ID: '{target_exam_id}', Set: '{target_set_code}'"
-    )
-
-    pm_service = PipelineManagementService(db)
-    await pm_service.update_pipeline_status(
-        exam_id=target_exam_id,
-        pipeline_type="ANSWER_KEY",
-        status="RUNNING",
-        current_step="PROCESSING_ANSWER_KEY_FILE",
-        progress_percent=10.0,
-    )
-
-    key = f"ak_{target_exam_id}"
-    if has_active_celery_workers():
-        celery_res = process_answer_key_pdf_task.delay(
-            str(target_exam_id),
-            persistent_path,
-            target_set_code=target_set_code,
-            task_id=task_id,
-        )
-        task_registry.register_celery_task(key, celery_res.id)
-    else:
-        task = asyncio.create_task(
-            async_process_answer_key_pdf(
-                exam_id_str=str(target_exam_id),
-                pdf_path=persistent_path,
-                target_set_code=target_set_code,
-                task_id=task_id,
-                execution_engine="FastAPI BackgroundTasks",
-            )
-        )
-        task_registry.register_async_task(key, task)
-
-    return {
-        "status": "PIPELINE_2_INITIATED",
-        "exam_id": str(target_exam_id),
-        "canonical_exam_code": canonical_exam_code,
-        "task_id": task_id,
-        "target_set_code": target_set_code,
-        "message": "Answer key pipeline started. Pipeline 3 will run automatically upon completion.",
-    }
 
 
 @router.get("/questions-status/{exam_identifier}")
@@ -708,51 +497,13 @@ async def get_exam_pipeline_status(
     return await pm_service.get_exam_pipeline_overview(target_exam.id)
 
 
-@router.post("/trigger-explanation/{exam_id}", status_code=status.HTTP_202_ACCEPTED)
-async def trigger_explanation_pipeline(
-    exam_id: str,
-    background_tasks: BackgroundTasks,
-    language: str = "ENGLISH",
-    db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
-):
+@router.post("/trigger-explanation/{exam_id}")
+async def trigger_explanation_pipeline(exam_id: str):
     """Manual endpoint allowing admins to trigger or re-run Pipeline 3 (Explanation & Multi-Concept Indexing)."""
-    target_exam_id = parse_required_exam_id(exam_id)
-    pm_service = PipelineManagementService(db)
-    await pm_service.update_pipeline_status(
-        exam_id=target_exam_id,
-        pipeline_type="EXPLANATION_INDEXING",
-        status="RUNNING",
-        current_step="MANUAL_TRIGGER_EXPLANATION_PIPELINE",
-        progress_percent=0.0,
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Standalone explanation generation is deprecated. Explanations and reverse-logic reasoning are extracted deterministically during document extraction.",
     )
-
-    task_id = f"p3_{uuid.uuid4().hex[:8]}"
-    key = str(target_exam_id)
-
-    if has_active_celery_workers():
-        celery_res = process_exam_explanations_task.delay(
-            str(target_exam_id), language=language, task_id=task_id
-        )
-        task_registry.register_celery_task(key, celery_res.id)
-    else:
-        task = asyncio.create_task(
-            async_process_exam_explanations(
-                exam_id_str=str(target_exam_id),
-                language=language,
-                task_id=task_id,
-                execution_engine="FastAPI BackgroundTasks",
-            )
-        )
-        task_registry.register_async_task(key, task)
-
-    return {
-        "status": "PIPELINE_3_INITIATED",
-        "exam_id": str(target_exam_id),
-        "task_id": task_id,
-        "language": language,
-        "message": "Explanation and multi-concept indexing pipeline has started.",
-    }
 
 
 @router.post("/stop/{exam_id}")
@@ -795,37 +546,41 @@ async def stop_pipeline_task(
 @router.post("/restart/{exam_id}", status_code=status.HTTP_202_ACCEPTED)
 async def restart_pipeline_task(
     exam_id: str,
-    language: str = "ENGLISH",
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
-    """Stops any existing task and restarts Pipeline 3 (Explanation & Knowledge Base) from scratch."""
+    """Stops any existing task and restarts Document Extraction from scratch."""
     target_exam_id = parse_required_exam_id(exam_id)
-    key = f"exp_{target_exam_id}"
+    key = str(target_exam_id)
     task_registry.cancel_task(key)
+
+    exam = await db.get(Exam, target_exam_id)
+    if not exam or not exam.pdf_path:
+        raise HTTPException(status_code=404, detail="Exam or PDF path not found.")
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
         exam_id=target_exam_id,
-        pipeline_type="EXPLANATION_INDEXING",
+        pipeline_type="DOCUMENT_EXTRACTION",
         status="RUNNING",
-        current_step="RESTARTING_EXPLANATION_PIPELINE",
+        current_step="RESTARTING_DOCUMENT_EXTRACTION",
         progress_percent=0.0,
         error_log=None,
     )
 
-    task_id = f"p3_restart_{uuid.uuid4().hex[:8]}"
+    task_id = f"p1_restart_{uuid.uuid4().hex[:8]}"
 
     if has_active_celery_workers():
-        celery_res = process_exam_explanations_task.delay(
-            str(target_exam_id), language=language, task_id=task_id
+        celery_res = process_exam_pdf_task.delay(
+            str(target_exam_id), exam.pdf_path, exam.name, task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
-            async_process_exam_explanations(
+            async_process_exam_pdf(
+                pdf_path=exam.pdf_path,
+                exam_title=exam.name,
                 exam_id_str=str(target_exam_id),
-                language=language,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
             )
@@ -836,44 +591,48 @@ async def restart_pipeline_task(
         "status": "RESTARTED",
         "exam_id": str(target_exam_id),
         "task_id": task_id,
-        "message": "Pipeline task restarted from the beginning.",
+        "message": "Document extraction restarted from the beginning.",
     }
 
 
 @router.post("/retry/{exam_id}", status_code=status.HTTP_202_ACCEPTED)
 async def retry_pipeline_task(
     exam_id: str,
-    language: str = "ENGLISH",
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
-    """Retries a stopped or failed pipeline task for the given exam_id."""
+    """Retries a stopped or failed document extraction task for the given exam_id."""
     target_exam_id = parse_required_exam_id(exam_id)
-    key = f"exp_{target_exam_id}"
+    key = str(target_exam_id)
     task_registry.cancel_task(key)
+
+    exam = await db.get(Exam, target_exam_id)
+    if not exam or not exam.pdf_path:
+        raise HTTPException(status_code=404, detail="Exam or PDF path not found.")
 
     pm_service = PipelineManagementService(db)
     await pm_service.update_pipeline_status(
         exam_id=target_exam_id,
-        pipeline_type="EXPLANATION_INDEXING",
+        pipeline_type="DOCUMENT_EXTRACTION",
         status="RUNNING",
-        current_step="RETRYING_EXPLANATION_PIPELINE",
+        current_step="RETRYING_DOCUMENT_EXTRACTION",
         progress_percent=0.0,
         error_log=None,
     )
 
-    task_id = f"p3_retry_{uuid.uuid4().hex[:8]}"
+    task_id = f"p1_retry_{uuid.uuid4().hex[:8]}"
 
     if has_active_celery_workers():
-        celery_res = process_exam_explanations_task.delay(
-            str(target_exam_id), language=language, task_id=task_id
+        celery_res = process_exam_pdf_task.delay(
+            str(target_exam_id), exam.pdf_path, exam.name, task_id
         )
         task_registry.register_celery_task(key, celery_res.id)
     else:
         task = asyncio.create_task(
-            async_process_exam_explanations(
+            async_process_exam_pdf(
+                pdf_path=exam.pdf_path,
+                exam_title=exam.name,
                 exam_id_str=str(target_exam_id),
-                language=language,
                 task_id=task_id,
                 execution_engine="FastAPI BackgroundTasks",
             )
@@ -884,5 +643,5 @@ async def retry_pipeline_task(
         "status": "RETRIED",
         "exam_id": str(target_exam_id),
         "task_id": task_id,
-        "message": "Pipeline task retried successfully.",
+        "message": "Document extraction task retried successfully.",
     }

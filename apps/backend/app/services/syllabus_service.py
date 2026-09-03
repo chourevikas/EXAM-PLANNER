@@ -352,11 +352,15 @@ class SyllabusService:
         else:
             category = "VALID"
 
-        # Update columns on Question model
-        question.integrity_status = category
-        question.integrity_reasons_json = issues
-        question.validation_status = category
-        question.validation_issues_json = issues
+        # Update columns on Question model if present
+        if hasattr(question, "integrity_status"):
+            question.integrity_status = category
+        if hasattr(question, "integrity_reasons_json"):
+            question.integrity_reasons_json = issues
+        if hasattr(question, "validation_status"):
+            question.validation_status = category
+        if hasattr(question, "validation_issues_json"):
+            question.validation_issues_json = issues
         if question.status == QuestionStatus.PENDING_HUMAN_REVIEW or category != "VALID":
             question.requires_human_review = True
 
@@ -458,10 +462,6 @@ class SyllabusService:
                 )
                 continue
 
-            # Read integrity status from Question column if present, otherwise evaluate
-            category = q.integrity_status or q.validation_status or "PENDING"
-            reasons = list(q.integrity_reasons_json or q.validation_issues_json or [])
-
             trans_list = translations_map.get(q.id, [])
             default_trans = next(
                 (t for t in trans_list if t.language == language),
@@ -478,14 +478,18 @@ class SyllabusService:
             has_valid_syllabus = bool(
                 subj_name
                 and top_name
-                and is_valid_subject(subj_name)
-                and is_valid_topic(top_name, subj_name)
-                and (not subtop_name or is_valid_subtopic(subtop_name, top_name, subj_name))
+                and subtop_name
+                and subj_name != "Uncategorized"
+                and top_name != "Uncategorized"
+                and subtop_name != "Uncategorized"
             )
 
-            # Re-evaluate category if PENDING or unclassified
-            if category == "PENDING" or not reasons:
-                if not has_statement or not has_options:
+            # Read integrity status from Question column if present, otherwise dynamically evaluate
+            category = getattr(q, "integrity_status", None) or getattr(q, "validation_status", None)
+            reasons = list(getattr(q, "integrity_reasons_json", None) or getattr(q, "validation_issues_json", None) or [])
+
+            if not category or category == "PENDING":
+                if not has_statement and not has_options:
                     category = "CORRUPTED"
                     if not has_statement and "Question statement text is missing or blank in database." not in reasons:
                         reasons.append("Question statement text is missing or blank in database.")

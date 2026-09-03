@@ -802,7 +802,7 @@ async def resume_interrupted_pipeline(
         else:
             background_tasks.add_task(
                 async_process_exam_pdf,
-                pdf_path_or_storage_key=exam.pdf_path,
+                pdf_path=exam.pdf_path,
                 exam_title=exam.name,
                 exam_id_str=str(exam_id_int),
                 task_id=task_id,
@@ -813,67 +813,10 @@ async def resume_interrupted_pipeline(
             "message": f"Extraction resumed for '{exam.name}'.",
         }
 
-    # Case 2: Stage 2 (Answer Key Mapping) incomplete
-    ak_batch = (
-        await session.exec(
-            select(AnswerKeyBatch).where(AnswerKeyBatch.exam_id == exam_id_int)
-        )
-    ).first()
-    if ak_batch and key_count < q_count:
-
-        async def _resume_stage_2():
-            from app.db.session import managed_async_session
-            from app.services.answer_key_service import AnswerKeyService
-            from app.services.pipeline_management_service import (
-                PipelineManagementService,
-            )
-
-            async with managed_async_session() as bg_session:
-                bg_ak = AnswerKeyService(bg_session)
-                bg_pm = PipelineManagementService(bg_session)
-                await bg_ak.map_stored_answers_from_db(exam_id_int)
-                await bg_pm.on_pipeline_2_completed(
-                    exam_id=exam_id_int, auto_trigger_pipeline_3=True
-                )
-
-        background_tasks.add_task(_resume_stage_2)
-        return {
-            "status": "RESUMED",
-            "stage": "ANSWER_KEY",
-            "message": f"Answer keys mapping resumed for '{exam.name}'.",
-        }
-
-    # Case 3: Stage 3 (Explanation Generation) incomplete
-    from app.tasks.explanation_tasks import (
-        async_process_exam_explanations,
-        process_exam_explanations_task,
-    )
-
-    await pm.update_pipeline_status(
-        exam_id=exam_id_int,
-        pipeline_type="EXPLANATION_INDEXING",
-        status="RUNNING",
-        current_step=f"RESUMING_EXPLANATIONS_FROM_({exp_count}/{q_count})",
-        progress_percent=max(10.0, (exp_count / max(1, q_count)) * 90.0),
-    )
-    task_id = f"resume_p3_{uuid.uuid4().hex[:8]}"
-    if use_celery:
-        task_res = process_exam_explanations_task.delay(
-            str(exam_id_int), None, "ENGLISH", task_id
-        )
-        task_registry.register_celery_task(
-            f"exp_{exam_id_int}", getattr(task_res, "id", task_id)
-        )
-    else:
-        background_tasks.add_task(
-            async_process_exam_explanations,
-            exam_id_str=str(exam_id_int),
-            task_id=task_id,
-        )
     return {
-        "status": "RESUMED",
-        "stage": "EXPLANATION_INDEXING",
-        "message": f"Explanation generation resumed for '{exam.name}' (skipping {exp_count} existing explanations).",
+        "status": "COMPLETED",
+        "stage": "DOCUMENT_EXTRACTION",
+        "message": f"Pipeline already completed for '{exam.name}' ({q_count} questions extracted).",
     }
 
 

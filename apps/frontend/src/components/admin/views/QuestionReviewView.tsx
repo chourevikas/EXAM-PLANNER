@@ -2799,11 +2799,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 </div>
               </div>
 
-              {/* 4 Solution Parameters Knowledge Base */}
+              {/* Solution Parameters Knowledge Base */}
               <div style={{ marginBottom: 32 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Sparkles size={17} color="#E31B23" />
-                  <span>4-Parameter Solutions & Knowledge Base</span>
+                  <span>Knowledge Base & Common Traps Analysis</span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
@@ -2820,24 +2820,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     </div>
                   </div>
 
-                  {/* 2. Step-by-Step Detailed Solution */}
-                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 0, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
-                      <FileText size={15} color="#E31B23" />
-                      2. Step-by-Step Detailed Solution
-                    </div>
-                    <div style={{ fontSize: 13.5, color: '#172033', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                      {activeQuestion.explanation?.detailed_solution || (
-                        <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No detailed solution added.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 3. Points to Remember / Common Traps */}
+                  {/* 2. Points to Remember / Common Traps */}
                   <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
                       <AlertTriangle size={15} />
-                      3. Points to Remember & Common Traps
+                      2. Points to Remember & Common Traps
                     </div>
                     {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 ? (
                       <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
@@ -2854,11 +2841,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     )}
                   </div>
 
-                  {/* 4. Key Takeaways */}
+                  {/* 3. Key Takeaways */}
                   <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 0, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#15803D', marginBottom: 8 }}>
                       <Award size={15} />
-                      4. Key Takeaways
+                      3. Key Takeaways
                     </div>
                     {activeQuestion.explanation?.key_takeaways && activeQuestion.explanation.key_takeaways.length > 0 ? (
                       <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#14532D', lineHeight: 1.6 }}>
@@ -3025,27 +3012,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 />
               </div>
 
-              {/* Passage Text */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
-                  Passage / Context (Optional):
-                </label>
-                <textarea
-                  rows={3}
-                  value={editPassageText}
-                  onChange={(e) => setEditPassageText(e.target.value)}
-                  placeholder="Paste or edit shared reading passage / context..."
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: 13,
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              </div>
 
               {/* Hierarchy & Interdisciplinary Concept Relevance Manager */}
               <div

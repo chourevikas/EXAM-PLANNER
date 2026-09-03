@@ -43,7 +43,6 @@ class Passage(SQLModel, table=True):
 
     exam: Optional["Exam"] = Relationship(back_populates="passages")
     subtopic: Optional["Subtopic"] = Relationship(back_populates="passages")
-    questions: List["Question"] = Relationship(back_populates="passage")
     translations: List["PassageTranslation"] = Relationship(
         back_populates="passage", cascade_delete=True
     )

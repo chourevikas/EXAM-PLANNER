@@ -23,7 +23,6 @@ from app.pipeline.taxonomy_resolver import (
     get_taxonomy_resolver,
 )
 from app.schemas.syllabus_literals import SYLLABUS_HIERARCHY
-from app.pipeline.explanation_schema import QuestionExplanationSchema, MultiConceptItemSchema
 
 
 @pytest.fixture(scope="module")
@@ -224,39 +223,6 @@ class TestPydanticPayloadIntegration:
         assert db_payload.taxonomy_metrics.total_resolution_time_ms >= 0.0
         assert len(db_payload.concepts) >= 1
 
-    def test_question_explanation_schema_model_validator(self):
-        # Verifies that QuestionExplanationSchema validates & auto-corrects raw strings
-        schema = QuestionExplanationSchema(
-            core_concept="Fundamental Rights in Indian Constitution",
-            detailed_solution="Article 21 provides Protection of Life and Personal Liberty.",
-            options_breakdown=[
-                {
-                    "option_key": "A",
-                    "is_correct": True,
-                    "closeness_score": 1.0,
-                    "explanation": "Correct per Art 21.",
-                }
-            ],
-            common_traps=["Confusing Article 20 with 21."],
-            key_takeaways=["Art 21 cannot be suspended during Emergency."],
-            subject="polity and governance",
-            topic="fundamental rights",
-            subtopic="Right to Freedom",
-            difficulty="Medium",
-        )
-        assert schema.subject == "Indian Polity & Governance"
-        assert schema.topic == "Fundamental Rights"
-        assert schema.subtopic == "Right to Freedom"
-
-    def test_multi_concept_item_schema_auto_repair(self):
-        item = MultiConceptItemSchema(
-            subject="economy",
-            topic="money & banking",
-            subtopic="Banking Structure in India",
-        )
-        assert item.subject == "Economy"
-        assert item.topic == "Money and Banking"
-        assert item.subtopic == "Banking Structure in India"
 
 
 class TestPerformanceBenchmark:

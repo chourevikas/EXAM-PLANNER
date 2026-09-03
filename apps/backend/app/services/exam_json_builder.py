@@ -125,7 +125,7 @@ class ExamJsonBuilder:
                 subtopic_ids.add(q.subtopic_id)
 
         # 6. Passages & Passage Translations
-        passage_ids = [q.passage_id for q in questions if q.passage_id]
+        passage_ids = [getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)]
         pass_trans_map: Dict[int, list[PassageTranslation]] = {}
         if passage_ids:
             pt_res = await self.session.exec(
@@ -210,12 +210,13 @@ class ExamJsonBuilder:
         # 2. Passage Translations
         passage_text = None
         passage_translations = {}
-        if q.passage_id:
+        q_pass_id = getattr(q, "passage_id", None)
+        if q_pass_id:
             if preloaded is not None:
-                pass_trans_list = preloaded.get("pass_trans_map", {}).get(q.passage_id, [])
+                pass_trans_list = preloaded.get("pass_trans_map", {}).get(q_pass_id, [])
             else:
                 pass_res = await self.session.exec(
-                    select(PassageTranslation).where(PassageTranslation.passage_id == q.passage_id)
+                    select(PassageTranslation).where(PassageTranslation.passage_id == q_pass_id)
                 )
                 pass_trans_list = pass_res.all()
 
