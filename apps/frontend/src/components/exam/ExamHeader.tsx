@@ -188,7 +188,7 @@ export function ExamHeader({
       )}
 
       {/* Right: Submit Test CTA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
         {onToggleFocusMode && (
           <button
             type="button"

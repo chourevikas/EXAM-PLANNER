@@ -845,3 +845,40 @@ textarea {
   justify-content: center;
   text-align: center;
 }
+
+/* ── 21. Mobile Drawer Navigation ── */
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  top: var(--header-height);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 90;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.mobile-drawer-content {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  padding: 24px;
+  z-index: 95;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  border-bottom: 1px solid var(--border-color);
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

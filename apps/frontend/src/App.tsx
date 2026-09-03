@@ -55,7 +55,7 @@ const MockSelectionPage = lazy(() =>
 const PricingPage = lazy(() =>
   import('./pages/PricingPage').then((m) => ({ default: m.PricingPage })),
 );
-const PlansPage = lazy(() => import('./pages/PlansPage').then((m) => ({ default: m.PlansPage })));
+const ExamsPage = lazy(() => import('./pages/ExamsPage').then((m) => ({ default: m.ExamsPage })));
 const AboutUsPage = lazy(() =>
   import('./pages/AboutUsPage').then((m) => ({ default: m.AboutUsPage })),
 );
@@ -141,7 +141,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/guest-exam" element={<GuestExamPage />} />
-          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/exams" element={<ExamsPage />} />
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/contact" element={<ContactUsPage />} />
 

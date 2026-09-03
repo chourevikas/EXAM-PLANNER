@@ -33,18 +33,52 @@ export function HeroSection({ }: HeroSectionProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const FEATURED_CARDS = [
+  const FEATURED_CARDS_POOL = [
     { badge: "Fundamental Rights", meta: "UPSC 2024", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: 'In the context of the Constitution of India, "Due Process of Law" implies:' },
     { badge: "Fundamental Rights", meta: "UPSC 2023", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?" },
     { badge: "Inflation", meta: "UPSC 2022", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "Inflation", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?" },
     { badge: "Exchange Rates", meta: "UPSC 2021", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "External Sector", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation." },
     { badge: "Conservation", meta: "UPSC 2023", exam: "UPSC", subject: "Environment & Ecology", topic: "Biodiversity", subtopic: "Conservation efforts", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens." },
     { badge: "Parliament", meta: "UPSC 2020", exam: "UPSC", subject: "Polity", topic: "Indian Government", subtopic: "Parliament", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?" },
+    { badge: "Monetary Policy", meta: "UPSC 2020", exam: "UPSC", subject: "Indian Economy", topic: "Money and Banking", subtopic: "Monetary Policy", q: "If the RBI decides to adopt an expansionary monetary policy, which of the following would it not do?" },
+    { badge: "Buddhism", meta: "UPSC 2019", exam: "UPSC", subject: "History", topic: "Ancient History", subtopic: "Buddhism and Jainism", q: "With reference to the religious history of India, consider the following statements regarding the Mahayana sect of Buddhism." },
+    { badge: "Ocean Currents", meta: "UPSC 2021", exam: "UPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Oceanography", q: "Consider the following factors: 1. Rotation of the Earth 2. Air pressure and wind 3. Density of ocean water 4. Revolution of the Earth. Which of the above factors influence the ocean currents?" },
+    { badge: "Biotechnology", meta: "UPSC 2022", exam: "UPSC", subject: "Science & Technology", topic: "Biotechnology", subtopic: "Genetic Engineering", q: "With reference to 'CRISPR-Cas9', which of the following statements is/are correct?" },
+    { badge: "Maratha Empire", meta: "MPSC 2022", exam: "MPSC", subject: "History", topic: "Modern History", subtopic: "Maratha Empire", q: "Consider the statements regarding the administrative system of Chhatrapati Shivaji Maharaj." },
+    { badge: "Geography", meta: "MPSC 2021", exam: "MPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Maharashtra Geography", q: "Which of the following mountain ranges separates the Godavari and Tapi river basins?" },
+    { badge: "General Science", meta: "SSC 2022", exam: "SSC", subject: "Science", topic: "Physics", subtopic: "Optics", q: "What is the phenomenon responsible for the twinkling of stars?" },
+    { badge: "Quantitative", meta: "Banking 2023", exam: "Banking", subject: "Aptitude", topic: "Mathematics", subtopic: "Percentage", q: "If the price of an article is increased by 20% and then decreased by 10%, what is the net percentage change in its price?" },
   ];
 
+  const shuffleWithSeed = (array: any[], seed: number) => {
+    let m = array.length, t, i;
+    const shuffled = [...array];
+    let currentSeed = seed;
+    while (m) {
+      currentSeed = (currentSeed * 9301 + 49297) % 233280;
+      i = Math.floor((currentSeed / 233280) * m--);
+      t = shuffled[m];
+      shuffled[m] = shuffled[i];
+      shuffled[i] = t;
+    }
+    return shuffled;
+  };
+
   const filteredCards = useMemo(() => {
-    if (selectedExam === 'All Exams') return FEATURED_CARDS;
-    return FEATURED_CARDS.filter(card => card.exam === selectedExam);
+    let pool = FEATURED_CARDS_POOL;
+    if (selectedExam !== 'All Exams') {
+      pool = pool.filter(card => card.exam === selectedExam);
+    }
+    
+    // Generate a daily seed based on the current local date
+    const today = new Date();
+    const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    
+    // Shuffle the filtered pool using the daily seed
+    const shuffledPool = shuffleWithSeed(pool, seed);
+    
+    // Display up to 6 random cards daily
+    return shuffledPool.slice(0, 6);
   }, [selectedExam]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);

@@ -37,12 +37,14 @@ export function GuestExamPage() {
   // URL Params (Max 10 questions allowed)
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
-  const gSubject = searchParams.get('subject') || 'Polity';
+  const gSubject = searchParams.get('subject') || '';
   const gTopic = searchParams.get('topic') || '';
   const gSubtopic = searchParams.get('subtopic') || '';
   const gDifficulty = searchParams.get('difficulty') || '';
   const rawCount = parseInt(searchParams.get('count') || '10', 10);
   const gCount = Math.min(10, Math.max(1, rawCount));
+
+  const isExamLocked = searchParams.get('locked') === 'true';
 
   // Dynamic 3-level taxonomy fetched directly from Syllabus API (/api/v1/syllabus)
   const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
@@ -1178,9 +1180,10 @@ export function GuestExamPage() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        height: isTabletOrBelow ? 'auto' : '100vh',
+        minHeight: '100vh',
         width: '100vw',
-        overflow: 'hidden',
+        overflow: isTabletOrBelow ? 'visible' : 'hidden',
         backgroundColor: '#F8FAF8',
         color: '#172033',
         fontFamily: "'Manrope', 'Inter', system-ui, sans-serif",
@@ -1220,7 +1223,8 @@ export function GuestExamPage() {
             title="Go to Home"
           />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {!isTabletOrBelow && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span
                 onClick={() => navigate('/')}
@@ -1273,7 +1277,8 @@ export function GuestExamPage() {
               <ChevronRight size={12} style={{ color: 'rgba(255, 255, 255, 0.4)' }} />
               <span style={{ color: '#93C5FD', cursor: 'default' }}>Test</span>
             </div>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Focus Mode toggle + End & View Feedback action button */}
@@ -1476,9 +1481,12 @@ export function GuestExamPage() {
                 </label>
                 <button
                   type="button"
+                  disabled={isExamLocked}
                   onClick={() => {
-                    setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
-                    setFilterSearchQuery('');
+                    if (!isExamLocked) {
+                      setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
+                      setFilterSearchQuery('');
+                    }
                   }}
                   style={{
                     width: '100%',
@@ -1492,7 +1500,8 @@ export function GuestExamPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    cursor: 'pointer',
+                    cursor: isExamLocked ? 'not-allowed' : 'pointer',
+                    opacity: isExamLocked ? 0.7 : 1,
                     boxShadow:
                       activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
                     transition: 'all 0.15s ease',
@@ -1503,14 +1512,16 @@ export function GuestExamPage() {
                   >
                     {gExam}
                   </span>
-                  <ChevronDown
-                    size={14}
-                    color="#64748B"
-                    style={{
-                      transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 0.15s ease',
-                    }}
-                  />
+                  {!isExamLocked && (
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  )}
                 </button>
 
                 {/* Exam Popover */}

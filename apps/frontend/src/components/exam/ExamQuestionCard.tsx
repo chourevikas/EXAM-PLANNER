@@ -341,8 +341,8 @@ export function ExamQuestionCard({
         alignItems: 'stretch',
         justifyContent: 'flex-start',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
-        height: '100%',
-        maxHeight: '100%',
+        height: isMobile || isSmallScreen ? 'auto' : '100%',
+        maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
         minHeight: 0,
       }}
     >
@@ -355,8 +355,8 @@ export function ExamQuestionCard({
           flexDirection: 'column',
           justifyContent: 'flex-start',
           gap: 12,
-          height: '100%',
-          maxHeight: '100%',
+          height: isMobile || isSmallScreen ? 'auto' : '100%',
+          maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
           minHeight: 0,
           boxSizing: 'border-box',
         }}
@@ -395,10 +395,10 @@ export function ExamQuestionCard({
             justifyContent: 'flex-start',
             flex: 1,
             minHeight: 0,
-            maxHeight: '100%',
+            maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
             boxSizing: 'border-box',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            overflow: 'hidden',
+            overflow: isMobile || isSmallScreen ? 'visible' : 'hidden',
           }}
         >
           {/* Question Metadata Header Bar with Comprehensive Tags */}
@@ -612,10 +612,10 @@ export function ExamQuestionCard({
             </div>
           </div>
 
-          {/* Internally Scrollable Question Content Body */}
+          {/* Internally Scrollable Question Content Body (Desktop Only) */}
           <div
             style={{
-              overflowY: 'auto',
+              overflowY: isMobile || isSmallScreen ? 'visible' : 'auto',
               flex: 1,
               paddingRight: 6,
               display: 'flex',

@@ -100,7 +100,7 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const navItems: Array<{ label: string; targetId?: string; to?: string }> = [
     { label: 'Platform', targetId: '#features' },
     { label: 'Methodology', targetId: '#how-it-works' },
-    { label: 'Plans', to: '/plans' },
+    { label: 'Exams', to: '/exams' },
     { label: 'About Us', to: '/about' },
     { label: 'Contact Us', to: '/contact' },
   ];
