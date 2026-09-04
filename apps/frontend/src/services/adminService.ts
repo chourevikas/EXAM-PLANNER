@@ -379,12 +379,37 @@ export interface ExamReviewQuestionsResponse {
   pages: number;
 }
 
+const _examReviewCache = new Map<string, { data: ExamReviewQuestionsResponse; timestamp: number }>();
+const _examIntegrityCache = new Map<string, { data: ExamIntegrityQuestionsResponse; timestamp: number }>();
+const EXAM_REVIEW_CACHE_TTL = 5 * 60 * 1000;
+
+export function invalidateExamReviewCache(examId?: number | string) {
+  if (examId !== undefined) {
+    const prefix = `exam_${examId}_`;
+    for (const key of _examReviewCache.keys()) {
+      if (key.startsWith(prefix)) _examReviewCache.delete(key);
+    }
+    for (const key of _examIntegrityCache.keys()) {
+      if (key.startsWith(prefix)) _examIntegrityCache.delete(key);
+    }
+  } else {
+    _examReviewCache.clear();
+    _examIntegrityCache.clear();
+  }
+}
+
 export async function fetchExamQuestionsForReview(
   examId: number | string,
   page: number = 1,
   limit: number = 10,
   status?: string
 ): Promise<ExamReviewQuestionsResponse> {
+  const cacheKey = `exam_${examId}_p${page}_l${limit}_s${status || 'ALL'}`;
+  const cached = _examReviewCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
+    return cached.data;
+  }
+
   let url = `${API_BASE_URL}/exams/${examId}/review-questions?page=${page}&limit=${limit}`;
   if (status && status !== 'ALL') {
     url += `&status=${status}`;
@@ -394,7 +419,9 @@ export async function fetchExamQuestionsForReview(
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam review questions' }));
     throw new Error(errorData.detail || 'Could not fetch exam review questions.');
   }
-  return await res.json();
+  const data: ExamReviewQuestionsResponse = await res.json();
+  _examReviewCache.set(cacheKey, { data, timestamp: Date.now() });
+  return data;
 }
 
 export async function fetchQuestionsByExam(examId: number | string, page: number = 1, limit: number = 100, status?: string): Promise<any> {
@@ -420,6 +447,7 @@ export async function updateAdminQuestionDetail(questionId: number | string, pay
     const errorData = await res.json().catch(() => ({ detail: 'Failed to update question' }));
     throw new Error(errorData.detail || 'Question update failed.');
   }
+  invalidateExamReviewCache();
   return await res.json();
 }
 
@@ -433,6 +461,7 @@ export async function updateAdminQuestionStatus(questionId: number | string, sta
     const errorData = await res.json().catch(() => ({ detail: 'Failed to update question status' }));
     throw new Error(errorData.detail || 'Status update failed.');
   }
+  invalidateExamReviewCache();
   return await res.json();
 }
 
@@ -582,6 +611,7 @@ export async function createAdminQuestion(payload: QuestionCreatePayload): Promi
     const errorData = await res.json().catch(() => ({ detail: 'Failed to create question' }));
     throw new Error(errorData.detail || 'Question creation failed.');
   }
+  invalidateExamReviewCache(payload.exam_id);
   return await res.json();
 }
 
@@ -591,6 +621,12 @@ export async function fetchExamIntegrityQuestions(
   page: number = 1,
   limit: number = 250
 ): Promise<ExamIntegrityQuestionsResponse> {
+  const cacheKey = `exam_${examId}_issue_${issueType || 'ALL'}_p${page}_l${limit}`;
+  const cached = _examIntegrityCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
+    return cached.data;
+  }
+
   let url = `/api/v1/exams/${encodeURIComponent(examId)}/integrity-questions?page=${page}&limit=${limit}`;
   if (issueType && issueType !== 'ALL') {
     url += `&issue_type=${encodeURIComponent(issueType)}`;
@@ -600,7 +636,9 @@ export async function fetchExamIntegrityQuestions(
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam integrity questions' }));
     throw new Error(errorData.detail || 'Could not fetch exam integrity questions.');
   }
-  return await res.json();
+  const data: ExamIntegrityQuestionsResponse = await res.json();
+  _examIntegrityCache.set(cacheKey, { data, timestamp: Date.now() });
+  return data;
 }
 
 export async function fetchExamsByYear(): Promise<any> {

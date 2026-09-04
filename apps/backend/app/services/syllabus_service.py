@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, List, Dict, Any, Tuple
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 from fastapi import HTTPException
@@ -415,10 +416,6 @@ class SyllabusService:
             category = "VALID"
 
         # Update columns on Question model if present
-        if hasattr(question, "integrity_status"):
-            question.integrity_status = category
-        if hasattr(question, "integrity_reasons_json"):
-            question.integrity_reasons_json = issues
         if hasattr(question, "validation_status"):
             question.validation_status = category
         if hasattr(question, "validation_issues_json"):
@@ -429,6 +426,8 @@ class SyllabusService:
         self.session.add(question)
         await self.session.commit()
         await self.session.refresh(question)
+        object.__setattr__(question, "integrity_status", category)
+        object.__setattr__(question, "integrity_reasons_json", issues)
         return category, issues
 
     async def get_exam_question_integrity(
@@ -440,51 +439,52 @@ class SyllabusService:
         language: LanguageCode = LanguageCode.ENGLISH,
     ) -> ExamIntegrityQuestionsResponse:
         """
-        Evaluates database integrity across all questions in an exam,
-        reading stored integrity_status and integrity_reasons_json from the questions table,
-        identifying MISSING_IN_PAPER sequence numbers, and paginating results.
+        Fast evaluation of question integrity and missing questions across an entire exam.
+        Uses a consolidated SQL query to avoid sequential multi-table round trips.
         """
         exam = await self.session.get(Exam, exam_id)
         if not exam:
-            raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
+            raise HTTPException(status_code=404, detail="Exam not found")
 
-        # 1. Fetch all questions in this exam
-        q_stmt = (
-            select(Question)
-            .where(Question.exam_id == exam_id)
-            .order_by(Question.question_number_in_paper.asc())
-        )
-        questions = (await self.session.exec(q_stmt)).all()
-        q_by_num = {q.question_number_in_paper: q for q in questions}
+        lang_str = language.value if hasattr(language, "value") else str(language)
 
-        total_extracted = len(questions)
+        # 1. Fetch questions, option counts, correct option count, statement preview, and syllabus hierarchy in ONE round trip
+        sql = text("""
+            SELECT 
+                q.id,
+                q.question_number_in_paper,
+                q.status,
+                q.difficulty,
+                q.is_complete,
+                q.requires_human_review,
+                (
+                    SELECT SUBSTR(qt.question_text, 1, 120) 
+                    FROM question_translations qt 
+                    WHERE qt.question_id = q.id 
+                    ORDER BY CASE WHEN qt.language = :lang THEN 0 ELSE 1 END 
+                    LIMIT 1
+                ) AS text_preview,
+                COUNT(qo.id) AS options_count,
+                SUM(CASE WHEN qo.is_correct THEN 1 ELSE 0 END) AS correct_options_count,
+                MIN(CASE WHEN qo.is_correct THEN qo.option_label ELSE NULL END) AS correct_option_label,
+                s.name AS subject_name,
+                t.name AS topic_name,
+                st.name AS subtopic_name
+            FROM questions q
+            LEFT JOIN question_options qo ON qo.question_id = q.id
+            LEFT JOIN subtopics st ON q.subtopic_id = st.id
+            LEFT JOIN topics t ON st.topic_id = t.id
+            LEFT JOIN subjects s ON t.subject_id = s.id
+            WHERE q.exam_id = :exam_id
+            GROUP BY q.id, q.question_number_in_paper, q.status, q.difficulty, q.is_complete, q.requires_human_review, s.name, t.name, st.name
+            ORDER BY q.question_number_in_paper ASC;
+        """)
+        res = await self.session.execute(sql, {"exam_id": exam_id, "lang": lang_str})
+        q_rows = res.fetchall()
+
+        q_by_num = {r.question_number_in_paper: r for r in q_rows}
+        total_extracted = len(q_rows)
         total_expected = max(exam.total_questions or 100, max(q_by_num.keys()) if q_by_num else 100)
-
-        # Batch fetch translations, options, and subtopics for display preview
-        q_ids = [q.id for q in questions]
-        translations_map: Dict[int, List[QuestionTranslation]] = {}
-        options_map: Dict[int, List[QuestionOption]] = {}
-        subtopic_map: Dict[int, Tuple[str, str, str]] = {}
-
-        if q_ids:
-            t_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
-            for t in (await self.session.exec(t_stmt)).all():
-                translations_map.setdefault(t.question_id, []).append(t)
-
-            o_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids)).order_by(QuestionOption.display_order.asc())
-            for o in (await self.session.exec(o_stmt)).all():
-                options_map.setdefault(o.question_id, []).append(o)
-
-            subtop_ids = [q.subtopic_id for q in questions if q.subtopic_id]
-            if subtop_ids:
-                st_stmt = (
-                    select(Subtopic, Topic, Subject)
-                    .join(Topic, Subtopic.topic_id == Topic.id)
-                    .join(Subject, Topic.subject_id == Subject.id)
-                    .where(Subtopic.id.in_(subtop_ids))
-                )
-                for st, top, subj in (await self.session.exec(st_stmt)).all():
-                    subtopic_map[st.id] = (subj.name, top.name, st.name)
 
         # 2. Build integrity items for each question number from 1 to total_expected
         all_issue_items: List[QuestionIssueDetail] = []
@@ -495,9 +495,9 @@ class SyllabusService:
         missing_numbers: List[int] = []
 
         for q_num in range(1, total_expected + 1):
-            q = q_by_num.get(q_num)
+            r = q_by_num.get(q_num)
 
-            if not q:
+            if not r:
                 # Question missing from paper extraction
                 missing_count += 1
                 missing_numbers.append(q_num)
@@ -524,45 +524,34 @@ class SyllabusService:
                 )
                 continue
 
-            trans_list = translations_map.get(q.id, [])
-            default_trans = next(
-                (t for t in trans_list if t.language == language),
-                (trans_list[0] if trans_list else None),
-            )
-            has_statement = bool(default_trans and default_trans.question_text and default_trans.question_text.strip())
-
-            opts = options_map.get(q.id, [])
-            has_options = len(opts) > 0
-            correct_opts = [o for o in opts if o.is_correct]
-            has_correct_option = len(correct_opts) == 1
-
-            subj_name, top_name, subtop_name = subtopic_map.get(q.subtopic_id, (None, None, None))
+            has_statement = bool(r.text_preview and r.text_preview.strip())
+            has_options = (r.options_count or 0) > 0
+            has_correct_option = (r.correct_options_count or 0) == 1
             has_valid_syllabus = bool(
-                subj_name
-                and top_name
-                and subtop_name
-                and subj_name != "Uncategorized"
-                and top_name != "Uncategorized"
-                and subtop_name != "Uncategorized"
+                r.subject_name
+                and r.topic_name
+                and r.subtopic_name
+                and r.subject_name != "Uncategorized"
+                and r.topic_name != "Uncategorized"
+                and r.subtopic_name != "Uncategorized"
             )
 
-            # Read integrity status from Question column if present, otherwise dynamically evaluate
-            category = getattr(q, "integrity_status", None) or getattr(q, "validation_status", None)
-            reasons = list(getattr(q, "integrity_reasons_json", None) or getattr(q, "validation_issues_json", None) or [])
+            reasons: List[str] = []
+            if not has_statement:
+                reasons.append("Question statement text is missing or blank in database.")
+            if not has_options:
+                reasons.append("0 answer options configured in database.")
 
-            if not category or category == "PENDING":
-                if not has_statement and not has_options:
-                    category = "CORRUPTED"
-                    if not has_statement and "Question statement text is missing or blank in database." not in reasons:
-                        reasons.append("Question statement text is missing or blank in database.")
-                    if not has_options and "0 answer options configured in database." not in reasons:
-                        reasons.append("0 answer options configured in database.")
-                elif not has_correct_option or not has_valid_syllabus or not q.is_complete or reasons:
-                    category = "PARTIALLY_CORRUPTED"
-                    if not has_correct_option and "No correct answer option configured / mapped from answer key." not in reasons:
-                        reasons.append("No correct answer option configured / mapped from answer key.")
-                else:
-                    category = "VALID"
+            if not has_statement or not has_options:
+                category = "CORRUPTED"
+            elif not has_correct_option or not has_valid_syllabus or not r.is_complete:
+                category = "PARTIALLY_CORRUPTED"
+                if not has_correct_option:
+                    reasons.append("No correct answer option configured / mapped from answer key.")
+                if not has_valid_syllabus:
+                    reasons.append("Incomplete or uncategorized syllabus hierarchy mapping.")
+            else:
+                category = "VALID"
 
             if category == "CORRUPTED":
                 corrupted_count += 1
@@ -571,14 +560,14 @@ class SyllabusService:
             elif category == "VALID":
                 valid_count += 1
 
-            correct_label = correct_opts[0].option_label if correct_opts else None
-            stmt_preview = (default_trans.question_text[:120] + "...") if default_trans and default_trans.question_text else None
-            status_val = q.status.value if hasattr(q.status, "value") else str(q.status)
+            stmt_preview = (r.text_preview + "...") if r.text_preview else None
+            status_val = r.status.value if hasattr(r.status, "value") else str(r.status)
+            diff_val = r.difficulty.value if hasattr(r.difficulty, "value") else str(r.difficulty)
 
             all_issue_items.append(
                 QuestionIssueDetail(
-                    question_id=str(q.id),
-                    question_number_in_paper=q.question_number_in_paper,
+                    question_id=str(r.id),
+                    question_number_in_paper=r.question_number_in_paper,
                     status=status_val,
                     issue_category=category,
                     issues=reasons,
@@ -587,15 +576,15 @@ class SyllabusService:
                     has_correct_option=has_correct_option,
                     has_explanation=category != "CORRUPTED",
                     has_valid_syllabus=has_valid_syllabus,
-                    subject=subj_name,
-                    topic=top_name,
-                    subtopic=subtop_name,
+                    subject=r.subject_name,
+                    topic=r.topic_name,
+                    subtopic=r.subtopic_name,
                     question_text_preview=stmt_preview,
-                    options_count=len(opts),
-                    correct_option_label=correct_label,
-                    difficulty=q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
-                    is_complete=q.is_complete and (category != "CORRUPTED"),
-                    requires_human_review=q.requires_human_review or (category != "VALID"),
+                    options_count=r.options_count or 0,
+                    correct_option_label=r.correct_option_label,
+                    difficulty=diff_val,
+                    is_complete=bool(r.is_complete and (category != "CORRUPTED")),
+                    requires_human_review=bool(r.requires_human_review or (category != "VALID")),
                 )
             )
 

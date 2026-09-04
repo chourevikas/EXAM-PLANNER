@@ -2,7 +2,7 @@ import math
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from sqlalchemy import func
-from sqlmodel import select
+from sqlmodel import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -301,68 +301,64 @@ class QuestionService:
         option explanations (distractor analysis), core concepts, detailed solutions,
         key takeaways, and points to remember.
         """
-        exam = await self.session.get(Exam, exam_id)
-        if not exam:
+        # 1. Fast SQL aggregation query combining Exam fetch & review metrics across the exam in a single round-trip
+        stmt = (
+            select(
+                Exam,
+                func.count(Question.id).label("total"),
+                func.count(Question.id).filter(Question.status == QuestionStatus.PUBLISHED).label("reviewed"),
+                func.count(Question.id).filter(Question.status == QuestionStatus.PENDING_HUMAN_REVIEW).label("pending"),
+                func.count(Question.id).filter(Question.status == QuestionStatus.REJECTED).label("rejected"),
+            )
+            .outerjoin(Question, Question.exam_id == Exam.id)
+            .where(Exam.id == exam_id)
+            .group_by(Exam.id)
+        )
+        res = await self.session.exec(stmt)
+        row = res.first()
+        if not row or not row[0]:
             raise HTTPException(status_code=404, detail=f"Exam with ID '{exam_id}' not found.")
 
-        # Query all questions for this exam to calculate exact review status metrics
-        all_qs_stmt = (
-            select(Question)
-            .where(Question.exam_id == exam_id)
-            .order_by(Question.question_number_in_paper)
-        )
-        all_qs_res = await self.session.exec(all_qs_stmt)
-        all_questions = all_qs_res.all()
-
-        total_questions = len(all_questions)
-        reviewed_count = sum(1 for q in all_questions if q.status == QuestionStatus.PUBLISHED)
-        pending_count = sum(1 for q in all_questions if q.status == QuestionStatus.PENDING_HUMAN_REVIEW)
-        rejected_count = sum(1 for q in all_questions if q.status == QuestionStatus.REJECTED)
+        exam = row[0]
+        total_questions = row[1] or 0
+        reviewed_count = row[2] or 0
+        pending_count = row[3] or 0
+        rejected_count = row[4] or 0
         can_publish = (pending_count == 0 and rejected_count == 0 and total_questions > 0)
 
-        # Apply status filter if specified
-        filtered_qs = all_questions
-        if status is not None:
-            filtered_qs = [q for q in filtered_qs if q.status == status]
-
+        # 2. Database-level pagination
         page = max(1, page)
         limit = max(1, min(100, limit))
         start_idx = (page - 1) * limit
-        paged_qs = filtered_qs[start_idx : start_idx + limit]
 
-        # Always include solutions for review endpoint
+        page_stmt = select(Question).where(Question.exam_id == exam_id)
+        if status is not None:
+            page_stmt = page_stmt.where(Question.status == status)
+        page_stmt = page_stmt.order_by(Question.question_number_in_paper).offset(start_idx).limit(limit)
+
+        paged_res = await self.session.exec(page_stmt)
+        paged_qs = paged_res.all()
+
+        # Always include solutions for review endpoint, reuse preloaded exam
         items = await self._build_batch_question_detail_responses(
-            paged_qs, target_lang=language, include_solutions=True
+            paged_qs, target_lang=language, include_solutions=True, preloaded_exam=exam
         )
 
-        # 1. Database Integrity / Corruption check across ALL questions (Fast batch queries)
+        # 3. Fast corruption check
         is_corrupted = False
         corruption_reason = None
         if total_questions == 0 and (exam.extracted_questions_count or 0) > 0:
             is_corrupted = True
             corruption_reason = f"Exam '{exam.code}' has extracted question count recorded ({exam.extracted_questions_count}) but 0 questions exist in database."
-        elif all_questions:
-            q_ids = [q.id for q in all_questions]
-            qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
-            qt_res = await self.session.exec(qt_stmt)
-            q_trans_map: dict[int, list[str]] = {}
-            for t in qt_res.all():
-                q_trans_map.setdefault(t.question_id, []).append(t.question_text or "")
-
-            opt_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
-            opt_res = await self.session.exec(opt_stmt)
-            q_opts_set: set[int] = {opt.question_id for opt in opt_res.all()}
-
-            for q in all_questions:
-                trans_texts = q_trans_map.get(q.id, [])
-                has_text = any(t and t.strip() for t in trans_texts)
-                if not has_text:
+        elif items:
+            for it in items:
+                if not (it.question_text and it.question_text.strip()):
                     is_corrupted = True
-                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
+                    corruption_reason = f"Database Corrupted: Question #{it.question_number_in_paper} has blank or missing question statement text in database."
                     break
-                if q.id not in q_opts_set:
+                if not it.options:
                     is_corrupted = True
-                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has 0 answer options in database."
+                    corruption_reason = f"Database Corrupted: Question #{it.question_number_in_paper} has 0 answer options in database."
                     break
 
         exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
@@ -378,7 +374,14 @@ class QuestionService:
         else:
             publish_status = "PENDING_REVIEW"
 
-        pages = math.ceil(len(filtered_qs) / limit) if limit > 0 else 1
+        filtered_count = total_questions
+        if status == QuestionStatus.PUBLISHED:
+            filtered_count = reviewed_count
+        elif status == QuestionStatus.PENDING_HUMAN_REVIEW:
+            filtered_count = pending_count
+        elif status == QuestionStatus.REJECTED:
+            filtered_count = rejected_count
+        pages = math.ceil(filtered_count / limit) if limit > 0 else 1
         is_syncing = False
         is_s3_out_of_sync = False
 
@@ -1328,6 +1331,7 @@ class QuestionService:
         questions: List[Question],
         target_lang: LanguageCode = LanguageCode.ENGLISH,
         include_solutions: bool = False,
+        preloaded_exam: Optional[Exam] = None,
     ) -> List[QuestionDetailResponse]:
         if not questions:
             return []
@@ -1336,101 +1340,97 @@ class QuestionService:
         exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
         passage_ids = list(set(getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)))
 
-        # Wave 1: these batch lookups only need ids already known from
-        # `questions`. They run sequentially on the single request-scoped
-        # session rather than each opening its own pooled connection —
-        # against a remote, high-latency DB, N round trips on one already-
-        # open connection beats N brand-new connections each paying their
-        # own handshake, especially once N gets past 2-3.
-        wave1_specs: List[tuple] = [
-            ("exams", select(Exam).where(Exam.id.in_(exam_ids)) if exam_ids else None),
-            ("qt", select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))),
-            ("pt", select(PassageTranslation).where(PassageTranslation.passage_id.in_(passage_ids)) if passage_ids else None),
-            ("opt", select(QuestionOption)
-                .where(QuestionOption.question_id.in_(q_ids))
-                .order_by(QuestionOption.question_id, QuestionOption.display_order)),
-            ("expl", select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids)) if include_solutions else None),
-            ("meta", select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids))),
-            ("links", select(QuestionHierarchyLink).where(QuestionHierarchyLink.question_id.in_(q_ids))),
-        ]
-        active_wave1 = [(name, stmt) for name, stmt in wave1_specs if stmt is not None]
-        wave1 = {}
-        for name, stmt in active_wave1:
-            res = await self.session.exec(stmt)
-            wave1[name] = res.all()
-
-        exams_map = {e.id: e for e in wave1.get("exams", [])}
-
-        qt_map = {}
-        for qt in wave1.get("qt", []):
-            qt_map.setdefault(qt.question_id, {})[qt.language] = qt.question_text
-
-        pt_map = {}
-        for pt in wave1.get("pt", []):
-            pt_map.setdefault(pt.passage_id, {})[pt.language] = pt.passage_text
-
-        options = wave1.get("opt", [])
+        # Consolidated Batch Lookups:
+        # 1. Options & OptionTranslations joined in a single pass
+        opt_stmt = (
+            select(QuestionOption, OptionTranslation)
+            .outerjoin(OptionTranslation, QuestionOption.id == OptionTranslation.option_id)
+            .where(QuestionOption.question_id.in_(q_ids))
+            .order_by(QuestionOption.question_id, QuestionOption.display_order)
+        )
+        opt_res = await self.session.exec(opt_stmt)
+        options = []
         opt_map = {}
-        opt_ids = []
-        for opt in options:
-            opt_map.setdefault(opt.question_id, []).append(opt)
-            opt_ids.append(opt.id)
-
-        expl_map = {}
-        for expl in wave1.get("expl", []):
-            expl_map.setdefault(expl.question_id, {})[expl.language] = expl
-
-        meta_map = {m.question_id: m for m in wave1.get("meta", [])}
-
-        links = wave1.get("links", [])
-        subtopic_ids = set(l.subtopic_id for l in links if l.subtopic_id)
-        # Also preload each question's own direct subtopic_id FK — needed by
-        # the hierarchy_detail fallback below for questions with no
-        # QuestionHierarchyLink rows, so that fallback never has to issue its
-        # own per-question round trips.
-        subtopic_ids.update(q.subtopic_id for q in questions if q.subtopic_id)
-
-        # Convert subtopic_ids to list because SQLAlchemy 2.0 does not support sets in .in_()
-        subtopic_ids_list = list(subtopic_ids)
-
-        # Wave 2: option translations (needs opt_ids from wave 1) and
-        # subtopics (needs subtopic_ids from wave 1) — same reasoning as
-        # wave 1, sequential on self.session.
-        wave2_specs: List[tuple] = [
-            ("ot", select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)) if opt_ids else None),
-            ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids_list)) if subtopic_ids_list else None),
-        ]
-        active_wave2 = [(name, stmt) for name, stmt in wave2_specs if stmt is not None]
-        wave2 = {}
-        for name, stmt in active_wave2:
-            res = await self.session.exec(stmt)
-            wave2[name] = res.all()
-
         ot_map = {}
-        for ot in wave2.get("ot", []):
-            ot_map.setdefault(ot.option_id, {})[ot.language] = (ot.option_text, ot.distractor_analysis)
+        seen_opts = set()
+        for opt, ot in opt_res.all():
+            if opt.id not in seen_opts:
+                seen_opts.add(opt.id)
+                options.append(opt)
+                opt_map.setdefault(opt.question_id, []).append(opt)
+            if ot is not None:
+                ot_map.setdefault(opt.id, {})[ot.language] = (ot.option_text, ot.distractor_analysis)
 
-        subtopics_map = {st.id: st for st in wave2.get("subtopics", [])}
+        # 2. Hierarchy links joined with Subtopic, Topic, Subject in a single pass
+        hier_stmt = (
+            select(QuestionHierarchyLink, Subtopic, Topic, Subject)
+            .outerjoin(Subtopic, QuestionHierarchyLink.subtopic_id == Subtopic.id)
+            .outerjoin(Topic, or_(QuestionHierarchyLink.topic_id == Topic.id, Subtopic.topic_id == Topic.id))
+            .outerjoin(Subject, or_(QuestionHierarchyLink.subject_id == Subject.id, Topic.subject_id == Subject.id))
+            .where(QuestionHierarchyLink.question_id.in_(q_ids))
+        )
+        hier_res = await self.session.exec(hier_stmt)
+        link_map = {}
+        subtopics_map = {}
         topics_map = {}
         subjects_map = {}
+        for l, st, top, subj in hier_res.all():
+            link_map.setdefault(l.question_id, []).append(l)
+            if st:
+                subtopics_map[st.id] = st
+            if top:
+                topics_map[top.id] = top
+            if subj:
+                subjects_map[subj.id] = subj
 
-        # Waves 3 & 4: topics depend on subtopics' topic_ids, subjects depend
-        # on topics' subject_ids — each only known after the prior wave, so
-        # this short tail stays sequential (2 round trips at most).
-        top_ids = list(set(st.topic_id for st in subtopics_map.values() if st.topic_id))
-        if top_ids:
-            t_res = await self.session.exec(select(Topic).where(Topic.id.in_(top_ids)))
-            topics_map = {t.id: t for t in t_res.all()}
-            subj_ids = list(set(t.subject_id for t in topics_map.values() if t.subject_id))
-            if subj_ids:
-                s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subj_ids)))
-                subjects_map = {s.id: s for s in s_res.all()}
+        # 3. Direct subtopic fallback joined with Topic and Subject
+        direct_subtopic_ids = list(set(q.subtopic_id for q in questions if q.subtopic_id and q.subtopic_id not in subtopics_map))
+        if direct_subtopic_ids:
+            direct_stmt = (
+                select(Subtopic, Topic, Subject)
+                .outerjoin(Topic, Subtopic.topic_id == Topic.id)
+                .outerjoin(Subject, Topic.subject_id == Subject.id)
+                .where(Subtopic.id.in_(direct_subtopic_ids))
+            )
+            d_res = await self.session.exec(direct_stmt)
+            for st, top, subj in d_res.all():
+                if st:
+                    subtopics_map[st.id] = st
+                if top:
+                    topics_map[top.id] = top
+                if subj:
+                    subjects_map[subj.id] = subj
 
-        link_map = {}
-        for l in links:
-            if l.question_id not in link_map:
-                link_map[l.question_id] = []
-            link_map[l.question_id].append(l)
+        # 4. Question Translations
+        qt_res = await self.session.exec(select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids)))
+        qt_map = {}
+        for qt in qt_res.all():
+            qt_map.setdefault(qt.question_id, {})[qt.language] = qt.question_text
+
+        # 5. Explanations (only when include_solutions is True)
+        expl_map = {}
+        if include_solutions:
+            expl_res = await self.session.exec(select(QuestionExplanation).where(QuestionExplanation.question_id.in_(q_ids)))
+            for expl in expl_res.all():
+                expl_map.setdefault(expl.question_id, {})[expl.language] = expl
+
+        # 6. Metadata
+        meta_res = await self.session.exec(select(QuestionMetadata).where(QuestionMetadata.question_id.in_(q_ids)))
+        meta_map = {m.question_id: m for m in meta_res.all()}
+
+        # 7. Exams & Passages
+        exams_map = {}
+        if preloaded_exam:
+            exams_map[preloaded_exam.id] = preloaded_exam
+        elif exam_ids:
+            ex_res = await self.session.exec(select(Exam).where(Exam.id.in_(exam_ids)))
+            exams_map = {e.id: e for e in ex_res.all()}
+
+        pt_map = {}
+        if passage_ids:
+            pt_res = await self.session.exec(select(PassageTranslation).where(PassageTranslation.passage_id.in_(passage_ids)))
+            for pt in pt_res.all():
+                pt_map.setdefault(pt.passage_id, {})[pt.language] = pt.passage_text
 
         # Assemble QuestionDetailResponse for all questions in memory
         results = []

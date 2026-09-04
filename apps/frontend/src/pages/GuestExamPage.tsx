@@ -238,16 +238,18 @@ export function GuestExamPage() {
 
         let newFetched: any[] = [];
 
+        const neededCount = Math.max(1, 15 - currentPool.length);
+
         // Step 1: Query API by Topic first if a topic is selected
         if (queryTopic) {
-          const topicParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+          const topicParams = new URLSearchParams({ limit: String(neededCount) });
           topicParams.append('topic_name', queryTopic);
           if (querySubject) topicParams.append('subject_name', querySubject);
           if (targetExam) topicParams.append('exam_name', targetExam);
           if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
 
           try {
-            const res = await guardedFetch(`/api/v1/questions?${topicParams.toString()}`);
+            const res = await guardedFetch(`/api/v1/questions/recommended?${topicParams.toString()}`);
             if (res.ok) {
               const data = await res.json();
               newFetched = data.items || [];
@@ -259,13 +261,13 @@ export function GuestExamPage() {
 
         // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
         if (newFetched.length === 0 && querySubject) {
-          const subjParams = new URLSearchParams({ limit: '5', include_solutions: 'true' });
+          const subjParams = new URLSearchParams({ limit: String(neededCount) });
           subjParams.append('subject_name', querySubject);
           if (targetExam) subjParams.append('exam_name', targetExam);
           if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
           try {
-            const res = await guardedFetch(`/api/v1/questions?${subjParams.toString()}`);
+            const res = await guardedFetch(`/api/v1/questions/recommended?${subjParams.toString()}`);
             if (res.ok) {
               const data = await res.json();
               newFetched = data.items || [];

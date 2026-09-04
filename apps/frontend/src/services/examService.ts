@@ -615,7 +615,13 @@ export async function fetchExamsByYear(): Promise<any> {
   }
 }
 
+const syllabusNodeVerificationCache = new Map<string, any>();
+
 export async function verifySyllabusNode(payload: { subject?: string; topic?: string; subtopic?: string }): Promise<any> {
+  const cacheKey = `${payload.subject || ''}::${payload.topic || ''}::${payload.subtopic || ''}`;
+  if (syllabusNodeVerificationCache.has(cacheKey)) {
+    return syllabusNodeVerificationCache.get(cacheKey);
+  }
   try {
     const response = await guardedFetch(`${API_BASE_URL}/syllabus/verify`, {
       method: 'POST',
@@ -623,7 +629,9 @@ export async function verifySyllabusNode(payload: { subject?: string; topic?: st
       body: JSON.stringify(payload),
     });
     if (!response.ok) return null;
-    return await response.json();
+    const data = await response.json();
+    syllabusNodeVerificationCache.set(cacheKey, data);
+    return data;
   } catch (err) {
     console.warn('Failed to verify syllabus node:', err);
     return null;

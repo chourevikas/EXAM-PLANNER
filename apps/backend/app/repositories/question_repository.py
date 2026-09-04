@@ -1,5 +1,5 @@
 from typing import Optional, List, Tuple
-from sqlmodel import select, func, or_, not_
+from sqlmodel import select, func, or_, not_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -182,29 +182,35 @@ class QuestionRepository:
         if subtopic_code:
             id_stmt = id_stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 
-        # Unique question IDs and question_number_in_paper for ordering
+        # Distinct question IDs matching all criteria
         id_stmt = id_stmt.distinct()
 
-        # Count total matches
-        count_stmt = select(func.count()).select_from(id_stmt.subquery())
-        total_res = await self.session.exec(count_stmt)
-        total = total_res.one() or 0
-
-        if total == 0:
-            return [], 0
-
-        # Pagination & Ordering based on question_number_in_paper for ID list
-        id_page_stmt = id_stmt.order_by(Question.question_number_in_paper).offset(skip).limit(limit)
+        # Paginate IDs first to avoid materializing large JSON/text columns across all matching rows
+        id_page_stmt = id_stmt.order_by(col(Question.question_number_in_paper)).offset(skip).limit(limit)
         id_res = await self.session.exec(id_page_stmt)
         raw_rows = id_res.all()
         q_ids = [r[0] for r in raw_rows] if raw_rows else []
 
         if not q_ids:
-            return [], total
+            if skip > 0:
+                count_stmt = select(func.count()).select_from(id_stmt.subquery())
+                total_res = await self.session.exec(count_stmt)
+                total = total_res.one() or 0
+                return [], total
+            return [], 0
 
-        # Fetch full Question objects by IDs
-        q_stmt = select(Question).where(Question.id.in_(q_ids)).order_by(Question.question_number_in_paper)
+        # Fetch the exact page of Question objects by IDs
+        q_stmt = select(Question).where(col(Question.id).in_(q_ids)).order_by(col(Question.question_number_in_paper))
         res = await self.session.exec(q_stmt)
-        questions = res.all()
+        questions = list(res.all())
+
+        # Fast-path total count: if on page 1 and fewer results than limit, total count is exact
+        if skip == 0 and len(q_ids) < limit:
+            total = len(q_ids)
+        else:
+            count_stmt = select(func.count()).select_from(id_stmt.subquery())
+            total_res = await self.session.exec(count_stmt)
+            total = total_res.one() or 0
 
         return questions, total
+
