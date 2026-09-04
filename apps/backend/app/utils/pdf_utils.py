@@ -44,6 +44,23 @@ def clear_pdf_cache(pdf_path_or_key: str) -> None:
     _download_locks.pop(key, None)
 
 
+def seed_pdf_cache(pdf_path_or_key: str, source_path: Path) -> Path:
+    """Copies source_path into temp_pdf_cache under the cache key for pdf_path_or_key to avoid re-downloading."""
+    try:
+        temp_dir = Path("./temp_pdf_cache").resolve()
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        clean_name = get_cache_key(pdf_path_or_key)
+        local_target = temp_dir / clean_name
+        src = Path(source_path).resolve()
+        if src.exists() and src != local_target:
+            import shutil
+            shutil.copy2(src, local_target)
+        return local_target
+    except Exception as e:
+        logger.warning(f"Failed to seed PDF cache for {pdf_path_or_key}: {e}")
+        return Path(source_path).resolve()
+
+
 async def ensure_local_pdf(pdf_path_or_key: str, storage=None) -> Path:
     """Checks if PDF file is already cached locally in temp_pdf_cache to prevent redundant downloads."""
     p = Path(pdf_path_or_key)

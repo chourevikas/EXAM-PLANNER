@@ -11,9 +11,6 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from PIL import Image
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions
 from app.config.logger import setup_logger
 
 logger = setup_logger("DoclingOcrExtractor")
@@ -23,16 +20,26 @@ class DoclingOcrExtractor:
     """Deterministic OCR and layout extractor using Docling."""
 
     def __init__(self):
-        pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = True
-        pipeline_options.ocr_options = RapidOcrOptions()
-        pipeline_options.do_table_structure = True
-        pipeline_options.generate_page_images = True
+        self._converter = None
 
-        format_options = {
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-        }
-        self.converter = DocumentConverter(format_options=format_options)
+    def _get_converter(self):
+        if self._converter is None:
+            logger.info("📄 [DOCLING OCR] Initializing DocumentConverter for rasterized document...")
+            from docling.document_converter import DocumentConverter, PdfFormatOption
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions
+
+            pipeline_options = PdfPipelineOptions()
+            pipeline_options.do_ocr = True
+            pipeline_options.ocr_options = RapidOcrOptions()
+            pipeline_options.do_table_structure = False  # Avoid heavyweight table transformer overhead for standard exam papers
+            pipeline_options.generate_page_images = True
+
+            format_options = {
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+            self._converter = DocumentConverter(format_options=format_options)
+        return self._converter
 
     def extract(self, pdf_path: str | Path) -> Dict[str, Any]:
         """Converts whole PDF into markdown, pictures, tables, and page images."""
@@ -65,18 +72,26 @@ class DoclingOcrExtractor:
         if has_digital_text:
             full_markdown = "\n\n".join(digital_chunks).strip()
             logger.info(
-                f"📄 [DIGITAL TEXT LAYER DETECTED] Extracted {len(full_markdown)} chars directly across {digital_pages}/{total_p} pages."
+                f"📄 [DIGITAL TEXT LAYER DETECTED] Extracted {len(full_markdown)} chars directly across {digital_pages}/{total_p} pages in milliseconds."
             )
             try:
-                import pdf2image
-                images = pdf2image.convert_from_path(str(p), dpi=150)
-                for idx, img in enumerate(images):
-                    page_images[idx + 1] = img
+                import pypdfium2 as pdfium
+                pdf = pdfium.PdfDocument(str(p))
+                for idx, page in enumerate(pdf):
+                    page_images[idx + 1] = page.render(scale=1.5).to_pil()
             except Exception as e:
-                logger.warning(f"Could not render page images via pdf2image: {e}")
+                logger.warning(f"Could not render page images via pypdfium2: {e}, falling back to pdf2image...")
+                try:
+                    import pdf2image
+                    images = pdf2image.convert_from_path(str(p), dpi=150)
+                    for idx, img in enumerate(images):
+                        page_images[idx + 1] = img
+                except Exception as e2:
+                    logger.warning(f"Could not render page images via pdf2image: {e2}")
         else:
             logger.info(f"📄 [DOCLING OCR] Rasterized PDF detected. Starting whole-document OCR conversion on {p.name}...")
-            conv_res = self.converter.convert(str(p))
+            converter = self._get_converter()
+            conv_res = converter.convert(str(p))
             doc = conv_res.document
 
             # 1. Page Images

@@ -190,25 +190,24 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(review_data_after.pending_count, 0)
             self.assertTrue(review_data_after.can_publish)
 
-            # 8. Approve and Publish exam to S3
+            # 8. Approve and Publish exam (DB-only, no S3 file creation)
             publish_res = await approve_and_publish_exam(exam_id=str(exam_id), session=session, current_user=None)
             self.assertEqual(publish_res["status"], "APPROVED_AND_PUBLISHED")
             self.assertEqual(publish_res["publish_status"], "PUBLISHED")
             self.assertTrue(publish_res["is_active"])
-            self.assertIsNotNone(publish_res["questions_json_folder_path"])
-            self.assertIsNotNone(publish_res["solutions_json_folder_path"])
+            self.assertIsNone(publish_res["questions_json_folder_path"])
+            self.assertIsNone(publish_res["solutions_json_folder_path"])
             self.assertIsNotNone(publish_res["last_synced_at"])
 
-            # 9. Verify get_exam_questions_for_review reflects published status (Scenario 1: Published & In Sync)
+            # 9. Verify get_exam_questions_for_review reflects published status
             review_data_published = await service.get_exam_questions_for_review(exam_id=exam_id)
             self.assertTrue(review_data_published.is_published)
             self.assertEqual(review_data_published.publish_status, "PUBLISHED")
             self.assertFalse(review_data_published.is_corrupted)
             self.assertFalse(review_data_published.can_retry)
-            self.assertFalse(review_data_published.is_s3_out_of_sync)
             self.assertIsNotNone(review_data_published.last_synced_at)
 
-            # 10. Update a question post-publishing -> verifies out-of-sync detection
+            # 10. Update a question post-publishing
             import asyncio
             await asyncio.sleep(0.01)
             await service.update_question_detail(
@@ -216,45 +215,7 @@ class TestReviewQuestionsAndApproval(unittest.IsolatedAsyncioTestCase):
                 payload=QuestionUpdatePayload(question_text="Updated Post-Publish: Capital of India?"),
             )
             review_data_after_edit = await service.get_exam_questions_for_review(exam_id=exam_id)
-            self.assertTrue(review_data_after_edit.is_s3_out_of_sync)
-
-            # 11. Call S3 Sync endpoint -> verifies background task dispatch and sync status endpoint
-            from fastapi import BackgroundTasks
-            from app.routers.admin import sync_exam_s3_artifacts, get_exam_sync_status
-
-            bg_tasks = BackgroundTasks()
-            sync_res = await sync_exam_s3_artifacts(
-                exam_id=str(exam_id),
-                background_tasks=bg_tasks,
-                session=session,
-                current_user=None,
-            )
-            self.assertEqual(sync_res["status"], "SYNC_STARTED")
-            self.assertTrue(sync_res["is_syncing"])
-
-            # Execute the queued background tasks in test
-            for task in bg_tasks.tasks:
-                await task()
-
-            # Verify sync status endpoint
-            status_res = await get_exam_sync_status(exam_id=str(exam_id), session=session, current_user=None)
-            self.assertFalse(status_res["is_syncing"])
-            self.assertEqual(status_res["sync_status"], "COMPLETED")
-            self.assertFalse(status_res["is_s3_out_of_sync"])
-
-            review_data_resynced = await service.get_exam_questions_for_review(exam_id=exam_id)
-            self.assertFalse(review_data_resynced.is_s3_out_of_sync)
-
-            # 12. Verify Celery async task wrapper (sync_tasks.async_sync_exam_s3)
-            from app.tasks.sync_tasks import async_sync_exam_s3
-            celery_run_res = await async_sync_exam_s3(
-                exam_id_str=str(exam_id),
-                run_id_str=str(sync_res["pipeline_run_id"]),
-                task_id="celery_test_task",
-                execution_engine="Celery Worker",
-                session=session,
-            )
-            self.assertEqual(celery_run_res["status"], "COMPLETED")
+            self.assertEqual(review_data_after_edit.publish_status, "PUBLISHED")
 
     async def test_corrupted_question_detection(self):
         async with self.session_factory() as session:

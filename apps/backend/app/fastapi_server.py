@@ -97,6 +97,18 @@ async def lifespan(app: FastAPI):
                     except Exception as e:
                         logger.warning(f"Could not clean up temporary item '{item}': {e}")
 
+        # Cleanly shut down any multiprocessing / loky reusable executors and collect garbage
+        try:
+            from joblib.externals.loky import get_reusable_executor
+            get_reusable_executor().shutdown(wait=False, kill_workers=True)
+        except Exception:
+            pass
+        try:
+            import gc
+            gc.collect()
+        except Exception:
+            pass
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

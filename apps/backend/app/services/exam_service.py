@@ -63,6 +63,8 @@ class ExamService:
         rel_path = f"uploads/question_papers/{canonical_code}/{clean_set}/{canonical_code}.pdf"
         persistent_path = await storage.upload_file(temp_path, rel_path)
         logger.info(f"Saved persistent PDF to '{persistent_path}'")
+        from app.utils.pdf_utils import seed_pdf_cache
+        seed_pdf_cache(persistent_path, temp_path)
         cleanup_file(temp_path)
 
         # 4. Save/update Exam record in DB

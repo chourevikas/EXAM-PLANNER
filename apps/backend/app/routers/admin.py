@@ -920,9 +920,9 @@ async def approve_and_publish_exam(
     3. Saves questions_json_folder_path and solutions_json_folder_path on Exam DB record.
     4. Sets Exam.status = PUBLISHED and Exam.is_active = True.
     """
+    from datetime import datetime, timezone
     from fastapi import HTTPException
     from app.db.models import Exam, ExamStatus, Question, QuestionStatus
-    from app.services.exam_json_builder import ExamJsonBuilder
     from sqlmodel import select
 
     try:
@@ -1017,40 +1017,19 @@ async def approve_and_publish_exam(
             await session.commit()
             raise HTTPException(status_code=422, detail=corruption_msg)
 
-    # 1 & 2. Generate JSON files and upload to S3 folder paths with Retryable Error Handling
-    builder = ExamJsonBuilder(session)
-    try:
-        json_paths = await builder.generate_and_upload(exam_id_int, sync_all=True)
-    except Exception as s3_err:
-        logger.error(
-            f"S3 publishing failed for exam '{exam.code}': {s3_err}", exc_info=True
-        )
-        # Record retryable failed pipeline run
-        failed_run = PipelineRun(
-            exam_id=exam_id_int,
-            pipeline_type="S3_PUBLISH",
-            status="FAILED",
-            current_step="S3_UPLOAD_FAILED",
-            progress_percent=0.0,
-            error_log=str(s3_err),
-        )
-        session.add(failed_run)
-        await session.commit()
-        raise HTTPException(
-            status_code=500,
-            detail=f"S3_PUBLISH_FAILED: {str(s3_err)}. This failure is fixable through retry.",
-        )
-
-    # 3 & 4. Mark exam status as PUBLISHED and is_active as True, and record successful PipelineRun
+    # Mark exam status as PUBLISHED and is_active as True directly in database (no S3 file creation)
+    now_utc = datetime.now(timezone.utc)
     exam.status = ExamStatus.PUBLISHED
     exam.is_active = True
+    exam.updated_at = now_utc
+    exam.last_synced_at = now_utc
     session.add(exam)
 
     success_run = PipelineRun(
         exam_id=exam_id_int,
         pipeline_type="S3_PUBLISH",
         status="COMPLETED",
-        current_step="PUBLISHED_TO_S3",
+        current_step="EXAM_PUBLISHED",
         progress_percent=100.0,
         error_log=None,
     )
@@ -1059,9 +1038,10 @@ async def approve_and_publish_exam(
     await session.commit()
     await session.refresh(exam)
 
-    from app.cache import invalidate_exam_cache
+    from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
 
     await invalidate_exam_cache(str(exam.id))
+    await invalidate_pipeline_status_cache()
 
     return {
         "status": "APPROVED_AND_PUBLISHED",
@@ -1082,7 +1062,7 @@ async def approve_and_publish_exam(
         else None,
         "updated_at": exam.updated_at.isoformat() if exam.updated_at else None,
         "is_s3_out_of_sync": False,
-        "message": f"Exam '{exam.code}' successfully approved, published, activated, and JSON folders generated.",
+        "message": f"Exam '{exam.code}' successfully approved and published in database.",
     }
 
 
@@ -1435,6 +1415,8 @@ async def admin_upload_question_paper(
         f"uploads/question_papers/{canonical_exam_code}/{canonical_exam_code}.pdf"
     )
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
+    from app.utils.pdf_utils import seed_pdf_cache
+    seed_pdf_cache(persistent_path, temp_path)
 
     # Check if exam exists or create/update
     res = await session.exec(
@@ -1554,6 +1536,8 @@ async def admin_upload_answer_key(
 
     rel_storage_path = f"uploads/answer_keys/{canonical_exam_code}/{canonical_exam_code}_AK_{clean_set}.pdf"
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
+    from app.utils.pdf_utils import seed_pdf_cache
+    seed_pdf_cache(persistent_path, temp_path)
 
     # Check if exam exists or create/update
     res = await session.exec(

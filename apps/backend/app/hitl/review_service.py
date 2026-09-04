@@ -424,15 +424,13 @@ class HumanReviewService:
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(question.id), str(question.exam_id) if question.exam_id else None)
 
-        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        # Touch parent Exam.updated_at
         if question.exam_id:
             exam = await self.session.get(Exam, question.exam_id)
             if exam:
                 exam.updated_at = datetime.now(timezone.utc)
                 self.session.add(exam)
                 await self.session.commit()
-        builder = ExamJsonBuilder(self.session)
-        await builder.sync_single_question_artifacts(question.id)
 
         return question
 
@@ -642,7 +640,7 @@ class HumanReviewService:
         await self.session.commit()
         await self.session.refresh(expl)
 
-        # Touch parent Exam.updated_at & Real-time S3 individual question/solution sync
+        # Touch parent Exam.updated_at
         q = await self.session.get(Question, q_id)
         if q and q.exam_id:
             exam = await self.session.get(Exam, q.exam_id)
@@ -650,7 +648,5 @@ class HumanReviewService:
                 exam.updated_at = datetime.now(timezone.utc)
                 self.session.add(exam)
                 await self.session.commit()
-            builder = ExamJsonBuilder(self.session)
-            await builder.sync_single_question_artifacts(q_id)
 
         return expl

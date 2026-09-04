@@ -245,6 +245,9 @@ async def upload_question_paper(
     )
     persistent_path = await storage.upload_file(temp_path, rel_storage_path)
 
+    from app.utils.pdf_utils import seed_pdf_cache
+    seed_pdf_cache(persistent_path, temp_path)
+
     cleanup_file(temp_path)
 
     tot_q = total_questions if total_questions is not None else 100

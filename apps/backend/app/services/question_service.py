@@ -335,45 +335,43 @@ class QuestionService:
             paged_qs, target_lang=language, include_solutions=True
         )
 
-        # 1. Database Integrity / Corruption check across ALL questions (Commented out per instruction - not in use)
+        # 1. Database Integrity / Corruption check across ALL questions (Fast batch queries)
         is_corrupted = False
         corruption_reason = None
-        # if total_questions == 0 and (exam.extracted_questions_count or 0) > 0:
-        #     is_corrupted = True
-        #     corruption_reason = f"Exam '{exam.code}' has extracted question count recorded ({exam.extracted_questions_count}) but 0 questions exist in database."
-        # elif all_questions:
-        #     q_ids = [q.id for q in all_questions]
-        #     qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
-        #     qt_res = await self.session.exec(qt_stmt)
-        #     q_trans_map: dict[int, list[str]] = {}
-        #     for t in qt_res.all():
-        #         q_trans_map.setdefault(t.question_id, []).append(t.question_text or "")
-        #
-        #     opt_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
-        #     opt_res = await self.session.exec(opt_stmt)
-        #     q_opts_set: set[int] = {opt.question_id for opt in opt_res.all()}
-        #
-        #     for q in all_questions:
-        #         trans_texts = q_trans_map.get(q.id, [])
-        #         has_text = any(t and t.strip() for t in trans_texts)
-        #         if not has_text:
-        #             is_corrupted = True
-        #             corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
-        #             break
-        #         if q.id not in q_opts_set:
-        #             is_corrupted = True
-        #             corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has 0 answer options in database."
-        #             break
+        if total_questions == 0 and (exam.extracted_questions_count or 0) > 0:
+            is_corrupted = True
+            corruption_reason = f"Exam '{exam.code}' has extracted question count recorded ({exam.extracted_questions_count}) but 0 questions exist in database."
+        elif all_questions:
+            q_ids = [q.id for q in all_questions]
+            qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))
+            qt_res = await self.session.exec(qt_stmt)
+            q_trans_map: dict[int, list[str]] = {}
+            for t in qt_res.all():
+                q_trans_map.setdefault(t.question_id, []).append(t.question_text or "")
 
-        # 2. S3 Publish Status & Pipeline (Commented out per instruction - not in use)
-        # from app.db.models.pipeline_run import PipelineRun
-        # exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
-        # is_s3_published = (exam_status_str == "PUBLISHED") and bool(exam.questions_json_path or exam.questions_json_folder_path)
+            opt_stmt = select(QuestionOption).where(QuestionOption.question_id.in_(q_ids))
+            opt_res = await self.session.exec(opt_stmt)
+            q_opts_set: set[int] = {opt.question_id for opt in opt_res.all()}
+
+            for q in all_questions:
+                trans_texts = q_trans_map.get(q.id, [])
+                has_text = any(t and t.strip() for t in trans_texts)
+                if not has_text:
+                    is_corrupted = True
+                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
+                    break
+                if q.id not in q_opts_set:
+                    is_corrupted = True
+                    corruption_reason = f"Database Corrupted: Question #{q.question_number_in_paper} has 0 answer options in database."
+                    break
+
         exam_status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
         is_s3_published = exam_status_str == "PUBLISHED"
         publish_error = None
         can_retry = False
-        if is_s3_published:
+        if is_corrupted:
+            publish_status = "CORRUPTED"
+        elif is_s3_published:
             publish_status = "PUBLISHED"
         elif can_publish:
             publish_status = "READY_FOR_PUBLISH"
@@ -723,8 +721,6 @@ class QuestionService:
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(q.id), str(q.exam_id) if q.exam_id else None)
 
-        builder = ExamJsonBuilder(self.session)
-        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _touch_exam_updated_at(self, exam_id: Optional[int]):
@@ -863,8 +859,6 @@ class QuestionService:
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(q.id), str(payload.exam_id))
 
-        builder = ExamJsonBuilder(self.session)
-        await builder.sync_single_question_artifacts(q.id)
         return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
 
     async def _save_hierarchy_links(

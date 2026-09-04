@@ -135,24 +135,19 @@ async def node_mcq_validator_and_hitl(state: OverallPipelineState) -> dict:
         if isinstance(state["exam_id"], (str, int))
         else state["exam_id"]
     )
-    processed_keys = state.get("processed_question_keys") or []
-
+    # Questions are already committed with PENDING_HUMAN_REVIEW by BatchQuestionRegistrar.
+    # A single bulk update guarantees consistency without N sequential WAN round trips.
     async with managed_async_session() as session:
-        for key_str in processed_keys:
-            if "::" in key_str:
-                sec_code, q_num_str = key_str.split("::")
-                q_num = int(q_num_str)
-                q_res = await session.exec(
-                    select(Question).where(
-                        Question.exam_id == exam_id,
-                        Question.section_code == sec_code,
-                        Question.question_number_in_paper == q_num,
-                    )
-                )
-                q = q_res.first()
-                if q and q.status != QuestionStatus.PENDING_HUMAN_REVIEW:
-                    q.status = QuestionStatus.PENDING_HUMAN_REVIEW
-                    session.add(q)
+        from sqlmodel import update
+        await session.exec(
+            update(Question)
+            .where(
+                Question.exam_id == exam_id,
+                Question.status != QuestionStatus.PENDING_HUMAN_REVIEW,
+                Question.status != QuestionStatus.PUBLISHED,
+            )
+            .values(status=QuestionStatus.PENDING_HUMAN_REVIEW)
+        )
         await session.commit()
 
     return {}

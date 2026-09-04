@@ -623,6 +623,7 @@ class BatchQuestionRegistrar:
                         rl_by_optid = {}
                         expl_by_qid = {}
                         links_by_qid = {}
+                        hr_by_qid = {}
 
                         if existing_q_ids:
                             qt_res = await session.exec(
@@ -672,6 +673,13 @@ class BatchQuestionRegistrar:
                                 )
                             )
                             links_by_qid = {l.question_id: l for l in link_res.all()}
+
+                            hr_res = await session.exec(
+                                select(HumanReviewTask).where(
+                                    HumanReviewTask.question_id.in_(existing_q_ids)
+                                )
+                            )
+                            hr_by_qid = {hr.question_id: hr for hr in hr_res.all()}
 
                         # 1. Resolve all subjects, topics, and subtopics for this batch in bulk
                         new_subjs = []
@@ -977,10 +985,7 @@ class BatchQuestionRegistrar:
 
                             # Human Review Task
                             if rec.extraction_confidence < 0.8 or rec.extraction_issues:
-                                hr_res = await session.exec(
-                                    select(HumanReviewTask).where(HumanReviewTask.question_id == question_id)
-                                )
-                                hr_task = hr_res.first()
+                                hr_task = hr_by_qid.get(question_id)
                                 if not hr_task:
                                     hr_task = HumanReviewTask(
                                         exam_id=exam_id,
@@ -990,6 +995,7 @@ class BatchQuestionRegistrar:
                                         failure_reasons_json=rec.extraction_issues or ["Low extraction confidence"],
                                     )
                                     session.add(hr_task)
+                                    hr_by_qid[question_id] = hr_task
                                 else:
                                     hr_task.failure_reasons_json = rec.extraction_issues or ["Low extraction confidence"]
                                     session.add(hr_task)
