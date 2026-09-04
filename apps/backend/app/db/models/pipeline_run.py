@@ -20,10 +20,6 @@ class PipelineRun(SQLModel, table=True):
         description="'DOCUMENT_EXTRACTION', 'QUESTION_EXTRACTION', 'ANSWER_KEY', 'EXPLANATION_INDEXING'",
         max_length=50,
     )
-    extraction_method: Optional[str] = Field(
-        default="DOCLING_REGEX",
-        max_length=20,
-    )
     status: str = Field(
         default="PENDING",
         description="'PENDING', 'RUNNING', 'WAITING_FOR_ANSWER_KEY', 'WAITING_FOR_HITL', 'COMPLETED', 'FAILED'",

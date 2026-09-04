@@ -787,10 +787,6 @@ export function ExamQuestionCard({
                   question_number: revealResult.question_number || questionIndex + 1,
                   correct_option_id: revealResult.correct_option_id,
                   correct_option_label: revealResult.correct_option_label,
-                  blooms_level:
-                    (question as any).blooms_taxonomy_level ||
-                    (question as any).blooms_level ||
-                    'ANALYZE',
                   difficulty: (question as any).difficulty || 'MEDIUM',
                   topic:
                     (question as any).topic_name ||
@@ -802,7 +798,6 @@ export function ExamQuestionCard({
                     typeof revealResult.explanation === 'object' &&
                     revealResult.explanation !== null
                       ? {
-                          core_concept: (revealResult.explanation as any).core_concept,
                           detailed_solution:
                             (revealResult.explanation as any).detailed_solution ||
                             (revealResult.explanation as any).detailed_text ||

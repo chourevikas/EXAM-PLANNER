@@ -259,7 +259,6 @@ export function QuestionBankManager() {
           display_order: opt.display_order || optIdx + 1,
         })),
         explanation: {
-          core_concept: q.explanation?.core_concept,
           detailed_solution:
             q.explanation?.detailed_solution || (typeof q.explanation === 'string' ? q.explanation : ''),
         },
@@ -312,7 +311,7 @@ export function QuestionBankManager() {
   const openEditModal = (q: QuestionCatalogItem) => {
     setEditingQuestion(q);
     setEditFormText(q.question_text || '');
-    setEditFormExplanation(q.explanation?.detailed_solution || q.explanation?.core_concept || '');
+    setEditFormExplanation(q.explanation?.detailed_solution || '');
     setEditFormDifficulty(q.difficulty || 'MEDIUM');
 
     const formattedOpts = ['A', 'B', 'C', 'D'].map((label, idx) => {
@@ -979,7 +978,7 @@ export function QuestionBankManager() {
                   {selectedQuestion.explanation?.detailed_solution && (
                     <div style={{ padding: 16, borderRadius: 0, backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0' }}>
                       <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
-                        Solution Explanation & Core Concept
+                        Detailed Solution & Explanation
                       </div>
                       <p style={{ fontSize: 13.5, color: '#334155', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
                         {selectedQuestion.explanation.detailed_solution}

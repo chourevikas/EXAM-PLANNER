@@ -120,7 +120,6 @@ class TestDeterministicPipeline(unittest.IsolatedAsyncioTestCase):
             assert q.subtopic_raw == "Sanskrit Dramatists"
             assert q.difficulty_raw == "Tough"
             assert q.difficulty == DifficultyLevel.HARD
-            assert q.extraction_method == "DOCLING_REGEX"
             assert q.extraction_confidence == 1.0
 
             # Verify Options and Correct Answer

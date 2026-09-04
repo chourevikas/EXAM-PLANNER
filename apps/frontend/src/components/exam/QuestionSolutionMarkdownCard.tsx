@@ -100,11 +100,9 @@ export function QuestionSolutionMarkdownCard({
   }
 
   const correctLabel = solution.correct_option_label || 'A';
-  const bloomsLevel = solution.blooms_level || 'ANALYZE';
   const difficulty = solution.difficulty || 'MEDIUM';
 
   const explObj = typeof solution.explanation === 'object' && solution.explanation !== null ? solution.explanation : null;
-  const coreConcept = explObj?.core_concept;
   const detailedMarkdown =
     explObj?.detailed_solution ||
     explObj?.detailed_text ||
@@ -238,23 +236,6 @@ export function QuestionSolutionMarkdownCard({
               borderRadius: 0,
               fontSize: 11,
               fontWeight: 700,
-              backgroundColor: '#F8FAFC',
-              color: '#E31B23',
-              border: '1px solid #BFDBFE',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <BrainCircuit size={12} />
-            Bloom's: {formatEnum(bloomsLevel)}
-          </span>
-          <span
-            style={{
-              padding: '4px 10px',
-              borderRadius: 0,
-              fontSize: 11,
-              fontWeight: 700,
               backgroundColor:
                 difficulty === 'EASY' ? '#ECFDF5' : difficulty === 'HARD' ? '#FEF2F2' : '#FFFBEB',
               color:
@@ -290,28 +271,6 @@ export function QuestionSolutionMarkdownCard({
 
       {/* Main Solution Body - Unified Comprehensive Sections */}
       <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Section 1: Core Concept Callout */}
-        {coreConcept && (
-          <div
-            style={{
-              padding: '14px 18px',
-              borderRadius: 0,
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 12,
-            }}
-          >
-            <Lightbulb size={20} style={{ color: '#E31B23', flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <strong style={{ fontSize: 13, color: '#A4161A', display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Core Conceptual Principle:
-              </strong>
-              <span style={{ fontSize: 13.5, color: '#1E3A8A', lineHeight: 1.55 }}>{coreConcept}</span>
-            </div>
-          </div>
-        )}
 
         {/* Section 2: Detailed Explanation & Reference (Markdown + Option Breakdown, unified) */}
         <div>

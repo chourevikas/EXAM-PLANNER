@@ -3656,8 +3656,7 @@ export function PsychometricReportView({
                                 {q.topic || q.topic_name || q.meaningful_name || `Question #${qNum}`}
                               </div>
                               <div style={{ fontSize: 11, color: '#64748b' }}>
-                                Time Spent: {q.time_taken_seconds || 60}s • Bloom's Level:{' '}
-                                {q.blooms_taxonomy_level || q.blooms_level || 'ANALYZE'}
+                                Time Spent: {q.time_taken_seconds || 60}s
                               </div>
                             </div>
                           </div>
@@ -3804,16 +3803,6 @@ export function PsychometricReportView({
                                       </span>
                                     );
                                   })()}
-                                </div>
-                              </div>
-
-                              {/* 4. Cognitive Thinking Level (Bloom's) */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>💡 Cognitive Thinking Level</span>
-                                <div>
-                                  <span style={{ padding: '2px 8px', borderRadius: 0, fontSize: 11, fontWeight: 800, backgroundColor: 'rgba(99,102,241,0.15)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.35)' }}>
-                                    {formatEnum(q.cognitive_thinking_level || q.blooms_taxonomy_level || q.blooms_level || 'Deep Analytical Thinking')}
-                                  </span>
                                 </div>
                               </div>
 
@@ -4165,42 +4154,6 @@ export function PsychometricReportView({
                             {/* Comprehensive Solution Breakdown */}
                             {expl && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {/* Core Concept */}
-                                {expl.core_concept && (
-                                  <div
-                                    style={{
-                                      padding: 14,
-                                      borderRadius: 0,
-                                      backgroundColor: isDark
-                                        ? 'rgba(227, 27, 35,0.08)'
-                                        : '#F8FAFC',
-                                      border: '1px solid rgba(227, 27, 35,0.2)',
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        color: '#E31B23',
-                                        textTransform: 'uppercase',
-                                        marginBottom: 4,
-                                      }}
-                                    >
-                                      💡 Core Concept Behind Question
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: 13.5,
-                                        color: isDark ? '#e2e8f0' : '#1e3a8a',
-                                        lineHeight: 1.5,
-                                      }}
-                                    >
-                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {expl.core_concept}
-                                      </ReactMarkdown>
-                                    </div>
-                                  </div>
-                                )}
 
                                 {/* Step-by-Step Detailed Solution */}
                                 {expl.detailed_solution && (
@@ -4547,123 +4500,6 @@ export function PsychometricReportView({
               </div>
             </div>
 
-            {/* Cumulative Cognitive Category Mastery Board (Bloom Thinking Levels) */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <Brain size={18} color="#E31B23" />
-                <h4 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: isDark ? '#ffffff' : '#172033' }}>
-                  Cumulative Category Mastery (All Cognitive Thinking Types)
-                </h4>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                {(() => {
-                  const bloomKeys: { [key: string]: { label: string; icon: string; color: string } } = {
-                    REMEMBER: { label: 'Recall / Memory', icon: '🧠', color: '#E31B23' },
-                    UNDERSTAND: { label: 'Understanding', icon: '💡', color: '#3A8B53' },
-                    APPLY: { label: 'Application', icon: '⚙️', color: '#8b5cf6' },
-                    ANALYZE: { label: 'Analysis', icon: '🔍', color: '#F2B623' },
-                    EVALUATE: { label: 'Evaluation', icon: '⚖️', color: '#ec4899' },
-                    CREATE: { label: 'Synthesis', icon: '🚀', color: '#06b6d4' },
-                  };
-
-                  const statsMap: { [key: string]: { total: number; correct: number; accuracy: number } } = {};
-                  Object.keys(bloomKeys).forEach((k) => {
-                    statsMap[k] = { total: 0, correct: 0, accuracy: 0 };
-                  });
-
-                  if (questionsList && questionsList.length > 0) {
-                    questionsList.forEach((q) => {
-                      const raw = (q.bloom_level || q.blooms_level || q.bloom_category || 'UNDERSTAND').toUpperCase();
-                      const matchKey = Object.keys(bloomKeys).find((k) => raw.includes(k)) || 'UNDERSTAND';
-                      statsMap[matchKey].total += 1;
-                      if (getQuestionState(q).isCorr) {
-                        statsMap[matchKey].correct += 1;
-                      }
-                    });
-                    Object.keys(bloomKeys).forEach((k) => {
-                      const s = statsMap[k];
-                      s.accuracy = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
-                    });
-                  } else {
-                    const bObj =
-                      (report as any)?.part_2_exam_macro_scorecard?.blooms ||
-                      (report as any)?.blooms_mastery ||
-                      (report as any)?.part_3_aggregated_user_report?.['8_blooms_cognitive_mastery']?.value ||
-                      (report as any)?.part_2_exam_macro_scorecard?.thinking_cognitive_levels ||
-                      {};
-
-                    const bBreakdown = bObj.breakdown || bObj;
-
-                    Object.keys(bloomKeys).forEach((k) => {
-                      const bData = bBreakdown[k] || bBreakdown[k.toLowerCase()] || {};
-                      let acc = 0;
-                      let tot = 0;
-                      let corr = 0;
-
-                      if (typeof bData === 'number') {
-                        acc = Math.round(bData);
-                      } else if (typeof bData === 'object' && bData !== null) {
-                        acc = Math.round(Number(bData.accuracy ?? bData.accuracy_percentage ?? 0));
-                        tot = Number(bData.total_attempts ?? bData.total ?? 0);
-                        corr = Number(bData.correct_attempts ?? bData.correct ?? 0);
-                      }
-
-                      // Check named keys e.g. remember_total, remember_correct
-                      const kTot = Number(bObj[`${k.toLowerCase()}_total`]);
-                      const kCorr = Number(bObj[`${k.toLowerCase()}_correct`]);
-                      if (!isNaN(kTot) && kTot > 0) {
-                        tot = kTot;
-                        corr = !isNaN(kCorr) ? kCorr : corr;
-                        acc = Math.round((corr / tot) * 100);
-                      }
-
-                      if (tot === 0 && acc > 0) {
-                        tot = 1;
-                        corr = acc >= 50 ? 1 : 0;
-                      }
-
-                      statsMap[k] = { total: tot, correct: corr, accuracy: acc };
-                    });
-                  }
-
-                  return Object.entries(bloomKeys).map(([k, meta]) => {
-                    const s = statsMap[k];
-                    const acc = s.accuracy;
-                    return (
-                      <div
-                        key={k}
-                        style={{
-                          padding: '12px 14px',
-                          borderRadius: 0,
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'}`,
-                          borderLeft: `4px solid ${meta.color}`,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: isDark ? '#e2e8f0' : '#334155' }}>
-                            {meta.icon} {meta.label}
-                          </span>
-                          <span style={{ fontSize: 13, fontWeight: 900, color: meta.color }}>
-                            {acc}%
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
-                          <span>{s.total > 0 ? `${s.correct}/${s.total} Correct` : '0 Evaluated'}</span>
-                          <span>{acc >= 75 ? 'Mastered' : acc >= 50 ? 'Competent' : 'Focus Area'}</span>
-                        </div>
-                        <div style={{ width: '100%', height: 4, borderRadius: 0, backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', overflow: 'hidden' }}>
-                          <div style={{ width: `${acc}%`, height: '100%', backgroundColor: meta.color, borderRadius: 0 }} />
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
 
             {/* Interactive Hierarchy Tree */}
             <div style={{ marginBottom: 20 }}>

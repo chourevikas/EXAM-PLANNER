@@ -87,7 +87,6 @@ class Question(SQLModel, table=True):
     topic_raw: Optional[str] = Field(default=None, max_length=255)
     subtopic_raw: Optional[str] = Field(default=None, max_length=255)
     difficulty_raw: Optional[str] = Field(default=None, max_length=50)
-    extraction_method: Optional[str] = Field(default="DOCLING_REGEX", max_length=20)
     extraction_confidence: Optional[float] = Field(default=None)
     extraction_issues_json: Optional[list] = Field(
         default=[],

@@ -342,10 +342,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [editMarks, setEditMarks] = useState<number>(2.0);
   const [editNegativeMarks, setEditNegativeMarks] = useState<number>(0.66);
   const [editExpectedTime, setEditExpectedTime] = useState<number>(60);
-  const [editBloomsLevel, setEditBloomsLevel] = useState<string>('ANALYZE');
-
   // 4 Solution Parameters Edit State
-  const [editCoreConcept, setEditCoreConcept] = useState<string>('');
   const [editDetailedSolution, setEditDetailedSolution] = useState<string>('');
   const [editCommonTraps, setEditCommonTraps] = useState<string[]>([]);
   const [editKeyTakeaways, setEditKeyTakeaways] = useState<string[]>([]);
@@ -673,7 +670,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setEditMarks(q.marks !== undefined ? q.marks : 2.0);
     setEditNegativeMarks(q.negative_marks !== undefined ? q.negative_marks : 0.66);
     setEditExpectedTime(q.expected_time_seconds || 60);
-    setEditBloomsLevel(q.metadata?.blooms_level || 'ANALYZE');
 
     const rawH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy : [];
     const initialH: HierarchyLinkItem[] = rawH.length > 0
@@ -691,8 +687,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         }))
       : [
           {
-            subject_name: q.subject_name || 'General Science',
-            topic_name: q.topic_name || 'General Concepts',
+            subject_name: q.subject_name || '',
+            topic_name: q.topic_name || '',
             subtopic_name: q.subtopic_name || '',
             is_primary: true,
             relevance_weight: 1.0,
@@ -703,7 +699,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
     setEditHierarchyLinks(initialH);
 
-    setEditCoreConcept(q.explanation?.core_concept || '');
     setEditDetailedSolution(q.explanation?.detailed_solution || '');
     setEditCommonTraps(q.explanation?.common_traps ? [...q.explanation.common_traps] : []);
     setEditKeyTakeaways(q.explanation?.key_takeaways ? [...q.explanation.key_takeaways] : []);
@@ -755,8 +750,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           relevance_weight: (h.relevance_percentage !== undefined ? h.relevance_percentage : 100) / 100,
           concept_name: h.concept_name || null,
         })),
-        blooms_level: editBloomsLevel,
-        core_concept: editCoreConcept,
         detailed_solution: editDetailedSolution,
         common_traps: editCommonTraps,
         key_takeaways: editKeyTakeaways,
@@ -2807,24 +2800,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-                  {/* 1. Core Concept */}
-                  <div style={{ backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0', borderRadius: 0, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#E31B23', marginBottom: 6 }}>
-                      <Zap size={15} />
-                      1. Core Concept
-                    </div>
-                    <div style={{ fontSize: 13.5, color: '#172033', lineHeight: 1.6 }}>
-                      {activeQuestion.explanation?.core_concept || (
-                        <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>No core concept specified.</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 2. Points to Remember / Common Traps */}
+                  {/* Points to Remember / Common Traps */}
                   <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
                       <AlertTriangle size={15} />
-                      2. Points to Remember & Common Traps
+                      Points to Remember & Common Traps
                     </div>
                     {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 ? (
                       <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
@@ -3380,27 +3360,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               {/* 4 Solution Parameters */}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#172033', marginBottom: 12 }}>
-                  4 Solution Parameters:
+                  Solution Parameters:
                 </label>
 
-                {/* 1. Core Concept */}
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#E31B23', marginBottom: 4 }}>
-                    1. Core Concept:
-                  </label>
-                  <input
-                    type="text"
-                    value={editCoreConcept}
-                    onChange={(e) => setEditCoreConcept(e.target.value)}
-                    placeholder="Fundamental principle or theory tested..."
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                {/* 2. Detailed Solution */}
+                {/* 1. Detailed Solution */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 4 }}>
-                    2. Step-by-Step Detailed Solution:
+                    1. Step-by-Step Detailed Solution:
                   </label>
                   <textarea
                     rows={4}
@@ -3411,10 +3377,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   />
                 </div>
 
-                {/* 3. Common Traps */}
+                {/* 2. Common Traps */}
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#B45309', marginBottom: 4 }}>
-                    3. Points to Remember / Common Traps:
+                    2. Points to Remember & Common Traps:
                   </label>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                     <input

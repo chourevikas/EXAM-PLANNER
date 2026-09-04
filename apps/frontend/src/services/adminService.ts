@@ -612,14 +612,31 @@ export async function fetchExamsByYear(): Promise<any> {
   return await res.json();
 }
 
+const _adminSyllabusCache = new Map<string, { data: any; timestamp: number }>();
+const ADMIN_SYLLABUS_CACHE_TTL = 10 * 60 * 1000;
+
 export async function fetchMasterSyllabus(examId?: string | number): Promise<any> {
+  const cacheKey = examId ? `exam_${examId}` : 'master';
+  const cached = _adminSyllabusCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < ADMIN_SYLLABUS_CACHE_TTL) {
+    return cached.data;
+  }
+
   const url = examId ? `/api/v1/exams/${encodeURIComponent(examId)}/syllabus` : '/api/v1/syllabus';
   const res = await fetch(url, { headers: getAuthHeader() });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch syllabus hierarchy' }));
-    throw new Error(errorData.detail || 'Could not fetch syllabus.');
+    const fallbackRes = await fetch(`/api/v1/syllabus?exam_id=${encodeURIComponent(examId || '')}`, { headers: getAuthHeader() });
+    if (!fallbackRes.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch syllabus hierarchy' }));
+      throw new Error(errorData.detail || 'Could not fetch syllabus.');
+    }
+    const data = await fallbackRes.json();
+    _adminSyllabusCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   }
-  return await res.json();
+  const data = await res.json();
+  _adminSyllabusCache.set(cacheKey, { data, timestamp: Date.now() });
+  return data;
 }
 
 export async function verifySyllabusTaxonomy(subject: string, topic: string, subtopic: string): Promise<any> {

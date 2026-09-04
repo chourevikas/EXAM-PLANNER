@@ -270,16 +270,18 @@ async def read_current_user(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
-    cache = get_cache()
-    cache_key = build_cache_key("auth:me:stats", str(current_user.id))
-    stats = await cache.get(cache_key)
-    if stats is None:
-        stats = await _get_user_question_stats(session, current_user.id)
-        sync_data = stats.pop("_sync", None)
-        await cache.set(cache_key, stats, ttl_seconds=300)
-        # Write updated streak/xp/level AFTER response is sent — doesn't block the user
-        if sync_data:
-            background_tasks.add_task(_sync_student_profile_bg, sync_data)
+    stats = {}
+    if current_user.role == UserRole.STUDENT:
+        cache = get_cache()
+        cache_key = build_cache_key("auth:me:stats", str(current_user.id))
+        stats = await cache.get(cache_key)
+        if stats is None:
+            stats = await _get_user_question_stats(session, current_user.id)
+            sync_data = stats.pop("_sync", None)
+            await cache.set(cache_key, stats, ttl_seconds=300)
+            # Write updated streak/xp/level AFTER response is sent — doesn't block the user
+            if sync_data:
+                background_tasks.add_task(_sync_student_profile_bg, sync_data)
     
     return UserOut(
         id=current_user.id,

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlmodel import select, func, col
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.db.models.user import (
     User,
@@ -47,8 +47,8 @@ class UserRepository:
             select(User)
             .where(User.id == uid)
             .options(
-                selectinload(User.student_profile),
-                selectinload(User.admin_profile),
+                joinedload(User.student_profile),
+                joinedload(User.admin_profile),
             )
         )
         res = await self.session.exec(stmt)

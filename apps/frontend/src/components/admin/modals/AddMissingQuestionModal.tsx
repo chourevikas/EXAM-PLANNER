@@ -65,7 +65,7 @@ export function AddMissingQuestionModal({
   ]);
 
   // Solution State
-  const [coreConcept, setCoreConcept] = useState<string>('');
+
   const [detailedSolution, setDetailedSolution] = useState<string>('');
   const [commonTraps, setCommonTraps] = useState<string[]>([]);
   const [keyTakeaways, setKeyTakeaways] = useState<string[]>([]);
@@ -237,7 +237,6 @@ export function AddMissingQuestionModal({
         negative_marks: negativeMarks,
         expected_time_seconds: expectedTime,
         options: options,
-        core_concept: coreConcept.trim() || undefined,
         detailed_solution: detailedSolution.trim() || undefined,
         common_traps: commonTraps,
         key_takeaways: keyTakeaways,
@@ -689,21 +688,8 @@ export function AddMissingQuestionModal({
             {/* 4 Solution Parameters */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <h4 style={{ fontSize: 14, fontWeight: 600, color: '#1E293B', margin: '8px 0 0 0' }}>
-                Solutions & Explanations (4 Parameters)
+                Solutions & Explanations
               </h4>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#475569', marginBottom: 4 }}>
-                  Core Concept
-                </label>
-                <input
-                  type="text"
-                  value={coreConcept}
-                  onChange={(e) => setCoreConcept(e.target.value)}
-                  placeholder="Primary scientific / historical concept tested..."
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13 }}
-                />
-              </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#475569', marginBottom: 4 }}>

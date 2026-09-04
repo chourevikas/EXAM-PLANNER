@@ -54,117 +54,179 @@ class SyllabusService:
         self, exam_id: Optional[int] = None
     ) -> CompleteSyllabusResponse:
         """
-        Returns the complete Subject -> Topic -> Subtopic syllabus tree.
-        If exam_id is provided, enriches with database IDs from active SyllabusVersion.
+        Returns the complete Subject -> Topic -> Subtopic syllabus tree dynamically queried from the database.
+        If exam_id is provided, returns the hierarchy for that exam's SyllabusVersion.
+        If exam_id is None, aggregates across all subjects, topics, and subtopics in DB.
         """
-        master = get_complete_master_syllabus()
+        syl_ver = None
+        exam = None
 
-        if not exam_id:
+        if exam_id:
+            exam = await self.session.get(Exam, exam_id)
+            if exam:
+                stmt_syl = (
+                    select(SyllabusVersion)
+                    .where(SyllabusVersion.exam_id == exam_id)
+                    .order_by(SyllabusVersion.effective_from.desc())
+                )
+                syl_ver = (await self.session.exec(stmt_syl)).first()
+
+        if syl_ver:
+            subj_stmt = (
+                select(Subject)
+                .where(Subject.version_id == syl_ver.id)
+                .order_by(Subject.display_order, Subject.name)
+            )
+            db_subjects = list((await self.session.exec(subj_stmt)).all())
+        else:
+            subj_stmt = select(Subject).order_by(Subject.display_order, Subject.name)
+            db_subjects = list((await self.session.exec(subj_stmt)).all())
+
+        # If database has no subjects at all, fall back to master syllabus literals
+        if not db_subjects:
+            master = get_complete_master_syllabus()
+            if exam_id:
+                master["exam_id"] = str(exam_id)
             return CompleteSyllabusResponse(**master)
 
-        exam = await self.session.get(Exam, exam_id)
-        if not exam:
-            return CompleteSyllabusResponse(**master)
+        subj_ids = [s.id for s in db_subjects if s.id is not None]
+        if subj_ids:
+            top_stmt = (
+                select(Topic)
+                .where(Topic.subject_id.in_(subj_ids))
+                .order_by(Topic.display_order, Topic.name)
+            )
+            db_topics = list((await self.session.exec(top_stmt)).all())
+        else:
+            db_topics = []
 
-        stmt_syl = (
-            select(SyllabusVersion)
-            .where(SyllabusVersion.exam_id == exam_id)
-            .order_by(SyllabusVersion.effective_from.desc())
-        )
-        syl_ver = (await self.session.exec(stmt_syl)).first()
+        top_ids = [t.id for t in db_topics if t.id is not None]
+        if top_ids:
+            subtop_stmt = (
+                select(Subtopic)
+                .where(Subtopic.topic_id.in_(top_ids))
+                .order_by(Subtopic.display_order, Subtopic.name)
+            )
+            db_subtopics = list((await self.session.exec(subtop_stmt)).all())
+        else:
+            db_subtopics = []
 
-        if not syl_ver:
-            master["exam_id"] = str(exam.id)
-            return CompleteSyllabusResponse(**master)
+        # Group subtopics by topic_id
+        subtopics_by_topic: Dict[int, List[Subtopic]] = {}
+        for st in db_subtopics:
+            if st.topic_id is not None:
+                subtopics_by_topic.setdefault(st.topic_id, []).append(st)
 
-        # Query DB subjects, topics, and subtopics for this version
-        subj_stmt = select(Subject).where(Subject.version_id == syl_ver.id)
-        db_subjects = (await self.session.exec(subj_stmt)).all()
-        subj_id_map = {s.name.strip().lower(): str(s.id) for s in db_subjects if s.name}
+        # Group topics by subject_id
+        topics_by_subject: Dict[int, List[Topic]] = {}
+        for t in db_topics:
+            if t.subject_id is not None:
+                topics_by_subject.setdefault(t.subject_id, []).append(t)
 
-        top_stmt = (
-            select(Topic)
-            .where(Topic.subject_id.in_([s.id for s in db_subjects]))
-            if db_subjects
-            else None
-        )
-        db_topics = (await self.session.exec(top_stmt)).all() if top_stmt is not None else []
-        top_id_map = {t.name.strip().lower(): str(t.id) for t in db_topics if t.name}
+        # Deduplicate / aggregate by subject name
+        seen_subjects: Dict[str, SyllabusSubjectItem] = {}
+        hierarchy: Dict[str, Dict[str, List[str]]] = {}
+        flat_hierarchy: Dict[str, List[str]] = {}
+        all_topics_set = set()
+        all_subtopics_set = set()
 
-        subtop_stmt = (
-            select(Subtopic)
-            .where(Subtopic.topic_id.in_([t.id for t in db_topics]))
-            if db_topics
-            else None
-        )
-        db_subtopics = (await self.session.exec(subtop_stmt)).all() if subtop_stmt is not None else []
-        subtop_id_map = {st.name.strip().lower(): (str(st.id), st.pyq_frequency) for st in db_subtopics if st.name}
+        for s in db_subjects:
+            s_name = (s.name or "General Studies").strip()
+            s_key = s_name.lower()
 
-        # Enrich master syllabus response with database IDs
-        enriched_subjects = []
-        for s_item in master["subjects"]:
-            s_name = s_item["name"]
-            db_s_id = subj_id_map.get(s_name.strip().lower())
-            enriched_topics = []
+            if s_name not in hierarchy:
+                hierarchy[s_name] = {}
+            if s_name not in flat_hierarchy:
+                flat_hierarchy[s_name] = []
 
-            for t_item in s_item["topics"]:
-                t_name = t_item["name"]
-                db_t_id = top_id_map.get(t_name.strip().lower())
-                enriched_subtopics = []
+            cur_topics = topics_by_subject.get(s.id, [])
+            built_topics: List[SyllabusTopicItem] = []
 
-                for st_item in t_item["subtopics"]:
-                    st_name = st_item["name"]
-                    st_match = subtop_id_map.get(st_name.strip().lower())
-                    db_st_id = st_match[0] if st_match else None
-                    pyq_freq = st_match[1] if st_match else 0
+            for t in cur_topics:
+                t_name = (t.name or s_name).strip()
+                all_topics_set.add(t_name)
+                if t_name not in hierarchy[s_name]:
+                    hierarchy[s_name][t_name] = []
 
-                    enriched_subtopics.append(
+                cur_subtopics = subtopics_by_topic.get(t.id, [])
+                built_subtopics: List[SyllabusSubtopicItem] = []
+
+                for st in cur_subtopics:
+                    st_name = (st.name or t_name).strip()
+                    all_subtopics_set.add(st_name)
+                    if st_name not in hierarchy[s_name][t_name]:
+                        hierarchy[s_name][t_name].append(st_name)
+                    if st_name not in flat_hierarchy[s_name]:
+                        flat_hierarchy[s_name].append(st_name)
+
+                    built_subtopics.append(
                         SyllabusSubtopicItem(
-                            id=db_st_id,
+                            id=str(st.id) if st.id is not None else None,
                             name=st_name,
-                            code=st_item["code"],
-                            display_order=st_item["display_order"],
-                            pyq_frequency=pyq_freq,
+                            code=st.code or st_name[:10].upper().replace(" ", "_"),
+                            display_order=st.display_order or 1,
+                            pyq_frequency=st.pyq_frequency or 0,
                         )
                     )
 
-                enriched_topics.append(
+                built_topics.append(
                     SyllabusTopicItem(
-                        id=db_t_id,
+                        id=str(t.id) if t.id is not None else None,
                         name=t_name,
-                        code=t_item["code"],
-                        display_order=t_item["display_order"],
-                        subtopics_count=t_item["subtopics_count"],
-                        subtopics=enriched_subtopics,
+                        code=t.code or t_name[:10].upper().replace(" ", "_"),
+                        display_order=t.display_order or 1,
+                        subtopics_count=len(built_subtopics),
+                        subtopics=built_subtopics,
                     )
                 )
 
-            enriched_subjects.append(
-                SyllabusSubjectItem(
-                    id=db_s_id,
+            if s_key not in seen_subjects:
+                seen_subjects[s_key] = SyllabusSubjectItem(
+                    id=str(s.id) if s.id is not None else None,
                     name=s_name,
-                    code=s_item["code"],
-                    display_order=s_item["display_order"],
-                    topics_count=s_item["topics_count"],
-                    subtopics_count=s_item["subtopics_count"],
-                    topics=enriched_topics,
+                    code=s.code or s_name[:10].upper().replace(" ", "_"),
+                    display_order=s.display_order or 1,
+                    topics_count=len(built_topics),
+                    subtopics_count=sum(len(t.subtopics) for t in built_topics),
+                    topics=built_topics,
                 )
-            )
+            else:
+                existing_s = seen_subjects[s_key]
+                existing_top_names = {t.name.lower(): t for t in existing_s.topics}
+                for nt in built_topics:
+                    if nt.name.lower() not in existing_top_names:
+                        existing_s.topics.append(nt)
+                    else:
+                        ext_t = existing_top_names[nt.name.lower()]
+                        ext_sub_names = {st.name.lower() for st in ext_t.subtopics}
+                        for nst in nt.subtopics:
+                            if nst.name.lower() not in ext_sub_names:
+                                ext_t.subtopics.append(nst)
+                        ext_t.subtopics_count = len(ext_t.subtopics)
+                existing_s.topics_count = len(existing_s.topics)
+                existing_s.subtopics_count = sum(len(t.subtopics) for t in existing_s.topics)
+
+        subjects_list = [s.name for s in seen_subjects.values()]
+        topics_list = sorted(list(all_topics_set))
+        subtopics_list = sorted(list(all_subtopics_set))
+
+        version_code = syl_ver.version_code if syl_ver and syl_ver.version_code else "UPSC_PRELIMS_DB_V1"
+        title = syl_ver.title if syl_ver and syl_ver.title else (f"{exam.name} Syllabus" if exam else "UPSC Master Database Syllabus")
 
         return CompleteSyllabusResponse(
-            version_code=syl_ver.version_code or master["version_code"],
-            title=syl_ver.title or master["title"],
-            syllabus_version_id=str(syl_ver.id),
-            exam_id=str(exam.id),
-            total_subjects=master["total_subjects"],
-            total_topics=master["total_topics"],
-            total_subtopics=master["total_subtopics"],
-            subjects=enriched_subjects,
-            hierarchy=master["hierarchy"],
-            flat_hierarchy=master["flat_hierarchy"],
-            subjects_list=master["subjects_list"],
-            topics_list=master["topics_list"],
-            subtopics_list=master["subtopics_list"],
+            version_code=version_code,
+            title=title,
+            syllabus_version_id=str(syl_ver.id) if syl_ver else None,
+            exam_id=str(exam_id) if exam_id else None,
+            total_subjects=len(subjects_list),
+            total_topics=len(topics_list),
+            total_subtopics=len(subtopics_list),
+            subjects=list(seen_subjects.values()),
+            hierarchy=hierarchy,
+            flat_hierarchy=flat_hierarchy,
+            subjects_list=subjects_list,
+            topics_list=topics_list,
+            subtopics_list=subtopics_list,
         )
 
     async def sync_or_create_exam_syllabus(

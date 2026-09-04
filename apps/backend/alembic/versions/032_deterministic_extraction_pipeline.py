@@ -36,8 +36,6 @@ def upgrade() -> None:
                 batch_op.add_column(sa.Column('subtopic_raw', sa.String(length=255), nullable=True))
             if 'difficulty_raw' not in q_cols:
                 batch_op.add_column(sa.Column('difficulty_raw', sa.String(length=50), nullable=True))
-            if 'extraction_method' not in q_cols:
-                batch_op.add_column(sa.Column('extraction_method', sa.String(length=20), nullable=True, server_default='DOCLING_REGEX'))
             if 'extraction_confidence' not in q_cols:
                 batch_op.add_column(sa.Column('extraction_confidence', sa.Numeric(precision=4, scale=3), nullable=True))
             if 'extraction_issues_json' not in q_cols:
@@ -72,13 +70,6 @@ def upgrade() -> None:
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         )
         op.create_index('ux_option_reasoning_option', 'question_option_reasoning', ['question_option_id'], unique=True)
-
-    # 5. Update pipeline_runs table
-    if 'pipeline_runs' in tables:
-        pr_cols = [c['name'] for c in insp.get_columns('pipeline_runs')]
-        with op.batch_alter_table('pipeline_runs') as batch_op:
-            if 'extraction_method' not in pr_cols:
-                batch_op.add_column(sa.Column('extraction_method', sa.String(length=20), nullable=True, server_default='DOCLING_REGEX'))
 
 
 def downgrade() -> None:

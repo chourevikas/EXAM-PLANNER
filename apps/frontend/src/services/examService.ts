@@ -576,7 +576,15 @@ export async function getUserCumulativeAggregateReport(userId?: number | string)
   }
 }
 
+const _examSyllabusCache = new Map<string, { data: any; timestamp: number }>();
+const EXAM_SYLLABUS_CACHE_TTL = 10 * 60 * 1000;
+
 export async function fetchMasterSyllabus(examId?: number | string): Promise<any> {
+  const cacheKey = examId ? `exam_${examId}` : 'master';
+  const cached = _examSyllabusCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < EXAM_SYLLABUS_CACHE_TTL) {
+    return cached.data;
+  }
   try {
     const url = examId ? `${API_BASE_URL}/syllabus?exam_id=${encodeURIComponent(examId)}` : `${API_BASE_URL}/syllabus`;
     const response = await guardedFetch(url, {
@@ -584,7 +592,9 @@ export async function fetchMasterSyllabus(examId?: number | string): Promise<any
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) return null;
-    return await response.json();
+    const data = await response.json();
+    _examSyllabusCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
   } catch (err) {
     console.warn('Failed to fetch master syllabus hierarchy:', err);
     return null;

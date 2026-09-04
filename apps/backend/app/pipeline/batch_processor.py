@@ -676,7 +676,7 @@ class BatchQuestionRegistrar:
                         # 1. Resolve all subjects, topics, and subtopics for this batch in bulk
                         new_subjs = []
                         for rec in batch:
-                            s_name = (rec.subject_raw or "General Studies").strip()
+                            s_name = (rec.subject_raw or exam_name).strip()
                             s_key = s_name.lower()
                             if s_key not in subjects_by_name:
                                 new_subj = Subject(
@@ -693,9 +693,9 @@ class BatchQuestionRegistrar:
 
                         new_tops = []
                         for rec in batch:
-                            s_name = (rec.subject_raw or "General Studies").strip()
+                            s_name = (rec.subject_raw or exam_name).strip()
                             subj = subjects_by_name[s_name.lower()]
-                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            t_name = (rec.topic_raw or s_name).strip()
                             t_key = (subj.id, t_name.lower())
                             if t_key not in topics_by_key:
                                 new_top = Topic(
@@ -712,11 +712,11 @@ class BatchQuestionRegistrar:
 
                         new_subs = []
                         for rec in batch:
-                            s_name = (rec.subject_raw or "General Studies").strip()
+                            s_name = (rec.subject_raw or exam_name).strip()
                             subj = subjects_by_name[s_name.lower()]
-                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            t_name = (rec.topic_raw or s_name).strip()
                             top = topics_by_key[(subj.id, t_name.lower())]
-                            st_name = (rec.subtopic_raw or f"{t_name} - General").strip()
+                            st_name = (rec.subtopic_raw or t_name).strip()
                             st_key = (top.id, st_name.lower())
                             if st_key not in subtopics_by_key:
                                 new_sub = Subtopic(
@@ -735,11 +735,11 @@ class BatchQuestionRegistrar:
                         new_qs = []
                         for rec in batch:
                             q_num = rec.question_number
-                            s_name = (rec.subject_raw or "General Studies").strip()
+                            s_name = (rec.subject_raw or exam_name).strip()
                             subj = subjects_by_name[s_name.lower()]
-                            t_name = (rec.topic_raw or f"{s_name} - General").strip()
+                            t_name = (rec.topic_raw or s_name).strip()
                             top = topics_by_key[(subj.id, t_name.lower())]
-                            st_name = (rec.subtopic_raw or f"{t_name} - General").strip()
+                            st_name = (rec.subtopic_raw or t_name).strip()
                             subtopic_obj = subtopics_by_key[(top.id, st_name.lower())]
 
                             is_complete = rec.extraction_confidence >= 0.8 and not any(
@@ -766,7 +766,6 @@ class BatchQuestionRegistrar:
                                     topic_raw=rec.topic_raw,
                                     subtopic_raw=rec.subtopic_raw,
                                     difficulty_raw=rec.difficulty_raw,
-                                    extraction_method="DOCLING_REGEX",
                                     extraction_confidence=rec.extraction_confidence,
                                     extraction_issues_json=rec.extraction_issues,
                                     status=QuestionStatus.PENDING_HUMAN_REVIEW,
@@ -786,7 +785,6 @@ class BatchQuestionRegistrar:
                                 q_obj.topic_raw = rec.topic_raw
                                 q_obj.subtopic_raw = rec.subtopic_raw
                                 q_obj.difficulty_raw = rec.difficulty_raw
-                                q_obj.extraction_method = "DOCLING_REGEX"
                                 q_obj.extraction_confidence = rec.extraction_confidence
                                 q_obj.extraction_issues_json = rec.extraction_issues
                                 q_obj.requires_human_review = (rec.extraction_confidence < 0.8 or bool(rec.extraction_issues))

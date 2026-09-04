@@ -30,53 +30,11 @@ export function ExamUploadForm() {
     <div className="admin-card">
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-          {uploadMode === 'ANSWER_KEY' ? 'Upload Answer Key PDF' : 'Upload Exam Question Paper PDF'}
+          Upload Exam Question Paper PDF
         </h2>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-          {uploadMode === 'ANSWER_KEY'
-            ? 'Upload answer key PDF and select mandatory Target Paper Set Code to initiate Pipeline 2.'
-            : 'Select exam parameters and upload your question paper PDF to initiate Pipeline 1.'}
+          Upload your question paper PDF. The pipeline deterministically extracts questions, options, answer keys, solutions, reverse logic, and syllabus hierarchy in a single pass.
         </p>
-      </div>
-
-      {/* Mode Switcher Buttons */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button
-          type="button"
-          onClick={() => setUploadMode('QUESTION_PAPER')}
-          style={{
-            flex: 1,
-            padding: '10px 16px',
-            borderRadius: 0,
-            fontSize: 14,
-            fontWeight: 700,
-            border: uploadMode === 'QUESTION_PAPER' ? '2px solid var(--royal, #E31B23)' : '1px solid #e2e8f0',
-            backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#F8FAFC' : '#ffffff',
-            color: uploadMode === 'QUESTION_PAPER' ? '#A4161A' : '#64748b',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          📄 Question Paper PDF
-        </button>
-        <button
-          type="button"
-          onClick={() => setUploadMode('ANSWER_KEY')}
-          style={{
-            flex: 1,
-            padding: '10px 16px',
-            borderRadius: 0,
-            fontSize: 14,
-            fontWeight: 700,
-            border: uploadMode === 'ANSWER_KEY' ? '2px solid var(--royal, #E31B23)' : '1px solid #e2e8f0',
-            backgroundColor: uploadMode === 'ANSWER_KEY' ? '#F8FAFC' : '#ffffff',
-            color: uploadMode === 'ANSWER_KEY' ? '#A4161A' : '#64748b',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          🔑 Answer Key PDF
-        </button>
       </div>
 
       <form onSubmit={handleSubmit}>
