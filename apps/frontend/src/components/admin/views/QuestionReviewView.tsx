@@ -37,6 +37,7 @@ import {
   Percent,
   Sliders,
   GitBranch,
+  CheckCheck,
 } from 'lucide-react';
 import {
   fetchExamPipelineStatuses,
@@ -45,6 +46,7 @@ import {
   updateAdminQuestionDetail,
   updateAdminQuestionStatus,
   approveAndPublishExam,
+  approveAllQuestions,
   syncExamToS3,
   fetchExamIntegrityQuestions,
   ExamPipelineStatusItem,
@@ -227,6 +229,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   // Action & Toast States
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [publishingExam, setPublishingExam] = useState<boolean>(false);
+  const [verifyingAll, setVerifyingAll] = useState<boolean>(false);
   const [syncingExam, setSyncingExam] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
 
@@ -830,6 +833,37 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     }
   };
 
+  const handleVerifyAllQuestions = async () => {
+    if (!selectedExam) return;
+    setVerifyingAll(true);
+    try {
+      const res = await approveAllQuestions(selectedExam.id);
+      showToast('success', res?.message || `All questions for '${selectedExam.name}' have been verified and approved!`);
+      // Optimistically update questions list to PUBLISHED
+      setQuestionsList((prev) =>
+        prev.map((q) => ({
+          ...q,
+          status: 'PUBLISHED',
+        }))
+      );
+      // Update review metrics
+      setReviewMetrics((prev) => ({
+        ...prev,
+        pending: 0,
+        rejected: 0,
+        reviewed: prev.total,
+        canPublish: prev.total > 0,
+      }));
+      setShowPublishWarningModal(false);
+      // Reload actual questions from backend
+      await loadExamQuestions(selectedExam.id, questionStatusFilter, currentPage, selectedQuestionIndex);
+    } catch (err: any) {
+      showToast('error', err.message || 'Failed to verify all questions.');
+    } finally {
+      setVerifyingAll(false);
+    }
+  };
+
   const handleSyncExamToS3 = async (
     targetOrSyncAll: 'MASTERS_ONLY' | 'QUESTIONS_MASTER' | 'SOLUTIONS_MASTER' | 'FULL_ALL' | boolean = 'MASTERS_ONLY'
   ) => {
@@ -1315,6 +1349,36 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               Add Missing Question
             </button>
 
+            {/* Verify All Questions Button */}
+            {selectedExam && (reviewMetrics.pending > 0 || reviewMetrics.rejected > 0) && (
+              <button
+                onClick={handleVerifyAllQuestions}
+                disabled={verifyingAll || publishingExam}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 0,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: verifyingAll ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#0284C7',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.35)',
+                }}
+                title="Mark all questions in this exam paper as verified and approved"
+              >
+                {verifyingAll ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <CheckCheck size={16} />
+                )}
+                {verifyingAll ? 'Verifying All...' : `Verify All Questions (${reviewMetrics.pending})`}
+              </button>
+            )}
+
             {s3PublishStatus.is_published ? (
               <button
                 disabled={true}
@@ -1407,23 +1471,23 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               </button>
             ) : (
               <button
-                disabled={true}
+                onClick={() => setShowPublishWarningModal(true)}
                 style={{
                   padding: '9px 18px',
                   border: '1px solid #CBD5E1',
                   borderRadius: 0,
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: 'not-allowed',
-                  backgroundColor: '#F1F5F9',
-                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  backgroundColor: '#F8FAFC',
+                  color: '#64748B',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
                 }}
-                title={`${reviewMetrics.pending} questions are pending review.`}
+                title={`${reviewMetrics.pending} questions are pending review. Click to review or verify all.`}
               >
-                <Lock size={15} color="#94A3B8" />
+                <Lock size={15} color="#64748B" />
                 Publish Locked ({reviewMetrics.pending} Pending Review)
               </button>
             )}
@@ -1911,6 +1975,29 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {selectedExam && (reviewMetrics.pending > 0 || reviewMetrics.rejected > 0) && (
+                <button
+                  onClick={handleVerifyAllQuestions}
+                  disabled={verifyingAll}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 10px',
+                    borderRadius: 0,
+                    backgroundColor: '#EFF6FF',
+                    color: '#0284C7',
+                    border: '1px solid #BAE6FD',
+                    cursor: verifyingAll ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                  title="Quick verify and approve all questions for this exam"
+                >
+                  {verifyingAll ? <Loader2 size={12} className="animate-spin" /> : <CheckCheck size={13} />}
+                  Verify All
+                </button>
+              )}
               <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 0, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
                 ⏳ {reviewMetrics.pending} Pending Review
               </span>
@@ -3605,6 +3692,26 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               <button
+                onClick={handleVerifyAllQuestions}
+                disabled={verifyingAll}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 0,
+                  border: 'none',
+                  backgroundColor: '#0284C7',
+                  color: '#FFFFFF',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: verifyingAll ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {verifyingAll ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
+                Verify All Questions Now
+              </button>
+              <button
                 onClick={() => {
                   setShowPublishWarningModal(false);
                   handleStatusFilterChange('PENDING');
@@ -3620,7 +3727,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   cursor: 'pointer',
                 }}
               >
-                Review Remaining Questions
+                Review Manually
               </button>
               <button
                 onClick={() => setShowPublishWarningModal(false)}

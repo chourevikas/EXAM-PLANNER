@@ -1579,3 +1579,21 @@ async def admin_upload_answer_key(
         "target_set_code": clean_set,
         "s3_path": persistent_path,
     }
+
+@router.post("/exams/{exam_id}/approve-all-questions", summary="Approve and Verify All Questions for an Exam")
+@router.post("/{exam_id}/approve-all-questions", summary="Approve and Verify All Questions for an Exam")
+async def approve_all_questions(
+    exam_id: int,
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Mark all questions for a given exam as PUBLISHED, bypassing LLM/human review.
+    This is intended for questions where solution data is already verified.
+    """
+    service = QuestionService(session)
+    res = await service.approve_all_questions_for_exam(
+        exam_id=exam_id
+    )
+    return JSONResponse(content=jsonable_encoder(res))
+    

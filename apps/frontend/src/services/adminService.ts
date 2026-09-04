@@ -301,6 +301,18 @@ export async function approveAndPublishExam(examId: number | string): Promise<an
   return await res.json();
 }
 
+export async function approveAllQuestions(examId: number | string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/exams/${examId}/approve-all-questions`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to approve all questions' }));
+    throw new Error(errorData.detail || 'Approving all questions failed.');
+  }
+  return await res.json();
+}
+
 export async function syncExamToS3(
   examId: number | string,
   syncAll: boolean = false,

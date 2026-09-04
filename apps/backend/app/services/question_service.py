@@ -1,8 +1,8 @@
 import math
 from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
-from sqlalchemy import func
-from sqlmodel import select, or_
+from sqlalchemy import func, update
+from sqlmodel import select, or_, col
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -1601,3 +1601,31 @@ class QuestionService:
 
         return results
 
+    async def approve_all_questions_for_exam(self, exam_id: str | int) -> Dict[str, Any]:
+        """Approve all questions for a given exam."""
+        try:
+            # Validate exam_id
+            try:
+                exam_id_int = int(exam_id)
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid exam ID: {exam_id}")
+            # Fetch questions for the exam
+            statement = (
+                update(Question)
+                .where(col(Question.exam_id) == exam_id_int)
+                .values(status=QuestionStatus.PUBLISHED, requires_human_review=False)
+            )
+            result = await self.session.execute(statement)
+            await self.session.commit()
+
+            from app.cache import invalidate_exam_cache
+            await invalidate_exam_cache(str(exam_id_int))
+
+            return {
+                "status": "SUCCESS",
+                "exam_id": exam_id_int,
+                "message": f"All questions for exam {exam_id_int} have been marked as PUBLISHED.",
+            }
+        except Exception as e:
+            await self.session.rollback()
+            raise Exception(f"Error approving questions for exam {exam_id}: {str(e)}")

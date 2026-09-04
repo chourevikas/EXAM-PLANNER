@@ -373,8 +373,8 @@ async def get_question_solution(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    Fetches full solution metadata, markdown explanation, option distractor analyses,
-    core concepts, key takeaways, and common traps from S3 JSON artifact or optimized batch DB query.
+    Optimized single-query fetch for question solution and distractor analyses
+    using exact database parameters available for Exam 10.
     """
     try:
         qid_int = int(question_id)
@@ -382,10 +382,10 @@ async def get_question_solution(
         raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
     from app.cache import get_cache, build_cache_key
-    from app.db.models import Exam, Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionMetadata
+    from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
-    from app.storage.factory import get_storage_provider
-    from sqlmodel import select, col
+    from sqlalchemy import select
+    from sqlmodel import col
 
     cache = get_cache()
     lang_str = language.value if hasattr(language, "value") else str(language)
@@ -394,104 +394,107 @@ async def get_question_solution(
     if cached_data is not None:
         return JSONResponse(content=jsonable_encoder(cached_data))
 
-    q = await session.get(Question, qid_int)
-    if not q:
-        raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+    # Single optimized SQL join query: fetches Question, Explanation, Options, Translations, and Distractor Reasonings
+    stmt = (
+        select(Question, QuestionExplanation, QuestionOption, OptionTranslation, QuestionOptionReasoning)
+        .outerjoin(QuestionExplanation, col(QuestionExplanation.question_id) == col(Question.id))
+        .join(QuestionOption, col(QuestionOption.question_id) == col(Question.id))
+        .outerjoin(OptionTranslation, col(OptionTranslation.option_id) == col(QuestionOption.id))
+        .outerjoin(QuestionOptionReasoning, col(QuestionOptionReasoning.question_option_id) == col(QuestionOption.id))
+        .where(col(Question.id) == qid_int)
+        .order_by(col(QuestionOption.display_order).asc())
+    )
+    rows = (await session.exec(stmt)).all()
 
-    # 1. Fast Batch Database Fetch Strategy (Prioritized for low latency)
-    stmt_opts = select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order).asc())
-    options = (await session.exec(stmt_opts)).all()
-    opt_ids = [o.id for o in options]
+    if not rows:
+        # Fallback if question exists without options
+        q = await session.get(Question, qid_int)
+        if not q:
+            raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
+        expl = (await session.exec(select(QuestionExplanation).where(col(QuestionExplanation.question_id) == q.id))).first()
+        sol_card = {
+            "question_id": str(q.id),
+            "question_number": q.question_number_in_paper,
+            "correct_option_id": None,
+            "correct_option_label": None,
+            "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
+            "explanation": {
+                "detailed_solution": expl.detailed_solution if expl else "",
+                "common_mistake": expl.common_mistake if expl else None,
+                "common_traps": (expl.common_traps_json or ([expl.common_mistake] if expl.common_mistake else [])) if expl else [],
+            },
+            "distractor_scores": {},
+            "source": "DATABASE_OPTIMIZED",
+        }
+        await cache.set(cache_key, sol_card, ttl_seconds=3600)
+        return JSONResponse(content=jsonable_encoder(sol_card))
 
-    opt_trans_map = {}
-    if opt_ids:
-        stmt_trans = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
-        for t in (await session.exec(stmt_trans)).all():
-            t_lang = t.language.value if hasattr(t.language, "value") else str(t.language)
-            if t.option_id not in opt_trans_map or t_lang == lang_str:
-                opt_trans_map[t.option_id] = t
-
-    target_expl = (await session.exec(select(QuestionExplanation).where(QuestionExplanation.question_id == q.id))).first()
-
-    # 2. Fallback to S3 Solution JSON Artifact only if no explanation is found in database
-    if (not target_expl or not target_expl.detailed_solution) and q.exam_id:
-        exam = await session.get(Exam, q.exam_id)
-        if exam:
-            storage = get_storage_provider()
-            paper_set = exam.paper_set_code or "SET_A"
-            clean_set = str(paper_set).strip().lower().replace("_", "-")
-            s_folder = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
-            q_filename = f"Q{q.question_number_in_paper:03d}.json"
-            rel_path = f"{s_folder.rstrip('/')}/{q_filename}"
-            try:
-                if await storage.exists(rel_path):
-                    presigned_url = await storage.generate_presigned_url(rel_path)
-                    s3_data = await storage.download_json(rel_path)
-                    s3_data["presigned_url"] = presigned_url
-                    s3_data["source"] = "S3_ARTIFACT"
-                    await cache.set(cache_key, s3_data, ttl_seconds=7200)
-                    return JSONResponse(content=jsonable_encoder(s3_data))
-            except Exception:
-                pass
+    q = rows[0][0]
+    expl = rows[0][1]
 
     correct_option_id = None
     correct_option_label = "A"
     distractor_scores = {}
+    seen_opts = set()
 
-    for opt in options:
-        trans = opt_trans_map.get(opt.id)
-        analysis_text = trans.distractor_analysis if trans else None
+    for _, _, opt, ot, qr in rows:
+        if opt.id in seen_opts:
+            continue
+        seen_opts.add(opt.id)
+
+        # Distractor analysis from OptionTranslation, or fallback to QuestionOptionReasoning
+        analysis_text = ot.distractor_analysis if (ot and ot.distractor_analysis) else None
+        if not analysis_text and qr:
+            parts = []
+            if qr.why_tempting:
+                parts.append(f"Why tempting: {qr.why_tempting}")
+            if qr.whats_actually_true:
+                parts.append(f"Actual fact: {qr.whats_actually_true}")
+            if parts:
+                analysis_text = " — ".join(parts)
+
         if opt.is_correct:
             correct_option_id = str(opt.id)
             correct_option_label = opt.option_label
 
+        c_score = opt.closeness_score if opt.closeness_score is not None else (1.0 if opt.is_correct else 0.0)
+
         distractor_scores[str(opt.id)] = {
             "option_id": str(opt.id),
             "label": opt.option_label,
-            "text": trans.option_text if trans else f"Option {opt.option_label}",
-            "closeness_score": opt.closeness_score,
+            "text": ot.option_text if ot else f"Option {opt.option_label}",
+            "closeness_score": c_score,
             "is_correct": opt.is_correct,
-            "classification": ClosenessEvaluator.classify_option(opt.closeness_score),
-            "distractor_analysis": analysis_text,
+            "classification": ClosenessEvaluator.classify_option(c_score),
+            "distractor_analysis": analysis_text or "",
+            "analysis": analysis_text or "",
         }
 
-    # Fetch explanation & metadata in single queries
-    target_expl = (await session.exec(select(QuestionExplanation).where(QuestionExplanation.question_id == q.id))).first()
-    q_meta = (await session.exec(select(QuestionMetadata).where(QuestionMetadata.question_id == q.id))).first()
+    detailed_solution = (
+        expl.detailed_solution if (expl and expl.detailed_solution) else (
+            f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates core conceptual mastery under standard syllabus guidelines."
+        )
+    )
 
-    blooms_level = (q_meta.blooms_level.value if hasattr(q_meta.blooms_level, "value") else str(q_meta.blooms_level)) if (q_meta and q_meta.blooms_level) else "ANALYZE"
-    cognitive_skill = q_meta.cognitive_skill if (q_meta and q_meta.cognitive_skill) else "Conceptual Reasoning"
-    primary_concept_tag = q_meta.primary_concept_tag if (q_meta and q_meta.primary_concept_tag) else None
-
-    detailed_solution = (target_expl.detailed_solution if (target_expl and target_expl.detailed_solution) else (
-        f"**Option ({correct_option_label}) is correct.**\n\nThis question evaluates core conceptual mastery under standard syllabus guidelines."
-    ))
+    common_traps = (
+        expl.common_traps_json if (expl and expl.common_traps_json) else (
+            [expl.common_mistake] if (expl and expl.common_mistake) else []
+        )
+    )
 
     sol_card = {
         "question_id": str(q.id),
         "question_number": q.question_number_in_paper,
         "correct_option_id": correct_option_id,
         "correct_option_label": correct_option_label,
-        "difficulty": q.difficulty.value if hasattr(q.difficulty, 'value') else str(q.difficulty),
-        "blooms_level": blooms_level,
-        "cognitive_skill": cognitive_skill,
-        "primary_concept_tag": primary_concept_tag,
-        "irt_params": {
-            "a": q_meta.irt_discrimination_a if q_meta and q_meta.irt_discrimination_a is not None else 1.50,
-            "b": q_meta.irt_difficulty_b if q_meta and q_meta.irt_difficulty_b is not None else 0.00,
-            "c": q_meta.irt_pseudo_guessing_c if q_meta and q_meta.irt_pseudo_guessing_c is not None else 0.25,
-        },
-        "subject": "General Studies",
-        "topic": "Syllabus Topic",
-        "subtopic": "Micro Topic",
+        "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
         "explanation": {
-            "core_concept": target_expl.core_concept if target_expl and target_expl.core_concept else "Core conceptual foundation",
             "detailed_solution": detailed_solution,
-            "common_traps": target_expl.common_traps_json if (target_expl and target_expl.common_traps_json) else [],
-            "key_takeaways": target_expl.key_takeaways_json if (target_expl and target_expl.key_takeaways_json) else [],
+            "common_mistake": expl.common_mistake if expl else None,
+            "common_traps": common_traps,
         },
         "distractor_scores": distractor_scores,
-        "source": "DATABASE_FAST_BATCH",
+        "source": "DATABASE_OPTIMIZED",
     }
 
     await cache.set(cache_key, sol_card, ttl_seconds=3600)
