@@ -61,11 +61,11 @@ export function StudentSidebar({
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
-    { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
     { icon: Calendar, label: 'Study Planner', to: '/study-planner' },
     { icon: BookOpen, label: 'PYQs Simulation', to: '/pyq' },
     { icon: Brain, label: 'Analyse & Practice PYQs', to: '/mocks' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
+    { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
   ];
 

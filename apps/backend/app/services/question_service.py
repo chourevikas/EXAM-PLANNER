@@ -1374,12 +1374,15 @@ class QuestionService:
         # own per-question round trips.
         subtopic_ids.update(q.subtopic_id for q in questions if q.subtopic_id)
 
+        # Convert subtopic_ids to list because SQLAlchemy 2.0 does not support sets in .in_()
+        subtopic_ids_list = list(subtopic_ids)
+
         # Wave 2: option translations (needs opt_ids from wave 1) and
         # subtopics (needs subtopic_ids from wave 1) — same reasoning as
         # wave 1, sequential on self.session.
         wave2_specs: List[tuple] = [
             ("ot", select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)) if opt_ids else None),
-            ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids)) if subtopic_ids else None),
+            ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids_list)) if subtopic_ids_list else None),
         ]
         active_wave2 = [(name, stmt) for name, stmt in wave2_specs if stmt is not None]
         wave2 = {}
