@@ -1,4 +1,5 @@
-import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, Lightbulb } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 
@@ -24,6 +25,7 @@ export function RecommendedQuestionCard({
   isSolutionLoading,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
+  const [showSolution, setShowSolution] = useState(false);
 
   return (
     <div
@@ -261,12 +263,41 @@ export function RecommendedQuestionCard({
 
           {answeredOptId != null && (
             <div style={{ marginTop: 10 }}>
-              <QuestionSolutionMarkdownCard
-                solution={solution ?? {}}
-                isLoading={isSolutionLoading}
-                isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
-                selectedOptionLabel={selectedOption?.option_label}
-              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowSolution((prev) => !prev);
+                }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 4,
+                  border: showSolution ? '1px solid #1E3A8A' : '1px solid #CBD5E1',
+                  backgroundColor: showSolution ? '#EFF6FF' : '#FFFFFF',
+                  color: showSolution ? '#1E3A8A' : '#334155',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Lightbulb size={13} color={showSolution ? '#1E3A8A' : '#64748B'} />
+                <span>{showSolution ? 'Hide Explanation' : 'Show Explanation'}</span>
+              </button>
+
+              {showSolution && (
+                <div style={{ marginTop: 10 }}>
+                  <QuestionSolutionMarkdownCard
+                    solution={solution ?? {}}
+                    isLoading={isSolutionLoading}
+                    isUserCorrect={selectedOption ? !!selectedOption.is_correct : undefined}
+                    selectedOptionLabel={selectedOption?.option_label}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ChevronRight, Focus, Minimize2 } from 'lucide-react';
+import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamHeaderProps {
@@ -18,6 +18,9 @@ interface ExamHeaderProps {
   onSubmitClick?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
+  onFilterClick?: () => void;
+  onRecsClick?: () => void;
+  recsCount?: number;
 }
 
 export function ExamHeader({
@@ -36,6 +39,9 @@ export function ExamHeader({
   onSubmitClick,
   focusMode = false,
   onToggleFocusMode,
+  onFilterClick,
+  onRecsClick,
+  recsCount,
 }: ExamHeaderProps) {
   const isAuth = !!(localStorage.getItem('access_token') && localStorage.getItem('user'));
   const rootBreadcrumb = parentBreadcrumb || (isAuth ? 'Dashboard' : 'Home');
@@ -77,7 +83,15 @@ export function ExamHeader({
       }}
     >
       {/* Left: Brand Logo & Paper Metadata */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 12px)', minWidth: 0, flexShrink: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'clamp(6px, 1.5vw, 12px)',
+          minWidth: 0,
+          flexShrink: 0,
+        }}
+      >
         <img
           src="/logo.jpeg"
           alt="ExamPlanner"
@@ -92,7 +106,20 @@ export function ExamHeader({
         {!isTabletOrBelow && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
             {/* Breadcrumb Trail */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'clamp(12px, 2.5vw, 14px)', color: 'rgba(255, 255, 255, 0.75)', fontWeight: 500, fontFamily: "'IBM Plex Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 'clamp(12px, 2.5vw, 14px)',
+                color: 'rgba(255, 255, 255, 0.75)',
+                fontWeight: 500,
+                fontFamily: "'IBM Plex Sans', sans-serif",
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               <button
                 type="button"
                 onClick={onBack}
@@ -123,7 +150,9 @@ export function ExamHeader({
               {topicName && (
                 <>
                   <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                  <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>{topicName}</span>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+                    {topicName}
+                  </span>
                 </>
               )}
 
@@ -188,7 +217,71 @@ export function ExamHeader({
       )}
 
       {/* Right: Submit Test CTA */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          flex: 1,
+          justifyContent: 'flex-end',
+          minWidth: 0,
+        }}
+      >
+        {isTabletOrBelow && onFilterClick && (
+          <button
+            type="button"
+            onClick={onFilterClick}
+            className="touch-target"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 0,
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(255, 255, 255, 0.09)',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.15s ease',
+            }}
+            title="Filters"
+            aria-label="Show filters"
+          >
+            <SlidersHorizontal size={15} />
+          </button>
+        )}
+        {isTabletOrBelow && onRecsClick && (
+          <button
+            type="button"
+            onClick={onRecsClick}
+            className="touch-target"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3,
+              width: recsCount ? 'auto' : 32,
+              height: 32,
+              padding: recsCount ? '0 8px' : 0,
+              borderRadius: 0,
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(255, 255, 255, 0.09)',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              flexShrink: 0,
+              fontSize: 11.5,
+              fontWeight: 700,
+              transition: 'all 0.15s ease',
+            }}
+            title="Recommended Questions"
+            aria-label="Show recommended questions"
+          >
+            <Sparkles size={15} />
+            {!!recsCount && <span>{recsCount}</span>}
+          </button>
+        )}
         {onToggleFocusMode && (
           <button
             type="button"
@@ -209,10 +302,10 @@ export function ExamHeader({
               whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}
-            title={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+            title={focusMode ? 'Exit Full Screen' : 'Enter Full Screen'}
           >
             {focusMode ? <Minimize2 size={13} /> : <Focus size={13} />}
-            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Focus Mode'}</span>}
+            {!isTabletOrBelow && <span>{focusMode ? 'Exit Focus' : 'Full Screen'}</span>}
           </button>
         )}
         {showSubmitButton && onSubmitClick && (
@@ -235,10 +328,12 @@ export function ExamHeader({
               whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
-              if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
+              if (!isSubmitting)
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
             }}
             onMouseLeave={(e) => {
-              if (!isSubmitting) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
+              if (!isSubmitting)
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
             }}
           >
             {isSubmitting ? 'Submitting...' : 'Submit Test'}

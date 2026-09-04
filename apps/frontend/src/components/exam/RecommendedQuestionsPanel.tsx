@@ -17,7 +17,7 @@ interface RecommendedQuestionsPanelProps {
 }
 
 export function RecommendedQuestionsPanel({
-  title = 'Cross Exam Questions',
+  title = 'Cross Exam Similar Questions',
   subtitle,
   questions,
   isLoading,
