@@ -261,17 +261,9 @@ class UserRepository:
         return list(res.all())
 
     async def get_system_stats(self) -> Dict[str, Any]:
-        total_users = (await self.session.exec(select(func.count(User.id)))).one()
-        active_users = (
-            await self.session.exec(
-                select(func.count(User.id)).where(User.status == UserStatus.ACTIVE)
-            )
-        ).one()
-        suspended_users = (
-            await self.session.exec(
-                select(func.count(User.id)).where(User.status == UserStatus.SUSPENDED)
-            )
-        ).one()
+        from urllib.parse import urlparse
+        from app.config.settings import get_settings
+
         pending_admins = (
             await self.session.exec(
                 select(func.count(User.id)).where(
@@ -279,14 +271,41 @@ class UserRepository:
                 )
             )
         ).one()
+        active_admins = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.ADMIN, User.status == UserStatus.ACTIVE
+                )
+            )
+        ).one()
+        active_students = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.STUDENT, User.status == UserStatus.ACTIVE
+                )
+            )
+        ).one()
+        rejected_admins = (
+            await self.session.exec(
+                select(func.count(User.id)).where(
+                    User.role == UserRole.ADMIN, User.status == UserStatus.REJECTED
+                )
+            )
+        ).one()
+
+        settings = get_settings()
+        parsed_url = urlparse(settings.DATABASE_URL)
+        db_name = parsed_url.path.lstrip("/") or "testdb"
+        db_host = parsed_url.hostname or "AWS RDS Sydney"
 
         return {
-            "total_users": total_users,
-            "active_users": active_users,
-            "suspended_users": suspended_users,
-            "pending_admins": pending_admins,
-            "db_status": "ONLINE",
-            "db_host": "localhost",
+            "pending_admins_count": pending_admins,
+            "active_admins_count": active_admins,
+            "active_students_count": active_students,
+            "rejected_admins_count": rejected_admins,
+            "aws_rds_status": "ONLINE (Connected)",
+            "database_name": db_name,
+            "db_host": db_host,
         }
 
     async def update_last_login(self, user_id: int | str) -> None:

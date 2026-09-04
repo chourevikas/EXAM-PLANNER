@@ -52,6 +52,18 @@ class AnalyticsService:
                     json_content = format_report_to_json(attempt.report_metadata_json)
                     return Response(content=json_content, media_type="application/json")
 
+                if attempt and attempt.status == AttemptStatus.SUBMITTED:
+                    for _ in range(5):
+                        await asyncio.sleep(1.0)
+                        rep_db = (await self.session.exec(rep_stmt)).first()
+                        if rep_db and rep_db.full_report_json:
+                            json_content = format_report_to_json(rep_db.full_report_json)
+                            return Response(content=json_content, media_type="application/json")
+                        await self.session.refresh(attempt)
+                        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                            json_content = format_report_to_json(attempt.report_metadata_json)
+                            return Response(content=json_content, media_type="application/json")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -87,6 +99,18 @@ class AnalyticsService:
                     yaml_content = format_report_to_yaml(attempt.report_metadata_json)
                     return Response(content=yaml_content, media_type="text/yaml")
 
+                if attempt and attempt.status == AttemptStatus.SUBMITTED:
+                    for _ in range(5):
+                        await asyncio.sleep(1.0)
+                        rep_db = (await self.session.exec(rep_stmt)).first()
+                        if rep_db and rep_db.full_report_json:
+                            yaml_content = format_report_to_yaml(rep_db.full_report_json)
+                            return Response(content=yaml_content, media_type="text/yaml")
+                        await self.session.refresh(attempt)
+                        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                            yaml_content = format_report_to_yaml(attempt.report_metadata_json)
+                            return Response(content=yaml_content, media_type="text/yaml")
+
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id
             )
@@ -121,6 +145,18 @@ class AnalyticsService:
                 if attempt and attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
                     markdown_content = format_report_to_markdown(attempt.report_metadata_json)
                     return Response(content=markdown_content, media_type="text/markdown")
+
+                if attempt and attempt.status == AttemptStatus.SUBMITTED:
+                    for _ in range(5):
+                        await asyncio.sleep(1.0)
+                        rep_db = (await self.session.exec(rep_stmt)).first()
+                        if rep_db and rep_db.full_report_json:
+                            markdown_content = format_report_to_markdown(rep_db.full_report_json)
+                            return Response(content=markdown_content, media_type="text/markdown")
+                        await self.session.refresh(attempt)
+                        if attempt.report_metadata_json and isinstance(attempt.report_metadata_json, dict):
+                            markdown_content = format_report_to_markdown(attempt.report_metadata_json)
+                            return Response(content=markdown_content, media_type="text/markdown")
 
             report_data = await compile_comprehensive_psychometric_report(
                 self.session, user_id=user_id, exam_id=exam_id, attempt_id=attempt_id

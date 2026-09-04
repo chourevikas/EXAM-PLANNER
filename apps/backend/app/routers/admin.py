@@ -963,15 +963,30 @@ async def approve_and_publish_exam(
             ),
         )
 
-    # Pre-flight Database Integrity / Corruption Validation
+    # Pre-flight Database Integrity / Corruption Validation (Batch O(1) Queries)
     from app.db.models import PipelineRun, QuestionTranslation, QuestionOption
+    from sqlmodel import col
+
+    q_ids = [q.id for q in questions]
+
+    # Batch query all translations for all questions in one round-trip
+    all_qt_res = await session.exec(
+        select(QuestionTranslation).where(col(QuestionTranslation.question_id).in_(q_ids))
+    )
+    qt_by_qid = {}
+    for t in all_qt_res.all():
+        qt_by_qid.setdefault(t.question_id, []).append(t)
+
+    # Batch query all options for all questions in one round-trip
+    all_opt_res = await session.exec(
+        select(QuestionOption).where(col(QuestionOption.question_id).in_(q_ids))
+    )
+    opts_by_qid = {}
+    for o in all_opt_res.all():
+        opts_by_qid.setdefault(o.question_id, []).append(o)
 
     for q in questions:
-        qt_stmt = select(QuestionTranslation).where(
-            QuestionTranslation.question_id == q.id
-        )
-        qt_res = await session.exec(qt_stmt)
-        q_trans = qt_res.all()
+        q_trans = qt_by_qid.get(q.id, [])
         has_text = any(t.question_text and t.question_text.strip() for t in q_trans)
         if not has_text:
             corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has blank or missing question statement text in database."
@@ -987,9 +1002,7 @@ async def approve_and_publish_exam(
             await session.commit()
             raise HTTPException(status_code=422, detail=corruption_msg)
 
-        opt_stmt = select(QuestionOption).where(QuestionOption.question_id == q.id)
-        opt_res = await session.exec(opt_stmt)
-        q_opts = opt_res.all()
+        q_opts = opts_by_qid.get(q.id, [])
         if not q_opts:
             corruption_msg = f"EXAM_DATA_CORRUPTED: Question #{q.question_number_in_paper} has 0 answer options in database."
             corrupt_run = PipelineRun(

@@ -141,7 +141,7 @@ class AdminService:
         return user
 
     async def get_approval_audit_logs(self) -> List[AdminApprovalLogOut]:
-        logs = await self.repo.get_approval_audit_logs()
+        logs = await self.repo.get_approval_logs()
         result = []
         for log in logs:
             admin_user = await self.repo.get_by_id(log.admin_user_id)
@@ -175,7 +175,7 @@ class AdminService:
         if cached_data is not None:
             return SystemStatsOut(**cached_data) if isinstance(cached_data, dict) else cached_data
 
-        stats = await self.repo.get_system_audit_stats()
+        stats = await self.repo.get_system_stats()
         if stats:
             serialized = stats if isinstance(stats, dict) else (stats.model_dump(mode="json") if hasattr(stats, "model_dump") else stats)
             await cache.set(cache_key, serialized, ttl_seconds=300)
