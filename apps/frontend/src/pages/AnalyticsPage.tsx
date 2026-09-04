@@ -357,7 +357,7 @@ const skeletonWrapperStyle: React.CSSProperties = { marginTop: 16 };
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const attemptIdParam = searchParams.get('attemptId');
+  const attemptIdParam = searchParams.get('attemptId') || searchParams.get('attempt_id');
 
   // Single source of truth: selectedAttemptId derived directly from searchParams
   const selectedAttemptId = attemptIdParam || 'CUMULATIVE_ALL';

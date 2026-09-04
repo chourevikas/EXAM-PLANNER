@@ -85,13 +85,6 @@ class ExamService:
 
         exam = await self.repo.save(exam)
 
-        # Sync/create canonical SyllabusVersion for this exam
-        try:
-            from app.services.syllabus_service import SyllabusService
-            await SyllabusService(self.session).sync_or_create_exam_syllabus(exam.id)
-        except Exception as syl_err:
-            logger.warning(f"Could not auto-sync syllabus for exam '{exam.code}': {syl_err}")
-
         from app.cache import invalidate_exam_cache
         await invalidate_exam_cache(str(exam.id))
 

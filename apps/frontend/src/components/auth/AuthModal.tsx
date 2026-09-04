@@ -91,7 +91,7 @@ export function AuthModal({
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate(res.redirect_url || '/dashboard');
+            navigate(redirectUrl || res.redirect_url || '/dashboard');
           }
         }, 800);
       } else {
@@ -111,7 +111,7 @@ export function AuthModal({
             if (onSuccess) {
               onSuccess();
             } else {
-              navigate(res.redirect_url || '/dashboard');
+              navigate(redirectUrl || res.redirect_url || '/dashboard');
             }
           }, 1000);
         }

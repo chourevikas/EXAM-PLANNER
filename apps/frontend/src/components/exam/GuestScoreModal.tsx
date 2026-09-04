@@ -46,16 +46,20 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
       return;
     }
     onClose();
-    if (scoreData.attemptId) {
-      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
+    const targetId = scoreData.attemptId || sessionStorage.getItem('latest_synced_attempt_id');
+    if (targetId) {
+      navigate(`/analytics?attemptId=${encodeURIComponent(targetId)}`);
     } else {
       navigate('/analytics');
     }
   };
 
   const handleAuthSuccess = () => {
-    if (scoreData.attemptId) {
-      navigate(`/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}`);
+    setAuthModalOpen(false);
+    onClose();
+    const syncedId = scoreData.attemptId || sessionStorage.getItem('latest_synced_attempt_id');
+    if (syncedId) {
+      navigate(`/analytics?attemptId=${encodeURIComponent(syncedId)}`);
     } else {
       navigate('/analytics');
     }
@@ -66,6 +70,11 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
     navigate('/');
   };
 
+  const activeAttemptId = scoreData?.attemptId || (typeof window !== 'undefined' ? sessionStorage.getItem('latest_synced_attempt_id') : null);
+  const targetRedirectUrl = activeAttemptId
+    ? `/analytics?attemptId=${encodeURIComponent(activeAttemptId)}`
+    : '/analytics';
+
   return (
     <>
       <AuthModal
@@ -74,7 +83,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
         onClose={() => setAuthModalOpen(false)}
         onSwitchMode={setAuthMode}
         onSuccess={handleAuthSuccess}
-        redirectUrl={scoreData?.attemptId ? `/analytics?attempt_id=${encodeURIComponent(scoreData.attemptId)}` : '/analytics'}
+        redirectUrl={targetRedirectUrl}
       />
       <div
         style={{
@@ -486,17 +495,6 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
           </div>
         </div>
       </div>
-
-      {/* Authentication Popup Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        mode={authMode}
-        onClose={() => {
-          setAuthModalOpen(false);
-          onClose();
-        }}
-        onSwitchMode={(m) => setAuthMode(m)}
-      />
     </>
   );
 }

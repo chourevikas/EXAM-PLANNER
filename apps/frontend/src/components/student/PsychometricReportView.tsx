@@ -4244,58 +4244,6 @@ export function PsychometricReportView({
                                     </div>
                                   </div>
                                 )}
-
-                                {/* Key Takeaways / Points to Remember */}
-                                {expl.key_takeaways && (
-                                  <div
-                                    style={{
-                                      padding: 14,
-                                      borderRadius: 0,
-                                      background: isDark
-                                        ? 'linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(6,182,212,0.12) 100%)'
-                                        : 'linear-gradient(135deg, #ecfdf5 0%, #F8FAFC 100%)',
-                                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        color: '#3A8B53',
-                                        textTransform: 'uppercase',
-                                        marginBottom: 6,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                      }}
-                                    >
-                                      <Check size={16} /> Key Takeaways & Points to Remember
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: 13,
-                                        color: isDark ? '#e2e8f0' : '#065f46',
-                                        lineHeight: 1.5,
-                                      }}
-                                    >
-                                      {Array.isArray(expl.key_takeaways) ? (
-                                        <ul style={{ margin: 0, paddingLeft: 18 }}>
-                                          {expl.key_takeaways.map((item: string, kIdx: number) => (
-                                            <li key={kIdx} style={{ margin: '3px 0' }}>
-                                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {item}
-                                              </ReactMarkdown>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      ) : (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                          {String(expl.key_takeaways)}
-                                        </ReactMarkdown>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             )}
                           </div>

@@ -707,32 +707,53 @@ class QuestionService:
                 hierarchy_links=payload.hierarchy_links,
             )
 
+        is_content_updated = any([
+            payload.question_text is not None,
+            payload.passage_text is not None,
+            payload.options is not None,
+            payload.core_concept is not None,
+            payload.detailed_solution is not None,
+            payload.common_traps is not None,
+            payload.key_takeaways is not None,
+            payload.subject_name is not None,
+            payload.topic_name is not None,
+            payload.subtopic_name is not None,
+            payload.subtopic_id is not None,
+            payload.subtopic_ids is not None,
+            payload.hierarchy_links is not None,
+        ])
+
+        if is_content_updated:
+            from app.services.syllabus_service import SyllabusService
+            await SyllabusService(self.session).evaluate_and_persist_question_integrity(q)
+            await self._recalculate_exam_metrics(q.exam_id, commit=False)
+
+        await self._touch_exam_updated_at(q.exam_id, commit=False)
+
         await self.session.commit()
         await self.session.refresh(q)
-
-        # Re-evaluate & persist question integrity directly to Question columns
-        from app.services.syllabus_service import SyllabusService
-        await SyllabusService(self.session).evaluate_and_persist_question_integrity(q)
-
-        await self._touch_exam_updated_at(q.exam_id)
-        await self._recalculate_exam_metrics(q.exam_id)
-
 
         from app.cache import invalidate_question_cache
         await invalidate_question_cache(str(q.id), str(q.exam_id) if q.exam_id else None)
 
-        return await self._build_question_detail_response(q, target_lang=target_lang, include_solutions=True)
+        batched_resps = await self._build_batch_question_detail_responses(
+            [q], target_lang=target_lang, include_solutions=True
+        )
+        return batched_resps[0] if batched_resps else await self._build_question_detail_response(
+            q, target_lang=target_lang, include_solutions=True
+        )
 
-    async def _touch_exam_updated_at(self, exam_id: Optional[int]):
+    async def _touch_exam_updated_at(self, exam_id: Optional[int], commit: bool = True):
         if not exam_id:
             return
         exam = await self.session.get(Exam, exam_id)
         if exam:
             exam.updated_at = datetime.now(timezone.utc)
             self.session.add(exam)
-            await self.session.commit()
+            if commit:
+                await self.session.commit()
 
-    async def _recalculate_exam_metrics(self, exam_id: Optional[int]):
+    async def _recalculate_exam_metrics(self, exam_id: Optional[int], commit: bool = True):
         if not exam_id:
             return
         exam_obj = await self.session.get(Exam, exam_id)
@@ -747,7 +768,8 @@ class QuestionService:
             exam_obj.missing_questions_count = len(missing_nums)
             exam_obj.missing_question_numbers_json = missing_nums
             self.session.add(exam_obj)
-            await self.session.commit()
+            if commit:
+                await self.session.commit()
 
     async def create_question(self, payload: QuestionCreatePayload) -> QuestionDetailResponse:
         exam = await self.session.get(Exam, payload.exam_id)

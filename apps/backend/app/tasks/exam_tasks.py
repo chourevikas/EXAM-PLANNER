@@ -151,6 +151,14 @@ async def async_process_exam_pdf(
                     f"Updated Exam DB record for '{exam.code}' with total_pages={total_pages}"
                 )
 
+        if exam_id:
+            try:
+                from app.services.syllabus_service import SyllabusService
+                async with managed_async_session() as syl_session:
+                    await SyllabusService(syl_session).sync_or_create_exam_syllabus(exam_id)
+            except Exception as syl_err:
+                log.warning(f"Could not auto-sync syllabus for exam '{exam_id}': {syl_err}")
+
         log.info(f"📄 Paper Title: '{exam_title}' | Target Dir: '{output_dir}'")
         log.info("Building LangGraph extraction pipeline graph...")
         pipeline = build_langgraph_pipeline()

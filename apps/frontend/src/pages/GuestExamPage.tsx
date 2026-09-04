@@ -808,8 +808,23 @@ export function GuestExamPage() {
       : 'A';
 
     const expContent =
+      (targetQuestion as any).explanation?.detailed_solution ||
       (targetQuestion as any).explanation ||
       `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+
+    const distractorScores: Record<string, any> = {};
+    if (Array.isArray(targetQuestion.options)) {
+      targetQuestion.options.forEach((opt: any) => {
+        const oId = String(opt.option_id);
+        distractorScores[oId] = {
+          option_id: oId,
+          label: opt.option_label,
+          is_correct: opt.is_correct,
+          closeness_score: opt.closeness_score ?? 0,
+          analysis: opt.distractor_analysis || '',
+        };
+      });
+    }
 
     const revealObj: RevealAnswerResponse & { presigned_url?: string } = {
       question_id: targetId,
@@ -825,7 +840,7 @@ export function GuestExamPage() {
       closeness_score: isUserCorrect ? 1.0 : 0.0,
       closeness_classification: isUserCorrect ? 'Correct Response' : 'Incorrect Response',
       explanation: expContent,
-      distractor_scores: {},
+      distractor_scores: distractorScores,
     };
 
     const updatedRevealedMap = {
@@ -854,13 +869,46 @@ export function GuestExamPage() {
   const handleShowSolution = async (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
     const targetId = activeQuestion?.question_id;
     if (targetId) {
-      const existingRevealed = revealedMap[targetId];
-      // Lazy fetch detailed explanation artifact from solution API if not already enriched
-      if (
-        !existingRevealed ||
-        !existingRevealed.distractor_scores ||
-        Object.keys(existingRevealed.distractor_scores).length === 0
-      ) {
+      const existingRevealed = (passedRevealedMap && passedRevealedMap[targetId]) || revealedMap[targetId];
+      const hasExplanation = existingRevealed?.explanation && (
+        typeof existingRevealed.explanation === 'string'
+          ? existingRevealed.explanation.trim().length > 0
+          : Object.keys(existingRevealed.explanation).length > 0
+      );
+      const hasDistractors = existingRevealed?.distractor_scores && Object.keys(existingRevealed.distractor_scores).length > 0;
+
+      if (!hasExplanation || !hasDistractors) {
+        if ((activeQuestion as any)?.explanation || (activeQuestion?.options && activeQuestion.options.length > 0)) {
+          const distractorScores: Record<string, any> = { ...(existingRevealed?.distractor_scores || {}) };
+          if (Array.isArray(activeQuestion.options)) {
+            activeQuestion.options.forEach((opt: any) => {
+              const oId = String(opt.option_id);
+              if (!distractorScores[oId]) {
+                distractorScores[oId] = {
+                  option_id: oId,
+                  label: opt.option_label,
+                  is_correct: opt.is_correct,
+                  closeness_score: opt.closeness_score ?? 0,
+                  analysis: opt.distractor_analysis || '',
+                };
+              }
+            });
+          }
+          const exp = (activeQuestion as any).explanation?.detailed_solution || (activeQuestion as any).explanation || existingRevealed?.explanation;
+          setRevealedMap((prev) => {
+            const current = prev[targetId] || {};
+            return {
+              ...prev,
+              [targetId]: {
+                ...current,
+                explanation: exp || current.explanation,
+                distractor_scores: Object.keys(distractorScores).length > 0 ? distractorScores : current.distractor_scores,
+              }
+            };
+          });
+          return;
+        }
+
         setIsSolutionLoading(true);
         try {
           const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);

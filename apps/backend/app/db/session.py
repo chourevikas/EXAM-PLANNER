@@ -179,7 +179,53 @@ async def async_init_db():
         f"Verifying/initializing database tables on engine: {engine.url.drivername} ({engine.url.database})..."
     )
     async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
+        from sqlalchemy import text
+
+        # In-memory SQLite only (e.g. unit tests without Alembic migrations)
+        if engine.url.drivername.startswith("sqlite"):
+            res = await conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+            )
+            if not res.scalar():
+                await conn.run_sync(SQLModel.metadata.create_all)
+
+        # Ensure critical unique indices exist for FSRS memory state and concept retention upserts
+        try:
+            has_indices = False
+            if engine.url.drivername.startswith("postgresql"):
+                m_res = await conn.execute(text("SELECT to_regclass('public.ix_memory_user_question');"))
+                r_res = await conn.execute(text("SELECT to_regclass('public.ix_retention_user_subtopic');"))
+                has_indices = (m_res.scalar() is not None) and (r_res.scalar() is not None)
+
+            if not has_indices:
+                # Deduplicate any pre-existing rows (keeping the latest record by ID) so PostgreSQL can create the unique index
+                await conn.execute(
+                    text("""
+                        DELETE FROM user_memory_states 
+                        WHERE question_id IS NOT NULL 
+                          AND id NOT IN (
+                            SELECT MAX(id) FROM user_memory_states WHERE question_id IS NOT NULL GROUP BY user_id, question_id
+                          );
+                    """)
+                )
+                await conn.execute(
+                    text("""
+                        DELETE FROM user_concept_retention 
+                        WHERE subtopic_id IS NOT NULL 
+                          AND id NOT IN (
+                            SELECT MAX(id) FROM user_concept_retention WHERE subtopic_id IS NOT NULL GROUP BY user_id, subtopic_id
+                          );
+                    """)
+                )
+                await conn.execute(
+                    text("CREATE UNIQUE INDEX IF NOT EXISTS ix_memory_user_question ON user_memory_states (user_id, question_id);")
+                )
+                await conn.execute(
+                    text("CREATE UNIQUE INDEX IF NOT EXISTS ix_retention_user_subtopic ON user_concept_retention (user_id, subtopic_id);")
+                )
+                logger.info("Successfully ensured unique indices on user_memory_states and user_concept_retention.")
+        except Exception as idx_err:
+            logger.warning(f"Could not auto-create unique indices on startup: {idx_err}")
     logger.info("SQLModel table check complete.")
 
     # 2. If DB_MIGRATION is 'true', synchronize Alembic migration state safely

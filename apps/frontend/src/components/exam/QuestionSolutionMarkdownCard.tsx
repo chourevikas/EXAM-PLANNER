@@ -426,41 +426,7 @@ export function QuestionSolutionMarkdownCard({
           </div>
         </div>
 
-        {/* Section 4: Key Takeaways & Points to Remember */}
-        {keyTakeaways.length > 0 && (
-          <div
-            style={{
-              padding: '16px 18px',
-              borderRadius: 0,
-              backgroundColor: '#F0F9FF',
-              border: '1px solid #BAE6FD',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 14,
-                fontWeight: 700,
-                color: '#0369A1',
-                marginBottom: 8,
-              }}
-            >
-              <Award size={17} style={{ color: '#0284C7' }} />
-              Key Takeaways & Points to Remember
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, color: '#0C4A6E', lineHeight: 1.6 }}>
-              {keyTakeaways.map((takeaway, idx) => (
-                <li key={idx} style={{ marginBottom: 4 }}>
-                  {takeaway}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Section 5: Common Traps to Avoid */}
+        {/* Section 4: Common Traps to Avoid */}
         {commonTraps.length > 0 && (
           <div
             style={{

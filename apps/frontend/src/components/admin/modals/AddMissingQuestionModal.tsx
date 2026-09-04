@@ -70,7 +70,6 @@ export function AddMissingQuestionModal({
   const [commonTraps, setCommonTraps] = useState<string[]>([]);
   const [keyTakeaways, setKeyTakeaways] = useState<string[]>([]);
   const [newTrap, setNewTrap] = useState<string>('');
-  const [newTakeaway, setNewTakeaway] = useState<string>('');
 
   // Taxonomy & Syllabus Hierarchy State
   const [syllabusTree, setSyllabusTree] = useState<any[]>([]);
@@ -190,17 +189,6 @@ export function AddMissingQuestionModal({
 
   const handleRemoveTrap = (idx: number) => {
     setCommonTraps((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleAddTakeaway = () => {
-    if (newTakeaway.trim()) {
-      setKeyTakeaways((prev) => [...prev, newTakeaway.trim()]);
-      setNewTakeaway('');
-    }
-  };
-
-  const handleRemoveTakeaway = (idx: number) => {
-    setKeyTakeaways((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -743,50 +731,6 @@ export function AddMissingQuestionModal({
                     >
                       {trap}
                       <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveTrap(idx)} />
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Key Takeaways */}
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#475569', marginBottom: 4 }}>
-                  Key Takeaways
-                </label>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <input
-                    type="text"
-                    value={newTakeaway}
-                    onChange={(e) => setNewTakeaway(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTakeaway())}
-                    placeholder="Add key revision takeaway..."
-                    style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: '1px solid #CBD5E1', fontSize: 13 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTakeaway}
-                    style={{ padding: '7px 14px', borderRadius: 6, backgroundColor: '#475569', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13 }}
-                  >
-                    Add
-                  </button>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {keyTakeaways.map((takeaway, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: '3px 10px',
-                        borderRadius: 16,
-                        backgroundColor: '#EFF6FF',
-                        color: '#1E40AF',
-                        fontSize: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
-                      {takeaway}
-                      <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleRemoveTakeaway(idx)} />
                     </span>
                   ))}
                 </div>

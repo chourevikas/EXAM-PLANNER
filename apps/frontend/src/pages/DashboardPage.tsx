@@ -643,6 +643,7 @@ export function DashboardPage() {
                       visibleRegisteredAttempts.map((attempt: any) => (
                         <div
                           key={attempt.id}
+                          onClick={() => navigate(`/analytics?attemptId=${attempt.id}`)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -651,7 +652,17 @@ export function DashboardPage() {
                             backgroundColor: 'var(--bg-subtle)',
                             borderRadius: 0,
                             border: '1px solid var(--border-default)',
-                            gap: 12
+                            gap: 12,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#BFDBFE';
+                            e.currentTarget.style.backgroundColor = '#F8FAFC';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border-default)';
+                            e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -673,15 +684,20 @@ export function DashboardPage() {
                             </div>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                               Score: {attempt.score} / {attempt.totalMarksPossible}
                             </div>
-                            <StatusBadge
-                              status={attempt.accuracy >= 70 ? 'high-accuracy' : attempt.accuracy >= 40 ? 'moderate-accuracy' : 'low-accuracy'}
-                              label={`${attempt.accuracy}% Acc`}
-                              size="sm"
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <StatusBadge
+                                status={attempt.accuracy >= 70 ? 'high-accuracy' : attempt.accuracy >= 40 ? 'moderate-accuracy' : 'low-accuracy'}
+                                label={`${attempt.accuracy}% Acc`}
+                                size="sm"
+                              />
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', textDecoration: 'underline' }}>
+                                View Report →
+                              </span>
+                            </div>
                           </div>
                         </div>
                       ))
@@ -761,6 +777,7 @@ export function DashboardPage() {
                       visibleSyncedGuestAttempts.map((attempt: any) => (
                         <div
                           key={attempt.id}
+                          onClick={() => navigate(`/analytics?attemptId=${attempt.id}`)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -769,7 +786,17 @@ export function DashboardPage() {
                             backgroundColor: 'var(--bg-subtle)',
                             borderRadius: 0,
                             border: '1px solid var(--border-default)',
-                            gap: 12
+                            gap: 12,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#A7F3D0';
+                            e.currentTarget.style.backgroundColor = '#F0FDF4';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--border-default)';
+                            e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -796,12 +823,17 @@ export function DashboardPage() {
                             </div>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                               Score: {attempt.score} / {attempt.totalMarksPossible}
                             </div>
-                            <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#3A8B53' : '#F2B623', fontWeight: 700 }}>
-                              {attempt.accuracy}% Acc
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ fontSize: 11, color: attempt.accuracy >= 70 ? '#3A8B53' : '#F2B623', fontWeight: 700 }}>
+                                {attempt.accuracy}% Acc
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', textDecoration: 'underline' }}>
+                                View Report →
+                              </span>
                             </div>
                           </div>
                         </div>

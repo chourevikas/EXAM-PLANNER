@@ -398,8 +398,23 @@ async def get_question_solution(
     if not q:
         raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
-    # 1. Primary Strategy: Check S3 Solution JSON Artifact
-    if q.exam_id:
+    # 1. Fast Batch Database Fetch Strategy (Prioritized for low latency)
+    stmt_opts = select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order).asc())
+    options = (await session.exec(stmt_opts)).all()
+    opt_ids = [o.id for o in options]
+
+    opt_trans_map = {}
+    if opt_ids:
+        stmt_trans = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+        for t in (await session.exec(stmt_trans)).all():
+            t_lang = t.language.value if hasattr(t.language, "value") else str(t.language)
+            if t.option_id not in opt_trans_map or t_lang == lang_str:
+                opt_trans_map[t.option_id] = t
+
+    target_expl = (await session.exec(select(QuestionExplanation).where(QuestionExplanation.question_id == q.id))).first()
+
+    # 2. Fallback to S3 Solution JSON Artifact only if no explanation is found in database
+    if (not target_expl or not target_expl.detailed_solution) and q.exam_id:
         exam = await session.get(Exam, q.exam_id)
         if exam:
             storage = get_storage_provider()
@@ -418,19 +433,6 @@ async def get_question_solution(
                     return JSONResponse(content=jsonable_encoder(s3_data))
             except Exception:
                 pass
-
-    # 2. Optimized Batch Database Fetch
-    stmt_opts = select(QuestionOption).where(QuestionOption.question_id == q.id).order_by(col(QuestionOption.display_order).asc())
-    options = (await session.exec(stmt_opts)).all()
-    opt_ids = [o.id for o in options]
-
-    opt_trans_map = {}
-    if opt_ids:
-        stmt_trans = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
-        for t in (await session.exec(stmt_trans)).all():
-            t_lang = t.language.value if hasattr(t.language, "value") else str(t.language)
-            if t.option_id not in opt_trans_map or t_lang == lang_str:
-                opt_trans_map[t.option_id] = t
 
     correct_option_id = None
     correct_option_label = "A"

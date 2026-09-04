@@ -347,7 +347,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [editCommonTraps, setEditCommonTraps] = useState<string[]>([]);
   const [editKeyTakeaways, setEditKeyTakeaways] = useState<string[]>([]);
   const [newTrapInput, setNewTrapInput] = useState<string>('');
-  const [newTakeawayInput, setNewTakeawayInput] = useState<string>('');
 
   // Options Edit State
   const [editOptions, setEditOptions] = useState<{
@@ -2820,27 +2819,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       </div>
                     )}
                   </div>
-
-                  {/* 3. Key Takeaways */}
-                  <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 0, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#15803D', marginBottom: 8 }}>
-                      <Award size={15} />
-                      3. Key Takeaways
-                    </div>
-                    {activeQuestion.explanation?.key_takeaways && activeQuestion.explanation.key_takeaways.length > 0 ? (
-                      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#14532D', lineHeight: 1.6 }}>
-                        {activeQuestion.explanation.key_takeaways.map((point, pIdx) => (
-                          <li key={pIdx} style={{ marginBottom: 4 }}>
-                            {point}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div style={{ fontSize: 12.5, color: '#15803D', fontStyle: 'italic' }}>
-                        No key takeaways added.
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -3416,53 +3394,6 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       <button
                         type="button"
                         onClick={() => setEditCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 4. Key Takeaways */}
-                <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#15803D', marginBottom: 4 }}>
-                    4. Key Takeaways:
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input
-                      type="text"
-                      value={newTakeawayInput}
-                      onChange={(e) => setNewTakeawayInput(e.target.value)}
-                      placeholder="Add an essential takeaway point..."
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTakeawayInput.trim()) {
-                          e.preventDefault();
-                          setEditKeyTakeaways((prev) => [...prev, newTakeawayInput.trim()]);
-                          setNewTakeawayInput('');
-                        }
-                      }}
-                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newTakeawayInput.trim()) {
-                          setEditKeyTakeaways((prev) => [...prev, newTakeawayInput.trim()]);
-                          setNewTakeawayInput('');
-                        }
-                      }}
-                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 0, border: 'none', backgroundColor: '#15803D', color: '#FFFFFF', cursor: 'pointer' }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {editKeyTakeaways.map((takeaway, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#DCFCE7', borderRadius: 0, marginBottom: 4, fontSize: 12, border: '1px solid #86EFAC' }}>
-                      <span>{takeaway}</span>
-                      <button
-                        type="button"
-                        onClick={() => setEditKeyTakeaways((prev) => prev.filter((_, i) => i !== idx))}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}
                       >
                         <Trash2 size={12} />
