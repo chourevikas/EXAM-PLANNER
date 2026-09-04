@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * Ensures a loading state remains true for a minimum amount of time.
@@ -10,21 +10,26 @@ import { useState, useEffect } from 'react';
  */
 export function useMinimumLoadingTime(isFetching: boolean, minimumTimeMs: number = 400) {
   const [isMinimumLoading, setIsMinimumLoading] = useState(isFetching);
+  const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
 
     if (isFetching) {
-      // When fetch starts, immediately show loader
+      // When fetch starts, record the start time and immediately show loader
+      if (startTimeRef.current === null) {
+        startTimeRef.current = Date.now();
+      }
       setIsMinimumLoading(true);
     } else {
-      // When fetch finishes, enforce the minimum loading time
-      // We don't have a reliable start time here, so we just delay the "false" transition
-      // A better approach tracks the actual start time, but a simple delay is usually enough
-      // to prevent flicker.
+      // When fetch finishes, calculate how much time has passed
+      const elapsed = startTimeRef.current !== null ? Date.now() - startTimeRef.current : 0;
+      const remainingTime = Math.max(0, minimumTimeMs - elapsed);
+
       timeoutId = setTimeout(() => {
         setIsMinimumLoading(false);
-      }, minimumTimeMs);
+        startTimeRef.current = null;
+      }, remainingTime);
     }
 
     return () => {
