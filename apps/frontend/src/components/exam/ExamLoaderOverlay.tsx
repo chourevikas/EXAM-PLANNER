@@ -147,7 +147,7 @@ export function ExamLoaderOverlay({
       </div>
 
       {/* Dynamic Cycling Step Text */}
-      <div
+      {/* <div
         style={{
           minHeight: 22,
           display: 'flex',
@@ -162,10 +162,10 @@ export function ExamLoaderOverlay({
       >
         <Sparkles size={14} className="animate-spin-slow" />
         <span>{LOADING_STEPS[stepIndex]}</span>
-      </div>
+      </div> */}
 
       {/* Trust Badge Subtext */}
-      <div
+      {/* <div
         style={{
           marginTop: 24,
           display: 'inline-flex',
@@ -178,7 +178,7 @@ export function ExamLoaderOverlay({
       >
         <ShieldCheck size={13} style={{ color: '#3A8B53' }} />
         <span>Official Exam Engine & Verified Answer Key</span>
-      </div>
+      </div> */}
 
       {/* Embedded CSS Animations */}
       <style>{`

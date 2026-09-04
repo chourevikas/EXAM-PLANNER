@@ -42,7 +42,6 @@ export function StudentPracticeExamPage() {
     'exam' | 'subject' | 'topic' | 'difficulty' | null
   >(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
-  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
@@ -534,6 +533,7 @@ export function StudentPracticeExamPage() {
   // Mobile Responsiveness
   const { isTabletOrBelow } = useBreakpoint();
   const [showMobileRecs, setShowMobileRecs] = useState(false);
+  const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
   const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
@@ -1416,9 +1416,10 @@ export function StudentPracticeExamPage() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        height: isTabletOrBelow ? 'auto' : '100vh',
+        minHeight: '100vh',
         width: '100vw',
-        overflow: 'hidden',
+        overflow: isTabletOrBelow ? 'visible' : 'hidden',
         backgroundColor: '#F8FAFC',
       }}
     >
@@ -1438,140 +1439,638 @@ export function StudentPracticeExamPage() {
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}
+        onFilterClick={!isFocusMode ? () => setShowMobileFilterPanel(true) : undefined}
+        onRecsClick={!isFocusMode ? () => setShowMobileRecs(true) : undefined}
+        recsCount={displayRecs.length}
       />
 
-      {/* Premium Floating Exam Filter Window (Same as Guest Exam Page) */}
-      {!isFocusMode && (
-      <div
-        style={{
-          marginTop: 60,
-          padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 24px) 6px clamp(10px, 2.5vw, 24px)',
-          backgroundColor: 'transparent',
-          zIndex: 80,
-          flexShrink: 0,
-        }}
-      >
+      {/* Premium Floating Exam Filter Window — Desktop only; mobile/tablet uses header icon + top sheet */}
+      {!isFocusMode && !isTabletOrBelow && (
         <div
           style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 0,
-            padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '8px 12px',
-            boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
-            position: 'relative',
+            marginTop: 60,
+            padding: 'clamp(8px, 2vw, 14px) clamp(10px, 2.5vw, 24px) 6px clamp(10px, 2.5vw, 24px)',
+            backgroundColor: 'transparent',
+            zIndex: 80,
+            flexShrink: 0,
           }}
         >
-          {/* Filter Bar Badge (+ Hide/Show toggle on mobile/tablet, grouped on their own row) */}
           <div
             style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: 0,
+              padding: 'clamp(10px, 2vw, 14px) clamp(12px, 2.5vw, 18px)',
               display: 'flex',
+              flexWrap: 'wrap',
               alignItems: 'center',
-              justifyContent: isTabletOrBelow ? 'space-between' : 'flex-start',
-              gap: 8,
-              paddingRight: isTabletOrBelow ? 0 : 12,
-              borderRight: isTabletOrBelow ? 'none' : '1px solid #F1F5F9',
-              flexShrink: 0,
-              flexBasis: isTabletOrBelow ? '100%' : 'auto',
+              gap: '8px 12px',
+              boxShadow:
+                '0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03)',
+              position: 'relative',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 0,
-                  backgroundColor: '#F8FAFC',
-                  color: '#1E3A8A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <SlidersHorizontal size={16} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span
+            {/* Filter Bar Badge (+ Hide/Show toggle on mobile/tablet, grouped on their own row) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isTabletOrBelow ? 'space-between' : 'flex-start',
+                gap: 8,
+                paddingRight: isTabletOrBelow ? 0 : 12,
+                borderRight: isTabletOrBelow ? 'none' : '1px solid #F1F5F9',
+                flexShrink: 0,
+                flexBasis: isTabletOrBelow ? '100%' : 'auto',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
                   style={{
-                    fontSize: 11,
-                    fontWeight: 800,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 0,
+                    backgroundColor: '#F8FAFC',
                     color: '#1E3A8A',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  FILTERS
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
-                  Practice Engine
-                </span>
+                  <SlidersHorizontal size={16} />
+                </div>
               </div>
             </div>
 
-            {/* Hide/Show Filters + Recs toggle — mobile/tablet only; filters always stay visible on desktop */}
-            {isTabletOrBelow && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => setFiltersCollapsed((prev) => !prev)}
-                  className="touch-target"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '6px 10px',
-                    borderRadius: 0,
-                    border: '1px solid #E2E8F0',
-                    backgroundColor: '#F8FAFC',
-                    color: '#1E3A8A',
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                  title={filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
-                >
-                  <span>{filtersCollapsed ? 'Show Filters' : 'Hide Filters'}</span>
-                  <ChevronDown
-                    size={13}
+            {
+              <>
+                {/* Filter 1: Exam Target */}
+                <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
+                  <label
                     style={{
-                      transform: filtersCollapsed ? 'none' : 'rotate(180deg)',
-                      transition: 'transform 0.15s ease',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
                     }}
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileRecs(true)}
-                  className="touch-target"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '6px 10px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: '#FFFFFF',
-                    color: '#1E3A8A',
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                  title="Recommended Questions"
-                >
-                  <Sparkles size={13} color="#1E3A8A" />
-                  <span>Recs ({displayRecs.length})</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  >
+                    Exam Target
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gExam || 'UPSC CSE'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
 
-          {(!filtersCollapsed || !isTabletOrBelow) && (
-            <>
+                  {activeDropdown === 'exam' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 220,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 8,
+                        zIndex: 100,
+                      }}
+                    >
+                      {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map(
+                        (opt) => (
+                          <div
+                            key={opt}
+                            onClick={() => {
+                              const current = new URLSearchParams(searchParams);
+                              current.set('exam', opt);
+                              navigate(`/practice-exam?${current.toString()}`);
+                              setActiveDropdown(null);
+                            }}
+                            style={{
+                              padding: '9px 12px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: gExam === opt ? 700 : 500,
+                              color: gExam === opt ? '#1E3A8A' : '#334155',
+                              backgroundColor: gExam === opt ? '#F8FAFC' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span>{opt}</span>
+                            {gExam === opt && <Check size={14} color="#1E3A8A" />}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter 2: Subject Focus */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Subject Focus
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gSubject ? formatEnum(gSubject) : 'All Subjects'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'subject' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 250,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search subject..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {subjectsList
+                          .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => (
+                            <div
+                              key={opt}
+                              onClick={() => {
+                                const current = new URLSearchParams(searchParams);
+                                if (opt === 'All Subjects') {
+                                  current.delete('subject');
+                                  current.delete('topic');
+                                } else {
+                                  current.set('subject', opt);
+                                  current.delete('topic');
+                                }
+                                navigate(`/practice-exam?${current.toString()}`);
+                                setActiveDropdown(null);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: gSubject === opt ? 700 : 500,
+                                color: gSubject === opt ? '#1E3A8A' : '#334155',
+                                backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span>{opt}</span>
+                              {gSubject === opt && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter 3: Specific Topic */}
+                <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Specific Topic
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gTopic || 'All Topics'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'topic' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 270,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search topics..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 200,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {availableTopics
+                          .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => {
+                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => {
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Topics') current.delete('topic');
+                                  else current.set('topic', opt);
+                                  navigate(`/practice-exam?${current.toString()}`);
+                                  setActiveDropdown(null);
+                                }}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter 4: Difficulty */}
+                <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Difficulty
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'difficulty' ? null : 'difficulty');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'difficulty'
+                          ? '0 0 0 3px rgba(23, 32, 51, 0.12)'
+                          : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span>{gDifficulty ? gDifficulty : 'All Levels'}</span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'difficulty' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 170,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 8,
+                        zIndex: 100,
+                      }}
+                    >
+                      {['All Levels', 'EASY', 'MEDIUM', 'HARD'].map((opt) => {
+                        const isSelected =
+                          (opt === 'All Levels' && !gDifficulty) ||
+                          gDifficulty.toUpperCase() === opt;
+                        return (
+                          <div
+                            key={opt}
+                            onClick={() => {
+                              const current = new URLSearchParams(searchParams);
+                              if (opt === 'All Levels') current.delete('difficulty');
+                              else current.set('difficulty', opt);
+                              navigate(`/practice-exam?${current.toString()}`);
+                              setActiveDropdown(null);
+                            }}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? 700 : 500,
+                              color: isSelected ? '#1E3A8A' : '#334155',
+                              backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span>{opt}</span>
+                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            }
+          </div>
+        </div>
+      )}
+      {/* Mobile/Tablet Filter Top-Sheet (dropdown from top, replaces the inline filter bar) */}
+      {isTabletOrBelow && !isFocusMode && showMobileFilterPanel && (
+        <>
+          <div
+            onClick={() => setShowMobileFilterPanel(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              top: 60,
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
+              zIndex: 150,
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: 'fixed',
+              top: 60,
+              left: 0,
+              right: 0,
+              zIndex: 151,
+              backgroundColor: '#FFFFFF',
+              borderBottom: '1px solid #E2E8F0',
+              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
+              padding: '14px 16px 18px 16px',
+              maxHeight: 'calc(100vh - 60px)',
+              overflowY: 'auto',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SlidersHorizontal size={16} color="#1E3A8A" />
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: '#1E3A8A',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Filters
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterPanel(false)}
+                className="touch-target center-content"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  padding: 4,
+                }}
+                aria-label="Close filters"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Filter 1: Exam Target */}
               <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
                 <label
@@ -2060,10 +2559,9 @@ export function StudentPracticeExamPage() {
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Mobile/Tablet Recommended Questions Modal */}
@@ -2097,7 +2595,7 @@ export function StudentPracticeExamPage() {
                     textTransform: 'uppercase',
                   }}
                 >
-                  Cross Exam Questions ({displayRecs.length})
+                  Cross Exam Similar Questions ({displayRecs.length})
                 </span>
               </div>
               <button
@@ -2141,14 +2639,13 @@ export function StudentPracticeExamPage() {
           position: 'relative',
           backgroundColor: '#F8FAFC',
           gap: !isTabletOrBelow && !isFocusMode ? 20 : 0,
-          marginTop: isFocusMode ? 60 : 0,
+          marginTop: isFocusMode || isTabletOrBelow ? 60 : 0,
           paddingTop: 12,
           paddingBottom: 16,
           paddingRight: isTabletOrBelow ? 12 : 24,
           paddingLeft: isTabletOrBelow ? 12 : 24,
         }}
       >
-
         {/* Center Reading Canvas */}
         <ExamQuestionCard
           question={activeQuestion}

@@ -326,7 +326,7 @@ export function ExamQuestionCard({
     strong: ({ node, ...props }: any) => <strong style={{ fontWeight: 700 }} {...props} />,
   };
 
-  const { isMobile, isSmallScreen } = useBreakpoint();
+  const { isTabletOrBelow } = useBreakpoint();
 
   return (
     <main
@@ -341,8 +341,8 @@ export function ExamQuestionCard({
         alignItems: 'stretch',
         justifyContent: 'flex-start',
         fontFamily: "'Plus Jakarta Sans', sans-serif",
-        height: isMobile || isSmallScreen ? 'auto' : '100%',
-        maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
+        height: isTabletOrBelow ? 'auto' : '100%',
+        maxHeight: isTabletOrBelow ? 'none' : '100%',
         minHeight: 0,
       }}
     >
@@ -355,8 +355,8 @@ export function ExamQuestionCard({
           flexDirection: 'column',
           justifyContent: 'flex-start',
           gap: 12,
-          height: isMobile || isSmallScreen ? 'auto' : '100%',
-          maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
+          height: isTabletOrBelow ? 'auto' : '100%',
+          maxHeight: isTabletOrBelow ? 'none' : '100%',
           minHeight: 0,
           boxSizing: 'border-box',
         }}
@@ -395,10 +395,10 @@ export function ExamQuestionCard({
             justifyContent: 'flex-start',
             flex: 1,
             minHeight: 0,
-            maxHeight: isMobile || isSmallScreen ? 'none' : '100%',
+            maxHeight: isTabletOrBelow ? 'none' : '100%',
             boxSizing: 'border-box',
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            overflow: isMobile || isSmallScreen ? 'visible' : 'hidden',
+            overflow: isTabletOrBelow ? 'visible' : 'hidden',
           }}
         >
           {/* Question Metadata Header Bar with Comprehensive Tags */}
@@ -470,7 +470,7 @@ export function ExamQuestionCard({
                 </span>
 
                 {/* Time & Tier Badge */}
-                <span
+                {/* <span
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
@@ -487,7 +487,7 @@ export function ExamQuestionCard({
                 >
                   <Clock size={12} color="#64748B" />
                   {timeTierLabel}
-                </span>
+                </span> */}
 
                 {/* Marks Badge */}
                 <span
@@ -503,6 +503,78 @@ export function ExamQuestionCard({
                 >
                   +{marksVal} / -{negMarksVal}
                 </span>
+
+                {/* Exam & Year Tag */}
+                {examYearDisplay && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#1E3A8A',
+                      backgroundColor: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
+                      padding: '2px 8px',
+                      borderRadius: 2,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Award size={12} color="#0284C7" />
+                    {examYearDisplay}
+                  </span>
+                )}
+
+                {/* Subject Tag */}
+                {subjectLabel && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#4338CA',
+                      backgroundColor: '#EEF2FF',
+                      border: '1px solid #C7D2FE',
+                      padding: '2px 8px',
+                      borderRadius: 2,
+                    }}
+                  >
+                    {subjectLabel}
+                  </span>
+                )}
+
+                {/* Topic Tag */}
+                {topicLabel && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#334155',
+                      backgroundColor: '#F8FAFC',
+                      border: '1px solid #CBD5E1',
+                      padding: '2px 8px',
+                      borderRadius: 2,
+                    }}
+                  >
+                    {topicLabel}
+                  </span>
+                )}
+
+                {/* Subtopic Tag */}
+                {subtopicLabel && (
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 500,
+                      color: '#64748B',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px dashed #CBD5E1',
+                      padding: '2px 7px',
+                      borderRadius: 2,
+                    }}
+                  >
+                    ↳ {subtopicLabel}
+                  </span>
+                )}
               </div>
 
               {/* Right: Bookmark Button */}
@@ -537,85 +609,13 @@ export function ExamQuestionCard({
             </div>
 
             {/* Second Row: Exam Year, Subject, Topic, Subtopic Tags */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-              {/* Exam & Year Tag */}
-              {examYearDisplay && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#1E3A8A',
-                    backgroundColor: '#F0F9FF',
-                    border: '1px solid #BAE6FD',
-                    padding: '2px 8px',
-                    borderRadius: 2,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <Award size={12} color="#0284C7" />
-                  {examYearDisplay}
-                </span>
-              )}
-
-              {/* Subject Tag */}
-              {subjectLabel && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: '#4338CA',
-                    backgroundColor: '#EEF2FF',
-                    border: '1px solid #C7D2FE',
-                    padding: '2px 8px',
-                    borderRadius: 2,
-                  }}
-                >
-                  {subjectLabel}
-                </span>
-              )}
-
-              {/* Topic Tag */}
-              {topicLabel && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: '#334155',
-                    backgroundColor: '#F8FAFC',
-                    border: '1px solid #CBD5E1',
-                    padding: '2px 8px',
-                    borderRadius: 2,
-                  }}
-                >
-                  {topicLabel}
-                </span>
-              )}
-
-              {/* Subtopic Tag */}
-              {subtopicLabel && (
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 500,
-                    color: '#64748B',
-                    backgroundColor: '#FFFFFF',
-                    border: '1px dashed #CBD5E1',
-                    padding: '2px 7px',
-                    borderRadius: 2,
-                  }}
-                >
-                  ↳ {subtopicLabel}
-                </span>
-              )}
-            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}></div>
           </div>
 
           {/* Internally Scrollable Question Content Body (Desktop Only) */}
           <div
             style={{
-              overflowY: isMobile || isSmallScreen ? 'visible' : 'auto',
+              overflowY: isTabletOrBelow ? 'visible' : 'auto',
               flex: 1,
               paddingRight: 6,
               display: 'flex',
