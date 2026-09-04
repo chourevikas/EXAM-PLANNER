@@ -1258,57 +1258,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 4, height: 20, backgroundColor: '#E31B23', borderRadius: 0 }} />
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
-                Upload Examination Document
+                Upload Question Paper PDF
               </h2>
-            </div>
-
-            {/* Selector: Question Paper vs Answer Key */}
-            <div
-              style={{
-                display: 'inline-flex',
-                gap: 4,
-                background: '#F1F5F9',
-                padding: 4,
-                borderRadius: 0,
-                border: '1px solid #E2E8F0',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setUploadMode('QUESTION_PAPER')}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  borderRadius: 0,
-                  border: 'none',
-                  backgroundColor: uploadMode === 'QUESTION_PAPER' ? '#FFFFFF' : 'transparent',
-                  color: uploadMode === 'QUESTION_PAPER' ? '#172033' : '#64748B',
-                  boxShadow: uploadMode === 'QUESTION_PAPER' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease-out',
-                }}
-              >
-                Question Paper (PDF/JSON)
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadMode('ANSWER_KEY')}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  borderRadius: 0,
-                  border: 'none',
-                  backgroundColor: uploadMode === 'ANSWER_KEY' ? '#FFFFFF' : 'transparent',
-                  color: uploadMode === 'ANSWER_KEY' ? '#172033' : '#64748B',
-                  boxShadow: uploadMode === 'ANSWER_KEY' ? '0 1px 3px rgba(15, 23, 42, 0.08)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease-out',
-                }}
-              >
-                Official Answer Key (PDF/JSON)
-              </button>
             </div>
           </div>
 
@@ -1467,10 +1418,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 <Cloud size={26} />
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#172033' }}>
-                {selectedFile ? selectedFile.name : 'Click to upload or drag & drop examination document'}
+                {selectedFile ? selectedFile.name : 'Click to upload or drag & drop Question Paper PDF'}
               </div>
               <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
-                Supports standard PDF question papers, answer keys, and S3 JSON packages (Max 50MB)
+                Supports standard PDF question papers (Max 50MB)
               </div>
             </div>
 

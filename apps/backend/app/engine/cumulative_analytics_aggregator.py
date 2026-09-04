@@ -960,9 +960,13 @@ class CumulativeAnalyticsAggregator:
         markdown_audit = format_report_to_markdown(full_aggregate_report)
         full_aggregate_report["markdown_audit"] = markdown_audit
 
-        # 7. Update UserSkillProfile Cache in DB
-        if not profile:
-            profile = UserSkillProfile(
+        # 7. Update UserSkillProfile Cache in DB via atomic upsert
+        from app.db.upsert import get_upsert_insert
+        upsert_insert = get_upsert_insert(session)
+        now_dt = datetime.now(timezone.utc)
+        upsert_stmt = (
+            upsert_insert(UserSkillProfile)
+            .values(
                 user_id=user.id,
                 cumulative_irt_theta=w_irt,
                 cumulative_gti=w_gti,
@@ -973,20 +977,25 @@ class CumulativeAnalyticsAggregator:
                 total_questions_answered=total_questions_attempted_sum,
                 aggregate_report_json=full_aggregate_report,
                 aggregate_markdown_audit=markdown_audit,
+                updated_at=now_dt,
             )
-            session.add(profile)
-        else:
-            profile.cumulative_irt_theta = w_irt
-            profile.cumulative_gti = w_gti
-            profile.cumulative_oeei = w_oeei
-            profile.cumulative_icrs = w_icrs
-            profile.cumulative_satoi = w_satoi
-            profile.total_tests_given = n_att
-            profile.total_questions_answered = total_questions_attempted_sum
-            profile.aggregate_report_json = full_aggregate_report
-            profile.aggregate_markdown_audit = markdown_audit
-            session.add(profile)
-
+            .on_conflict_do_update(
+                index_elements=["user_id"],
+                set_={
+                    "cumulative_irt_theta": w_irt,
+                    "cumulative_gti": w_gti,
+                    "cumulative_oeei": w_oeei,
+                    "cumulative_icrs": w_icrs,
+                    "cumulative_satoi": w_satoi,
+                    "total_tests_given": n_att,
+                    "total_questions_answered": total_questions_attempted_sum,
+                    "aggregate_report_json": full_aggregate_report,
+                    "aggregate_markdown_audit": markdown_audit,
+                    "updated_at": now_dt,
+                },
+            )
+        )
+        await session.exec(upsert_stmt)
         await session.commit()
         from app.cache import invalidate_user_cache
         await invalidate_user_cache(str(user.id))

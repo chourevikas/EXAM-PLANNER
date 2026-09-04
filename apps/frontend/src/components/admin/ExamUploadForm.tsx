@@ -100,26 +100,24 @@ export function ExamUploadForm() {
             </select>
           </div>
 
-          {/* Paper Type Select (only for Question Paper mode) */}
-          {uploadMode === 'QUESTION_PAPER' && (
-            <div className="form-group">
-              <label htmlFor="paper_type" className="form-label">
-                Paper Type
-              </label>
-              <select
-                id="paper_type"
-                value={paperType}
-                onChange={(e) => setPaperType(e.target.value)}
-                className="form-select"
-              >
-                {PAPER_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Paper Type Select */}
+          <div className="form-group">
+            <label htmlFor="paper_type" className="form-label">
+              Paper Type
+            </label>
+            <select
+              id="paper_type"
+              value={paperType}
+              onChange={(e) => setPaperType(e.target.value)}
+              className="form-select"
+            >
+              {PAPER_TYPE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Drag and Drop Zone */}
@@ -139,7 +137,7 @@ export function ExamUploadForm() {
           />
 
           <div style={{ fontSize: 36, marginBottom: 12 }}>
-            {selectedFile ? (uploadMode === 'ANSWER_KEY' ? '🔑' : '📄') : '☁️'}
+            {selectedFile ? '📄' : '☁️'}
           </div>
 
           {selectedFile ? (
@@ -154,7 +152,7 @@ export function ExamUploadForm() {
           ) : (
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>
-                Click to upload {uploadMode === 'ANSWER_KEY' ? 'Answer Key' : 'Question Paper'} PDF file
+                Click to upload Question Paper PDF file
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 Only PDF format supported (max size 25MB)
@@ -189,10 +187,8 @@ export function ExamUploadForm() {
           {isUploading ? (
             <>
               <span style={{ display: 'inline-block', animation: 'spin-slow 2s linear infinite' }}>⏳</span>
-              Uploading {uploadMode === 'ANSWER_KEY' ? 'Answer Key' : 'Question Paper'} PDF...
+              Uploading Question Paper PDF...
             </>
-          ) : uploadMode === 'ANSWER_KEY' ? (
-            `Upload Answer Key (Target Set: ${setCode})`
           ) : (
             `Upload Question Paper (${setCode})`
           )}

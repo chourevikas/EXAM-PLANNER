@@ -887,93 +887,123 @@ async def _run_pipeline_core(session: AsyncSession, attempt_id: int) -> None:
                 m_obj.updated_at = row["updated_at"]
                 session.add(m_obj)
 
-    # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention
-    now_t = datetime.now(timezone.utc)
-    all_resp_q_ids = [r.question_id for r in responses_db if r.question_id]
-    
-    # Bulk load memory records
-    existing_mem_res = await session.exec(
-        select(UserMemoryState).where(
-            UserMemoryState.user_id == user.id,
-            col(UserMemoryState.question_id).in_(all_resp_q_ids),
-        )
-    )
-    existing_mem_map = {m.question_id: m for m in existing_mem_res.all()}
+    # 7b. Bulk Update FSRS UserMemoryState & UserConceptRetention via atomic upserts
+    try:
+        from app.db.upsert import get_upsert_insert
+        upsert_insert = get_upsert_insert(session)
+        now_t = datetime.now(timezone.utc)
+        all_resp_q_ids = [r.question_id for r in responses_db if r.question_id]
 
-    existing_ret_res = await session.exec(
-        select(UserConceptRetention).where(UserConceptRetention.user_id == user.id)
-    )
-    existing_ret_map = {r.subtopic_id: r for r in existing_ret_res.all() if r.subtopic_id}
-
-    for resp in responses_db:
-        q_subtopic_id = None
-        if resp.question_id in q_map:
-            q_subtopic_id = q_map[resp.question_id].subtopic_id
-
-        is_corr = bool(resp.is_correct)
-        mem_obj = existing_mem_map.get(resp.question_id)
-
-        if not mem_obj:
-            diff = 5.0 if not is_corr else 3.5
-            stab = 1.0 if not is_corr else 3.0
-            ret = 0.4 if not is_corr else 1.0
-            mem_obj = UserMemoryState(
-                user_id=user.id,
-                question_id=resp.question_id,
-                subtopic_id=q_subtopic_id,
-                fsrs_difficulty=diff,
-                fsrs_stability=stab,
-                retrievability=ret,
-                last_reviewed_at=now_t,
-                next_scheduled_review=now_t + timedelta(days=max(1, int(stab))),
+        # Bulk load memory records
+        existing_mem_res = await session.exec(
+            select(UserMemoryState).where(
+                UserMemoryState.user_id == user.id,
+                col(UserMemoryState.question_id).in_(all_resp_q_ids),
             )
-            session.add(mem_obj)
-            existing_mem_map[resp.question_id] = mem_obj
-        else:
-            if is_corr:
-                mem_obj.fsrs_stability = round(mem_obj.fsrs_stability * 1.5, 2)
-                mem_obj.fsrs_difficulty = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
-                mem_obj.retrievability = 1.0
-            else:
-                mem_obj.fsrs_stability = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
-                mem_obj.fsrs_difficulty = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
-                mem_obj.retrievability = 0.4
-            mem_obj.last_reviewed_at = now_t
-            mem_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
-            session.add(mem_obj)
+        )
+        existing_mem_map = {m.question_id: m for m in existing_mem_res.all()}
 
-        if q_subtopic_id:
-            ret_obj = existing_ret_map.get(q_subtopic_id)
-            if not ret_obj:
-                ret_obj = UserConceptRetention(
+        existing_ret_res = await session.exec(
+            select(UserConceptRetention).where(UserConceptRetention.user_id == user.id)
+        )
+        existing_ret_map = {r.subtopic_id: r for r in existing_ret_res.all() if r.subtopic_id}
+
+        for resp in responses_db:
+            if not resp.question_id:
+                continue
+            q_subtopic_id = None
+            if resp.question_id in q_map:
+                q_subtopic_id = q_map[resp.question_id].subtopic_id
+
+            is_corr = bool(resp.is_correct)
+            mem_obj = existing_mem_map.get(resp.question_id)
+
+            if not mem_obj:
+                diff = 5.0 if not is_corr else 3.5
+                stab = 1.0 if not is_corr else 3.0
+                ret = 0.4 if not is_corr else 1.0
+            else:
+                if is_corr:
+                    stab = round(mem_obj.fsrs_stability * 1.5, 2)
+                    diff = max(1.0, round(mem_obj.fsrs_difficulty - 0.2, 2))
+                    ret = 1.0
+                else:
+                    stab = max(0.5, round(mem_obj.fsrs_stability * 0.6, 2))
+                    diff = min(10.0, round(mem_obj.fsrs_difficulty + 0.5, 2))
+                    ret = 0.4
+
+            next_review_dt = now_t + timedelta(days=max(1, int(stab)))
+            mem_upsert = (
+                upsert_insert(UserMemoryState)
+                .values(
                     user_id=user.id,
+                    question_id=resp.question_id,
                     subtopic_id=q_subtopic_id,
-                    fsrs_difficulty=mem_obj.fsrs_difficulty,
-                    fsrs_stability=mem_obj.fsrs_stability,
-                    fsrs_retrievability=mem_obj.retrievability,
-                    total_reviews=1,
-                    lapses=0 if is_corr else 1,
+                    fsrs_difficulty=diff,
+                    fsrs_stability=stab,
+                    retrievability=ret,
                     last_reviewed_at=now_t,
-                    next_scheduled_review=now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability))),
+                    next_scheduled_review=next_review_dt,
                 )
-                session.add(ret_obj)
-                existing_ret_map[q_subtopic_id] = ret_obj
-            else:
-                ret_obj.total_reviews += 1
-                if not is_corr:
-                    ret_obj.lapses += 1
-                ret_obj.fsrs_difficulty = mem_obj.fsrs_difficulty
-                ret_obj.fsrs_stability = mem_obj.fsrs_stability
-                ret_obj.fsrs_retrievability = mem_obj.retrievability
-                ret_obj.last_reviewed_at = now_t
-                ret_obj.next_scheduled_review = now_t + timedelta(days=max(1, int(mem_obj.fsrs_stability)))
-                session.add(ret_obj)
+                .on_conflict_do_update(
+                    index_elements=["user_id", "question_id"],
+                    set_={
+                        "subtopic_id": q_subtopic_id,
+                        "fsrs_difficulty": diff,
+                        "fsrs_stability": stab,
+                        "retrievability": ret,
+                        "last_reviewed_at": now_t,
+                        "next_scheduled_review": next_review_dt,
+                    },
+                )
+            )
+            await session.exec(mem_upsert)
 
-    # 7c. Award Gamification Badges & XP
+            if q_subtopic_id:
+                ret_obj = existing_ret_map.get(q_subtopic_id)
+                if not ret_obj:
+                    tot_reviews = 1
+                    lapses_count = 0 if is_corr else 1
+                else:
+                    tot_reviews = ret_obj.total_reviews + 1
+                    lapses_count = ret_obj.lapses + (0 if is_corr else 1)
+
+                ret_upsert = (
+                    upsert_insert(UserConceptRetention)
+                    .values(
+                        user_id=user.id,
+                        subtopic_id=q_subtopic_id,
+                        fsrs_difficulty=diff,
+                        fsrs_stability=stab,
+                        fsrs_retrievability=ret,
+                        total_reviews=tot_reviews,
+                        lapses=lapses_count,
+                        last_reviewed_at=now_t,
+                        next_scheduled_review=next_review_dt,
+                    )
+                    .on_conflict_do_update(
+                        index_elements=["user_id", "subtopic_id"],
+                        set_={
+                            "fsrs_difficulty": diff,
+                            "fsrs_stability": stab,
+                            "fsrs_retrievability": ret,
+                            "total_reviews": tot_reviews,
+                            "lapses": lapses_count,
+                            "last_reviewed_at": now_t,
+                            "next_scheduled_review": next_review_dt,
+                        },
+                    )
+                )
+                await session.exec(ret_upsert)
+    except Exception as mem_err:
+        logger.warning(f"Error updating UserMemoryState / UserConceptRetention: {mem_err}")
+
+    # 7c. Award Gamification Badges & XP (isolated so gamification never aborts submission pipeline)
     try:
         from app.services.gamification_service import GamificationService
-        g_service = GamificationService(session)
-        await g_service.check_and_update_daily_goal(user.id)
+        async with session.begin_nested():
+            g_service = GamificationService(session)
+            await g_service.check_and_update_daily_goal(user.id)
     except Exception as badge_err:
         logger.warning(f"Gamification processing warning: {badge_err}")
 

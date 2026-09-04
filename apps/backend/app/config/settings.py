@@ -5,7 +5,9 @@ from pydantic import Field, model_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.config.secret_loaders import get_secret_loader
 from app.config.secret_loaders.env_loader import find_env_files
+from dotenv import load_dotenv
 
+load_dotenv()
 from app.config.logger import setup_logger
 
 logger = setup_logger("SettingsFactory")

@@ -155,7 +155,9 @@ class UserRepository:
         res = await self.session.exec(stmt)
         return list(res.all())
 
-    async def update_user_role(self, user_id: int | str, new_role: UserRole) -> Optional[User]:
+    async def update_user_role(
+        self, user_id: int | str, new_role: UserRole
+    ) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
             return None
@@ -184,7 +186,9 @@ class UserRepository:
         if not user:
             return None
         if user.cooling_period_expired:
-            raise ValueError("Cooling period (7 days) has expired for this suspended account. It can no longer be reactivated.")
+            raise ValueError(
+                "Cooling period (7 days) has expired for this suspended account. It can no longer be reactivated."
+            )
         user.status = UserStatus.ACTIVE
         user.suspended_at = None
         user.updated_at = datetime.now(timezone.utc)
@@ -295,7 +299,7 @@ class UserRepository:
 
         settings = get_settings()
         parsed_url = urlparse(settings.DATABASE_URL)
-        db_name = parsed_url.path.lstrip("/") or "testdb"
+        db_name = parsed_url.path.lstrip("/")
         db_host = parsed_url.hostname or "AWS RDS Sydney"
 
         return {
@@ -310,6 +314,7 @@ class UserRepository:
 
     async def update_last_login(self, user_id: int | str) -> None:
         from sqlalchemy import update as sa_update
+
         uid = int(user_id)
         await self.session.exec(
             sa_update(User)
@@ -327,9 +332,10 @@ class UserRepository:
         ip_address: Optional[str] = None,
     ) -> None:
         from sqlalchemy import update as sa_update
+
         uid = int(user_id)
         now = datetime.now(timezone.utc)
-        
+
         # Fire both UPDATEs without intermediate commits
         await self.session.exec(
             sa_update(RefreshToken)
@@ -338,11 +344,9 @@ class UserRepository:
             .values(revoked_at=now)
         )
         await self.session.exec(
-            sa_update(User)
-            .where(User.id == uid)
-            .values(last_login=now)
+            sa_update(User).where(User.id == uid).values(last_login=now)
         )
-        
+
         # Insert new token
         token_record = RefreshToken(
             user_id=uid,
@@ -376,6 +380,7 @@ class UserRepository:
         Keeps the refresh_tokens table from growing unboundedly and avoids
         slow queries caused by thousands of stale rows per user."""
         from sqlalchemy import update as sa_update
+
         uid = int(user_id)
         await self.session.exec(
             sa_update(RefreshToken)
@@ -387,6 +392,7 @@ class UserRepository:
 
     async def revoke_user_refresh_tokens(self, user_id: int | str) -> None:
         from sqlalchemy import update as sa_update
+
         uid = int(user_id)
         await self.session.exec(
             sa_update(RefreshToken)

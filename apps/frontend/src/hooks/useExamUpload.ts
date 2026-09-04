@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { StatusMessage } from '../types/exam';
-import { uploadExamPaper, uploadAnswerKey } from '../services/examService';
+import { uploadExamPaper } from '../services/examService';
 
 export interface ConflictModalState {
   isOpen: boolean;
@@ -11,7 +11,7 @@ export interface ConflictModalState {
 }
 
 export function useExamUpload() {
-  const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER' | 'ANSWER_KEY'>('QUESTION_PAPER');
+  const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER'>('QUESTION_PAPER');
   const [examName, setExamName] = useState('upsc');
   const [year, setYear] = useState('2024');
   const [setCode, setSetCode] = useState('SET_A');
@@ -71,32 +71,18 @@ export function useExamUpload() {
     setStatusMessage(null);
 
     try {
-      if (uploadMode === 'ANSWER_KEY') {
-        const result = await uploadAnswerKey({
-          examName,
-          year,
-          set_code: setCode,
-          file: selectedFile,
-          conflict_resolution: conflictResolution,
-        });
-        setStatusMessage({
-          text: `Answer key uploaded successfully for ${result.canonical_exam_code || examName} (Set: ${result.target_set_code || setCode}). Automatic question mapping has started.`,
-          isError: false,
-        });
-      } else {
-        const result = await uploadExamPaper({
-          examName,
-          year,
-          paperType,
-          set_code: setCode,
-          file: selectedFile,
-          conflict_resolution: conflictResolution,
-        });
-        setStatusMessage({
-          text: `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
-          isError: false,
-        });
-      }
+      await uploadExamPaper({
+        examName,
+        year,
+        paperType,
+        set_code: setCode,
+        file: selectedFile,
+        conflict_resolution: conflictResolution,
+      });
+      setStatusMessage({
+        text: `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
+        isError: false,
+      });
       setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
