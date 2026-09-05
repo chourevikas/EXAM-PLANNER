@@ -45,6 +45,8 @@ async def upload_exam_pdf(
     exam_name: Optional[str] = Form(default=None, description="Exam name e.g. 'UPSC'"),
     stage: Optional[str] = Form(default=None, description="Stage e.g. 'PRELIMS'"),
     subject_code: Optional[str] = Form(default=None, description="Subject e.g. 'GS1'"),
+    exam_type: Optional[str] = Form(default=None, description="Exam type code e.g. 'upse', 'mpse'"),
+    exam_type_id: Optional[int] = Form(default=None, description="Exam type ID foreign key"),
     run_mode: Optional[str] = Form(default="auto", description="'celery', 'background', or 'auto'"),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -60,6 +62,8 @@ async def upload_exam_pdf(
         exam_name=exam_name,
         stage=stage,
         subject_code=subject_code,
+        exam_type=exam_type,
+        exam_type_id=exam_type_id,
         run_mode=run_mode,
         background_tasks=background_tasks,
     )

@@ -9,6 +9,8 @@ export interface UploadExamPayload {
   year: string;
   paperType: string;
   file: File;
+  exam_type?: string;
+  exam_type_id?: number;
   conflict_resolution?: string;
 }
 

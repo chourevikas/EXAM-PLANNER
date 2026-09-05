@@ -6,6 +6,7 @@ export function ExamUploadForm() {
   const {
     uploadMode,
     setUploadMode,
+    availableExamTypes,
     examName,
     setExamName,
     year,
@@ -42,7 +43,7 @@ export function ExamUploadForm() {
           {/* Exam Name Select */}
           <div className="form-group">
             <label htmlFor="exam_name" className="form-label">
-              Exam Name
+              Target Exam Type
             </label>
             <select
               id="exam_name"
@@ -51,11 +52,19 @@ export function ExamUploadForm() {
               className="form-select"
               required
             >
-              {EXAM_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+              {availableExamTypes && availableExamTypes.length > 0 ? (
+                availableExamTypes.map((opt) => (
+                  <option key={opt.id} value={opt.type}>
+                    {opt.name} ({opt.type.toUpperCase()})
+                  </option>
+                ))
+              ) : (
+                EXAM_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

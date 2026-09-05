@@ -32,6 +32,8 @@ class ExamService:
         exam_name: Optional[str] = None,
         stage: Optional[str] = None,
         subject_code: Optional[str] = None,
+        exam_type: Optional[str] = None,
+        exam_type_id: Optional[int] = None,
         run_mode: Optional[str] = "auto",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
@@ -51,6 +53,24 @@ class ExamService:
         canonical_code = parsed_tokens["canonical_code"]
         clean_set = parsed_tokens["set_code"]
         exam_name_title = f"{parsed_tokens['exam_name']} ({parsed_tokens['year']}) - Set {parsed_tokens['raw_set_token']}"
+
+        # Resolve ExamType as single source of truth for exam configuration
+        from app.repositories.exam_type_repository import ExamTypeRepository
+        et_repo = ExamTypeRepository(self.session)
+        resolved_et = None
+        if exam_type_id:
+            resolved_et = await et_repo.get_by_id(exam_type_id)
+        if not resolved_et and exam_type:
+            resolved_et = await et_repo.get_by_type(exam_type)
+        if not resolved_et and exam_name:
+            resolved_et = await et_repo.get_by_type(exam_name)
+        if not resolved_et:
+            resolved_et = await et_repo.get_by_type("upse")
+
+        et_id = resolved_et.id if resolved_et else None
+        tot_q = resolved_et.number_of_questions if resolved_et else 100
+        dur_mins = resolved_et.total_duration if resolved_et else 120
+        tot_marks = resolved_et.total_marks if resolved_et else 200.0
 
         # 2. Check if exam with canonical code already exists
         exam = await self.repo.get_by_code(canonical_code)
@@ -78,10 +98,19 @@ class ExamService:
                 paper_set_code=clean_set,
                 pdf_path=persistent_path,
                 canonical_question_id_prefix=canonical_code,
+                exam_type_id=et_id,
+                total_questions=tot_q,
+                total_duration_minutes=dur_mins,
+                total_marks=tot_marks,
             )
         else:
             exam.paper_set_code = clean_set
             exam.pdf_path = persistent_path
+            if et_id and not exam.exam_type_id:
+                exam.exam_type_id = et_id
+                exam.total_questions = exam.total_questions or tot_q
+                exam.total_duration_minutes = exam.total_duration_minutes or dur_mins
+                exam.total_marks = exam.total_marks or tot_marks
 
         exam = await self.repo.save(exam)
 

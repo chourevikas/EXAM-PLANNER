@@ -16,7 +16,8 @@ import {
   CreditCard,
   BarChart2,
   BookOpen,
-  X
+  X,
+  Sliders,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { UserAvatar } from '../common/UserAvatar';
@@ -117,6 +118,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
 
   const quickSearchOptions = [
     { label: 'Upload Question Paper', id: 'upload', icon: Upload },
+    { label: 'Exam Types Blueprint', id: 'exam-types', icon: Sliders },
     { label: 'Question Bank Manager', id: 'questions', icon: BookOpen },
     { label: 'AI Processing Queue', id: 'ai-queue', icon: Cpu },
     { label: 'Question Review', id: 'review', icon: ClipboardCheck },

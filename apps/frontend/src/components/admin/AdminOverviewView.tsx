@@ -258,34 +258,40 @@ function TableRowItem({
 
       {/* ACTION */}
       <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'middle' }}>
-        <button
-          onClick={() =>
-            onNavigate('review', {
-              id: paper.id,
-              name: primaryTitle,
-              code: primaryTitle,
-              source_year: 2023,
-              stage: 'prelims',
-              status: paper.status || 'COMPLETED',
-              total_questions: paper.questions,
-              extracted_questions_count: paper.questions,
-            })
-          }
-          style={{
-            padding: '5px 14px',
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: hovered ? '#E31B23' : '#172033',
-            background: '#FFFFFF',
-            border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
-            borderRadius: 0,
-            cursor: 'pointer',
-            boxShadow: hovered ? '0 1px 2px rgba(227, 27, 35, 0.1)' : 'none',
-            transition: 'all 150ms ease-out',
-          }}
-        >
-          Review
-        </button>
+        {(paper.status || '').toUpperCase() === 'COMPLETED' || (paper.status || '').toUpperCase() === 'PUBLISHED' ? (
+          <button
+            onClick={() =>
+              onNavigate('review', {
+                id: paper.id,
+                name: primaryTitle,
+                code: primaryTitle,
+                source_year: 2023,
+                stage: 'prelims',
+                status: paper.status || 'COMPLETED',
+                total_questions: paper.questions,
+                extracted_questions_count: paper.questions,
+              })
+            }
+            style={{
+              padding: '5px 14px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: hovered ? '#E31B23' : '#172033',
+              background: '#FFFFFF',
+              border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
+              borderRadius: 0,
+              cursor: 'pointer',
+              boxShadow: hovered ? '0 1px 2px rgba(227, 27, 35, 0.1)' : 'none',
+              transition: 'all 150ms ease-out',
+            }}
+          >
+            Review
+          </button>
+        ) : (
+          <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500, padding: '4px 8px', background: '#F1F5F9', border: '1px solid #E2E8F0' }}>
+            In Pipeline
+          </span>
+        )}
       </td>
     </tr>
   );

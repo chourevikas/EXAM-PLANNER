@@ -150,7 +150,7 @@ function FiveStagePipelinePreview() {
     { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
     { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: FileText, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
     { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#F2B623', bg: '#FEF3C7', border: '#FDE68A' },
-    { num: '05', title: 'Publish', desc: 'Live S3 catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
+    { num: '05', title: 'Publish', desc: 'Live catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
   ];
 
   return (
@@ -278,8 +278,15 @@ function TableRowItem({
   const s2Missing = exam.stage2_status === 'MISSING_INPUT' || (!exam.has_answer_key && keyCount === 0 && !exam.paper_set_code);
 
   // Stage 3 status
-  const s3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
-  const s3InProgress = exam.stage3_status === 'IN_PROGRESS';
+  const stage3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
+  const stage3InProgress = exam.stage3_status === 'IN_PROGRESS';
+
+  const isPipelineComplete =
+    (s1Completed && s2Completed && stage3Completed) ||
+    exam.overall_status === 'READY_FOR_REVIEW' ||
+    exam.overall_status === 'PUBLISHED' ||
+    (exam.status || '').toUpperCase() === 'COMPLETED' ||
+    (exam.status || '').toUpperCase() === 'PUBLISHED';
 
   return (
     <tr
@@ -456,16 +463,16 @@ function TableRowItem({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 5,
-              backgroundColor: s3Completed ? '#DCFCE7' : s3InProgress ? '#FEF3C7' : '#F1F5F9',
-              color: s3Completed ? '#15803D' : s3InProgress ? '#B45309' : '#64748B',
-              border: `1px solid ${s3Completed ? '#86EFAC' : s3InProgress ? '#FDE68A' : '#CBD5E1'}`,
+              backgroundColor: stage3Completed ? '#DCFCE7' : stage3InProgress ? '#FEF3C7' : '#F1F5F9',
+              color: stage3Completed ? '#15803D' : stage3InProgress ? '#B45309' : '#64748B',
+              border: `1px solid ${stage3Completed ? '#86EFAC' : stage3InProgress ? '#FDE68A' : '#CBD5E1'}`,
               opacity: hoveredStageIndex !== null && hoveredStageIndex !== 3 ? 0.45 : 1,
               transform: hoveredStageIndex === 3 ? 'scale(1.05)' : 'scale(1)',
               transition: 'all 150ms ease-out',
               position: 'relative',
             }}
           >
-            {s3Completed ? <CheckCircle2 size={12} /> : s3InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+            {stage3Completed ? <CheckCircle2 size={12} /> : stage3InProgress ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
             <span>03 Explanations ({expCount}/{targetQ})</span>
 
             {/* Stage Hover Tooltip Popover */}
@@ -489,7 +496,7 @@ function TableRowItem({
               >
                 <div><strong>Stage 3: Explanations Generator</strong></div>
                 <div>Generated: {expCount}/{targetQ} Detailed Solutions</div>
-                <div>State: {s3Completed ? 'COMPLETED' : s3InProgress ? 'GENERATING' : 'QUEUED'}</div>
+                <div>State: {stage3Completed ? 'COMPLETED' : stage3InProgress ? 'GENERATING' : 'QUEUED'}</div>
               </div>
             )}
           </div>
@@ -522,33 +529,54 @@ function TableRowItem({
             Details
           </button>
 
-          <button
-            onClick={() => {
-              if (onNavigate) {
-                onNavigate('review', exam);
-              } else {
-                onSelect(exam);
-              }
-            }}
-            style={{
-              padding: '5px 13px',
-              fontSize: 12.5,
-              fontWeight: 600,
-              color: '#FFFFFF',
-              background: '#E31B23',
-              border: 'none',
-              borderRadius: 0,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              boxShadow: '0 1px 2px rgba(227, 27, 35, 0.2)',
-              transition: 'all 150ms ease-out',
-            }}
-          >
-            <Check size={13} />
-            Review Exam
-          </button>
+          {isPipelineComplete ? (
+            <button
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate('review', exam);
+                } else {
+                  onSelect(exam);
+                }
+              }}
+              style={{
+                padding: '5px 13px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: '#FFFFFF',
+                background: '#E31B23',
+                border: 'none',
+                borderRadius: 0,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 1px 2px rgba(227, 27, 35, 0.2)',
+                transition: 'all 150ms ease-out',
+              }}
+            >
+              <Check size={13} />
+              Review Exam
+            </button>
+          ) : (
+            <span
+              style={{
+                padding: '5px 10px',
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: '#64748B',
+                background: '#F1F5F9',
+                borderRadius: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                border: '1px solid #E2E8F0',
+              }}
+              title="Review will be available once all pipeline stages complete"
+            >
+              <Loader2 size={11} className="animate-spin" />
+              Pipeline Running
+            </span>
+          )}
         </div>
       </td>
     </tr>
@@ -562,6 +590,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const {
     uploadMode,
     setUploadMode,
+    availableExamTypes,
     examName,
     setExamName,
     year,
@@ -787,7 +816,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           }}
         >
           <Database size={12} />
-          S3 Live & Ready
+          Live & Ready
         </span>
       );
     }
@@ -1079,7 +1108,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         <MetricCard
           title="Published"
           value={publishedCount}
-          supportingText="S3 JSON live & active"
+          supportingText="Catalog live & active"
           icon={<CheckCircle2 size={17} color="#E31B23" />}
         />
       </div>
@@ -1291,11 +1320,19 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     color: '#172033',
                   }}
                 >
-                  {EXAM_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
+                  {availableExamTypes && availableExamTypes.length > 0 ? (
+                    availableExamTypes.map((opt) => (
+                      <option key={opt.id} value={opt.type}>
+                        {opt.name} ({opt.type.toUpperCase()})
+                      </option>
+                    ))
+                  ) : (
+                    EXAM_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -1696,7 +1733,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Overall Status */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Overall Pipeline & S3 Status</span>
+                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Overall Pipeline & Publication Status</span>
                 <div>{renderOverallStatusBadge(selectedExam)}</div>
               </div>
 
@@ -1791,10 +1828,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
               <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
-              {/* S3 Artifacts */}
+              {/* Artifact Paths */}
               <div>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  S3 ARTIFACT PATHS & DEPLOYMENT
+                  ARTIFACT PATHS & DEPLOYMENT
                 </div>
                 <div style={{ background: '#FAFAFA', padding: 12, borderRadius: 0, border: '1px solid #E2E8F0', fontFamily: 'monospace', fontSize: 11.5, color: '#334155', wordBreak: 'break-all' }}>
                   <div>Questions JSON: {selectedExam.questions_json_path || 'artifacts/' + selectedExam.code + '/json/questions.json'}</div>
@@ -1822,33 +1859,63 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 Close
               </button>
 
-              <button
-                onClick={() => {
-                  setIsDrawerOpen(false);
-                  if (onNavigate) {
-                    onNavigate('review', selectedExam);
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  padding: '9px 16px',
-                  borderRadius: 0,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  backgroundColor: '#E31B23',
-                  border: 'none',
-                  color: '#FFFFFF',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  boxShadow: '0 2px 6px rgba(227, 27, 35, 0.25)',
-                }}
-              >
-                <Check size={14} />
-                Open Question Review
-              </button>
+              {(() => {
+                const isSelectedComplete =
+                  (selectedExam.stage1_status === 'COMPLETED' && selectedExam.stage2_status === 'COMPLETED' && selectedExam.stage3_status === 'COMPLETED') ||
+                  selectedExam.overall_status === 'READY_FOR_REVIEW' ||
+                  selectedExam.overall_status === 'PUBLISHED' ||
+                  (selectedExam.status || '').toUpperCase() === 'COMPLETED' ||
+                  (selectedExam.status || '').toUpperCase() === 'PUBLISHED';
+                return isSelectedComplete ? (
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      if (onNavigate) {
+                        onNavigate('review', selectedExam);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '9px 16px',
+                      borderRadius: 0,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      backgroundColor: '#E31B23',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 6px rgba(227, 27, 35, 0.25)',
+                    }}
+                  >
+                    <Check size={14} />
+                    Open Question Review
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: '9px 16px',
+                      borderRadius: 0,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      backgroundColor: '#F1F5F9',
+                      border: '1px solid #E2E8F0',
+                      color: '#64748B',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Loader2 size={13} className="animate-spin" />
+                    Review Available After Pipeline Completion
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </>

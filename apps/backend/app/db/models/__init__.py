@@ -24,6 +24,7 @@ from app.db.models.user import (
     RefreshToken,
     QuestionBookmark,
 )
+from app.db.models.exam_type import ExamType
 from app.db.models.hierarchy import Exam, SyllabusVersion, Subject, Topic, Subtopic
 from app.db.models.passage import Passage, PassageTranslation
 from app.db.models.question import (
@@ -161,5 +162,5 @@ from app.db.models.current_affairs import CurrentAffair
 from app.db.models.teacher import RedemptionRequest
 from app.db.models.enums import RedemptionStatus
 
-__all__.extend(["Testimonial", "TestimonialStatus", "CurrentAffair", "RedemptionRequest", "RedemptionStatus"])
+__all__.extend(["ExamType", "Testimonial", "TestimonialStatus", "CurrentAffair", "RedemptionRequest", "RedemptionStatus"])
 

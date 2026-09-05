@@ -154,7 +154,8 @@ async def upload_question_paper(
     exam_name: Optional[str] = Form(default="UPSC"),
     stage: Optional[str] = Form(default="prelims"),
     exam_type: Optional[str] = Form(default="PYQ"),
-    total_questions: Optional[int] = Form(default=100),
+    exam_type_id: Optional[int] = Form(default=None),
+    total_questions: Optional[int] = Form(default=None),
     year: int = Form(...),
     set_code: Optional[str] = Form(default="SET_A"),
     conflict_resolution: str = Form(default="CHECK"),
@@ -250,7 +251,24 @@ async def upload_question_paper(
 
     cleanup_file(temp_path)
 
-    tot_q = total_questions if total_questions is not None else 100
+    # Resolve ExamType metadata
+    from app.repositories.exam_type_repository import ExamTypeRepository
+    et_repo = ExamTypeRepository(db)
+    resolved_et = None
+    if exam_type_id:
+        resolved_et = await et_repo.get_by_id(exam_type_id)
+    if not resolved_et and exam_type:
+        resolved_et = await et_repo.get_by_type(exam_type)
+    if not resolved_et and exam_name:
+        resolved_et = await et_repo.get_by_type(exam_name)
+    if not resolved_et:
+        resolved_et = await et_repo.get_by_type("upse")
+
+    et_id = resolved_et.id if resolved_et else None
+    dur_mins = resolved_et.total_duration if resolved_et else 120
+    tot_marks = resolved_et.total_marks if resolved_et else 200.0
+    tot_q = total_questions or (resolved_et.number_of_questions if resolved_et else 100)
+
     e_type_enum = QuestionSourceType.PYQ
     if exam_type:
         try:
@@ -264,7 +282,10 @@ async def upload_question_paper(
             name=meta.get("exam_name", "UPSC"),
             stage=meta.get("stage", "prelims"),
             exam_type=e_type_enum,
+            exam_type_id=et_id,
             total_questions=tot_q,
+            total_duration_minutes=dur_mins,
+            total_marks=tot_marks,
             source_year=meta.get("year", 2024),
             paper_set_code=clean_set,
             pdf_path=persistent_path,
@@ -286,6 +307,10 @@ async def upload_question_paper(
             exam.pdf_path = persistent_path
             exam.total_questions = tot_q
             exam.exam_type = e_type_enum
+            if et_id and not exam.exam_type_id:
+                exam.exam_type_id = et_id
+                exam.total_duration_minutes = exam.total_duration_minutes or dur_mins
+                exam.total_marks = exam.total_marks or tot_marks
             db.add(exam)
             await db.commit()
             await db.refresh(exam)
@@ -294,6 +319,10 @@ async def upload_question_paper(
         exam.pdf_path = persistent_path
         exam.total_questions = tot_q
         exam.exam_type = e_type_enum
+        if et_id and not exam.exam_type_id:
+            exam.exam_type_id = et_id
+            exam.total_duration_minutes = exam.total_duration_minutes or dur_mins
+            exam.total_marks = exam.total_marks or tot_marks
         if meta.get("stage"):
             exam.stage = meta["stage"]
         if meta.get("year"):

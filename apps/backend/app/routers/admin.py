@@ -251,6 +251,11 @@ async def list_exam_pipeline_statuses(
     )
     exams = res.all()
 
+    # Fetch ExamTypes for mapping
+    from app.db.models import ExamType
+    et_rows = (await session.exec(select(ExamType))).all()
+    et_map = {et.id: et for et in et_rows}
+
     # 2. Aggregated Question counts per exam
     q_stmt = select(
         Question.exam_id,
@@ -480,6 +485,9 @@ async def list_exam_pipeline_statuses(
                 "id": str(exam.id),
                 "code": exam.code,
                 "name": exam.name,
+                "exam_type_id": exam.exam_type_id,
+                "exam_type_code": et_map[exam.exam_type_id].type if (exam.exam_type_id and exam.exam_type_id in et_map) else "upse",
+                "exam_type_name": et_map[exam.exam_type_id].name if (exam.exam_type_id and exam.exam_type_id in et_map) else "UPSE",
                 "source_year": exam.source_year,
                 "stage": exam.stage,
                 "subject_code": exam.subject_code,

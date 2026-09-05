@@ -216,7 +216,7 @@ export function PYQSelectionPage() {
           </div>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)' }}>No Approved PYQ Papers Available Yet</h3>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-            Previous year exam papers uploaded to S3 will appear here as soon as they are approved & published by an administrator.
+            Previous year exam papers will appear here as soon as they are approved & published by an administrator.
           </p>
         </div>
       ) : filteredExamsList.length === 0 ? (

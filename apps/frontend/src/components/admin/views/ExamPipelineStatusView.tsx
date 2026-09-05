@@ -118,7 +118,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     setApprovingId(examId);
     try {
       await approveAndPublishExam(examId);
-      setToastMessage(`Exam '${examName}' successfully approved & published. S3 JSON artifacts generated.`);
+      setToastMessage(`Exam '${examName}' successfully approved & published. Platform JSON artifacts generated.`);
       setTimeout(() => setToastMessage(null), 5000);
       await loadData();
     } catch (err: any) {
@@ -240,18 +240,18 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
     );
   };
 
-  const getS3StatusBadge = (exam: ExamPipelineStatusItem) => {
+  const getCatalogStatusBadge = (exam: ExamPipelineStatusItem) => {
     if (exam.is_active) {
       return (
         <span style={{ fontSize: 12, fontWeight: 600, color: '#15803D', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Check size={13} color="#15803D" /> Active (S3 Ready)
+          <Check size={13} color="#15803D" /> Published & Live
         </span>
       );
     }
     if (exam.status.toUpperCase().includes('PUBLISHED') || approvingId === exam.id) {
       return (
         <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Loader2 size={13} className="animate-spin" color="#64748B" /> Uploading to S3...
+          <Loader2 size={13} className="animate-spin" color="#64748B" /> Generating Artifacts...
         </span>
       );
     }
@@ -540,7 +540,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, width: 140 }}>PROGRESS</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>QUESTIONS</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>STATUS</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>S3 ARTIFACT</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>CATALOG ARTIFACT</th>
                   <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12, textAlign: 'right' }}>ACTION</th>
                 </tr>
               </thead>
@@ -601,7 +601,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                       </td>
 
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                        {getS3StatusBadge(exam)}
+                        {getCatalogStatusBadge(exam)}
                       </td>
 
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
@@ -786,10 +786,10 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
 
               <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
 
-              {/* S3 Artifact Technical Info */}
+              {/* Catalog Artifact Technical Info */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                  S3 ARTIFACT PATHS
+                  CATALOG ARTIFACT PATHS
                 </div>
                 <div style={{ fontSize: 12, color: '#667085', marginBottom: 6 }}>
                   Status: <strong style={{ color: selectedExam.questions_json_path ? '#15803D' : '#667085' }}>{selectedExam.questions_json_path ? 'Ready' : 'Not generated'}</strong>
@@ -823,7 +823,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                     gap: 6,
                   }}
                 >
-                  <Check size={16} /> ✓ Published & Active (S3 Ready)
+                  <Check size={16} /> ✓ Published & Active
                 </div>
               ) : (selectedExam.status.toUpperCase().includes('PUBLISHED') && !selectedExam.is_active) || approvingId === selectedExam.id ? (
                 <button
@@ -845,7 +845,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   }}
                 >
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Published (Uploading S3 Artifacts...)</span>
+                  <span>Published (Compiling Artifacts...)</span>
                 </button>
               ) : (
                 <button
@@ -868,7 +868,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                     boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
                   }}
                 >
-                  <span>Approve & Build S3 JSON</span>
+                  <span>Approve & Publish Package</span>
                 </button>
               )}
             </div>

@@ -8,6 +8,7 @@ from PIL import Image
 from app.config.logger import setup_logger
 from app.db.models import (
     Exam,
+    ExamType,
     OptionTranslation,
     Question,
     QuestionAsset,
@@ -325,12 +326,19 @@ class BatchQuestionRegistrar:
                                 q_passage_id, q_passage_pages = passage_id_map[sec_code]
 
                             has_passage = bool(q_passage_id)
-                            marks = 2.0
-                            neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
-                            if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                                neg_marks = round(marks * float(neg_rate), 2)
+                            et_obj = None
+                            if exam and getattr(exam, "exam_type_id", None):
+                                et_obj = await session.get(ExamType, exam.exam_type_id)
+                            if et_obj:
+                                marks = float(et_obj.positive_marks)
+                                neg_marks = float(et_obj.negative_marks)
                             else:
-                                neg_marks = round(marks / 3.0, 2)
+                                marks = 2.0
+                                neg_rate = getattr(exam, "negative_marking_rate", None) if exam else None
+                                if neg_rate is not None and isinstance(neg_rate, (int, float)):
+                                    neg_marks = round(marks * float(neg_rate), 2)
+                                else:
+                                    neg_marks = round(marks / 3.0, 2)
 
                             expected_time = calculate_question_expected_time(
                                 q_data["question_type"],
@@ -592,11 +600,19 @@ class BatchQuestionRegistrar:
                     for st in sub_res.all():
                         subtopics_by_key[(st.topic_id, st.name.strip().lower())] = st
 
-            marks = 2.0
-            if neg_rate is not None and isinstance(neg_rate, (int, float)):
-                neg_marks = round(marks * float(neg_rate), 2)
+            et_obj = None
+            if exam and getattr(exam, "exam_type_id", None):
+                async with _get_session() as s_et:
+                    et_obj = await s_et.get(ExamType, exam.exam_type_id)
+            if et_obj:
+                marks = float(et_obj.positive_marks)
+                neg_marks = float(et_obj.negative_marks)
             else:
-                neg_marks = round(marks / 3.0, 2)
+                marks = 2.0
+                if neg_rate is not None and isinstance(neg_rate, (int, float)):
+                    neg_marks = round(marks * float(neg_rate), 2)
+                else:
+                    neg_marks = round(marks / 3.0, 2)
 
             for i in range(0, len(records), self.batch_size):
                 batch = records[i : i + self.batch_size]

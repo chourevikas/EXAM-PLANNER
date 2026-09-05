@@ -5,6 +5,7 @@ from app.db.models.enums import QuestionSourceType, ExamStatus
 from app.db.models.types import DateTimeTZ, PortableJSON, BigIntPK
 
 if TYPE_CHECKING:
+    from app.db.models.exam_type import ExamType
     from app.db.models.question import Question
     from app.db.models.analytics import ExamAttempt
     from app.db.models.pipeline_run import PipelineRun
@@ -35,6 +36,13 @@ class Exam(SQLModel, table=True):
         description="Canonical code e.g. upsc_cse-prelims-gs1-2023-A",
     )
     name: str = Field(max_length=200)
+
+    exam_type_id: Optional[int] = Field(
+        default=None,
+        foreign_key="exam_types.id",
+        index=True,
+        description="Foreign key to exam_types table",
+    )
 
     exam_type: QuestionSourceType = Field(
         default=QuestionSourceType.PYQ,
@@ -140,6 +148,9 @@ class Exam(SQLModel, table=True):
     )
     review_tasks: List["HumanReviewTask"] = Relationship(
         back_populates="exam", cascade_delete=True
+    )
+    exam_type_entity: Optional["ExamType"] = Relationship(
+        back_populates="exams"
     )
 
 

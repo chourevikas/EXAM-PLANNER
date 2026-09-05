@@ -10,7 +10,8 @@ import {
   BarChart2,
   Award,
   X,
-  Globe
+  Globe,
+  Sliders,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -60,6 +61,7 @@ export function AdminSidebar({
   const coreNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', id: 'dashboard' },
     { icon: Upload, label: 'Upload & Exam Pipeline', id: 'upload' },
+    { icon: Sliders, label: 'Exam Types', id: 'exam-types' },
     { icon: ClipboardCheck, label: 'Question & Solution QA', id: 'review' },
     { icon: BookOpen, label: 'Question Bank Catalog', id: 'questions' },
     { icon: GraduationCap, label: 'Mock Tests', id: 'mock-tests' },

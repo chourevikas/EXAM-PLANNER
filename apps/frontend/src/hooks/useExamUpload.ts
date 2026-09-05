@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { StatusMessage } from '../types/exam';
 import { uploadExamPaper } from '../services/examService';
+import { ExamType } from '../types/examType';
+import { fetchActiveExamTypes } from '../services/examTypeService';
 
 export interface ConflictModalState {
   isOpen: boolean;
@@ -12,7 +14,9 @@ export interface ConflictModalState {
 
 export function useExamUpload() {
   const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER'>('QUESTION_PAPER');
-  const [examName, setExamName] = useState('upsc');
+  const [availableExamTypes, setAvailableExamTypes] = useState<ExamType[]>([]);
+  const [examName, setExamName] = useState('upse');
+  const [selectedExamTypeId, setSelectedExamTypeId] = useState<number | undefined>(1);
   const [year, setYear] = useState('2024');
   const [setCode, setSetCode] = useState('SET_A');
   const [paperType, setPaperType] = useState('previous_year_question');
@@ -24,6 +28,28 @@ export function useExamUpload() {
   const [conflictModal, setConflictModal] = useState<ConflictModalState | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load available exam types from backend as the single source of truth
+  useEffect(() => {
+    fetchActiveExamTypes().then((types) => {
+      if (types && types.length > 0) {
+        setAvailableExamTypes(types);
+        const upseType = types.find((t) => t.type.toLowerCase() === 'upse') || types[0];
+        setExamName(upseType.type);
+        setSelectedExamTypeId(upseType.id);
+      }
+    }).catch((err) => {
+      console.warn('Failed to load active exam types:', err);
+    });
+  }, []);
+
+  const handleExamTypeChange = (typeCode: string) => {
+    setExamName(typeCode);
+    const matched = availableExamTypes.find((t) => t.type.toLowerCase() === typeCode.toLowerCase());
+    if (matched) {
+      setSelectedExamTypeId(matched.id);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -76,6 +102,8 @@ export function useExamUpload() {
         year,
         paperType,
         set_code: setCode,
+        exam_type: examName,
+        exam_type_id: selectedExamTypeId,
         file: selectedFile,
         conflict_resolution: conflictResolution,
       });
@@ -123,8 +151,10 @@ export function useExamUpload() {
   return {
     uploadMode,
     setUploadMode,
+    availableExamTypes,
     examName,
-    setExamName,
+    setExamName: handleExamTypeChange,
+    selectedExamTypeId,
     year,
     setYear,
     setCode,

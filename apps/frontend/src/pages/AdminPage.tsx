@@ -15,6 +15,7 @@ import { AnalyticsView } from '../components/admin/views/AnalyticsView';
 import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineStatusView';
 import { TeacherRewardsView } from '../components/admin/views/TeacherRewardsView';
 import { CurrentAffairsManager } from '../components/admin/views/CurrentAffairsManager';
+import { ExamTypesManager } from '../components/admin/views/ExamTypesManager';
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -77,6 +78,8 @@ export function AdminPage() {
         return <UploadReviewView onNavigate={handleNavigate} />;
       case 'questions':
         return <QuestionBankManager />;
+      case 'exam-types':
+        return <ExamTypesManager />;
       case 'review':
         return <QuestionReviewView initialExam={selectedExamForReview} onNavigate={handleNavigate} />;
       case 'mock-tests':

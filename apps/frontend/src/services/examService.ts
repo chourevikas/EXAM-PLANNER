@@ -37,6 +37,8 @@ export async function uploadExamPaper({
   year,
   paperType,
   set_code = 'SET_A',
+  exam_type,
+  exam_type_id,
   file,
 }: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
@@ -50,6 +52,8 @@ export async function uploadExamPaper({
   formData.append('year', year);
   formData.append('paper_type', paperType);
   formData.append('set_code', set_code || 'SET_A');
+  if (exam_type) formData.append('exam_type', exam_type);
+  if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
   formData.append('file', file);
 
   const response = await guardedFetch(`${API_BASE_URL}/exams/upload`, {
