@@ -488,16 +488,20 @@ class SyllabusService:
 
         # Check if exam is actively undergoing extraction
         from app.db.models.pipeline_run import PipelineRun
+        from app.services.task_registry import task_registry
+
         status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
         p1_res = await self.session.execute(
             select(PipelineRun).where(
                 PipelineRun.exam_id == exam_id,
-                PipelineRun.pipeline_type == "QUESTION_EXTRACTION"
-            )
+                PipelineRun.pipeline_type.in_(("QUESTION_EXTRACTION", "DOCUMENT_EXTRACTION"))
+            ).order_by(PipelineRun.id.desc())
         )
         p1_run = p1_res.scalars().first()
         is_extracting = False
-        if p1_run and str(p1_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
+        if task_registry.is_running(str(exam_id)) or task_registry.is_running(f"qp_{exam_id}"):
+            is_extracting = True
+        elif p1_run and str(p1_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
             is_extracting = True
         elif status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
             is_extracting = True
@@ -656,6 +660,17 @@ class SyllabusService:
         stmt = select(Exam).order_by(Exam.source_year.desc(), Exam.created_at.desc())
         exams = (await self.session.exec(stmt)).all()
 
+        from app.services.task_registry import task_registry
+        from app.db.models.pipeline_run import PipelineRun
+
+        runs_stmt = select(PipelineRun).where(
+            PipelineRun.pipeline_type.in_(("QUESTION_EXTRACTION", "DOCUMENT_EXTRACTION"))
+        ).order_by(PipelineRun.id.desc())
+        all_runs = (await self.session.exec(runs_stmt)).all()
+        runs_by_exam: Dict[int, PipelineRun] = {}
+        for r in all_runs:
+            if r.exam_id and r.exam_id not in runs_by_exam:
+                runs_by_exam[r.exam_id] = r
         exams_by_year_map: Dict[str, List[ExamYearItem]] = {}
         years_set = set()
 
@@ -673,6 +688,20 @@ class SyllabusService:
             )
             is_pub = (status_val == "PUBLISHED" or getattr(exam, "is_active", False))
 
+            p_run = runs_by_exam.get(exam.id)
+            is_task_running = task_registry.is_running(str(exam.id)) or task_registry.is_running(f"qp_{exam.id}")
+
+            is_extracting = False
+            if is_task_running:
+                is_extracting = True
+            elif p_run and str(p_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
+                is_extracting = True
+            elif status_val in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+                is_extracting = True
+            elif not is_pub and (exam.extracted_questions_count or 0) > 0 and (exam.extracted_questions_count or 0) < (exam.total_questions or 100):
+                if p_run and str(p_run.status).upper() != "FAILED":
+                    is_extracting = True
+
             item = ExamYearItem(
                 id=str(exam.id),
                 code=exam.code,
@@ -685,9 +714,12 @@ class SyllabusService:
                 extracted_questions_count=exam.extracted_questions_count or 0,
                 corrupted_questions_count=0,
                 partially_corrupted_questions_count=0,
-                missing_questions_count=exam.missing_questions_count or 0,
+                missing_questions_count=0 if is_extracting else (exam.missing_questions_count or 0),
                 is_published=is_pub,
-                pipeline_status=status_val,
+                pipeline_status="IN_PROGRESS" if is_extracting else status_val,
+                overall_status="PROCESSING" if is_extracting else status_val,
+                stage1_status="IN_PROGRESS" if is_extracting else ("COMPLETED" if (exam.extracted_questions_count or 0) >= (exam.total_questions or 100) else "QUEUED"),
+                is_extracting=is_extracting,
                 created_at=exam.created_at.isoformat() if exam.created_at else None,
             )
 

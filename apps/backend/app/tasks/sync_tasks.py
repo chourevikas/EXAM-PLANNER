@@ -91,7 +91,7 @@ async def async_sync_exam_s3(
         run = await sess.get(PipelineRun, run_id)
         if run:
             run.status = "COMPLETED"
-            run.current_step = "PUBLISHED_TO_S3"
+            run.current_step = "PUBLISHED"
             run.progress_percent = 100.0
             run.completed_at = datetime.now(timezone.utc)
             run.error_log = None

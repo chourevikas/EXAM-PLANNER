@@ -34,6 +34,7 @@ import {
   StuckPipelineItem,
 } from '../../services/adminService';
 import { createAdaptivePoller, AdaptivePollerController } from '../../utils/adaptivePolling';
+import { formatEnum } from '../../utils/formatEnum';
 
 interface UploadReviewViewProps {
   onNavigate?: (view: string, extraData?: any) => void;
@@ -281,11 +282,15 @@ function TableRowItem({
   const stage3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
   const stage3InProgress = exam.stage3_status === 'IN_PROGRESS';
 
-  const isExtracting =
-    Boolean(exam.is_extracting) ||
+  const isExtracting = Boolean(
+    exam.is_extracting ||
     s1InProgress ||
+    exam.stage1_status === 'IN_PROGRESS' ||
+    exam.overall_status === 'PROCESSING' ||
     ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.status || '').toUpperCase()) ||
-    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase());
+    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
+    (exam.stage1_status !== 'COMPLETED' && ext < total && !isPublished)
+  );
 
   const isPipelineComplete =
     !isExtracting &&
@@ -538,7 +543,28 @@ function TableRowItem({
             Details
           </button>
 
-          {isPipelineComplete ? (
+          {isExtracting ? (
+            <button
+              disabled
+              style={{
+                padding: '5px 10px',
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: '#94A3B8',
+                background: '#F1F5F9',
+                borderRadius: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                border: '1px solid #E2E8F0',
+                cursor: 'not-allowed',
+              }}
+              title="Exam is currently undergoing extraction — review is locked"
+            >
+              <Loader2 size={11} className="animate-spin text-amber-600" />
+              In Extraction
+            </button>
+          ) : isPipelineComplete ? (
             <button
               onClick={() => {
                 if (onNavigate) {
@@ -565,27 +591,6 @@ function TableRowItem({
             >
               <Check size={13} />
               Review Exam
-            </button>
-          ) : isExtracting ? (
-            <button
-              disabled
-              style={{
-                padding: '5px 10px',
-                fontSize: 11.5,
-                fontWeight: 600,
-                color: '#94A3B8',
-                background: '#F1F5F9',
-                borderRadius: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                border: '1px solid #E2E8F0',
-                cursor: 'not-allowed',
-              }}
-              title="Exam is currently undergoing extraction — review is locked"
-            >
-              <Loader2 size={11} className="animate-spin text-amber-600" />
-              In Extraction
             </button>
           ) : (
             <span
@@ -1189,7 +1194,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     Interrupted Task: {stuck.exam_name}
                   </div>
                   <div style={{ fontSize: 12.5, color: '#B91C1C', marginTop: 2 }}>
-                    Task was interrupted during <strong>{stuck.pipeline_type}</strong> ({stuck.current_step || 'Server reload'}).
+                    Task was interrupted during <strong>{formatEnum(stuck.pipeline_type)}</strong> ({formatEnum(stuck.current_step) || 'Server reload'}).
                     Resuming will automatically skip previously completed items.
                   </div>
                 </div>
@@ -1890,13 +1895,16 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </button>
 
               {(() => {
-                const isSelectedExtracting =
-                  Boolean(selectedExam.is_extracting) ||
+                const isSelectedExtracting = Boolean(
+                  selectedExam.is_extracting ||
                   selectedExam.stage1_status === 'IN_PROGRESS' ||
-                  selectedExam.stage2_status === 'IN_PROGRESS' ||
-                  selectedExam.stage3_status === 'IN_PROGRESS' ||
+                  selectedExam.overall_status === 'PROCESSING' ||
                   ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((selectedExam.status || '').toUpperCase()) ||
-                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase());
+                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase()) ||
+                  (selectedExam.stage1_status !== 'COMPLETED' &&
+                    ((selectedExam.extracted_questions_count || 0) < (selectedExam.total_questions || 100)) &&
+                    !(selectedExam.status || '').toUpperCase().includes('PUBLISHED'))
+                );
 
                 const isSelectedComplete =
                   !isSelectedExtracting &&

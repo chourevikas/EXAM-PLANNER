@@ -117,7 +117,14 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
     let totalCorruptedCount = 0;
 
     filteredExams.forEach((e) => {
-      if (e.is_extracting || e.overall_status === 'PROCESSING' || e.stage1_status === 'IN_PROGRESS') {
+      const isExtracting = Boolean(
+        e.is_extracting ||
+        e.overall_status === 'PROCESSING' ||
+        e.stage1_status === 'IN_PROGRESS' ||
+        integrityMap[e.id]?.is_extracting ||
+        ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((e.pipeline_status || e.status || '').toUpperCase())
+      );
+      if (isExtracting) {
         return; // Do not show or aggregate missing questions for papers currently undergoing extraction
       }
       const diag = integrityMap[e.id];
@@ -443,7 +450,18 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {filteredExams.map((exam) => {
             const diag = integrityMap[exam.id];
-            const isExtracting = exam.is_extracting || exam.overall_status === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS' || diag?.is_extracting;
+            const isExtracting = Boolean(
+              exam.is_extracting ||
+              exam.overall_status === 'PROCESSING' ||
+              exam.stage1_status === 'IN_PROGRESS' ||
+              diag?.is_extracting ||
+              ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.pipeline_status || exam.status || '').toUpperCase()) ||
+              ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
+              (exam.stage1_status !== 'COMPLETED' &&
+                (exam.extracted_questions_count || 0) > 0 &&
+                (exam.extracted_questions_count || 0) < (exam.total_questions || 100) &&
+                !exam.is_published)
+            );
             const missingCount = isExtracting ? 0 : (diag ? diag.missing_count : Math.max(0, (exam.total_questions || 100) - (exam.extracted_questions_count || 0)));
             const missingNumbers = isExtracting ? [] : (diag?.missing_question_numbers || []);
             const corruptedNumbers = (diag?.items || [])
@@ -475,50 +493,47 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 16,
-                  transition: 'all 0.15s ease',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                {/* Header Row: Info & Action Buttons */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 16,
+                  }}
+                >
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <h3 style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>
                         {exam.name || 'Exam Paper'}
                       </h3>
-                      {exam.source_year && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            backgroundColor: '#F1F5F9',
-                            color: '#475569',
-                          }}
-                        >
-                          {exam.source_year}
-                        </span>
-                      )}
-                      {exam.paper_set_code && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: 12,
-                            backgroundColor: '#E0F2FE',
-                            color: '#0369A1',
-                          }}
-                        >
-                          Set {exam.paper_set_code}
-                        </span>
-                      )}
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          backgroundColor: '#F1F5F9',
+                          color: '#475569',
+                          fontFamily: 'monospace',
+                        }}
+                      >
+                        {exam.code || exam.id}
+                      </span>
                     </div>
-                    <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
-                      Code: {exam.code || exam.id}
-                    </p>
+
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 4, display: 'flex', gap: 12 }}>
+                      <span>Year: <strong>{exam.source_year || 'N/A'}</strong></span>
+                      <span>•</span>
+                      <span>Set: <strong>{exam.paper_set_code || 'A'}</strong></span>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    {/* Metrics badge */}
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
                         {extractedCount} / {expectedCount} Extracted
@@ -544,43 +559,65 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,
-                            padding: '8px 16px',
-                            backgroundColor: '#E31B23',
-                            color: '#ffffff',
+                            padding: '8px 14px',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC2626',
                             borderRadius: 6,
                             fontSize: 13,
                             fontWeight: 600,
-                            border: 'none',
+                            border: '1px solid #FECACA',
                             cursor: 'pointer',
-                            boxShadow: '0 2px 4px rgba(227, 27, 35, 0.2)',
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          <Plus size={15} />
+                          <Plus size={14} />
                           <span>Add Missing Q</span>
                         </button>
                       )}
 
-                      <button
-                        onClick={() => onSelectExam(exam)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '8px 14px',
-                          backgroundColor: '#ffffff',
-                          color: '#334155',
-                          borderRadius: 6,
-                          fontSize: 13,
-                          fontWeight: 500,
-                          border: '1px solid #CBD5E1',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        <span>Review Paper</span>
-                        <ArrowRight size={15} />
-                      </button>
+                      {isExtracting ? (
+                        <button
+                          disabled
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '8px 14px',
+                            backgroundColor: '#F1F5F9',
+                            color: '#94A3B8',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            border: '1px solid #E2E8F0',
+                            cursor: 'not-allowed',
+                          }}
+                          title="Paper is currently undergoing extraction — review is locked"
+                        >
+                          <Loader2 size={14} className="animate-spin text-amber-600" />
+                          <span>In Extraction (Locked)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onSelectExam(exam)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '8px 14px',
+                            backgroundColor: '#ffffff',
+                            color: '#334155',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            border: '1px solid #CBD5E1',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span>Review Paper</span>
+                          <ArrowRight size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

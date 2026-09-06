@@ -79,6 +79,12 @@ const CUSTOM_OVERRIDE_MAP: Record<string, string> = {
   FAILED: 'Failed',
   PENDING_REVIEW: 'Pending Review',
   EVALUATING: 'Evaluating',
+  PUBLISHED_TO_S3: 'Published',
+  PUBLISHED_S3: 'Published',
+  S3_PUBLISH: 'Published',
+  PUBLISH_TO_S3: 'Published',
+  S3_PUBLISHED: 'Published',
+  S3_SYNC: 'Published',
 
   // Pacing & Psychometric Statuses
   OPTIMAL_PACING: 'Optimal Pacing',

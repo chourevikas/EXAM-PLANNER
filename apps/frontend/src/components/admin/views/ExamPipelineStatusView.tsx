@@ -18,6 +18,7 @@ import {
   Database,
   FileText,
   Check,
+  Eye,
 } from 'lucide-react';
 
 interface ExamPipelineStatusViewProps {
@@ -149,17 +150,49 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
   // Calculate Pipeline Summary Counts
   const totalExams = exams.length;
   const processingCount = exams.filter((e) => {
-    const s = e.status.toUpperCase();
-    return s.includes('PROCESSING') || s.includes('PARSING');
+    const s = (e.status || '').toUpperCase();
+    return (
+      e.is_extracting ||
+      e.overall_status === 'PROCESSING' ||
+      e.stage1_status === 'IN_PROGRESS' ||
+      s.includes('PROCESSING') ||
+      s.includes('PARSING') ||
+      s.includes('EXTRACTING')
+    );
   }).length;
-  const pendingCount = exams.filter((e) => e.status.toUpperCase().includes('PENDING')).length;
+  const pendingCount = exams.filter((e) => {
+    const s = (e.status || '').toUpperCase();
+    const isExtracting = e.is_extracting || e.overall_status === 'PROCESSING' || e.stage1_status === 'IN_PROGRESS';
+    return !isExtracting && s.includes('PENDING');
+  }).length;
   const publishedCount = exams.filter((e) => {
-    const s = e.status.toUpperCase();
+    const s = (e.status || '').toUpperCase();
     return s.includes('PUBLISHED') || s.includes('READY');
   }).length;
 
-  const getStatusBadge = (statusStr: string) => {
-    const s = statusStr.toUpperCase();
+  const getStatusBadge = (statusStr: string, isExtracting?: boolean) => {
+    if (isExtracting) {
+      return (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 8px',
+            borderRadius: 0,
+            fontSize: 11.5,
+            fontWeight: 600,
+            backgroundColor: '#FEF3C7',
+            color: '#B45309',
+            border: '1px solid #FDE68A',
+          }}
+        >
+          <Loader2 size={11} className="animate-spin text-amber-600" />
+          In Extraction
+        </span>
+      );
+    }
+    const s = (statusStr || '').toUpperCase();
     if (s.includes('PUBLISHED') || s.includes('READY')) {
       return (
         <span
@@ -200,7 +233,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
         </span>
       );
     }
-    if (s.includes('PROCESSING') || s.includes('PARSING')) {
+    if (s.includes('PROCESSING') || s.includes('PARSING') || s.includes('EXTRACTING')) {
       return (
         <span
           style={{
@@ -216,6 +249,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
             border: '1px solid #BAE6FD',
           }}
         >
+          <Loader2 size={11} className="animate-spin text-sky-600" />
           Processing
         </span>
       );
@@ -235,7 +269,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
           border: '1px solid #E4E7EC',
         }}
       >
-        {statusStr.replace('_', ' ')}
+        {(statusStr || '').replace('_', ' ')}
       </span>
     );
   };
@@ -597,7 +631,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                       </td>
 
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                        {getStatusBadge(exam.status)}
+                        {getStatusBadge(exam.status, Boolean(exam.is_extracting || exam.overall_status === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS'))}
                       </td>
 
                       <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
@@ -708,7 +742,7 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
               {/* Status Section */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: '#667085', fontWeight: 500 }}>Status</span>
-                <div>{getStatusBadge(selectedExam.status)}</div>
+                <div>{getStatusBadge(selectedExam.status, Boolean(selectedExam.is_extracting || selectedExam.overall_status === 'PROCESSING' || selectedExam.stage1_status === 'IN_PROGRESS'))}</div>
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid #E4E7EC', margin: 0 }} />
@@ -806,71 +840,142 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
 
             {/* Drawer Footer Actions */}
             <div style={{ padding: 20, borderTop: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
-              {selectedExam.status.toUpperCase().includes('PUBLISHED') && selectedExam.is_active ? (
-                <div
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 0,
-                    border: '1px solid #BBF7D0',
-                    backgroundColor: '#DCFCE7',
-                    color: '#15803D',
-                    fontWeight: 600,
-                    fontSize: 13.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <Check size={16} /> ✓ Published & Active
-                </div>
-              ) : (selectedExam.status.toUpperCase().includes('PUBLISHED') && !selectedExam.is_active) || approvingId === selectedExam.id ? (
-                <button
-                  disabled
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    backgroundColor: '#94A3B8',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    fontSize: 13.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    cursor: 'not-allowed',
-                  }}
-                >
-                  <Loader2 size={16} className="animate-spin" />
-                  <span>Published (Compiling Artifacts...)</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleApprove(selectedExam.id, selectedExam.name)}
-                  disabled={approvingId === selectedExam.id || selectedExam.extracted_questions_count === 0}
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px',
-                    borderRadius: 0,
-                    border: 'none',
-                    backgroundColor: selectedExam.extracted_questions_count === 0 ? '#94A3B8' : '#12233F',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    fontSize: 13.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    cursor: selectedExam.extracted_questions_count === 0 ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
-                  }}
-                >
-                  <span>Approve & Publish Package</span>
-                </button>
-              )}
+              {(() => {
+                const isSelectedExtracting = Boolean(
+                  selectedExam.is_extracting ||
+                  selectedExam.stage1_status === 'IN_PROGRESS' ||
+                  selectedExam.overall_status === 'PROCESSING' ||
+                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((selectedExam.status || '').toUpperCase()) ||
+                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase())
+                );
+                const isSelectedPublished = (selectedExam.status || '').toUpperCase().includes('PUBLISHED');
+
+                if (isSelectedExtracting) {
+                  return (
+                    <button
+                      disabled
+                      style={{
+                        width: '100%',
+                        padding: '10px 16px',
+                        borderRadius: 0,
+                        border: '1px solid #E2E8F0',
+                        backgroundColor: '#F1F5F9',
+                        color: '#94A3B8',
+                        fontWeight: 600,
+                        fontSize: 13.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        cursor: 'not-allowed',
+                      }}
+                      title="Exam is currently undergoing extraction — review and publishing are locked"
+                    >
+                      <Loader2 size={16} className="animate-spin text-amber-600" />
+                      <span>In Extraction (Locked)</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <>
+                    {onNavigate && (
+                      <button
+                        onClick={() => {
+                          setIsDrawerOpen(false);
+                          onNavigate('review', selectedExam);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '9px 14px',
+                          borderRadius: 0,
+                          border: '1px solid #CBD5E1',
+                          backgroundColor: '#FFFFFF',
+                          color: '#172033',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          cursor: 'pointer',
+                          marginBottom: 10,
+                          boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                        }}
+                      >
+                        <Eye size={14} />
+                        <span>Review Questions & Solutions</span>
+                      </button>
+                    )}
+
+                    {isSelectedPublished && selectedExam.is_active ? (
+                      <div
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: 0,
+                          border: '1px solid #BBF7D0',
+                          backgroundColor: '#DCFCE7',
+                          color: '#15803D',
+                          fontWeight: 600,
+                          fontSize: 13.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Check size={16} /> ✓ Published & Active
+                      </div>
+                    ) : (isSelectedPublished && !selectedExam.is_active) || approvingId === selectedExam.id ? (
+                      <button
+                        disabled
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          borderRadius: 0,
+                          border: '1px solid #CBD5E1',
+                          backgroundColor: '#94A3B8',
+                          color: '#FFFFFF',
+                          fontWeight: 600,
+                          fontSize: 13.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          cursor: 'not-allowed',
+                        }}
+                      >
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>Published (Compiling Artifacts...)</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleApprove(selectedExam.id, selectedExam.name)}
+                        disabled={approvingId === selectedExam.id || selectedExam.extracted_questions_count === 0}
+                        style={{
+                          width: '100%',
+                          padding: '10px 16px',
+                          borderRadius: 0,
+                          border: 'none',
+                          backgroundColor: selectedExam.extracted_questions_count === 0 ? '#94A3B8' : '#12233F',
+                          color: '#FFFFFF',
+                          fontWeight: 600,
+                          fontSize: 13.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          cursor: selectedExam.extracted_questions_count === 0 ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 1px 2px rgba(16,24,40,0.05)',
+                        }}
+                      >
+                        <span>Approve & Publish Package</span>
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </>

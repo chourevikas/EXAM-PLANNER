@@ -325,8 +325,8 @@ export async function syncExamToS3(
     headers: getAuthHeader(),
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: 'Failed to sync exam to S3' }));
-    throw new Error(errorData.detail || 'Exam S3 sync failed.');
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to publish exam' }));
+    throw new Error(errorData.detail || 'Exam publish failed.');
   }
   return await res.json();
 }

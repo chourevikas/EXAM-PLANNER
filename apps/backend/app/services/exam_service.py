@@ -150,8 +150,13 @@ class ExamService:
 
         exam = await self.repo.save(exam)
 
-        from app.cache import invalidate_exam_cache
+        from app.services.task_registry import task_registry
+        task_registry.register_current_task(str(exam.id))
+        task_registry.register_current_task(f"qp_{exam.id}")
+
+        from app.cache import invalidate_exam_cache, invalidate_pipeline_status_cache
         await invalidate_exam_cache(str(exam.id))
+        await invalidate_pipeline_status_cache()
 
 
         # 5. Determine whether to use Celery Worker or FastAPI BackgroundTasks

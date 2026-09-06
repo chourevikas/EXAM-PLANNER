@@ -359,8 +359,10 @@ async def list_exam_pipeline_statuses(
         )
 
         # PipelineRun lookups
+        from app.services.task_registry import task_registry
+
         exam_runs = run_map.get(exam.id, {})
-        p1 = exam_runs.get("QUESTION_EXTRACTION")
+        p1 = exam_runs.get("QUESTION_EXTRACTION") or exam_runs.get("DOCUMENT_EXTRACTION")
         p2 = exam_runs.get("ANSWER_KEY")
         p3 = (
             exam_runs.get("EXPLANATION_INDEXING")
@@ -368,8 +370,17 @@ async def list_exam_pipeline_statuses(
             or exam_runs.get("EXPLANATION")
         )
 
+        is_task_running = bool(
+            task_registry.is_running(str(exam.id))
+            or task_registry.is_running(f"qp_{exam.id}")
+            or task_registry.is_running(f"ak_{exam.id}")
+            or task_registry.is_running(f"exp_{exam.id}")
+        )
+
         # Stage 1: Extraction Status
-        if p1:
+        if is_task_running:
+            stage1_status = "IN_PROGRESS"
+        elif p1:
             p1_status_upper = str(p1.status).upper()
             if p1_status_upper in (
                 "COMPLETED",
@@ -497,7 +508,14 @@ async def list_exam_pipeline_statuses(
                 "paper_set_code": exam.paper_set_code,
                 "status": status_str,
                 "overall_status": overall_status,
-                "is_extracting": (overall_status == "PROCESSING" or stage1_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING")),
+                "is_extracting": bool(
+                    is_task_running
+                    or overall_status == "PROCESSING"
+                    or stage1_status == "IN_PROGRESS"
+                    or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING")
+                    or (p1 and str(p1.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"))
+                    or (status_str != "PUBLISHED" and stage1_status != "COMPLETED" and q_count < total_exp)
+                ),
                 "stage1_status": stage1_status,
                 "stage2_status": stage2_status,
                 "stage3_status": stage3_status,
@@ -628,7 +646,7 @@ async def list_stuck_pipelines(
 
         total_exp = exam.total_questions or 100
         exam_runs = run_map.get(exam.id, {})
-        p1 = exam_runs.get("QUESTION_EXTRACTION")
+        p1 = exam_runs.get("QUESTION_EXTRACTION") or exam_runs.get("DOCUMENT_EXTRACTION")
         p2 = exam_runs.get("ANSWER_KEY")
         p3 = (
             exam_runs.get("EXPLANATION_INDEXING")
@@ -970,7 +988,7 @@ async def approve_and_publish_exam(
             detail=(
                 f"Cannot publish exam '{exam.name}': {len(unreviewed_qs)} question(s) are not yet approved "
                 f"({pending_count} pending review, {rejected_count} rejected). "
-                f"All questions must be reviewed and marked as PUBLISHED before publishing to S3."
+                f"All questions must be reviewed and marked as PUBLISHED before publishing."
             ),
         )
 

@@ -17,6 +17,9 @@ class ExamYearItem(BaseModel):
     missing_questions_count: int = 0
     is_published: bool = False
     pipeline_status: Optional[str] = "PENDING"
+    overall_status: Optional[str] = None
+    stage1_status: Optional[str] = None
+    is_extracting: bool = False
     created_at: Optional[str] = None
 
 

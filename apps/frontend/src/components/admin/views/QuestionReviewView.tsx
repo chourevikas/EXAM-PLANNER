@@ -994,17 +994,18 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               </thead>
               <tbody>
                 {filteredExams.map((exam) => {
-                  const isPublished = (exam.status || '').toUpperCase().includes('PUBLISHED');
-                  const isExtracting =
+                  const isPublished = (exam.status || '').toUpperCase().includes('PUBLISHED') || (exam.overall_status || '').toUpperCase() === 'PUBLISHED';
+                  const isExtracting = Boolean(
+                    exam.is_extracting ||
                     exam.stage1_status === 'IN_PROGRESS' ||
-                    (exam.status || '').toUpperCase() === 'EXTRACTING' ||
-                    (exam.status || '').toUpperCase() === 'PARSING_PDF' ||
-                    (exam.status || '').toUpperCase() === 'PROCESSING' ||
-                    (exam.overall_status === 'PROCESSING' && exam.stage1_status !== 'COMPLETED') ||
+                    exam.overall_status === 'PROCESSING' ||
+                    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.status || '').toUpperCase()) ||
+                    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
                     (exam.stage1_status !== 'COMPLETED' &&
                       (exam.extracted_questions_count || 0) > 0 &&
                       (exam.extracted_questions_count || 0) < (exam.total_questions || 100) &&
-                      !isPublished);
+                      !isPublished)
+                  );
 
                   return (
                     <tr
@@ -1147,16 +1148,21 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   // VIEW 2: Dedicated Split-Pane Question QA Review Workspace
   // -------------------------------------------------------------
   if (selectedExam) {
-    const isSelectedExtracting =
+    const isSelectedPublished =
+      (selectedExam.status || '').toUpperCase().includes('PUBLISHED') ||
+      (selectedExam.overall_status || '').toUpperCase() === 'PUBLISHED';
+    const isSelectedExtracting = Boolean(
+      selectedExam.is_extracting ||
       selectedExam.stage1_status === 'IN_PROGRESS' ||
-      (selectedExam.status || '').toUpperCase() === 'EXTRACTING' ||
-      (selectedExam.status || '').toUpperCase() === 'PARSING_PDF' ||
-      (selectedExam.status || '').toUpperCase() === 'PROCESSING' ||
-      (selectedExam.overall_status === 'PROCESSING' && selectedExam.stage1_status !== 'COMPLETED') ||
+      selectedExam.overall_status === 'PROCESSING' ||
+      examIntegrity?.is_extracting ||
+      ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((selectedExam.status || '').toUpperCase()) ||
+      ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase()) ||
       (selectedExam.stage1_status !== 'COMPLETED' &&
         (selectedExam.extracted_questions_count || 0) > 0 &&
         (selectedExam.extracted_questions_count || 0) < (selectedExam.total_questions || 100) &&
-        !(selectedExam.status || '').toUpperCase().includes('PUBLISHED'));
+        !isSelectedPublished)
+    );
 
     if (isSelectedExtracting) {
       return (
