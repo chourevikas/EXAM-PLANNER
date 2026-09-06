@@ -1,5 +1,5 @@
 from typing import Optional, List, Tuple
-from sqlmodel import select, func, or_, not_, col
+from sqlmodel import select, func, or_, and_, not_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import (
@@ -138,17 +138,21 @@ class QuestionRepository:
             topic_stop_words = ("and", "the", "for", "all", "of", "in", "to")
             t_tokens = [t for t in clean_t.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in topic_stop_words]
             
-            topic_conds = [
+            topic_match = or_(
                 func.lower(Topic.name).contains(clean_t),
-                func.lower(Question.section_code).contains(clean_t),
-                func.lower(QuestionHierarchyLink.concept_name).contains(clean_t)
-            ]
-            for token in t_tokens:
-                topic_conds.append(func.lower(Topic.name).contains(token))
-                topic_conds.append(func.lower(Question.section_code).contains(token))
-                topic_conds.append(func.lower(QuestionHierarchyLink.concept_name).contains(token))
-                
-            id_stmt = id_stmt.where(or_(*topic_conds))
+                func.lower(QuestionHierarchyLink.concept_name).contains(clean_t),
+            )
+            if len(t_tokens) > 1:
+                token_match = and_(*[
+                    or_(
+                        func.lower(Topic.name).contains(tok),
+                        func.lower(QuestionHierarchyLink.concept_name).contains(tok),
+                    )
+                    for tok in t_tokens
+                ])
+                id_stmt = id_stmt.where(or_(topic_match, token_match))
+            else:
+                id_stmt = id_stmt.where(topic_match)
 
             # Exclude corrupt hierarchy concept links that belong to law/finance/politics when science topics are requested
             if any(k in clean_t for k in ["biology", "chemistry", "physics", "botany", "zoology", "science"]):
@@ -170,15 +174,21 @@ class QuestionRepository:
             st_stop_words = ("and", "the", "for", "all", "of", "in", "to")
             st_tokens = [t for t in clean_st.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in st_stop_words]
             
-            subtopic_conds = [
+            subtopic_match = or_(
                 func.lower(Subtopic.name).contains(clean_st),
-                func.lower(QuestionHierarchyLink.concept_name).contains(clean_st)
-            ]
-            for token in st_tokens:
-                subtopic_conds.append(func.lower(Subtopic.name).contains(token))
-                subtopic_conds.append(func.lower(QuestionHierarchyLink.concept_name).contains(token))
-                
-            id_stmt = id_stmt.where(or_(*subtopic_conds))
+                func.lower(QuestionHierarchyLink.concept_name).contains(clean_st),
+            )
+            if len(st_tokens) > 1:
+                st_token_match = and_(*[
+                    or_(
+                        func.lower(Subtopic.name).contains(tok),
+                        func.lower(QuestionHierarchyLink.concept_name).contains(tok),
+                    )
+                    for tok in st_tokens
+                ])
+                id_stmt = id_stmt.where(or_(subtopic_match, st_token_match))
+            else:
+                id_stmt = id_stmt.where(subtopic_match)
         if subtopic_code:
             id_stmt = id_stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 

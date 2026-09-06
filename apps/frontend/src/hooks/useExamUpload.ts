@@ -15,7 +15,7 @@ export interface ConflictModalState {
 export function useExamUpload() {
   const [uploadMode, setUploadMode] = useState<'QUESTION_PAPER'>('QUESTION_PAPER');
   const [availableExamTypes, setAvailableExamTypes] = useState<ExamType[]>([]);
-  const [examName, setExamName] = useState('upse');
+  const [examName, setExamName] = useState('upsc');
   const [selectedExamTypeId, setSelectedExamTypeId] = useState<number | undefined>(1);
   const [year, setYear] = useState('2024');
   const [setCode, setSetCode] = useState('SET_A');
@@ -34,9 +34,12 @@ export function useExamUpload() {
     fetchActiveExamTypes().then((types) => {
       if (types && types.length > 0) {
         setAvailableExamTypes(types);
-        const upseType = types.find((t) => t.type.toLowerCase() === 'upse') || types[0];
-        setExamName(upseType.type);
-        setSelectedExamTypeId(upseType.id);
+        const defaultType =
+          types.find((t) => t.type.toLowerCase() === 'upsc') ||
+          types.find((t) => t.type.toLowerCase() === 'upse') ||
+          types[0];
+        setExamName(defaultType.type);
+        setSelectedExamTypeId(defaultType.id);
       }
     }).catch((err) => {
       console.warn('Failed to load active exam types:', err);

@@ -190,8 +190,8 @@ export function StudentPracticeExamPage() {
           }
         }
 
-        // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
-        if (newFetched.length === 0 && querySubject) {
+        // Step 2: Fallback to Subject ONLY if no specific topic was selected
+        if (newFetched.length === 0 && querySubject && !queryTopic) {
           const subjParams = new URLSearchParams({ limit: String(neededCount) });
           subjParams.append('subject_name', querySubject);
           if (targetExam) subjParams.append('exam_name', targetExam);
@@ -384,6 +384,40 @@ export function StudentPracticeExamPage() {
     fetchRecommendationSolution(rec.question_id);
   };
 
+  // Fetches full authoritative solution for a practice question via /api/v1/questions/{id}/solution
+  const practiceSolutionLoadingRef = React.useRef<Record<string | number, boolean>>({});
+  const fetchPracticeQuestionSolution = async (targetId: string | number) => {
+    if (!targetId || practiceSolutionLoadingRef.current[targetId]) return;
+    practiceSolutionLoadingRef.current[targetId] = true;
+    setIsSolutionLoading(true);
+    try {
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      if (solRes.ok) {
+        const solPayload = await solRes.json();
+        setRevealedMap((prev) => {
+          const current = prev[targetId] || {};
+          return {
+            ...prev,
+            [targetId]: {
+              ...current,
+              correct_option_id: solPayload.correct_option_id || current.correct_option_id,
+              correct_option_label:
+                solPayload.correct_option_label || current.correct_option_label,
+              explanation: solPayload.explanation || current.explanation,
+              distractor_scores: solPayload.distractor_scores || current.distractor_scores,
+              presigned_url: solPayload.presigned_url || (current as any)?.presigned_url,
+            },
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Practice solution fetch error:', err);
+    } finally {
+      practiceSolutionLoadingRef.current[targetId] = false;
+      setIsSolutionLoading(false);
+    }
+  };
+
   const displayRecs = recommendedPool;
 
   // Subject-Wide Fallback Pool & Topic Completion Banner
@@ -432,6 +466,7 @@ export function StudentPracticeExamPage() {
 
           const params = new URLSearchParams({ limit: '15', include_solutions: 'true' });
           if (rawSubject) params.append('subject_name', rawSubject);
+          if (gTopic && gTopic !== 'All Topics') params.append('topic_name', gTopic);
           if (targetExam) params.append('exam_name', targetExam);
           if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
 
@@ -522,7 +557,9 @@ export function StudentPracticeExamPage() {
 
     // Show popup notification banner
     setTopicCompletionBanner(
-      `Questions finished for "${gTopic}"! Now loading similar questions from ${gSubject || 'this subject'}.`,
+      gTopic && gTopic !== 'All Topics'
+        ? `Loaded additional questions for "${gTopic}".`
+        : `Questions finished! Now loading similar questions from ${gSubject || 'this subject'}.`,
     );
 
     // Clear subject fallback pool after appending
@@ -725,31 +762,39 @@ export function StudentPracticeExamPage() {
           await fetchWithParams(p2);
         }
 
-        // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
-        if (fetchedMap.size === 0 && reqSubject) {
+        // 2b. Fallback: Relax exam filter if still 0 questions found while strictly keeping topic
+        if (fetchedMap.size === 0 && reqTopic && targetExam) {
+          const p2b = new URLSearchParams({ limit: String(initialFetchLimit) });
+          if (reqSubject) p2b.append('subject_name', reqSubject);
+          p2b.append('topic_name', reqTopic);
+          await fetchWithParams(p2b);
+        }
+
+        // 3. Fallback: Try subject + exam (ONLY if no specific topic was selected)
+        if (fetchedMap.size === 0 && reqSubject && !reqTopic) {
           const p3 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p3.append('subject_name', reqSubject);
           if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
         }
 
-        // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
-        if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject) {
+        // 4. Fallback: Try raw subject if canonical subject differed (ONLY if no specific topic was selected)
+        if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject && !reqTopic) {
           const p4 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p4.append('subject_name', rawSubject);
           if (targetExam) p4.append('exam_name', targetExam);
           await fetchWithParams(p4);
         }
 
-        // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
-        if (fetchedMap.size === 0 && (reqSubject || rawSubject)) {
+        // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject (ONLY if no specific topic was selected)
+        if (fetchedMap.size === 0 && (reqSubject || rawSubject) && !reqTopic) {
           const p5 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p5.append('subject_name', reqSubject || rawSubject);
           await fetchWithParams(p5);
         }
 
-        // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
-        if (fetchedMap.size === 0 && !rawSubject) {
+        // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject and no topic selected)
+        if (fetchedMap.size === 0 && !rawSubject && !reqTopic) {
           const p6 = new URLSearchParams({ limit: String(initialFetchLimit) });
           if (targetExam) p6.append('exam_name', targetExam);
           await fetchWithParams(p6);
@@ -939,6 +984,7 @@ export function StudentPracticeExamPage() {
 
         const params = new URLSearchParams({ limit: '15', include_solutions: 'true' });
         if (rawSubject) params.append('subject_name', rawSubject);
+        if (gTopic && gTopic !== 'All Topics') params.append('topic_name', gTopic);
         if (targetExam) params.append('exam_name', targetExam);
         if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
 
@@ -1101,6 +1147,9 @@ export function StudentPracticeExamPage() {
 
     setRevealedMap(updatedRevealedMap);
 
+    // Fetch authoritative solution details asynchronously from /api/v1/questions/{id}/solution
+    fetchPracticeQuestionSolution(targetId);
+
     setPalette((prev) =>
       prev.map((item) => {
         if (item.question_id === targetId) {
@@ -1127,73 +1176,7 @@ export function StudentPracticeExamPage() {
   const handleShowSolution = async (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
     const targetId = activeQuestion?.question_id;
     if (targetId) {
-      const existingRevealed = (passedRevealedMap && passedRevealedMap[targetId]) || revealedMap[targetId];
-      const hasExplanation = existingRevealed?.explanation && (
-        typeof existingRevealed.explanation === 'string'
-          ? existingRevealed.explanation.trim().length > 0
-          : Object.keys(existingRevealed.explanation).length > 0
-      );
-      const hasDistractors = existingRevealed?.distractor_scores && Object.keys(existingRevealed.distractor_scores).length > 0;
-
-      if (!hasExplanation || !hasDistractors) {
-        if ((activeQuestion as any)?.explanation || (activeQuestion?.options && activeQuestion.options.length > 0)) {
-          const distractorScores: Record<string, any> = { ...(existingRevealed?.distractor_scores || {}) };
-          if (Array.isArray(activeQuestion.options)) {
-            activeQuestion.options.forEach((opt: any) => {
-              const oId = String(opt.option_id);
-              if (!distractorScores[oId]) {
-                distractorScores[oId] = {
-                  option_id: oId,
-                  label: opt.option_label,
-                  is_correct: opt.is_correct,
-                  closeness_score: opt.closeness_score ?? 0,
-                  analysis: opt.distractor_analysis || '',
-                };
-              }
-            });
-          }
-          const exp = (activeQuestion as any).explanation?.detailed_solution || (activeQuestion as any).explanation || existingRevealed?.explanation;
-          setRevealedMap((prev) => {
-            const current = prev[targetId] || {};
-            return {
-              ...prev,
-              [targetId]: {
-                ...current,
-                explanation: exp || current.explanation,
-                distractor_scores: Object.keys(distractorScores).length > 0 ? distractorScores : current.distractor_scores,
-              }
-            };
-          });
-          return;
-        }
-
-        setIsSolutionLoading(true);
-        try {
-          const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
-          if (solRes.ok) {
-            const solPayload = await solRes.json();
-            setRevealedMap((prev) => {
-              const current = prev[targetId] || {};
-              return {
-                ...prev,
-                [targetId]: {
-                  ...current,
-                  correct_option_id: solPayload.correct_option_id || current.correct_option_id,
-                  correct_option_label:
-                    solPayload.correct_option_label || current.correct_option_label,
-                  explanation: solPayload.explanation || current.explanation,
-                  distractor_scores: solPayload.distractor_scores || current.distractor_scores,
-                  presigned_url: solPayload.presigned_url || (current as any).presigned_url,
-                },
-              };
-            });
-          }
-        } catch (err) {
-          console.warn('Lazy solution fetch error:', err);
-        } finally {
-          setIsSolutionLoading(false);
-        }
-      }
+      await fetchPracticeQuestionSolution(targetId);
     }
 
     const rMap = passedRevealedMap || revealedMap;
@@ -1375,8 +1358,12 @@ export function StudentPracticeExamPage() {
       }
     });
   }
-  const qTopics = allQuestions.map((q) => q.topic_name).filter(Boolean) as string[];
-  dynamicTopics = Array.from(new Set([...dynamicTopics, ...qTopics]));
+  if (dynamicTopics.length === 0) {
+    const qTopics = allQuestions.map((q) => q.topic_name).filter(Boolean) as string[];
+    dynamicTopics = Array.from(new Set(qTopics));
+  } else {
+    dynamicTopics = Array.from(new Set(dynamicTopics));
+  }
   const availableTopics = ['All Topics', ...dynamicTopics];
 
   const selectedOptionsMap: Record<number, number | string> = {};

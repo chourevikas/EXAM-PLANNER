@@ -253,8 +253,11 @@ async def list_exam_pipeline_statuses(
 
     # Fetch ExamTypes for mapping
     from app.db.models import ExamType
-    et_rows = (await session.exec(select(ExamType))).all()
-    et_map = {et.id: et for et in et_rows}
+    try:
+        et_rows = (await session.exec(select(ExamType))).all()
+        et_map = {et.id: et for et in et_rows}
+    except Exception:
+        et_map = {}
 
     # 2. Aggregated Question counts per exam
     q_stmt = select(
@@ -494,6 +497,7 @@ async def list_exam_pipeline_statuses(
                 "paper_set_code": exam.paper_set_code,
                 "status": status_str,
                 "overall_status": overall_status,
+                "is_extracting": (overall_status == "PROCESSING" or stage1_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF")),
                 "stage1_status": stage1_status,
                 "stage2_status": stage2_status,
                 "stage3_status": stage3_status,

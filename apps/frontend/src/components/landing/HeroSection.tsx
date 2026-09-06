@@ -93,34 +93,55 @@ export function HeroSection({ }: HeroSectionProps) {
         const taxData = await fetchMasterSyllabus();
         if (isCancelled || !taxData) return;
 
-        const extraNodes: FlatSyllabusNode[] = [];
+        const nodes: FlatSyllabusNode[] = [];
         if (taxData.subjects && Array.isArray(taxData.subjects)) {
           taxData.subjects.forEach((subj: any) => {
             const subjName = subj.name || '';
             if (!subjName) return;
+
+            // Add Subject Node
+            nodes.push({
+              type: 'subject',
+              subject: subjName,
+              label: subjName,
+              breadcrumb: subjName,
+              keywords: subjName.toLowerCase(),
+            });
+
             (subj.topics || []).forEach((topic: any) => {
               const topicName = topic.name || '';
               if (!topicName) return;
+
+              // Add Topic Node
+              nodes.push({
+                type: 'topic',
+                subject: subjName,
+                topic: topicName,
+                label: topicName,
+                breadcrumb: `${subjName} › ${topicName}`,
+                keywords: `${subjName} ${topicName}`.toLowerCase(),
+              });
+
               (topic.subtopics || []).forEach((sub: any) => {
                 const subName = typeof sub === 'string' ? sub : sub.name || '';
                 if (!subName) return;
-                if (!FLAT_SYLLABUS_NODES.some(n => n.type === 'subtopic' && n.label.toLowerCase() === subName.toLowerCase())) {
-                  extraNodes.push({
-                    type: 'subtopic',
-                    subject: subjName,
-                    topic: topicName,
-                    subtopic: subName,
-                    label: subName,
-                    breadcrumb: `${subjName} › ${topicName} › ${subName}`,
-                    keywords: `${subjName} ${topicName} ${subName}`.toLowerCase(),
-                  });
-                }
+
+                // Add Subtopic Node
+                nodes.push({
+                  type: 'subtopic',
+                  subject: subjName,
+                  topic: topicName,
+                  subtopic: subName,
+                  label: subName,
+                  breadcrumb: `${subjName} › ${topicName} › ${subName}`,
+                  keywords: `${subjName} ${topicName} ${subName}`.toLowerCase(),
+                });
               });
             });
           });
         }
-        if (!isCancelled && extraNodes.length > 0) {
-          setDynamicNodes(extraNodes);
+        if (!isCancelled && nodes.length > 0) {
+          setDynamicNodes(nodes);
         }
       } catch {
         // Silently keep pre-bundled static syllabus
@@ -133,10 +154,10 @@ export function HeroSection({ }: HeroSectionProps) {
     };
   }, []);
 
-  // Combined searchable syllabus nodes (pre-bundled canonical + any runtime additions)
+  // Combined searchable syllabus nodes (live API dynamic syllabus prioritized, static fallback)
   const allSyllabusNodes = useMemo(() => {
-    if (dynamicNodes.length === 0) return FLAT_SYLLABUS_NODES;
-    return [...FLAT_SYLLABUS_NODES, ...dynamicNodes];
+    if (dynamicNodes.length > 0) return dynamicNodes;
+    return FLAT_SYLLABUS_NODES;
   }, [dynamicNodes]);
 
   // Fast, ranked search across all Subjects, Topics, and Subtopics

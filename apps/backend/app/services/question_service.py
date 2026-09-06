@@ -21,6 +21,7 @@ from app.db.models import (
     Topic,
     Subtopic,
     QuestionHierarchyLink,
+    QuestionOptionReasoning,
     QuestionStatus,
     QuestionSourceType,
     LanguageCode,
@@ -45,6 +46,7 @@ from app.repositories.question_repository import QuestionRepository
 from app.storage.factory import get_storage_provider
 from app.formatters.yaml_exporter import async_export_question_to_yaml_string
 from app.formatters.markdown_exporter import async_export_question_to_markdown
+from app.utils.text_cleaning import clean_distractor_text
 
 
 class QuestionService:
@@ -1198,7 +1200,16 @@ class QuestionService:
                 if ot.language == target_lang or not o_text:
                     o_text = ot.option_text
                     if include_solutions and ot.distractor_analysis:
-                        o_distractor = ot.distractor_analysis
+                        o_distractor = clean_distractor_text(ot.distractor_analysis)
+
+            if include_solutions and not o_distractor:
+                qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id == opt.id)
+                qr = (await self.session.exec(qr_stmt)).first()
+                if qr:
+                    if qr.whats_actually_true:
+                        o_distractor = clean_distractor_text(qr.whats_actually_true)
+                    elif qr.why_tempting:
+                        o_distractor = clean_distractor_text(qr.why_tempting)
 
             options_detail.append(
                 QuestionOptionDetail(
@@ -1469,7 +1480,7 @@ class QuestionService:
                         display_order=opt.display_order,
                         is_correct=opt.is_correct,
                         option_text=ot_tuple[0] if ot_tuple else "",
-                        distractor_analysis=ot_tuple[1] if (include_solutions and ot_tuple) else None,
+                        distractor_analysis=clean_distractor_text(ot_tuple[1]) if (include_solutions and ot_tuple and ot_tuple[1]) else None,
                         closeness_score=opt.closeness_score,
                         translations=opt_trans_map,
                     )

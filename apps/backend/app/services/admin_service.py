@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 
-from app.db.models import Exam, Question, Subject, QuestionHierarchyLink, ExamStatus
+from app.db.models import Exam, Question, Subject, QuestionHierarchyLink, ExamStatus, PipelineRun
 from app.db.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
@@ -267,9 +267,33 @@ class AdminService:
         recent_exams = recent_exams_res.all()
 
         recent_uploads = []
+        # Collect recent exam IDs to check for active extraction pipeline runs
+        e_ids = [e.id for e in recent_exams if e.id is not None]
+        active_extracting_exam_ids = set()
+        if e_ids:
+            try:
+                run_stmt = (
+                    select(PipelineRun.exam_id)
+                    .where(PipelineRun.exam_id.in_(e_ids))
+                    .where(PipelineRun.pipeline_type.in_(["QUESTION_EXTRACTION", "DOCUMENT_EXTRACTION"]))
+                    .where(PipelineRun.status.in_(["RUNNING", "PROCESSING", "INITIALIZING"]))
+                )
+                run_res = await self.session.exec(run_stmt)
+                active_extracting_exam_ids = set(run_res.all())
+            except Exception:
+                pass
+
         for e in recent_exams:
             status_enum = e.status.value if hasattr(e.status, "value") else str(e.status)
-            if status_enum == "PUBLISHED":
+            is_extracting = (
+                e.id in active_extracting_exam_ids
+                or status_enum in ("PARSING_PDF", "PROCESSING", "EXTRACTING")
+                or (status_enum not in ("PUBLISHED", "PENDING_HUMAN_REVIEW") and (e.extracted_questions_count or 0) == 0)
+            )
+
+            if is_extracting:
+                status_text = "AI Processing"
+            elif status_enum == "PUBLISHED":
                 status_text = "Approved & Published"
             elif status_enum == "PENDING_HUMAN_REVIEW":
                 status_text = "Ready for Review"
@@ -304,6 +328,10 @@ class AdminService:
                     date=date_str,
                     status=status_text,
                     confidence=conf,
+                    is_extracting=is_extracting,
+                    raw_status=status_enum,
+                    total_questions=total_exp,
+                    extracted_questions_count=ext_cnt,
                 )
             )
 

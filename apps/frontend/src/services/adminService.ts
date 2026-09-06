@@ -213,6 +213,7 @@ export interface ExamPipelineStatusItem {
   paper_set_code: string;
   status: string;
   overall_status?: string;
+  is_extracting?: boolean;
   is_active: boolean;
   total_questions: number;
   extracted_questions_count: number;

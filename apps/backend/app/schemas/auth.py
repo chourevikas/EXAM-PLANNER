@@ -144,6 +144,10 @@ class RecentUploadItemOut(BaseModel):
     date: str
     status: str
     confidence: float
+    is_extracting: bool = False
+    raw_status: Optional[str] = None
+    total_questions: Optional[int] = 100
+    extracted_questions_count: Optional[int] = 0
 
 
 class SubjectBreakdownItemOut(BaseModel):

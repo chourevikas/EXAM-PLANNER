@@ -19,23 +19,37 @@ class ExamTypeRepository:
         return await self.session.get(ExamType, parsed_id)
 
     async def get_by_type(self, type_str: str) -> Optional[ExamType]:
+        if not type_str:
+            return None
         cleaned = type_str.strip().lower()
         stmt = select(ExamType).where(func.lower(ExamType.type) == cleaned)
         res = await self.session.exec(stmt)
-        return res.first()
+        record = res.first()
+        if not record:
+            # Check name match
+            stmt_name = select(ExamType).where(func.lower(ExamType.name).contains(cleaned))
+            res_name = await self.session.exec(stmt_name)
+            record = res_name.first()
+        if not record and cleaned in ("upsc", "upse"):
+            # Seamless fallback between upsc and upse aliases
+            alternate = "upse" if cleaned == "upsc" else "upsc"
+            stmt_alt = select(ExamType).where(func.lower(ExamType.type) == alternate)
+            res_alt = await self.session.exec(stmt_alt)
+            record = res_alt.first()
+        return record
 
     async def list_all(self, include_inactive: bool = True) -> List[Tuple[ExamType, int]]:
         """Returns list of (ExamType, exams_count) tuples ordered by type."""
         stmt = (
-            select(ExamType, func.count(Exam.id))
-            .outerjoin(Exam, Exam.exam_type_id == ExamType.id)
-            .group_by(ExamType.id)
+            select(ExamType, func.count(col(Exam.id)))
+            .outerjoin(Exam, col(Exam.exam_type_id) == col(ExamType.id))
+            .group_by(col(ExamType.id))
             .order_by(col(ExamType.name).asc())
         )
         if not include_inactive:
             stmt = stmt.where(ExamType.is_active == True)
         res = await self.session.exec(stmt)
-        return res.all()
+        return list(res.all())
 
     async def create(self, exam_type: ExamType) -> ExamType:
         self.session.add(exam_type)
@@ -59,6 +73,6 @@ class ExamTypeRepository:
         return True
 
     async def count_associated_exams(self, exam_type_id: int) -> int:
-        stmt = select(func.count(Exam.id)).where(Exam.exam_type_id == exam_type_id)
+        stmt = select(func.count(col(Exam.id))).where(col(Exam.exam_type_id) == exam_type_id)
         res = await self.session.exec(stmt)
         return res.one() or 0

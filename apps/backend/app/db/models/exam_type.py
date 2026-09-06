@@ -9,10 +9,6 @@ if TYPE_CHECKING:
 
 class ExamType(SQLModel, table=True):
     __tablename__ = "exam_types"
-    __table_args__ = (
-        Index("ix_exam_types_type", "type"),
-        Index("ix_exam_types_active", "is_active"),
-    )
 
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     type: str = Field(
