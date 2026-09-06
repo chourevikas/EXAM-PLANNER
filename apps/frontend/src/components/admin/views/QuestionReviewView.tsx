@@ -187,6 +187,13 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     canPublish: boolean;
   }>({ total: 0, reviewed: 0, pending: 0, rejected: 0, canPublish: false });
 
+  const isSelectedExtracting = Boolean(
+    selectedExam?.is_extracting ||
+    selectedExam?.overall_status === 'PROCESSING' ||
+    selectedExam?.stage1_status === 'IN_PROGRESS' ||
+    examIntegrity?.is_extracting
+  );
+
   // Exam Publication & Integrity Status
   const [publishStatus, setPublishStatus] = useState<{
     is_published: boolean;
@@ -1461,7 +1468,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         </div>
 
         {/* Missing Questions Alert Banner */}
-        {examIntegrity && examIntegrity.missing_count > 0 && (
+        {!isSelectedExtracting && examIntegrity && examIntegrity.missing_count > 0 && (
           <div
             style={{
               backgroundColor: 'rgba(239, 68, 68, 0.03)',

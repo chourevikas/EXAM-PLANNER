@@ -486,6 +486,22 @@ class SyllabusService:
         total_extracted = len(q_rows)
         total_expected = max(exam.total_questions or 100, max(q_by_num.keys()) if q_by_num else 100)
 
+        # Check if exam is actively undergoing extraction
+        from app.db.models.pipeline_run import PipelineRun
+        status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        p1_res = await self.session.execute(
+            select(PipelineRun).where(
+                PipelineRun.exam_id == exam_id,
+                PipelineRun.pipeline_type == "QUESTION_EXTRACTION"
+            )
+        )
+        p1_run = p1_res.scalars().first()
+        is_extracting = False
+        if p1_run and str(p1_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
+            is_extracting = True
+        elif status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+            is_extracting = True
+
         # 2. Build integrity items for each question number from 1 to total_expected
         all_issue_items: List[QuestionIssueDetail] = []
         corrupted_count = 0
@@ -498,7 +514,9 @@ class SyllabusService:
             r = q_by_num.get(q_num)
 
             if not r:
-                # Question missing from paper extraction
+                # If the paper is currently undergoing extraction, do not treat unextracted slots as missing
+                if is_extracting:
+                    continue
                 missing_count += 1
                 missing_numbers.append(q_num)
                 all_issue_items.append(
@@ -623,6 +641,7 @@ class SyllabusService:
             missing_count=missing_count,
             valid_count=valid_count,
             missing_question_numbers=missing_numbers,
+            is_extracting=is_extracting,
             page=page,
             limit=limit,
             total_items=total_items,

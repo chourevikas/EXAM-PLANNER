@@ -48,6 +48,7 @@ async def upload_exam_pdf(
     exam_type: Optional[str] = Form(default=None, description="Exam type code e.g. 'upse', 'mpse'"),
     exam_type_id: Optional[int] = Form(default=None, description="Exam type ID foreign key"),
     run_mode: Optional[str] = Form(default="auto", description="'celery', 'background', or 'auto'"),
+    conflict_resolution: Optional[str] = Form(default="CHECK", description="'CHECK', 'OVERWRITE', or 'SKIP'"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -65,6 +66,7 @@ async def upload_exam_pdf(
         exam_type=exam_type,
         exam_type_id=exam_type_id,
         run_mode=run_mode,
+        conflict_resolution=conflict_resolution,
         background_tasks=background_tasks,
     )
 
@@ -663,7 +665,8 @@ async def get_exam_integrity_questions(
         language=language,
     )
     serialized = jsonable_encoder(response)
-    await cache.set(cache_key, serialized, ttl_seconds=300)
+    if not getattr(response, "is_extracting", False):
+        await cache.set(cache_key, serialized, ttl_seconds=300)
     return JSONResponse(content=serialized)
 
 

@@ -14,7 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
-import { QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
+import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface ExamQuestionCardProps {
@@ -82,6 +82,7 @@ interface ExamQuestionCardProps {
   onPrev?: () => void;
   onNext?: () => void;
   isPYQ?: boolean;
+  solutionData?: QuestionSolutionData | null;
 }
 
 function cleanQuestionTextBody(rawText: string): string {
@@ -168,6 +169,7 @@ export function ExamQuestionCard({
   onPrev,
   onNext,
   isPYQ = false,
+  solutionData,
 }: ExamQuestionCardProps) {
   const [showDetailedSolution, setShowDetailedSolution] = useState<boolean>(false);
 
@@ -775,55 +777,57 @@ export function ExamQuestionCard({
             </div>
 
             {/* Rich Solution Markdown Card (Practice / Revision Mode) */}
-            {mode !== 'EXAM' && revealResult && showDetailedSolution && (
+            {mode !== 'EXAM' && (revealResult || solutionData) && showDetailedSolution && (
               <QuestionSolutionMarkdownCard
                 isLoading={isRevealing}
-                isUserCorrect={revealResult.is_user_correct}
+                isUserCorrect={revealResult?.is_user_correct}
                 selectedOptionLabel={
-                  revealResult.user_selected_label || selectedOptionLabel || undefined
+                  revealResult?.user_selected_label || selectedOptionLabel || undefined
                 }
-                solution={{
-                  question_id: revealResult.question_id,
-                  question_number: revealResult.question_number || questionIndex + 1,
-                  correct_option_id: revealResult.correct_option_id,
-                  correct_option_label: revealResult.correct_option_label,
-                  difficulty: (question as any).difficulty || 'MEDIUM',
-                  topic:
-                    (question as any).topic_name ||
-                    (question as any).topic ||
-                    (question as any).section_code,
-                  subtopic: (question as any).subtopic_name || (question as any).subtopic,
-                  presigned_url: (revealResult as any).presigned_url,
-                  explanation:
-                    typeof revealResult.explanation === 'object' &&
-                    revealResult.explanation !== null
-                      ? {
-                          detailed_solution:
-                            (revealResult.explanation as any).detailed_solution ||
-                            (revealResult.explanation as any).detailed_text ||
-                            (revealResult.explanation as any).text ||
-                            (typeof revealResult.explanation === 'string'
-                              ? revealResult.explanation
-                              : ''),
-                          common_traps:
-                            (revealResult.explanation as any).common_traps ||
-                            (revealResult.explanation as any).traps ||
-                            [],
-                          key_takeaways:
-                            (revealResult.explanation as any).key_takeaways ||
-                            (revealResult.explanation as any).points_to_remember ||
-                            ((revealResult.explanation as any).key_takeaway
-                              ? [(revealResult.explanation as any).key_takeaway]
-                              : []),
-                        }
-                      : {
-                          detailed_solution:
-                            typeof revealResult.explanation === 'string'
-                              ? revealResult.explanation
-                              : 'Detailed solution is available.',
-                        },
-                  distractor_scores: revealResult.distractor_scores || {},
-                }}
+                solution={
+                  solutionData || {
+                    question_id: revealResult?.question_id,
+                    question_number: revealResult?.question_number || questionIndex + 1,
+                    correct_option_id: revealResult?.correct_option_id,
+                    correct_option_label: revealResult?.correct_option_label,
+                    difficulty: (question as any)?.difficulty || 'MEDIUM',
+                    topic:
+                      (question as any)?.topic_name ||
+                      (question as any)?.topic ||
+                      (question as any)?.section_code,
+                    subtopic: (question as any)?.subtopic_name || (question as any)?.subtopic,
+                    presigned_url: (revealResult as any)?.presigned_url,
+                    explanation:
+                      typeof revealResult?.explanation === 'object' &&
+                      revealResult?.explanation !== null
+                        ? {
+                            detailed_solution:
+                              (revealResult.explanation as any).detailed_solution ||
+                              (revealResult.explanation as any).detailed_text ||
+                              (revealResult.explanation as any).text ||
+                              (typeof revealResult.explanation === 'string'
+                                ? revealResult.explanation
+                                : ''),
+                            common_traps:
+                              (revealResult.explanation as any).common_traps ||
+                              (revealResult.explanation as any).traps ||
+                              [],
+                            key_takeaways:
+                              (revealResult.explanation as any).key_takeaways ||
+                              (revealResult.explanation as any).points_to_remember ||
+                              ((revealResult.explanation as any).key_takeaway
+                                ? [(revealResult.explanation as any).key_takeaway]
+                                : []),
+                          }
+                        : {
+                            detailed_solution:
+                              typeof revealResult?.explanation === 'string'
+                                ? revealResult.explanation
+                                : 'Detailed solution is available.',
+                          },
+                    distractor_scores: revealResult?.distractor_scores || {},
+                  }
+                }
               />
             )}
 
@@ -964,7 +968,13 @@ export function ExamQuestionCard({
                         /* Toggle Solution Button */
                         <button
                           type="button"
-                          onClick={() => setShowDetailedSolution((prev) => !prev)}
+                          onClick={() => {
+                            const next = !showDetailedSolution;
+                            setShowDetailedSolution(next);
+                            if (next && onShowSolution) {
+                              onShowSolution();
+                            }
+                          }}
                           style={{
                             padding: '8px 18px',
                             borderRadius: 3,

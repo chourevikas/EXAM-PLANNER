@@ -607,6 +607,7 @@ export interface ExamIntegrityQuestionsResponse {
   missing_count: number;
   valid_count: number;
   missing_question_numbers: number[];
+  is_extracting?: boolean;
   page: number;
   limit: number;
   total_items: number;

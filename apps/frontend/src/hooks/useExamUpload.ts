@@ -122,9 +122,9 @@ export function useExamUpload() {
       if (err.status === 409 && err.payload && err.payload.requires_confirmation) {
         setConflictModal({
           isOpen: true,
-          title: 'Active Task Conflict Detected',
-          message: err.payload.message || 'A pipeline task is already active for this exam paper. Please select how you want to proceed:',
-          options: err.payload.options || ['RESTART', 'CANCEL'],
+          title: err.payload.title || (err.payload.conflict_type === 'EXAM_EXISTS' ? 'Existing Exam Paper Detected' : 'Active Task Conflict Detected'),
+          message: err.payload.message || 'An exam paper with this canonical name already exists. Please select whether to overwrite it or skip:',
+          options: err.payload.options || ['OVERWRITE', 'SKIP'],
         });
       } else {
         setStatusMessage({
@@ -144,8 +144,8 @@ export function useExamUpload() {
 
   const handleConflictResolve = async (chosenOption: string) => {
     setConflictModal(null);
-    if (chosenOption === 'CANCEL') {
-      setStatusMessage({ text: 'Upload operation cancelled by user.', isError: false });
+    if (chosenOption === 'CANCEL' || chosenOption === 'SKIP') {
+      setStatusMessage({ text: 'Upload operation skipped by user. Existing exam paper preserved.', isError: false });
       return;
     }
     await executeUpload(chosenOption);

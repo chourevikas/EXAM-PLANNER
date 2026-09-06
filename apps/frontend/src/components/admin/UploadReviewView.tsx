@@ -2045,7 +2045,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
               {conflictModal.options.map((opt) => {
-                const isCancel = opt.toUpperCase() === 'CANCEL' || opt.toUpperCase() === 'IGNORE';
+                const isCancel = opt.toUpperCase() === 'CANCEL' || opt.toUpperCase() === 'IGNORE' || opt.toUpperCase() === 'SKIP';
                 const isRestart = opt.toUpperCase() === 'RESTART' || opt.toUpperCase() === 'OVERWRITE';
 
                 return (
@@ -2068,9 +2068,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                       ? 'Cancel Old Task & Restart'
                       : opt === 'OVERWRITE'
                         ? 'Overwrite Existing Paper'
-                        : opt === 'CANCEL'
-                          ? 'Cancel Upload'
-                          : opt}
+                        : opt === 'SKIP'
+                          ? 'Skip Upload'
+                          : opt === 'CANCEL'
+                            ? 'Cancel Upload'
+                            : opt}
                   </button>
                 );
               })}

@@ -33,7 +33,7 @@ def _normalize_exam_name(exam_name: Optional[str], default: str = "UPSC") -> str
     if not exam_name:
         return default
     cleaned = str(exam_name).strip().upper()
-    if cleaned in ("USPC", "UPSC"):
+    if cleaned in ("USPC", "UPSC", "UPSE"):
         return "UPSC"
     return cleaned
 

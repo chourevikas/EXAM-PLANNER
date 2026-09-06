@@ -13,7 +13,6 @@ from app.schemas.question import (
     QuestionPaginatedResponse,
 )
 from app.services.question_service import QuestionService
-from app.utils.text_cleaning import clean_distractor_text
 
 
 router = APIRouter(prefix="/questions", tags=["Questions & Formatted Outputs"])
@@ -446,12 +445,12 @@ async def get_question_solution(
         # Distractor analysis from OptionTranslation, or fallback to QuestionOptionReasoning
         analysis_text = None
         if ot and ot.distractor_analysis:
-            analysis_text = clean_distractor_text(ot.distractor_analysis)
+            analysis_text = ot.distractor_analysis
         elif qr:
             if qr.whats_actually_true:
-                analysis_text = clean_distractor_text(qr.whats_actually_true)
+                analysis_text = qr.whats_actually_true
             elif qr.why_tempting:
-                analysis_text = clean_distractor_text(qr.why_tempting)
+                analysis_text = qr.why_tempting
 
         if opt.is_correct:
             correct_option_id = str(opt.id)

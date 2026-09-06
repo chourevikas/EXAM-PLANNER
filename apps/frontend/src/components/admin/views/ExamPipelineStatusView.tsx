@@ -777,8 +777,8 @@ export function ExamPipelineStatusView({ onNavigate }: ExamPipelineStatusViewPro
                   </div>
                   <div style={{ background: '#F7F7F5', padding: 10, borderRadius: 0, border: '1px solid #E4E7EC' }}>
                     <div style={{ fontSize: 11, color: '#667085' }}>Missing Questions</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085', marginTop: 2 }}>
-                      {selectedExam.missing_questions_count} Missing
+                    <div style={{ fontSize: 15, fontWeight: 700, color: selectedExam.is_extracting ? '#2563EB' : (selectedExam.missing_questions_count > 0 ? '#B42318' : '#667085'), marginTop: 2 }}>
+                      {selectedExam.is_extracting ? 'In Extraction' : `${selectedExam.missing_questions_count} Missing`}
                     </div>
                   </div>
                 </div>

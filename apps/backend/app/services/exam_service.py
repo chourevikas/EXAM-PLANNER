@@ -35,6 +35,7 @@ class ExamService:
         exam_type: Optional[str] = None,
         exam_type_id: Optional[int] = None,
         run_mode: Optional[str] = "auto",
+        conflict_resolution: Optional[str] = "CHECK",
         background_tasks: Optional[BackgroundTasks] = None,
     ) -> Dict[str, Any]:
         from app.tasks.exam_tasks import process_exam_pdf_task, async_process_exam_pdf
@@ -72,8 +73,41 @@ class ExamService:
         dur_mins = resolved_et.total_duration if resolved_et else 120
         tot_marks = resolved_et.total_marks if resolved_et else 200.0
 
-        # 2. Check if exam with canonical code already exists
-        exam = await self.repo.get_by_code(canonical_code)
+        # 2. Check if matching canonical exam already exists
+        exam = await self.repo.get_matching_canonical_exam(
+            code=canonical_code,
+            year=parsed_tokens["year"],
+            stage=parsed_tokens["stage"],
+            subject_code=parsed_tokens["subject_code"],
+            paper_set_code=clean_set,
+        )
+
+        resolution = (conflict_resolution or "CHECK").strip().upper()
+        if exam and resolution == "CHECK":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "requires_confirmation": True,
+                    "conflict_type": "EXAM_EXISTS",
+                    "title": "Existing Exam Paper Detected",
+                    "message": (
+                        f"An exam paper matching '{exam.name}' ({exam.code}) already exists in the system. "
+                        f"Would you like to overwrite it or skip this upload?"
+                    ),
+                    "options": ["OVERWRITE", "SKIP"],
+                    "exam_id": str(exam.id),
+                    "canonical_code": exam.code,
+                },
+            )
+
+        if exam and resolution == "SKIP":
+            return {
+                "status": "SKIPPED",
+                "message": f"Upload skipped. Existing exam '{exam.code}' (ID: {exam.id}) was preserved without modification.",
+                "exam_id": str(exam.id),
+                "canonical_code": exam.code,
+                "s3_path": exam.pdf_path,
+            }
 
         # 3. Save uploaded file to temp directory & upload to persistent storage provider
         temp_dir = Path("./temp_uploads").resolve()
@@ -106,6 +140,8 @@ class ExamService:
         else:
             exam.paper_set_code = clean_set
             exam.pdf_path = persistent_path
+            from app.db.models.enums import ExamStatus
+            exam.status = ExamStatus.PENDING_HUMAN_REVIEW
             if et_id and not exam.exam_type_id:
                 exam.exam_type_id = et_id
                 exam.total_questions = exam.total_questions or tot_q

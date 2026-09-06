@@ -39,6 +39,7 @@ class ExamIntegrityQuestionsResponse(BaseModel):
     missing_count: int = 0
     valid_count: int = 0
     missing_question_numbers: List[int] = []
+    is_extracting: bool = False
     page: int = 1
     limit: int = 10
     total_items: int = 0

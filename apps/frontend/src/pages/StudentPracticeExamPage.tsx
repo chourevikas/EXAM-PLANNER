@@ -86,6 +86,9 @@ export function StudentPracticeExamPage() {
   const [recSolutions, setRecSolutions] = useState<Record<string | number, QuestionSolutionData>>(
     {},
   );
+  const [practiceSolutions, setPracticeSolutions] = useState<Record<string | number, QuestionSolutionData>>(
+    {},
+  );
   const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>(
     {},
   );
@@ -393,20 +396,28 @@ export function StudentPracticeExamPage() {
     try {
       const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
       if (solRes.ok) {
-        const solPayload = await solRes.json();
+        const solPayload: QuestionSolutionData = await solRes.json();
+        setPracticeSolutions((prev) => ({
+          ...prev,
+          [targetId]: solPayload,
+          [String(targetId)]: solPayload,
+        }));
         setRevealedMap((prev) => {
-          const current = prev[targetId] || {};
+          const current = prev[targetId] || prev[String(targetId)] || {};
+          const updatedObj = {
+            ...current,
+            question_id: targetId,
+            correct_option_id: solPayload.correct_option_id || current.correct_option_id,
+            correct_option_label:
+              solPayload.correct_option_label || current.correct_option_label,
+            explanation: solPayload.explanation || current.explanation,
+            distractor_scores: solPayload.distractor_scores || current.distractor_scores,
+            presigned_url: solPayload.presigned_url || (current as any)?.presigned_url,
+          };
           return {
             ...prev,
-            [targetId]: {
-              ...current,
-              correct_option_id: solPayload.correct_option_id || current.correct_option_id,
-              correct_option_label:
-                solPayload.correct_option_label || current.correct_option_label,
-              explanation: solPayload.explanation || current.explanation,
-              distractor_scores: solPayload.distractor_scores || current.distractor_scores,
-              presigned_url: solPayload.presigned_url || (current as any)?.presigned_url,
-            },
+            [targetId]: updatedObj,
+            [String(targetId)]: updatedObj,
           };
         });
       }
@@ -1112,13 +1123,16 @@ export function StudentPracticeExamPage() {
     const distractorScores: Record<string, any> = {};
     if (Array.isArray(targetQuestion.options)) {
       targetQuestion.options.forEach((opt: any) => {
-        const oId = String(opt.option_id);
+        const oId = String(opt.option_id || opt.id || '');
         distractorScores[oId] = {
           option_id: oId,
-          label: opt.option_label,
+          label: opt.option_label || opt.label,
+          text: opt.option_text || opt.text || '',
           is_correct: opt.is_correct,
           closeness_score: opt.closeness_score ?? 0,
-          analysis: opt.distractor_analysis || '',
+          distractor_analysis: opt.distractor_analysis || opt.analysis || '',
+          analysis: opt.distractor_analysis || opt.analysis || '',
+          classification: opt.is_correct ? 'CORRECT' : (opt.classification || 'DISTRACTOR'),
         };
       });
     }
@@ -1143,6 +1157,7 @@ export function StudentPracticeExamPage() {
     const updatedRevealedMap = {
       ...revealedMap,
       [targetId]: revealObj,
+      [String(targetId)]: revealObj,
     };
 
     setRevealedMap(updatedRevealedMap);
@@ -1383,7 +1398,9 @@ export function StudentPracticeExamPage() {
   const unattemptedCount = Math.max(0, totalQuestions - answeredCount);
 
   const currentResponse = activeQuestion ? userResponses[activeQuestion.question_id] : null;
-  const currentRevealedResult = activeQuestion ? revealedMap[activeQuestion.question_id] : null;
+  const currentRevealedResult = activeQuestion
+    ? revealedMap[activeQuestion.question_id] || revealedMap[String(activeQuestion.question_id)] || null
+    : null;
 
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = activeQuestion ? !!markedForReview[activeQuestion.question_id] : false;
@@ -2696,6 +2713,13 @@ export function StudentPracticeExamPage() {
           language={language}
           mode="PRACTICE"
           revealResult={currentRevealedResult}
+          solutionData={
+            activeQuestion
+              ? practiceSolutions[activeQuestion.question_id] ||
+                practiceSolutions[String(activeQuestion.question_id)] ||
+                null
+              : null
+          }
           isRevealing={isSolutionLoading}
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={handleToggleBookmark}

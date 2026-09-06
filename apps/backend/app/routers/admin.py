@@ -497,7 +497,7 @@ async def list_exam_pipeline_statuses(
                 "paper_set_code": exam.paper_set_code,
                 "status": status_str,
                 "overall_status": overall_status,
-                "is_extracting": (overall_status == "PROCESSING" or stage1_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF")),
+                "is_extracting": (overall_status == "PROCESSING" or stage1_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING")),
                 "stage1_status": stage1_status,
                 "stage2_status": stage2_status,
                 "stage3_status": stage3_status,
@@ -510,8 +510,7 @@ async def list_exam_pipeline_statuses(
                 "is_active": exam.is_active,
                 "total_questions": total_exp,
                 "extracted_questions_count": q_count,
-                "missing_questions_count": exam.missing_questions_count
-                or max(0, total_exp - q_count),
+                "missing_questions_count": 0 if (overall_status == "PROCESSING" or stage1_status == "IN_PROGRESS" or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING")) else (exam.missing_questions_count or max(0, total_exp - q_count)),
                 "published_questions_count": pub_count,
                 "pending_questions_count": pend_count,
                 "rejected_questions_count": rej_count,

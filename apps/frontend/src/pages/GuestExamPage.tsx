@@ -160,6 +160,9 @@ export function GuestExamPage() {
   const [recSolutions, setRecSolutions] = useState<Record<string | number, QuestionSolutionData>>(
     {},
   );
+  const [practiceSolutions, setPracticeSolutions] = useState<Record<string | number, QuestionSolutionData>>(
+    {},
+  );
   const [recSolutionLoading, setRecSolutionLoading] = useState<Record<string | number, boolean>>(
     {},
   );
@@ -735,6 +738,48 @@ export function GuestExamPage() {
     }
   };
 
+  // Fetches full authoritative solution for a practice question via /api/v1/questions/{id}/solution
+  const practiceSolutionLoadingRef = React.useRef<Record<string | number, boolean>>({});
+  const fetchPracticeQuestionSolution = async (targetId: string | number) => {
+    if (!targetId || practiceSolutionLoadingRef.current[targetId]) return;
+    practiceSolutionLoadingRef.current[targetId] = true;
+    setIsSolutionLoading(true);
+    try {
+      const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
+      if (solRes.ok) {
+        const solPayload: QuestionSolutionData = await solRes.json();
+        setPracticeSolutions((prev) => ({
+          ...prev,
+          [targetId]: solPayload,
+          [String(targetId)]: solPayload,
+        }));
+        setRevealedMap((prev) => {
+          const current = prev[targetId] || prev[String(targetId)] || {};
+          const updatedObj = {
+            ...current,
+            question_id: targetId,
+            correct_option_id: solPayload.correct_option_id || current.correct_option_id,
+            correct_option_label:
+              solPayload.correct_option_label || current.correct_option_label,
+            explanation: solPayload.explanation || current.explanation,
+            distractor_scores: solPayload.distractor_scores || current.distractor_scores,
+            presigned_url: solPayload.presigned_url || (current as any)?.presigned_url,
+          };
+          return {
+            ...prev,
+            [targetId]: updatedObj,
+            [String(targetId)]: updatedObj,
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Practice solution fetch error:', err);
+    } finally {
+      practiceSolutionLoadingRef.current[targetId] = false;
+      setIsSolutionLoading(false);
+    }
+  };
+
   // Records the user's answer for a recommended question and kicks off its solution fetch
   const handleSelectRecommendationOption = (rec: QuestionOut, optionId: number | string) => {
     setRecUserResponses((prev) => ({ ...prev, [rec.question_id]: optionId }));
@@ -818,11 +863,15 @@ export function GuestExamPage() {
     if (Array.isArray(targetQuestion.options)) {
       targetQuestion.options.forEach((opt: any) => {
         const oId = String(opt.option_id);
+        const closeness = opt.closeness_score ?? (opt.is_correct ? 1.0 : 0.0);
         distractorScores[oId] = {
           option_id: oId,
           label: opt.option_label,
+          text: opt.option_text || `Option ${opt.option_label}`,
           is_correct: opt.is_correct,
-          closeness_score: opt.closeness_score ?? 0,
+          closeness_score: closeness,
+          classification: opt.is_correct ? 'Correct' : 'Distractor',
+          distractor_analysis: opt.distractor_analysis || '',
           analysis: opt.distractor_analysis || '',
         };
       });
@@ -848,9 +897,12 @@ export function GuestExamPage() {
     const updatedRevealedMap = {
       ...revealedMap,
       [targetId]: revealObj,
+      [String(targetId)]: revealObj,
     };
 
     setRevealedMap(updatedRevealedMap);
+
+    fetchPracticeQuestionSolution(targetId);
 
     // Update palette question_status on Submit
     setPalette((prev) =>
@@ -871,73 +923,7 @@ export function GuestExamPage() {
   const handleShowSolution = async (passedRevealedMap?: Record<string, RevealAnswerResponse>) => {
     const targetId = activeQuestion?.question_id;
     if (targetId) {
-      const existingRevealed = (passedRevealedMap && passedRevealedMap[targetId]) || revealedMap[targetId];
-      const hasExplanation = existingRevealed?.explanation && (
-        typeof existingRevealed.explanation === 'string'
-          ? existingRevealed.explanation.trim().length > 0
-          : Object.keys(existingRevealed.explanation).length > 0
-      );
-      const hasDistractors = existingRevealed?.distractor_scores && Object.keys(existingRevealed.distractor_scores).length > 0;
-
-      if (!hasExplanation || !hasDistractors) {
-        if ((activeQuestion as any)?.explanation || (activeQuestion?.options && activeQuestion.options.length > 0)) {
-          const distractorScores: Record<string, any> = { ...(existingRevealed?.distractor_scores || {}) };
-          if (Array.isArray(activeQuestion.options)) {
-            activeQuestion.options.forEach((opt: any) => {
-              const oId = String(opt.option_id);
-              if (!distractorScores[oId]) {
-                distractorScores[oId] = {
-                  option_id: oId,
-                  label: opt.option_label,
-                  is_correct: opt.is_correct,
-                  closeness_score: opt.closeness_score ?? 0,
-                  analysis: opt.distractor_analysis || '',
-                };
-              }
-            });
-          }
-          const exp = (activeQuestion as any).explanation?.detailed_solution || (activeQuestion as any).explanation || existingRevealed?.explanation;
-          setRevealedMap((prev) => {
-            const current = prev[targetId] || {};
-            return {
-              ...prev,
-              [targetId]: {
-                ...current,
-                explanation: exp || current.explanation,
-                distractor_scores: Object.keys(distractorScores).length > 0 ? distractorScores : current.distractor_scores,
-              }
-            };
-          });
-          return;
-        }
-
-        setIsSolutionLoading(true);
-        try {
-          const solRes = await fetch(`/api/v1/questions/${targetId}/solution`);
-          if (solRes.ok) {
-            const solPayload = await solRes.json();
-            setRevealedMap((prev) => {
-              const current = prev[targetId] || {};
-              return {
-                ...prev,
-                [targetId]: {
-                  ...current,
-                  correct_option_id: solPayload.correct_option_id || current.correct_option_id,
-                  correct_option_label:
-                    solPayload.correct_option_label || current.correct_option_label,
-                  explanation: solPayload.explanation || current.explanation,
-                  distractor_scores: solPayload.distractor_scores || current.distractor_scores,
-                  presigned_url: solPayload.presigned_url || (current as any).presigned_url,
-                },
-              };
-            });
-          }
-        } catch (err) {
-          console.warn('Lazy solution fetch error:', err);
-        } finally {
-          setIsSolutionLoading(false);
-        }
-      }
+      await fetchPracticeQuestionSolution(targetId);
     }
 
     const rMap = passedRevealedMap || revealedMap;
@@ -1205,7 +1191,10 @@ export function GuestExamPage() {
   const currentResponse = userResponses[activeQuestion.question_id];
   const isCurrentAnswered = !!currentResponse;
   const isCurrentMarked = !!markedForReview[activeQuestion.question_id];
-  const currentRevealedResult = revealedMap[activeQuestion.question_id] || null;
+  const currentRevealedResult =
+    revealedMap[activeQuestion.question_id] ||
+    revealedMap[String(activeQuestion.question_id)] ||
+    null;
 
   const selectedOptionsMap: Record<number, number | string> = {};
   allQuestions.forEach((q, idx) => {
@@ -2746,6 +2735,13 @@ export function GuestExamPage() {
           mode="PRACTICE"
           revealResult={currentRevealedResult}
           isRevealing={isSolutionLoading}
+          solutionData={
+            activeQuestion
+              ? practiceSolutions[activeQuestion.question_id] ||
+                practiceSolutions[String(activeQuestion.question_id)] ||
+                null
+              : null
+          }
           onSelectOption={(optId, optLbl) => handleSelectOption(optId, optLbl)}
           onToggleBookmark={() =>
             setBookmarkedQs((prev) => ({ ...prev, [currentQIndex]: !prev[currentQIndex] }))

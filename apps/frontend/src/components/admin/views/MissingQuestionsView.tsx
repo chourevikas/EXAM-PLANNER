@@ -117,6 +117,9 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
     let totalCorruptedCount = 0;
 
     filteredExams.forEach((e) => {
+      if (e.is_extracting || e.overall_status === 'PROCESSING' || e.stage1_status === 'IN_PROGRESS') {
+        return; // Do not show or aggregate missing questions for papers currently undergoing extraction
+      }
       const diag = integrityMap[e.id];
       const missingCount = diag ? diag.missing_count : Math.max(0, (e.total_questions || 100) - (e.extracted_questions_count || 0));
       const corruptedCount = diag ? diag.corrupted_count : 0;
@@ -440,8 +443,9 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {filteredExams.map((exam) => {
             const diag = integrityMap[exam.id];
-            const missingCount = diag ? diag.missing_count : Math.max(0, (exam.total_questions || 100) - (exam.extracted_questions_count || 0));
-            const missingNumbers = diag?.missing_question_numbers || [];
+            const isExtracting = exam.is_extracting || exam.overall_status === 'PROCESSING' || exam.stage1_status === 'IN_PROGRESS' || diag?.is_extracting;
+            const missingCount = isExtracting ? 0 : (diag ? diag.missing_count : Math.max(0, (exam.total_questions || 100) - (exam.extracted_questions_count || 0)));
+            const missingNumbers = isExtracting ? [] : (diag?.missing_question_numbers || []);
             const corruptedNumbers = (diag?.items || [])
               .filter((item: any) => item.issue_category === 'CORRUPTED' || item.issue_category === 'PARTIALLY_CORRUPTED')
               .map((item: any) => item.question_number_in_paper)
@@ -465,7 +469,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                   backgroundColor: '#ffffff',
                   borderRadius: 12,
                   border: '1px solid #E2E8F0',
-                  borderLeft: missingCount > 0 ? '4px solid #EF4444' : '4px solid #10B981',
+                  borderLeft: isExtracting ? '4px solid #3B82F6' : (missingCount > 0 ? '4px solid #EF4444' : '4px solid #10B981'),
                   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
                   padding: '20px 24px',
                   display: 'flex',
@@ -519,15 +523,21 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
                         {extractedCount} / {expectedCount} Extracted
                       </div>
-                      <div style={{ fontSize: 11, color: (missingCount > 0 || corruptedCount > 0) ? '#DC2626' : '#10B981', fontWeight: 600 }}>
-                        {missingCount > 0 ? `${missingCount} Missing ` : ''}
-                        {corruptedCount > 0 ? `${corruptedCount} Corrupted ` : ''}
-                        {missingCount === 0 && corruptedCount === 0 ? '100% Extracted & Valid' : ''}
+                      <div style={{ fontSize: 11, color: isExtracting ? '#2563EB' : ((missingCount > 0 || corruptedCount > 0) ? '#DC2626' : '#10B981'), fontWeight: 600 }}>
+                        {isExtracting ? (
+                          'Extraction In Progress...'
+                        ) : (
+                          <>
+                            {missingCount > 0 ? `${missingCount} Missing ` : ''}
+                            {corruptedCount > 0 ? `${corruptedCount} Corrupted ` : ''}
+                            {missingCount === 0 && corruptedCount === 0 ? '100% Extracted & Valid' : ''}
+                          </>
+                        )}
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: 8 }}>
-                      {missingCount > 0 && (
+                      {!isExtracting && missingCount > 0 && (
                         <button
                           onClick={() => handleOpenAddMissingModal(exam)}
                           style={{
@@ -575,8 +585,29 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                   </div>
                 </div>
 
+                {/* Extraction Active Notice */}
+                {isExtracting && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                      padding: '12px 16px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      color: '#1D4ED8',
+                      fontSize: 13,
+                      fontWeight: 500,
+                    }}
+                  >
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>This paper is currently undergoing question extraction. Missing question checks will activate once extraction completes.</span>
+                  </div>
+                )}
+
                 {/* Premium Transparent Red Glass Missing Sequence Container */}
-                {missingNumbers.length > 0 && (
+                {!isExtracting && missingNumbers.length > 0 && (
                   <div
                     style={{
                       backgroundColor: 'rgba(239, 68, 68, 0.03)',

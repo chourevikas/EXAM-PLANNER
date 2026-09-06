@@ -39,6 +39,7 @@ export async function uploadExamPaper({
   set_code = 'SET_A',
   exam_type,
   exam_type_id,
+  conflict_resolution,
   file,
 }: UploadExamPayload & { set_code?: string }): Promise<UploadExamResponse> {
   const token = localStorage.getItem('access_token');
@@ -54,6 +55,7 @@ export async function uploadExamPaper({
   formData.append('set_code', set_code || 'SET_A');
   if (exam_type) formData.append('exam_type', exam_type);
   if (exam_type_id) formData.append('exam_type_id', String(exam_type_id));
+  if (conflict_resolution) formData.append('conflict_resolution', conflict_resolution);
   formData.append('file', file);
 
   const response = await guardedFetch(`${API_BASE_URL}/exams/upload`, {
@@ -64,7 +66,13 @@ export async function uploadExamPaper({
 
   const result = await response.json();
   if (!response.ok) {
-    throw new Error(result.detail || 'Server error occurred during file upload.');
+    const errorMsg = typeof result.detail === 'string'
+      ? result.detail
+      : result.detail?.message || result.message || 'Server error occurred during file upload.';
+    const error: any = new Error(errorMsg);
+    error.status = response.status;
+    error.payload = typeof result.detail === 'object' ? result.detail : result;
+    throw error;
   }
 
   return result;
