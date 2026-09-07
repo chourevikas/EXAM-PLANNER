@@ -108,7 +108,7 @@ export function HeroIllustration() {
               Performance by Subject
             </div>
             {[
-              { name: 'Indian Polity', pct: 84, c: C.emerald },
+              { name: 'Polity', pct: 84, c: C.emerald },
               { name: 'Modern History', pct: 42, c: C.saffron },
               { name: 'Geography', pct: 71, c: C.royal },
               { name: 'Economy', pct: 58, c: '#8B5CF6' },

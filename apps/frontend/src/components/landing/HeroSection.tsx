@@ -36,17 +36,17 @@ export function HeroSection({ }: HeroSectionProps) {
   const FEATURED_CARDS_POOL = [
     { badge: "Fundamental Rights", meta: "UPSC 2024", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: 'In the context of the Constitution of India, "Due Process of Law" implies:' },
     { badge: "Fundamental Rights", meta: "UPSC 2023", exam: "UPSC", subject: "Polity", topic: "Constitution", subtopic: "Fundamental Rights", q: "Which Constitutional Amendment was enacted to overcome judicial interpretations of the Fundamental Rights, particularly regarding the Right to Equality and Property?" },
-    { badge: "Inflation", meta: "UPSC 2022", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "Inflation", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?" },
-    { badge: "Exchange Rates", meta: "UPSC 2021", exam: "UPSC", subject: "Indian Economy", topic: "Macroeconomics", subtopic: "External Sector", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation." },
-    { badge: "Conservation", meta: "UPSC 2023", exam: "UPSC", subject: "Environment & Ecology", topic: "Biodiversity", subtopic: "Conservation efforts", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens." },
+    { badge: "Inflation", meta: "UPSC 2022", exam: "UPSC", subject: "Economy", topic: "Macroeconomics", subtopic: "Inflation", q: "In India, which of the following is responsible for maintaining price stability by controlling inflation?" },
+    { badge: "Exchange Rates", meta: "UPSC 2021", exam: "UPSC", subject: "Economy", topic: "Macroeconomics", subtopic: "External Sector", q: "With reference to the Indian economy, consider the statements on Real Effective Exchange Rate (REER) and its relation to NEER and domestic inflation." },
+    { badge: "Conservation", meta: "UPSC 2023", exam: "UPSC", subject: "Environment", topic: "Biodiversity", subtopic: "Conservation efforts", q: "Consider the statements regarding the Wild Life (Protection) Amendment Act, 2022, on Schedules and CITES specimens." },
     { badge: "Parliament", meta: "UPSC 2020", exam: "UPSC", subject: "Polity", topic: "Indian Government", subtopic: "Parliament", q: "Which Parliamentary Committee scrutinizes whether powers to make rules and regulations delegated by Parliament are properly exercised?" },
-    { badge: "Monetary Policy", meta: "UPSC 2020", exam: "UPSC", subject: "Indian Economy", topic: "Money and Banking", subtopic: "Monetary Policy", q: "If the RBI decides to adopt an expansionary monetary policy, which of the following would it not do?" },
-    { badge: "Buddhism", meta: "UPSC 2019", exam: "UPSC", subject: "History", topic: "Ancient History", subtopic: "Buddhism and Jainism", q: "With reference to the religious history of India, consider the following statements regarding the Mahayana sect of Buddhism." },
+    { badge: "Monetary Policy", meta: "UPSC 2020", exam: "UPSC", subject: "Economy", topic: "Money and Banking", subtopic: "Monetary Policy", q: "If the RBI decides to adopt an expansionary monetary policy, which of the following would it not do?" },
+    { badge: "Buddhism", meta: "UPSC 2019", exam: "UPSC", subject: "Ancient History", topic: "Ancient History", subtopic: "Buddhism and Jainism", q: "With reference to the religious history of India, consider the following statements regarding the Mahayana sect of Buddhism." },
     { badge: "Ocean Currents", meta: "UPSC 2021", exam: "UPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Oceanography", q: "Consider the following factors: 1. Rotation of the Earth 2. Air pressure and wind 3. Density of ocean water 4. Revolution of the Earth. Which of the above factors influence the ocean currents?" },
-    { badge: "Biotechnology", meta: "UPSC 2022", exam: "UPSC", subject: "Science & Technology", topic: "Biotechnology", subtopic: "Genetic Engineering", q: "With reference to 'CRISPR-Cas9', which of the following statements is/are correct?" },
-    { badge: "Maratha Empire", meta: "MPSC 2022", exam: "MPSC", subject: "History", topic: "Modern History", subtopic: "Maratha Empire", q: "Consider the statements regarding the administrative system of Chhatrapati Shivaji Maharaj." },
+    { badge: "Biotechnology", meta: "UPSC 2022", exam: "UPSC", subject: "Science & Tech", topic: "Biotechnology", subtopic: "Genetic Engineering", q: "With reference to 'CRISPR-Cas9', which of the following statements is/are correct?" },
+    { badge: "Maratha Empire", meta: "MPSC 2022", exam: "MPSC", subject: "Modern History", topic: "Modern History", subtopic: "Maratha Empire", q: "Consider the statements regarding the administrative system of Chhatrapati Shivaji Maharaj." },
     { badge: "Geography", meta: "MPSC 2021", exam: "MPSC", subject: "Geography", topic: "Physical Geography", subtopic: "Maharashtra Geography", q: "Which of the following mountain ranges separates the Godavari and Tapi river basins?" },
-    { badge: "General Science", meta: "SSC 2022", exam: "SSC", subject: "Science", topic: "Physics", subtopic: "Optics", q: "What is the phenomenon responsible for the twinkling of stars?" },
+    { badge: "General Science", meta: "SSC 2022", exam: "SSC", subject: "Science & Tech", topic: "Physics", subtopic: "Optics", q: "What is the phenomenon responsible for the twinkling of stars?" },
     { badge: "Quantitative", meta: "Banking 2023", exam: "Banking", subject: "Aptitude", topic: "Mathematics", subtopic: "Percentage", q: "If the price of an article is increased by 20% and then decreased by 10%, what is the net percentage change in its price?" },
   ];
 
@@ -84,6 +84,16 @@ export function HeroSection({ }: HeroSectionProps) {
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Only subjects verified to have questions in the database
+  const [activeSubjects, setActiveSubjects] = useState<string[]>([
+    'Polity',
+    'Economy',
+    'Environment',
+    'Science & Tech',
+    'Modern History',
+    'Geography',
+  ]);
 
   // Background sync for any dynamically configured custom subjects/topics from API
   useEffect(() => {
@@ -142,6 +152,29 @@ export function HeroSection({ }: HeroSectionProps) {
         }
         if (!isCancelled && nodes.length > 0) {
           setDynamicNodes(nodes);
+        }
+
+        // Dynamically update active subjects with only those returned by the API (which guarantees questions exist)
+        if (!isCancelled && taxData) {
+          const list: string[] =
+            taxData.subjects_list || (taxData.subjects || []).map((s: any) => s.name);
+          if (list && list.length > 0) {
+            const priorityOrder = [
+              'Polity',
+              'Economy',
+              'Environment',
+              'Science & Tech',
+              'Modern History',
+              'Geography',
+              'Art & Culture',
+              'Ancient History',
+              'Medieval History',
+            ];
+            const verified = priorityOrder.filter((s) => list.includes(s));
+            if (verified.length > 0) {
+              setActiveSubjects(verified);
+            }
+          }
         }
       } catch {
         // Silently keep pre-bundled static syllabus
@@ -258,37 +291,8 @@ export function HeroSection({ }: HeroSectionProps) {
 
   // Canonical chip launcher for popular subject quick picks
   const handleQuickPickClick = (chipName: string) => {
-    let targetSubject = 'Indian Polity & Governance';
-    let targetTopic: string | undefined = undefined;
-
-    if (chipName === 'Polity') {
-      targetSubject = 'Indian Polity & Governance';
-    } else if (chipName === 'Modern History') {
-      targetSubject = 'History';
-      targetTopic = 'Modern History';
-    } else if (chipName === 'Indian Economy') {
-      targetSubject = 'Economy';
-    } else if (chipName === 'Geography') {
-      targetSubject = 'Geography';
-    } else if (chipName === 'Environment & Ecology') {
-      targetSubject = 'Ecology & Environment';
-    } else if (chipName === 'Science & Tech') {
-      targetSubject = 'Science & Technology';
-    } else {
-      const match = allSyllabusNodes.find(n => n.label.toLowerCase() === chipName.toLowerCase() || n.label.toLowerCase().includes(chipName.toLowerCase()));
-      if (match) {
-        handleSyllabusResultClick(match);
-        return;
-      }
-      targetSubject = chipName;
-    }
-
-    const params = new URLSearchParams({ exam: 'UPSC CSE' });
-    params.set('subject', targetSubject);
-    if (targetTopic) {
-      params.set('topic', targetTopic);
-    }
-    params.set('count', '10');
+    const params = new URLSearchParams({ exam: 'UPSC CSE', count: '10' });
+    params.set('subject', chipName);
     setSyllabusSearchQuery('');
     setIsSyllabusSearchFocused(false);
     navigate(`/guest-exam?${params.toString()}`);
@@ -427,7 +431,7 @@ export function HeroSection({ }: HeroSectionProps) {
               }}
               onFocus={() => setIsSyllabusSearchFocused(true)}
               onKeyDown={handleKeyDown}
-              placeholder="Search a topic, subject, or subtopic (e.g. Fundamental Rights, Indian Economy)"
+              placeholder="Search a topic, subject, or subtopic (e.g. Fundamental Rights, Modern History, Polity)"
               style={{
                 flex: 1,
                 height: 58,
@@ -552,7 +556,7 @@ export function HeroSection({ }: HeroSectionProps) {
 
           {/* Quick-pick hint chips */}
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {['Polity', 'Modern History', 'Indian Economy', 'Geography', 'Environment & Ecology', 'Science & Tech'].map((hint) => (
+            {activeSubjects.map((hint) => (
               <button
                 key={hint}
                 type="button"
@@ -622,7 +626,11 @@ export function HeroSection({ }: HeroSectionProps) {
             {filteredCards.map((card, i) => (
               <div
                 key={i}
-                onClick={() => navigate(`/guest-exam?exam=${encodeURIComponent(card.exam)}&subject=${encodeURIComponent(card.subject)}&topic=${encodeURIComponent(card.topic)}&subtopic=${encodeURIComponent(card.subtopic)}&count=10`)}
+                onClick={() =>
+                  navigate(
+                    `/guest-exam?exam=${encodeURIComponent(card.exam === 'UPSC' ? 'UPSC CSE' : card.exam)}&subject=${encodeURIComponent(card.subject)}&count=10`,
+                  )
+                }
                 style={{
                   background: '#FFFFFF',
                   border: '1px solid #E2E8F0',

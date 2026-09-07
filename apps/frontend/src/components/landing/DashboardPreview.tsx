@@ -235,11 +235,11 @@ export function DashboardPreview() {
                     Accuracy by Subject
                   </div>
                   {[
-                    { name: 'Indian Polity', pct: 84, c: C.emerald },
-                    { name: 'History', pct: 42, c: C.saffron },
+                    { name: 'Polity', pct: 84, c: C.emerald },
+                    { name: 'Modern History', pct: 42, c: C.saffron },
                     { name: 'Geography', pct: 79, c: C.royal },
                     { name: 'Economy', pct: 58, c: '#8B5CF6' },
-                    { name: 'Sci & Tech', pct: 91, c: C.emerald },
+                    { name: 'Science & Tech', pct: 91, c: C.emerald },
                     { name: 'Environment', pct: 65, c: '#06B6D4' },
                   ].map((s) => (
                     <div
