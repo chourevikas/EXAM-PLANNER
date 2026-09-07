@@ -203,17 +203,19 @@ export function QuestionSolutionMarkdownCard({
       }
     }
 
-    // Contextual fallback if still empty
+    // Contextual fallback if still empty — use actual option text to make it meaningful
     if (!analysis) {
       if (isOptionCorrect) {
         analysis = explObj?.core_concept
-          ? `Option (${itemLabel}) is correct. Core concept: ${explObj.core_concept}.`
-          : `Option (${itemLabel}) correctly reflects standard constitutional provisions and syllabus references.`;
+          ? `✓ This is the correct answer. ${explObj.core_concept}`
+          : optText
+          ? `✓ "${optText}" — This is the correct answer.`
+          : `✓ This option is correct.`;
       } else {
-        const trapHint = commonTraps.length > 0 ? ` (Trap to note: ${commonTraps[0]})` : '';
+        const trapHint = commonTraps.length > 0 ? ` Common trap: ${commonTraps[0]}` : '';
         analysis = optText
-          ? `Option (${itemLabel}) is an incorrect distractor${trapHint}.`
-          : `Option (${itemLabel}) is an incorrect distractor formulated based on standard conceptual traps.`;
+          ? `✗ "${optText}" — This option is incorrect.${trapHint}`
+          : `✗ This option is incorrect.${trapHint}`;
       }
     }
 
@@ -511,8 +513,8 @@ export function QuestionSolutionMarkdownCard({
                       ) : (
                         <p style={{ margin: 0, fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
                           {isOptionCorrect
-                            ? 'Correctly reflects standard constitutional provisions and syllabus references.'
-                            : 'Incorrect option formulated as a plausible distractor based on standard conceptual traps.'}
+                            ? item.text ? `✓ "${item.text}" — This is the correct answer.` : '✓ This option is correct.'
+                            : item.text ? `✗ "${item.text}" — This option is incorrect.` : '✗ This option is incorrect.'}
                         </p>
                       )}
                     </div>
