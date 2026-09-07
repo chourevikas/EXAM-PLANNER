@@ -101,69 +101,25 @@ class QuestionRepository:
         # Hierarchy Filters with cross-level taxonomy matching
         if subject_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
-        if subject_name and subject_name != "All Subjects" and subject_name.strip():
+        if subject_name and subject_name.strip().lower() not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects") and subject_name.strip():
             clean_s = subject_name.strip().lower()
-            # Generic stop words that must not be used as broad tokens across section_code/topic
-            stop_words = ("and", "the", "for", "all", "general", "studies", "paper", "indian", "science", "technology")
-            tokens = [t for t in clean_s.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in stop_words]
-            
-            subject_conditions = [
-                func.lower(Subject.name).contains(clean_s),
-                func.lower(Question.section_code) == clean_s
-            ]
-            # Exact word tokens for subject name matching only
-            for token in tokens:
-                subject_conditions.append(func.lower(Subject.name).contains(token))
-                subject_conditions.append(func.lower(Question.section_code).contains(token))
-            
-            # If clean_s contains science/biology/chemistry/physics, match Subject name or section_code containing science/chem/bio/phys
-            if any(k in clean_s for k in ["science", "biology", "chemistry", "physics"]):
-                subject_conditions.extend([
-                    func.lower(Subject.name).contains("science"),
-                    func.lower(Subject.name).contains("biology"),
-                    func.lower(Subject.name).contains("chemistry"),
-                    func.lower(Subject.name).contains("physics"),
-                ])
-                # Exclude explicit non-science section codes (e.g. POLITY, ECONOMY, AGRICULTURE) when science is requested
-                id_stmt = id_stmt.where(not_(func.lower(Question.section_code).in_(["polity", "economy", "economics", "history", "agriculture"])))
-
-            id_stmt = id_stmt.where(or_(*subject_conditions))
+            id_stmt = id_stmt.where(or_(
+                func.lower(Subject.name) == clean_s,
+                func.lower(Subject.code) == clean_s,
+                func.lower(Question.section_code) == clean_s,
+            ))
         if subject_code:
             id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
 
         if topic_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
-        if topic_name and topic_name != "All Topics" and topic_name.strip():
+        if topic_name and topic_name.strip().lower() not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects") and topic_name.strip():
             clean_t = topic_name.strip().lower()
-            topic_stop_words = ("and", "the", "for", "all", "of", "in", "to")
-            t_tokens = [t for t in clean_t.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in topic_stop_words]
-            
-            topic_match = or_(
-                func.lower(Topic.name).contains(clean_t),
-                func.lower(QuestionHierarchyLink.concept_name).contains(clean_t),
-            )
-            if len(t_tokens) > 1:
-                token_match = and_(*[
-                    or_(
-                        func.lower(Topic.name).contains(tok),
-                        func.lower(QuestionHierarchyLink.concept_name).contains(tok),
-                    )
-                    for tok in t_tokens
-                ])
-                id_stmt = id_stmt.where(or_(topic_match, token_match))
-            else:
-                id_stmt = id_stmt.where(topic_match)
-
-            # Exclude corrupt hierarchy concept links that belong to law/finance/politics when science topics are requested
-            if any(k in clean_t for k in ["biology", "chemistry", "physics", "botany", "zoology", "science"]):
-                id_stmt = id_stmt.where(not_(or_(
-                    func.lower(QuestionHierarchyLink.concept_name).contains("tax"),
-                    func.lower(QuestionHierarchyLink.concept_name).contains("constitutional"),
-                    func.lower(QuestionHierarchyLink.concept_name).contains("finance"),
-                    func.lower(QuestionHierarchyLink.concept_name).contains("bar council"),
-                    func.lower(QuestionHierarchyLink.concept_name).contains("crises"),
-                    func.lower(QuestionHierarchyLink.concept_name).contains("political")
-                )))
+            id_stmt = id_stmt.where(or_(
+                func.lower(Topic.name) == clean_t,
+                func.lower(Topic.code) == clean_t,
+                func.lower(QuestionHierarchyLink.concept_name) == clean_t,
+            ))
         if topic_code:
             id_stmt = id_stmt.where(func.lower(Topic.code) == topic_code.lower())
 

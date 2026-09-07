@@ -94,7 +94,7 @@ def parse_question_paper_filename(
     # 3. Dynamic Subject Extraction
     extracted_subj = subject_code
     if not extracted_subj:
-        subj_match = re.search(r"\b(GS1|GS2|GS3|GS4|GS-1|GS-2|CSAT|POLITY|HISTORY|ECONOMY|GEOGRAPHY|SCIENCE)\b", stem, re.IGNORECASE)
+        subj_match = re.search(r"\b(GS1|GS2|GS3|GS4|GS-1|GS-2|CSAT|POLITY|ECONOMY|GEOGRAPHY|SCIENCE)\b", stem, re.IGNORECASE)
         if subj_match:
             extracted_subj = subj_match.group(1).replace("-", "")
         else:

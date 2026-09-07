@@ -37,7 +37,7 @@ export function MockSelectionPage() {
 
   // Dynamic 3-level taxonomy state fetched directly from DB / Syllabus API (/api/v1/syllabus)
   const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
-  const [subjectsList, setSubjectsList] = useState<string[]>([]);
+  const [subjectsList, setSubjectsList] = useState<string[]>(['All Subjects']);
   const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
@@ -45,8 +45,7 @@ export function MockSelectionPage() {
   // Form selections
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
   const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [selectedTopic, setSelectedTopic] = useState<string>('All Topics (Entire Subject)');
+  const [selectedSubject, setSelectedSubject] = useState<string>('All Subjects');
 
   // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
   useEffect(() => {
@@ -65,8 +64,7 @@ export function MockSelectionPage() {
               .map((s: any) => s.name)
               .filter((s: string) => s && s !== 'All Subjects' && s.trim() !== '');
             if (cleanSubs.length > 0) {
-              setSubjectsList(cleanSubs);
-              setSelectedSubject((prev) => (prev && cleanSubs.includes(prev) ? prev : cleanSubs[0]));
+              setSubjectsList(['All Subjects', ...cleanSubs]);
             }
           }
         }
@@ -89,28 +87,6 @@ export function MockSelectionPage() {
 
     loadDynamicTaxonomy();
   }, []);
-
-  // Compute available topics for the chosen subject directly from DB taxonomy API
-  const availableTopics = useMemo(() => {
-    const defaultList = ['All Topics (Entire Subject)'];
-    if (!selectedSubject) return defaultList;
-
-    const currentSubj = masterSubjects.find(
-      (s) => s.name === selectedSubject || s.name.toLowerCase().includes(selectedSubject.toLowerCase())
-    );
-    if (currentSubj && currentSubj.topics && Array.isArray(currentSubj.topics) && currentSubj.topics.length > 0) {
-      const topicNames = currentSubj.topics.map((t: any) => t.name).filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
-      if (topicNames.length > 0) return [...defaultList, ...topicNames];
-    }
-
-    const topicMap = threeLevelHierarchy[selectedSubject];
-    if (topicMap && typeof topicMap === 'object') {
-      const keys = Object.keys(topicMap).filter((k) => k.trim() !== '' && !k.startsWith('All Topics'));
-      if (keys.length > 0) return [...defaultList, ...keys];
-    }
-
-    return defaultList;
-  }, [selectedSubject, masterSubjects, threeLevelHierarchy]);
 
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
@@ -176,17 +152,14 @@ export function MockSelectionPage() {
 
   const handleStartPracticeTest = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : '');
-    const finalTopic = selectedTopic || 'All Topics (Entire Subject)';
+    const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : 'All Subjects');
     const finalYear = selectedYear || (yearOptions.length > 0 ? yearOptions[0] : '');
 
     const queryParams = new URLSearchParams({
       exam: selectedExam,
       year: finalYear,
       subject: finalSubject,
-      topic: finalTopic,
     });
-
 
     navigate(`/practice-exam?${queryParams.toString()}`);
   };
@@ -370,10 +343,7 @@ export function MockSelectionPage() {
               </label>
               <select
                 value={selectedSubject}
-                onChange={(e) => {
-                  setSelectedSubject(e.target.value);
-                  setSelectedTopic('All Topics (Entire Subject)');
-                }}
+                onChange={(e) => setSelectedSubject(e.target.value)}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
                   border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
@@ -382,26 +352,6 @@ export function MockSelectionPage() {
               >
                 {subjectsList.map((s) => (
                   <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Topic */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
-                Topic
-              </label>
-              <select
-                value={selectedTopic}
-                onChange={(e) => setSelectedTopic(e.target.value)}
-                style={{
-                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
-                }}
-              >
-                {availableTopics.map((t) => (
-                  <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </div>

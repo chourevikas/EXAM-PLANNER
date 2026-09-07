@@ -32,14 +32,12 @@ export function StudentPracticeExamPage() {
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
   const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
-  const gTopic = searchParams.get('topic') || '';
-  const gSubtopic = searchParams.get('subtopic') || '';
   const gDifficulty = searchParams.get('difficulty') || '';
   const gCount = parseInt(searchParams.get('count') || '10', 10);
 
   // Interactive Filter Bar Popover State
   const [activeDropdown, setActiveDropdown] = useState<
-    'exam' | 'subject' | 'topic' | 'difficulty' | null
+    'exam' | 'subject' | 'difficulty' | null
   >(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -108,11 +106,11 @@ export function StudentPracticeExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject/topic filters change
+  // Reset recommendations exhaustion when exam/subject filters change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic]);
+  }, [gExam, gSubject]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -140,80 +138,33 @@ export function StudentPracticeExamPage() {
         const excludeIdsParam = Array.from(existingIds).join(',');
 
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-        let querySubject = rawSubject;
-        let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
             : gExam.toLowerCase().trim()
           : '';
 
-        if (querySubject || queryTopic) {
-          try {
-            const verifyRes = await verifySyllabusNode({
-              subject: querySubject,
-              topic: queryTopic,
-            });
-            if (verifyRes && verifyRes.is_valid) {
-              if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
-              if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
-            }
-          } catch (err) {
-            // ignore verification fallback
-          }
-        }
-
         let newFetched: any[] = [];
-
-        // Fetch exactly enough to fill the pool to its 15-item cap in one round
-        // trip, instead of always asking for 5 — the effect that calls this
-        // function re-fires as long as the pool is under 15, so a fixed
-        // limit:'5' meant filling an empty pool took 3 sequential rounds (up to
-        // 6 network calls) instead of 1.
         const neededCount = Math.max(1, 15 - currentPool.length);
 
-        // Step 1: Query API by Topic first if a topic is selected
-        if (queryTopic) {
-          const topicParams = new URLSearchParams({ limit: String(neededCount) });
-          topicParams.append('topic_name', queryTopic);
-          if (querySubject) topicParams.append('subject_name', querySubject);
-          if (targetExam) topicParams.append('exam_name', targetExam);
-          if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
+        const subjParams = new URLSearchParams({ limit: String(neededCount) });
+        if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (targetExam) subjParams.append('exam_name', targetExam);
+        if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
-          try {
-            const res = await guardedFetch(
-              `/api/v1/questions/recommended?${topicParams.toString()}`,
-            );
-            if (res.ok) {
-              const data = await res.json();
-              newFetched = data.items || [];
-            }
-          } catch (err) {
-            console.warn('Topic recommendation fetch failed:', err);
+        try {
+          const res = await guardedFetch(
+            `/api/v1/questions/recommended?${subjParams.toString()}`,
+          );
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
           }
+        } catch (err) {
+          console.warn('Recommendation fetch failed:', err);
         }
 
-        // Step 2: Fallback to Subject ONLY if no specific topic was selected
-        if (newFetched.length === 0 && querySubject && !queryTopic) {
-          const subjParams = new URLSearchParams({ limit: String(neededCount) });
-          subjParams.append('subject_name', querySubject);
-          if (targetExam) subjParams.append('exam_name', targetExam);
-          if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
-
-          try {
-            const res = await guardedFetch(
-              `/api/v1/questions/recommended?${subjParams.toString()}`,
-            );
-            if (res.ok) {
-              const data = await res.json();
-              newFetched = data.items || [];
-            }
-          } catch (err) {
-            console.warn('Subject recommendation fetch failed:', err);
-          }
-        }
-
-        // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+        // If no questions even of subject are found, mark exhausted and DO NOT call API in loop
         if (newFetched.length === 0) {
           setIsRecsExhausted(true);
           return;
@@ -244,9 +195,9 @@ export function StudentPracticeExamPage() {
               question_number: 0,
               text: item.question_text || item.text || '',
               options: optionsList,
-              section_code: item.subject_name || querySubject || 'Recommended',
-              subject: item.subject_name || querySubject || gSubject || 'General Studies',
-              topic_name: item.topic_name || queryTopic,
+              section_code: item.subject_name || rawSubject || 'Recommended',
+              subject: item.subject_name || rawSubject || 'General Studies',
+              topic_name: item.topic_name || item.subject_name || rawSubject || '',
               subtopic_name: item.subtopic_name,
               difficulty: item.difficulty || 'MEDIUM',
               marks: item.marks || 2.0,
@@ -309,7 +260,7 @@ export function StudentPracticeExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gExam, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gExam, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Fires on mount (allQuestions is still [] at that point) so the
@@ -431,159 +382,12 @@ export function StudentPracticeExamPage() {
 
   const displayRecs = recommendedPool;
 
-  // Subject-Wide Fallback Pool & Topic Completion Banner
-  const [subjectFallbackPool, setSubjectFallbackPool] = useState<QuestionOut[]>([]);
-  const [isPrefetchingSubjectFallback, setIsPrefetchingSubjectFallback] = useState(false);
-  const [hasFetchedSubjectFallback, setHasFetchedSubjectFallback] = useState(false);
-  const [topicCompletionBanner, setTopicCompletionBanner] = useState<string | null>(null);
-
-  // Auto-prefetch broader subject questions immediately if topic questions count <= 3, or when getting close to end (2 questions left)
-  useEffect(() => {
-    const isNearEnd = currentQIndex >= allQuestions.length - 2;
-    const hasSmallQuestionCount = allQuestions.length <= 3;
-
-    if (
-      gTopic &&
-      gTopic !== 'All Topics' &&
-      allQuestions.length > 0 &&
-      (hasSmallQuestionCount || isNearEnd) &&
-      !hasFetchedSubjectFallback &&
-      !isPrefetchingSubjectFallback
-    ) {
-      const fetchSubjectFallback = async () => {
-        setIsPrefetchingSubjectFallback(true);
-        try {
-          const existingIds = new Set<string | number>();
-          allQuestions.forEach((q) => {
-            if (q.question_id) existingIds.add(q.question_id);
-          });
-          recommendedPool.forEach((q) => {
-            if (q.question_id) existingIds.add(q.question_id);
-          });
-          subjectFallbackPool.forEach((q) => {
-            if (q.question_id) existingIds.add(q.question_id);
-          });
-          Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
-          Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
-
-          const excludeIdsParam = Array.from(existingIds).join(',');
-          const rawSubject =
-            gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-          const targetExam = gExam
-            ? gExam.toLowerCase().includes('upsc')
-              ? 'upsc'
-              : gExam.toLowerCase().trim()
-            : '';
-
-          const params = new URLSearchParams({ limit: '15', include_solutions: 'true' });
-          if (rawSubject) params.append('subject_name', rawSubject);
-          if (gTopic && gTopic !== 'All Topics') params.append('topic_name', gTopic);
-          if (targetExam) params.append('exam_name', targetExam);
-          if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
-
-          const res = await fetch(`/api/v1/questions?${params.toString()}`);
-          if (res.ok) {
-            const data = await res.json();
-            const items = (data.items || []).filter(
-              (item: any) => !existingIds.has(item.question_id),
-            );
-            if (items.length > 0) {
-              const formatted: QuestionOut[] = items.map((item: any, idx: number) => {
-                const rawOptions = item.options || [];
-                const optionsList = rawOptions.map((o: any, oIdx: number) => ({
-                  option_id:
-                    o.option_id ||
-                    `opt-sub-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                  option_label: o.option_label || String.fromCharCode(65 + oIdx),
-                  text:
-                    o.option_text ||
-                    o.text ||
-                    `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                  is_correct: Boolean(o.is_correct),
-                }));
-                return {
-                  question_id: item.question_id,
-                  question_number: 0,
-                  text: item.question_text || item.text || '',
-                  options: optionsList,
-                  section_code:
-                    item.topic_name || item.subject_name || rawSubject || 'Subject Practice',
-                  topic_name: item.topic_name || 'Subject Practice',
-                  subtopic_name: item.subtopic_name,
-                  difficulty: item.difficulty || 'MEDIUM',
-                  marks: item.marks || 2.0,
-                  negative_marks: item.negative_marks || 0.66,
-                  expected_time_seconds: item.expected_time_seconds || 60,
-                  explanation: item.explanation || item.explanation_text || '',
-                } as any;
-              });
-
-              setSubjectFallbackPool(formatted);
-            }
-          }
-        } catch (err) {
-          console.warn('Subject fallback prefetch error:', err);
-        } finally {
-          setHasFetchedSubjectFallback(true);
-          setIsPrefetchingSubjectFallback(false);
-        }
-      };
-
-      fetchSubjectFallback();
-    }
-  }, [
-    gTopic,
-    gSubject,
-    gExam,
-    allQuestions,
-    currentQIndex,
-    hasFetchedSubjectFallback,
-    isPrefetchingSubjectFallback,
-    recommendedPool,
-    subjectFallbackPool,
-    userResponses,
-    revealedMap,
-  ]);
-
-  // Handler to append prefetched subject fallback questions when topic questions finish
-  const handleLoadSubjectFallbackQuestions = useCallback(() => {
-    if (subjectFallbackPool.length === 0) return false;
-
-    const startNum = allQuestions.length;
-    const newQuestions = subjectFallbackPool.map((q, idx) => ({
-      ...q,
-      question_number: startNum + idx + 1,
-    }));
-
-    const updatedQuestions = [...allQuestions, ...newQuestions];
-    const newPaletteItems: QuestionPaletteItem[] = newQuestions.map((q) => ({
-      question_number: q.question_number,
-      question_id: q.question_id,
-      question_status: 'NOT_VISITED' as any,
-    }));
-
-    setAllQuestions(updatedQuestions);
-    setTotalQuestions(updatedQuestions.length);
-    setPalette((prev) => [...prev, ...newPaletteItems]);
-
-    // Show popup notification banner
-    setTopicCompletionBanner(
-      gTopic && gTopic !== 'All Topics'
-        ? `Loaded additional questions for "${gTopic}".`
-        : `Questions finished! Now loading similar questions from ${gSubject || 'this subject'}.`,
-    );
-
-    // Clear subject fallback pool after appending
-    setSubjectFallbackPool([]);
-    return true;
-  }, [allQuestions, subjectFallbackPool, gTopic, gSubject]);
-
   // Mobile Responsiveness
   const { isTabletOrBelow } = useBreakpoint();
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
-  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gCount}`;
 
   // Timer countdown
   useEffect(() => {
@@ -664,11 +468,11 @@ export function StudentPracticeExamPage() {
         const topName =
           primaryH.topic_name ||
           q.topic_name ||
-          (gTopic && !gTopic.startsWith('All Topics') ? gTopic : subjName);
+          subjName;
         const subtopName =
           primaryH.subtopic_name ||
           q.subtopic_name ||
-          (gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '');
+          '';
 
         return {
           question_id: q.question_id || `q-practice-${idx + 1}`,
@@ -676,7 +480,7 @@ export function StudentPracticeExamPage() {
           text: q.question_text || q.text || '',
           passage_text: q.passage_text || null,
           options: optionsList,
-          section_code: topName || subjName || 'General Studies',
+          section_code: subjName || 'General Studies',
           subject_name: subjName,
           topic_name: topName,
           subtopic_name: subtopName,
@@ -695,27 +499,10 @@ export function StudentPracticeExamPage() {
         } as any;
       };
 
-      const rawSubject = gSubject !== 'All Subjects' ? gSubject.trim() : '';
-      let reqSubject = rawSubject;
-      let reqTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      const reqSubject = rawSubject;
 
-      try {
-        const verified = await verifySyllabusNode({
-          subject: reqSubject,
-          topic: reqTopic,
-        });
-        if (verified && verified.is_valid) {
-          if (verified.resolved_node?.subject) reqSubject = verified.resolved_node.subject;
-          if (verified.resolved_node?.topic) reqTopic = verified.resolved_node.topic;
-        }
-      } catch (err) {
-        console.warn('Practice exam verifySyllabusNode warning:', err);
-      }
-
-      // Extract numeric exam year if the user picked a specific year — the
-      // default "All Years (min - max)" placeholder must NOT be parsed here,
-      // since its leftmost year token (the range's min) would otherwise be
-      // misread as an exact year filter and needlessly fail the first fetch.
+      // Extract numeric exam year if the user picked a specific year
       let numericYear: string | null = null;
       if (gYear && !gYear.startsWith('All Years')) {
         const match = gYear.match(/\b(19\d\d|20\d\d)\b/);
@@ -748,67 +535,42 @@ export function StudentPracticeExamPage() {
             : gExam.toLowerCase().trim()
           : '';
 
-        // Fetch enough for a comfortable session (3x what was requested,
-        // floor 20) instead of always asking for the API's max of 100 — the
-        // subject-fallback/expansion effects already top this up later if the
-        // user runs low, so there's no need to pull (and have the backend
-        // fully build detail cards for) far more than a session needs up front.
         const initialFetchLimit = Math.min(100, Math.max(gCount * 3, 20));
 
-        // 1. Try with subject + topic + year + selected exam
+        // 1. Try with subject + year + selected exam
         const p1 = new URLSearchParams({ limit: String(initialFetchLimit) });
         if (reqSubject) p1.append('subject_name', reqSubject);
-        if (reqTopic) p1.append('topic_name', reqTopic);
         if (numericYear) p1.append('exam_year', numericYear);
         if (targetExam) p1.append('exam_name', targetExam);
 
         await fetchWithParams(p1);
 
-        // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
-        if (fetchedMap.size === 0 && reqTopic) {
+        // 2. Fallback: Relax year if 0 questions found for exact year (strictly keep subject)
+        if (fetchedMap.size === 0 && reqSubject && numericYear) {
           const p2 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          if (reqSubject) p2.append('subject_name', reqSubject);
-          p2.append('topic_name', reqTopic);
+          p2.append('subject_name', reqSubject);
           if (targetExam) p2.append('exam_name', targetExam);
           await fetchWithParams(p2);
         }
 
-        // 2b. Fallback: Relax exam filter if still 0 questions found while strictly keeping topic
-        if (fetchedMap.size === 0 && reqTopic && targetExam) {
-          const p2b = new URLSearchParams({ limit: String(initialFetchLimit) });
-          if (reqSubject) p2b.append('subject_name', reqSubject);
-          p2b.append('topic_name', reqTopic);
-          await fetchWithParams(p2b);
-        }
-
-        // 3. Fallback: Try subject + exam (ONLY if no specific topic was selected)
-        if (fetchedMap.size === 0 && reqSubject && !reqTopic) {
+        // 3. Fallback: Relax exam filter if still 0 questions found while strictly keeping subject
+        if (fetchedMap.size === 0 && reqSubject && targetExam) {
           const p3 = new URLSearchParams({ limit: String(initialFetchLimit) });
           p3.append('subject_name', reqSubject);
-          if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
         }
 
-        // 4. Fallback: Try raw subject if canonical subject differed (ONLY if no specific topic was selected)
-        if (fetchedMap.size === 0 && rawSubject && rawSubject !== reqSubject && !reqTopic) {
-          const p4 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          p4.append('subject_name', rawSubject);
-          if (targetExam) p4.append('exam_name', targetExam);
-          await fetchWithParams(p4);
-        }
+        // 4. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
+        if (fetchedMap.size === 0 && !rawSubject) {
+          const pAll = new URLSearchParams({ limit: String(initialFetchLimit) });
+          if (numericYear) pAll.append('exam_year', numericYear);
+          if (targetExam) pAll.append('exam_name', targetExam);
+          await fetchWithParams(pAll);
 
-        // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject (ONLY if no specific topic was selected)
-        if (fetchedMap.size === 0 && (reqSubject || rawSubject) && !reqTopic) {
-          const p5 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          p5.append('subject_name', reqSubject || rawSubject);
-          await fetchWithParams(p5);
-        }
-
-        // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject and no topic selected)
-        if (fetchedMap.size === 0 && !rawSubject && !reqTopic) {
-          const p6 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          if (targetExam) p6.append('exam_name', targetExam);
-          await fetchWithParams(p6);
+          if (fetchedMap.size === 0) {
+            const pAllRelaxed = new URLSearchParams({ limit: String(initialFetchLimit) });
+            await fetchWithParams(pAllRelaxed);
+          }
         }
       } catch (err) {
         console.warn('Practice questions fetch warning:', err);
@@ -887,7 +649,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gCount]);
+  }, [gExam, gYear, gSubject, gCount]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -967,114 +729,10 @@ export function StudentPracticeExamPage() {
     }));
   };
 
-  // Helper to expand subject questions when current topic questions are finished
+  // Helper to expand subject questions when questions are finished
   const checkAndExpandSubjectQuestions = useCallback(async (): Promise<boolean> => {
-    if (subjectFallbackPool.length > 0) {
-      return handleLoadSubjectFallbackQuestions();
-    }
-
-    if (gTopic && gTopic !== 'All Topics') {
-      try {
-        const existingIds = new Set<string | number>();
-        allQuestions.forEach((q) => {
-          if (q.question_id) existingIds.add(q.question_id);
-        });
-        recommendedPool.forEach((q) => {
-          if (q.question_id) existingIds.add(q.question_id);
-        });
-        Object.keys(userResponses).forEach((qId) => existingIds.add(qId));
-        Object.keys(revealedMap).forEach((qId) => existingIds.add(qId));
-
-        const excludeIdsParam = Array.from(existingIds).join(',');
-        const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-        const targetExam = gExam
-          ? gExam.toLowerCase().includes('upsc')
-            ? 'upsc'
-            : gExam.toLowerCase().trim()
-          : '';
-
-        const params = new URLSearchParams({ limit: '15', include_solutions: 'true' });
-        if (rawSubject) params.append('subject_name', rawSubject);
-        if (gTopic && gTopic !== 'All Topics') params.append('topic_name', gTopic);
-        if (targetExam) params.append('exam_name', targetExam);
-        if (excludeIdsParam) params.append('exclude_ids', excludeIdsParam);
-
-        const res = await fetch(`/api/v1/questions?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          const items = (data.items || []).filter(
-            (item: any) => !existingIds.has(item.question_id),
-          );
-          if (items.length > 0) {
-            const formatted: QuestionOut[] = items.map((item: any, idx: number) => {
-              const rawOptions = item.options || [];
-              const optionsList = rawOptions.map((o: any, oIdx: number) => ({
-                option_id:
-                  o.option_id ||
-                  `opt-sub-${idx}-${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                option_label: o.option_label || String.fromCharCode(65 + oIdx),
-                text:
-                  o.option_text ||
-                  o.text ||
-                  `Option ${o.option_label || String.fromCharCode(65 + oIdx)}`,
-                is_correct: Boolean(o.is_correct),
-              }));
-              return {
-                question_id: item.question_id,
-                question_number: 0,
-                text: item.question_text || item.text || '',
-                options: optionsList,
-                section_code:
-                  item.topic_name || item.subject_name || rawSubject || 'Subject Practice',
-                topic_name: item.topic_name || 'Subject Practice',
-                subtopic_name: item.subtopic_name,
-                difficulty: item.difficulty || 'MEDIUM',
-                marks: item.marks || 2.0,
-                negative_marks: item.negative_marks || 0.66,
-                expected_time_seconds: item.expected_time_seconds || 60,
-                explanation: item.explanation || item.explanation_text || '',
-              } as any;
-            });
-
-            const startNum = allQuestions.length;
-            const newQuestions = formatted.map((q, idx) => ({
-              ...q,
-              question_number: startNum + idx + 1,
-            }));
-
-            const updatedQuestions = [...allQuestions, ...newQuestions];
-            const newPaletteItems: QuestionPaletteItem[] = newQuestions.map((q) => ({
-              question_number: q.question_number,
-              question_id: q.question_id,
-              question_status: 'NOT_VISITED' as any,
-            }));
-
-            setAllQuestions(updatedQuestions);
-            setTotalQuestions(updatedQuestions.length);
-            setPalette((prev) => [...prev, ...newPaletteItems]);
-
-            setTopicCompletionBanner(
-              `Questions finished for "${gTopic}"! Now loading similar questions from ${gSubject || 'this subject'}.`,
-            );
-            return true;
-          }
-        }
-      } catch (err) {
-        console.warn('Direct subject expansion fetch warning:', err);
-      }
-    }
-
     return false;
-  }, [
-    allQuestions,
-    subjectFallbackPool,
-    handleLoadSubjectFallbackQuestions,
-    gTopic,
-    gSubject,
-    gExam,
-    userResponses,
-    revealedMap,
-  ]);
+  }, []);
 
   // Reveal Instant Per-Question Answer & Description with Full Solution
   const handleRevealAnswer = async (
@@ -1269,8 +927,9 @@ export function StudentPracticeExamPage() {
       unattemptedCount,
       accuracy,
       totalQuestions: numQuestions,
-      topicName: gTopic,
-      subtopicName: gSubtopic,
+      subjectName: gSubject,
+      topicName: gSubject,
+      subtopicName: '',
       targetExam: gExam,
       targetYear: gYear,
       timeSpentSeconds: Math.max(30, 600 - timeLeft),
@@ -1342,12 +1001,6 @@ export function StudentPracticeExamPage() {
   };
 
   // Dynamically extract subjects from API masterSyllabus tree and fetched questions.
-  // The syllabus API returns subjects as an array (each with its own nested
-  // `topics`), not a flat dict keyed by subject name — this used to do
-  // Object.keys(masterSyllabus) directly, which only ever returned the
-  // response's top-level field names (title, total_subjects, subjects, ...),
-  // never actual subject names, so this list silently never matched what the
-  // Instant Practice Test Generator (MockSelectionPage) shows.
   const syllabusSubjectsArr: any[] =
     masterSyllabus?.subjects && Array.isArray(masterSyllabus.subjects)
       ? masterSyllabus.subjects
@@ -1358,28 +1011,6 @@ export function StudentPracticeExamPage() {
   );
   const combinedSubjects = Array.from(new Set([...syllabusSubjects, ...questionSubjects]));
   const subjectsList = ['All Subjects', ...combinedSubjects];
-
-  // Dynamically extract topics from API masterSyllabus tree and fetched questions
-  let dynamicTopics: string[] = [];
-  if (gSubject && gSubject !== 'All Subjects') {
-    const matchedSubject = syllabusSubjectsArr.find((s: any) => s.name === gSubject);
-    if (matchedSubject && Array.isArray(matchedSubject.topics)) {
-      dynamicTopics = matchedSubject.topics.map((t: any) => t.name).filter(Boolean);
-    }
-  } else {
-    syllabusSubjectsArr.forEach((s: any) => {
-      if (Array.isArray(s.topics)) {
-        dynamicTopics.push(...s.topics.map((t: any) => t.name).filter(Boolean));
-      }
-    });
-  }
-  if (dynamicTopics.length === 0) {
-    const qTopics = allQuestions.map((q) => q.topic_name).filter(Boolean) as string[];
-    dynamicTopics = Array.from(new Set(qTopics));
-  } else {
-    dynamicTopics = Array.from(new Set(dynamicTopics));
-  }
-  const availableTopics = ['All Topics', ...dynamicTopics];
 
   const selectedOptionsMap: Record<number, number | string> = {};
   const markedForReviewMap: Record<number, boolean> = {};
@@ -1440,28 +1071,50 @@ export function StudentPracticeExamPage() {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', marginBottom: 8 }}>
-            No Practice Questions Found
+            No Questions Available
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24, lineHeight: 1.5 }}>
-            No practice questions mapped to <strong>{formatEnum(gTopic || gSubject)}</strong> were
-            found.
+            No questions available for{' '}
+            <strong>{formatEnum(gSubject || 'this selection')}</strong>.
           </p>
-          <button
-            onClick={() => navigate('/mocks')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: 0,
-              backgroundColor: '#E31B23',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              fontSize: 14,
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)',
-            }}
-          >
-            Select Another Topic
-          </button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                const current = new URLSearchParams(searchParams);
+                current.delete('subject');
+                current.delete('topic');
+                navigate(`?${current.toString()}`);
+              }}
+              style={{
+                padding: '12px 20px',
+                borderRadius: 0,
+                backgroundColor: '#172033',
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: 14,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Practice All Subjects
+            </button>
+            <button
+              onClick={() => navigate('/mocks')}
+              style={{
+                padding: '12px 20px',
+                borderRadius: 0,
+                backgroundColor: '#E31B23',
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: 14,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)',
+              }}
+            >
+              Select Another Subject
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1482,12 +1135,12 @@ export function StudentPracticeExamPage() {
       {/* Top Header Bar */}
       <ExamHeader
         examTitle={gExam}
-        paperSubtitle={`${gExam} · ${gYear}${gTopic ? ' · ' + gTopic : ''}`}
+        paperSubtitle={`${gExam} · ${gYear}${gSubject ? ' · ' + gSubject : ''}`}
         timeLeft={timeLeft}
         language={language}
         showSubmitButton={true}
         showTimer={false}
-        topicName={gTopic}
+        topicName={gSubject}
         subtopicName={''}
         parentBreadcrumb="Student Dashboard"
         onBack={() => setShowLeaveModal(true)}
@@ -1800,148 +1453,6 @@ export function StudentPracticeExamPage() {
                               {gSubject === opt && <Check size={14} color="#1E3A8A" />}
                             </div>
                           ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Filter 3: Specific Topic */}
-                <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
-                  <label
-                    style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      color: '#64748B',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: 4,
-                      display: 'block',
-                    }}
-                  >
-                    Specific Topic
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
-                      setFilterSearchQuery('');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 14px',
-                      borderRadius: 0,
-                      border:
-                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      boxShadow:
-                        activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <span
-                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    >
-                      {gTopic || 'All Topics'}
-                    </span>
-                    <ChevronDown
-                      size={14}
-                      color="#64748B"
-                      style={{
-                        transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 0.15s ease',
-                      }}
-                    />
-                  </button>
-
-                  {activeDropdown === 'topic' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 8px)',
-                        left: 0,
-                        width: 270,
-                        maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 0,
-                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                        padding: 10,
-                        zIndex: 100,
-                      }}
-                    >
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
-                        <Search
-                          size={14}
-                          color="#94A3B8"
-                          style={{ position: 'absolute', left: 10, top: 10 }}
-                        />
-                        <input
-                          type="text"
-                          autoFocus
-                          placeholder="Search topics..."
-                          value={filterSearchQuery}
-                          onChange={(e) => setFilterSearchQuery(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
-                            border: '1px solid #E2E8F0',
-                            fontSize: 12,
-                            outline: 'none',
-                            boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
-                          }}
-                        />
-                      </div>
-
-                      <div
-                        style={{
-                          maxHeight: 200,
-                          overflowY: 'auto',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                        }}
-                      >
-                        {availableTopics
-                          .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                          .map((opt) => {
-                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
-                            return (
-                              <div
-                                key={opt}
-                                onClick={() => {
-                                  const current = new URLSearchParams(searchParams);
-                                  if (opt === 'All Topics') current.delete('topic');
-                                  else current.set('topic', opt);
-                                  navigate(`/practice-exam?${current.toString()}`);
-                                  setActiveDropdown(null);
-                                }}
-                                style={{
-                                  padding: '8px 10px',
-                                  borderRadius: 0,
-                                  fontSize: 12.5,
-                                  fontWeight: isSelected ? 700 : 500,
-                                  color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <span>{opt}</span>
-                                {isSelected && <Check size={14} color="#1E3A8A" />}
-                              </div>
-                            );
-                          })}
                       </div>
                     </div>
                   )}
@@ -2373,147 +1884,6 @@ export function StudentPracticeExamPage() {
                 )}
               </div>
 
-              {/* Filter 3: Specific Topic */}
-              <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
-                <label
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    color: '#64748B',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
-                  Specific Topic
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
-                    setFilterSearchQuery('');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 14px',
-                    borderRadius: 0,
-                    border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    boxShadow:
-                      activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span
-                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                  >
-                    {gTopic || 'All Topics'}
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    color="#64748B"
-                    style={{
-                      transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 0.15s ease',
-                    }}
-                  />
-                </button>
-
-                {activeDropdown === 'topic' && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      left: 0,
-                      width: 270,
-                      maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: 0,
-                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                      padding: 10,
-                      zIndex: 100,
-                    }}
-                  >
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
-                      <Search
-                        size={14}
-                        color="#94A3B8"
-                        style={{ position: 'absolute', left: 10, top: 10 }}
-                      />
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder="Search topics..."
-                        value={filterSearchQuery}
-                        onChange={(e) => setFilterSearchQuery(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
-                          border: '1px solid #E2E8F0',
-                          fontSize: 12,
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        maxHeight: 200,
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                      }}
-                    >
-                      {availableTopics
-                        .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                        .map((opt) => {
-                          const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
-                          return (
-                            <div
-                              key={opt}
-                              onClick={() => {
-                                const current = new URLSearchParams(searchParams);
-                                if (opt === 'All Topics') current.delete('topic');
-                                else current.set('topic', opt);
-                                navigate(`/practice-exam?${current.toString()}`);
-                                setActiveDropdown(null);
-                              }}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: 0,
-                                fontSize: 12.5,
-                                fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <span>{opt}</span>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Filter 4: Difficulty */}
               <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
                 <label
@@ -2727,26 +2097,9 @@ export function StudentPracticeExamPage() {
           onShowSolution={() => handleShowSolution()}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onPrev={() => currentQIndex > 0 && handleSelectQuestion(currentQIndex - 1)}
-          onNext={async () => {
+          onNext={() => {
             if (currentQIndex < totalQuestions - 1) {
               handleSelectQuestion(currentQIndex + 1);
-            } else if (subjectFallbackPool.length > 0) {
-              const loaded = handleLoadSubjectFallbackQuestions();
-              if (loaded) handleSelectQuestion(currentQIndex + 1);
-            } else if (isPrefetchingSubjectFallback) {
-              setIsLoading(true);
-              let attempts = 0;
-              while (isPrefetchingSubjectFallback && attempts < 10) {
-                await new Promise((r) => setTimeout(r, 200));
-                attempts++;
-              }
-              setIsLoading(false);
-              if (subjectFallbackPool.length > 0) {
-                const loaded = handleLoadSubjectFallbackQuestions();
-                if (loaded) handleSelectQuestion(currentQIndex + 1);
-              } else {
-                setShowNoMoreQuestionsModal(true);
-              }
             } else {
               setShowNoMoreQuestionsModal(true);
             }
@@ -2786,81 +2139,6 @@ export function StudentPracticeExamPage() {
           </aside>
         )}
       </div>
-
-      {/* Topic Completion & Subject Question Expansion Pop-up Banner */}
-      {topicCompletionBanner && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 24,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 99999,
-            backgroundColor: '#172033',
-            color: '#FFFFFF',
-            borderRadius: 0,
-            padding: '14px 22px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            maxWidth: 520,
-            width: '90%',
-            animation: 'fadeIn 0.25s ease-out',
-          }}
-        >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 0,
-              backgroundColor: '#E31B23',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Sparkles size={20} color="#FFFFFF" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: '#60A5FA',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: 2,
-              }}
-            >
-              Topic Complete &bull; Questions Expanded
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', lineHeight: 1.35 }}>
-              {topicCompletionBanner}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setTopicCompletionBanner(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94A3B8',
-              cursor: 'pointer',
-              fontSize: 18,
-              fontWeight: 700,
-              padding: 4,
-              lineHeight: 1,
-            }}
-          >
-            &times;
-          </button>
-        </div>
-      )}
 
       {/* Floating 10-Second Post-Exam Countdown Banner */}
       {scoreCountdown !== null && (

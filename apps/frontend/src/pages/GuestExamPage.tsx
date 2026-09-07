@@ -37,9 +37,7 @@ export function GuestExamPage() {
   // URL Params (Max 10 questions allowed)
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
-  const gSubject = searchParams.get('subject') || '';
-  const gTopic = searchParams.get('topic') || '';
-  const gSubtopic = searchParams.get('subtopic') || '';
+  const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
   const gDifficulty = searchParams.get('difficulty') || '';
   const rawCount = parseInt(searchParams.get('count') || '10', 10);
   const gCount = Math.min(10, Math.max(1, rawCount));
@@ -90,38 +88,6 @@ export function GuestExamPage() {
     }
     loadTaxonomyAndYears();
   }, []);
-
-  // Dynamically mapped topics for selected subject (derived 100% from DB taxonomy API)
-  const availableTopics = useMemo(() => {
-    const defaultList = ['All Topics'];
-    if (!gSubject) return defaultList;
-
-    const currentSubj = masterSubjects.find(
-      (s) => s.name === gSubject || s.name.toLowerCase().includes(gSubject.toLowerCase()),
-    );
-    if (
-      currentSubj &&
-      currentSubj.topics &&
-      Array.isArray(currentSubj.topics) &&
-      currentSubj.topics.length > 0
-    ) {
-      const topicNames = currentSubj.topics
-        .map((t: any) => t.name)
-        .filter((n: string) => n && n.trim() !== '' && !n.startsWith('All Topics'));
-      if (topicNames.length > 0) return [...defaultList, ...topicNames];
-    }
-
-    const dbTopicMap = threeLevelHierarchy[gSubject];
-    if (dbTopicMap && typeof dbTopicMap === 'object') {
-      const dbTopics = Object.keys(dbTopicMap).filter(
-        (k) => k.trim() !== '' && !k.startsWith('All Topics'),
-      );
-      if (dbTopics.length > 0) {
-        return [...defaultList, ...dbTopics];
-      }
-    }
-    return defaultList;
-  }, [gSubject, masterSubjects, threeLevelHierarchy]);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -181,11 +147,11 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject/topic filters change
+  // Reset recommendations exhaustion when exam/subject filters change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic]);
+  }, [gExam, gSubject]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isTabletOrBelow } = useBreakpoint();
@@ -195,7 +161,7 @@ export function GuestExamPage() {
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
+  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gCount}`;
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(
@@ -216,71 +182,31 @@ export function GuestExamPage() {
         const excludeIdsParam = Array.from(existingIds).join(',');
 
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-        let querySubject = rawSubject;
-        let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
             : gExam.toLowerCase().trim()
           : '';
 
-        if (querySubject || queryTopic) {
-          try {
-            const verifyRes = await verifySyllabusNode({
-              subject: querySubject,
-              topic: queryTopic,
-            });
-            if (verifyRes && verifyRes.is_valid) {
-              if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
-              if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
-            }
-          } catch (err) {
-            // ignore verification fallback
-          }
-        }
-
         let newFetched: any[] = [];
-
         const neededCount = Math.max(1, 15 - currentPool.length);
 
-        // Step 1: Query API by Topic first if a topic is selected
-        if (queryTopic) {
-          const topicParams = new URLSearchParams({ limit: String(neededCount) });
-          topicParams.append('topic_name', queryTopic);
-          if (querySubject) topicParams.append('subject_name', querySubject);
-          if (targetExam) topicParams.append('exam_name', targetExam);
-          if (excludeIdsParam) topicParams.append('exclude_ids', excludeIdsParam);
+        const subjParams = new URLSearchParams({ limit: String(neededCount) });
+        if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (targetExam) subjParams.append('exam_name', targetExam);
+        if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
 
-          try {
-            const res = await guardedFetch(`/api/v1/questions/recommended?${topicParams.toString()}`);
-            if (res.ok) {
-              const data = await res.json();
-              newFetched = data.items || [];
-            }
-          } catch (err) {
-            console.warn('Topic recommendation fetch failed:', err);
+        try {
+          const res = await guardedFetch(`/api/v1/questions/recommended?${subjParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            newFetched = data.items || [];
           }
+        } catch (err) {
+          console.warn('Subject recommendation fetch failed:', err);
         }
 
-        // Step 2: Fallback to Subject if no questions found for Topic (or if no Topic was selected)
-        if (newFetched.length === 0 && querySubject) {
-          const subjParams = new URLSearchParams({ limit: String(neededCount) });
-          subjParams.append('subject_name', querySubject);
-          if (targetExam) subjParams.append('exam_name', targetExam);
-          if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
-
-          try {
-            const res = await guardedFetch(`/api/v1/questions/recommended?${subjParams.toString()}`);
-            if (res.ok) {
-              const data = await res.json();
-              newFetched = data.items || [];
-            }
-          } catch (err) {
-            console.warn('Subject recommendation fetch failed:', err);
-          }
-        }
-
-        // Step 3: If no questions even of subject are found, mark exhausted and DO NOT call API in loop
+        // If no questions even of subject are found, mark exhausted and DO NOT call API in loop
         if (newFetched.length === 0) {
           setIsRecsExhausted(true);
           return;
@@ -311,9 +237,9 @@ export function GuestExamPage() {
               question_number: 0,
               text: item.question_text || item.text || '',
               options: optionsList,
-              section_code: item.subject_name || querySubject || 'Recommended',
-              subject: item.subject_name || querySubject || gSubject || 'General Studies',
-              topic_name: item.topic_name || queryTopic,
+              section_code: item.subject_name || rawSubject || 'Recommended',
+              subject: item.subject_name || rawSubject || 'General Studies',
+              topic_name: item.topic_name || item.subject_name || rawSubject || '',
               subtopic_name: item.subtopic_name,
               difficulty: item.difficulty || 'MEDIUM',
               marks: item.marks || 2.0,
@@ -375,7 +301,7 @@ export function GuestExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gExam, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gExam, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Timer countdown
@@ -436,11 +362,8 @@ export function GuestExamPage() {
         const topName =
           primaryH.topic_name ||
           q.topic_name ||
-          (gTopic && !gTopic.startsWith('All Topics') ? gTopic : subjName);
-        const subtopName =
-          primaryH.subtopic_name ||
-          q.subtopic_name ||
-          (gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic : '');
+          subjName;
+        const subtopName = '';
 
         return {
           question_id: q.question_id || `q-guest-${idx + 1}`,
@@ -448,7 +371,7 @@ export function GuestExamPage() {
           text: q.question_text || q.text || '',
           passage_text: q.passage_text || null,
           options: optionsList,
-          section_code: topName || subjName || 'General Studies',
+          section_code: subjName || 'General Studies',
           subject_name: subjName,
           topic_name: topName,
           subtopic_name: subtopName,
@@ -484,20 +407,7 @@ export function GuestExamPage() {
       };
 
       const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
-      let querySubject = rawSubject;
-      let queryTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
-
-      if (querySubject || queryTopic) {
-        try {
-          const verifyRes = await verifySyllabusNode({ subject: querySubject, topic: queryTopic });
-          if (verifyRes && verifyRes.is_valid) {
-            if (verifyRes.canonical_subject) querySubject = verifyRes.canonical_subject;
-            if (verifyRes.canonical_topic) queryTopic = verifyRes.canonical_topic;
-          }
-        } catch (err) {
-          console.warn('Syllabus node verification check failed, using raw query params:', err);
-        }
-      }
+      const reqSubject = rawSubject;
 
       const targetExam = gExam
         ? gExam.toLowerCase().includes('upsc')
@@ -505,81 +415,48 @@ export function GuestExamPage() {
           : gExam.toLowerCase().trim()
         : '';
 
-      // 1. Try with subject + topic + year + selected exam
-      const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-      if (querySubject) {
-        p1.append('subject_name', querySubject);
-      }
-      if (queryTopic) {
-        p1.append('topic_name', queryTopic);
-      }
-      if (gSubtopic && !gSubtopic.startsWith('All Subtopics')) {
-        p1.append('subtopic_name', gSubtopic.trim());
-      }
       const rawYearDigits = gYear.replace(/\D/g, '');
-      if (
+      const validYear =
         rawYearDigits &&
         !isNaN(Number(rawYearDigits)) &&
         Number(rawYearDigits) >= 2000 &&
         Number(rawYearDigits) <= 2024
-      ) {
-        p1.append('exam_year', rawYearDigits);
-      }
-      if (targetExam) {
-        p1.append('exam_name', targetExam);
-      }
+          ? rawYearDigits
+          : null;
+
+      // 1. Try with subject + year + selected exam
+      const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+      if (reqSubject) p1.append('subject_name', reqSubject);
+      if (validYear) p1.append('exam_year', validYear);
+      if (targetExam) p1.append('exam_name', targetExam);
       await fetchWithParams(p1);
 
-      // 2. Fallback: Relax year if 0 questions found for exact year (keep subject + topic)
-      if (fetchedMap.size === 0 && queryTopic) {
+      // 2. Fallback: Relax year if 0 questions found for exact year (strictly keep subject)
+      if (fetchedMap.size === 0 && reqSubject && validYear) {
         const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (querySubject) {
-          p2.append('subject_name', querySubject);
-        }
-        p2.append('topic_name', queryTopic);
-        if (gSubtopic && !gSubtopic.startsWith('All Subtopics')) {
-          p2.append('subtopic_name', gSubtopic.trim());
-        }
-        if (targetExam) {
-          p2.append('exam_name', targetExam);
-        }
+        p2.append('subject_name', reqSubject);
+        if (targetExam) p2.append('exam_name', targetExam);
         await fetchWithParams(p2);
       }
 
-      // 3. Fallback: Relax topic to subject if still 0 questions found (keep subject)
-      if (fetchedMap.size === 0 && querySubject) {
+      // 3. Fallback: Relax exam filter if still 0 questions found while strictly keeping subject
+      if (fetchedMap.size === 0 && reqSubject && targetExam) {
         const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p3.append('subject_name', querySubject);
-        if (targetExam) {
-          p3.append('exam_name', targetExam);
-        }
+        p3.append('subject_name', reqSubject);
         await fetchWithParams(p3);
       }
 
-      // 4. Fallback: Try raw subject if canonical subject differed (keep subject)
-      if (fetchedMap.size === 0 && rawSubject && rawSubject !== querySubject) {
-        const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p4.append('subject_name', rawSubject);
-        if (targetExam) {
-          p4.append('exam_name', targetExam);
-        }
-        await fetchWithParams(p4);
-      }
-
-      // 5. Fallback: Relax exam filter but strictly keep subject_name if user selected a subject
-      if (fetchedMap.size === 0 && (querySubject || rawSubject)) {
-        const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p5.append('subject_name', querySubject || rawSubject);
-        await fetchWithParams(p5);
-      }
-
-      // 6. Fallback: Only if user explicitly chose "All Subjects" (no subject selected)
+      // 4. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
       if (fetchedMap.size === 0 && !rawSubject) {
-        const p6 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (targetExam) {
-          p6.append('exam_name', targetExam);
+        const pAll = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+        if (validYear) pAll.append('exam_year', validYear);
+        if (targetExam) pAll.append('exam_name', targetExam);
+        await fetchWithParams(pAll);
+
+        if (fetchedMap.size === 0) {
+          const pAllRelaxed = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          await fetchWithParams(pAllRelaxed);
         }
-        await fetchWithParams(p6);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
@@ -660,7 +537,7 @@ export function GuestExamPage() {
     }
 
     loadGuestQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gCount]);
+  }, [gExam, gYear, gSubject, gCount]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -857,7 +734,7 @@ export function GuestExamPage() {
     const expContent =
       (targetQuestion as any).explanation?.detailed_solution ||
       (targetQuestion as any).explanation ||
-      `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || gTopic}.`;
+      `Option (${correctLabel}) is correct for this question on ${targetQuestion.topic_name || targetQuestion.subject || gSubject || 'General Studies'}.`;
 
     const distractorScores: Record<string, any> = {};
     if (Array.isArray(targetQuestion.options)) {
@@ -1002,8 +879,9 @@ export function GuestExamPage() {
       unattemptedCount,
       accuracy,
       totalQuestions: numQuestions,
-      topicName: gTopic || gSubject,
-      subtopicName: gSubtopic,
+      topicName: gSubject,
+      subjectName: gSubject,
+      subtopicName: '',
       targetExam: gExam,
       targetYear: gYear,
       timeSpentSeconds: Math.max(30, gCount * 120 - timeLeft),
@@ -1130,21 +1008,42 @@ export function GuestExamPage() {
             <AlertCircle size={28} />
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
-            No Questions Found
+            No Questions Available
           </h2>
           <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.6, margin: '0 0 24px 0' }}>
-            No questions match your current selection (Subject:{' '}
-            <strong>{formatEnum(gSubject)}</strong>
-            {gTopic ? `, Topic: ${formatEnum(gTopic)}` : ''}
-            {gSubtopic ? `, Subtopic: ${formatEnum(gSubtopic)}` : ''}).
+            No questions available for{' '}
+            <strong>{formatEnum(gSubject || 'this selection')}</strong>.
           </p>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() =>
-                navigate(`/guest-exam?subject=${encodeURIComponent(gSubject)}&count=10`)
-              }
+              onClick={() => {
+                const current = new URLSearchParams(searchParams);
+                current.delete('subject');
+                current.delete('topic');
+                navigate(`?${current.toString()}`);
+              }}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 0,
+                backgroundColor: '#172033',
+                color: '#FFFFFF',
+                fontSize: 13.5,
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <RotateCcw size={15} />
+              Practice All Subjects
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/mocks')}
               style={{
                 padding: '10px 18px',
                 borderRadius: 0,
@@ -1157,30 +1056,10 @@ export function GuestExamPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)',
               }}
             >
-              <RotateCcw size={15} />
-              Practice All {gSubject} Questions
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              style={{
-                padding: '10px 18px',
-                borderRadius: 0,
-                backgroundColor: '#F1F5F9',
-                color: '#475569',
-                fontSize: 13.5,
-                fontWeight: 600,
-                border: '1px solid #E2E8F0',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <ArrowLeft size={15} />
-              Back to Home
+              Select Another Subject
             </button>
           </div>
         </div>
@@ -1569,7 +1448,7 @@ export function GuestExamPage() {
                           key={opt}
                           onClick={() => {
                             navigate(
-                              `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&subtopic=${encodeURIComponent(gSubtopic)}&count=${gCount}`,
+                              `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&count=${gCount}`,
                             );
                             setActiveDropdown(null);
                           }}
@@ -1645,7 +1524,7 @@ export function GuestExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {formatEnum(gSubject)}
+                      {gSubject ? formatEnum(gSubject) : 'All Subjects'}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1709,178 +1588,34 @@ export function GuestExamPage() {
                           gap: 2,
                         }}
                       >
-                        {(subjectsList.length > 0
-                          ? subjectsList
+                        {['All Subjects', ...(subjectsList.length > 0
+                          ? subjectsList.filter((s) => s !== 'History')
                           : Object.keys(threeLevelHierarchy).length > 0
-                            ? Object.keys(threeLevelHierarchy)
+                            ? Object.keys(threeLevelHierarchy).filter((s) => s !== 'History')
                             : [
                                 'Polity',
-                                'History',
                                 'Economy',
                                 'Geography',
                                 'Environment',
                                 'Science & Technology',
                               ]
-                        )
+                        )]
                           .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                          .map((opt) => (
-                            <div
-                              key={opt}
-                              onClick={() => {
-                                navigate(
-                                  `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(opt)}&count=${gCount}`,
-                                );
-                                setActiveDropdown(null);
-                              }}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: 0,
-                                fontSize: 12.5,
-                                fontWeight: gSubject === opt ? 700 : 500,
-                                color: gSubject === opt ? '#1E3A8A' : '#334155',
-                                backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                cursor: 'pointer',
-                              }}
-                              onMouseEnter={(e) => {
-                                if (gSubject !== opt)
-                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                              }}
-                              onMouseLeave={(e) => {
-                                if (gSubject !== opt)
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                            >
-                              <span>{opt}</span>
-                              {gSubject === opt && <Check size={14} color="#1E3A8A" />}
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Filter 3: Topic */}
-                <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
-                  <label
-                    style={{
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      color: '#64748B',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: 4,
-                      display: 'block',
-                    }}
-                  >
-                    Specific Topic
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
-                      setFilterSearchQuery('');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 14px',
-                      borderRadius: 0,
-                      border:
-                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                      color: '#172033',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      boxShadow:
-                        activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <span
-                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    >
-                      {gTopic ? formatEnum(gTopic) : 'All Topics'}
-                    </span>
-                    <ChevronDown
-                      size={14}
-                      color="#64748B"
-                      style={{
-                        transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 0.15s ease',
-                      }}
-                    />
-                  </button>
-
-                  {/* Topic Popover with Premium Search */}
-                  {activeDropdown === 'topic' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 8px)',
-                        left: 0,
-                        width: 270,
-                        maxWidth: 'calc(100vw - 32px)',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #E2E8F0',
-                        borderRadius: 0,
-                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                        padding: 10,
-                        zIndex: 100,
-                      }}
-                    >
-                      {/* Search Field */}
-                      <div style={{ position: 'relative', marginBottom: 8 }}>
-                        <Search
-                          size={14}
-                          color="#94A3B8"
-                          style={{ position: 'absolute', left: 10, top: 10 }}
-                        />
-                        <input
-                          type="text"
-                          autoFocus
-                          placeholder="Search topics..."
-                          value={filterSearchQuery}
-                          onChange={(e) => setFilterSearchQuery(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '7px 10px 7px 30px',
-                            borderRadius: 0,
-                            border: '1px solid #E2E8F0',
-                            fontSize: 12,
-                            outline: 'none',
-                            boxSizing: 'border-box',
-                            backgroundColor: '#F8FAFC',
-                          }}
-                        />
-                      </div>
-
-                      <div
-                        style={{
-                          maxHeight: 200,
-                          overflowY: 'auto',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 2,
-                        }}
-                      >
-                        {availableTopics
-                          .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                           .map((opt) => {
-                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                            const isSelected = (opt === 'All Subjects' && !gSubject) || gSubject === opt;
                             return (
                               <div
                                 key={opt}
                                 onClick={() => {
-                                  const val = opt === 'All Topics' ? '' : opt;
-                                  navigate(
-                                    `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(val)}&count=${gCount}`,
-                                  );
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Subjects') {
+                                    current.delete('subject');
+                                  } else {
+                                    current.set('subject', opt);
+                                  }
+                                  current.delete('topic');
+                                  current.delete('subtopic');
+                                  navigate(`/guest-exam?${current.toString()}`);
                                   setActiveDropdown(null);
                                 }}
                                 style={{
@@ -1914,7 +1649,7 @@ export function GuestExamPage() {
                   )}
                 </div>
 
-                {/* Filter 4: Difficulty */}
+                {/* Filter 3: Difficulty */}
                 <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
                   <label
                     style={{
@@ -1994,7 +1729,7 @@ export function GuestExamPage() {
                             onClick={() => {
                               const val = opt === 'All Levels' ? '' : opt;
                               navigate(
-                                `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
+                                `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
                               );
                               setActiveDropdown(null);
                             }}
@@ -2183,7 +1918,7 @@ export function GuestExamPage() {
                         key={opt}
                         onClick={() => {
                           navigate(
-                            `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&subtopic=${encodeURIComponent(gSubtopic)}&count=${gCount}`,
+                            `/guest-exam?exam=${encodeURIComponent(opt)}&subject=${encodeURIComponent(gSubject)}&count=${gCount}`,
                           );
                           setActiveDropdown(null);
                         }}
@@ -2322,19 +2057,22 @@ export function GuestExamPage() {
                         gap: 2,
                       }}
                     >
-                      {(subjectsList.length > 0
-                        ? subjectsList
+                      {['All Subjects', ...(subjectsList.length > 0
+                        ? subjectsList.filter((s) => s !== 'History')
                         : Object.keys(threeLevelHierarchy).length > 0
-                          ? Object.keys(threeLevelHierarchy)
+                          ? Object.keys(threeLevelHierarchy).filter((s) => s !== 'History')
                           : [
+                              'Modern History',
+                              'Ancient History',
+                              'Medieval History',
+                              'Art & Culture',
                               'Polity',
-                              'History',
                               'Economy',
                               'Geography',
                               'Environment',
                               'Science & Technology',
                             ]
-                      )
+                      )]
                         .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                         .map((opt) => (
                           <div
@@ -2375,157 +2113,7 @@ export function GuestExamPage() {
                 )}
               </div>
 
-              {/* Filter 3: Topic */}
-              <div style={{ position: 'relative', flex: 1.3, minWidth: 170 }}>
-                <label
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    color: '#64748B',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: 4,
-                    display: 'block',
-                  }}
-                >
-                  Specific Topic
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
-                    setFilterSearchQuery('');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 14px',
-                    borderRadius: 0,
-                    border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
-                    backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
-                    color: '#172033',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    boxShadow:
-                      activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span
-                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                  >
-                    {gTopic ? formatEnum(gTopic) : 'All Topics'}
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    color="#64748B"
-                    style={{
-                      transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 0.15s ease',
-                    }}
-                  />
-                </button>
-
-                {/* Topic Popover with Premium Search */}
-                {activeDropdown === 'topic' && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 8px)',
-                      left: 0,
-                      width: 270,
-                      maxWidth: 'calc(100vw - 32px)',
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: 0,
-                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
-                      padding: 10,
-                      zIndex: 100,
-                    }}
-                  >
-                    {/* Search Field */}
-                    <div style={{ position: 'relative', marginBottom: 8 }}>
-                      <Search
-                        size={14}
-                        color="#94A3B8"
-                        style={{ position: 'absolute', left: 10, top: 10 }}
-                      />
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder="Search topics..."
-                        value={filterSearchQuery}
-                        onChange={(e) => setFilterSearchQuery(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '7px 10px 7px 30px',
-                          borderRadius: 0,
-                          border: '1px solid #E2E8F0',
-                          fontSize: 12,
-                          outline: 'none',
-                          boxSizing: 'border-box',
-                          backgroundColor: '#F8FAFC',
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        maxHeight: 200,
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                      }}
-                    >
-                      {availableTopics
-                        .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                        .map((opt) => {
-                          const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
-                          return (
-                            <div
-                              key={opt}
-                              onClick={() => {
-                                const val = opt === 'All Topics' ? '' : opt;
-                                navigate(
-                                  `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(val)}&count=${gCount}`,
-                                );
-                                setActiveDropdown(null);
-                              }}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: 0,
-                                fontSize: 12.5,
-                                fontWeight: isSelected ? 700 : 500,
-                                color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                cursor: 'pointer',
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected)
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                            >
-                              <span>{opt}</span>
-                              {isSelected && <Check size={14} color="#1E3A8A" />}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Filter 4: Difficulty */}
+              {/* Filter 3: Difficulty */}
               <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
                 <label
                   style={{
@@ -2602,7 +2190,7 @@ export function GuestExamPage() {
                           onClick={() => {
                             const val = opt === 'All Levels' ? '' : opt;
                             navigate(
-                              `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&topic=${encodeURIComponent(gTopic)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
+                              `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(gSubject)}&difficulty=${encodeURIComponent(val)}&count=${gCount}`,
                             );
                             setActiveDropdown(null);
                           }}
@@ -2622,7 +2210,8 @@ export function GuestExamPage() {
                             if (!isSelected) e.currentTarget.style.backgroundColor = '#F8FAFC';
                           }}
                           onMouseLeave={(e) => {
-                            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                            if (!isSelected)
+                              e.currentTarget.style.backgroundColor = 'transparent';
                           }}
                         >
                           <span>{opt}</span>

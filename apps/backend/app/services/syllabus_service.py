@@ -72,16 +72,43 @@ class SyllabusService:
                 )
                 syl_ver = (await self.session.exec(stmt_syl)).first()
 
+        LEGACY_EMPTY_SUBJECTS = {
+            "history",
+            "science & technology",
+            "ecology & environment",
+            "indian polity & governance",
+            "general science",
+            "indian culture",
+        }
+
+        # Query subjects linked to actual questions in the pipeline
+        active_subject_ids_stmt = (
+            select(Topic.subject_id)
+            .join(Subtopic, Subtopic.topic_id == Topic.id)
+            .join(Question, Question.subtopic_id == Subtopic.id)
+            .distinct()
+        )
+
         if syl_ver:
             subj_stmt = (
                 select(Subject)
                 .where(Subject.version_id == syl_ver.id)
+                .where(Subject.id.in_(active_subject_ids_stmt))
                 .order_by(Subject.display_order, Subject.name)
             )
             db_subjects = list((await self.session.exec(subj_stmt)).all())
         else:
-            subj_stmt = select(Subject).order_by(Subject.display_order, Subject.name)
+            subj_stmt = (
+                select(Subject)
+                .where(Subject.id.in_(active_subject_ids_stmt))
+                .order_by(Subject.display_order, Subject.name)
+            )
             db_subjects = list((await self.session.exec(subj_stmt)).all())
+
+        if not db_subjects:
+            fallback_stmt = select(Subject).order_by(Subject.display_order, Subject.name)
+            all_s = list((await self.session.exec(fallback_stmt)).all())
+            db_subjects = [s for s in all_s if s.name and s.name.strip().lower() not in LEGACY_EMPTY_SUBJECTS]
 
         # If database has no subjects at all, fall back to master syllabus literals
         if not db_subjects:
