@@ -1200,15 +1200,21 @@ class QuestionService:
                     o_text = ot.option_text
                     if include_solutions and ot.distractor_analysis:
                         o_distractor = ot.distractor_analysis
+                elif include_solutions and ot.distractor_analysis and not o_distractor:
+                    o_distractor = ot.distractor_analysis
 
             if include_solutions and not o_distractor:
                 qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id == opt.id)
                 qr = (await self.session.exec(qr_stmt)).first()
                 if qr:
-                    if qr.whats_actually_true:
-                        o_distractor = qr.whats_actually_true
-                    elif qr.why_tempting:
-                        o_distractor = qr.why_tempting
+                    why_t = (qr.why_tempting or "").strip()
+                    whats_t = (qr.whats_actually_true or "").strip()
+                    if why_t and whats_t:
+                        o_distractor = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+                    elif whats_t:
+                        o_distractor = whats_t
+                    elif why_t:
+                        o_distractor = why_t
 
             options_detail.append(
                 QuestionOptionDetail(

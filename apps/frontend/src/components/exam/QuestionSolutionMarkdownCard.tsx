@@ -68,6 +68,37 @@ interface QuestionSolutionMarkdownCardProps {
   selectedOptionLabel?: string;
   solution: QuestionSolutionData;
   isLoading?: boolean;
+  options?: Array<{
+    option_id?: number | string;
+    id?: number | string;
+    label?: string;
+    option_label?: string;
+    text?: string;
+    option_text?: string;
+    is_correct?: boolean;
+    distractor_analysis?: string;
+    analysis?: string;
+    closeness_score?: number;
+    classification?: string;
+  }>;
+}
+
+function extractOptionAnalysisFromText(text: string, label: string): string | null {
+  if (!text) return null;
+  const cleanLabel = label.replace(/[\(\)\.\s]/g, '').toUpperCase();
+  const patterns = [
+    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\)|\\*\\*Option\\s*\\(?${cleanLabel}\\)?\\*\\*)\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)|\\*\\*Option|Statement\\s*\\d|\\d+\\.))[^\\n]+)*)`, 'i'),
+    new RegExp(`(?:Option\\s*\\(?${cleanLabel}\\)?|\\(?${cleanLabel}\\))\\s+(is\\s+[^\\n]+(?:\\n(?!\\s*(?:Option\\s*\\(?[A-D]\\)?|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
+    new RegExp(`(?:Statement|Pair)\\s*${cleanLabel === 'A' ? '1' : cleanLabel === 'B' ? '2' : cleanLabel === 'C' ? '3' : '4'}\\s*[:\\-\\—–]\\s*([^\\n]+(?:\\n(?!\\s*(?:Statement|Pair|Option|\\(?[A-D]\\)))[^\\n]+)*)`, 'i'),
+  ];
+
+  for (const regex of patterns) {
+    const match = text.match(regex);
+    if (match && match[1] && match[1].trim().length > 10) {
+      return match[1].trim();
+    }
+  }
+  return null;
 }
 
 export function QuestionSolutionMarkdownCard({
@@ -75,6 +106,7 @@ export function QuestionSolutionMarkdownCard({
   selectedOptionLabel,
   solution,
   isLoading = false,
+  options = [],
 }: QuestionSolutionMarkdownCardProps) {
   if (isLoading) {
     return (
@@ -99,7 +131,7 @@ export function QuestionSolutionMarkdownCard({
     );
   }
 
-  const correctLabel = solution.correct_option_label || 'A';
+  const correctLabel = (solution.correct_option_label || 'A').replace(/[\(\)\.\s]/g, '').toUpperCase();
   const difficulty = solution.difficulty || 'MEDIUM';
 
   const explObj = typeof solution.explanation === 'object' && solution.explanation !== null ? solution.explanation : null;
@@ -126,11 +158,76 @@ export function QuestionSolutionMarkdownCard({
     : [];
 
   // Normalize distractors into an array
-  const distractorsList: DistractorItem[] = Array.isArray(solution.distractor_scores)
+  let rawDistractors: DistractorItem[] = Array.isArray(solution.distractor_scores)
     ? solution.distractor_scores
     : solution.distractor_scores && typeof solution.distractor_scores === 'object'
     ? Object.values(solution.distractor_scores)
     : [];
+
+  // If distractor_scores was empty or missing items, build from options prop
+  if (rawDistractors.length === 0 && options && options.length > 0) {
+    rawDistractors = options.map((opt, idx) => ({
+      option_id: opt.option_id || opt.id,
+      label: opt.option_label || opt.label || String.fromCharCode(65 + idx),
+      text: opt.text || opt.option_text,
+      is_correct: opt.is_correct,
+      closeness_score: opt.closeness_score ?? (opt.is_correct ? 1.0 : 0.0),
+      classification: opt.classification || (opt.is_correct ? 'Correct Key' : 'Distractor'),
+      distractor_analysis: opt.distractor_analysis || opt.analysis || '',
+    }));
+  }
+
+  // Enrich each distractor item with matching option data & extracted analysis
+  const distractorsList: DistractorItem[] = rawDistractors.map((item, idx) => {
+    const itemLabel = (item.label || String.fromCharCode(65 + idx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+    const matchedOpt = (options || []).find((opt, oIdx) => {
+      const optId = String(opt.option_id ?? opt.id ?? '');
+      const oLbl = (opt.option_label || opt.label || String.fromCharCode(65 + oIdx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+      return (item.option_id && optId && optId === String(item.option_id)) || oLbl === itemLabel;
+    });
+
+    const isOptionCorrect = Boolean(
+      item.is_correct ||
+      matchedOpt?.is_correct ||
+      itemLabel === correctLabel
+    );
+    const optText = item.text || matchedOpt?.text || matchedOpt?.option_text || '';
+
+    let analysis = item.distractor_analysis || (item as any).analysis || matchedOpt?.distractor_analysis || (matchedOpt as any)?.analysis || '';
+
+    // If analysis is still missing, try extracting from detailed markdown
+    if (!analysis && detailedMarkdown) {
+      const extracted = extractOptionAnalysisFromText(detailedMarkdown, itemLabel);
+      if (extracted) {
+        analysis = extracted;
+      }
+    }
+
+    // Contextual fallback if still empty
+    if (!analysis) {
+      if (isOptionCorrect) {
+        analysis = explObj?.core_concept
+          ? `Option (${itemLabel}) is correct. Core concept: ${explObj.core_concept}.`
+          : `Option (${itemLabel}) correctly reflects standard constitutional provisions and syllabus references.`;
+      } else {
+        const trapHint = commonTraps.length > 0 ? ` (Trap to note: ${commonTraps[0]})` : '';
+        analysis = optText
+          ? `Option (${itemLabel}) is an incorrect distractor${trapHint}.`
+          : `Option (${itemLabel}) is an incorrect distractor formulated based on standard conceptual traps.`;
+      }
+    }
+
+    return {
+      ...item,
+      label: itemLabel,
+      text: optText,
+      is_correct: isOptionCorrect,
+      distractor_analysis: analysis,
+      classification: isOptionCorrect
+        ? 'Correct Key'
+        : item.classification || `Distractor (${item.closeness_score ?? 0})`,
+    };
+  });
 
   return (
     <div

@@ -419,9 +419,18 @@ async def get_solution_from_db_fallback(
 
     opt_ids = [o.id for o in db_opts]
     opt_trans_map = {}
+    qr_map = {}
     if opt_ids:
+        from app.db.models import QuestionOptionReasoning
         for t in (await session.exec(select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids)))).all():
-            opt_trans_map[t.option_id] = t
+            existing = opt_trans_map.get(t.option_id)
+            if not existing:
+                opt_trans_map[t.option_id] = t
+            elif t.language == LanguageCode.ENGLISH or (t.distractor_analysis and not existing.distractor_analysis):
+                opt_trans_map[t.option_id] = t
+
+        for qr in (await session.exec(select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids)))).all():
+            qr_map[qr.question_option_id] = qr
 
     expl_res = await session.exec(
         select(QuestionExplanation).where(QuestionExplanation.question_id == q.id)
@@ -436,6 +445,18 @@ async def get_solution_from_db_fallback(
     distractor_map = {}
     for o in db_opts:
         trans = opt_trans_map.get(o.id)
+        da = trans.distractor_analysis if trans and trans.distractor_analysis else None
+        if not da and o.id in qr_map:
+            qr = qr_map[o.id]
+            why_t = (qr.why_tempting or "").strip()
+            whats_t = (qr.whats_actually_true or "").strip()
+            if why_t and whats_t:
+                da = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+            elif whats_t:
+                da = whats_t
+            elif why_t:
+                da = why_t
+
         closeness = getattr(o, "distractor_closeness_score", 0.0) or (1.0 if o.is_correct else 0.0)
         cls_tier = ClosenessEvaluator.classify_option(closeness)
         distractor_map[str(o.id)] = {
@@ -445,7 +466,8 @@ async def get_solution_from_db_fallback(
             "closeness_score": closeness,
             "is_correct": o.is_correct,
             "classification": cls_tier,
-            "distractor_analysis": trans.distractor_analysis if trans else None,
+            "distractor_analysis": da or "",
+            "analysis": da or "",
         }
 
     detailed_solution = (expl_model.detailed_solution if (expl_model and expl_model.detailed_solution) else (

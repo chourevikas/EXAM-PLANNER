@@ -784,6 +784,7 @@ export function ExamQuestionCard({
                 selectedOptionLabel={
                   revealResult?.user_selected_label || selectedOptionLabel || undefined
                 }
+                options={question.options}
                 solution={
                   solutionData || {
                     question_id: revealResult?.question_id,
@@ -825,7 +826,32 @@ export function ExamQuestionCard({
                                 ? revealResult.explanation
                                 : 'Detailed solution is available.',
                           },
-                    distractor_scores: revealResult?.distractor_scores || {},
+                    distractor_scores: (() => {
+                      const baseScores: Record<string, any> = { ...(revealResult?.distractor_scores || {}) };
+                      (question.options || []).forEach((opt: any, idx: number) => {
+                        const optKey = String(opt.option_id ?? opt.id ?? idx);
+                        const optLabel = (opt.option_label || opt.label || String.fromCharCode(65 + idx)).replace(/[\(\)\.\s]/g, '').toUpperCase();
+                        const existingKey = Object.keys(baseScores).find((k) => k === optKey || baseScores[k]?.label === optLabel);
+                        if (existingKey) {
+                          baseScores[existingKey] = {
+                            ...baseScores[existingKey],
+                            text: baseScores[existingKey].text || opt.text || opt.option_text || '',
+                            distractor_analysis: baseScores[existingKey].distractor_analysis || opt.distractor_analysis || opt.analysis || '',
+                          };
+                        } else {
+                          baseScores[optKey] = {
+                            option_id: opt.option_id || opt.id,
+                            label: optLabel,
+                            text: opt.text || opt.option_text || '',
+                            is_correct: opt.is_correct,
+                            closeness_score: opt.closeness_score ?? (opt.is_correct ? 1.0 : 0.0),
+                            classification: opt.is_correct ? 'Correct Key' : 'Distractor',
+                            distractor_analysis: opt.distractor_analysis || opt.analysis || '',
+                          };
+                        }
+                      });
+                      return baseScores;
+                    })(),
                   }
                 }
               />

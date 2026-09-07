@@ -435,22 +435,43 @@ async def get_question_solution(
     correct_option_id = None
     correct_option_label = "A"
     distractor_scores = {}
-    seen_opts = set()
 
+    opt_data = {}
     for _, _, opt, ot, qr in rows:
-        if opt.id in seen_opts:
-            continue
-        seen_opts.add(opt.id)
+        if opt.id not in opt_data:
+            opt_data[opt.id] = {
+                "opt": opt,
+                "ot": None,
+                "qr": qr,
+            }
+        cur_ot = opt_data[opt.id]["ot"]
+        if ot:
+            if not cur_ot:
+                opt_data[opt.id]["ot"] = ot
+            elif ot.language == language or (hasattr(ot.language, "value") and ot.language.value == lang_str):
+                opt_data[opt.id]["ot"] = ot
+            elif ot.distractor_analysis and not cur_ot.distractor_analysis:
+                opt_data[opt.id]["ot"] = ot
+        if qr and not opt_data[opt.id]["qr"]:
+            opt_data[opt.id]["qr"] = qr
 
-        # Distractor analysis from OptionTranslation, or fallback to QuestionOptionReasoning
+    for opt_id, entry in opt_data.items():
+        opt = entry["opt"]
+        ot = entry["ot"]
+        qr = entry["qr"]
+
         analysis_text = None
         if ot and ot.distractor_analysis:
             analysis_text = ot.distractor_analysis
         elif qr:
-            if qr.whats_actually_true:
-                analysis_text = qr.whats_actually_true
-            elif qr.why_tempting:
-                analysis_text = qr.why_tempting
+            why_t = (qr.why_tempting or "").strip()
+            whats_t = (qr.whats_actually_true or "").strip()
+            if why_t and whats_t:
+                analysis_text = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+            elif whats_t:
+                analysis_text = whats_t
+            elif why_t:
+                analysis_text = why_t
 
         if opt.is_correct:
             correct_option_id = str(opt.id)

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { Section, Question } from '../components/exam/ExamSectionSidebar';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
+import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import { ExamQuestionPalette } from '../components/exam/ExamQuestionPalette';
 import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
@@ -80,6 +81,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [selectedOptionLabel, setSelectedOptionLabel] = useState<string | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const [revealResults, setRevealResults] = useState<Record<string | number, RevealAnswerResponse>>({});
+  const [solutionDataMap, setSolutionDataMap] = useState<Record<string | number, QuestionSolutionData>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
   const [responseSummary, setResponseSummary] = useState<ResponseSummary>({
     answered_count: 0,
@@ -613,12 +615,31 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     }
   };
 
+  const handleShowSolution = async (targetId?: string | number) => {
+    const qId = targetId || activeQuestion?.question_id;
+    if (!qId) return;
+    try {
+      const res = await fetch(`/api/v1/questions/${qId}/solution`);
+      if (res.ok) {
+        const data: QuestionSolutionData = await res.json();
+        setSolutionDataMap((prev) => ({
+          ...prev,
+          [qId]: data,
+          [String(qId)]: data,
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch detailed solution in ExamEnginePage:', err);
+    }
+  };
+
   const handleRevealAnswer = async () => {
     if (!attemptId || !activeQuestion) return;
     setIsRevealing(true);
     try {
       const revRes = await revealQuestionAnswer(attemptId, activeQuestion.question_id);
       setRevealResults((prev) => ({ ...prev, [activeQuestion.question_id]: revRes }));
+      handleShowSolution(activeQuestion.question_id);
     } catch (err: any) {
       alert(err.message || 'Failed to reveal answer.');
     } finally {
@@ -1069,10 +1090,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
                 language={language}
                 mode={attemptMode}
                 revealResult={activeQuestion ? revealResults[activeQuestion.question_id] : null}
+                solutionData={activeQuestion ? solutionDataMap[activeQuestion.question_id] || solutionDataMap[String(activeQuestion.question_id)] || null : null}
                 isRevealing={isRevealing}
                 onSelectOption={handleSelectOption}
                 onToggleBookmark={handleToggleBookmark}
                 onRevealAnswer={isPYQ ? undefined : handleRevealAnswer}
+                onShowSolution={() => handleShowSolution()}
                 onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
                 isPYQ={isPYQ}
               />

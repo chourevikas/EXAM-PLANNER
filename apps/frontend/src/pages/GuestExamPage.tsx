@@ -867,7 +867,7 @@ export function GuestExamPage() {
         distractorScores[oId] = {
           option_id: oId,
           label: opt.option_label,
-          text: opt.option_text || `Option ${opt.option_label}`,
+          text: opt.text || opt.option_text || `Option ${opt.option_label}`,
           is_correct: opt.is_correct,
           closeness_score: closeness,
           classification: opt.is_correct ? 'Correct' : 'Distractor',

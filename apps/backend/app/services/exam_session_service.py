@@ -13,6 +13,7 @@ from app.db.models import (
     QuestionTranslation,
     OptionTranslation,
     QuestionExplanation,
+    QuestionOptionReasoning,
     ExamAttempt,
     ExamQuestionResponse,
     Test,
@@ -20,7 +21,7 @@ from app.db.models import (
     UserQuestionResponse,
     QuestionSwitchLog,
 )
-from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, UserStatus
+from app.db.models.enums import AttemptStatus, AttemptMode, QuestionResponseStatus, TestType, UserRole, UserStatus, LanguageCode
 from app.schemas.exam_attempt import (
     StartExamRequest,
     StartExamResponse,
@@ -1160,29 +1161,89 @@ class ExamSessionService:
             if not q_model:
                 raise HTTPException(status_code=404, detail="Question not found in S3 or database.")
             opts_res = await self.session.exec(
-                select(QuestionOption).where(QuestionOption.question_id == q_model.id)
+                select(QuestionOption)
+                .where(QuestionOption.question_id == q_model.id)
+                .order_by(col(QuestionOption.display_order).asc())
             )
             db_opts = opts_res.all()
             correct_opt = next((o for o in db_opts if o.is_correct), None)
             if not correct_opt:
                 raise HTTPException(status_code=404, detail="Correct option not configured for this question.")
 
+            opt_ids = [o.id for o in db_opts]
+            trans_by_opt = {}
+            qr_by_opt = {}
+            if opt_ids:
+                t_stmt = select(OptionTranslation).where(OptionTranslation.option_id.in_(opt_ids))
+                t_res = (await self.session.exec(t_stmt)).all()
+                for t in t_res:
+                    existing = trans_by_opt.get(t.option_id)
+                    if not existing:
+                        trans_by_opt[t.option_id] = t
+                    elif t.language == LanguageCode.ENGLISH or (t.distractor_analysis and not existing.distractor_analysis):
+                        trans_by_opt[t.option_id] = t
+
+                qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id.in_(opt_ids))
+                qr_res = (await self.session.exec(qr_stmt)).all()
+                qr_by_opt = {qr.question_option_id: qr for qr in qr_res}
+
             expl_res = await self.session.exec(
                 select(QuestionExplanation).where(QuestionExplanation.question_id == q_model.id)
             )
             db_expl = expl_res.first()
+            detailed_sol = (
+                db_expl.detailed_solution
+                if (db_expl and db_expl.detailed_solution)
+                else f"**Option ({correct_opt.option_label}) is correct.**\n\nStandard constitutional and syllabus reasoning."
+            )
+            core_concept = db_expl.core_concept if (db_expl and db_expl.core_concept) else "Core conceptual analysis"
+            common_traps = (
+                db_expl.common_traps_json
+                if (db_expl and db_expl.common_traps_json)
+                else ([db_expl.common_mistake] if (db_expl and db_expl.common_mistake) else [])
+            )
+            key_takeaways = db_expl.key_takeaways_json if (db_expl and db_expl.key_takeaways_json) else []
+
             expl_dict = {
-                "detailed_text": (db_expl.detailed_solution if (db_expl and db_expl.detailed_solution) else "Standard solution explanation."),
-                "core_concept": (db_expl.core_concept if (db_expl and db_expl.core_concept) else ""),
-                "key_takeaway": (db_expl.key_takeaways_json[0] if (db_expl and db_expl.key_takeaways_json) else ""),
+                "detailed_solution": detailed_sol,
+                "detailed_text": detailed_sol,
+                "text": detailed_sol,
+                "core_concept": core_concept,
+                "common_traps": common_traps,
+                "traps": common_traps,
+                "key_takeaways": key_takeaways,
+                "key_takeaway": key_takeaways[0] if key_takeaways else (db_expl.common_mistake or ""),
             }
 
             distractor_map = {}
             for o in db_opts:
+                t = trans_by_opt.get(o.id)
+                qr = qr_by_opt.get(o.id)
+                da = None
+                if t and t.distractor_analysis:
+                    da = t.distractor_analysis
+                elif qr:
+                    why_t = (qr.why_tempting or "").strip()
+                    whats_t = (qr.whats_actually_true or "").strip()
+                    if why_t and whats_t:
+                        da = f"Why it seems tempting — {why_t}\n\nWhat's actually true — {whats_t}"
+                    elif whats_t:
+                        da = whats_t
+                    elif why_t:
+                        da = why_t
+
+                c_score = o.closeness_score if o.closeness_score is not None else (1.0 if o.is_correct else 0.0)
+                opt_text = t.option_text if t else f"Option {o.option_label}"
+
                 distractor_map[str(o.id)] = {
+                    "option_id": str(o.id),
                     "label": o.option_label,
-                    "closeness_score": o.closeness_score,
-                    "classification": ClosenessEvaluator.classify_option(o.closeness_score),
+                    "text": opt_text,
+                    "closeness_score": c_score,
+                    "is_correct": o.is_correct,
+                    "classification": ClosenessEvaluator.classify_option(c_score),
+                    "distractor_analysis": da or "",
+                    "analysis": da or "",
                 }
 
             q_sol = {
