@@ -13,7 +13,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = '035_add_broadcast_notifications'
-down_revision: Union[str, None] = '034_add_exam_types'
+down_revision: Union[str, None] = '034_add_exam_types_and_fk_to_exams'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
