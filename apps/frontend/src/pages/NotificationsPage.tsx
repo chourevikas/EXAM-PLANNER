@@ -266,11 +266,14 @@ export function NotificationsPage() {
     setLoading(true);
     try {
       const res = await fetchPublishedNotifications({ page: p, limit: 10, contentType: ct });
-      setNotifications(res.items);
-      setTotal(res.total);
-      setTotalPages(res.totalPages);
+      setNotifications(res.items || []);
+      setTotal(res.total || 0);
+      setTotalPages(res.totalPages || 1);
     } catch (err) {
       console.error('Failed to load notifications', err);
+      setNotifications([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
