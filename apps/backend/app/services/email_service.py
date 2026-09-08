@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from app.config.settings import settings
@@ -290,6 +291,146 @@ async def send_password_reset_email(email: str, token: str):
         return False
 
 
+
+async def send_broadcast_notification_email(
+    email: str,
+    user_name: str,
+    notification_id: int,
+    title: str,
+    description: Optional[str] = None,
+    content_type: str = "other",
+    action_url: Optional[str] = None,
+) -> bool:
+    """Dispatches a broadcast announcement email to a user."""
+    detail_url = action_url or f"{settings.FRONTEND_URL}/notifications/{notification_id}"
+    excerpt = (description[:240] + "...") if description and len(description) > 240 else (description or "")
+
+    type_colors = {
+        "video": "#DC2626",
+        "pdf": "#2563EB",
+        "article": "#059669",
+        "other": "#4F46E5"
+    }
+    badge_color = type_colors.get(content_type.lower(), "#4F46E5")
+    type_label = content_type.upper()
+
+    html = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #172033; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #F8FAFC;">
+            <div style="background-color: #172033; padding: 24px; border-radius: 8px 8px 0 0; text-align: center; color: white;">
+                <span style="display: inline-block; background-color: {badge_color}; color: white; padding: 4px 10px; font-size: 11px; font-weight: bold; text-transform: uppercase; border-radius: 4px; margin-bottom: 8px;">
+                    {type_label} ANNOUNCEMENT
+                </span>
+                <h2 style="margin: 6px 0 0 0; font-size: 20px; font-weight: 700; color: #FFFFFF;">{title}</h2>
+            </div>
+            
+            <div style="background-color: #FFFFFF; padding: 24px; border: 1px solid #E2E8F0; border-top: none; border-radius: 0 0 8px 8px;">
+                <p>Hello <strong>{user_name}</strong>,</p>
+                <p>A new announcement has been published on the <strong>ExamPlanner Mentorship Platform</strong>:</p>
+                
+                <div style="background-color: #F8FAFC; border-left: 4px solid {badge_color}; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #111111;">{title}</h3>
+                    <p style="margin: 0; color: #475569; font-size: 14px; white-space: pre-line;">{excerpt}</p>
+                </div>
+                
+                <div style="text-align: center; margin: 28px 0;">
+                    <a href="{detail_url}" style="background-color: #E31B23; color: white; padding: 12px 28px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; display: inline-block;">
+                        View Announcement
+                    </a>
+                </div>
+                
+                <p style="color: #64748B; font-size: 12px; margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px;">
+                    If the button above does not work, visit: <br>
+                    <a href="{detail_url}" style="color: #E31B23; word-break: break-all;">{detail_url}</a>
+                </p>
+                <p style="color: #94A3B8; font-size: 12px; margin-top: 8px;">
+                    You are receiving this email because you are a registered student or mentor on ExamPlanner.
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+
+    message = MessageSchema(
+        subject=f"📢 Announcement: {title}",
+        recipients=[email],
+        body=html,
+        subtype=MessageType.html
+    )
+
+    try:
+        if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:
+            fm = FastMail(get_fastmail_config())
+            await fm.send_message(message)
+            logger.info(f"Broadcast notification email sent to {email} for notification #{notification_id}")
+            return True
+
+        ses_ok = await _send_via_aws_ses([str(email)], message.subject, html)
+        if ses_ok:
+            return True
+
+        logger.info(f"📧 [DEV] Broadcast notification email simulated for {email}: {title} (ID #{notification_id})")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send broadcast notification email to {email}: {e}")
+        return False
+
+
+async def dispatch_broadcast_notification_to_all_users(notification_id: int):
+    """
+    Background worker that queries active users and sends announcement email dispatches
+    with bounded concurrency.
+    """
+    import asyncio
+    from sqlmodel import select
+    from app.db.session import async_session_factory
+    from app.db.models.notification import Notification
+    from app.db.models.user import User, UserStatus
+
+    logger.info(f"🚀 Starting background email broadcast for notification #{notification_id}...")
+
+    async with async_session_factory() as session:
+        noti = await session.get(Notification, notification_id)
+        if not noti:
+            logger.warning(f"Notification #{notification_id} not found. Aborting broadcast dispatch.")
+            return
+
+        if noti.status != "published":
+            logger.warning(f"Notification #{notification_id} status is '{noti.status}' (not published). Aborting dispatch.")
+            return
+
+        # Query all active users
+        stmt = select(User).where(User.status == UserStatus.ACTIVE)
+        users = (await session.exec(stmt)).all()
+
+    if not users:
+        logger.info("No active users found for broadcast notification email dispatch.")
+        return
+
+    logger.info(f"Dispatching announcement #{notification_id} '{noti.title}' to {len(users)} active users...")
+
+    # Limit concurrent mail sends to 5 to protect pool / connections
+    semaphore = asyncio.Semaphore(5)
+
+    async def _send_with_semaphore(user_obj: User):
+        async with semaphore:
+            if not user_obj.email:
+                return False
+            name = user_obj.full_name or "Student"
+            return await send_broadcast_notification_email(
+                email=user_obj.email,
+                user_name=name,
+                notification_id=noti.id,
+                title=noti.title,
+                description=noti.description,
+                content_type=str(noti.content_type.value if hasattr(noti.content_type, 'value') else noti.content_type),
+            )
+
+    results = await asyncio.gather(*[_send_with_semaphore(u) for u in users], return_exceptions=True)
+    success_count = sum(1 for r in results if r is True)
+    logger.info(f"✅ Finished broadcast dispatch for notification #{notification_id}: {success_count}/{len(users)} emails successfully handled.")
+
+
 class AppEmailService:
     async def send_verification_email(self, email: str, token: str):
         return await send_verification_email(email, token)
@@ -297,5 +438,12 @@ class AppEmailService:
     async def send_password_reset_email(self, email: str, token: str):
         return await send_password_reset_email(email, token)
 
+    async def send_broadcast_notification(self, email: str, user_name: str, notification_id: int, title: str, description: Optional[str] = None, content_type: str = "other"):
+        return await send_broadcast_notification_email(email, user_name, notification_id, title, description, content_type)
+
+    async def dispatch_broadcast(self, notification_id: int):
+        return await dispatch_broadcast_notification_to_all_users(notification_id)
+
 EmailService = AppEmailService
 email_service = AppEmailService()
+

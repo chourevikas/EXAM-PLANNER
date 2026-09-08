@@ -76,8 +76,13 @@ const CurrentAffairsPage = lazy(() =>
 const CurrentAffairsDetailPage = lazy(() =>
   import('./pages/CurrentAffairsDetailPage').then((m) => ({ default: m.CurrentAffairsDetailPage })),
 );
+const NotificationsPage = lazy(() =>
+  import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
+);
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
+import { Spinner } from './components/common/Spinner';
+
 
 function LoadingFallback() {
   return (
@@ -85,43 +90,12 @@ function LoadingFallback() {
       style={{
         minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 20,
         background: '#F8FAFC',
-        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
       }}
     >
-      <div
-        style={{
-          position: 'relative',
-          width: 64,
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            border: '3px solid #E2E8F0',
-            borderTopColor: '#E31B23',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-        <img
-          src="/logo.jpeg"
-          alt="ExamPlanner"
-          style={{ width: 40, height: 40, objectFit: 'contain' }}
-        />
-      </div>
-      <div style={{ color: '#172033', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>
-        ExamPlanner
-      </div>
+      <Spinner size={40} />
     </div>
   );
 }
@@ -195,6 +169,26 @@ export default function App() {
                 allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
               >
                 <CurrentAffairsDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications/:id"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />

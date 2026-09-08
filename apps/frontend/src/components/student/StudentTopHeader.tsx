@@ -679,6 +679,21 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   ))
                 )}
               </div>
+
+              {/* View all announcements footer link */}
+              <div style={{ paddingTop: 10, marginTop: 6, borderTop: '1px solid #F1F5F9' }}>
+                <button
+                  onClick={() => { setShowNotifications(false); navigate('/notifications'); }}
+                  style={{
+                    width: '100%', background: 'none', border: 'none',
+                    color: '#E31B23', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', padding: '6px 0', textAlign: 'center',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  }}
+                >
+                  View all announcements →
+                </button>
+              </div>
             </div>
           )}
         </div>

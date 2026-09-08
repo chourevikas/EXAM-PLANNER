@@ -11,13 +11,14 @@ import {
   HelpCircle,
   Award,
   AlertCircle,
-  Loader2,
   Check,
   X,
   RefreshCw,
   FileText,
   Sliders,
+  Loader2,
 } from 'lucide-react';
+import { Spinner } from '../../../components/common/Spinner';
 import { ExamType, ExamTypeCreatePayload, ExamTypeUpdatePayload } from '../../../types/examType';
 import {
   adminFetchExamTypes,
@@ -356,9 +357,8 @@ export function ExamTypesManager() {
       {/* Exam Types Table */}
       <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
-            <Loader2 size={28} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#E31B23' }} />
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Loading examination types...</div>
+          <div style={{ padding: 60, textAlign: 'center' }}>
+            <Spinner size={32} label="Loading examination types…" />
           </div>
         ) : filteredExamTypes.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>

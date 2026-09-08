@@ -9,7 +9,7 @@ from app.config.settings import settings
 from app.db.session import async_session_factory
 from app.db.models.study_plan import StudyTask
 from app.db.models.user import User, UserStatus
-from app.db.models.notification import Notification
+from app.db.models.notification import UserNotification
 from app.services.email_service import send_pending_tasks_summary_email
 from app.cache import get_cache
 
@@ -89,14 +89,14 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
                 pending_count = len(tasks_list)
 
                 # Check if in-app notification exists for today
-                stmt_noti = select(Notification).where(
-                    Notification.user_id == user.id,
-                    Notification.notification_type == "PENDING_TASKS",
-                    Notification.created_at >= today_start
+                stmt_noti = select(UserNotification).where(
+                    UserNotification.user_id == user.id,
+                    UserNotification.notification_type == "PENDING_TASKS",
+                    UserNotification.created_at >= today_start
                 )
                 existing_noti = (await session.exec(stmt_noti)).first()
                 if not existing_noti:
-                    new_noti = Notification(
+                    new_noti = UserNotification(
                         user_id=user.id,
                         title=f"{pending_count} Daily Target(s) Remaining",
                         message=f"You have {pending_count} pending study task(s) scheduled for today. Complete them to maintain your streak!",

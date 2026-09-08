@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { useAuth } from '@clerk/clerk-react';
 import { ChevronRight } from 'lucide-react';
+import { Spinner } from '../components/common/Spinner';
 
 export function CurrentAffairsPage() {
   const [affairs, setAffairs] = useState<any[]>([]);
@@ -53,7 +54,7 @@ export function CurrentAffairsPage() {
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 24, color: 'var(--text-primary)' }}>Daily Current Affairs</h1>
         
         {loading ? (
-          <p>Loading...</p>
+          <Spinner size={36} label="Loading articles…" />
         ) : groupedAffairs.length === 0 ? (
           <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 8 }}>
             <p style={{ color: 'var(--text-secondary)' }}>No current affairs published yet.</p>

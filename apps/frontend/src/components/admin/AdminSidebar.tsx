@@ -12,6 +12,7 @@ import {
   X,
   Globe,
   Sliders,
+  Bell,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -71,6 +72,7 @@ export function AdminSidebar({
     { icon: Users, label: 'Users', id: 'users' },
     { icon: Award, label: 'Teacher Rewards', id: 'teacher-rewards' },
     { icon: Globe, label: 'Current Affairs', id: 'current-affairs' },
+    { icon: Bell, label: 'Notifications', id: 'notifications' },
     { icon: BarChart2, label: 'Reports & Analytics', id: 'analytics' },
   ];
 

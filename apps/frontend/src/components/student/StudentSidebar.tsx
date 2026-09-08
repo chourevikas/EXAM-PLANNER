@@ -12,6 +12,7 @@ import {
   X,
   Bookmark,
   Globe,
+  Bell,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
@@ -66,6 +67,7 @@ export function StudentSidebar({
     { icon: Brain, label: 'Analyse & Practice PYQs', to: '/mocks' },
     { icon: BarChart2, label: 'Analytics', to: '/analytics' },
     { icon: Globe, label: 'Current Affairs', to: '/current-affairs' },
+    { icon: Bell, label: 'Announcements', to: '/notifications' },
     { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
   ];
 

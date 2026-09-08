@@ -32,6 +32,7 @@ from app.routers.roles import router as roles_router
 from app.routers.teacher import teacher_router, admin_teacher_router
 from app.routers.current_affairs import router as current_affairs_router
 from app.routers.exam_types import router as exam_types_router
+from app.routers.admin_notifications import router as admin_notifications_router
 
 
 
@@ -199,6 +200,7 @@ app.include_router(teacher_router, prefix=settings.API_V1_STR)
 app.include_router(admin_teacher_router, prefix=settings.API_V1_STR)
 app.include_router(current_affairs_router, prefix=settings.API_V1_STR)
 app.include_router(exam_types_router, prefix=settings.API_V1_STR)
+app.include_router(admin_notifications_router, prefix=settings.API_V1_STR)
 
 
 

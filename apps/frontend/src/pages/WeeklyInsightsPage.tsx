@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import { Ico } from '../components/common/Icons';
 import { fetchWeeklyInsights, WeeklyInsightsResponse } from '../services/studyPlannerService';
-import { Loader2, Target, CheckCircle2, Clock, Award, AlertCircle, RefreshCw } from 'lucide-react';
+import { Target, CheckCircle2, Clock, Award, AlertCircle, RefreshCw } from 'lucide-react';
+import { Spinner } from '../components/common/Spinner';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 
 // Code-split auxiliary testimonial component so it doesn't block weekly insights bundle/rendering
@@ -287,10 +288,7 @@ export function WeeklyInsightsPage() {
       </section>
 
       {isLoading ? (
-        <div style={LOADING_CONTAINER_STYLE}>
-          <Loader2 size={28} className="animate-spin" color="#E31B23" />
-          <span style={LOADING_TEXT_STYLE}>Generating Weekly Executive Insights...</span>
-        </div>
+        <Spinner size={32} label="Generating Weekly Executive Insights…" />
       ) : error ? (
         <div style={ERROR_CONTAINER_STYLE}>
           <div style={ERROR_MESSAGE_STYLE}>

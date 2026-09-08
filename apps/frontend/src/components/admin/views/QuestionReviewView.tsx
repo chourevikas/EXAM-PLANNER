@@ -39,6 +39,7 @@ import {
   GitBranch,
   CheckCheck,
 } from 'lucide-react';
+import { Spinner } from '../../../components/common/Spinner';
 import {
   fetchExamPipelineStatuses,
   fetchExamQuestionsForReview,
@@ -971,9 +972,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         {/* Exams Table */}
         <div style={{ backgroundColor: '#FFFFFF', borderRadius: 0, border: '1px solid #E2E8F0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
           {loadingExams ? (
-            <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>
-              <Loader2 size={26} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#E31B23' }} />
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Loading examination repositories...</div>
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <Spinner size={32} label="Loading examination repositories…" />
             </div>
           ) : filteredExams.length === 0 ? (
             <div style={{ padding: 60, textAlign: 'center', color: '#64748B' }}>

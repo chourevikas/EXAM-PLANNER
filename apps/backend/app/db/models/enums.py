@@ -119,3 +119,17 @@ class RedemptionStatus(str, enum.Enum):
     PAID = "PAID"
     REJECTED = "REJECTED"
 
+
+class NotificationContentType(str, enum.Enum):
+    VIDEO = "video"
+    PDF = "pdf"
+    ARTICLE = "article"
+    OTHER = "other"
+
+
+class NotificationStatus(str, enum.Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    REJECTED = "rejected"
+
+

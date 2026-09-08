@@ -14,6 +14,7 @@ import {
   Sparkles,
   ShieldAlert
 } from 'lucide-react';
+import { Spinner } from '../../../components/common/Spinner';
 import {
   fetchExamsByYear,
   fetchExamIntegrityQuestions,
@@ -424,10 +425,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
 
       {/* Main Content Area */}
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0' }}>
-          <Loader2 size={32} className="animate-spin" color="#DC2626" />
-          <p style={{ fontSize: 14, color: '#64748B', marginTop: 12 }}>Auditing exam paper integrity & missing questions...</p>
-        </div>
+        <Spinner size={36} label="Auditing exam paper integrity & missing questions…" />
       ) : filteredExams.length === 0 ? (
         <div
           style={{

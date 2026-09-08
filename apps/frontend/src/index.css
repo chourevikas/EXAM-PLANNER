@@ -723,6 +723,13 @@ body {
   }
 }
 
+/* Unified Spinner ring — used by <Spinner /> component */
+@keyframes spin-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ── 19. Exam Footer Responsive ── */
 .exam-footer-bar {
   height: var(--footer-height);
