@@ -115,6 +115,9 @@ jobs:
   deploy:
     needs: [build-and-push-api, build-and-push-web]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     if: github.event_name != 'pull_request'
     steps:
       - name: Checkout repository
@@ -136,6 +139,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export GITHUB_REPOSITORY_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             cd ~/examplanner
             docker compose -f docker-compose.prod.yml pull
