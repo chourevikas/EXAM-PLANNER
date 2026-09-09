@@ -22,7 +22,9 @@ import {
   Lightbulb,
   Focus,
   Minimize2,
+  Globe,
 } from 'lucide-react';
+import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
 import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
@@ -93,7 +95,14 @@ export function GuestExamPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
   const [timeLeft, setTimeLeft] = useState(gCount * 120);
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [language, setLanguage] = useState<string>(() => {
+    return localStorage.getItem('preferred_language') || 'en';
+  });
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    localStorage.setItem('preferred_language', newLang);
+  };
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>(
     'all',
   );
@@ -195,6 +204,7 @@ export function GuestExamPage() {
         if (rawSubject) subjParams.append('subject_name', rawSubject);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
+        if (language) subjParams.append('language', language);
 
         try {
           const res = await guardedFetch(`/api/v1/questions/recommended?${subjParams.toString()}`);
@@ -231,11 +241,15 @@ export function GuestExamPage() {
                 (o.is_correct
                   ? 'Correct option matching core syllabus concepts.'
                   : 'Distractor option.'),
+              translations: o.translations || {},
             }));
             return {
               question_id: item.question_id,
               question_number: 0,
               text: item.question_text || item.text || '',
+              passage_text: item.passage_text || null,
+              translations: item.translations || {},
+              passage_translations: item.passage_translations || {},
               options: optionsList,
               section_code: item.subject_name || rawSubject || 'Recommended',
               subject: item.subject_name || rawSubject || 'General Studies',
@@ -371,6 +385,8 @@ export function GuestExamPage() {
           text: q.question_text || q.text || '',
           passage_text: q.passage_text || null,
           options: optionsList,
+          translations: q.translations || {},
+          passage_translations: q.passage_translations || {},
           section_code: subjName || 'General Studies',
           subject_name: subjName,
           topic_name: topName,
@@ -392,6 +408,9 @@ export function GuestExamPage() {
 
       const fetchWithParams = async (params: URLSearchParams) => {
         try {
+          if (!params.has('language') && language) {
+            params.append('language', language);
+          }
           const res = await fetch(`/api/v1/questions?${params.toString()}`);
           if (res.ok) {
             const data = await res.json();
@@ -1256,6 +1275,32 @@ export function GuestExamPage() {
               {!!displayRecs.length && <span>{displayRecs.length}</span>}
             </button>
           )}
+          {/* Language Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Globe size={14} style={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+            <select
+              value={language}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              aria-label="Select Language"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                padding: '5px 8px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code} style={{ backgroundColor: '#1E293B', color: '#FFFFFF' }}>
+                  {lang.nativeName} ({lang.name})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={() => setIsFocusMode((prev) => !prev)}

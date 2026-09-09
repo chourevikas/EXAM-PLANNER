@@ -377,12 +377,17 @@ async def list_exam_pipeline_statuses(
             or exam_runs.get("EXPLANATION_GENERATION")
             or exam_runs.get("EXPLANATION")
         )
+        p_trans = (
+            exam_runs.get("QUESTION_TRANSLATION")
+            or exam_runs.get("TRANSLATION")
+        )
 
         is_task_running = bool(
             task_registry.is_running(str(exam.id))
             or task_registry.is_running(f"qp_{exam.id}")
             or task_registry.is_running(f"ak_{exam.id}")
             or task_registry.is_running(f"exp_{exam.id}")
+            or task_registry.is_running(f"trans_{exam.id}")
         )
 
         # Stage 1: Extraction Status
@@ -471,8 +476,29 @@ async def list_exam_pipeline_statuses(
                 stage3_status = "IN_PROGRESS"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
+        # Stage 4: Question Translation Status
+        translation_status = "NOT_STARTED"
+        if p_trans:
+            p_trans_status_upper = str(p_trans.status).upper()
+            if p_trans_status_upper in ("COMPLETED", "FINISHED"):
+                translation_status = "COMPLETED"
+            elif p_trans_status_upper in ("RUNNING", "PROCESSING", "INITIALIZING", "QUEUED"):
+                translation_status = "IN_PROGRESS"
+            elif p_trans_status_upper in ("FAILED", "CANCELLED", "ERROR"):
+                translation_status = "FAILED"
             else:
-                stage3_status = "QUEUED"
+                translation_status = p_trans_status_upper
+        elif is_task_running and task_registry.is_running(f"trans_{exam.id}"):
+            translation_status = "IN_PROGRESS"
+        elif stage1_status == "COMPLETED":
+            translation_status = "QUEUED"
+
+        translation_step = p_trans.current_step if p_trans else None
+        translation_progress = (
+            p_trans.progress_percent
+            if p_trans
+            else (100.0 if translation_status == "COMPLETED" else 0.0)
+        )
 
         # Overall Status
         is_s3_published = status_str == "PUBLISHED" and bool(
@@ -529,6 +555,9 @@ async def list_exam_pipeline_statuses(
                 "stage3_progress": p3.progress_percent
                 if p3
                 else (100.0 if stage3_status == "COMPLETED" else 0.0),
+                "translation_status": translation_status,
+                "translation_step": translation_step,
+                "translation_progress": translation_progress,
                 "is_active": exam.is_active,
                 "total_questions": total_exp,
                 "extracted_questions_count": q_count,
@@ -542,9 +571,6 @@ async def list_exam_pipeline_statuses(
                 "has_answer_key": has_key,
                 "pdf_path": exam.pdf_path,
                 "answer_key_pdf_path": exam.answer_key_pdf_path,
-                "stage1_status": stage1_status,
-                "stage2_status": stage2_status,
-                "stage3_status": stage3_status,
                 "questions_json_path": exam.questions_json_path,
                 "solutions_json_path": exam.solutions_json_path,
                 "questions_json_folder_path": exam.questions_json_folder_path,
@@ -1629,4 +1655,92 @@ async def approve_all_questions(
         exam_id=exam_id
     )
     return JSONResponse(content=jsonable_encoder(res))
+
+
+@router.post("/exams/{exam_id}/translate", summary="Trigger Question Translation Pipeline for an Exam")
+@router.post("/{exam_id}/translate", summary="Trigger Question Translation Pipeline for an Exam")
+async def trigger_exam_translation(
+    exam_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Manually trigger or retry question translation into all 22 Indian languages for an exam.
+    Runs in the background via Celery or BackgroundTasks.
+    """
+    from app.db.models import Exam
+    from app.tasks.translation_tasks import translate_exam_questions_task
+    from app.cache import invalidate_pipeline_status_cache
+    from app.db.session import async_session_factory
+
+    exam = await session.get(Exam, exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail=f"Exam {exam_id} not found")
+
+    try:
+        task = translate_exam_questions_task.delay(exam_id)
+        task_id = task.id
+    except Exception as e:
+        logger.warning(f"Celery dispatch failed ({e}), running via background tasks")
+        from app.services.translation_service import QuestionTranslationService
+
+        async def _run_inline():
+            async with async_session_factory() as s:
+                svc = QuestionTranslationService(s)
+                await svc.translate_exam(exam_id)
+
+        background_tasks.add_task(_run_inline)
+        task_id = "background_task"
+
+    await invalidate_pipeline_status_cache()
+    return {
+        "status": "QUEUED",
+        "exam_id": exam_id,
+        "task_id": task_id,
+        "message": f"Question translation pipeline queued for exam {exam_id}",
+    }
+
+
+@router.post("/exams/reconcile-translations", summary="Trigger Midnight Missing Translations Reconciliation")
+async def trigger_reconcile_translations(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Manually trigger missing translations audit and reconciliation across all exams.
+    """
+    from app.tasks.translation_tasks import reconcile_missing_translations_task
+    from app.db.session import async_session_factory
+
+    try:
+        task = reconcile_missing_translations_task.delay()
+        task_id = task.id
+    except Exception as e:
+        logger.warning(f"Celery dispatch failed ({e}), running via background tasks")
+        from app.services.translation_service import QuestionTranslationService
+
+        async def _run_reconcile():
+            async with async_session_factory() as s:
+                svc = QuestionTranslationService(s)
+                await svc.reconcile_all_missing_translations()
+
+        background_tasks.add_task(_run_reconcile)
+        task_id = "background_task"
+
+    return {
+        "status": "QUEUED",
+        "task_id": task_id,
+        "message": "Missing translations reconciliation audit queued.",
+    }
+
+
+@router.get("/languages", summary="List all 22 official Indian languages + English")
+async def get_all_languages(
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    from app.core.languages import get_all_supported_languages
+
+    return get_all_supported_languages()
+
     

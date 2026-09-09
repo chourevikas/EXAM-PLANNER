@@ -55,7 +55,16 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   const [currentQIndex, setCurrentQIndex] = useState(0); // 0-indexed for UI
   const [totalQuestions, setTotalQuestions] = useState(100);
   const [timeLeft, setTimeLeft] = useState(7200);
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [language, setLanguage] = useState<string>(() => {
+    try {
+      const userRaw = localStorage.getItem('user');
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        if (u.preferred_language) return u.preferred_language;
+      }
+    } catch (_) {}
+    return localStorage.getItem('preferred_language') || 'en';
+  });
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>('all');
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -290,7 +299,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           await loadQuestion(sessionStatus.attempt_id, sessionStatus.current_question_index + 1);
 
           // Background: preload the rest for zero-lag switching/language toggle later.
-          getAllAttemptQuestionsBulk(sessionStatus.attempt_id, 'ENGLISH')
+          getAllAttemptQuestionsBulk(sessionStatus.attempt_id, language)
             .then((bulkData) => {
               if (bulkData.questions && bulkData.questions.length > 0) {
                 setAllQuestions(bulkData.questions);
@@ -311,7 +320,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
           // Background: preload the rest for zero-lag switching — the first
           // question is already visible, so this must not block the loading state.
-          getAllAttemptQuestionsBulk(startRes.attempt_id, 'ENGLISH')
+          getAllAttemptQuestionsBulk(startRes.attempt_id, language)
             .then((bulkData) => {
               if (bulkData.questions && bulkData.questions.length > 0) {
                 setAllQuestions(bulkData.questions);
@@ -480,8 +489,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     setIsLoadingQuestion(true);
     questionStartTimeRef.current = Date.now();
     try {
-      const langParam = language === 'hi' ? 'HINDI' : 'ENGLISH';
-      const qNav = await getQuestionByNumber(attId, qNum, langParam);
+      const qNav = await getQuestionByNumber(attId, qNum, language);
       setActiveQuestion(qNav.question);
       setSelectedOptionId(qNav.response_state.selected_option_id as string | null);
       setIsMarkedForReview(qNav.response_state.is_marked_for_review);
@@ -492,16 +500,34 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
       // Background prefetching for instant zero-lag next question switching
       if (qNum + 1 <= totalQuestions) {
-        prefetchQuestion(attId, qNum + 1, langParam);
+        prefetchQuestion(attId, qNum + 1, language);
       }
       if (qNum + 2 <= totalQuestions) {
-        prefetchQuestion(attId, qNum + 2, langParam);
+        prefetchQuestion(attId, qNum + 2, language);
       }
     } catch (err) {
       console.error('Failed to fetch question by number:', err);
     } finally {
       setIsLoadingQuestion(false);
     }
+  };
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    localStorage.setItem('preferred_language', newLang);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        fetch('/api/v1/auth/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ preferred_language: newLang }),
+        }).catch(() => {});
+      }
+    } catch (_) {}
   };
 
 
@@ -962,7 +988,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             navigate('/dashboard');
           }
         }}
-        onLanguageChange={setLanguage}
+        onLanguageChange={handleLanguageChange}
         onSubmitClick={handleOpenSubmitModal}
       />
 

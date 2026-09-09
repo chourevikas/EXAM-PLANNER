@@ -80,6 +80,7 @@ class AuthService:
             role=user_role,
             organization_name=user_in.organization_name,
             department=user_in.department,
+            preferred_language=user_in.preferred_language or "en",
         )
 
         if user.status == UserStatus.PENDING:
@@ -104,6 +105,7 @@ class AuthService:
             role=user.role,
             status=user.status,
             subscription_tier=user.subscription_tier,
+            preferred_language=getattr(user, "preferred_language", "en") or "en",
             free_questions_attempted=user.free_questions_attempted,
             current_streak=user.current_streak,
             total_xp=user.total_xp,

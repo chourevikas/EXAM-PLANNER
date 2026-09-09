@@ -1448,35 +1448,64 @@ class QuestionService:
             for pt in pt_res.all():
                 pt_map.setdefault(pt.passage_id, {})[pt.language] = pt.passage_text
 
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(
+            str(target_lang.value if hasattr(target_lang, "value") else target_lang)
+        )
+
         # Assemble QuestionDetailResponse for all questions in memory
         results = []
         for q in questions:
             exam = exams_map.get(q.exam_id)
-            
+
             # Question Text
             q_text_dict = qt_map.get(q.id, {})
             q_text_dict_str = {
                 (k.value if hasattr(k, "value") else str(k)): v
                 for k, v in q_text_dict.items()
             }
-            q_text = q_text_dict.get(target_lang) or (next(iter(q_text_dict.values())) if q_text_dict else "")
+            q_text = (
+                q_text_dict_str.get(target_enum)
+                or q_text_dict_str.get(target_iso)
+                or q_text_dict_str.get("ENGLISH")
+                or (next(iter(q_text_dict_str.values())) if q_text_dict_str else "")
+            )
 
             # Passage Text
             p_text = None
+            p_text_dict_str = {}
             q_passage_id = getattr(q, "passage_id", None)
             if q_passage_id:
                 p_text_dict = pt_map.get(q_passage_id, {})
-                p_text = p_text_dict.get(target_lang) or (next(iter(p_text_dict.values())) if p_text_dict else None)
+                p_text_dict_str = {
+                    (k.value if hasattr(k, "value") else str(k)): v
+                    for k, v in p_text_dict.items()
+                }
+                p_text = (
+                    p_text_dict_str.get(target_enum)
+                    or p_text_dict_str.get(target_iso)
+                    or p_text_dict_str.get("ENGLISH")
+                    or (next(iter(p_text_dict_str.values())) if p_text_dict_str else None)
+                )
 
             # Options
             q_opts = opt_map.get(q.id, [])
             opts_detail = []
             for opt in q_opts:
                 ot_dict = ot_map.get(opt.id, {})
-                ot_tuple = ot_dict.get(target_lang) or (next(iter(ot_dict.values())) if ot_dict else ("", None))
-                opt_trans_map = {
-                    (k.value if hasattr(k, "value") else str(k)): v[0]
+                ot_dict_str = {
+                    (k.value if hasattr(k, "value") else str(k)): v
                     for k, v in ot_dict.items()
+                }
+                ot_tuple = (
+                    ot_dict_str.get(target_enum)
+                    or ot_dict_str.get(target_iso)
+                    or ot_dict_str.get("ENGLISH")
+                    or (next(iter(ot_dict_str.values())) if ot_dict_str else ("", None))
+                )
+                opt_trans_map = {
+                    k: v[0]
+                    for k, v in ot_dict_str.items()
                 }
                 opts_detail.append(
                     QuestionOptionDetail(
@@ -1603,6 +1632,7 @@ class QuestionService:
                     page_numbers=q.page_numbers_json or [],
                     passage_id=str(getattr(q, "passage_id", None)) if getattr(q, "passage_id", None) else None,
                     passage_text=p_text,
+                    passage_translations=p_text_dict_str,
                     question_text=q_text,
                     translations=q_text_dict_str,
                     options=opts_detail,

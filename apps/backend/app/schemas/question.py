@@ -161,6 +161,7 @@ class QuestionDetailResponse(BaseModel):
     page_numbers: List[int] = []
     passage_id: Optional[str | int] = None
     passage_text: Optional[str] = None
+    passage_translations: Dict[str, str] = {}
     question_text: str = ""
     translations: Dict[str, str] = {}
     options: List[QuestionOptionDetail] = []

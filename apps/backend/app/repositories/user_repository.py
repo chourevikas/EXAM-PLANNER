@@ -62,6 +62,7 @@ class UserRepository:
         role: UserRole = UserRole.STUDENT,
         organization_name: Optional[str] = None,
         department: Optional[str] = None,
+        preferred_language: str = "en",
     ) -> User:
         status = UserStatus.PENDING if role == UserRole.ADMIN else UserStatus.ACTIVE
 
@@ -71,6 +72,7 @@ class UserRepository:
             password_hash=password_hash,
             role=role,
             status=status,
+            preferred_language=preferred_language or "en",
             is_active=True,
             is_verified=False,
             email_verified=False,

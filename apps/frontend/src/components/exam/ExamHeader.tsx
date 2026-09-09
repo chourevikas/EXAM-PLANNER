@@ -1,12 +1,13 @@
 import React from 'react';
-import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Sparkles, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { SUPPORTED_LANGUAGES } from '../../constants/languages';
 
 interface ExamHeaderProps {
   examTitle: string;
   paperSubtitle: string;
   timeLeft: number;
-  language: 'en' | 'hi';
+  language: string;
   isSubmitting?: boolean;
   showSubmitButton?: boolean;
   showTimer?: boolean;
@@ -14,7 +15,7 @@ interface ExamHeaderProps {
   subtopicName?: string;
   parentBreadcrumb?: string;
   onBack?: () => void;
-  onLanguageChange: (lang: 'en' | 'hi') => void;
+  onLanguageChange: (lang: string) => void;
   onSubmitClick?: () => void;
   focusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -216,17 +217,60 @@ export function ExamHeader({
         </div>
       )}
 
-      {/* Right: Submit Test CTA */}
+      {/* Right: Controls & Language Selector & Submit CTA */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: 'clamp(6px, 1.2vw, 10px)',
           flex: 1,
           justifyContent: 'flex-end',
           minWidth: 0,
         }}
       >
+        {/* Language Selector Dropdown */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.22)',
+            padding: '4px 8px',
+            color: '#FFFFFF',
+            flexShrink: 0,
+            transition: 'border-color 0.2s ease',
+          }}
+          title="Select Exam Language"
+        >
+          <Globe size={14} style={{ color: '#60A5FA', flexShrink: 0 }} />
+          <select
+            value={language}
+            onChange={(e) => onLanguageChange(e.target.value)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#FFFFFF',
+              fontSize: 'clamp(11px, 2vw, 12.5px)',
+              fontWeight: 600,
+              outline: 'none',
+              cursor: 'pointer',
+              fontFamily: "'IBM Plex Sans', sans-serif",
+              maxWidth: isMobile ? 80 : 130,
+            }}
+            aria-label="Select exam language"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option
+                key={lang.code}
+                value={lang.code}
+                style={{ background: '#172033', color: '#FFFFFF' }}
+              >
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
+          </select>
+        </div>
         {isTabletOrBelow && onFilterClick && (
           <button
             type="button"

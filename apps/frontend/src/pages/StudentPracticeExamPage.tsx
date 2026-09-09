@@ -50,7 +50,35 @@ export function StudentPracticeExamPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(gCount);
   const [timeLeft, setTimeLeft] = useState(600); // Exactly 10 mins (600s)
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [language, setLanguage] = useState<string>(() => {
+    try {
+      const userRaw = localStorage.getItem('user');
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        if (u.preferred_language) return u.preferred_language;
+      }
+    } catch (_) {}
+    return localStorage.getItem('preferred_language') || 'en';
+  });
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    localStorage.setItem('preferred_language', newLang);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        fetch('/api/v1/auth/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ preferred_language: newLang }),
+        }).catch(() => {});
+      }
+    } catch (_) {}
+  };
+
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>(
     'all',
   );
@@ -151,6 +179,7 @@ export function StudentPracticeExamPage() {
         if (rawSubject) subjParams.append('subject_name', rawSubject);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
+        if (language) subjParams.append('language', language);
 
         try {
           const res = await guardedFetch(
@@ -189,11 +218,15 @@ export function StudentPracticeExamPage() {
                 (o.is_correct
                   ? 'Correct option matching core syllabus concepts.'
                   : 'Distractor option.'),
+              translations: o.translations || {},
             }));
             return {
               question_id: item.question_id,
               question_number: 0,
               text: item.question_text || item.text || '',
+              passage_text: item.passage_text || null,
+              translations: item.translations || {},
+              passage_translations: item.passage_translations || {},
               options: optionsList,
               section_code: item.subject_name || rawSubject || 'Recommended',
               subject: item.subject_name || rawSubject || 'General Studies',
@@ -449,6 +482,7 @@ export function StudentPracticeExamPage() {
           text: o.option_text || o.text || `Option ${o.option_label || oIdx + 1}`,
           is_correct: Boolean(o.is_correct),
           distractor_analysis: o.distractor_analysis || null,
+          translations: o.translations || {},
         }));
 
         const expObj = q.explanation;
@@ -479,6 +513,8 @@ export function StudentPracticeExamPage() {
           question_number: idx + 1,
           text: q.question_text || q.text || '',
           passage_text: q.passage_text || null,
+          translations: q.translations || {},
+          passage_translations: q.passage_translations || {},
           options: optionsList,
           section_code: subjName || 'General Studies',
           subject_name: subjName,
@@ -513,6 +549,9 @@ export function StudentPracticeExamPage() {
         try {
           if (!params.has('include_solutions')) {
             params.append('include_solutions', 'true');
+          }
+          if (!params.has('language') && language) {
+            params.append('language', language);
           }
           const res = await fetch(`/api/v1/questions?${params.toString()}`);
           if (res.ok) {
@@ -1144,7 +1183,7 @@ export function StudentPracticeExamPage() {
         subtopicName={''}
         parentBreadcrumb="Student Dashboard"
         onBack={() => setShowLeaveModal(true)}
-        onLanguageChange={(lang) => setLanguage(lang)}
+        onLanguageChange={handleLanguageChange}
         onSubmitClick={() => handleFinishPracticeExam()}
         focusMode={isFocusMode}
         onToggleFocusMode={() => setIsFocusMode((prev) => !prev)}

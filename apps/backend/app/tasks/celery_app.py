@@ -11,10 +11,13 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
+from celery.schedules import crontab
+
 celery_app.conf.update(
     imports=[
         "app.tasks.exam_tasks",
         "app.tasks.sync_tasks",
+        "app.tasks.translation_tasks",
     ],  # Explicitly import task modules for Celery autodiscovery
     task_serializer="json",
     accept_content=["json"],
@@ -25,6 +28,12 @@ celery_app.conf.update(
     task_time_limit=3600,
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER,
     task_eager_propagates=True,
+    beat_schedule={
+        "reconcile_missing_translations_midnight": {
+            "task": "reconcile_missing_translations_task",
+            "schedule": crontab(hour=0, minute=0),  # Runs daily at midnight UTC
+        },
+    },
 )
 
 if settings.CELERY_TASK_ALWAYS_EAGER:

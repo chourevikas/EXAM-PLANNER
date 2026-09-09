@@ -11,6 +11,7 @@ class UserRegister(BaseModel):
     role: Optional[UserRole] = UserRole.STUDENT
     organization_name: Optional[str] = None
     department: Optional[str] = None
+    preferred_language: Optional[str] = "en"
 
 
 class UserLogin(BaseModel):
@@ -47,6 +48,7 @@ class UserOut(BaseModel):
     status: UserStatus
     subscription_tier: SubscriptionTier
     profile_image: Optional[str] = None
+    preferred_language: str = "en"
     free_questions_attempted: Optional[int] = 0
     total_questions_attempted: Optional[int] = 0
     today_questions_attempted: Optional[int] = 0
@@ -67,6 +69,7 @@ class UserUpdate(BaseModel):
     target_year: Optional[str] = None
     optional_subject: Optional[str] = None
     weekly_hours: Optional[str] = None
+    preferred_language: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

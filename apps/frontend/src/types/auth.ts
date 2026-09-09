@@ -44,6 +44,7 @@ export interface User {
   level?: number;
   student_profile?: StudentProfile;
   admin_profile?: AdminProfile;
+  preferred_language?: string;
   created_at: string;
   updated_at?: string;
 }

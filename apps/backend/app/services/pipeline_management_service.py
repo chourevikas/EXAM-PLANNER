@@ -182,5 +182,19 @@ class PipelineManagementService:
                     if "EXPLANATION_INDEXING" in run_dict
                     else None,
                 },
+                "question_translation": {
+                    "status": run_dict["QUESTION_TRANSLATION"].status
+                    if "QUESTION_TRANSLATION" in run_dict
+                    else "PENDING",
+                    "current_step": run_dict["QUESTION_TRANSLATION"].current_step
+                    if "QUESTION_TRANSLATION" in run_dict
+                    else "NOT_STARTED",
+                    "progress_percent": run_dict["QUESTION_TRANSLATION"].progress_percent
+                    if "QUESTION_TRANSLATION" in run_dict
+                    else 0.0,
+                    "error_log": run_dict["QUESTION_TRANSLATION"].error_log
+                    if "QUESTION_TRANSLATION" in run_dict
+                    else None,
+                },
             },
         }

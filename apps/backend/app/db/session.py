@@ -188,6 +188,22 @@ async def async_init_db():
             )
             if not res.scalar():
                 await conn.run_sync(SQLModel.metadata.create_all)
+            else:
+                # Ensure preferred_language column exists in existing SQLite table
+                cols_res = await conn.execute(text("PRAGMA table_info(users);"))
+                col_names = [row[1] for row in cols_res.fetchall()]
+                if "preferred_language" not in col_names:
+                    await conn.execute(
+                        text("ALTER TABLE users ADD COLUMN preferred_language VARCHAR(20) DEFAULT 'en';")
+                    )
+                    logger.info("Added preferred_language column to users table in SQLite.")
+        elif engine.url.drivername.startswith("postgresql"):
+            try:
+                await conn.execute(
+                    text("ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(20) DEFAULT 'en';")
+                )
+            except Exception as e:
+                logger.debug(f"Postgres column ensure preferred_language: {e}")
 
         # Ensure critical unique indices exist for FSRS memory state and concept retention upserts
         try:

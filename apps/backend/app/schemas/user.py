@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     full_name: str
     role: Optional[UserRole] = UserRole.STUDENT
     timezone: Optional[str] = "Asia/Kolkata"
+    preferred_language: Optional[str] = "en"
 
 
 class UserCreate(UserBase):
@@ -22,12 +23,14 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     status: Optional[UserStatus] = None
     subscription_tier: Optional[SubscriptionTier] = None
+    preferred_language: Optional[str] = None
 
 
 class UserRead(UserBase):
     id: int
     status: UserStatus
     subscription_tier: SubscriptionTier
+    preferred_language: str = "en"
     free_questions_attempted: int
     current_streak: int
     total_xp: int

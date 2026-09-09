@@ -98,16 +98,18 @@ async def start_exam_attempt(
 @router.get("/{attempt_id}/questions/bulk", summary="Fetch All Exam Questions in Bulk")
 async def get_all_attempt_questions_bulk(
     attempt_id: int | str,
-    language: Optional[str] = "ENGLISH",
+    language: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Retrieves all exam questions in 1 single bulk response for seamless zero-lag client-side preloading.
+    Defaults to candidate's preferred_language if unspecified.
     """
+    effective_lang = language or getattr(current_user, "preferred_language", "en") or "en"
     service = ExamSessionService(session)
     return await service.get_all_questions_bulk(
-        attempt_id=attempt_id, user_id=current_user.id, language=language
+        attempt_id=attempt_id, user_id=current_user.id, language=effective_lang
     )
 
 
@@ -115,20 +117,22 @@ async def get_all_attempt_questions_bulk(
 async def get_question_by_number(
     attempt_id: int | str,
     question_number: int,
-    language: Optional[str] = "ENGLISH",
+    language: Optional[str] = None,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
     """
     Fetches a specific question by its 1-indexed number within the exam paper.
     Supports optional `?language=` parameter (e.g., ENGLISH, HINDI).
+    Defaults to candidate's preferred_language if unspecified.
     """
+    effective_lang = language or getattr(current_user, "preferred_language", "en") or "en"
     service = ExamSessionService(session)
     return await service.get_question(
         attempt_id=attempt_id,
         user_id=current_user.id,
         question_number=question_number,
-        language=language,
+        language=effective_lang,
     )
 
 

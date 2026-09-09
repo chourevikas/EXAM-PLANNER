@@ -177,7 +177,11 @@ class ExamJsonBuilder:
         }
 
     async def build_single_question_cards(
-        self, q: Question, preloaded: Optional[Dict[str, Any]] = None, include_solution_data: bool = True
+        self,
+        q: Question,
+        preloaded: Optional[Dict[str, Any]] = None,
+        include_solution_data: bool = True,
+        target_language: Optional[str] = "ENGLISH",
     ) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """Constructs standardized q_card and sol_card payloads for a single Question.
 
@@ -185,6 +189,9 @@ class ExamJsonBuilder:
         QuestionMetadata/QuestionExplanation/QuestionHierarchyLink lookups behind
         it) entirely, returning `{}` for it — for callers that only need `q_card`.
         """
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(target_language)
+
         # 1. Question Translations
         if preloaded is not None:
             trans_list = preloaded.get("trans_map", {}).get(q.id, [])
@@ -202,10 +209,12 @@ class ExamJsonBuilder:
                 "parent_context_override": t.parent_context_override,
             }
 
-        eng_trans = next(
+        chosen_trans = next(
+            (t for t in trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
+        ) or next(
             (t for t in trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) == "ENGLISH"), None
         ) or (trans_list[0] if trans_list else None)
-        q_text = eng_trans.question_text if eng_trans else f"Question #{q.question_number_in_paper}"
+        q_text = chosen_trans.question_text if chosen_trans else f"Question #{q.question_number_in_paper}"
 
         # 2. Passage Translations
         passage_text = None
@@ -224,11 +233,13 @@ class ExamJsonBuilder:
                 lang_str = pt.language.value if hasattr(pt.language, "value") else str(pt.language)
                 passage_translations[lang_str] = pt.passage_text
 
-            eng_pt = next(
+            chosen_pt = next(
+                (pt for pt in pass_trans_list if (pt.language.value if hasattr(pt.language, "value") else str(pt.language)) in (target_enum, target_iso)), None
+            ) or next(
                 (pt for pt in pass_trans_list if (pt.language.value if hasattr(pt.language, "value") else str(pt.language)) == "ENGLISH"), None
             ) or (pass_trans_list[0] if pass_trans_list else None)
-            if eng_pt:
-                passage_text = eng_pt.passage_text
+            if chosen_pt:
+                passage_text = chosen_pt.passage_text
 
         # 3. Taxonomy
         if preloaded is not None:
@@ -330,12 +341,14 @@ class ExamJsonBuilder:
                 if ot.distractor_analysis:
                     opt_distractor_analyses[lang_str] = ot.distractor_analysis
 
-            eng_opt_trans = next(
+            chosen_opt_trans = next(
+                (t for t in opt_trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
+            ) or next(
                 (t for t in opt_trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) == "ENGLISH"), None
             ) or (opt_trans_list[0] if opt_trans_list else None)
 
-            opt_text = eng_opt_trans.option_text if eng_opt_trans else f"Option {opt.option_label}"
-            eng_analysis = eng_opt_trans.distractor_analysis if eng_opt_trans else None
+            opt_text = chosen_opt_trans.option_text if chosen_opt_trans else f"Option {opt.option_label}"
+            eng_analysis = chosen_opt_trans.distractor_analysis if chosen_opt_trans else None
 
             public_options.append({
                 "option_id": str(opt.id),

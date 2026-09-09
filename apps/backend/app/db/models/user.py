@@ -39,6 +39,7 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     profile_image: Optional[str] = Field(default=None)
     timezone: str = Field(default="Asia/Kolkata", max_length=100)
+    preferred_language: str = Field(default="en", max_length=20, index=True)
     last_login: Optional[datetime] = Field(default=None, sa_type=DateTimeTZ)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

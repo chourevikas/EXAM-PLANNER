@@ -70,7 +70,7 @@ interface ExamQuestionCardProps {
   selectedOptionId?: number | string | null;
   selectedOptionLabel?: string | null;
   isBookmarked?: boolean;
-  language: 'en' | 'hi';
+  language: string;
   mode?: 'EXAM' | 'PRACTICE' | 'REVISION';
   revealResult?: RevealAnswerResponse | null;
   isRevealing?: boolean;
@@ -93,32 +93,75 @@ function cleanQuestionTextBody(rawText: string): string {
   return text.trim();
 }
 
-function getQuestionText(q: any, lang: 'en' | 'hi'): string {
+function getQuestionText(q: any, lang: string): string {
+  if (!q) return '';
+  const cleanLang = (lang || 'en').trim().toLowerCase();
   let raw = '';
-  if (lang === 'hi') {
-    if (q.textHindi) raw = q.textHindi;
-    else if (q.text_hindi) raw = q.text_hindi;
-    else if (q.question_text_hindi) raw = q.question_text_hindi;
-    else if (q.question_text_hi) raw = q.question_text_hi;
-    else if (q.translations) {
-      if (typeof q.translations.hi === 'string') raw = q.translations.hi;
-      else if (q.translations.hi?.text) raw = q.translations.hi.text;
-      else if (q.translations.hi?.question_text) raw = q.translations.hi.question_text;
+
+  if (cleanLang !== 'en' && cleanLang !== 'english') {
+    if (cleanLang === 'hi' || cleanLang === 'hindi') {
+      if (q.textHindi) raw = q.textHindi;
+      else if (q.text_hindi) raw = q.text_hindi;
+      else if (q.question_text_hindi) raw = q.question_text_hindi;
+      else if (q.question_text_hi) raw = q.question_text_hi;
+    }
+
+    if (!raw && q.translations) {
+      const upper = cleanLang.toUpperCase();
+      const t =
+        q.translations[cleanLang] ||
+        q.translations[upper] ||
+        (cleanLang === 'hi' ? q.translations.HINDI : null);
+      if (typeof t === 'string') raw = t;
+      else if (t?.text) raw = t.text;
+      else if (t?.question_text) raw = t.question_text;
     }
   }
+
   if (!raw) {
     raw = q.text || q.question_text || '';
+    if (!raw && q.translations) {
+      const eng = q.translations.ENGLISH || q.translations.en;
+      if (typeof eng === 'string') raw = eng;
+      else if (eng?.text) raw = eng.text;
+      else if (eng?.question_text) raw = eng.question_text;
+    }
   }
   return cleanQuestionTextBody(raw);
 }
 
-function getPassageText(q: any, lang: 'en' | 'hi'): string | null {
-  if (lang === 'hi') {
-    if (q.passage_text_hindi) return q.passage_text_hindi;
-    if (q.passage_text_hi) return q.passage_text_hi;
-    if (q.passageTextHindi) return q.passageTextHindi;
+function getPassageText(q: any, lang: string): string | null {
+  if (!q) return null;
+  const cleanLang = (lang || 'en').trim().toLowerCase();
+  let raw: string | null = null;
+
+  if (cleanLang !== 'en' && cleanLang !== 'english') {
+    if (cleanLang === 'hi' || cleanLang === 'hindi') {
+      if (q.passage_text_hindi) raw = q.passage_text_hindi;
+      else if (q.passage_text_hi) raw = q.passage_text_hi;
+      else if (q.passageTextHindi) raw = q.passageTextHindi;
+    }
+
+    if (!raw && q.passage_translations) {
+      const upper = cleanLang.toUpperCase();
+      const pt =
+        q.passage_translations[cleanLang] ||
+        q.passage_translations[upper] ||
+        (cleanLang === 'hi' ? q.passage_translations.HINDI : null);
+      if (typeof pt === 'string') raw = pt;
+      else if (pt?.passage_text) raw = pt.passage_text;
+    }
   }
-  return q.passage_text || null;
+
+  if (!raw) {
+    raw = q.passage_text || null;
+    if (!raw && q.passage_translations) {
+      const engPt = q.passage_translations.ENGLISH || q.passage_translations.en;
+      if (typeof engPt === 'string') raw = engPt;
+      else if (engPt?.passage_text) raw = engPt.passage_text;
+    }
+  }
+  return raw;
 }
 
 function cleanOptionLabel(rawLabel: string, index: number): string {
@@ -137,13 +180,40 @@ function cleanOptionText(rawText: string): string {
   return text.trim();
 }
 
-function getOptionText(opt: any, lang: 'en' | 'hi', optIdx?: number, q?: any): string {
-  let rawText = opt.text || opt.option_text;
-  if (lang === 'hi') {
-    if (opt.textHindi) rawText = opt.textHindi;
-    else if (opt.text_hindi) rawText = opt.text_hindi;
-    else if (opt.option_text_hindi) rawText = opt.option_text_hindi;
+function getOptionText(opt: any, lang: string, optIdx?: number, q?: any): string {
+  if (!opt) return `Option ${String.fromCharCode(65 + (optIdx || 0))}`;
+  const cleanLang = (lang || 'en').trim().toLowerCase();
+  let rawText = '';
+
+  if (cleanLang !== 'en' && cleanLang !== 'english') {
+    if (cleanLang === 'hi' || cleanLang === 'hindi') {
+      if (opt.textHindi) rawText = opt.textHindi;
+      else if (opt.text_hindi) rawText = opt.text_hindi;
+      else if (opt.option_text_hindi) rawText = opt.option_text_hindi;
+    }
+
+    if (!rawText && opt.translations) {
+      const upper = cleanLang.toUpperCase();
+      const ot =
+        opt.translations[cleanLang] ||
+        opt.translations[upper] ||
+        (cleanLang === 'hi' ? opt.translations.HINDI : null);
+      if (typeof ot === 'string') rawText = ot;
+      else if (ot?.text) rawText = ot.text;
+      else if (ot?.option_text) rawText = ot.option_text;
+    }
   }
+
+  if (!rawText) {
+    rawText = opt.text || opt.option_text || '';
+    if (!rawText && opt.translations) {
+      const engOt = opt.translations.ENGLISH || opt.translations.en;
+      if (typeof engOt === 'string') rawText = engOt;
+      else if (engOt?.text) rawText = engOt.text;
+      else if (engOt?.option_text) rawText = engOt.option_text;
+    }
+  }
+
   if (!rawText) {
     rawText = `Option ${String.fromCharCode(65 + (optIdx || 0))}`;
   }

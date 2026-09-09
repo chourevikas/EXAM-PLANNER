@@ -291,6 +291,7 @@ async def read_current_user(
         status=current_user.status,
         subscription_tier=current_user.subscription_tier,
         profile_image=current_user.profile_image,
+        preferred_language=getattr(current_user, "preferred_language", "en") or "en",
         free_questions_attempted=stats.get("free_questions_attempted", 0),
         total_questions_attempted=stats.get("total_questions_attempted", 0),
         today_questions_attempted=stats.get("today_questions_attempted", 0),
@@ -311,6 +312,10 @@ async def update_current_user(
         current_user.full_name = user_update.full_name
     if user_update.profile_image is not None:
         current_user.profile_image = user_update.profile_image
+    if user_update.preferred_language is not None:
+        from app.core.languages import normalize_language
+        iso_code, _ = normalize_language(user_update.preferred_language)
+        current_user.preferred_language = iso_code
     
     session.add(current_user)
     await session.commit()
@@ -336,3 +341,10 @@ async def super_admin_access(
         "message": f"Welcome Super Admin {current_user.full_name}",
         "role": current_user.role,
     }
+
+
+@router.get("/languages", summary="List all 22 official Indian languages + English")
+async def get_supported_languages():
+    from app.core.languages import get_all_supported_languages
+    return get_all_supported_languages()
+

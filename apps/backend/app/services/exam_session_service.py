@@ -351,6 +351,9 @@ class ExamSessionService:
                 q_trans_res = await self.session.exec(q_trans_stmt)
                 db_q_trans = q_trans_res.all()
 
+                from app.core.languages import normalize_language
+                target_iso, target_enum = normalize_language(language)
+
                 trans_map = {}
                 for t in db_q_trans:
                     trans_map[t.language.value if hasattr(t.language, "value") else str(t.language)] = {
@@ -372,7 +375,14 @@ class ExamSessionService:
                     opt_trans_map = {}
                     for ot in db_opt_trans:
                         opt_trans_map[ot.language.value if hasattr(ot.language, "value") else str(ot.language)] = ot.option_text
-                    default_txt = db_opt_trans[0].option_text if db_opt_trans else f"Option {o.option_label}"
+
+                    chosen_opt = next(
+                        (ot for ot in db_opt_trans if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) in (target_enum, target_iso)), None
+                    ) or next(
+                        (ot for ot in db_opt_trans if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) == "ENGLISH"), None
+                    ) or (db_opt_trans[0] if db_opt_trans else None)
+
+                    default_txt = chosen_opt.option_text if chosen_opt else f"Option {o.option_label}"
                     opts_list.append({
                         "option_id": str(o.id),
                         "option_label": o.option_label,
@@ -381,7 +391,13 @@ class ExamSessionService:
                         "translations": opt_trans_map,
                     })
 
-                default_q_txt = db_q_trans[0].question_text if db_q_trans else f"Question #{q_model.question_number_in_paper}"
+                chosen_q = next(
+                    (t for t in db_q_trans if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
+                ) or next(
+                    (t for t in db_q_trans if (t.language.value if hasattr(t.language, "value") else str(t.language)) == "ENGLISH"), None
+                ) or (db_q_trans[0] if db_q_trans else None)
+
+                default_q_txt = chosen_q.question_text if chosen_q else f"Question #{q_model.question_number_in_paper}"
                 q_payload = {
                     "question_id": str(q_model.id),
                     "question_number": q_model.question_number_in_paper,
@@ -579,7 +595,9 @@ class ExamSessionService:
             questions_payload = []
             for q in questions:
                 # q_card contains question text, metadata, and options WITHOUT is_correct or solutions
-                q_card, _ = await builder.build_single_question_cards(q, preloaded=preloaded_data, include_solution_data=False)
+                q_card, _ = await builder.build_single_question_cards(
+                    q, preloaded=preloaded_data, include_solution_data=False, target_language=language
+                )
                 questions_payload.append(q_card)
 
             return {
