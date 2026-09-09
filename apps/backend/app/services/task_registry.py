@@ -59,6 +59,11 @@ class TaskRegistry:
 
         return stopped
 
+    def unregister(self, key: str) -> None:
+        """Removes a task from tracking without cancelling."""
+        self._celery_tasks.pop(key, None)
+        self._async_tasks.pop(key, None)
+
     def is_running(self, key: str) -> bool:
         """Checks if a task is currently registered and running."""
         celery_id = self._celery_tasks.get(key)

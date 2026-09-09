@@ -71,7 +71,7 @@ class AnswerKeyMapping(SQLModel, table=True):
         foreign_key="answer_key_batches.id", ondelete="CASCADE", index=True
     )
     question_id: Optional[int] = Field(
-        default=None, foreign_key="questions.id", ondelete="SET NULL", index=True
+        default=None, foreign_key="questions.id", ondelete="CASCADE", index=True
     )
     printed_question_number: int = Field(index=True)
     detected_option_label: str = Field(max_length=10, description="'A', 'B', 'C', 'D'")

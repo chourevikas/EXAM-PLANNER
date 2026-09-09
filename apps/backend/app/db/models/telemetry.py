@@ -37,7 +37,7 @@ class TestQuestion(SQLModel, table=True):
         foreign_key="tests.id", ondelete="CASCADE", primary_key=True, index=True
     )
     question_id: int = Field(
-        foreign_key="questions.id", primary_key=True, index=True
+        foreign_key="questions.id", ondelete="CASCADE", primary_key=True, index=True
     )
     question_order: int = Field(default=1)
 
@@ -51,7 +51,7 @@ class UserTestAttempt(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
-    test_id: int = Field(foreign_key="tests.id", index=True)
+    test_id: int = Field(foreign_key="tests.id", ondelete="CASCADE", index=True)
     exam_attempt_id: Optional[int] = Field(
         default=None, foreign_key="exam_attempts.id", ondelete="CASCADE", index=True
     )
@@ -89,12 +89,12 @@ class UserQuestionResponse(SQLModel, table=True):
     exam_response_id: Optional[int] = Field(
         default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
     )
-    question_id: int = Field(foreign_key="questions.id", index=True)
+    question_id: int = Field(foreign_key="questions.id", ondelete="CASCADE", index=True)
     selected_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id", index=True
+        default=None, foreign_key="question_options.id", ondelete="CASCADE", index=True
     )
     initial_selected_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id"
+        default=None, foreign_key="question_options.id", ondelete="CASCADE"
     )
     option_switch_count: int = Field(default=0)
     time_taken_seconds: int = Field(default=0)
@@ -121,10 +121,10 @@ class QuestionSwitchLog(SQLModel, table=True):
         default=None, foreign_key="exam_question_responses.id", ondelete="CASCADE", index=True
     )
     from_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id"
+        default=None, foreign_key="question_options.id", ondelete="CASCADE"
     )
     to_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id"
+        default=None, foreign_key="question_options.id", ondelete="CASCADE"
     )
     timestamp_offset_sec: int = Field(default=0)
     created_at: datetime = Field(

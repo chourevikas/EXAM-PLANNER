@@ -190,12 +190,17 @@ async def upload_question_paper(
     canonical_exam_code = meta["canonical_code"]
     clean_set = meta["set_code"]
 
-    stmt = select(Exam).where(
-        (func.lower(Exam.code) == canonical_exam_code.lower())
-        | (func.lower(Exam.name) == canonical_exam_code.lower())
+    from app.repositories.exam_repository import ExamRepository
+    from app.services.exam_service import ExamService
+    exam_repo = ExamRepository(db)
+    existing_matches = await exam_repo.get_all_matching_canonical_exams(
+        code=canonical_exam_code,
+        year=meta.get("year", year),
+        stage=meta.get("stage", stage),
+        subject_code=meta.get("subject_code"),
+        paper_set_code=clean_set,
     )
-    res = await db.exec(stmt)
-    exam = res.first()
+    exam = existing_matches[0] if existing_matches else None
 
     if exam:
         key = f"qp_{exam.id}"
@@ -236,6 +241,16 @@ async def upload_question_paper(
             "filename": file.filename,
             "message": f"Exam paper '{canonical_exam_code}' already exists in DB. Pipeline execution skipped as requested.",
         }
+
+    # On OVERWRITE: completely delete all matching exams, their DB entities, and caches before re-ingestion
+    if conflict_resolution.upper() == "OVERWRITE" and existing_matches:
+        exam_service = ExamService(db)
+        for old_exam in existing_matches:
+            logger.info(
+                f"Conflict resolution OVERWRITE: deleting existing exam ID {old_exam.id} ({old_exam.code}) and all related data before pipeline re-ingestion..."
+            )
+            await exam_service.delete_exam(old_exam.id)
+        exam = None
 
     temp_dir = Path("./temp_uploads").resolve()
     temp_path = await save_upload_file_temp(file, temp_dir)

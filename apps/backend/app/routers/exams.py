@@ -618,6 +618,27 @@ async def get_exam_detail(
     return await service.get_exam_detail(exam_id)
 
 
+@router.delete("/{exam_id}")
+async def delete_exam_endpoint(
+    exam_id: int | str, session: AsyncSession = Depends(get_async_session)
+):
+    """
+    Permanently deletes an exam and all associated data (questions, options,
+    review tasks, answer keys, attempts, pipeline runs, syllabus links) from database and cache.
+    """
+    from fastapi import HTTPException
+    service = ExamService(session)
+    success = await service.delete_exam(exam_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Exam with ID {exam_id} not found.")
+    return {
+        "success": True,
+        "status": "SUCCESS",
+        "message": f"Exam {exam_id} and all associated database records and cache successfully deleted.",
+        "exam_id": str(exam_id),
+    }
+
+
 
 @router.get(
     "/{exam_id}/syllabus",

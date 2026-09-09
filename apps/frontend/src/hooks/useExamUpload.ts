@@ -3,6 +3,7 @@ import { StatusMessage } from '../types/exam';
 import { uploadExamPaper } from '../services/examService';
 import { ExamType } from '../types/examType';
 import { fetchActiveExamTypes } from '../services/examTypeService';
+import { clearExamIntegrityCache, invalidateExamReviewCache } from '../services/adminService';
 
 export interface ConflictModalState {
   isOpen: boolean;
@@ -110,6 +111,8 @@ export function useExamUpload() {
         file: selectedFile,
         conflict_resolution: conflictResolution,
       });
+      clearExamIntegrityCache();
+      invalidateExamReviewCache();
       setStatusMessage({
         text: `Question paper uploaded successfully. AI extraction pipeline is now processing in the background.`,
         isError: false,

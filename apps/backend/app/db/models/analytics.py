@@ -102,10 +102,10 @@ class ExamQuestionResponse(SQLModel, table=True):
     )
 
     selected_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id", ondelete="SET NULL"
+        default=None, foreign_key="question_options.id", ondelete="CASCADE"
     )
     initial_option_id: Optional[int] = Field(
-        default=None, foreign_key="question_options.id", ondelete="SET NULL"
+        default=None, foreign_key="question_options.id", ondelete="CASCADE"
     )
 
     question_status: QuestionResponseStatus = Field(

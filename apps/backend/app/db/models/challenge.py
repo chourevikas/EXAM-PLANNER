@@ -150,7 +150,7 @@ class ChallengeResponse(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
     attempt_id: int = Field(foreign_key="challenge_attempts.id", ondelete="CASCADE", index=True)
     question_id: int = Field(foreign_key="questions.id", ondelete="CASCADE", index=True)
-    selected_option_id: Optional[int] = Field(default=None, foreign_key="question_options.id")
+    selected_option_id: Optional[int] = Field(default=None, foreign_key="question_options.id", ondelete="CASCADE")
     is_correct: bool = Field(default=False)
     time_spent_seconds: float = Field(default=0.0)
     answered_at: datetime = Field(

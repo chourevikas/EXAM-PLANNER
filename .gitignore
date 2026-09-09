@@ -323,3 +323,5 @@ whitesource/
 # gcp-service-account.json
 # *service-account*.json
 # gcp-credentials.json
+
+temp_pdf_cache/

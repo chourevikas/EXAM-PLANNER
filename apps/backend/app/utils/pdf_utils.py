@@ -38,10 +38,19 @@ def get_cache_key(pdf_path_or_key: str) -> str:
 
 
 def clear_pdf_cache(pdf_path_or_key: str) -> None:
-    """Removes cached in-memory bytes and download locks for a PDF to release memory."""
+    """Removes cached in-memory bytes, download locks, and local temp files for a PDF."""
+    if not pdf_path_or_key:
+        return
     key = get_cache_key(pdf_path_or_key)
     _pdf_bytes_cache.pop(key, None)
     _download_locks.pop(key, None)
+    try:
+        temp_dir = Path("./temp_pdf_cache").resolve()
+        local_target = temp_dir / key
+        if local_target.exists():
+            local_target.unlink()
+    except Exception as exc:
+        logger.warning(f"Failed to remove temp cached PDF file for key '{key}': {exc}")
 
 
 def seed_pdf_cache(pdf_path_or_key: str, source_path: Path) -> Path:
