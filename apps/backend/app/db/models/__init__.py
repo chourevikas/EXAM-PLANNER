@@ -161,6 +161,29 @@ from app.db.models.testimonial import Testimonial, TestimonialStatus
 from app.db.models.current_affairs import CurrentAffair
 from app.db.models.teacher import RedemptionRequest
 from app.db.models.enums import RedemptionStatus
+from app.db.models.challenge import (
+    Challenge,
+    ChallengeVisibility,
+    ChallengeStatus,
+    ChallengeAttemptStatus,
+    ChallengeInviteStatus,
+    ChallengeQuestion,
+    ChallengeInvite,
+    ChallengeAttempt,
+    ChallengeResponse,
+)
+
+__all__.extend([
+    "Challenge",
+    "ChallengeVisibility",
+    "ChallengeStatus",
+    "ChallengeAttemptStatus",
+    "ChallengeInviteStatus",
+    "ChallengeQuestion",
+    "ChallengeInvite",
+    "ChallengeAttempt",
+    "ChallengeResponse",
+])
 
 __all__.extend(["ExamType", "Testimonial", "TestimonialStatus", "CurrentAffair", "RedemptionRequest", "RedemptionStatus"])
 

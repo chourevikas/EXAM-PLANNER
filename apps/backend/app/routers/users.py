@@ -185,6 +185,19 @@ async def create_user(
     return user
 
 
+@router.get("/lookup", response_model=Optional[UserRead], summary="Look Up a User by Exact Email (for inviting to a Challenge)")
+async def lookup_user_by_email(
+    email: str,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    res = await session.exec(select(User).where(func.lower(User.email) == email.strip().lower()))
+    user = res.first()
+    if not user or user.id == current_user.id:
+        return None
+    return user
+
+
 @router.get("/{user_id}", response_model=UserRead)
 async def get_user(
     user_id: int | str,

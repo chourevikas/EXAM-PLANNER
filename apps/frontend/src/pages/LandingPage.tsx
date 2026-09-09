@@ -41,6 +41,16 @@ export function LandingPage({ initialAuthMode }: LandingPageProps) {
   const [authModalOpen, setAuthModalOpen] = useState(getInitialOpen());
   const [authMode, setAuthMode] = useState<AuthMode>(getInitialMode());
 
+  // Only accept an in-app relative path (starts with a single "/") as a
+  // post-login redirect target, so a crafted `redirect=` query value can
+  // never send navigate() anywhere outside this SPA.
+  const getRedirectUrl = (): string | undefined => {
+    const raw = new URLSearchParams(location.search).get('redirect');
+    if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+    return undefined;
+  };
+  const redirectUrl = getRedirectUrl();
+
   // Scroll to a section anchor on arrival (e.g. Navbar links clicked from /plans or /about,
   // which navigate here as `/#features` since those anchors only exist on this page).
   useEffect(() => {
@@ -102,6 +112,7 @@ export function LandingPage({ initialAuthMode }: LandingPageProps) {
         mode={authMode}
         onClose={handleCloseModal}
         onSwitchMode={(mode) => setAuthMode(mode)}
+        redirectUrl={redirectUrl}
       />
     </div>
   );
