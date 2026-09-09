@@ -18,6 +18,7 @@ import { Spinner } from '../../../components/common/Spinner';
 import {
   fetchExamsByYear,
   fetchExamIntegrityQuestions,
+  clearExamIntegrityCache,
   ExamIntegrityQuestionsResponse
 } from '../../../services/adminService';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
@@ -42,10 +43,46 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
   const [modalInitialQNum, setModalInitialQNum] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const computeIsExtracting = (exam: any, diag?: ExamIntegrityQuestionsResponse): boolean => {
+    // If diag is loaded and explicitly reports is_extracting
+    if (diag !== undefined) {
+      if (diag.is_extracting) return true;
+      return false;
+    }
+
+    const isPub = Boolean(
+      exam.is_published ||
+      (exam.status || '').toUpperCase().includes('PUBLISHED') ||
+      (exam.overall_status || '').toUpperCase() === 'PUBLISHED' ||
+      (exam.pipeline_status || '').toUpperCase() === 'PUBLISHED'
+    );
+    if (isPub) return false;
+
+    if (exam.is_extracting) return true;
+    if ((exam.overall_status || '').toUpperCase() === 'PROCESSING') return true;
+
+    const s1 = (exam.stage1_status || '').toUpperCase();
+    if (['IN_PROGRESS', 'RUNNING', 'PROCESSING', 'INITIALIZING'].includes(s1)) return true;
+
+    const pipeSt = (exam.pipeline_status || exam.status || '').toUpperCase();
+    if (['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING'].includes(pipeSt)) return true;
+
+    if (exam.stage1_step && !['DOCUMENT_EXTRACTION_COMPLETE', 'COMPLETED', 'FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW'].includes(exam.stage1_step.toUpperCase())) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const loadData = async (forceRefresh: boolean = false, isBackground: boolean = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     try {
-      const yearData = await fetchExamsByYear();
+      if (forceRefresh) {
+        clearExamIntegrityCache();
+      }
+      const yearData = await fetchExamsByYear(forceRefresh);
       const yrList: number[] = yearData.years || [];
       const yrMap: Record<string, any[]> = yearData.exams_by_year || {};
 
@@ -59,12 +96,14 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
       });
 
       // Fetch integrity breakdown for exams
-      setLoadingIntegrity(true);
+      if (!isBackground) {
+        setLoadingIntegrity(true);
+      }
       const integrityResults: Record<string, ExamIntegrityQuestionsResponse> = {};
       await Promise.all(
         allExams.map(async (e) => {
           try {
-            const diag = await fetchExamIntegrityQuestions(e.id, 'ALL', 1, 250);
+            const diag = await fetchExamIntegrityQuestions(e.id, 'ALL', 1, 250, forceRefresh);
             if (diag) {
               integrityResults[e.id] = diag;
             }
@@ -74,17 +113,38 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         })
       );
       setIntegrityMap(integrityResults);
-      setLoadingIntegrity(false);
+      if (!isBackground) {
+        setLoadingIntegrity(false);
+      }
     } catch (err) {
       console.error('Failed to load exams by year for missing questions view:', err);
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Background polling for pipeline status changes (e.g. when extraction completes or progresses)
+  useEffect(() => {
+    const allList: any[] = [];
+    Object.values(examsByYear).forEach((l) => {
+      if (Array.isArray(l)) allList.push(...l);
+    });
+    const hasExtracting = allList.some(
+      (e) => computeIsExtracting(e, integrityMap[e.id])
+    );
+    const intervalMs = hasExtracting ? 4000 : 15000;
+    const interval = setInterval(() => {
+      loadData(hasExtracting, true);
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [examsByYear, integrityMap]);
 
   // Filter exams based on year and search
   const filteredExams = React.useMemo(() => {
@@ -118,17 +178,11 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
     let totalCorruptedCount = 0;
 
     filteredExams.forEach((e) => {
-      const isExtracting = Boolean(
-        e.is_extracting ||
-        e.overall_status === 'PROCESSING' ||
-        e.stage1_status === 'IN_PROGRESS' ||
-        integrityMap[e.id]?.is_extracting ||
-        ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((e.pipeline_status || e.status || '').toUpperCase())
-      );
+      const diag = integrityMap[e.id];
+      const isExtracting = computeIsExtracting(e, diag);
       if (isExtracting) {
         return; // Do not show or aggregate missing questions for papers currently undergoing extraction
       }
-      const diag = integrityMap[e.id];
       const missingCount = diag ? diag.missing_count : Math.max(0, (e.total_questions || 100) - (e.extracted_questions_count || 0));
       const corruptedCount = diag ? diag.corrupted_count : 0;
 
@@ -225,7 +279,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         </div>
 
         <button
-          onClick={loadData}
+          onClick={() => loadData(true)}
           disabled={loading}
           style={{
             display: 'flex',
@@ -448,18 +502,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {filteredExams.map((exam) => {
             const diag = integrityMap[exam.id];
-            const isExtracting = Boolean(
-              exam.is_extracting ||
-              exam.overall_status === 'PROCESSING' ||
-              exam.stage1_status === 'IN_PROGRESS' ||
-              diag?.is_extracting ||
-              ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.pipeline_status || exam.status || '').toUpperCase()) ||
-              ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
-              (exam.stage1_status !== 'COMPLETED' &&
-                (exam.extracted_questions_count || 0) > 0 &&
-                (exam.extracted_questions_count || 0) < (exam.total_questions || 100) &&
-                !exam.is_published)
-            );
+            const isExtracting = computeIsExtracting(exam, diag);
             const missingCount = isExtracting ? 0 : (diag ? diag.missing_count : Math.max(0, (exam.total_questions || 100) - (exam.extracted_questions_count || 0)));
             const missingNumbers = isExtracting ? [] : (diag?.missing_question_numbers || []);
             const corruptedNumbers = (diag?.items || [])

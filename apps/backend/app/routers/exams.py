@@ -587,6 +587,7 @@ async def download_exam_export_zip_path(
     summary="Get Exams Grouped by Year (Alias)",
 )
 async def get_exams_by_year(
+    force_refresh: bool = Query(default=False, description="Bypass cache and recalculate exams by year"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -596,9 +597,10 @@ async def get_exams_by_year(
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key("exams:by_year")
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return JSONResponse(content=cached_data)
+    if not force_refresh:
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return JSONResponse(content=cached_data)
 
     service = SyllabusService(session)
     response = await service.get_exams_by_year()
@@ -657,6 +659,7 @@ async def get_exam_integrity_questions(
     language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Language"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=250, ge=1, le=500, description="Items per page"),
+    force_refresh: bool = Query(default=False, description="Bypass cache and recalculate integrity diagnostics"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -674,9 +677,10 @@ async def get_exam_integrity_questions(
         limit=limit,
         lang=str(language.value if hasattr(language, "value") else language),
     )
-    cached_data = await cache.get(cache_key)
-    if cached_data is not None:
-        return JSONResponse(content=cached_data)
+    if not force_refresh:
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return JSONResponse(content=cached_data)
 
     service = SyllabusService(session)
     response = await service.get_exam_question_integrity(

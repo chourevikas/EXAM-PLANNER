@@ -269,7 +269,7 @@ function TableRowItem({
 
   // Stage 1 status
   const s1Completed = exam.stage1_status === 'COMPLETED' || isPublished || (ext >= total && ext > 0);
-  const s1InProgress = exam.stage1_status === 'IN_PROGRESS' || (ext > 0 && ext < total);
+  const s1InProgress = !s1Completed && (exam.stage1_status === 'IN_PROGRESS' || Boolean(exam.is_extracting));
   const s1Missing = exam.stage1_status === 'MISSING_INPUT' || (!exam.has_question_paper && ext === 0);
 
   // Stage 2 status
@@ -282,14 +282,13 @@ function TableRowItem({
   const stage3Completed = exam.stage3_status === 'COMPLETED' || isPublished || (expCount >= targetQ && targetQ > 0);
   const stage3InProgress = exam.stage3_status === 'IN_PROGRESS';
 
-  const isExtracting = Boolean(
+  const isExtracting = !s1Completed && Boolean(
     exam.is_extracting ||
     s1InProgress ||
     exam.stage1_status === 'IN_PROGRESS' ||
     exam.overall_status === 'PROCESSING' ||
     ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.status || '').toUpperCase()) ||
-    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
-    (exam.stage1_status !== 'COMPLETED' && ext < total && !isPublished)
+    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase())
   );
 
   const isPipelineComplete =
@@ -817,9 +816,9 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
   const activeCount = pipelineExams.filter((e) => {
     const s = (e.overall_status || e.status || '').toUpperCase();
-    const isStage1Running = e.stage1_status === 'IN_PROGRESS' || (e.extracted_questions_count > 0 && e.extracted_questions_count < e.total_questions && !s.includes('PUBLISHED'));
+    const isStage1Running = (e.stage1_status === 'IN_PROGRESS' || Boolean(e.is_extracting)) && e.stage1_status !== 'COMPLETED';
     const isStage2Running = e.stage2_status === 'IN_PROGRESS';
-    const isStage3Running = e.stage3_status === 'IN_PROGRESS' || ((e.explanations_count || 0) < e.extracted_questions_count && e.extracted_questions_count > 0 && !s.includes('PUBLISHED'));
+    const isStage3Running = e.stage3_status === 'IN_PROGRESS';
     return s.includes('PROCESSING') || s.includes('PARSING') || isStage1Running || isStage2Running || isStage3Running;
   }).length;
 
@@ -1895,15 +1894,20 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </button>
 
               {(() => {
-                const isSelectedExtracting = Boolean(
+                const isSelectedCompleteStatus =
+                  selectedExam.stage1_status === 'COMPLETED' ||
+                  selectedExam.overall_status === 'READY_FOR_REVIEW' ||
+                  selectedExam.overall_status === 'PUBLISHED' ||
+                  (selectedExam.status || '').toUpperCase() === 'COMPLETED' ||
+                  (selectedExam.status || '').toUpperCase() === 'PUBLISHED' ||
+                  (selectedExam.status || '').toUpperCase() === 'PENDING_HUMAN_REVIEW';
+
+                const isSelectedExtracting = !isSelectedCompleteStatus && Boolean(
                   selectedExam.is_extracting ||
                   selectedExam.stage1_status === 'IN_PROGRESS' ||
                   selectedExam.overall_status === 'PROCESSING' ||
                   ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((selectedExam.status || '').toUpperCase()) ||
-                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase()) ||
-                  (selectedExam.stage1_status !== 'COMPLETED' &&
-                    ((selectedExam.extracted_questions_count || 0) < (selectedExam.total_questions || 100)) &&
-                    !(selectedExam.status || '').toUpperCase().includes('PUBLISHED'))
+                  ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase())
                 );
 
                 const isSelectedComplete =

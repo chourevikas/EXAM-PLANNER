@@ -227,9 +227,13 @@ export interface ExamPipelineStatusItem {
   has_answer_key?: boolean;
   pdf_path?: string;
   answer_key_pdf_path?: string;
+  pipeline_status?: string;
   stage1_status?: 'COMPLETED' | 'IN_PROGRESS' | 'MISSING_INPUT' | 'QUEUED';
   stage2_status?: 'COMPLETED' | 'IN_PROGRESS' | 'MISSING_INPUT' | 'QUEUED';
   stage3_status?: 'COMPLETED' | 'IN_PROGRESS' | 'WAITING_INPUTS' | 'QUEUED' | 'ERROR';
+  stage1_step?: string | null;
+  stage2_step?: string | null;
+  stage3_step?: string | null;
   questions_json_path?: string;
   solutions_json_path?: string;
   questions_json_folder_path?: string;
@@ -629,21 +633,33 @@ export async function createAdminQuestion(payload: QuestionCreatePayload): Promi
   return await res.json();
 }
 
+export function clearExamIntegrityCache(): void {
+  _examIntegrityCache.clear();
+}
+
 export async function fetchExamIntegrityQuestions(
   examId: string | number,
   issueType?: string,
   page: number = 1,
-  limit: number = 250
+  limit: number = 250,
+  forceRefresh: boolean = false
 ): Promise<ExamIntegrityQuestionsResponse> {
   const cacheKey = `exam_${examId}_issue_${issueType || 'ALL'}_p${page}_l${limit}`;
-  const cached = _examIntegrityCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
-    return cached.data;
+  if (!forceRefresh) {
+    const cached = _examIntegrityCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < EXAM_REVIEW_CACHE_TTL) {
+      return cached.data;
+    }
+  } else {
+    _examIntegrityCache.delete(cacheKey);
   }
 
   let url = `/api/v1/exams/${encodeURIComponent(examId)}/integrity-questions?page=${page}&limit=${limit}`;
   if (issueType && issueType !== 'ALL') {
     url += `&issue_type=${encodeURIComponent(issueType)}`;
+  }
+  if (forceRefresh) {
+    url += `&force_refresh=true&_t=${Date.now()}`;
   }
   const res = await fetch(url, { headers: getAuthHeader() });
   if (!res.ok) {
@@ -655,8 +671,9 @@ export async function fetchExamIntegrityQuestions(
   return data;
 }
 
-export async function fetchExamsByYear(): Promise<any> {
-  const res = await fetch('/api/v1/exams/by-year', { headers: getAuthHeader() });
+export async function fetchExamsByYear(forceRefresh: boolean = false): Promise<any> {
+  const url = forceRefresh ? `/api/v1/exams/by-year?force_refresh=true&_t=${Date.now()}` : '/api/v1/exams/by-year';
+  const res = await fetch(url, { headers: getAuthHeader() });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exams grouped by year' }));
     throw new Error(errorData.detail || 'Could not fetch exams by year.');

@@ -518,6 +518,7 @@ class SyllabusService:
         from app.services.task_registry import task_registry
 
         status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        is_task_running = task_registry.is_running(str(exam_id)) or task_registry.is_running(f"qp_{exam_id}")
         p1_res = await self.session.execute(
             select(PipelineRun).where(
                 PipelineRun.exam_id == exam_id,
@@ -526,11 +527,15 @@ class SyllabusService:
         )
         p1_run = p1_res.scalars().first()
         is_extracting = False
-        if task_registry.is_running(str(exam_id)) or task_registry.is_running(f"qp_{exam_id}"):
-            is_extracting = True
-        elif p1_run and str(p1_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
+        if is_task_running:
             is_extracting = True
         elif status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
+            is_extracting = True
+        elif (
+            status_str not in ("PENDING_HUMAN_REVIEW", "READY_FOR_REVIEW", "PUBLISHED")
+            and p1_run
+            and str(p1_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING")
+        ):
             is_extracting = True
 
         # 2. Build integrity items for each question number from 1 to total_expected
@@ -721,13 +726,35 @@ class SyllabusService:
             is_extracting = False
             if is_task_running:
                 is_extracting = True
-            elif p_run and str(p_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"):
-                is_extracting = True
             elif status_val in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
                 is_extracting = True
-            elif not is_pub and (exam.extracted_questions_count or 0) > 0 and (exam.extracted_questions_count or 0) < (exam.total_questions or 100):
-                if p_run and str(p_run.status).upper() != "FAILED":
-                    is_extracting = True
+            elif (
+                status_val not in ("PENDING_HUMAN_REVIEW", "READY_FOR_REVIEW", "PUBLISHED")
+                and p_run
+                and str(p_run.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING")
+            ):
+                is_extracting = True
+
+            total_q = exam.total_questions or 100
+            ext_q = exam.extracted_questions_count or 0
+            computed_missing = max(0, total_q - ext_q)
+            missing_cnt = 0 if is_extracting else (
+                exam.missing_questions_count
+                if (exam.missing_questions_count is not None and exam.missing_questions_count > 0)
+                else computed_missing
+            )
+
+            s1_status = (
+                "IN_PROGRESS"
+                if is_extracting
+                else (
+                    "COMPLETED"
+                    if (p_run and str(p_run.status).upper() == "COMPLETED")
+                    or ext_q > 0
+                    or status_val in ("PENDING_HUMAN_REVIEW", "READY_FOR_REVIEW", "PUBLISHED")
+                    else "QUEUED"
+                )
+            )
 
             item = ExamYearItem(
                 id=str(exam.id),
@@ -737,15 +764,19 @@ class SyllabusService:
                 stage=stage_val,
                 subject_code=exam.subject_code or "gs1",
                 paper_set_code=exam.paper_set_code or "SET_A",
-                total_questions=exam.total_questions or 100,
-                extracted_questions_count=exam.extracted_questions_count or 0,
+                total_questions=total_q,
+                extracted_questions_count=ext_q,
                 corrupted_questions_count=0,
                 partially_corrupted_questions_count=0,
-                missing_questions_count=0 if is_extracting else (exam.missing_questions_count or 0),
+                missing_questions_count=missing_cnt,
                 is_published=is_pub,
                 pipeline_status="IN_PROGRESS" if is_extracting else status_val,
-                overall_status="PROCESSING" if is_extracting else status_val,
-                stage1_status="IN_PROGRESS" if is_extracting else ("COMPLETED" if (exam.extracted_questions_count or 0) >= (exam.total_questions or 100) else "QUEUED"),
+                overall_status="PROCESSING" if is_extracting else (
+                    "READY_FOR_REVIEW"
+                    if s1_status == "COMPLETED" and status_val == "PENDING_HUMAN_REVIEW"
+                    else status_val
+                ),
+                stage1_status=s1_status,
                 is_extracting=is_extracting,
                 created_at=exam.created_at.isoformat() if exam.created_at else None,
             )

@@ -189,11 +189,22 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   }>({ total: 0, reviewed: 0, pending: 0, rejected: 0, canPublish: false });
 
   const isSelectedExtracting = Boolean(
-    selectedExam?.is_extracting ||
-    selectedExam?.overall_status === 'PROCESSING' ||
-    selectedExam?.stage1_status === 'IN_PROGRESS' ||
-    examIntegrity?.is_extracting
+    examIntegrity !== undefined && examIntegrity !== null
+      ? examIntegrity.is_extracting
+      : (
+          selectedExam?.is_extracting ||
+          selectedExam?.overall_status === 'PROCESSING' ||
+          ['IN_PROGRESS', 'RUNNING', 'PROCESSING', 'INITIALIZING'].includes((selectedExam?.stage1_status || '').toUpperCase()) ||
+          ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING'].includes((selectedExam?.status || '').toUpperCase()) ||
+          ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING'].includes((selectedExam?.pipeline_status || '').toUpperCase()) ||
+          ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam?.overall_status || '').toUpperCase()) ||
+          (selectedExam?.stage1_step && !['DOCUMENT_EXTRACTION_COMPLETE', 'COMPLETED', 'FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW'].includes((selectedExam?.stage1_step || '').toUpperCase())) ||
+          (!((selectedExam?.status || '').toUpperCase().includes('PUBLISHED') || (selectedExam?.overall_status || '').toUpperCase() === 'PUBLISHED') &&
+            selectedExam?.stage1_status !== 'COMPLETED' &&
+            (selectedExam?.has_question_paper || Boolean(selectedExam?.pdf_path)))
+        )
   );
+
 
   // Exam Publication & Integrity Status
   const [publishStatus, setPublishStatus] = useState<{
@@ -273,6 +284,31 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       loadExamsList();
     }
   }, [selectedExam]);
+
+  // Real-time polling when any exam in directory is actively undergoing extraction
+  useEffect(() => {
+    if (selectedExam) return;
+
+    const hasActiveJob = examsList.some((e) => {
+      const isPub = (e.status || '').toUpperCase().includes('PUBLISHED') || (e.overall_status || '').toUpperCase() === 'PUBLISHED';
+      return (
+        e.is_extracting ||
+        ['IN_PROGRESS', 'QUEUED', 'RUNNING', 'PROCESSING', 'INITIALIZING'].includes((e.stage1_status || '').toUpperCase()) ||
+        e.overall_status === 'PROCESSING' ||
+        ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING', 'IN PIPELINE', 'QUEUED'].includes((e.status || '').toUpperCase()) ||
+        ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING', 'IN PIPELINE', 'QUEUED'].includes((e.pipeline_status || '').toUpperCase()) ||
+        (!isPub && e.stage1_status !== 'COMPLETED' && (e.has_question_paper || Boolean(e.pdf_path)))
+      );
+    });
+
+    if (hasActiveJob) {
+      const timer = setTimeout(() => {
+        loadExamsList();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [examsList, selectedExam]);
+
 
   useEffect(() => {
     if (selectedExam?.id) {
@@ -994,17 +1030,20 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               </thead>
               <tbody>
                 {filteredExams.map((exam) => {
-                  const isPublished = (exam.status || '').toUpperCase().includes('PUBLISHED') || (exam.overall_status || '').toUpperCase() === 'PUBLISHED';
+                  const isPublished =
+                    (exam.status || '').toUpperCase().includes('PUBLISHED') ||
+                    (exam.overall_status || '').toUpperCase() === 'PUBLISHED' ||
+                    (exam.pipeline_status || '').toUpperCase() === 'PUBLISHED';
+
                   const isExtracting = Boolean(
                     exam.is_extracting ||
-                    exam.stage1_status === 'IN_PROGRESS' ||
                     exam.overall_status === 'PROCESSING' ||
-                    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((exam.status || '').toUpperCase()) ||
+                    ['IN_PROGRESS', 'QUEUED', 'RUNNING', 'PROCESSING', 'INITIALIZING'].includes((exam.stage1_status || '').toUpperCase()) ||
+                    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING', 'IN PIPELINE', 'QUEUED'].includes((exam.status || '').toUpperCase()) ||
+                    ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING', 'IN PIPELINE', 'QUEUED'].includes((exam.pipeline_status || '').toUpperCase()) ||
                     ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((exam.overall_status || '').toUpperCase()) ||
-                    (exam.stage1_status !== 'COMPLETED' &&
-                      (exam.extracted_questions_count || 0) > 0 &&
-                      (exam.extracted_questions_count || 0) < (exam.total_questions || 100) &&
-                      !isPublished)
+                    (exam.stage1_step && !['DOCUMENT_EXTRACTION_COMPLETE', 'COMPLETED'].includes((exam.stage1_step || '').toUpperCase())) ||
+                    (!isPublished && exam.stage1_status !== 'COMPLETED' && (exam.has_question_paper || Boolean(exam.pdf_path)))
                   );
 
                   return (
@@ -1150,18 +1189,22 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   if (selectedExam) {
     const isSelectedPublished =
       (selectedExam.status || '').toUpperCase().includes('PUBLISHED') ||
-      (selectedExam.overall_status || '').toUpperCase() === 'PUBLISHED';
+      (selectedExam.overall_status || '').toUpperCase() === 'PUBLISHED' ||
+      (selectedExam.pipeline_status || '').toUpperCase() === 'PUBLISHED';
+
     const isSelectedExtracting = Boolean(
-      selectedExam.is_extracting ||
-      selectedExam.stage1_status === 'IN_PROGRESS' ||
-      selectedExam.overall_status === 'PROCESSING' ||
-      examIntegrity?.is_extracting ||
-      ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF'].includes((selectedExam.status || '').toUpperCase()) ||
-      ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase()) ||
-      (selectedExam.stage1_status !== 'COMPLETED' &&
-        (selectedExam.extracted_questions_count || 0) > 0 &&
-        (selectedExam.extracted_questions_count || 0) < (selectedExam.total_questions || 100) &&
-        !isSelectedPublished)
+      examIntegrity !== undefined && examIntegrity !== null
+        ? examIntegrity.is_extracting
+        : (
+            selectedExam.is_extracting ||
+            selectedExam.overall_status === 'PROCESSING' ||
+            ['IN_PROGRESS', 'RUNNING', 'PROCESSING', 'INITIALIZING'].includes((selectedExam.stage1_status || '').toUpperCase()) ||
+            ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING'].includes((selectedExam.status || '').toUpperCase()) ||
+            ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING', 'PARSING_PDF', 'AI PROCESSING'].includes((selectedExam.pipeline_status || '').toUpperCase()) ||
+            ['PROCESSING', 'EXTRACTING', 'RUNNING', 'INITIALIZING'].includes((selectedExam.overall_status || '').toUpperCase()) ||
+            (selectedExam.stage1_step && !['DOCUMENT_EXTRACTION_COMPLETE', 'COMPLETED', 'FLAGGED_QUESTIONS_REQUIRE_ADMIN_REVIEW'].includes((selectedExam.stage1_step || '').toUpperCase())) ||
+            (!isSelectedPublished && selectedExam.stage1_status !== 'COMPLETED' && (selectedExam.has_question_paper || Boolean(selectedExam.pdf_path)))
+          )
     );
 
     if (isSelectedExtracting) {

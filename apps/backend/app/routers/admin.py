@@ -323,13 +323,17 @@ async def list_exam_pipeline_statuses(
     ak_map = {row[0]: max(row[1] or 0, row[2] or 0) for row in ak_rows}
 
     # 6. Fetch all PipelineRun records for real-time stage statuses
-    run_stmt = select(PipelineRun)
+    run_stmt = select(PipelineRun).order_by(PipelineRun.id.desc())
     run_rows = (await session.exec(run_stmt)).all()
     run_map: dict = {}
     for r in run_rows:
         if r.exam_id not in run_map:
             run_map[r.exam_id] = {}
-        run_map[r.exam_id][r.pipeline_type] = r
+        curr = run_map[r.exam_id].get(r.pipeline_type)
+        if not curr:
+            run_map[r.exam_id][r.pipeline_type] = r
+        elif str(r.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING", "QUEUED"):
+            run_map[r.exam_id][r.pipeline_type] = r
 
     pipeline_list = []
     for exam in exams:
@@ -362,7 +366,11 @@ async def list_exam_pipeline_statuses(
         from app.services.task_registry import task_registry
 
         exam_runs = run_map.get(exam.id, {})
-        p1 = exam_runs.get("QUESTION_EXTRACTION") or exam_runs.get("DOCUMENT_EXTRACTION")
+        p1_candidates = [exam_runs.get("DOCUMENT_EXTRACTION"), exam_runs.get("QUESTION_EXTRACTION")]
+        p1 = next((r for r in p1_candidates if r and str(r.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING", "QUEUED")), None)
+        if not p1:
+            p1 = exam_runs.get("DOCUMENT_EXTRACTION") or exam_runs.get("QUESTION_EXTRACTION")
+
         p2 = exam_runs.get("ANSWER_KEY")
         p3 = (
             exam_runs.get("EXPLANATION_INDEXING")
@@ -383,17 +391,17 @@ async def list_exam_pipeline_statuses(
         elif p1:
             p1_status_upper = str(p1.status).upper()
             if p1_status_upper in (
-                "COMPLETED",
-                "WAITING_FOR_ANSWER_KEY",
-                "WAITING_FOR_HITL",
-            ) or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
-                stage1_status = "COMPLETED"
-            elif p1_status_upper in (
                 "RUNNING",
                 "PROCESSING",
                 "INITIALIZING",
             ) or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
                 stage1_status = "IN_PROGRESS"
+            elif p1_status_upper in (
+                "COMPLETED",
+                "WAITING_FOR_ANSWER_KEY",
+                "WAITING_FOR_HITL",
+            ) or (q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp)):
+                stage1_status = "COMPLETED"
             elif p1_status_upper in ("FAILED", "STOPPED", "CANCELLED"):
                 stage1_status = "FAILED"
             elif not has_paper:
@@ -401,14 +409,10 @@ async def list_exam_pipeline_statuses(
             else:
                 stage1_status = "QUEUED"
         else:
-            if q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
-                stage1_status = "COMPLETED"
-            elif q_count > 0 or status_str in (
-                "PROCESSING",
-                "PARSING_PDF",
-                "EXTRACTING",
-            ):
+            if status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING"):
                 stage1_status = "IN_PROGRESS"
+            elif q_count > 0 and (status_str == "PUBLISHED" or q_count >= total_exp):
+                stage1_status = "COMPLETED"
             elif not has_paper:
                 stage1_status = "MISSING_INPUT"
             else:
@@ -511,10 +515,10 @@ async def list_exam_pipeline_statuses(
                 "is_extracting": bool(
                     is_task_running
                     or overall_status == "PROCESSING"
-                    or stage1_status == "IN_PROGRESS"
+                    or stage1_status in ("IN_PROGRESS", "QUEUED")
                     or status_str in ("PROCESSING", "PARSING_PDF", "EXTRACTING")
-                    or (p1 and str(p1.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING"))
-                    or (status_str != "PUBLISHED" and stage1_status != "COMPLETED" and q_count < total_exp)
+                    or (p1 and str(p1.status).upper() in ("RUNNING", "PROCESSING", "INITIALIZING", "QUEUED"))
+                    or (status_str != "PUBLISHED" and stage1_status != "COMPLETED" and has_paper)
                 ),
                 "stage1_status": stage1_status,
                 "stage2_status": stage2_status,
