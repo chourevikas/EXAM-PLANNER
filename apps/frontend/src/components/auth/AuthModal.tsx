@@ -44,10 +44,10 @@ export function AuthModal({
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/dashboard');
+        navigate(redirectUrl || '/dashboard');
       }
     }
-  }, [isSignedIn, isOpen, navigate, onClose, onSuccess]);
+  }, [isSignedIn, isOpen, navigate, onClose, onSuccess, redirectUrl]);
 
   // Lock body scroll when modal is open
   useEffect(() => {

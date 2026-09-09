@@ -1,23 +1,67 @@
 version: '3.8'
 
 services:
-  api:
-    build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./apps/backend/app:/app/app
+  postgres:
+    image: postgres:16-alpine
     environment:
-      # You can add database and other env variables here
-      - PORT=8000
+      - POSTGRES_USER=examplanner
+      - POSTGRES_PASSWORD=examplanner
+      - POSTGRES_DB=examplanner_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U examplanner -d examplanner_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
-  web:
-    build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile
+  redis:
+    image: redis:7-alpine
     ports:
-      - "3005:80"
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
+
+  # api:
+  #   build:
+  #     context: ./apps/backend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./apps/backend/app:/app/app
+  #   environment:
+  #     # You can add database and other env variables here
+  #     - PORT=8000
+  #     - DATABASE_URL=postgresql://examplanner:examplanner@postgres:5432/examplanner_dev
+  #     - CACHE_TYPE=redis
+  #     - REDIS_CACHE_URL=redis://redis:6379/1
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+
+  # web:
+  #   build:
+  #     context: ./apps/frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3005:80"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

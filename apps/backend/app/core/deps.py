@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config.settings import settings
 from app.db.session import get_async_session
-from app.db.models.user import User, UserRole, UserStatus
+from app.db.models.user import User, UserRole, UserStatus, SubscriptionTier
 from app.repositories.user_repository import UserRepository
 
 reusable_oauth2 = OAuth2PasswordBearer(
@@ -252,3 +252,33 @@ def require_roles_or_permission(allowed_roles: list[UserRole], permission_key: s
         )
 
     return checker
+
+
+FREE_CHALLENGE_LIMIT = 5
+
+
+async def require_challenge_quota(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """Gates challenge creation: PREMIUM users are unlimited, FREE/GUEST users
+    are capped at FREE_CHALLENGE_LIMIT challenges created (lifetime)."""
+    if current_user.subscription_tier == SubscriptionTier.PREMIUM:
+        return current_user
+
+    from sqlalchemy import func
+    from app.db.models.challenge import Challenge
+
+    count = (await session.exec(
+        select(func.count()).select_from(Challenge).where(Challenge.creator_id == current_user.id)
+    )).one()
+    if (count or 0) >= FREE_CHALLENGE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "CHALLENGE_LIMIT_REACHED",
+                "message": f"Free plan is limited to {FREE_CHALLENGE_LIMIT} challenges. Upgrade to Pro to create more.",
+                "limit": FREE_CHALLENGE_LIMIT,
+            },
+        )
+    return current_user

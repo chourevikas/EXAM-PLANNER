@@ -79,6 +79,21 @@ const CurrentAffairsDetailPage = lazy(() =>
 const NotificationsPage = lazy(() =>
   import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
 );
+const ChallengesPage = lazy(() =>
+  import('./pages/ChallengesPage').then((m) => ({ default: m.ChallengesPage })),
+);
+const CreateChallengePage = lazy(() =>
+  import('./pages/CreateChallengePage').then((m) => ({ default: m.CreateChallengePage })),
+);
+const ChallengeDetailPage = lazy(() =>
+  import('./pages/ChallengeDetailPage').then((m) => ({ default: m.ChallengeDetailPage })),
+);
+const ChallengeAttemptPage = lazy(() =>
+  import('./pages/ChallengeAttemptPage').then((m) => ({ default: m.ChallengeAttemptPage })),
+);
+const PublicChallengePage = lazy(() =>
+  import('./pages/PublicChallengePage').then((m) => ({ default: m.PublicChallengePage })),
+);
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 import { Spinner } from './components/common/Spinner';
@@ -189,6 +204,47 @@ export default function App() {
                 allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
               >
                 <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/challenge/:token" element={<PublicChallengePage />} />
+          <Route
+            path="/challenges"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <ChallengesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challenges/new"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <CreateChallengePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challenges/attempt/:idOrToken"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <ChallengeAttemptPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/challenges/:id"
+            element={
+              <ProtectedRoute
+                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
+              >
+                <ChallengeDetailPage />
               </ProtectedRoute>
             }
           />
