@@ -1064,16 +1064,17 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
           marginTop: isTabletOrBelow ? 116 : 76,
           marginBottom: isTabletOrBelow ? 76 : 80,
           display: 'flex',
-          height: isTabletOrBelow ? 'calc(100vh - 192px)' : 'calc(100vh - 156px)',
-          minHeight: 0,
+          flexDirection: isTabletOrBelow ? 'column' : 'row',
+          height: isTabletOrBelow ? 'auto' : 'calc(100vh - 156px)',
+          minHeight: isTabletOrBelow ? 'calc(100vh - 192px)' : 0,
           boxSizing: 'border-box',
-          overflow: 'hidden',
+          overflow: isTabletOrBelow ? 'visible' : 'hidden',
           backgroundColor: '#F8FAFC',
         }}
       >
         {/* Center: Question Card Workspace with Collapsible Trigger Button */}
         {(!isTabletOrBelow || mobileTab === 'question') && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: isTabletOrBelow ? 'auto' : '100%', minHeight: 0, padding: isPYQ ? '0 24px' : 0, boxSizing: 'border-box' }}>
             {isLoadingQuestion ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#F4F6F8' }}>
                 <Loader2 size={24} className="animate-spin" color="#E31B23" />

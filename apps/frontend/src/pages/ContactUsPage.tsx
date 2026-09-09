@@ -60,10 +60,9 @@ export function ContactUsPage() {
       {/* Form + Contact Info */}
       <section className="landing-section-padding" style={{ background: 'var(--bg-body)' }}>
         <div
-          className="landing-container"
+          className="landing-container contact-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.3fr) minmax(240px, 1fr)',
             gap: 32,
             maxWidth: 980,
           }}
@@ -95,7 +94,7 @@ export function ContactUsPage() {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="contact-form-row" style={{ display: 'grid', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: 6 }}>Name</label>
                 <input required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="Your name" />

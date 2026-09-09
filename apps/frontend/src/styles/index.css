@@ -940,6 +940,28 @@ input::-ms-clear {
   }
 }
 
+/* Contact Us: form + info column, single column on mobile/tablet */
+.contact-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 835px) {
+  .contact-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr);
+  }
+}
+
+/* Contact Us: Name/Email row, stacked on mobile */
+.contact-form-row {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 481px) {
+  .contact-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Illustration wrapper — allow overflow visible so float animation isn't clipped */
 .hero-illustration-wrap {
   width: 100%;
