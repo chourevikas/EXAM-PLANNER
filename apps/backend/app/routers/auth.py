@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Response, status, HTTPException, BackgroundTasks
 from sqlmodel import select, func, case
@@ -280,7 +281,7 @@ async def read_current_user(
             sync_data = stats.pop("_sync", None)
             await cache.set(cache_key, stats, ttl_seconds=300)
             # Write updated streak/xp/level AFTER response is sent — doesn't block the user
-            if sync_data:
+            if sync_data and background_tasks:
                 background_tasks.add_task(_sync_student_profile_bg, sync_data)
     
     return UserOut(
@@ -305,6 +306,7 @@ async def read_current_user(
 @router.patch("/me", response_model=UserOut)
 async def update_current_user(
     user_update: UserUpdate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
@@ -320,7 +322,7 @@ async def update_current_user(
     session.add(current_user)
     await session.commit()
     await session.refresh(current_user)
-    return await read_current_user(current_user=current_user, session=session)
+    return await read_current_user(background_tasks=background_tasks, current_user=current_user, session=session)
 
 
 @router.get("/admin-only", response_model=dict)
