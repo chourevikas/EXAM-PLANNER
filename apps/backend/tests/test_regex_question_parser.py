@@ -1,11 +1,10 @@
-import pytest
-from app.pipeline.regex_question_parser import (
-    detect_format,
-    split_into_question_blocks,
-    parse_question_block,
-    QuestionRecord,
-)
 from app.db.models.enums import DifficultyLevel
+from app.pipeline.regex_question_parser import (
+    QuestionRecord,
+    detect_format,
+    parse_question_block,
+    split_into_question_blocks,
+)
 
 SAMPLE_USER_TEXT = """
 UPSC Civil Services Examination (Prelims) 2021  General Studies Paper I - All 100 Questions with Answers, Explanations & Extended Topic Notes  
@@ -189,3 +188,98 @@ def test_missing_section_tolerance():
     assert record.common_mistake is None
     assert len(record.reverse_logic) == 0
     assert record.extraction_confidence == 1.0
+
+
+PDF_EXAM_TEXT = """
+UPSC Civil Services Examination (Prelims) 2025
+
+Q1. [Subject: Ancient History] [Microtheme: Ancient TechXAgriculture] [Nano Theme: Araghatta — ancient irrigation device] [Difficulty: Moderate]
+The irrigation device called 'Araghatta' was
+(A) a water bag made of leather pulled over a pulley
+(B) a large wheel with earthen pots tied to the outer ends of its spokes
+(C) a larger earthen pot driven by bullocks
+(D) a large water bucket pulled up by rope directly by hand
+Answer: (B) a large wheel with earthen pots tied to the outer ends of its spokes
+Solution:
+• 'Araghatta' (also called 'Ghanti-Yantra') was specifically a large water-lifting WHEEL with several earthen pots attached to its rim/spokes — as the wheel rotated, the pots dipped into the water source and lifted water to the fields — not a leather pulley-bag, a bullock-driven pot, or a simple hand-pulled bucket.
+• This ancient irrigation technology represents an early example of mechanized water-lifting, using rotational motion to automate what would otherwise require continuous manual effort.
+• The 'Ghanti-Yantra' alternate name (bell-machine) likely references the sound produced by the rotating pots/mechanism during operation.
+• Understanding these specific ancient irrigation-device names and mechanisms is a recurring detail-precision ancient-history/technology question category.
+
+■ Reverse Logic Box — Why the other options are wrong
+Option (A): Why it seems tempting — Tempting because a leather-bag-pulley system sounds like a plausible simple ancient water-lifting mechanism. What's actually true — Araghatta is specifically documented as a wheel-with-pots mechanism, not a leather-bag-pulley device.
+Option (C): Why it seems tempting — Tempting since a bullock-driven pot sounds like a plausible animal-powered irrigation device given ancient agriculture's bullock-reliance. What's actually true — Araghatta's actual mechanism is a rotating wheel with attached pots, not a single bullock-driven pot.
+Option (D): Why it seems tempting — Tempting because manual rope-pulled buckets represent a simple, plausible basic irrigation method. What's actually true — Araghatta specifically involves a mechanized rotating wheel, not simple direct hand-pulled bucket retrieval.
+
+Q2. [Subject: Ancient History] [Microtheme: KingdomXPallava] [Nano Theme: Pallava ruler titles — Mahendravarman I] [Difficulty: Tough]
+Who among the following rulers in ancient India had assumed the titles 'Mattavilasa', 'Vichitrachitta', 'Gunabhara'?
+(A) Mahendravarman I
+(B) Simhavishnu
+(C) Narasimhavarman I
+(D) Simhavarman
+Answer: (A) Mahendravarman I
+Solution:
+• MAHENDRAVARMAN I, a 7th-century Pallava king and noted patron of art/literature, specifically assumed these titles — Mattavilasa ('delight of the intoxicated', referencing his satirical play Mattavilasa Prahasana), Vichitrachitta ('curious-minded', per the Mandagappattu inscription for his rock-cut temple), and Gunabhara ('full of virtues') — not Simhavishnu, Narasimhavarman I, or Simhavarman.
+"""
+
+
+def test_microtheme_and_nano_theme_parsing():
+    """Verify that Microtheme is mapped to topic_raw and Nano Theme is mapped to subtopic_raw."""
+    blocks = split_into_question_blocks(PDF_EXAM_TEXT)
+    assert len(blocks) == 2
+
+    # Q1 verification
+    q1 = parse_question_block(blocks[0])
+    assert q1.question_number == 1
+    assert q1.subject_raw == "Ancient History"
+    assert q1.topic_raw == "Ancient TechXAgriculture"
+    assert q1.subtopic_raw == "Araghatta — ancient irrigation device"
+    assert q1.difficulty_raw == "Moderate"
+    assert q1.difficulty == DifficultyLevel.MEDIUM
+    assert "The irrigation device called 'Araghatta' was" in q1.stem
+    assert len(q1.options) == 4
+    assert q1.options["B"] == "a large wheel with earthen pots tied to the outer ends of its spokes"
+    assert q1.answer_label == "B"
+    assert len(q1.solution_bullets) >= 4
+    assert len(q1.reverse_logic) == 3
+    assert "A" in q1.reverse_logic
+    assert "C" in q1.reverse_logic
+    assert "D" in q1.reverse_logic
+
+    # Q2 verification
+    q2 = parse_question_block(blocks[1])
+    assert q2.question_number == 2
+    assert q2.subject_raw == "Ancient History"
+    assert q2.topic_raw == "KingdomXPallava"
+    assert q2.subtopic_raw == "Pallava ruler titles — Mahendravarman I"
+    assert q2.difficulty_raw == "Tough"
+    assert q2.difficulty == DifficultyLevel.HARD
+    assert "Who among the following rulers in ancient India" in q2.stem
+    assert len(q2.options) == 4
+    assert q2.options["A"] == "Mahendravarman I"
+    assert q2.answer_label == "A"
+    assert "MAHENDRAVARMAN I" in q2.solution_text
+
+
+def test_theme_tag_variations():
+    """Verify variations of Microtheme and Nano Theme tag naming and formatting."""
+    from app.pipeline.patterns import extract_header_tags
+
+    # Hyphenated, spaced, and lowercase variations
+    t1 = extract_header_tags("[Subject: History] [micro-theme: Indus Valley] [nano-theme: Town Planning] [Difficulty: Easy]")
+    assert t1["subject_raw"] == "History"
+    assert t1["topic_raw"] == "Indus Valley"
+    assert t1["subtopic_raw"] == "Town Planning"
+    assert t1["difficulty_raw"] == "Easy"
+
+    t2 = extract_header_tags("[Subject: Geography] [Micro theme: Climatology] [Nano theme: Cyclones] [Difficulty: Hard]")
+    assert t2["subject_raw"] == "Geography"
+    assert t2["topic_raw"] == "Climatology"
+    assert t2["subtopic_raw"] == "Cyclones"
+    assert t2["difficulty_raw"] == "Hard"
+
+    t3 = extract_header_tags("[Subject: Science] [Topic: Biology] [Nanotheme: Genetics] [Difficulty: Moderate]")
+    assert t3["subject_raw"] == "Science"
+    assert t3["topic_raw"] == "Biology"
+    assert t3["subtopic_raw"] == "Genetics"
+    assert t3["difficulty_raw"] == "Moderate"

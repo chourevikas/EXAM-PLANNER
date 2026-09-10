@@ -1,25 +1,22 @@
-import pytest
 import unittest
 from unittest.mock import MagicMock
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlmodel import SQLModel
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
 
 from app.db.models import (
     Exam,
-    Question,
-    QuestionOption,
-    QuestionTranslation,
-    OptionTranslation,
-    QuestionExplanation,
-    QuestionOptionReasoning,
     HumanReviewTask,
-    PipelineRun,
-    Subject,
-    Topic,
-    Subtopic,
+    OptionTranslation,
+    Question,
+    QuestionExplanation,
     QuestionHierarchyLink,
+    QuestionOption,
+    QuestionOptionReasoning,
+    QuestionTranslation,
+    Subject,
+    Subtopic,
+    Topic,
 )
 from app.db.models.enums import DifficultyLevel, ExamStatus
 from app.pipeline.regex_question_parser import QuestionRecord, parse_question_block
@@ -261,3 +258,230 @@ class TestDeterministicPipeline(unittest.IsolatedAsyncioTestCase):
             resp4 = await client.post("/api/v1/pipeline/trigger-explanation/1")
             assert resp4.status_code == 410
             assert "deprecated" in resp4.json()["detail"].lower()
+
+    async def test_microtheme_and_nano_theme_db_mapping(self):
+        """Verify that Microtheme and Nano Theme from PDF are persisted into Subject, Topic, Subtopic in DB."""
+        from app.pipeline.regex_question_parser import split_into_question_blocks, parse_question_block
+        from contextlib import asynccontextmanager
+
+        pdf_text = """
+Q1. [Subject: Ancient History] [Microtheme: Ancient TechXAgriculture] [Nano Theme: Araghatta — ancient irrigation device] [Difficulty: Moderate]
+The irrigation device called 'Araghatta' was
+(A) a water bag made of leather pulled over a pulley
+(B) a large wheel with earthen pots tied to the outer ends of its spokes
+(C) a larger earthen pot driven by bullocks
+(D) a large water bucket pulled up by rope directly by hand
+Answer: (B) a large wheel with earthen pots tied to the outer ends of its spokes
+Solution:
+• 'Araghatta' was specifically a large water-lifting WHEEL with several earthen pots attached to its rim/spokes.
+
+■ Reverse Logic Box — Why the other options are wrong
+Option (A): Why it seems tempting — Leather-bag system sounds plausible. What's actually true — Araghatta is a wheel-with-pots mechanism.
+Option (C): Why it seems tempting — Bullock pot sounds plausible. What's actually true — Araghatta is a rotating wheel with pots.
+Option (D): Why it seems tempting — Manual rope bucket represents simple irrigation. What's actually true — Mechanized rotating wheel.
+
+Q2. [Subject: Ancient History] [Microtheme: KingdomXPallava] [Nano Theme: Pallava ruler titles — Mahendravarman I] [Difficulty: Tough]
+Who among the following rulers in ancient India had assumed the titles 'Mattavilasa', 'Vichitrachitta', 'Gunabhara'?
+(A) Mahendravarman I
+(B) Simhavishnu
+(C) Narasimhavarman I
+(D) Simhavarman
+Answer: (A) Mahendravarman I
+Solution:
+• MAHENDRAVARMAN I assumed these titles.
+"""
+        blocks = split_into_question_blocks(pdf_text)
+        assert len(blocks) == 2
+        q1_rec = parse_question_block(blocks[0])
+        q2_rec = parse_question_block(blocks[1])
+
+        async with self.session_factory() as session:
+            exam = Exam(
+                code="UPSC_2025_PRELIMS",
+                name="UPSC Civil Services Examination (Prelims) 2025",
+                status=ExamStatus.PENDING_HUMAN_REVIEW,
+                total_questions=2,
+            )
+            session.add(exam)
+            await session.commit()
+            await session.refresh(exam)
+            exam_id = exam.id
+
+            @asynccontextmanager
+            async def get_test_session():
+                async with self.session_factory() as s:
+                    yield s
+
+            registrar = BatchQuestionRegistrar(session_factory=get_test_session)
+            summary = await registrar.commit_question_records_in_batches(
+                exam_id=exam_id,
+                records=[q1_rec, q2_rec],
+            )
+            assert summary.total_processed_questions == 2
+            assert summary.failed_batches == 0
+
+            # 1. Verify Subjects
+            s_res = await session.exec(select(Subject).where(Subject.name == "Ancient History"))
+            subject = s_res.first()
+            assert subject is not None
+            assert subject.name == "Ancient History"
+
+            # 2. Verify Topics (created from Microtheme)
+            t_res = await session.exec(select(Topic).where(Topic.subject_id == subject.id))
+            topics = {t.name: t for t in t_res.all()}
+            assert "Ancient TechXAgriculture" in topics
+            assert "KingdomXPallava" in topics
+
+            # 3. Verify Subtopics (created from Nano Theme)
+            st1_res = await session.exec(
+                select(Subtopic).where(Subtopic.topic_id == topics["Ancient TechXAgriculture"].id)
+            )
+            subtopics_t1 = {st.name: st for st in st1_res.all()}
+            assert "Araghatta — ancient irrigation device" in subtopics_t1
+
+            st2_res = await session.exec(
+                select(Subtopic).where(Subtopic.topic_id == topics["KingdomXPallava"].id)
+            )
+            subtopics_t2 = {st.name: st for st in st2_res.all()}
+            assert "Pallava ruler titles — Mahendravarman I" in subtopics_t2
+
+            # 4. Verify Questions linkage and raw fields
+            q_res = await session.exec(
+                select(Question).where(Question.exam_id == exam_id).order_by(Question.question_number_in_paper)
+            )
+            qs = q_res.all()
+            assert len(qs) == 2
+
+            assert qs[0].question_number_in_paper == 1
+            assert qs[0].subject_raw == "Ancient History"
+            assert qs[0].topic_raw == "Ancient TechXAgriculture"
+            assert qs[0].subtopic_raw == "Araghatta — ancient irrigation device"
+            assert qs[0].difficulty_raw == "Moderate"
+            assert qs[0].difficulty == DifficultyLevel.MEDIUM
+            assert qs[0].subtopic_id == subtopics_t1["Araghatta — ancient irrigation device"].id
+
+            assert qs[1].question_number_in_paper == 2
+            assert qs[1].subject_raw == "Ancient History"
+            assert qs[1].topic_raw == "KingdomXPallava"
+            assert qs[1].subtopic_raw == "Pallava ruler titles — Mahendravarman I"
+            assert qs[1].difficulty_raw == "Tough"
+            assert qs[1].difficulty == DifficultyLevel.HARD
+            assert qs[1].subtopic_id == subtopics_t2["Pallava ruler titles — Mahendravarman I"].id
+
+            # 5. Verify QuestionHierarchyLink
+            links_res = await session.exec(
+                select(QuestionHierarchyLink).where(
+                    QuestionHierarchyLink.question_id.in_([qs[0].id, qs[1].id])
+                )
+            )
+            links = links_res.all()
+            assert len(links) == 2
+            link_map = {l.question_id: l for l in links}
+            assert link_map[qs[0].id].subtopic_id == qs[0].subtopic_id
+            assert link_map[qs[1].id].subtopic_id == qs[1].subtopic_id
+
+    async def test_missing_topic_and_subtopic_fallback_behavior(self):
+        """Verify fallback behavior when Topic or Subtopic is missing."""
+        from contextlib import asynccontextmanager
+
+        # Case 1: Both Topic and Subtopic missing -> Subject becomes Topic and Subtopic
+        rec_both_missing = QuestionRecord(
+            question_number=10,
+            subject_raw="Modern History",
+            topic_raw=None,
+            subtopic_raw=None,
+            difficulty_raw="Easy",
+            difficulty=DifficultyLevel.EASY,
+            stem="When did India gain independence?",
+            statement_lines=[],
+            options={"A": "1947", "B": "1950", "C": "1942", "D": "1935"},
+            answer_label="A",
+            solution_text="India gained independence in 1947.",
+            page_numbers=[1],
+        )
+
+        # Case 2: Topic is missing, Subtopic is present -> Subject becomes Topic, Subtopic is preserved
+        rec_topic_missing = QuestionRecord(
+            question_number=11,
+            subject_raw="Modern History",
+            topic_raw=None,
+            subtopic_raw="Quit India Movement",
+            difficulty_raw="Medium",
+            difficulty=DifficultyLevel.MEDIUM,
+            stem="The Quit India movement was launched in:",
+            statement_lines=[],
+            options={"A": "1940", "B": "1942", "C": "1944", "D": "1946"},
+            answer_label="B",
+            solution_text="Quit India movement was launched in August 1942.",
+            page_numbers=[1],
+        )
+
+        # Case 3: Subtopic is missing, Topic is present -> Topic becomes Subtopic
+        rec_subtopic_missing = QuestionRecord(
+            question_number=12,
+            subject_raw="Modern History",
+            topic_raw="Indian National Congress Sessions",
+            subtopic_raw=None,
+            difficulty_raw="Medium",
+            difficulty=DifficultyLevel.MEDIUM,
+            stem="Who presided over the 1929 Lahore session?",
+            statement_lines=[],
+            options={"A": "Jawaharlal Nehru", "B": "Gandhi", "C": "Subhash Bose", "D": "Patel"},
+            answer_label="A",
+            solution_text="Jawaharlal Nehru presided over the Lahore session in 1929.",
+            page_numbers=[1],
+        )
+
+        async with self.session_factory() as session:
+            exam = Exam(
+                code="FALLBACK_TEST_EXAM",
+                name="Fallback Test Exam",
+                status=ExamStatus.PENDING_HUMAN_REVIEW,
+                total_questions=3,
+            )
+            session.add(exam)
+            await session.commit()
+            await session.refresh(exam)
+            exam_id = exam.id
+
+            @asynccontextmanager
+            async def get_test_session():
+                async with self.session_factory() as s:
+                    yield s
+
+            registrar = BatchQuestionRegistrar(session_factory=get_test_session)
+            summary = await registrar.commit_question_records_in_batches(
+                exam_id=exam_id,
+                records=[rec_both_missing, rec_topic_missing, rec_subtopic_missing],
+            )
+            assert summary.total_processed_questions == 3
+            assert summary.failed_batches == 0
+
+            # Verify Case 1: Both missing
+            # Subject: "Modern History" -> Topic: "Modern History" -> Subtopic: "Modern History"
+            q10 = (await session.exec(select(Question).where(Question.question_number_in_paper == 10))).first()
+            assert q10 is not None
+            st10 = await session.get(Subtopic, q10.subtopic_id)
+            assert st10.name == "Modern History"
+            t10 = await session.get(Topic, st10.topic_id)
+            assert t10.name == "Modern History"
+            s10 = await session.get(Subject, t10.subject_id)
+            assert s10.name == "Modern History"
+
+            # Verify Case 2: Topic missing, Subtopic present
+            # Subject: "Modern History" -> Topic: "Modern History" -> Subtopic: "Quit India Movement"
+            q11 = (await session.exec(select(Question).where(Question.question_number_in_paper == 11))).first()
+            assert q11 is not None
+            st11 = await session.get(Subtopic, q11.subtopic_id)
+            assert st11.name == "Quit India Movement"
+            t11 = await session.get(Topic, st11.topic_id)
+            assert t11.name == "Modern History"
+
+            # Verify Case 3: Subtopic missing, Topic present
+            # Subject: "Modern History" -> Topic: "Indian National Congress Sessions" -> Subtopic: "Indian National Congress Sessions"
+            q12 = (await session.exec(select(Question).where(Question.question_number_in_paper == 12))).first()
+            assert q12 is not None
+            st12 = await session.get(Subtopic, q12.subtopic_id)
+            assert st12.name == "Indian National Congress Sessions"
+            t12 = await session.get(Topic, st12.topic_id)
+            assert t12.name == "Indian National Congress Sessions"

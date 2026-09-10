@@ -20,20 +20,21 @@ Q_HEADER_PATTERN = re.compile(
 
 # Header Tag Extractors (tolerant of [, (, {, <, missing brackets, line breaks, extra spaces)
 # Example: [Subject: History & Culture] [Topic: Ancient Indian Literature] [Sub-topic: Sanskrit Dramatists] [Difficulty: Tough]
+# Also supports: [Microtheme: ...] as Topic, [Nano Theme: ...] as Subtopic
 SUBJECT_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Subject\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Topic|Sub[-\s]?topic|Difficulty)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*Subject\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme|Difficulty)\s*:|$)",
     re.UNICODE,
 )
 TOPIC_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Topic\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Sub[-\s]?topic|Difficulty|Subject)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*(?:Topic|Micro[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Sub[-\s]?topic|Nano[-\s]?theme|Difficulty|Subject)\s*:|$)",
     re.UNICODE,
 )
 SUBTOPIC_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Sub[-\s]?topic\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Difficulty|Subject|Topic)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*(?:Sub[-\s]?topic|Nano[-\s]?theme)\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Difficulty|Subject|Topic|Micro[-\s]?theme)\s*:|$)",
     re.UNICODE,
 )
 DIFFICULTY_TAG_PATTERN = re.compile(
-    r"(?i)[\[\(\{<]?\s*Difficulty\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Subject|Topic|Sub[-\s]?topic)\s*:|$)",
+    r"(?i)[\[\(\{<]?\s*Difficulty\s*:\s*([^\]\)\}>\n\r]+?)(?=[\]\)\}>]|\s*(?:Subject|Topic|Micro[-\s]?theme|Sub[-\s]?topic|Nano[-\s]?theme)\s*:|$)",
     re.UNICODE,
 )
 
