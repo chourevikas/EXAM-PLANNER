@@ -6,7 +6,6 @@ import {
   Check,
   Search,
   CheckCircle2,
-  Sparkles,
   X,
   Lightbulb,
 } from 'lucide-react';
@@ -2884,7 +2883,7 @@ export function StudentPracticeExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={16} color="#1E3A8A" />
+                <Lightbulb size={16} color="#1E3A8A" />
                 <span
                   style={{
                     fontSize: 13,

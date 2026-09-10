@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Sparkles, Globe } from 'lucide-react';
+import { Clock, ChevronRight, Focus, Minimize2, SlidersHorizontal, Lightbulb, Globe } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { SUPPORTED_LANGUAGES } from '../../constants/languages';
 
@@ -322,7 +322,7 @@ export function ExamHeader({
             title="Recommended Questions"
             aria-label="Show recommended questions"
           >
-            <Sparkles size={15} />
+            <Lightbulb size={15} />
             {!!recsCount && <span>{recsCount}</span>}
           </button>
         )}

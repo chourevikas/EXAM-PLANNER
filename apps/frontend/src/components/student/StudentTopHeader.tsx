@@ -10,7 +10,7 @@ import {
   Settings,
   LogOut,
   CheckCheck,
-  Sparkles,
+  BookOpen,
   Target,
   Trophy,
   Menu,
@@ -422,7 +422,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.topics.map((topic: any) => (
                           <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><Sparkles size={14} /></div>
+                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16A34A' }}><BookOpen size={14} /></div>
                             <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{topic.title}</span>
                           </Link>
                         ))}
@@ -559,7 +559,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {searchResults.topics.map((topic: any) => (
                             <Link key={topic.id} to={topic.url} onClick={() => { setSearchQuery(''); setSearchResults(null); setSearchExpanded(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
-                              <Sparkles size={16} color="#16A34A" />
+                              <BookOpen size={16} color="#16A34A" />
                               <span style={{ fontSize: 13, color: '#172033', fontWeight: 600 }}>{topic.title}</span>
                             </Link>
                           ))}

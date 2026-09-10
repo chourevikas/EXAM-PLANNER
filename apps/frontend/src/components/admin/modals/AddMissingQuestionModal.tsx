@@ -8,7 +8,6 @@ import {
   Loader2,
   BookOpen,
   HelpCircle,
-  Sparkles,
   Layers,
   FileText,
   Tag

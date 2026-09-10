@@ -17,7 +17,6 @@ import {
   ThumbsDown,
   UploadCloud,
   Layers,
-  Sparkles,
   HelpCircle,
   Clock,
   Award,
@@ -2439,7 +2438,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isPrim ? (
-                              <Sparkles size={14} color="#E31B23" />
+                              <Tag size={14} color="#E31B23" />
                             ) : (
                               <GitBranch size={14} color="#64748B" />
                             )}
@@ -2644,7 +2643,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               {/* Solution Parameters Knowledge Base */}
               <div style={{ marginBottom: 32 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Sparkles size={17} color="#E31B23" />
+                  <BookOpen size={17} color="#E31B23" />
                   <span>Knowledge Base & Common Traps Analysis</span>
                 </div>
 

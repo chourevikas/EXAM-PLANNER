@@ -278,7 +278,7 @@ export function WeeklyInsightsPage() {
       {/* Header Banner */}
       <section style={bannerStyle}>
         <div style={BANNER_BADGE_STYLE}>
-          <Ico.Sparkles size={14} />
+          <Award size={14} />
           <span style={BANNER_BADGE_TEXT_STYLE}>Weekly Executive Summary</span>
         </div>
         <h1 style={bannerTitleStyle}>Weekly Performance Report</h1>

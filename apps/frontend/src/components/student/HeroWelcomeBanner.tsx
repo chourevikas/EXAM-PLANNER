@@ -22,7 +22,7 @@ export function HeroWelcomeBanner({ user }: HeroWelcomeBannerProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 20, position: 'relative', zIndex: 1 }}>
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px', backgroundColor: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: 0, marginBottom: 12 }}>
-            <Ico.Sparkles size={14} />
+            <Ico.Target size={14} />
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Target: UPSC CSE 2026 • 184 Days
             </span>

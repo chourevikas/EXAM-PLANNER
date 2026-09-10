@@ -13,7 +13,7 @@ import {
   AttemptHistoryItem,
 } from '../services/examService';
 import { PsychometricReport } from '../types/exam';
-import { Loader2, Sparkles, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
+import { Loader2, CheckCircle2, Activity, Cpu, RefreshCw, AlertCircle, BarChart3 } from 'lucide-react';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { PerformanceAnalyticsSkeleton } from '../components/student/PerformanceAnalyticsSkeleton';
@@ -698,7 +698,7 @@ export function AnalyticsPage() {
             <div style={hasAiWrapperStyle}>
               {hasAi ? (
                 <span style={aiBadgeLoadedStyle}>
-                  <Sparkles size={14} color="#059669" />
+                  <CheckCircle2 size={14} color="#059669" />
                   Diagnostic Data: Loaded & Verified
                 </span>
               ) : (
@@ -1190,7 +1190,7 @@ export function AnalyticsPage() {
             >
               <div style={evaluatingIconsStyle}>
                 <Cpu size={28} className="animate-spin" />
-                <Sparkles size={24} color="#8b5cf6" />
+                <Activity size={24} color="#8b5cf6" />
               </div>
 
               <h2

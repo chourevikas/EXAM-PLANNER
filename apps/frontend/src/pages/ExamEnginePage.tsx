@@ -9,7 +9,7 @@ import { ExamFooterBar } from '../components/exam/ExamFooterBar';
 import { ExamSubmitModal } from '../components/exam/ExamSubmitModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
+import { FileText, Layers, Grid, Loader2, Trophy, CheckCircle, XCircle, ArrowRight, UserPlus, RefreshCw } from 'lucide-react';
 import {
   startExamAttempt,
   getExamAttemptStatus,
@@ -1282,7 +1282,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               }}
             >
               <div style={{ fontSize: 13, fontWeight: 800, color: '#E31B23', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={15} /> Unlock Full 12-Matrix Psychometric Analysis
+                <Trophy size={15} /> Unlock Full 12-Matrix Psychometric Analysis
               </div>
               <div style={{ fontSize: 12, color: isDark ? '#cbd5e1' : '#475569', lineHeight: 1.4 }}>
                 Sign in or register for free to analyze your complete attempt with FSRS memory retention, cognitive depth breakdown, and AI study recommendations.

@@ -9,7 +9,6 @@ import {
   Bookmark,
   Clock,
   Award,
-  Sparkles,
   Lightbulb,
   Loader2,
 } from 'lucide-react';
@@ -1055,7 +1054,7 @@ export function ExamQuestionCard({
                             </>
                           ) : (
                             <>
-                              <Sparkles size={14} />
+                              <CheckCircle2 size={14} />
                               <span>Submit & Show Solution</span>
                             </>
                           )}

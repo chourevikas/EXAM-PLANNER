@@ -9,7 +9,7 @@ import {
   Target,
   AlertTriangle,
   Award,
-  Sparkles,
+  Loader2,
   BrainCircuit,
   Layers,
   FileCheck2,
@@ -125,7 +125,7 @@ export function QuestionSolutionMarkdownCard({
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
       >
-        <Sparkles size={18} className="animate-spin text-blue-600" />
+        <Loader2 size={18} className="animate-spin text-blue-600" />
         <span style={{ fontSize: 14, fontWeight: 600 }}>Loading Comprehensive Solution & Distractor Analysis...</span>
       </div>
     );

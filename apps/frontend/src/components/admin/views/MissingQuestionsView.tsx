@@ -11,7 +11,6 @@ import {
   Layers,
   ArrowRight,
   RefreshCw,
-  Sparkles,
   ShieldAlert
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
@@ -845,7 +844,7 @@ export function MissingQuestionsView({ onSelectExam }: MissingQuestionsViewProps
                           title={`Click to fix Corrupted Question #${qNum}`}
                         >
                           <span>Q#{qNum}</span>
-                          <Sparkles size={12} color="#D97706" />
+                          <AlertCircle size={12} color="#D97706" />
                         </button>
                       ))}
 

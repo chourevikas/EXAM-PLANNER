@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Check,
   SlidersHorizontal,
-  Sparkles,
   GraduationCap,
   X,
   Lightbulb,
@@ -1519,7 +1518,7 @@ export function GuestExamPage() {
               title="Recommended Questions"
               aria-label="Show recommended questions"
             >
-              <Sparkles size={15} />
+              <Lightbulb size={15} />
               {!!displayRecs.length && <span>{displayRecs.length}</span>}
             </button>
           )}
@@ -3115,7 +3114,7 @@ export function GuestExamPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={16} color="#1E3A8A" />
+                <Lightbulb size={16} color="#1E3A8A" />
                 <span
                   style={{
                     fontSize: 13,
@@ -3488,7 +3487,7 @@ export function GuestExamPage() {
                 margin: '0 auto 16px auto',
               }}
             >
-              <Sparkles size={26} color="#1E3A8A" />
+              <Lightbulb size={26} color="#1E3A8A" />
             </div>
 
             <div

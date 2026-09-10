@@ -9,7 +9,6 @@ import {
   CreditCard,
   QrCode,
   Building2,
-  Sparkles,
   ArrowRight,
   CheckCircle2,
   Lock,
@@ -81,7 +80,7 @@ export function PricingPage() {
         textAlign: 'center', position: 'relative', overflow: 'hidden'
       }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 16, border: '1px solid var(--accent-border)' }}>
-          <Sparkles size={16} color="var(--accent-primary)" />
+          <Zap size={16} color="var(--accent-primary)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Elevate Your Exam Preparation
           </span>

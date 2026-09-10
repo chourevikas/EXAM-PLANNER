@@ -20,8 +20,7 @@ import {
   Award,
   BookOpen,
   Download,
-  Calendar,
-  Sparkles
+  Calendar
 } from 'lucide-react';
 
 import { updateUserProfile, fetchCurrentUser } from '../services/authService';
@@ -328,7 +327,7 @@ export function ProfilePage() {
               transition: 'transform 0.2s'
             }}
           >
-            <Sparkles size={16} />
+            <Zap size={16} />
             <span>Upgrade to Pro Plan</span>
           </Link>
         )}

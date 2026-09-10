@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home } from 'lucide-react';
+import { ArrowRight, RotateCcw, CheckCircle2, XCircle, MinusCircle, PartyPopper, LogIn, UserPlus, X, Home, Award } from 'lucide-react';
 import { AuthModal, AuthMode } from '../auth/AuthModal';
 
 interface GuestScoreModalProps {
@@ -247,7 +247,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
 
             {/* Dynamic Accuracy Pill */}
             <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 0, backgroundColor: '#ECFDF5', border: '1.5px solid #6EE7B7' }}>
-              <Sparkles size={14} style={{ color: '#3A8B53' }} />
+              <CheckCircle2 size={14} style={{ color: '#3A8B53' }} />
               <span style={{ fontSize: 13, fontWeight: 800, color: '#3A8B53' }}>
                 {scoreData.accuracy}% Accuracy
               </span>
@@ -339,7 +339,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             }}
           >
             <div style={{ fontSize: 13, fontWeight: 800, color: '#3730A3', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={16} style={{ color: '#4F46E5' }} />
+              <Award size={16} style={{ color: '#4F46E5' }} />
               {isLoggedIn ? 'Practice Evaluated & Ready!' : 'Unlock 12-Matrix Psychometric & AI Analysis'}
             </div>
             <div style={{ fontSize: 11.5, color: '#4338CA', lineHeight: 1.45, fontWeight: 600 }}>

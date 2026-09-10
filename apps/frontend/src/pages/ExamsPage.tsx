@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, BookOpen } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 import { PublicLayout } from '../components/common/PublicLayout';
 
 const EXAMS = [
@@ -38,7 +38,7 @@ export function ExamsPage() {
       >
         <div className="landing-container">
           <div className="section-label" style={{ justifyContent: 'center' }}>
-            <Sparkles size={14} /> Practice Exams
+            <BookOpen size={14} /> Practice Exams
           </div>
           <h1 className="section-heading" style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}>
             Choose Your Exam Target
