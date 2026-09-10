@@ -349,11 +349,11 @@ export function StudentPracticeExamPage() {
     });
   }, []);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles/language change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles, language]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -2971,6 +2971,7 @@ export function StudentPracticeExamPage() {
               onSelectOption={handleSelectRecommendationOption}
               recFilterToggles={recFilterToggles}
               onToggleRecFilter={toggleRecFilter}
+              language={language}
             />
           </div>
         </div>
@@ -3057,6 +3058,7 @@ export function StudentPracticeExamPage() {
               onSelectOption={handleSelectRecommendationOption}
               recFilterToggles={recFilterToggles}
               onToggleRecFilter={toggleRecFilter}
+              language={language}
             />
           </aside>
         )}

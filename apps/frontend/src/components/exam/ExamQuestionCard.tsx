@@ -15,6 +15,7 @@ import {
 import { QuestionOut, RevealAnswerResponse } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { getLanguageOption } from '../../constants/languages';
 
 interface ExamQuestionCardProps {
   question:
@@ -92,12 +93,16 @@ function cleanQuestionTextBody(rawText: string): string {
   return text.trim();
 }
 
-function getQuestionText(q: any, lang: string): string {
+export function getQuestionText(q: any, lang: string): string {
   if (!q) return '';
   const cleanLang = (lang || 'en').trim().toLowerCase();
   let raw = '';
 
   if (cleanLang !== 'en' && cleanLang !== 'english') {
+    const langOpt = getLanguageOption(cleanLang);
+    const enumName = langOpt?.enumName || cleanLang.toUpperCase();
+    const upper = cleanLang.toUpperCase();
+
     if (cleanLang === 'hi' || cleanLang === 'hindi') {
       if (q.textHindi) raw = q.textHindi;
       else if (q.text_hindi) raw = q.text_hindi;
@@ -106,10 +111,11 @@ function getQuestionText(q: any, lang: string): string {
     }
 
     if (!raw && q.translations) {
-      const upper = cleanLang.toUpperCase();
       const t =
+        q.translations[enumName] ||
         q.translations[cleanLang] ||
         q.translations[upper] ||
+        q.translations[langOpt?.name?.toLowerCase()] ||
         (cleanLang === 'hi' ? q.translations.HINDI : null);
       if (typeof t === 'string') raw = t;
       else if (t?.text) raw = t.text;
@@ -129,12 +135,16 @@ function getQuestionText(q: any, lang: string): string {
   return cleanQuestionTextBody(raw);
 }
 
-function getPassageText(q: any, lang: string): string | null {
+export function getPassageText(q: any, lang: string): string | null {
   if (!q) return null;
   const cleanLang = (lang || 'en').trim().toLowerCase();
   let raw: string | null = null;
 
   if (cleanLang !== 'en' && cleanLang !== 'english') {
+    const langOpt = getLanguageOption(cleanLang);
+    const enumName = langOpt?.enumName || cleanLang.toUpperCase();
+    const upper = cleanLang.toUpperCase();
+
     if (cleanLang === 'hi' || cleanLang === 'hindi') {
       if (q.passage_text_hindi) raw = q.passage_text_hindi;
       else if (q.passage_text_hi) raw = q.passage_text_hi;
@@ -142,10 +152,11 @@ function getPassageText(q: any, lang: string): string | null {
     }
 
     if (!raw && q.passage_translations) {
-      const upper = cleanLang.toUpperCase();
       const pt =
+        q.passage_translations[enumName] ||
         q.passage_translations[cleanLang] ||
         q.passage_translations[upper] ||
+        q.passage_translations[langOpt?.name?.toLowerCase()] ||
         (cleanLang === 'hi' ? q.passage_translations.HINDI : null);
       if (typeof pt === 'string') raw = pt;
       else if (pt?.passage_text) raw = pt.passage_text;
@@ -179,12 +190,16 @@ function cleanOptionText(rawText: string): string {
   return text.trim();
 }
 
-function getOptionText(opt: any, lang: string, optIdx?: number, q?: any): string {
+export function getOptionText(opt: any, lang: string, optIdx?: number, q?: any): string {
   if (!opt) return `Option ${String.fromCharCode(65 + (optIdx || 0))}`;
   const cleanLang = (lang || 'en').trim().toLowerCase();
   let rawText = '';
 
   if (cleanLang !== 'en' && cleanLang !== 'english') {
+    const langOpt = getLanguageOption(cleanLang);
+    const enumName = langOpt?.enumName || cleanLang.toUpperCase();
+    const upper = cleanLang.toUpperCase();
+
     if (cleanLang === 'hi' || cleanLang === 'hindi') {
       if (opt.textHindi) rawText = opt.textHindi;
       else if (opt.text_hindi) rawText = opt.text_hindi;
@@ -192,10 +207,11 @@ function getOptionText(opt: any, lang: string, optIdx?: number, q?: any): string
     }
 
     if (!rawText && opt.translations) {
-      const upper = cleanLang.toUpperCase();
       const ot =
+        opt.translations[enumName] ||
         opt.translations[cleanLang] ||
         opt.translations[upper] ||
+        opt.translations[langOpt?.name?.toLowerCase()] ||
         (cleanLang === 'hi' ? opt.translations.HINDI : null);
       if (typeof ot === 'string') rawText = ot;
       else if (ot?.text) rawText = ot.text;

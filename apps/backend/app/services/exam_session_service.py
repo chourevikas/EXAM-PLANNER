@@ -591,7 +591,9 @@ class ExamSessionService:
         questions = res.all()
 
         if questions:
-            preloaded_data = await builder.preload_batch_question_data(questions, include_solution_data=False)
+            preloaded_data = await builder.preload_batch_question_data(
+                questions, include_solution_data=False, target_language=language
+            )
             questions_payload = []
             for q in questions:
                 # q_card contains question text, metadata, and options WITHOUT is_correct or solutions

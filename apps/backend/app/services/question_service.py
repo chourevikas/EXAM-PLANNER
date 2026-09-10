@@ -1,9 +1,12 @@
 import math
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from fastapi import HTTPException
 from sqlalchemy import func, update
 from sqlmodel import select, or_, col
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.config.logger import setup_logger
+
+logger = setup_logger("QuestionService")
 
 from app.db.models import (
     Exam,
@@ -283,21 +286,55 @@ class QuestionService:
             s_res = await self.session.exec(select(Subject).where(Subject.id.in_(subject_ids)))
             subjects_map = {s.id: s for s in s_res.all()}
 
-        lang_key = target_lang.value if hasattr(target_lang, "value") else str(target_lang)
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(
+            str(target_lang.value if hasattr(target_lang, "value") else target_lang)
+        )
+
+        # Ensure translations exist on-demand for target language
+        await self._ensure_translations_on_demand(
+            questions=questions,
+            options=options,
+            passages=[],
+            target_iso=target_iso,
+            target_enum=target_enum,
+            qt_map=qt_map,
+            ot_map=ot_map,
+            pt_map={},
+        )
 
         results: List[Dict[str, Any]] = []
         for q in questions:
             q_trans = qt_map.get(q.id, {})
-            text = q_trans.get(lang_key) or (next(iter(q_trans.values())) if q_trans else f"Question #{q.question_number_in_paper}")
+            q_trans_str = {
+                (k.value if hasattr(k, "value") else str(k)): v
+                for k, v in q_trans.items()
+            }
+            text = (
+                q_trans_str.get(target_enum)
+                or q_trans_str.get(target_iso)
+                or q_trans_str.get("ENGLISH")
+                or (next(iter(q_trans_str.values())) if q_trans_str else f"Question #{q.question_number_in_paper}")
+            )
 
             opt_list = []
             for opt in opt_map.get(q.id, []):
                 opt_trans = ot_map.get(opt.id, {})
-                opt_text = opt_trans.get(lang_key) or (next(iter(opt_trans.values())) if opt_trans else f"Option {opt.option_label}")
+                opt_trans_str = {
+                    (k.value if hasattr(k, "value") else str(k)): (v[0] if isinstance(v, (tuple, list)) else v)
+                    for k, v in opt_trans.items()
+                }
+                opt_text = (
+                    opt_trans_str.get(target_enum)
+                    or opt_trans_str.get(target_iso)
+                    or opt_trans_str.get("ENGLISH")
+                    or (next(iter(opt_trans_str.values())) if opt_trans_str else f"Option {opt.option_label}")
+                )
                 opt_list.append({
                     "option_id": str(opt.id),
                     "option_label": opt.option_label,
                     "text": opt_text,
+                    "translations": opt_trans_str,
                     # Recommendation cards highlight correct/incorrect the moment
                     # the user picks an answer (no separate reveal step), so
                     # unlike the general listing endpoint this boolean travels
@@ -315,6 +352,8 @@ class QuestionService:
                 "question_id": str(q.id),
                 "question_number": q.question_number_in_paper,
                 "question_text": text,
+                "text": text,
+                "translations": q_trans_str,
                 "options": opt_list,
                 "subject_name": subject.name if subject else None,
                 "topic_name": topic.name if topic else None,
@@ -1379,6 +1418,147 @@ class QuestionService:
             updated_at=q.updated_at.isoformat() if q.updated_at else None,
         )
 
+    async def _ensure_translations_on_demand(
+        self,
+        questions: List[Question],
+        options: List[QuestionOption],
+        passages: List[Any],
+        target_iso: str,
+        target_enum: str,
+        qt_map: Dict[int, Dict[Any, str]],
+        ot_map: Dict[int, Dict[Any, Any]],
+        pt_map: Dict[int, Dict[Any, str]],
+    ) -> None:
+        """Dynamically translates any missing question stems, options, and passages on-the-fly and persists to DB."""
+        if target_enum == "ENGLISH":
+            return
+
+        try:
+            from app.db.models import LanguageCode, QuestionTranslation, OptionTranslation, PassageTranslation
+            from app.services.google_translation_service import GoogleTranslationService
+
+            try:
+                lang_db_enum = LanguageCode[target_enum]
+            except (KeyError, AttributeError):
+                lang_db_enum = target_enum
+
+            # 1. Identify missing question stems
+            missing_q_stems: List[Tuple[Question, str]] = []
+            for q in questions:
+                existing_langs = {
+                    (k.value if hasattr(k, "value") else str(k))
+                    for k in qt_map.get(q.id, {}).keys()
+                }
+                if target_enum not in existing_langs and target_iso not in existing_langs:
+                    eng_text = qt_map.get(q.id, {}).get("ENGLISH") or qt_map.get(q.id, {}).get(LanguageCode.ENGLISH)
+                    if not eng_text:
+                        eng_text = next(iter(qt_map.get(q.id, {}).values()), "")
+                    if not eng_text:
+                        eng_text = getattr(q, "question_text", None) or getattr(q, "text", "")
+                    if eng_text and str(eng_text).strip():
+                        missing_q_stems.append((q, str(eng_text).strip()))
+
+            # 2. Identify missing options
+            missing_opts: List[Tuple[QuestionOption, str]] = []
+            for opt in options:
+                opt_existing = {
+                    (k.value if hasattr(k, "value") else str(k))
+                    for k in ot_map.get(opt.id, {}).keys()
+                }
+                if target_enum not in opt_existing and target_iso not in opt_existing:
+                    val = ot_map.get(opt.id, {}).get("ENGLISH") or ot_map.get(opt.id, {}).get(LanguageCode.ENGLISH)
+                    eng_opt_text = (val[0] if isinstance(val, (tuple, list)) else val) if val else ""
+                    if not eng_opt_text:
+                        first_val = next(iter(ot_map.get(opt.id, {}).values()), "")
+                        eng_opt_text = (first_val[0] if isinstance(first_val, (tuple, list)) else first_val) if first_val else ""
+                    if not eng_opt_text:
+                        eng_opt_text = getattr(opt, "option_text", "")
+                    if eng_opt_text and str(eng_opt_text).strip():
+                        missing_opts.append((opt, str(eng_opt_text).strip()))
+
+            # 3. Identify missing passages
+            missing_pass: List[Tuple[int, str]] = []
+            for p_id in passages:
+                if not p_id:
+                    continue
+                p_existing = {
+                    (k.value if hasattr(k, "value") else str(k))
+                    for k in pt_map.get(p_id, {}).keys()
+                }
+                if target_enum not in p_existing and target_iso not in p_existing:
+                    eng_p_text = pt_map.get(p_id, {}).get("ENGLISH") or pt_map.get(p_id, {}).get(LanguageCode.ENGLISH)
+                    if not eng_p_text:
+                        eng_p_text = next(iter(pt_map.get(p_id, {}).values()), "")
+                    if eng_p_text and str(eng_p_text).strip():
+                        missing_pass.append((p_id, str(eng_p_text).strip()))
+
+            if not missing_q_stems and not missing_opts and not missing_pass:
+                return
+
+            translator = GoogleTranslationService()
+
+            # Translate missing question stems
+            if missing_q_stems:
+                texts_q = [text for _, text in missing_q_stems]
+                translated_q = await translator.translate_batch(
+                    texts_q, target_language=target_iso, source_language="en"
+                )
+                for (q, _), t_text in zip(missing_q_stems, translated_q):
+                    qt_map.setdefault(q.id, {})[target_enum] = t_text
+                    qt_map[q.id][lang_db_enum] = t_text
+                    try:
+                        self.session.add(QuestionTranslation(
+                            question_id=q.id,
+                            language=lang_db_enum,
+                            question_text=t_text,
+                        ))
+                    except Exception as db_err:
+                        logger.warning(f"Could not stage QuestionTranslation: {db_err}")
+
+            # Translate missing options
+            if missing_opts:
+                texts_opt = [text for _, text in missing_opts]
+                translated_opts = await translator.translate_batch(
+                    texts_opt, target_language=target_iso, source_language="en"
+                )
+                for (opt, _), t_text in zip(missing_opts, translated_opts):
+                    ot_map.setdefault(opt.id, {})[target_enum] = (t_text, None)
+                    ot_map[opt.id][lang_db_enum] = (t_text, None)
+                    try:
+                        self.session.add(OptionTranslation(
+                            option_id=opt.id,
+                            language=lang_db_enum,
+                            option_text=t_text,
+                        ))
+                    except Exception as db_err:
+                        logger.warning(f"Could not stage OptionTranslation: {db_err}")
+
+            # Translate missing passages
+            if missing_pass:
+                texts_pass = [text for _, text in missing_pass]
+                translated_pass = await translator.translate_batch(
+                    texts_pass, target_language=target_iso, source_language="en"
+                )
+                for (p_id, _), t_text in zip(missing_pass, translated_pass):
+                    pt_map.setdefault(p_id, {})[target_enum] = t_text
+                    pt_map[p_id][lang_db_enum] = t_text
+                    try:
+                        self.session.add(PassageTranslation(
+                            passage_id=p_id,
+                            language=lang_db_enum,
+                            passage_text=t_text,
+                        ))
+                    except Exception as db_err:
+                        logger.warning(f"Could not stage PassageTranslation: {db_err}")
+
+            try:
+                await self.session.commit()
+            except Exception as commit_err:
+                logger.warning(f"Failed to commit on-demand translations: {commit_err}")
+                await self.session.rollback()
+        except Exception as err:
+            logger.error(f"On-demand translation failed: {err}", exc_info=True)
+
     async def _build_batch_question_detail_responses(
         self,
         questions: List[Question],
@@ -1488,6 +1668,18 @@ class QuestionService:
         from app.core.languages import normalize_language
         target_iso, target_enum = normalize_language(
             str(target_lang.value if hasattr(target_lang, "value") else target_lang)
+        )
+
+        # Ensure translations exist on-demand for target language
+        await self._ensure_translations_on_demand(
+            questions=questions,
+            options=options,
+            passages=passage_ids,
+            target_iso=target_iso,
+            target_enum=target_enum,
+            qt_map=qt_map,
+            ot_map=ot_map,
+            pt_map=pt_map,
         )
 
         # Assemble QuestionDetailResponse for all questions in memory

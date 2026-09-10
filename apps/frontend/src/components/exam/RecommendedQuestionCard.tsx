@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, Lightbulb } from 'lucide-react';
 import { QuestionOut } from '../../types/exam';
 import { QuestionSolutionData, QuestionSolutionMarkdownCard } from './QuestionSolutionMarkdownCard';
+import { getQuestionText, getOptionText } from './ExamQuestionCard';
 
 interface RecommendedQuestionCardProps {
   question: QuestionOut;
@@ -12,6 +13,7 @@ interface RecommendedQuestionCardProps {
   onSelectOption: (optionId: number | string) => void;
   solution: QuestionSolutionData | null;
   isSolutionLoading: boolean;
+  language?: string;
 }
 
 export function RecommendedQuestionCard({
@@ -23,6 +25,7 @@ export function RecommendedQuestionCard({
   onSelectOption,
   solution,
   isSolutionLoading,
+  language,
 }: RecommendedQuestionCardProps) {
   const selectedOption = (rec.options as any[])?.find((o: any) => o.option_id === answeredOptId);
   const [showSolution, setShowSolution] = useState(false);
@@ -158,13 +161,16 @@ export function RecommendedQuestionCard({
             lineHeight: 1.35,
           }}
         >
-          {rec.text
-            ? isExpanded
-              ? rec.text
-              : rec.text.length > 70
-                ? `${rec.text.substring(0, 70)}...`
-                : rec.text
-            : `Practice Question ${idx + 1}`}
+          {(() => {
+            const displayQuestionText = getQuestionText(rec, language || 'en');
+            return displayQuestionText
+              ? isExpanded
+                ? displayQuestionText
+                : displayQuestionText.length > 70
+                  ? `${displayQuestionText.substring(0, 70)}...`
+                  : displayQuestionText
+              : `Practice Question ${idx + 1}`;
+          })()}
         </div>
       </div>
 
@@ -179,7 +185,7 @@ export function RecommendedQuestionCard({
               gap: 8,
             }}
           >
-            {(rec.options as any[])?.map((opt: any) => {
+            {(rec.options as any[])?.map((opt: any, optIdx: number) => {
               const isSelected = answeredOptId === opt.option_id;
               const isCorrect = opt.is_correct;
               const isWrongSelected = isSelected && !isCorrect;
@@ -197,6 +203,8 @@ export function RecommendedQuestionCard({
                   bgStyle = '#FEF2F2';
                 }
               }
+
+              const optDisplayText = getOptionText(opt, language || 'en', optIdx, rec);
 
               return (
                 <button
@@ -255,7 +263,7 @@ export function RecommendedQuestionCard({
                   >
                     {opt.option_label}.
                   </span>
-                  <span style={{ lineHeight: 1.35, flex: 1 }}>{opt.text}</span>
+                  <span style={{ lineHeight: 1.35, flex: 1 }}>{optDisplayText}</span>
                 </button>
               );
             })}

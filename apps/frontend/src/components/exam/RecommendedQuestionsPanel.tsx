@@ -25,6 +25,7 @@ interface RecommendedQuestionsPanelProps {
   onSelectOption: (q: QuestionOut, optionId: number | string) => void;
   recFilterToggles?: RecFilterToggles;
   onToggleRecFilter?: (filterKey: keyof RecFilterToggles) => void;
+  language?: string;
 }
 
 export function RecommendedQuestionsPanel({
@@ -40,6 +41,7 @@ export function RecommendedQuestionsPanel({
   onSelectOption,
   recFilterToggles = { subject: true, topic: true, subtopic: true, difficulty: true },
   onToggleRecFilter,
+  language,
 }: RecommendedQuestionsPanelProps) {
   const filterItems: { key: keyof RecFilterToggles; label: string }[] = [
     { key: 'subject', label: 'Subject' },
@@ -201,6 +203,7 @@ export function RecommendedQuestionsPanel({
               onSelectOption={(optionId) => onSelectOption(rec, optionId)}
               solution={solutions[rec.question_id] ?? null}
               isSolutionLoading={!!solutionLoading[rec.question_id]}
+              language={language}
             />
           ))
         )}

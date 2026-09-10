@@ -38,7 +38,10 @@ class ExamJsonBuilder:
         self.storage = get_storage_provider()
 
     async def preload_batch_question_data(
-        self, questions: list[Question], include_solution_data: bool = True
+        self,
+        questions: list[Question],
+        include_solution_data: bool = True,
+        target_language: Optional[str] = "ENGLISH",
     ) -> Dict[str, Any]:
         """
         Preloads all child tables, options, translations, taxonomies, and hierarchies
@@ -83,6 +86,78 @@ class ExamJsonBuilder:
             )
             for ot in ot_res.all():
                 opt_trans_map.setdefault(ot.option_id, []).append(ot)
+
+        # On-Demand Translation for Exam Attempt Questions
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(target_language)
+        if target_enum != "ENGLISH":
+            try:
+                from app.db.models import LanguageCode
+                from app.services.google_translation_service import GoogleTranslationService
+                try:
+                    lang_db_enum = LanguageCode[target_enum]
+                except (KeyError, AttributeError):
+                    lang_db_enum = target_enum
+
+                missing_q = []
+                for q in questions:
+                    t_langs = {
+                        (t.language.value if hasattr(t.language, "value") else str(t.language))
+                        for t in trans_map.get(q.id, [])
+                    }
+                    if target_enum not in t_langs and target_iso not in t_langs:
+                        eng_t = next((t for t in trans_map.get(q.id, []) if (t.language.value if hasattr(t.language, "value") else str(t.language)) == "ENGLISH"), None) or (trans_map.get(q.id, [])[0] if trans_map.get(q.id) else None)
+                        text = eng_t.question_text if eng_t else (getattr(q, "question_text", None) or getattr(q, "text", ""))
+                        if text and str(text).strip():
+                            missing_q.append((q, str(text).strip()))
+
+                missing_o = []
+                for opt in options_list:
+                    ot_langs = {
+                        (ot.language.value if hasattr(ot.language, "value") else str(ot.language))
+                        for ot in opt_trans_map.get(opt.id, [])
+                    }
+                    if target_enum not in ot_langs and target_iso not in ot_langs:
+                        eng_ot = next((ot for ot in opt_trans_map.get(opt.id, []) if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) == "ENGLISH"), None) or (opt_trans_map.get(opt.id, [])[0] if opt_trans_map.get(opt.id) else None)
+                        text = eng_ot.option_text if eng_ot else getattr(opt, "option_text", "")
+                        if text and str(text).strip():
+                            missing_o.append((opt, str(text).strip()))
+
+                if missing_q or missing_o:
+                    translator = GoogleTranslationService()
+                    if missing_q:
+                        trans_q_texts = await translator.translate_batch(
+                            [txt for _, txt in missing_q], target_language=target_iso, source_language="en"
+                        )
+                        for (q, _), t_txt in zip(missing_q, trans_q_texts):
+                            new_qt = QuestionTranslation(
+                                question_id=q.id,
+                                language=lang_db_enum,
+                                question_text=t_txt,
+                            )
+                            self.session.add(new_qt)
+                            trans_map.setdefault(q.id, []).append(new_qt)
+
+                    if missing_o:
+                        trans_o_texts = await translator.translate_batch(
+                            [txt for _, txt in missing_o], target_language=target_iso, source_language="en"
+                        )
+                        for (opt, _), t_txt in zip(missing_o, trans_o_texts):
+                            new_ot = OptionTranslation(
+                                option_id=opt.id,
+                                language=lang_db_enum,
+                                option_text=t_txt,
+                            )
+                            self.session.add(new_ot)
+                            opt_trans_map.setdefault(opt.id, []).append(new_ot)
+
+                    try:
+                        await self.session.commit()
+                    except Exception as ce:
+                        logger.warning(f"Failed to commit exam on-demand translations: {ce}")
+                        await self.session.rollback()
+            except Exception as te:
+                logger.error(f"Exam on-demand translation failed: {te}", exc_info=True)
 
         meta_map: Dict[int, QuestionMetadata] = {}
         expl_map: Dict[int, list[QuestionExplanation]] = {}

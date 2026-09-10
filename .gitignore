@@ -13,6 +13,11 @@ qdrant_storage
 # Mac
 .DS_Store
 
+# GCP Service Account Credentials
+*gcp-service-account*.json
+*-service-account.json
+
+
 # VSCode
 .vscode/settings.json
 .chroma
