@@ -66,3 +66,47 @@ async def test_register_user():
         assert data["user"]["email"] == unique_email
         assert data["user"]["subscription_tier"] == "FREE"
 
+
+@pytest.mark.anyio
+async def test_read_and_update_current_user():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
+        register_payload = {
+            "email": unique_email,
+            "password": "Password123!",
+            "full_name": "Test Patch User",
+            "role": "STUDENT",
+        }
+        reg_res = await client.post("/api/v1/auth/register", json=register_payload)
+        assert reg_res.status_code == 201
+        token = reg_res.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # 1. Test GET /me
+        get_res = await client.get("/api/v1/auth/me", headers=headers)
+        assert get_res.status_code == 200
+        assert get_res.json()["email"] == unique_email
+
+        # 2. Test PATCH /me successfully updates profile and language
+        patch_res = await client.patch(
+            "/api/v1/auth/me",
+            headers=headers,
+            json={"full_name": "Updated Name", "preferred_language": "Hindi"},
+        )
+        assert patch_res.status_code == 200
+        data = patch_res.json()
+        assert data["full_name"] == "Updated Name"
+        assert data["preferred_language"] == "hi"
+
+        # 3. Test PATCH /me with invalid language returns 400
+        invalid_patch = await client.patch(
+            "/api/v1/auth/me",
+            headers=headers,
+            json={"preferred_language": "invalid_fake_lang_xyz"},
+        )
+        assert invalid_patch.status_code == 400
+        assert "Unsupported language" in invalid_patch.json()["detail"]
+
+

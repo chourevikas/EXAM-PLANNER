@@ -154,18 +154,23 @@ class ExamJsonBuilder:
                             to_persist_ot.append(new_ot)
                             opt_trans_map.setdefault(opt.id, []).append(new_ot)
 
-                    # Persist translations in an isolated database session so that self.session and its loaded objects are NEVER expired or rolled back
+                    # Persist translations in an isolated database session with idempotent conflict handling
                     if to_persist_qt or to_persist_ot:
                         try:
                             from app.db.session import async_session_factory
+                            from app.db.upsert import bulk_insert_on_conflict_do_nothing
                             async with async_session_factory() as trans_session:
-                                for item in to_persist_qt:
-                                    trans_session.add(item)
-                                for item in to_persist_ot:
-                                    trans_session.add(item)
+                                if to_persist_qt:
+                                    await bulk_insert_on_conflict_do_nothing(
+                                        trans_session, QuestionTranslation, to_persist_qt, ["question_id", "language"]
+                                    )
+                                if to_persist_ot:
+                                    await bulk_insert_on_conflict_do_nothing(
+                                        trans_session, OptionTranslation, to_persist_ot, ["option_id", "language"]
+                                    )
                                 await trans_session.commit()
                         except Exception as ce:
-                            logger.warning(f"Failed to persist exam on-demand translations: {ce}")
+                            logger.warning(f"Failed to persist exam on-demand translations: {ce}", exc_info=True)
             except Exception as te:
                 logger.error(f"Exam on-demand translation failed: {te}", exc_info=True)
 
@@ -211,6 +216,17 @@ class ExamJsonBuilder:
 
         # 6. Passages & Passage Translations
         passage_ids = [getattr(q, "passage_id", None) for q in questions if getattr(q, "passage_id", None)]
+        question_passage_map: Dict[int, int] = {}
+        exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
+        if exam_ids:
+            pass_res = await self.session.exec(select(Passage).where(col(Passage.exam_id).in_(exam_ids)))
+            for p in pass_res.all():
+                if p.question_ids_json:
+                    for qid in p.question_ids_json:
+                        question_passage_map[qid] = p.id
+                        passage_ids.append(p.id)
+        passage_ids = list(set(passage_ids))
+
         pass_trans_map: Dict[int, list[PassageTranslation]] = {}
         if passage_ids:
             pt_res = await self.session.exec(
@@ -256,6 +272,7 @@ class ExamJsonBuilder:
             "expl_map": expl_map,
             "h_map": h_map,
             "pass_trans_map": pass_trans_map,
+            "question_passage_map": question_passage_map,
             "subtopics_map": subtopics_map,
             "topics_map": topics_map,
             "subjects_map": subjects_map,
@@ -309,6 +326,17 @@ class ExamJsonBuilder:
         passage_text = None
         passage_translations = {}
         q_pass_id = getattr(q, "passage_id", None)
+        if not q_pass_id and q.id:
+            if preloaded is not None and "question_passage_map" in preloaded:
+                q_pass_id = preloaded["question_passage_map"].get(q.id)
+            elif q.exam_id:
+                pass_res = await self.session.exec(
+                    select(Passage).where(Passage.exam_id == q.exam_id)
+                )
+                for p in pass_res.all():
+                    if p.question_ids_json and q.id in p.question_ids_json:
+                        q_pass_id = p.id
+                        break
         if q_pass_id:
             if preloaded is not None:
                 pass_trans_list = preloaded.get("pass_trans_map", {}).get(q_pass_id, [])

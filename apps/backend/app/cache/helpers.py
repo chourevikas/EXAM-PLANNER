@@ -66,6 +66,8 @@ async def invalidate_exam_cache(exam_id: str) -> None:
         f"{prefix}:exams:review:{exam_id_str}*",
         f"{prefix}:admin:review:{exam_id_str}*",
         f"{prefix}:admin:overview_stats*",
+        f"{prefix}:syllabus:complete:{exam_id_str}*",
+        f"{prefix}:syllabus:complete:master*",
     ]
     for pat in patterns:
         deleted = await cache.delete_pattern(pat)
@@ -130,6 +132,7 @@ async def invalidate_taxonomy_cache() -> None:
     settings = get_settings()
     prefix = settings.CACHE_KEY_PREFIX or "ep"
     await cache.delete(f"{prefix}:questions:taxonomy")
+    await cache.delete_pattern(f"{prefix}:syllabus:complete*")
 
 
 async def invalidate_attempt_cache(attempt_id: int | str, user_id: Optional[int | str] = None) -> None:

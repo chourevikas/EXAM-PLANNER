@@ -6,6 +6,7 @@ from app.db.models import (
     Question,
     QuestionStatus,
     QuestionSourceType,
+    DifficultyLevel,
     Exam,
     Subject,
     Topic,
@@ -112,7 +113,12 @@ class QuestionRepository:
                 ]
                 id_stmt = id_stmt.where(or_(*exam_clauses))
         if difficulty and difficulty.strip() and difficulty.strip().lower() not in ("all", "all levels", "all difficulties"):
-            id_stmt = id_stmt.where(func.upper(Question.difficulty) == difficulty.strip().upper())
+            diff_clean = difficulty.strip().upper()
+            if diff_clean in DifficultyLevel.__members__:
+                id_stmt = id_stmt.where(Question.difficulty == DifficultyLevel[diff_clean])
+            else:
+                from sqlalchemy import String, cast
+                id_stmt = id_stmt.where(cast(Question.difficulty, String).ilike(diff_clean))
 
         # Hierarchy Filters with cross-level taxonomy matching (supports comma-separated multi-select)
         if subject_id:

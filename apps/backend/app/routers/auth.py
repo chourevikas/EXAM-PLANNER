@@ -265,12 +265,11 @@ async def reset_password(
     return {"message": "Password reset successfully"}
 
 
-@router.get("/me", response_model=UserOut)
-async def read_current_user(
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session)
-):
+async def _build_user_out_response(
+    current_user: User,
+    session: AsyncSession,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> UserOut:
     stats = {}
     if current_user.role == UserRole.STUDENT:
         cache = get_cache()
@@ -303,6 +302,15 @@ async def read_current_user(
     )
 
 
+@router.get("/me", response_model=UserOut)
+async def read_current_user(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
+
+
 @router.patch("/me", response_model=UserOut)
 async def update_current_user(
     user_update: UserUpdate,
@@ -315,14 +323,19 @@ async def update_current_user(
     if user_update.profile_image is not None:
         current_user.profile_image = user_update.profile_image
     if user_update.preferred_language is not None:
-        from app.core.languages import normalize_language
+        from app.core.languages import normalize_language, is_supported_language
+        if not is_supported_language(user_update.preferred_language):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported language '{user_update.preferred_language}'",
+            )
         iso_code, _ = normalize_language(user_update.preferred_language)
         current_user.preferred_language = iso_code
     
     session.add(current_user)
     await session.commit()
     await session.refresh(current_user)
-    return await read_current_user(background_tasks=background_tasks, current_user=current_user, session=session)
+    return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
 
 
 @router.get("/admin-only", response_model=dict)

@@ -5,7 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException
 from app.db.session import get_async_session
-from app.db.models import QuestionStatus, QuestionSourceType, LanguageCode
+from app.db.models import QuestionStatus, QuestionSourceType, DifficultyLevel
 from app.core.languages import parse_language
 from app.schemas.question import (
     QuestionUpdatePayload,
@@ -237,6 +237,14 @@ async def list_recommended_questions(
     GET /questions/{question_id}/solution only when a recommendation is
     actually revealed.
     """
+    if difficulty and difficulty.strip() and difficulty.strip().lower() not in ("all", "all levels", "all difficulties"):
+        diff_upper = difficulty.strip().upper()
+        if diff_upper not in DifficultyLevel.__members__:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid difficulty: '{difficulty}'. Allowed values: {[d.value for d in DifficultyLevel]}",
+            )
+
     lang_code = parse_language(language)
     service = QuestionService(session)
     res = await service.list_recommended_questions(

@@ -1287,10 +1287,25 @@ class QuestionService:
         options_list = opt_res.all()
 
         options_detail = []
+        opt_ids = [opt.id for opt in options_list]
+        ot_by_opt: Dict[int, list[OptionTranslation]] = {}
+        qr_by_opt: Dict[int, QuestionOptionReasoning] = {}
+        if opt_ids:
+            all_ots = (await self.session.exec(
+                select(OptionTranslation).where(col(OptionTranslation.option_id).in_(opt_ids))
+            )).all()
+            for ot in all_ots:
+                ot_by_opt.setdefault(ot.option_id, []).append(ot)
+
+            if include_solutions:
+                all_qrs = (await self.session.exec(
+                    select(QuestionOptionReasoning).where(col(QuestionOptionReasoning.question_option_id).in_(opt_ids))
+                )).all()
+                for qr in all_qrs:
+                    qr_by_opt[qr.question_option_id] = qr
+
         for opt in options_list:
-            ot_stmt = select(OptionTranslation).where(OptionTranslation.option_id == opt.id)
-            ot_res = await self.session.exec(ot_stmt)
-            o_translations = ot_res.all()
+            o_translations = ot_by_opt.get(opt.id, [])
 
             o_text = ""
             o_distractor = None
@@ -1309,8 +1324,7 @@ class QuestionService:
                     o_distractor = ot.distractor_analysis
 
             if include_solutions and not o_distractor:
-                qr_stmt = select(QuestionOptionReasoning).where(QuestionOptionReasoning.question_option_id == opt.id)
-                qr = (await self.session.exec(qr_stmt)).first()
+                qr = qr_by_opt.get(opt.id)
                 if qr:
                     why_t = (qr.why_tempting or "").strip()
                     whats_t = (qr.whats_actually_true or "").strip()
@@ -1488,34 +1502,58 @@ class QuestionService:
             from app.db.models import QuestionTranslation, OptionTranslation, PassageTranslation
             from app.services.google_translation_service import GoogleTranslationService
             from app.db.session import async_session_factory
+            from app.db.upsert import bulk_insert_on_conflict_do_nothing
+
             translator = GoogleTranslationService()
-            bg_records = []
-            if missing_stems:
-                t_stems = await translator.translate_batch(
-                    [t for _, t in missing_stems], target_language=target_iso, source_language="en"
+
+            # Batch and deduplicate all texts across stems, options, and passages into 1 call
+            raw_texts = (
+                [t for _, t in missing_stems]
+                + [t for _, t in missing_options]
+                + [t for _, t in missing_passages]
+            )
+            unique_texts = list(dict.fromkeys(t for t in raw_texts if t and str(t).strip()))
+            trans_dict = {}
+            if unique_texts:
+                translated_list = await translator.translate_batch(
+                    unique_texts, target_language=target_iso, source_language="en"
                 )
-                for (q, _), tt in zip(missing_stems, t_stems):
-                    bg_records.append(QuestionTranslation(question_id=q.id, language=lang_db_enum, question_text=tt))
-            if missing_options:
-                t_opts = await translator.translate_batch(
-                    [t for _, t in missing_options], target_language=target_iso, source_language="en"
-                )
-                for (opt, _), tt in zip(missing_options, t_opts):
-                    bg_records.append(OptionTranslation(option_id=opt.id, language=lang_db_enum, option_text=tt))
-            if missing_passages:
-                t_pass = await translator.translate_batch(
-                    [t for _, t in missing_passages], target_language=target_iso, source_language="en"
-                )
-                for (p_id, _), tt in zip(missing_passages, t_pass):
-                    bg_records.append(PassageTranslation(passage_id=p_id, language=lang_db_enum, passage_text=tt))
-            if bg_records:
+                trans_dict = dict(zip(unique_texts, translated_list))
+
+            bg_q_records = []
+            for q, text in missing_stems:
+                t_text = trans_dict.get(text, text)
+                bg_q_records.append(QuestionTranslation(question_id=q.id, language=lang_db_enum, question_text=t_text))
+
+            bg_opt_records = []
+            for opt, text in missing_options:
+                t_text = trans_dict.get(text, text)
+                bg_opt_records.append(OptionTranslation(option_id=opt.id, language=lang_db_enum, option_text=t_text))
+
+            bg_pass_records = []
+            for p_id, text in missing_passages:
+                t_text = trans_dict.get(text, text)
+                bg_pass_records.append(PassageTranslation(passage_id=p_id, language=lang_db_enum, passage_text=t_text))
+
+            total_records = len(bg_q_records) + len(bg_opt_records) + len(bg_pass_records)
+            if total_records > 0:
                 async with async_session_factory() as s:
-                    for r in bg_records:
-                        s.add(r)
+                    if bg_q_records:
+                        await bulk_insert_on_conflict_do_nothing(
+                            s, QuestionTranslation, bg_q_records, ["question_id", "language"]
+                        )
+                    if bg_opt_records:
+                        await bulk_insert_on_conflict_do_nothing(
+                            s, OptionTranslation, bg_opt_records, ["option_id", "language"]
+                        )
+                    if bg_pass_records:
+                        await bulk_insert_on_conflict_do_nothing(
+                            s, PassageTranslation, bg_pass_records, ["passage_id", "language"]
+                        )
                     await s.commit()
-                logger.info(f"⚡ Background translation persisted {len(bg_records)} records for {target_iso}.")
+                logger.info(f"⚡ Background translation persisted {total_records} records for {target_iso}.")
         except Exception as e:
-            logger.warning(f"Background translation task failed: {e}")
+            logger.warning(f"Background translation task failed: {e}", exc_info=True)
 
     async def _ensure_translations_on_demand(
         self,
@@ -1615,63 +1653,74 @@ class QuestionService:
 
             translator = GoogleTranslationService()
 
-            new_db_records = []
-
-            # Translate missing question stems
-            if missing_q_stems:
-                texts_q = [text for _, text in missing_q_stems]
-                translated_q = await translator.translate_batch(
-                    texts_q, target_language=target_iso, source_language="en"
+            # Batch and deduplicate all texts across stems, options, and passages into a single call
+            raw_texts = (
+                [text for _, text in missing_q_stems]
+                + [text for _, text in missing_opts]
+                + [text for _, text in missing_pass]
+            )
+            unique_texts = list(dict.fromkeys(t for t in raw_texts if t and str(t).strip()))
+            trans_dict = {}
+            if unique_texts:
+                translated_list = await translator.translate_batch(
+                    unique_texts, target_language=target_iso, source_language="en"
                 )
-                for (q, _), t_text in zip(missing_q_stems, translated_q):
-                    qt_map.setdefault(q.id, {})[target_enum] = t_text
-                    qt_map[q.id][lang_db_enum] = t_text
-                    new_db_records.append(QuestionTranslation(
-                        question_id=q.id,
-                        language=lang_db_enum,
-                        question_text=t_text,
-                    ))
+                trans_dict = dict(zip(unique_texts, translated_list))
 
-            # Translate missing options
-            if missing_opts:
-                texts_opt = [text for _, text in missing_opts]
-                translated_opts = await translator.translate_batch(
-                    texts_opt, target_language=target_iso, source_language="en"
-                )
-                for (opt, _), t_text in zip(missing_opts, translated_opts):
-                    ot_map.setdefault(opt.id, {})[target_enum] = (t_text, None)
-                    ot_map[opt.id][lang_db_enum] = (t_text, None)
-                    new_db_records.append(OptionTranslation(
-                        option_id=opt.id,
-                        language=lang_db_enum,
-                        option_text=t_text,
-                    ))
+            new_q_records = []
+            for (q, text) in missing_q_stems:
+                t_text = trans_dict.get(text, text)
+                qt_map.setdefault(q.id, {})[target_enum] = t_text
+                qt_map[q.id][lang_db_enum] = t_text
+                new_q_records.append(QuestionTranslation(
+                    question_id=q.id,
+                    language=lang_db_enum,
+                    question_text=t_text,
+                ))
 
-            # Translate missing passages
-            if missing_pass:
-                texts_pass = [text for _, text in missing_pass]
-                translated_pass = await translator.translate_batch(
-                    texts_pass, target_language=target_iso, source_language="en"
-                )
-                for (p_id, _), t_text in zip(missing_pass, translated_pass):
-                    pt_map.setdefault(p_id, {})[target_enum] = t_text
-                    pt_map[p_id][lang_db_enum] = t_text
-                    new_db_records.append(PassageTranslation(
-                        passage_id=p_id,
-                        language=lang_db_enum,
-                        passage_text=t_text,
-                    ))
+            new_opt_records = []
+            for (opt, text) in missing_opts:
+                t_text = trans_dict.get(text, text)
+                ot_map.setdefault(opt.id, {})[target_enum] = (t_text, None)
+                ot_map[opt.id][lang_db_enum] = (t_text, None)
+                new_opt_records.append(OptionTranslation(
+                    option_id=opt.id,
+                    language=lang_db_enum,
+                    option_text=t_text,
+                ))
 
-            # Persist translations in an isolated database session so that self.session and its loaded objects are NEVER expired or rolled back
-            if new_db_records:
+            new_pass_records = []
+            for (p_id, text) in missing_pass:
+                t_text = trans_dict.get(text, text)
+                pt_map.setdefault(p_id, {})[target_enum] = t_text
+                pt_map[p_id][lang_db_enum] = t_text
+                new_pass_records.append(PassageTranslation(
+                    passage_id=p_id,
+                    language=lang_db_enum,
+                    passage_text=t_text,
+                ))
+
+            # Persist translations idempotently in an isolated database session
+            if new_q_records or new_opt_records or new_pass_records:
                 try:
                     from app.db.session import async_session_factory
+                    from app.db.upsert import bulk_insert_on_conflict_do_nothing
                     async with async_session_factory() as trans_session:
-                        for rec in new_db_records:
-                            trans_session.add(rec)
+                        if new_q_records:
+                            await bulk_insert_on_conflict_do_nothing(
+                                trans_session, QuestionTranslation, new_q_records, ["question_id", "language"]
+                            )
+                        if new_opt_records:
+                            await bulk_insert_on_conflict_do_nothing(
+                                trans_session, OptionTranslation, new_opt_records, ["option_id", "language"]
+                            )
+                        if new_pass_records:
+                            await bulk_insert_on_conflict_do_nothing(
+                                trans_session, PassageTranslation, new_pass_records, ["passage_id", "language"]
+                            )
                         await trans_session.commit()
                 except Exception as commit_err:
-                    logger.warning(f"Failed to persist on-demand translations: {commit_err}")
+                    logger.warning(f"Failed to persist on-demand translations: {commit_err}", exc_info=True)
         except Exception as err:
             logger.error(f"On-demand translation failed: {err}", exc_info=True)
 

@@ -233,56 +233,73 @@ class QuestionTranslationService:
                 except (KeyError, AttributeError):
                     lang_db_enum = target_enum
 
-                # Check missing question stems
+                # Check missing question stems, options, and passages
                 missing_qs = [q for q in questions if (q.id, target_enum) not in q_trans_set]
-                if missing_qs:
-                    texts_to_translate = [q_eng_text.get(q.id, "") for q in missing_qs]
-                    translated_stems = await self.translator.translate_batch(
-                        texts_to_translate, target_language=target_iso, source_language="en"
-                    )
-                    for q, trans_text in zip(missing_qs, translated_stems):
-                        new_qt = QuestionTranslation(
-                            question_id=q.id,
-                            language=lang_db_enum,
-                            question_text=trans_text,
-                        )
-                        sess.add(new_qt)
-                        q_trans_set.add((q.id, target_enum))
-                        total_added += 1
-
-                # Check missing options
                 missing_opts = [o for o in options if (o.id, target_enum) not in opt_trans_set]
-                if missing_opts:
-                    opt_texts_to_translate = [opt_eng_text.get(o.id, "") for o in missing_opts]
-                    translated_opts = await self.translator.translate_batch(
-                        opt_texts_to_translate, target_language=target_iso, source_language="en"
-                    )
-                    for o, trans_text in zip(missing_opts, translated_opts):
-                        new_ot = OptionTranslation(
-                            option_id=o.id,
-                            language=lang_db_enum,
-                            option_text=trans_text,
-                        )
-                        sess.add(new_ot)
-                        opt_trans_set.add((o.id, target_enum))
-                        total_added += 1
-
-                # Check missing passages
                 missing_passes = [p for p in passages if (p.id, target_enum) not in pass_trans_set and p.id in pass_eng_text]
-                if missing_passes:
-                    pass_texts_to_translate = [pass_eng_text.get(p.id, "") for p in missing_passes]
-                    translated_passes = await self.translator.translate_batch(
-                        pass_texts_to_translate, target_language=target_iso, source_language="en"
+
+                all_raw_texts = (
+                    [q_eng_text.get(q.id, "") for q in missing_qs]
+                    + [opt_eng_text.get(o.id, "") for o in missing_opts]
+                    + [pass_eng_text.get(p.id, "") for p in missing_passes]
+                )
+                unique_texts = list(dict.fromkeys(t for t in all_raw_texts if t and str(t).strip()))
+                trans_dict = {}
+                if unique_texts:
+                    translated_list = await self.translator.translate_batch(
+                        unique_texts, target_language=target_iso, source_language="en"
                     )
-                    for p, trans_text in zip(missing_passes, translated_passes):
-                        new_pt = PassageTranslation(
-                            passage_id=p.id,
-                            language=lang_db_enum,
-                            passage_text=trans_text,
-                        )
-                        sess.add(new_pt)
-                        pass_trans_set.add((p.id, target_enum))
-                        total_added += 1
+                    trans_dict = dict(zip(unique_texts, translated_list))
+
+                to_insert_qt = []
+                for q in missing_qs:
+                    orig_text = q_eng_text.get(q.id, "")
+                    t_text = trans_dict.get(orig_text, orig_text)
+                    to_insert_qt.append(QuestionTranslation(
+                        question_id=q.id,
+                        language=lang_db_enum,
+                        question_text=t_text,
+                    ))
+                    q_trans_set.add((q.id, target_enum))
+                    total_added += 1
+
+                to_insert_ot = []
+                for o in missing_opts:
+                    orig_text = opt_eng_text.get(o.id, "")
+                    t_text = trans_dict.get(orig_text, orig_text)
+                    to_insert_ot.append(OptionTranslation(
+                        option_id=o.id,
+                        language=lang_db_enum,
+                        option_text=t_text,
+                    ))
+                    opt_trans_set.add((o.id, target_enum))
+                    total_added += 1
+
+                to_insert_pt = []
+                for p in missing_passes:
+                    orig_text = pass_eng_text.get(p.id, "")
+                    t_text = trans_dict.get(orig_text, orig_text)
+                    to_insert_pt.append(PassageTranslation(
+                        passage_id=p.id,
+                        language=lang_db_enum,
+                        passage_text=t_text,
+                    ))
+                    pass_trans_set.add((p.id, target_enum))
+                    total_added += 1
+
+                from app.db.upsert import bulk_insert_on_conflict_do_nothing
+                if to_insert_qt:
+                    await bulk_insert_on_conflict_do_nothing(
+                        sess, QuestionTranslation, to_insert_qt, ["question_id", "language"]
+                    )
+                if to_insert_ot:
+                    await bulk_insert_on_conflict_do_nothing(
+                        sess, OptionTranslation, to_insert_ot, ["option_id", "language"]
+                    )
+                if to_insert_pt:
+                    await bulk_insert_on_conflict_do_nothing(
+                        sess, PassageTranslation, to_insert_pt, ["passage_id", "language"]
+                    )
 
                 # Commit batch for this language safely with retries
                 await sess.commit()

@@ -93,9 +93,22 @@ YOUR MANDATE:
                 elif isinstance(res, dict):
                     return CognitiveDiagnosticInsight(**res).model_dump()
         except Exception as llm_err:
-            logger.warning(
-                f"Structured LLM invocation encountered warning/error ({llm_err}). Engaging deterministic high-fidelity diagnostic synthesizer."
-            )
+            err_str = str(llm_err)
+            is_perm_err = "403" in err_str or "PERMISSION_DENIED" in err_str or "permission" in err_str.lower()
+            if is_perm_err:
+                logger.error(
+                    f"❌ [VERTEX AI PERMISSION DENIED] 403 Forbidden invoking model '{getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-2.5-flash')}': {llm_err}. "
+                    f"Check GCP project '{getattr(settings, 'GCP_PROJECT_ID', None)}' / region '{getattr(settings, 'GCP_LOCATION', None)}' "
+                    f"and ensure the service account has 'roles/aiplatform.user' (aiplatform.endpoints.predict). "
+                    "Engaging deterministic diagnostic synthesizer fallback.",
+                    exc_info=True,
+                )
+            else:
+                logger.error(
+                    f"❌ [VERTEX AI LLM ERROR] Structured LLM invocation failed ({llm_err}). "
+                    "Engaging deterministic high-fidelity diagnostic synthesizer fallback.",
+                    exc_info=True,
+                )
 
         # High-fidelity deterministic fallback conforming strictly to CognitiveDiagnosticInsight schema
         return cls._generate_deterministic_fallback(payload)
