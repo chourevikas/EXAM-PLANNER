@@ -2,12 +2,12 @@ import React, { ReactNode } from 'react';
 import { Ico } from '../common/Icons';
 
 const iconPalettes = [
-  { color: '#E31B23', bg: 'rgba(227, 27, 35,0.15)',  glow: 'rgba(227, 27, 35,0.25)',  border: 'rgba(227, 27, 35,0.3)'  },
-  { color: '#3A8B53', bg: 'rgba(16,185,129,0.15)',  glow: 'rgba(16,185,129,0.25)',  border: 'rgba(16,185,129,0.3)'  },
-  { color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)',  glow: 'rgba(139,92,246,0.25)',  border: 'rgba(139,92,246,0.3)'  },
-  { color: '#F2B623', bg: 'rgba(245,158,11,0.15)',  glow: 'rgba(245,158,11,0.25)',  border: 'rgba(245,158,11,0.3)'  },
-  { color: '#06b6d4', bg: 'rgba(6,182,212,0.15)',   glow: 'rgba(6,182,212,0.25)',   border: 'rgba(6,182,212,0.3)'   },
-  { color: '#ec4899', bg: 'rgba(236,72,153,0.15)',  glow: 'rgba(236,72,153,0.25)',  border: 'rgba(236,72,153,0.3)'  },
+  { color: '#E31B23', bg: 'rgba(227, 27, 35,0.15)', glow: 'rgba(227, 27, 35,0.25)', border: 'rgba(227, 27, 35,0.3)' },
+  { color: '#3A8B53', bg: 'rgba(16,185,129,0.15)', glow: 'rgba(16,185,129,0.25)', border: 'rgba(16,185,129,0.3)' },
+  { color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', glow: 'rgba(139,92,246,0.25)', border: 'rgba(139,92,246,0.3)' },
+  { color: '#F2B623', bg: 'rgba(245,158,11,0.15)', glow: 'rgba(245,158,11,0.25)', border: 'rgba(245,158,11,0.3)' },
+  { color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', glow: 'rgba(6,182,212,0.25)', border: 'rgba(6,182,212,0.3)' },
+  { color: '#ec4899', bg: 'rgba(236,72,153,0.15)', glow: 'rgba(236,72,153,0.25)', border: 'rgba(236,72,153,0.3)' },
 ];
 
 interface Feature {
@@ -154,12 +154,12 @@ function FeatureCard({ icon, title, desc, num, paletteIndex }: FeatureCardProps)
 
 export function FeaturesSection() {
   const features: Feature[] = [
-    { icon: <Ico.Chart />,   title: 'Psychometric Skill Analysis', desc: 'Deep subject-level accuracy tracking, time analysis, and behavioral performance insights.', num: '01' },
-    { icon: <Ico.Cal />,     title: 'Personalized Study Planner', desc: 'Daily personalized plans that adapt dynamically as your strengths and weaknesses evolve.',   num: '02' },
-    { icon: <Ico.Book />,    title: '10,000+ PYQs',               desc: 'Complete bank from 2000–2024, tagged by year, topic, difficulty, and predicted importance.',   num: '03' },
-    { icon: <Ico.Brain />,   title: 'Smart Syllabus Mentor',      desc: 'Ask any conceptual doubt and receive instant, syllabus-grounded, precise answers.',            num: '04' },
-    { icon: <Ico.Refresh />, title: 'Revision & Retention',       desc: 'Spaced repetition ensures every topic is reviewed at the scientifically optimal interval.',    num: '05' },
-    { icon: <Ico.Trend />,   title: 'Performance Analytics',      desc: 'Visual dashboards with accuracy curves, improvement velocity, and Cognitive Readiness Index (ICRS).', num: '06' },
+    { icon: <Ico.Chart />, title: 'Psychometric Skill Analysis', desc: 'Deep subject-level accuracy tracking, time analysis, and behavioral performance insights.', num: '01' },
+    { icon: <Ico.Cal />, title: 'Personalized Study Planner', desc: 'Daily personalized plans that adapt dynamically as your strengths and weaknesses evolve.', num: '02' },
+    { icon: <Ico.Book />, title: '10,000+ PYQs', desc: 'Complete bank from 2000–2026, tagged by year, topic, difficulty, and predicted importance.', num: '03' },
+    { icon: <Ico.Brain />, title: 'Smart Syllabus Mentor', desc: 'Ask any conceptual doubt and receive instant, syllabus-grounded, precise answers.', num: '04' },
+    { icon: <Ico.Refresh />, title: 'Revision & Retention', desc: 'Spaced repetition ensures every topic is reviewed at the scientifically optimal interval.', num: '05' },
+    { icon: <Ico.Trend />, title: 'Performance Analytics', desc: 'Visual dashboards with accuracy curves, improvement velocity, and Cognitive Readiness Index (ICRS).', num: '06' },
   ];
 
   // Duplicate ×3 for seamless loop

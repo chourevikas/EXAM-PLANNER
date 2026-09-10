@@ -23,7 +23,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
-import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS } from '../../constants/exam';
+import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS, GROUPED_YEAR_OPTIONS } from '../../constants/exam';
 import {
   fetchExamPipelineStatuses,
   approveAndPublishExam,
@@ -1371,9 +1371,14 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                  Examination Year
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 600, color: '#334155' }}>
+                    Examination Year
+                  </label>
+                  <span style={{ fontSize: 11, color: '#64748B' }}>
+                    1900 – {YEAR_OPTIONS[0]}
+                  </span>
+                </div>
                 <select
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
@@ -1388,10 +1393,14 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                     color: '#172033',
                   }}
                 >
-                  {YEAR_OPTIONS.map((yr) => (
-                    <option key={yr} value={yr}>
-                      {yr}
-                    </option>
+                  {GROUPED_YEAR_OPTIONS.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((yr) => (
+                        <option key={yr} value={yr}>
+                          {yr}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>

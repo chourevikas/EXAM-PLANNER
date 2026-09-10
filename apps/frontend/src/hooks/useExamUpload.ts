@@ -18,7 +18,7 @@ export function useExamUpload() {
   const [availableExamTypes, setAvailableExamTypes] = useState<ExamType[]>([]);
   const [examName, setExamName] = useState('upsc');
   const [selectedExamTypeId, setSelectedExamTypeId] = useState<number | undefined>(1);
-  const [year, setYear] = useState('2024');
+  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [setCode, setSetCode] = useState('SET_A');
   const [paperType, setPaperType] = useState('previous_year_question');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

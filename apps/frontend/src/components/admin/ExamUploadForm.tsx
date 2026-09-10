@@ -1,6 +1,6 @@
 import React from 'react';
 import { useExamUpload } from '../../hooks/useExamUpload';
-import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS, SET_OPTIONS } from '../../constants/exam';
+import { EXAM_OPTIONS, PAPER_TYPE_OPTIONS, YEAR_OPTIONS, GROUPED_YEAR_OPTIONS, SET_OPTIONS } from '../../constants/exam';
 
 export function ExamUploadForm() {
   const {
@@ -70,9 +70,14 @@ export function ExamUploadForm() {
 
           {/* Year Select */}
           <div className="form-group">
-            <label htmlFor="year" className="form-label">
-              Year
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <label htmlFor="year" className="form-label" style={{ marginBottom: 0 }}>
+                Year
+              </label>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                1900 – {YEAR_OPTIONS[0]}
+              </span>
+            </div>
             <select
               id="year"
               value={year}
@@ -80,10 +85,14 @@ export function ExamUploadForm() {
               className="form-select"
               required
             >
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
+              {GROUPED_YEAR_OPTIONS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
