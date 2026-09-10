@@ -158,6 +158,7 @@ class QuestionService:
         self,
         subject_name: Optional[str] = None,
         topic_name: Optional[str] = None,
+        subtopic_name: Optional[str] = None,
         exam_name: Optional[str] = None,
         exclude_ids: Optional[str] = None,
         language: LanguageCode | str = LanguageCode.ENGLISH,
@@ -173,11 +174,42 @@ class QuestionService:
         questions, _ = await self.repo.list_questions_filtered(
             subject_name=subject_name,
             topic_name=topic_name,
+            subtopic_name=subtopic_name,
             exam_name=exam_name,
             exclude_ids=exclude_ids,
             skip=0,
             limit=limit,
         )
+
+        # Fallback 1: Relax subtopic filter if 0 questions found
+        if not questions and subtopic_name:
+            questions, _ = await self.repo.list_questions_filtered(
+                subject_name=subject_name,
+                topic_name=topic_name,
+                exam_name=exam_name,
+                exclude_ids=exclude_ids,
+                skip=0,
+                limit=limit,
+            )
+
+        # Fallback 2: Relax topic filter if 0 questions found (fetches questions from same subject)
+        if not questions and topic_name:
+            questions, _ = await self.repo.list_questions_filtered(
+                subject_name=subject_name,
+                exam_name=exam_name,
+                exclude_ids=exclude_ids,
+                skip=0,
+                limit=limit,
+            )
+
+        # Fallback 3: Relax exam filter if 0 questions found for exact subject + exam
+        if not questions and subject_name and exam_name:
+            questions, _ = await self.repo.list_questions_filtered(
+                subject_name=subject_name,
+                exclude_ids=exclude_ids,
+                skip=0,
+                limit=limit,
+            )
 
         items = await self._build_light_recommendation_cards(questions, target_lang=language)
         return {"items": items, "total": len(items)}

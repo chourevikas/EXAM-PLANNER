@@ -31,20 +31,93 @@ export function StudentPracticeExamPage() {
   // URL Params
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
-  const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
+  const gSubject = searchParams.get('subject') || '';
+  const gTopic = searchParams.get('topic') || '';
+  const gSubtopic = searchParams.get('subtopic') || '';
   const gDifficulty = searchParams.get('difficulty') || '';
   const gCount = parseInt(searchParams.get('count') || '10', 10);
 
   // Interactive Filter Bar Popover State
-  const [activeDropdown, setActiveDropdown] = useState<
-    'exam' | 'subject' | 'difficulty' | null
-  >(null);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
   const [availableExams, setAvailableExams] = useState<string[]>([]);
+
+  // Computed dynamic list of topics based on selected subject
+  const availableTopicsList = useMemo(() => {
+    const hierarchy = masterSyllabus?.hierarchy || {};
+    if (!gSubject || gSubject.startsWith('All Subjects')) {
+      const topicsSet = new Set<string>();
+      Object.values(hierarchy).forEach((topicsMap: any) => {
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+        }
+      });
+      return Array.from(topicsSet).sort();
+    } else {
+      const topicsMap = hierarchy[gSubject];
+      if (topicsMap && typeof topicsMap === 'object') {
+        return Object.keys(topicsMap).sort();
+      }
+      return [];
+    }
+  }, [gSubject, masterSyllabus]);
+
+  // Computed dynamic list of subtopics based on selected subject and topic
+  const availableSubtopicsList = useMemo(() => {
+    const hierarchy = masterSyllabus?.hierarchy || {};
+    const flatHierarchy = masterSyllabus?.flat_hierarchy || {};
+    if (gTopic && !gTopic.startsWith('All Topics')) {
+      if (gSubject && !gSubject.startsWith('All Subjects')) {
+        const subList = hierarchy[gSubject]?.[gTopic] || flatHierarchy[gTopic] || [];
+        return subList.filter((st: string) => !st.startsWith('All Subtopics')).sort();
+      } else {
+        const subList = flatHierarchy[gTopic] || [];
+        if (subList.length > 0) {
+          return subList.filter((st: string) => !st.startsWith('All Subtopics')).sort();
+        }
+        const subSet = new Set<string>();
+        Object.values(hierarchy).forEach((topicsMap: any) => {
+          if (topicsMap && topicsMap[gTopic]) {
+            topicsMap[gTopic].forEach((st: string) => {
+              if (!st.startsWith('All Subtopics')) subSet.add(st);
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      }
+    } else {
+      if (gSubject && !gSubject.startsWith('All Subjects')) {
+        const topicsMap = hierarchy[gSubject] || {};
+        const subSet = new Set<string>();
+        Object.values(topicsMap).forEach((subList: any) => {
+          if (Array.isArray(subList)) {
+            subList.forEach((st: string) => {
+              if (!st.startsWith('All Subtopics')) subSet.add(st);
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      } else {
+        const subSet = new Set<string>();
+        Object.values(hierarchy).forEach((topicsMap: any) => {
+          if (topicsMap && typeof topicsMap === 'object') {
+            Object.values(topicsMap).forEach((subList: any) => {
+              if (Array.isArray(subList)) {
+                subList.forEach((st: string) => {
+                  if (!st.startsWith('All Subtopics')) subSet.add(st);
+                });
+              }
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      }
+    }
+  }, [gSubject, gTopic, masterSyllabus]);
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -134,11 +207,11 @@ export function StudentPracticeExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject filters change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic filters change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject]);
+  }, [gExam, gSubject, gTopic, gSubtopic]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -166,6 +239,8 @@ export function StudentPracticeExamPage() {
         const excludeIdsParam = Array.from(existingIds).join(',');
 
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
@@ -177,6 +252,8 @@ export function StudentPracticeExamPage() {
 
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
         if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (rawTopic) subjParams.append('topic_name', rawTopic);
+        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
@@ -420,7 +497,7 @@ export function StudentPracticeExamPage() {
   const [showMobileRecs, setShowMobileRecs] = useState(false);
   const [showMobileFilterPanel, setShowMobileFilterPanel] = useState(false);
 
-  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gCount}`;
+  const SESSION_KEY = `student_practice_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   // Timer countdown
   useEffect(() => {
@@ -536,7 +613,11 @@ export function StudentPracticeExamPage() {
       };
 
       const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
       const reqSubject = rawSubject;
+      const reqTopic = rawTopic;
+      const reqSubtopic = rawSubtopic;
 
       // Extract numeric exam year if the user picked a specific year
       let numericYear: string | null = null;
@@ -576,30 +657,51 @@ export function StudentPracticeExamPage() {
 
         const initialFetchLimit = Math.min(100, Math.max(gCount * 3, 20));
 
-        // 1. Try with subject + year + selected exam
+        // 1. Try with subject + topic + subtopic + year + selected exam
         const p1 = new URLSearchParams({ limit: String(initialFetchLimit) });
         if (reqSubject) p1.append('subject_name', reqSubject);
+        if (reqTopic) p1.append('topic_name', reqTopic);
+        if (reqSubtopic) p1.append('subtopic_name', reqSubtopic);
         if (numericYear) p1.append('exam_year', numericYear);
         if (targetExam) p1.append('exam_name', targetExam);
 
         await fetchWithParams(p1);
 
-        // 2. Fallback: Relax year if 0 questions found for exact year (strictly keep subject)
-        if (fetchedMap.size === 0 && reqSubject && numericYear) {
+        // 2. Fallback: Relax year if 0 questions found for exact year
+        if (fetchedMap.size === 0 && numericYear) {
           const p2 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          p2.append('subject_name', reqSubject);
+          if (reqSubject) p2.append('subject_name', reqSubject);
+          if (reqTopic) p2.append('topic_name', reqTopic);
+          if (reqSubtopic) p2.append('subtopic_name', reqSubtopic);
           if (targetExam) p2.append('exam_name', targetExam);
           await fetchWithParams(p2);
         }
 
-        // 3. Fallback: Relax exam filter if still 0 questions found while strictly keeping subject
-        if (fetchedMap.size === 0 && reqSubject && targetExam) {
+        // 3. Fallback: Relax subtopic filter if 0 questions found
+        if (fetchedMap.size === 0 && reqSubtopic) {
           const p3 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          p3.append('subject_name', reqSubject);
+          if (reqSubject) p3.append('subject_name', reqSubject);
+          if (reqTopic) p3.append('topic_name', reqTopic);
+          if (targetExam) p3.append('exam_name', targetExam);
           await fetchWithParams(p3);
         }
 
-        // 4. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
+        // 4. Fallback: Relax topic filter if 0 questions found
+        if (fetchedMap.size === 0 && reqTopic) {
+          const p4 = new URLSearchParams({ limit: String(initialFetchLimit) });
+          if (reqSubject) p4.append('subject_name', reqSubject);
+          if (targetExam) p4.append('exam_name', targetExam);
+          await fetchWithParams(p4);
+        }
+
+        // 5. Fallback: Relax exam/subject filter if still 0 questions found
+        if (fetchedMap.size === 0 && reqSubject && targetExam) {
+          const p5 = new URLSearchParams({ limit: String(initialFetchLimit) });
+          p5.append('subject_name', reqSubject);
+          await fetchWithParams(p5);
+        }
+
+        // 6. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
         if (fetchedMap.size === 0 && !rawSubject) {
           const pAll = new URLSearchParams({ limit: String(initialFetchLimit) });
           if (numericYear) pAll.append('exam_year', numericYear);
@@ -1497,6 +1599,313 @@ export function StudentPracticeExamPage() {
                   )}
                 </div>
 
+                {/* Filter: Topic Focus */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Topic Focus
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'topic' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 260,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search topic..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {['All Topics', ...availableTopicsList]
+                          .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => {
+                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => {
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Topics') {
+                                    current.delete('topic');
+                                  } else {
+                                    current.set('topic', opt);
+                                  }
+                                  current.delete('subtopic');
+                                  navigate(`/practice-exam?${current.toString()}`);
+                                  setActiveDropdown(null);
+                                }}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter: Subtopic Focus */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Subtopic Focus
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'subtopic' ? null : 'subtopic');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {activeDropdown === 'subtopic' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 270,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search subtopic..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {['All Subtopics', ...availableSubtopicsList]
+                          .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => {
+                            const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => {
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Subtopics') {
+                                    current.delete('subtopic');
+                                  } else {
+                                    current.set('subtopic', opt);
+                                  }
+                                  navigate(`/practice-exam?${current.toString()}`);
+                                  setActiveDropdown(null);
+                                }}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Filter 4: Difficulty */}
                 <div style={{ position: 'relative', flex: 1, minWidth: 130 }}>
                   <label
@@ -1918,6 +2327,313 @@ export function StudentPracticeExamPage() {
                             {gSubject === opt && <Check size={14} color="#1E3A8A" />}
                           </div>
                         ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter: Topic Focus */}
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <label
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    display: 'block',
+                  }}
+                >
+                  Topic Focus
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                    setFilterSearchQuery('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    borderRadius: 0,
+                    border:
+                      activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                    color: '#172033',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow:
+                      activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    color="#64748B"
+                    style={{
+                      transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {activeDropdown === 'topic' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: 260,
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 0,
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                      padding: 10,
+                      zIndex: 100,
+                    }}
+                  >
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search
+                        size={14}
+                        color="#94A3B8"
+                        style={{ position: 'absolute', left: 10, top: 10 }}
+                      />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search topic..."
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px 7px 30px',
+                          borderRadius: 0,
+                          border: '1px solid #E2E8F0',
+                          fontSize: 12,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#F8FAFC',
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      {['All Topics', ...availableTopicsList]
+                        .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                        .map((opt) => {
+                          const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => {
+                                const current = new URLSearchParams(searchParams);
+                                if (opt === 'All Topics') {
+                                  current.delete('topic');
+                                } else {
+                                  current.set('topic', opt);
+                                }
+                                current.delete('subtopic');
+                                navigate(`/practice-exam?${current.toString()}`);
+                                setActiveDropdown(null);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <span>{opt}</span>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter: Subtopic Focus */}
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <label
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    display: 'block',
+                  }}
+                >
+                  Subtopic Focus
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(activeDropdown === 'subtopic' ? null : 'subtopic');
+                    setFilterSearchQuery('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    borderRadius: 0,
+                    border:
+                      activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
+                    color: '#172033',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow:
+                      activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    color="#64748B"
+                    style={{
+                      transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {activeDropdown === 'subtopic' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: 270,
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 0,
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                      padding: 10,
+                      zIndex: 100,
+                    }}
+                  >
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search
+                        size={14}
+                        color="#94A3B8"
+                        style={{ position: 'absolute', left: 10, top: 10 }}
+                      />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search subtopic..."
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px 7px 30px',
+                          borderRadius: 0,
+                          border: '1px solid #E2E8F0',
+                          fontSize: 12,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#F8FAFC',
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      {['All Subtopics', ...availableSubtopicsList]
+                        .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                        .map((opt) => {
+                          const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => {
+                                const current = new URLSearchParams(searchParams);
+                                if (opt === 'All Subtopics') {
+                                  current.delete('subtopic');
+                                } else {
+                                  current.set('subtopic', opt);
+                                }
+                                navigate(`/practice-exam?${current.toString()}`);
+                                setActiveDropdown(null);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <span>{opt}</span>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}

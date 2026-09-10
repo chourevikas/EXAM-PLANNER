@@ -220,6 +220,7 @@ async def create_question(
 async def list_recommended_questions(
     subject_name: Optional[str] = Query(default=None, description="Filter by Subject Name (substring match)"),
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
+    subtopic_name: Optional[str] = Query(default=None, description="Filter by Subtopic Name (substring match)"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
     exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
     language: str = Query(default="en", description="Target Language for response text"),
@@ -240,6 +241,7 @@ async def list_recommended_questions(
     res = await service.list_recommended_questions(
         subject_name=subject_name,
         topic_name=topic_name,
+        subtopic_name=subtopic_name,
         exam_name=exam_name,
         exclude_ids=exclude_ids,
         language=lang_code,

@@ -27,7 +27,7 @@ import {
 import { SUPPORTED_LANGUAGES } from '../constants/languages';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { saveGuestAttempt } from '../utils/guestStorage';
-import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode } from '../services/examService';
+import { fetchMasterSyllabus, fetchExamsByYear, verifySyllabusNode, listExams } from '../services/examService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { formatEnum } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
@@ -39,7 +39,9 @@ export function GuestExamPage() {
   // URL Params (Max 10 questions allowed)
   const gExam = searchParams.get('exam') || 'UPSC CSE';
   const gYear = searchParams.get('year') || '';
-  const gSubject = searchParams.get('subject') || searchParams.get('topic') || '';
+  const gSubject = searchParams.get('subject') || '';
+  const gTopic = searchParams.get('topic') || '';
+  const gSubtopic = searchParams.get('subtopic') || '';
   const gDifficulty = searchParams.get('difficulty') || '';
   const rawCount = parseInt(searchParams.get('count') || '10', 10);
   const gCount = Math.min(10, Math.max(1, rawCount));
@@ -53,12 +55,94 @@ export function GuestExamPage() {
     Record<string, Record<string, string[]>>
   >({});
   const [availableYearsList, setAvailableYearsList] = useState<number[]>([]);
+  const [availableExams, setAvailableExams] = useState<string[]>([]);
+
+  // Computed dynamic list of subjects directly from live master syllabus hierarchy
+  const availableSubjectsList = useMemo(() => {
+    if (subjectsList && subjectsList.length > 0) {
+      return Array.from(new Set(subjectsList.filter((s) => s !== 'All Subjects'))).sort();
+    }
+    if (threeLevelHierarchy && Object.keys(threeLevelHierarchy).length > 0) {
+      return Object.keys(threeLevelHierarchy).sort();
+    }
+    return [];
+  }, [subjectsList, threeLevelHierarchy]);
+
+  // Computed dynamic list of topics based on selected subject
+  const availableTopicsList = useMemo(() => {
+    if (!gSubject || gSubject.startsWith('All Subjects')) {
+      const topicsSet = new Set<string>();
+      Object.values(threeLevelHierarchy).forEach((topicsMap) => {
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+        }
+      });
+      return Array.from(topicsSet).sort();
+    } else {
+      const topicsMap = threeLevelHierarchy[gSubject];
+      if (topicsMap && typeof topicsMap === 'object') {
+        return Object.keys(topicsMap).sort();
+      }
+      return [];
+    }
+  }, [gSubject, threeLevelHierarchy]);
+
+  // Computed dynamic list of subtopics based on selected subject and topic
+  const availableSubtopicsList = useMemo(() => {
+    if (gTopic && !gTopic.startsWith('All Topics')) {
+      if (gSubject && !gSubject.startsWith('All Subjects')) {
+        const subList = threeLevelHierarchy[gSubject]?.[gTopic] || [];
+        return subList.filter((st) => !st.startsWith('All Subtopics')).sort();
+      } else {
+        const subSet = new Set<string>();
+        Object.values(threeLevelHierarchy).forEach((topicsMap) => {
+          if (topicsMap && topicsMap[gTopic]) {
+            topicsMap[gTopic].forEach((st) => {
+              if (!st.startsWith('All Subtopics')) subSet.add(st);
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      }
+    } else {
+      if (gSubject && !gSubject.startsWith('All Subjects')) {
+        const topicsMap = threeLevelHierarchy[gSubject] || {};
+        const subSet = new Set<string>();
+        Object.values(topicsMap).forEach((subList) => {
+          if (Array.isArray(subList)) {
+            subList.forEach((st) => {
+              if (!st.startsWith('All Subtopics')) subSet.add(st);
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      } else {
+        const subSet = new Set<string>();
+        Object.values(threeLevelHierarchy).forEach((topicsMap) => {
+          if (topicsMap && typeof topicsMap === 'object') {
+            Object.values(topicsMap).forEach((subList) => {
+              if (Array.isArray(subList)) {
+                subList.forEach((st) => {
+                  if (!st.startsWith('All Subtopics')) subSet.add(st);
+                });
+              }
+            });
+          }
+        });
+        return Array.from(subSet).sort();
+      }
+    }
+  }, [gSubject, gTopic, threeLevelHierarchy]);
 
   // Fetch dynamic master syllabus taxonomy (/api/v1/syllabus) & exams by year (/api/v1/exams/by-year)
   useEffect(() => {
     async function loadTaxonomyAndYears() {
       try {
-        const syllabusData = await fetchMasterSyllabus();
+        const [syllabusData, yearsData, publishedExams] = await Promise.all([
+          fetchMasterSyllabus().catch(() => null),
+          fetchExamsByYear().catch(() => null),
+          listExams('PUBLISHED').catch(() => []),
+        ]);
         if (syllabusData) {
           if (
             syllabusData.subjects &&
@@ -80,9 +164,16 @@ export function GuestExamPage() {
           }
         }
 
-        const yearsData = await fetchExamsByYear();
         if (yearsData && Array.isArray(yearsData.years)) {
           setAvailableYearsList(yearsData.years);
+        }
+        if (publishedExams && publishedExams.length > 0) {
+          const names = Array.from(
+            new Set(
+              publishedExams.map((e: any) => e.title || e.exam_name || e.code).filter(Boolean),
+            ),
+          ) as string[];
+          if (names.length > 0) setAvailableExams(names);
         }
       } catch (err) {
         console.warn('Failed to fetch syllabus taxonomy or exam years:', err);
@@ -156,11 +247,11 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject filters change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic filters change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject]);
+  }, [gExam, gSubject, gTopic, gSubtopic]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isTabletOrBelow } = useBreakpoint();
@@ -170,7 +261,7 @@ export function GuestExamPage() {
   const [filterSearchQuery, setFilterSearchQuery] = useState('');
   const [isFocusMode, setIsFocusMode] = useState(false);
 
-  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gCount}`;
+  const SESSION_KEY = `guest_exam_session_${gExam}_${gYear}_${gSubject}_${gTopic}_${gSubtopic}_${gCount}`;
 
   // Background prefetch function for dynamic recommended questions
   const prefetchRecommendations = useCallback(
@@ -191,6 +282,8 @@ export function GuestExamPage() {
         const excludeIdsParam = Array.from(existingIds).join(',');
 
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+        const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+        const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
@@ -202,6 +295,8 @@ export function GuestExamPage() {
 
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
         if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (rawTopic) subjParams.append('topic_name', rawTopic);
+        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
@@ -426,7 +521,11 @@ export function GuestExamPage() {
       };
 
       const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
+      const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
+      const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
       const reqSubject = rawSubject;
+      const reqTopic = rawTopic;
+      const reqSubtopic = rawSubtopic;
 
       const targetExam = gExam
         ? gExam.toLowerCase().includes('upsc')
@@ -443,29 +542,50 @@ export function GuestExamPage() {
           ? rawYearDigits
           : null;
 
-      // 1. Try with subject + year + selected exam
+      // 1. Try with subject + topic + subtopic + year + selected exam
       const p1 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
       if (reqSubject) p1.append('subject_name', reqSubject);
+      if (reqTopic) p1.append('topic_name', reqTopic);
+      if (reqSubtopic) p1.append('subtopic_name', reqSubtopic);
       if (validYear) p1.append('exam_year', validYear);
       if (targetExam) p1.append('exam_name', targetExam);
       await fetchWithParams(p1);
 
-      // 2. Fallback: Relax year if 0 questions found for exact year (strictly keep subject)
-      if (fetchedMap.size === 0 && reqSubject && validYear) {
+      // 2. Fallback: Relax year if 0 questions found for exact year
+      if (fetchedMap.size === 0 && validYear) {
         const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p2.append('subject_name', reqSubject);
+        if (reqSubject) p2.append('subject_name', reqSubject);
+        if (reqTopic) p2.append('topic_name', reqTopic);
+        if (reqSubtopic) p2.append('subtopic_name', reqSubtopic);
         if (targetExam) p2.append('exam_name', targetExam);
         await fetchWithParams(p2);
       }
 
-      // 3. Fallback: Relax exam filter if still 0 questions found while strictly keeping subject
-      if (fetchedMap.size === 0 && reqSubject && targetExam) {
+      // 3. Fallback: Relax subtopic filter if 0 questions found
+      if (fetchedMap.size === 0 && reqSubtopic) {
         const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p3.append('subject_name', reqSubject);
+        if (reqSubject) p3.append('subject_name', reqSubject);
+        if (reqTopic) p3.append('topic_name', reqTopic);
+        if (targetExam) p3.append('exam_name', targetExam);
         await fetchWithParams(p3);
       }
 
-      // 4. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
+      // 4. Fallback: Relax topic filter if 0 questions found
+      if (fetchedMap.size === 0 && reqTopic) {
+        const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+        if (reqSubject) p4.append('subject_name', reqSubject);
+        if (targetExam) p4.append('exam_name', targetExam);
+        await fetchWithParams(p4);
+      }
+
+      // 5. Fallback: Relax exam/subject filter if still 0 questions found
+      if (fetchedMap.size === 0 && reqSubject && targetExam) {
+        const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+        p5.append('subject_name', reqSubject);
+        await fetchWithParams(p5);
+      }
+
+      // 6. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
       if (fetchedMap.size === 0 && !rawSubject) {
         const pAll = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
         if (validYear) pAll.append('exam_year', validYear);
@@ -1633,18 +1753,7 @@ export function GuestExamPage() {
                           gap: 2,
                         }}
                       >
-                        {['All Subjects', ...(subjectsList.length > 0
-                          ? subjectsList.filter((s) => s !== 'History')
-                          : Object.keys(threeLevelHierarchy).length > 0
-                            ? Object.keys(threeLevelHierarchy).filter((s) => s !== 'History')
-                            : [
-                                'Polity',
-                                'Economy',
-                                'Geography',
-                                'Environment',
-                                'Science & Technology',
-                              ]
-                        )]
+                        {['All Subjects', ...availableSubjectsList]
                           .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                           .map((opt) => {
                             const isSelected = (opt === 'All Subjects' && !gSubject) || gSubject === opt;
@@ -1660,6 +1769,315 @@ export function GuestExamPage() {
                                   }
                                   current.delete('topic');
                                   current.delete('subtopic');
+                                  navigate(`/guest-exam?${current.toString()}`);
+                                  setActiveDropdown(null);
+                                }}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter: Topic */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Topic Focus
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {/* Topic Popover */}
+                  {activeDropdown === 'topic' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 260,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search topic..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {['All Topics', ...availableTopicsList]
+                          .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => {
+                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => {
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Topics') {
+                                    current.delete('topic');
+                                  } else {
+                                    current.set('topic', opt);
+                                  }
+                                  current.delete('subtopic');
+                                  navigate(`/guest-exam?${current.toString()}`);
+                                  setActiveDropdown(null);
+                                }}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isSelected)
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filter: Subtopic */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                  <label
+                    style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: 4,
+                      display: 'block',
+                    }}
+                  >
+                    Subtopic Focus
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(activeDropdown === 'subtopic' ? null : 'subtopic');
+                      setFilterSearchQuery('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 0,
+                      border:
+                        activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                      backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
+                      color: '#172033',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      boxShadow:
+                        activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <span
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                    >
+                      {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      color="#64748B"
+                      style={{
+                        transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </button>
+
+                  {/* Subtopic Popover */}
+                  {activeDropdown === 'subtopic' && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        left: 0,
+                        width: 270,
+                        maxWidth: 'calc(100vw - 32px)',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: 0,
+                        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                        padding: 10,
+                        zIndex: 100,
+                      }}
+                    >
+                      <div style={{ position: 'relative', marginBottom: 8 }}>
+                        <Search
+                          size={14}
+                          color="#94A3B8"
+                          style={{ position: 'absolute', left: 10, top: 10 }}
+                        />
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Search subtopic..."
+                          value={filterSearchQuery}
+                          onChange={(e) => setFilterSearchQuery(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 10px 7px 30px',
+                            borderRadius: 0,
+                            border: '1px solid #E2E8F0',
+                            fontSize: 12,
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#F8FAFC',
+                          }}
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: 'auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                        }}
+                      >
+                        {['All Subtopics', ...availableSubtopicsList]
+                          .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                          .map((opt) => {
+                            const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => {
+                                  const current = new URLSearchParams(searchParams);
+                                  if (opt === 'All Subtopics') {
+                                    current.delete('subtopic');
+                                  } else {
+                                    current.set('subtopic', opt);
+                                  }
                                   navigate(`/guest-exam?${current.toString()}`);
                                   setActiveDropdown(null);
                                 }}
@@ -2102,30 +2520,21 @@ export function GuestExamPage() {
                         gap: 2,
                       }}
                     >
-                      {['All Subjects', ...(subjectsList.length > 0
-                        ? subjectsList.filter((s) => s !== 'History')
-                        : Object.keys(threeLevelHierarchy).length > 0
-                          ? Object.keys(threeLevelHierarchy).filter((s) => s !== 'History')
-                          : [
-                              'Modern History',
-                              'Ancient History',
-                              'Medieval History',
-                              'Art & Culture',
-                              'Polity',
-                              'Economy',
-                              'Geography',
-                              'Environment',
-                              'Science & Technology',
-                            ]
-                      )]
+                      {['All Subjects', ...availableSubjectsList]
                         .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                         .map((opt) => (
                           <div
                             key={opt}
                             onClick={() => {
-                              navigate(
-                                `/guest-exam?exam=${encodeURIComponent(gExam)}&subject=${encodeURIComponent(opt)}&count=${gCount}`,
-                              );
+                              const current = new URLSearchParams(searchParams);
+                              if (opt === 'All Subjects') {
+                                current.delete('subject');
+                              } else {
+                                current.set('subject', opt);
+                              }
+                              current.delete('topic');
+                              current.delete('subtopic');
+                              navigate(`/guest-exam?${current.toString()}`);
                               setActiveDropdown(null);
                             }}
                             style={{
@@ -2153,6 +2562,315 @@ export function GuestExamPage() {
                             {gSubject === opt && <Check size={14} color="#1E3A8A" />}
                           </div>
                         ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter: Topic */}
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <label
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    display: 'block',
+                  }}
+                >
+                  Topic Focus
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                    setFilterSearchQuery('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    borderRadius: 0,
+                    border:
+                      activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#F8FAFC',
+                    color: '#172033',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow:
+                      activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    color="#64748B"
+                    style={{
+                      transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {/* Topic Popover */}
+                {activeDropdown === 'topic' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: 260,
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 0,
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                      padding: 10,
+                      zIndex: 100,
+                    }}
+                  >
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search
+                        size={14}
+                        color="#94A3B8"
+                        style={{ position: 'absolute', left: 10, top: 10 }}
+                      />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search topic..."
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px 7px 30px',
+                          borderRadius: 0,
+                          border: '1px solid #E2E8F0',
+                          fontSize: 12,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#F8FAFC',
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      {['All Topics', ...availableTopicsList]
+                        .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                        .map((opt) => {
+                          const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => {
+                                const current = new URLSearchParams(searchParams);
+                                if (opt === 'All Topics') {
+                                  current.delete('topic');
+                                } else {
+                                  current.set('topic', opt);
+                                }
+                                current.delete('subtopic');
+                                navigate(`/guest-exam?${current.toString()}`);
+                                setActiveDropdown(null);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <span>{opt}</span>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Filter: Subtopic */}
+              <div style={{ position: 'relative', flex: 1.2, minWidth: 160 }}>
+                <label
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: '#64748B',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    display: 'block',
+                  }}
+                >
+                  Subtopic Focus
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(activeDropdown === 'subtopic' ? null : 'subtopic');
+                    setFilterSearchQuery('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    borderRadius: 0,
+                    border:
+                      activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                    backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#F8FAFC',
+                    color: '#172033',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow:
+                      activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
+                    {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    color="#64748B"
+                    style={{
+                      transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </button>
+
+                {/* Subtopic Popover */}
+                {activeDropdown === 'subtopic' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      left: 0,
+                      width: 270,
+                      maxWidth: 'calc(100vw - 32px)',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 0,
+                      boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                      padding: 10,
+                      zIndex: 100,
+                    }}
+                  >
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search
+                        size={14}
+                        color="#94A3B8"
+                        style={{ position: 'absolute', left: 10, top: 10 }}
+                      />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Search subtopic..."
+                        value={filterSearchQuery}
+                        onChange={(e) => setFilterSearchQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px 7px 30px',
+                          borderRadius: 0,
+                          border: '1px solid #E2E8F0',
+                          fontSize: 12,
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#F8FAFC',
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      {['All Subtopics', ...availableSubtopicsList]
+                        .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                        .map((opt) => {
+                          const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => {
+                                const current = new URLSearchParams(searchParams);
+                                if (opt === 'All Subtopics') {
+                                  current.delete('subtopic');
+                                } else {
+                                  current.set('subtopic', opt);
+                                }
+                                navigate(`/guest-exam?${current.toString()}`);
+                                setActiveDropdown(null);
+                              }}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <span>{opt}</span>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
