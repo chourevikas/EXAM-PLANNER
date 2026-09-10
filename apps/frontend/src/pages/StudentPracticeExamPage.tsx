@@ -8,12 +8,13 @@ import {
   CheckCircle2,
   X,
   Lightbulb,
+  Loader2,
 } from 'lucide-react';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { RecommendedQuestionsPanel } from '../components/exam/RecommendedQuestionsPanel';
+import { RecommendedQuestionsPanel, RecFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/examService';
@@ -279,6 +280,8 @@ export function StudentPracticeExamPage() {
     'all',
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isFilterRefreshing, setIsFilterRefreshing] = useState(false);
+  const isInitialLoadRef = React.useRef(true);
 
   // Collapsible Left Drawer State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -330,11 +333,27 @@ export function StudentPracticeExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic filters change
+  const [recFilterToggles, setRecFilterToggles] = useState<RecFilterToggles>({
+    subject: true,
+    topic: true,
+    subtopic: true,
+    difficulty: true,
+  });
+
+  const toggleRecFilter = useCallback((key: keyof RecFilterToggles) => {
+    setRecFilterToggles((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      setIsRecsExhausted(false);
+      setRecommendedPool([]);
+      return updated;
+    });
+  }, []);
+
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -364,6 +383,7 @@ export function StudentPracticeExamPage() {
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
         const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
         const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+        const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
@@ -374,9 +394,10 @@ export function StudentPracticeExamPage() {
         const neededCount = Math.max(1, 15 - currentPool.length);
 
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
-        if (rawSubject) subjParams.append('subject_name', rawSubject);
-        if (rawTopic) subjParams.append('topic_name', rawTopic);
-        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (recFilterToggles.subject && rawSubject) subjParams.append('subject_name', rawSubject);
+        if (recFilterToggles.topic && rawTopic) subjParams.append('topic_name', rawTopic);
+        if (recFilterToggles.subtopic && rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (recFilterToggles.difficulty && rawDiff) subjParams.append('difficulty', rawDiff);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
@@ -493,7 +514,7 @@ export function StudentPracticeExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gSubtopic, gExam, language, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recFilterToggles, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Fires on mount (allQuestions is still [] at that point) so the
@@ -654,7 +675,11 @@ export function StudentPracticeExamPage() {
   // Load Real Practice Questions from Database using Live Syllabus APIs
   useEffect(() => {
     async function loadPracticeQuestions() {
-      setIsLoading(true);
+      if (isInitialLoadRef.current) {
+        setIsLoading(true);
+      } else {
+        setIsFilterRefreshing(true);
+      }
       const fetchedMap = new Map<string, any>();
 
       // 1. Fetch Master Syllabus Tree & Published Exams from API
@@ -910,7 +935,12 @@ export function StudentPracticeExamPage() {
         setPalette([]);
       }
 
-      setIsLoading(false);
+      if (isInitialLoadRef.current) {
+        setIsLoading(false);
+        isInitialLoadRef.current = false;
+      } else {
+        setIsFilterRefreshing(false);
+      }
     }
 
     loadPracticeQuestions();
@@ -1463,15 +1493,32 @@ export function StudentPracticeExamPage() {
                     width: 32,
                     height: 32,
                     borderRadius: 0,
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: isFilterRefreshing ? '#EFF6FF' : '#F8FAFC',
                     color: '#1E3A8A',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <SlidersHorizontal size={16} />
+                  {isFilterRefreshing ? (
+                    <Loader2 size={16} className="animate-spin" color="#2563EB" />
+                  ) : (
+                    <SlidersHorizontal size={16} />
+                  )}
                 </div>
+                {isFilterRefreshing && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#2563EB',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Updating questions...
+                  </span>
+                )}
               </div>
             </div>
 
@@ -2922,6 +2969,8 @@ export function StudentPracticeExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
+              recFilterToggles={recFilterToggles}
+              onToggleRecFilter={toggleRecFilter}
             />
           </div>
         </div>
@@ -3006,6 +3055,8 @@ export function StudentPracticeExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
+              recFilterToggles={recFilterToggles}
+              onToggleRecFilter={toggleRecFilter}
             />
           </aside>
         )}

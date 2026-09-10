@@ -45,13 +45,14 @@ class QuestionRepository:
         paper_set_code: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,
+        difficulty: Optional[str] = None,
         exclude_ids: Optional[str] = None,
         skip: int = 0,
         limit: int = 20,
     ) -> Tuple[List[Question], int]:
         """
         Executes multi-filtered query across questions, hierarchy, and exams.
-        Supports filtering by IDs, names, codes, year, stage, and fuzzy exam name match.
+        Supports filtering by IDs, names, codes, year, stage, difficulty, and fuzzy exam name match.
         Returns tuple of (questions_list, total_count).
         """
         # Base ID query to avoid PostgreSQL DISTINCT on JSON columns while supporting ORDER BY question_number_in_paper
@@ -97,6 +98,8 @@ class QuestionRepository:
             id_stmt = id_stmt.where(func.lower(Exam.stage) == stage.lower())
         if exam_name:
             id_stmt = id_stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
+        if difficulty and difficulty.strip() and difficulty.strip().lower() not in ("all", "all levels", "all difficulties"):
+            id_stmt = id_stmt.where(func.upper(Question.difficulty) == difficulty.strip().upper())
 
         # Hierarchy Filters with cross-level taxonomy matching (supports comma-separated multi-select)
         if subject_id:

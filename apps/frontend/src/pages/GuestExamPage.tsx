@@ -4,7 +4,7 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { RecommendedQuestionsPanel } from '../components/exam/RecommendedQuestionsPanel';
+import { RecommendedQuestionsPanel, RecFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import {
   Loader2,
@@ -324,6 +324,8 @@ export function GuestExamPage() {
     'all',
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isFilterRefreshing, setIsFilterRefreshing] = useState(false);
+  const isInitialLoadRef = React.useRef(true);
 
   // Collapsible Left Drawer State (CLOSED BY DEFAULT)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -373,11 +375,27 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic filters change
+  const [recFilterToggles, setRecFilterToggles] = useState<RecFilterToggles>({
+    subject: true,
+    topic: true,
+    subtopic: true,
+    difficulty: true,
+  });
+
+  const toggleRecFilter = useCallback((key: keyof RecFilterToggles) => {
+    setRecFilterToggles((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      setIsRecsExhausted(false);
+      setRecommendedPool([]);
+      return updated;
+    });
+  }, []);
+
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isTabletOrBelow } = useBreakpoint();
@@ -410,6 +428,7 @@ export function GuestExamPage() {
         const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
         const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
         const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
+        const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
         const targetExam = gExam
           ? gExam.toLowerCase().includes('upsc')
             ? 'upsc'
@@ -417,12 +436,16 @@ export function GuestExamPage() {
           : '';
 
         let newFetched: any[] = [];
-        const neededCount = Math.max(1, 15 - currentPool.length);
+        const maxGuestRecs = Math.min(10, gCount);
+        const neededCount = Math.max(1, maxGuestRecs - currentPool.length);
+
+        if (neededCount <= 0 && currentPool.length >= maxGuestRecs) return;
 
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
-        if (rawSubject) subjParams.append('subject_name', rawSubject);
-        if (rawTopic) subjParams.append('topic_name', rawTopic);
-        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (recFilterToggles.subject && rawSubject) subjParams.append('subject_name', rawSubject);
+        if (recFilterToggles.topic && rawTopic) subjParams.append('topic_name', rawTopic);
+        if (recFilterToggles.subtopic && rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (recFilterToggles.difficulty && rawDiff) subjParams.append('difficulty', rawDiff);
         if (targetExam) subjParams.append('exam_name', targetExam);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
@@ -496,7 +519,7 @@ export function GuestExamPage() {
               }
             }
 
-            while (newList.length > 15) {
+            while (newList.length > maxGuestRecs) {
               let evictIdx = -1;
               const currentExpanded = expandedRecIdRef.current;
               const currentResponses = recUserResponsesRef.current;
@@ -536,7 +559,7 @@ export function GuestExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gSubtopic, gExam, language, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recFilterToggles, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Timer countdown
@@ -564,7 +587,11 @@ export function GuestExamPage() {
   // Fetch Guest Questions strictly from DB
   useEffect(() => {
     async function loadGuestQuestions() {
-      setIsLoading(true);
+      if (isInitialLoadRef.current) {
+        setIsLoading(true);
+      } else {
+        setIsFilterRefreshing(true);
+      }
 
       const fetchedMap = new Map<string, any>();
 
@@ -799,7 +826,12 @@ export function GuestExamPage() {
         setPalette([]);
       }
 
-      setIsLoading(false);
+      if (isInitialLoadRef.current) {
+        setIsLoading(false);
+        isInitialLoadRef.current = false;
+      } else {
+        setIsFilterRefreshing(false);
+      }
     }
 
     loadGuestQuestions();
@@ -929,8 +961,8 @@ export function GuestExamPage() {
     fetchRecommendationSolution(rec.question_id);
   };
 
-  // All up to 15 recommended items to display
-  const displayRecs = recommendedPool;
+  // All up to 10 recommended items to display for Guest mode
+  const displayRecs = recommendedPool.slice(0, 10);
 
   // Switch Question
   const handleSelectQuestion = (idx: number) => {
@@ -1644,15 +1676,32 @@ export function GuestExamPage() {
                     width: 32,
                     height: 32,
                     borderRadius: 0,
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: isFilterRefreshing ? '#EFF6FF' : '#F8FAFC',
                     color: '#1E3A8A',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <SlidersHorizontal size={16} />
+                  {isFilterRefreshing ? (
+                    <Loader2 size={16} className="animate-spin" color="#2563EB" />
+                  ) : (
+                    <SlidersHorizontal size={16} />
+                  )}
                 </div>
+                {isFilterRefreshing && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#2563EB',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Updating questions...
+                  </span>
+                )}
               </div>
             </div>
 
@@ -3153,6 +3202,8 @@ export function GuestExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
+              recFilterToggles={recFilterToggles}
+              onToggleRecFilter={toggleRecFilter}
             />
           </div>
         </div>
@@ -3234,6 +3285,8 @@ export function GuestExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
+              recFilterToggles={recFilterToggles}
+              onToggleRecFilter={toggleRecFilter}
             />
           </aside>
         )}
