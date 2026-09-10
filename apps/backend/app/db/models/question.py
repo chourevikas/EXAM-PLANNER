@@ -44,9 +44,6 @@ class Question(SQLModel, table=True):
     subtopic_id: Optional[int] = Field(
         default=None, foreign_key="subtopics.id", ondelete="SET NULL", index=True
     )
-    passage_id: Optional[int] = Field(
-        default=None, foreign_key="passages.id", ondelete="SET NULL", index=True
-    )
 
     section_code: str = Field(default="DEFAULT", index=True, max_length=50)
     paper_set_code: str = Field(

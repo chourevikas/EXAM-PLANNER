@@ -7,6 +7,7 @@ from app.db.session import get_async_session
 from app.hitl.review_service import HumanReviewService
 
 from app.db.models import LanguageCode, QuestionStatus
+from app.core.languages import parse_language
 from app.db.models.user import User, UserRole
 from app.core.deps import require_roles_or_permission
 from app.schemas.question import ExamReviewQuestionsResponse
@@ -40,7 +41,7 @@ class ApproveQuestionRequest(BaseModel):
 )
 async def get_exam_questions_review(
     exam_id: int | str,
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    language: str = Query(default="en", description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
@@ -53,6 +54,7 @@ async def get_exam_questions_review(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Exam not found.")
 
+    lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
@@ -60,7 +62,7 @@ async def get_exam_questions_review(
         str(eid),
         page=page,
         limit=limit,
-        lang=str(language.value if hasattr(language, "value") else language),
+        lang=lang_code.value,
         status=str(status.value if hasattr(status, "value") else status) if status else None,
     )
     cached_data = await cache.get(cache_key)
@@ -72,7 +74,7 @@ async def get_exam_questions_review(
         exam_id=eid,
         page=page,
         limit=limit,
-        language=language,
+        language=lang_code,
         status=status,
     )
     if review_res is not None:

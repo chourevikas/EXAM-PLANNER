@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException
 from app.db.session import get_async_session
 from app.db.models import QuestionStatus, QuestionSourceType, LanguageCode
+from app.core.languages import parse_language
 from app.schemas.question import (
     QuestionUpdatePayload,
     QuestionCreatePayload,
@@ -36,7 +37,7 @@ async def list_questions(
     paper_set_code: Optional[str] = Query(default=None, description="Filter by Paper Set Code e.g. SET_A"),
     stage: Optional[str] = Query(default=None, description="Filter by Stage e.g. prelims"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language for response text"),
+    language: str = Query(default="en", description="Target Language for response text (ISO code 'en', 'hi' or Enum name 'ENGLISH')"),
     include_solutions: bool = Query(default=False, description="Whether to include full solution explanations and option distractor analyses"),
     exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -49,6 +50,7 @@ async def list_questions(
     with pagination ordered by question number in paper.
     By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
+    lang_code = parse_language(language)
     service = QuestionService(session)
     res = await service.list_questions_paginated(
         subject_id=subject_id,
@@ -67,7 +69,7 @@ async def list_questions(
         paper_set_code=paper_set_code,
         stage=stage,
         status=status,
-        language=language,
+        language=lang_code,
         include_solutions=include_solutions,
         exclude_ids=exclude_ids,
         page=page,
@@ -220,7 +222,7 @@ async def list_recommended_questions(
     topic_name: Optional[str] = Query(default=None, description="Filter by Topic Name (substring match)"),
     exam_name: Optional[str] = Query(default=None, description="Filter by Exam Name e.g. upsc (substring match)"),
     exclude_ids: Optional[str] = Query(default=None, description="Comma-separated Question IDs to exclude from results"),
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language for response text"),
+    language: str = Query(default="en", description="Target Language for response text"),
     limit: int = Query(default=15, ge=1, le=50, description="Max recommended questions to return"),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -233,13 +235,14 @@ async def list_recommended_questions(
     GET /questions/{question_id}/solution only when a recommendation is
     actually revealed.
     """
+    lang_code = parse_language(language)
     service = QuestionService(session)
     res = await service.list_recommended_questions(
         subject_name=subject_name,
         topic_name=topic_name,
         exam_name=exam_name,
         exclude_ids=exclude_ids,
-        language=language,
+        language=lang_code,
         limit=limit,
     )
     return JSONResponse(content=res)
@@ -248,7 +251,7 @@ async def list_recommended_questions(
 @router.get("/{question_id}", response_model=QuestionDetailResponse, summary="Get Question Detail by ID")
 async def get_question(
     question_id: int | str,
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    language: str = Query(default="en", description="Target Language"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -260,19 +263,20 @@ async def get_question(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
+    lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
         "questions:detail",
         str(qid_int),
-        lang=str(language.value if hasattr(language, "value") else language),
+        lang=lang_code.value,
     )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=cached_data)
 
     service = QuestionService(session)
-    detail = await service.get_question_detail(question_id=qid_int, language=language)
+    detail = await service.get_question_detail(question_id=qid_int, language=lang_code)
     if detail is not None:
         serialized = detail.model_dump(mode="json") if hasattr(detail, "model_dump") else (detail.dict() if hasattr(detail, "dict") else detail)
         await cache.set(cache_key, serialized, ttl_seconds=3600)
@@ -369,7 +373,7 @@ async def get_question_markdown_file(
 @router.get("/{question_id}/solution", summary="Get Full Solution & Distractor Analysis for a Question")
 async def get_question_solution(
     question_id: int | str,
-    language: LanguageCode = LanguageCode.ENGLISH,
+    language: str = Query(default="en", description="Target Language"),
     session: AsyncSession = Depends(get_async_session),
 ):
     """
@@ -381,6 +385,7 @@ async def get_question_solution(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail=f"Question with ID '{question_id}' not found.")
 
+    lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     from app.db.models import Question, QuestionOption, OptionTranslation, QuestionExplanation, QuestionOptionReasoning
     from app.engine.matrices.closeness_evaluator import ClosenessEvaluator
@@ -388,7 +393,7 @@ async def get_question_solution(
     from sqlmodel import col
 
     cache = get_cache()
-    lang_str = language.value if hasattr(language, "value") else str(language)
+    lang_str = lang_code.value
     cache_key = build_cache_key("questions:solution", str(qid_int), lang_str)
     cached_data = await cache.get(cache_key)
     if cached_data is not None:

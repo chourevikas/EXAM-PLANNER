@@ -3,6 +3,10 @@
 Provides ISO-639 codes, Database Enum mappings, English names, native script labels,
 and flexible normalization utilities.
 """
+from typing import Any
+
+from app.db.models.enums import LanguageCode
+
 
 
 class LanguageInfo:
@@ -150,3 +154,19 @@ def get_22_indian_languages() -> list[LanguageInfo]:
 def get_all_supported_languages() -> list[dict[str, str]]:
     """Returns all supported languages as serializable dicts."""
     return [l.to_dict() for l in SUPPORTED_LANGUAGES_LIST]
+
+
+def parse_language(lang_input: Any) -> LanguageCode:
+    """
+    Parses any language representation (ISO code 'en', enum name 'ENGLISH', etc.)
+    into a valid DB LanguageCode enum instance. Defaults to LanguageCode.ENGLISH.
+    """
+    if isinstance(lang_input, LanguageCode):
+        return lang_input
+    _, enum_name = normalize_language(lang_input)
+    try:
+        return LanguageCode[enum_name]
+    except (KeyError, ValueError):
+        return LanguageCode.ENGLISH
+
+

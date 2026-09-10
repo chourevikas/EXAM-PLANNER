@@ -8,6 +8,7 @@ from sqlmodel import select, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.db.session import get_async_session
 from app.db.models import Exam, LanguageCode, QuestionStatus
+from app.core.languages import parse_language
 from app.schemas.question import ExamReviewQuestionsResponse
 from app.schemas.syllabus import CompleteSyllabusResponse
 from app.schemas.question_integrity import ExamIntegrityQuestionsResponse
@@ -106,7 +107,7 @@ async def list_exams(
 )
 async def get_exam_questions_for_review(
     exam_id: int | str,
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Target Language"),
+    language: str = Query(default="en", description="Target Language"),
     status: Optional[QuestionStatus] = Query(default=None, description="Filter by Question status e.g. PENDING_HUMAN_REVIEW or PUBLISHED"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=10, ge=1, le=100, description="Items per page"),
@@ -124,6 +125,7 @@ async def get_exam_questions_for_review(
     except (ValueError, TypeError):
         raise HTTPException(status_code=404, detail="Exam not found")
 
+    lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
@@ -131,7 +133,7 @@ async def get_exam_questions_for_review(
         str(eid_int),
         page=page,
         limit=limit,
-        lang=str(language.value if hasattr(language, "value") else language),
+        lang=lang_code.value,
         status=str(status.value if hasattr(status, "value") else status) if status else None,
     )
     cached_data = await cache.get(cache_key)
@@ -143,7 +145,7 @@ async def get_exam_questions_for_review(
         exam_id=eid_int,
         page=page,
         limit=limit,
-        language=language,
+        language=lang_code,
         status=status,
     )
     if review_res is not None:
@@ -677,7 +679,7 @@ async def get_exam_integrity_questions(
         default=None,
         description="Filter by issue type: 'ALL_ISSUES', 'CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID'",
     ),
-    language: LanguageCode = Query(default=LanguageCode.ENGLISH, description="Language"),
+    language: str = Query(default="en", description="Language"),
     page: int = Query(default=1, ge=1, description="Page number"),
     limit: int = Query(default=250, ge=1, le=500, description="Items per page"),
     force_refresh: bool = Query(default=False, description="Bypass cache and recalculate integrity diagnostics"),
@@ -688,6 +690,7 @@ async def get_exam_integrity_questions(
     Returns categorized questions ('CORRUPTED', 'PARTIALLY_CORRUPTED', 'MISSING_IN_PAPER', 'VALID')
     with precise diagnostic issue descriptions, options/statement status, and pagination.
     """
+    lang_code = parse_language(language)
     from app.cache import get_cache, build_cache_key
     cache = get_cache()
     cache_key = build_cache_key(
@@ -696,7 +699,7 @@ async def get_exam_integrity_questions(
         issue_type or "ALL",
         page=page,
         limit=limit,
-        lang=str(language.value if hasattr(language, "value") else language),
+        lang=lang_code.value,
     )
     if not force_refresh:
         cached_data = await cache.get(cache_key)
@@ -709,7 +712,7 @@ async def get_exam_integrity_questions(
         issue_type=issue_type,
         page=page,
         limit=limit,
-        language=language,
+        language=lang_code,
     )
     serialized = jsonable_encoder(response)
     if not getattr(response, "is_extracting", False):

@@ -922,8 +922,8 @@ async def dismiss_stuck_pipeline(
 )
 async def get_exam_review_questions_admin(
     exam_id: int,
-    language: LanguageCode = Query(
-        default=LanguageCode.ENGLISH, description="Target Language"
+    language: str = Query(
+        default="en", description="Target Language"
     ),
     status: Optional[QuestionStatus] = Query(
         default=None, description="Filter by Question status"
@@ -935,14 +935,16 @@ async def get_exam_review_questions_admin(
 ):
     """Admin review endpoint returning all questions with full solutions, option explanations, and review counters."""
     from app.cache import get_cache, build_cache_key
+    from app.core.languages import parse_language
 
+    lang_code = parse_language(language)
     cache = get_cache()
     cache_key = build_cache_key(
         "admin:review",
         str(exam_id),
         page=page,
         limit=limit,
-        lang=str(language.value if hasattr(language, "value") else language),
+        lang=lang_code.value,
         status=str(status.value if hasattr(status, "value") else status)
         if status
         else None,
@@ -956,7 +958,7 @@ async def get_exam_review_questions_admin(
         exam_id=exam_id,
         page=page,
         limit=limit,
-        language=language,
+        language=lang_code,
         status=status,
     )
     if review_res is not None:

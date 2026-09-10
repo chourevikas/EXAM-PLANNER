@@ -28,6 +28,7 @@ from app.db.models import (
     BloomsLevel,
     DifficultyLevel,
 )
+from app.core.languages import parse_language
 from app.schemas.question import (
     QuestionUpdatePayload,
     QuestionCreatePayload,
@@ -73,12 +74,13 @@ class QuestionService:
         paper_set_code: Optional[str] = None,
         stage: Optional[str] = None,
         status: Optional[QuestionStatus] = None,
-        language: LanguageCode = LanguageCode.ENGLISH,
+        language: LanguageCode | str = LanguageCode.ENGLISH,
         include_solutions: bool = False,
         exclude_ids: Optional[str] = None,
         page: int = 1,
         limit: int = 20,
     ) -> QuestionPaginatedResponse:
+        language = parse_language(language)
         from app.cache import get_cache, build_cache_key
         cache = get_cache()
         cache_key = build_cache_key(
@@ -158,13 +160,14 @@ class QuestionService:
         topic_name: Optional[str] = None,
         exam_name: Optional[str] = None,
         exclude_ids: Optional[str] = None,
-        language: LanguageCode = LanguageCode.ENGLISH,
+        language: LanguageCode | str = LanguageCode.ENGLISH,
         limit: int = 15,
     ) -> Dict[str, Any]:
         """Lightweight recommended-questions listing — skips the caching,
         passages, metadata, hierarchy-link detail, and explanations that the
         general listing endpoint carries, since a recommendation card only
         ever renders question text + options + subject/topic/subtopic names."""
+        language = parse_language(language)
         limit = max(1, min(50, limit))
 
         questions, _ = await self.repo.list_questions_filtered(
