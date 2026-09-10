@@ -358,9 +358,15 @@ class ExamSessionService:
 
                 trans_map = {}
                 for t in db_q_trans:
-                    trans_map[t.language.value if hasattr(t.language, "value") else str(t.language)] = {
+                    l_val = t.language.value if hasattr(t.language, "value") else str(t.language)
+                    trans_map[l_val] = {
                         "question_text": t.question_text
                     }
+                    iso_c, _ = normalize_language(l_val)
+                    if iso_c:
+                        trans_map[iso_c] = {
+                            "question_text": t.question_text
+                        }
 
                 opt_trans_by_option: Dict[int, list] = {}
                 if db_opts:
@@ -376,7 +382,11 @@ class ExamSessionService:
                     db_opt_trans = opt_trans_by_option.get(o.id, [])
                     opt_trans_map = {}
                     for ot in db_opt_trans:
-                        opt_trans_map[ot.language.value if hasattr(ot.language, "value") else str(ot.language)] = ot.option_text
+                        l_name = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
+                        opt_trans_map[l_name] = ot.option_text
+                        iso_c, _ = normalize_language(l_name)
+                        if iso_c:
+                            opt_trans_map[iso_c] = ot.option_text
 
                     chosen_opt = next(
                         (ot for ot in db_opt_trans if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) in (target_enum, target_iso)), None

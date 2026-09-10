@@ -258,23 +258,7 @@ export function StudentPracticeExamPage() {
     return localStorage.getItem('preferred_language') || 'en';
   });
 
-  const handleLanguageChange = (newLang: string) => {
-    setLanguage(newLang);
-    localStorage.setItem('preferred_language', newLang);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        fetch('/api/v1/auth/me', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ preferred_language: newLang }),
-        }).catch(() => {});
-      }
-    } catch (_) {}
-  };
+
 
   const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'marked' | 'unanswered'>(
     'all',
@@ -296,6 +280,133 @@ export function StudentPracticeExamPage() {
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [bookmarkedQs, setBookmarkedQs] = useState<Record<number, boolean>>({});
   const [palette, setPalette] = useState<QuestionPaletteItem[]>([]);
+
+  // On-demand fast translation state & handler
+  const [isTranslatingActiveQ, setIsTranslatingActiveQ] = useState(false);
+
+  const ensureQuestionTranslation = useCallback(
+    async (q: QuestionOut, targetLang: string) => {
+      if (!q || !q.question_id) return;
+      const clean = targetLang.toLowerCase();
+      const upper = targetLang.toUpperCase();
+      const hasOptionTrans =
+        (q.options || []).length === 0 ||
+        (q.options || []).every((o: any) =>
+          Boolean(
+            o.translations &&
+              (o.translations[clean] ||
+                o.translations[upper] ||
+                (clean === 'hi' && (o.translations.HINDI || o.translations.Hindi))),
+          ),
+        );
+      const hasTrans =
+        clean === 'en' ||
+        (q.translations &&
+          (q.translations[clean] ||
+            q.translations[upper] ||
+            (clean === 'hi' && (q.translations.HINDI || q.translations.Hindi))) &&
+          hasOptionTrans);
+      if (hasTrans) return;
+
+      try {
+        setIsTranslatingActiveQ(true);
+        const res = await fetch(`/api/v1/questions/${q.question_id}?language=${targetLang}`);
+        if (res.ok) {
+          const data = await res.json();
+          const newTrans = data.translations || {};
+          const newOptTrans: Record<string, Record<string, string>> = {};
+          const newOptText: Record<string, string> = {};
+          (data.options || []).forEach((opt: any) => {
+            if (opt.option_id) {
+              const oId = String(opt.option_id);
+              newOptTrans[oId] = opt.translations || {};
+              if (opt.option_text) newOptText[oId] = opt.option_text;
+            }
+          });
+
+          setAllQuestions((prev) =>
+            prev.map((item) => {
+              if (String(item.question_id) === String(q.question_id)) {
+                const mergedTranslations = { ...(item.translations || {}), ...newTrans };
+                const mergedOptions = (item.options || []).map((o: any) => {
+                  const optId = String(o.option_id);
+                  return {
+                    ...o,
+                    text: newOptText[optId] || o.text,
+                    translations: {
+                      ...(o.translations || {}),
+                      ...(newOptTrans[optId] || {}),
+                    },
+                  };
+                });
+                return {
+                  ...item,
+                  text: data.question_text || item.text,
+                  translations: mergedTranslations,
+                  options: mergedOptions,
+                };
+              }
+              return item;
+            }),
+          );
+
+          setActiveQuestion((prev) => {
+            if (!prev || String(prev.question_id) !== String(q.question_id)) return prev;
+            const mergedTranslations = { ...(prev.translations || {}), ...newTrans };
+            const mergedOptions = (prev.options || []).map((o: any) => {
+              const optId = String(o.option_id);
+              return {
+                ...o,
+                text: newOptText[optId] || o.text,
+                translations: {
+                  ...(o.translations || {}),
+                  ...(newOptTrans[optId] || {}),
+                },
+              };
+            });
+            return {
+              ...prev,
+              text: data.question_text || prev.text,
+              translations: mergedTranslations,
+              options: mergedOptions,
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch on-demand question translation:', err);
+      } finally {
+        setIsTranslatingActiveQ(false);
+      }
+    },
+    [],
+  );
+
+  const handleLanguageChange = (newLang: string) => {
+    setLanguage(newLang);
+    localStorage.setItem('preferred_language', newLang);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        fetch('/api/v1/auth/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ preferred_language: newLang }),
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
+    // Priority translate active question if missing in newLang
+    if (activeQuestion) {
+      ensureQuestionTranslation(activeQuestion, newLang);
+    }
+    // Background prefetch next question if present
+    if (allQuestions[currentQIndex + 1]) {
+      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
+    }
+  };
 
   // Modal & Popup States
   const [showScoreModal, setShowScoreModal] = useState(false);
@@ -349,11 +460,11 @@ export function StudentPracticeExamPage() {
     });
   }, []);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles/language change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles, language]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -945,7 +1056,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, language]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -978,7 +1089,15 @@ export function StudentPracticeExamPage() {
   const handleSelectQuestion = (idx: number) => {
     if (idx < 0 || idx >= allQuestions.length) return;
     setCurrentQIndex(idx);
-    setActiveQuestion(allQuestions[idx]);
+    const targetQ = allQuestions[idx];
+    setActiveQuestion(targetQ);
+
+    if (language && language !== 'en' && targetQ) {
+      ensureQuestionTranslation(targetQ, language);
+    }
+    if (language && language !== 'en' && allQuestions[idx + 1]) {
+      ensureQuestionTranslation(allQuestions[idx + 1], language);
+    }
 
     setPalette((prev) =>
       prev.map((item, i) => {
@@ -2994,6 +3113,14 @@ export function StudentPracticeExamPage() {
           paddingLeft: isTabletOrBelow ? 12 : 24,
         }}
       >
+        {/* Subtle Translating Indicator */}
+        {isTranslatingActiveQ && (
+          <div className="flex items-center gap-2 px-3 py-1.5 mb-2.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg w-fit animate-pulse">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+            Translating question to selected language...
+          </div>
+        )}
+
         {/* Center Reading Canvas */}
         <ExamQuestionCard
           question={activeQuestion}

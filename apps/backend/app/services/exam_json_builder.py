@@ -289,10 +289,14 @@ class ExamJsonBuilder:
         question_translations = {}
         for t in trans_list:
             lang_str = t.language.value if hasattr(t.language, "value") else str(t.language)
-            question_translations[lang_str] = {
+            q_trans_item = {
                 "question_text": t.question_text,
                 "parent_context_override": t.parent_context_override,
             }
+            question_translations[lang_str] = q_trans_item
+            iso_c, _ = normalize_language(lang_str)
+            if iso_c:
+                question_translations[iso_c] = q_trans_item
 
         chosen_trans = next(
             (t for t in trans_list if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
@@ -423,6 +427,9 @@ class ExamJsonBuilder:
             for ot in opt_trans_list:
                 lang_str = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
                 opt_translations[lang_str] = ot.option_text
+                iso_c, _ = normalize_language(lang_str)
+                if iso_c:
+                    opt_translations[iso_c] = ot.option_text
                 if ot.distractor_analysis:
                     opt_distractor_analyses[lang_str] = ot.distractor_analysis
 

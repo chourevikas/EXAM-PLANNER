@@ -212,19 +212,22 @@ class GoogleTranslationService:
         if client is not None:
             try:
                 loop = asyncio.get_event_loop()
-                # Run sync Google Cloud translate in thread pool
+                # Run sync Google Cloud translate in thread pool with 100-item chunks
                 def _call_gcp():
-                    res = client.translate(
-                        masked_texts,
-                        target_language=target_iso,
-                        source_language=source_iso,
-                        format_="text",
-                    )
-                    if isinstance(res, dict):
-                        return [res.get("translatedText", "")]
-                    elif isinstance(res, list):
-                        return [item.get("translatedText", "") for item in res]
-                    return []
+                    all_res = []
+                    for ci in range(0, len(masked_texts), 100):
+                        batch = masked_texts[ci : ci + 100]
+                        res = client.translate(
+                            batch,
+                            target_language=target_iso,
+                            source_language=source_iso,
+                            format_="text",
+                        )
+                        if isinstance(res, dict):
+                            all_res.append(res.get("translatedText", ""))
+                        elif isinstance(res, list):
+                            all_res.extend(item.get("translatedText", "") for item in res)
+                    return all_res
 
                 translated_masked = await loop.run_in_executor(None, _call_gcp)
                 logger.debug(f"Successfully translated {len(texts)} texts using Google Cloud Translate ({target_iso}).")
@@ -255,56 +258,91 @@ class GoogleTranslationService:
         source_language: str = "en",
     ) -> List[str]:
         """Translates texts using Gemini Vertex AI model with strict instruction to preserve sentinel tokens."""
+        if getattr(self, "_gemini_failed", False):
+            logger.debug("Gemini translation disabled due to previous permission/service failure. Returning original texts.")
+            return masked_texts
+
         target_info = get_language_info(target_language)
         target_name = target_info.name
         target_native = target_info.native_name
 
         from app.llm.factory import get_vision_llm
-        llm = get_vision_llm(timeout=60, max_retries=3, rate_limit_rps=3.0)
+        llm = get_vision_llm(timeout=30, max_retries=1, rate_limit_rps=3.0)
 
         # Chunk large lists into manageable batches of 10 items
         batch_size = 10
+        chunks = [
+            (idx, masked_texts[i : i + batch_size])
+            for idx, i in enumerate(range(0, len(masked_texts), batch_size))
+        ]
+
+        sem = asyncio.Semaphore(5)
+
+        async def _translate_single_chunk(chunk_idx: int, chunk: List[str]) -> Tuple[int, List[str]]:
+            if getattr(self, "_gemini_failed", False):
+                return chunk_idx, list(chunk)
+
+            async with sem:
+                if getattr(self, "_gemini_failed", False):
+                    return chunk_idx, list(chunk)
+
+                prompt = (
+                    f"You are a professional educational exam translator specializing in Indian languages.\n"
+                    f"Translate the following {len(chunk)} numbered text items from English into {target_name} ({target_native}).\n\n"
+                    "STRICT RULES:\n"
+                    "1. Keep all technical terms, names, and formulas accurate according to official competitive exam standards.\n"
+                    "2. CRITICAL: Preserve all sentinel tokens exactly as they appear (e.g. '___EXAM_BLOCK_0___', '___EXAM_BLOCK_1___'). DO NOT TRANSLATE OR ALTER THEM.\n"
+                    "3. Preserve all punctuation, option letters (A, B, C, D), numbering, and LaTeX markup.\n"
+                    "4. Respond with a JSON array of strings containing EXACTLY the translated texts in order.\n\n"
+                    "Input texts to translate:\n"
+                    + json.dumps(chunk, ensure_ascii=False)
+                    + "\n\nOutput JSON format:\n[\"translated text 1\", \"translated text 2\", ...]"
+                )
+
+                chunk_results: List[str] = []
+                try:
+                    response = await llm.ainvoke(prompt)
+                    content = response.content if hasattr(response, "content") else str(response)
+
+                    # Extract JSON array from markdown code block if present
+                    clean_json = content.strip()
+                    if "```json" in clean_json:
+                        clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+                    elif "```" in clean_json:
+                        clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+                    parsed = json.loads(clean_json)
+                    if isinstance(parsed, list) and len(parsed) == len(chunk):
+                        chunk_results = [str(item) for item in parsed]
+                    else:
+                        logger.warning(
+                            f"Gemini translated length mismatch in chunk {chunk_idx}: expected {len(chunk)}, got {len(parsed) if isinstance(parsed, list) else 0}"
+                        )
+                        for idx, orig in enumerate(chunk):
+                            if isinstance(parsed, list) and idx < len(parsed):
+                                chunk_results.append(str(parsed[idx]))
+                            else:
+                                chunk_results.append(orig)
+                except Exception as e:
+                    err_msg = str(e)
+                    if "PERMISSION_DENIED" in err_msg or "403" in err_msg or "aiplatform.endpoints.predict" in err_msg:
+                        self._gemini_failed = True
+                        logger.warning(
+                            f"Vertex AI Gemini endpoint permission denied: {e}. Circuit breaker tripped; skipping remaining Gemini chunks."
+                        )
+                    else:
+                        logger.error(f"Gemini translation call failed for chunk {chunk_idx}: {e}. Returning original text.")
+                    chunk_results = list(chunk)
+
+                return chunk_idx, chunk_results
+
+        tasks = [_translate_single_chunk(idx, chunk) for idx, chunk in chunks]
+        completed = await asyncio.gather(*tasks)
+        # Sort by original chunk index to ensure preserved ordering
+        completed.sort(key=lambda x: x[0])
+
         all_results: List[str] = []
-
-        for i in range(0, len(masked_texts), batch_size):
-            chunk = masked_texts[i : i + batch_size]
-            prompt = (
-                f"You are a professional educational exam translator specializing in Indian languages.\n"
-                f"Translate the following {len(chunk)} numbered text items from English into {target_name} ({target_native}).\n\n"
-                "STRICT RULES:\n"
-                "1. Keep all technical terms, names, and formulas accurate according to official competitive exam standards.\n"
-                "2. CRITICAL: Preserve all sentinel tokens exactly as they appear (e.g. '___EXAM_BLOCK_0___', '___EXAM_BLOCK_1___'). DO NOT TRANSLATE OR ALTER THEM.\n"
-                "3. Preserve all punctuation, option letters (A, B, C, D), numbering, and LaTeX markup.\n"
-                "4. Respond with a JSON array of strings containing EXACTLY the translated texts in order.\n\n"
-                "Input texts to translate:\n"
-                + json.dumps(chunk, ensure_ascii=False)
-                + "\n\nOutput JSON format:\n[\"translated text 1\", \"translated text 2\", ...]"
-            )
-
-            try:
-                response = await llm.ainvoke(prompt)
-                content = response.content if hasattr(response, "content") else str(response)
-
-                # Extract JSON array from markdown code block if present
-                clean_json = content.strip()
-                if "```json" in clean_json:
-                    clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-                elif "```" in clean_json:
-                    clean_json = clean_json.split("```")[1].split("```")[0].strip()
-
-                parsed = json.loads(clean_json)
-                if isinstance(parsed, list) and len(parsed) == len(chunk):
-                    all_results.extend([str(item) for item in parsed])
-                else:
-                    # Fallback if length mismatch
-                    logger.warning(f"Gemini translated length mismatch: expected {len(chunk)}, got {len(parsed) if isinstance(parsed, list) else 0}")
-                    for idx, orig in enumerate(chunk):
-                        if isinstance(parsed, list) and idx < len(parsed):
-                            all_results.append(str(parsed[idx]))
-                        else:
-                            all_results.append(orig)
-            except Exception as e:
-                logger.error(f"Gemini translation call failed for chunk {i}: {e}. Returning original text.")
-                all_results.extend(chunk)
+        for _, c_res in completed:
+            all_results.extend(c_res)
 
         return all_results

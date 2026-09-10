@@ -1,4 +1,5 @@
 import math
+import asyncio
 from typing import Optional, List, Dict, Any, Tuple
 from fastapi import HTTPException
 from sqlalchemy import func, update
@@ -1243,6 +1244,11 @@ class QuestionService:
     ) -> QuestionDetailResponse:
         exam = await self.session.get(Exam, q.exam_id) if q.exam_id else None
 
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(
+            str(target_lang.value if hasattr(target_lang, "value") else target_lang)
+        )
+
         # Fetch translations
         qt_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q.id)
         qt_res = await self.session.exec(qt_stmt)
@@ -1253,7 +1259,10 @@ class QuestionService:
         for t in q_translations:
             lang_str = t.language.value if hasattr(t.language, "value") else str(t.language)
             trans_map[lang_str] = t.question_text
-            if t.language == target_lang or not q_text:
+            iso_c, _ = normalize_language(lang_str)
+            if iso_c:
+                trans_map[iso_c] = t.question_text
+            if (lang_str in (target_enum, target_iso)) or not q_text:
                 q_text = t.question_text
 
         # Fetch Passage
@@ -1264,7 +1273,8 @@ class QuestionService:
             pt_res = await self.session.exec(pt_stmt)
             p_translations = pt_res.all()
             for pt in p_translations:
-                if pt.language == target_lang or not passage_text:
+                p_lang_str = pt.language.value if hasattr(pt.language, "value") else str(pt.language)
+                if (p_lang_str in (target_enum, target_iso)) or not passage_text:
                     passage_text = pt.passage_text
 
         # Fetch Options
@@ -1288,7 +1298,10 @@ class QuestionService:
             for ot in o_translations:
                 l_str = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
                 opt_trans_map[l_str] = ot.option_text
-                if ot.language == target_lang or not o_text:
+                iso_c, _ = normalize_language(l_str)
+                if iso_c:
+                    opt_trans_map[iso_c] = ot.option_text
+                if (l_str in (target_enum, target_iso)) or not o_text:
                     o_text = ot.option_text
                     if include_solutions and ot.distractor_analysis:
                         o_distractor = ot.distractor_analysis
@@ -1320,6 +1333,34 @@ class QuestionService:
                     translations=opt_trans_map,
                 )
             )
+
+        # If target language is non-English and missing from existing translations, dynamically translate this single question on-demand
+        from app.core.languages import normalize_language
+        target_iso, target_enum = normalize_language(
+            str(target_lang.value if hasattr(target_lang, "value") else target_lang)
+        )
+        if target_enum != "ENGLISH" and target_enum not in trans_map and target_iso not in trans_map:
+            ot_map_single = {opt.id: {k: (v, None) for k, v in opt_det.translations.items()} for opt, opt_det in zip(options_list, options_detail)}
+            pt_map_single = {q_passage_id: {}} if q_passage_id else {}
+            await self._ensure_translations_on_demand(
+                questions=[q],
+                options=options_list,
+                passages=[q_passage_id] if q_passage_id else [],
+                target_iso=target_iso,
+                target_enum=target_enum,
+                qt_map={q.id: trans_map},
+                ot_map=ot_map_single,
+                pt_map=pt_map_single,
+            )
+            q_text = trans_map.get(target_enum) or trans_map.get(target_iso) or q_text
+            for opt_det in options_detail:
+                opt_dict = ot_map_single.get(int(opt_det.option_id), {})
+                cand = opt_dict.get(target_enum) or opt_dict.get(target_iso)
+                if cand:
+                    cand_text = cand[0] if isinstance(cand, (tuple, list)) else cand
+                    opt_det.option_text = cand_text
+                    opt_det.translations[target_enum] = cand_text
+                    opt_det.translations[target_iso] = cand_text
 
         # Fetch Explanation
         explanation_detail = None
@@ -1434,6 +1475,48 @@ class QuestionService:
             updated_at=q.updated_at.isoformat() if q.updated_at else None,
         )
 
+    @staticmethod
+    async def _bg_translate_and_persist(
+        missing_stems: List[Tuple[Any, str]],
+        missing_options: List[Tuple[Any, str]],
+        missing_passages: List[Tuple[int, str]],
+        target_iso: str,
+        lang_db_enum: Any,
+    ) -> None:
+        """Background worker to translate large question batches without blocking the caller."""
+        try:
+            from app.db.models import QuestionTranslation, OptionTranslation, PassageTranslation
+            from app.services.google_translation_service import GoogleTranslationService
+            from app.db.session import async_session_factory
+            translator = GoogleTranslationService()
+            bg_records = []
+            if missing_stems:
+                t_stems = await translator.translate_batch(
+                    [t for _, t in missing_stems], target_language=target_iso, source_language="en"
+                )
+                for (q, _), tt in zip(missing_stems, t_stems):
+                    bg_records.append(QuestionTranslation(question_id=q.id, language=lang_db_enum, question_text=tt))
+            if missing_options:
+                t_opts = await translator.translate_batch(
+                    [t for _, t in missing_options], target_language=target_iso, source_language="en"
+                )
+                for (opt, _), tt in zip(missing_options, t_opts):
+                    bg_records.append(OptionTranslation(option_id=opt.id, language=lang_db_enum, option_text=tt))
+            if missing_passages:
+                t_pass = await translator.translate_batch(
+                    [t for _, t in missing_passages], target_language=target_iso, source_language="en"
+                )
+                for (p_id, _), tt in zip(missing_passages, t_pass):
+                    bg_records.append(PassageTranslation(passage_id=p_id, language=lang_db_enum, passage_text=tt))
+            if bg_records:
+                async with async_session_factory() as s:
+                    for r in bg_records:
+                        s.add(r)
+                    await s.commit()
+                logger.info(f"⚡ Background translation persisted {len(bg_records)} records for {target_iso}.")
+        except Exception as e:
+            logger.warning(f"Background translation task failed: {e}")
+
     async def _ensure_translations_on_demand(
         self,
         questions: List[Question],
@@ -1510,6 +1593,25 @@ class QuestionService:
 
             if not missing_q_stems and not missing_opts and not missing_pass:
                 return
+
+            # Prioritize first 5 questions synchronously for instant response; offload remaining to background task
+            if len(missing_q_stems) > 5:
+                sync_q_set = {q.id for q, _ in missing_q_stems[:5]}
+                sync_stems = missing_q_stems[:5]
+                bg_stems = missing_q_stems[5:]
+
+                sync_opts = [item for item in missing_opts if item[0].question_id in sync_q_set]
+                bg_opts = [item for item in missing_opts if item[0].question_id not in sync_q_set]
+
+                missing_q_stems = sync_stems
+                missing_opts = sync_opts
+
+                if bg_stems or bg_opts:
+                    asyncio.create_task(
+                        QuestionService._bg_translate_and_persist(
+                            bg_stems, bg_opts, [], target_iso, lang_db_enum
+                        )
+                    )
 
             translator = GoogleTranslationService()
 
@@ -1703,10 +1805,13 @@ class QuestionService:
 
             # Question Text
             q_text_dict = qt_map.get(q.id, {})
-            q_text_dict_str = {
-                (k.value if hasattr(k, "value") else str(k)): v
-                for k, v in q_text_dict.items()
-            }
+            q_text_dict_str = {}
+            for k, v in q_text_dict.items():
+                k_str = k.value if hasattr(k, "value") else str(k)
+                q_text_dict_str[k_str] = v
+                iso_c, _ = normalize_language(k_str)
+                if iso_c:
+                    q_text_dict_str[iso_c] = v
             q_text = (
                 q_text_dict_str.get(target_enum)
                 or q_text_dict_str.get(target_iso)
@@ -1720,10 +1825,12 @@ class QuestionService:
             q_passage_id = getattr(q, "passage_id", None)
             if q_passage_id:
                 p_text_dict = pt_map.get(q_passage_id, {})
-                p_text_dict_str = {
-                    (k.value if hasattr(k, "value") else str(k)): v
-                    for k, v in p_text_dict.items()
-                }
+                for k, v in p_text_dict.items():
+                    k_str = k.value if hasattr(k, "value") else str(k)
+                    p_text_dict_str[k_str] = v
+                    iso_c, _ = normalize_language(k_str)
+                    if iso_c:
+                        p_text_dict_str[iso_c] = v
                 p_text = (
                     p_text_dict_str.get(target_enum)
                     or p_text_dict_str.get(target_iso)
@@ -1736,18 +1843,22 @@ class QuestionService:
             opts_detail = []
             for opt in q_opts:
                 ot_dict = ot_map.get(opt.id, {})
-                ot_dict_str = {
-                    (k.value if hasattr(k, "value") else str(k)): v
-                    for k, v in ot_dict.items()
-                }
+                ot_dict_str = {}
+                for k, v in ot_dict.items():
+                    k_str = k.value if hasattr(k, "value") else str(k)
+                    ot_dict_str[k_str] = v
+                    iso_c, _ = normalize_language(k_str)
+                    if iso_c:
+                        ot_dict_str[iso_c] = v
                 ot_tuple = (
                     ot_dict_str.get(target_enum)
                     or ot_dict_str.get(target_iso)
                     or ot_dict_str.get("ENGLISH")
                     or (next(iter(ot_dict_str.values())) if ot_dict_str else ("", None))
                 )
+                cand_text = ot_tuple[0] if isinstance(ot_tuple, (tuple, list)) else ot_tuple
                 opt_trans_map = {
-                    k: v[0]
+                    k: (v[0] if isinstance(v, (tuple, list)) else v)
                     for k, v in ot_dict_str.items()
                 }
                 opts_detail.append(
@@ -1756,8 +1867,12 @@ class QuestionService:
                         option_label=opt.option_label,
                         display_order=opt.display_order,
                         is_correct=opt.is_correct,
-                        option_text=ot_tuple[0] if ot_tuple else "",
-                        distractor_analysis=ot_tuple[1] if (include_solutions and ot_tuple and ot_tuple[1]) else None,
+                        option_text=cand_text or "",
+                        distractor_analysis=(
+                            ot_tuple[1]
+                            if (include_solutions and isinstance(ot_tuple, (tuple, list)) and len(ot_tuple) > 1 and ot_tuple[1])
+                            else None
+                        ),
                         closeness_score=opt.closeness_score,
                         translations=opt_trans_map,
                     )

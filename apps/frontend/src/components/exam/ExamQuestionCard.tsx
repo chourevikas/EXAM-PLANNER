@@ -204,25 +204,56 @@ export function getOptionText(opt: any, lang: string, optIdx?: number, q?: any):
       if (opt.textHindi) rawText = opt.textHindi;
       else if (opt.text_hindi) rawText = opt.text_hindi;
       else if (opt.option_text_hindi) rawText = opt.option_text_hindi;
+      else if (opt.option_text_hi) rawText = opt.option_text_hi;
     }
 
-    if (!rawText && opt.translations) {
-      const ot =
+    if (!rawText && opt.translations && typeof opt.translations === 'object') {
+      let ot =
         opt.translations[enumName] ||
+        opt.translations[enumName.toUpperCase()] ||
         opt.translations[cleanLang] ||
         opt.translations[upper] ||
-        opt.translations[langOpt?.name?.toLowerCase()] ||
-        (cleanLang === 'hi' ? opt.translations.HINDI : null);
+        (langOpt?.name ? opt.translations[langOpt.name] : null) ||
+        (langOpt?.name ? opt.translations[langOpt.name.toLowerCase()] : null) ||
+        (cleanLang === 'hi' ? (opt.translations.HINDI || opt.translations.Hindi || opt.translations.hindi) : null);
+
+      if (!ot) {
+        // Case-insensitive key match in opt.translations
+        const transKeys = Object.keys(opt.translations);
+        const matchKey = transKeys.find((k) => {
+          const kLower = k.toLowerCase();
+          return (
+            kLower === cleanLang ||
+            kLower === enumName.toLowerCase() ||
+            (langOpt?.name && kLower === langOpt.name.toLowerCase())
+          );
+        });
+        if (matchKey) ot = opt.translations[matchKey];
+      }
+
       if (typeof ot === 'string') rawText = ot;
       else if (ot?.text) rawText = ot.text;
       else if (ot?.option_text) rawText = ot.option_text;
+    }
+
+    // Check if question object has option_translations mapping
+    if (!rawText && q && (q.option_translations || q.optionTranslations)) {
+      const qOptTrans = q.option_translations || q.optionTranslations;
+      const optId = opt.option_id || opt.id;
+      const optMap = qOptTrans[optId] || qOptTrans[String(optId)];
+      if (optMap && typeof optMap === 'object') {
+        const ot = optMap[enumName] || optMap[cleanLang] || optMap[upper] || (cleanLang === 'hi' ? optMap.HINDI : null);
+        if (typeof ot === 'string') rawText = ot;
+        else if (ot?.text) rawText = ot.text;
+        else if (ot?.option_text) rawText = ot.option_text;
+      }
     }
   }
 
   if (!rawText) {
     rawText = opt.text || opt.option_text || '';
     if (!rawText && opt.translations) {
-      const engOt = opt.translations.ENGLISH || opt.translations.en;
+      const engOt = opt.translations.ENGLISH || opt.translations.en || opt.translations.English;
       if (typeof engOt === 'string') rawText = engOt;
       else if (engOt?.text) rawText = engOt.text;
       else if (engOt?.option_text) rawText = engOt.option_text;
