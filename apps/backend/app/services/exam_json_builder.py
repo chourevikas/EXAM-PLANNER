@@ -125,6 +125,9 @@ class ExamJsonBuilder:
 
                 if missing_q or missing_o:
                     translator = GoogleTranslationService()
+                    to_persist_qt = []
+                    to_persist_ot = []
+
                     if missing_q:
                         trans_q_texts = await translator.translate_batch(
                             [txt for _, txt in missing_q], target_language=target_iso, source_language="en"
@@ -135,7 +138,7 @@ class ExamJsonBuilder:
                                 language=lang_db_enum,
                                 question_text=t_txt,
                             )
-                            self.session.add(new_qt)
+                            to_persist_qt.append(new_qt)
                             trans_map.setdefault(q.id, []).append(new_qt)
 
                     if missing_o:
@@ -148,14 +151,21 @@ class ExamJsonBuilder:
                                 language=lang_db_enum,
                                 option_text=t_txt,
                             )
-                            self.session.add(new_ot)
+                            to_persist_ot.append(new_ot)
                             opt_trans_map.setdefault(opt.id, []).append(new_ot)
 
-                    try:
-                        await self.session.commit()
-                    except Exception as ce:
-                        logger.warning(f"Failed to commit exam on-demand translations: {ce}")
-                        await self.session.rollback()
+                    # Persist translations in an isolated database session so that self.session and its loaded objects are NEVER expired or rolled back
+                    if to_persist_qt or to_persist_ot:
+                        try:
+                            from app.db.session import async_session_factory
+                            async with async_session_factory() as trans_session:
+                                for item in to_persist_qt:
+                                    trans_session.add(item)
+                                for item in to_persist_ot:
+                                    trans_session.add(item)
+                                await trans_session.commit()
+                        except Exception as ce:
+                            logger.warning(f"Failed to persist exam on-demand translations: {ce}")
             except Exception as te:
                 logger.error(f"Exam on-demand translation failed: {te}", exc_info=True)
 

@@ -96,8 +96,21 @@ class QuestionRepository:
             id_stmt = id_stmt.where(Exam.exam_type == exam_type)
         if stage:
             id_stmt = id_stmt.where(func.lower(Exam.stage) == stage.lower())
-        if exam_name:
-            id_stmt = id_stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
+        if exam_name and exam_name.strip():
+            exam_tokens = [
+                e.strip().lower()
+                for e in exam_name.split(",")
+                if e.strip() and e.strip().lower() not in ("all", "all exams", "all levels")
+            ]
+            if exam_tokens:
+                exam_clauses = [
+                    or_(
+                        func.lower(Exam.name).contains(tok),
+                        func.lower(Exam.code).contains(tok),
+                    )
+                    for tok in exam_tokens
+                ]
+                id_stmt = id_stmt.where(or_(*exam_clauses))
         if difficulty and difficulty.strip() and difficulty.strip().lower() not in ("all", "all levels", "all difficulties"):
             id_stmt = id_stmt.where(func.upper(Question.difficulty) == difficulty.strip().upper())
 
@@ -107,23 +120,17 @@ class QuestionRepository:
         if subject_name and subject_name.strip():
             s_list = [s.strip().lower() for s in subject_name.split(",") if s.strip() and s.strip().lower() not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects")]
             if s_list:
-                if len(s_list) == 1:
-                    clean_s = s_list[0]
-                    id_stmt = id_stmt.where(or_(
+                s_clauses = [
+                    or_(
                         func.lower(Subject.name) == clean_s,
+                        func.lower(Subject.name).contains(clean_s),
                         func.lower(Subject.code) == clean_s,
                         func.lower(Question.section_code) == clean_s,
-                    ))
-                else:
-                    s_clauses = [
-                        or_(
-                            func.lower(Subject.name) == clean_s,
-                            func.lower(Subject.code) == clean_s,
-                            func.lower(Question.section_code) == clean_s,
-                        )
-                        for clean_s in s_list
-                    ]
-                    id_stmt = id_stmt.where(or_(*s_clauses))
+                        func.lower(Question.section_code).contains(clean_s),
+                    )
+                    for clean_s in s_list
+                ]
+                id_stmt = id_stmt.where(or_(*s_clauses))
         if subject_code:
             id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
 
@@ -132,23 +139,17 @@ class QuestionRepository:
         if topic_name and topic_name.strip():
             t_list = [t.strip().lower() for t in topic_name.split(",") if t.strip() and t.strip().lower() not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects")]
             if t_list:
-                if len(t_list) == 1:
-                    clean_t = t_list[0]
-                    id_stmt = id_stmt.where(or_(
+                t_clauses = [
+                    or_(
                         func.lower(Topic.name) == clean_t,
+                        func.lower(Topic.name).contains(clean_t),
                         func.lower(Topic.code) == clean_t,
                         func.lower(QuestionHierarchyLink.concept_name) == clean_t,
-                    ))
-                else:
-                    t_clauses = [
-                        or_(
-                            func.lower(Topic.name) == clean_t,
-                            func.lower(Topic.code) == clean_t,
-                            func.lower(QuestionHierarchyLink.concept_name) == clean_t,
-                        )
-                        for clean_t in t_list
-                    ]
-                    id_stmt = id_stmt.where(or_(*t_clauses))
+                        func.lower(QuestionHierarchyLink.concept_name).contains(clean_t),
+                    )
+                    for clean_t in t_list
+                ]
+                id_stmt = id_stmt.where(or_(*t_clauses))
         if topic_code:
             id_stmt = id_stmt.where(func.lower(Topic.code) == topic_code.lower())
 

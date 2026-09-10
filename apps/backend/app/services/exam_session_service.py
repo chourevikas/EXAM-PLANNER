@@ -248,14 +248,16 @@ class ExamSessionService:
         )
 
         # Pre-cache full questions and solutions data from DB into memory/Redis for instant evaluation
+        cached_eid = exam.id
+        cached_code = exam.code
         async def _precache_exam_solutions():
             try:
                 from app.engine.post_submission_pipeline import load_exam_solutions_data
                 from app.db.session import managed_async_session
                 async with managed_async_session() as pre_sess:
-                    await load_exam_solutions_data(exam, pre_sess)
+                    await load_exam_solutions_data(cached_eid, pre_sess)
             except Exception as precache_err:
-                logger.warning(f"Exam solutions background pre-cache warning for exam '{exam.code}': {precache_err}")
+                logger.warning(f"Exam solutions background pre-cache warning for exam '{cached_code}': {precache_err}")
 
         asyncio.create_task(_precache_exam_solutions())
 

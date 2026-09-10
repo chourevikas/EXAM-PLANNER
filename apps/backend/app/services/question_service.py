@@ -207,8 +207,8 @@ class QuestionService:
                 limit=limit,
             )
 
-        # Fallback 3: Relax exam filter if 0 questions found for exact subject + exam
-        if not questions and subject_name and exam_name:
+        # Only relax exam filter if the user did NOT specify an explicit exam_name filter
+        if not questions and subject_name and not exam_name:
             questions, _ = await self.repo.list_questions_filtered(
                 subject_name=subject_name,
                 exclude_ids=exclude_ids,
@@ -229,25 +229,27 @@ class QuestionService:
 
         q_ids = [q.id for q in questions]
         subtopic_ids = list(set(q.subtopic_id for q in questions if q.subtopic_id))
+        exam_ids = list(set(q.exam_id for q in questions if q.exam_id))
 
-        # Wave 1: question translations, options, and subtopics (via each
-        # question's direct subtopic_id FK). No metadata/hierarchy-links/
+        # Wave 1: question translations, options, subtopics, and exams (via each
+        # question's direct FK). No metadata/hierarchy-links/
         # explanations/passages at all here, unlike the full detail-response
-        # builder. Run sequentially on self.session — against a remote,
-        # high-latency DB, a few round trips on one open connection beats
-        # each query paying its own connection handshake.
+        # builder. Run sequentially on self.session.
         wave1_specs: List[tuple] = [
             ("qt", select(QuestionTranslation).where(QuestionTranslation.question_id.in_(q_ids))),
             ("opt", select(QuestionOption)
                 .where(QuestionOption.question_id.in_(q_ids))
                 .order_by(QuestionOption.question_id, QuestionOption.display_order)),
             ("subtopics", select(Subtopic).where(Subtopic.id.in_(subtopic_ids)) if subtopic_ids else None),
+            ("exams", select(Exam).where(Exam.id.in_(exam_ids)) if exam_ids else None),
         ]
         active_wave1 = [(name, stmt) for name, stmt in wave1_specs if stmt is not None]
         wave1 = {}
         for name, stmt in active_wave1:
             res = await self.session.exec(stmt)
             wave1[name] = res.all()
+
+        exams_map = {e.id: e for e in wave1.get("exams", [])}
 
         qt_map: Dict[int, Dict[str, str]] = {}
         for qt in wave1.get("qt", []):
@@ -348,6 +350,17 @@ class QuestionService:
             topic = topics_map.get(subtopic.topic_id) if subtopic and subtopic.topic_id else None
             subject = subjects_map.get(topic.subject_id) if topic and topic.subject_id else None
 
+            exam_obj = exams_map.get(q.exam_id) if q.exam_id else None
+            raw_exam_name = exam_obj.name if exam_obj else None
+            clean_exam_badge = "UPSC"
+            if raw_exam_name:
+                for known in ["MPPSC", "BPSC", "UPPCS", "MPSC", "SSC", "UPSC"]:
+                    if known.lower() in raw_exam_name.lower():
+                        clean_exam_badge = known
+                        break
+                else:
+                    clean_exam_badge = raw_exam_name.split()[0]
+
             results.append({
                 "question_id": str(q.id),
                 "question_number": q.question_number_in_paper,
@@ -358,6 +371,9 @@ class QuestionService:
                 "subject_name": subject.name if subject else None,
                 "topic_name": topic.name if topic else None,
                 "subtopic_name": subtopic.name if subtopic else None,
+                "exam_name": clean_exam_badge,
+                "exam_full_name": raw_exam_name,
+                "source_year": q.source_year or (exam_obj.source_year if exam_obj else None),
                 "difficulty": q.difficulty.value if hasattr(q.difficulty, "value") else str(q.difficulty),
                 "marks": q.marks,
                 "negative_marks": q.negative_marks,
@@ -1497,6 +1513,8 @@ class QuestionService:
 
             translator = GoogleTranslationService()
 
+            new_db_records = []
+
             # Translate missing question stems
             if missing_q_stems:
                 texts_q = [text for _, text in missing_q_stems]
@@ -1506,14 +1524,11 @@ class QuestionService:
                 for (q, _), t_text in zip(missing_q_stems, translated_q):
                     qt_map.setdefault(q.id, {})[target_enum] = t_text
                     qt_map[q.id][lang_db_enum] = t_text
-                    try:
-                        self.session.add(QuestionTranslation(
-                            question_id=q.id,
-                            language=lang_db_enum,
-                            question_text=t_text,
-                        ))
-                    except Exception as db_err:
-                        logger.warning(f"Could not stage QuestionTranslation: {db_err}")
+                    new_db_records.append(QuestionTranslation(
+                        question_id=q.id,
+                        language=lang_db_enum,
+                        question_text=t_text,
+                    ))
 
             # Translate missing options
             if missing_opts:
@@ -1524,14 +1539,11 @@ class QuestionService:
                 for (opt, _), t_text in zip(missing_opts, translated_opts):
                     ot_map.setdefault(opt.id, {})[target_enum] = (t_text, None)
                     ot_map[opt.id][lang_db_enum] = (t_text, None)
-                    try:
-                        self.session.add(OptionTranslation(
-                            option_id=opt.id,
-                            language=lang_db_enum,
-                            option_text=t_text,
-                        ))
-                    except Exception as db_err:
-                        logger.warning(f"Could not stage OptionTranslation: {db_err}")
+                    new_db_records.append(OptionTranslation(
+                        option_id=opt.id,
+                        language=lang_db_enum,
+                        option_text=t_text,
+                    ))
 
             # Translate missing passages
             if missing_pass:
@@ -1542,20 +1554,22 @@ class QuestionService:
                 for (p_id, _), t_text in zip(missing_pass, translated_pass):
                     pt_map.setdefault(p_id, {})[target_enum] = t_text
                     pt_map[p_id][lang_db_enum] = t_text
-                    try:
-                        self.session.add(PassageTranslation(
-                            passage_id=p_id,
-                            language=lang_db_enum,
-                            passage_text=t_text,
-                        ))
-                    except Exception as db_err:
-                        logger.warning(f"Could not stage PassageTranslation: {db_err}")
+                    new_db_records.append(PassageTranslation(
+                        passage_id=p_id,
+                        language=lang_db_enum,
+                        passage_text=t_text,
+                    ))
 
-            try:
-                await self.session.commit()
-            except Exception as commit_err:
-                logger.warning(f"Failed to commit on-demand translations: {commit_err}")
-                await self.session.rollback()
+            # Persist translations in an isolated database session so that self.session and its loaded objects are NEVER expired or rolled back
+            if new_db_records:
+                try:
+                    from app.db.session import async_session_factory
+                    async with async_session_factory() as trans_session:
+                        for rec in new_db_records:
+                            trans_session.add(rec)
+                        await trans_session.commit()
+                except Exception as commit_err:
+                    logger.warning(f"Failed to persist on-demand translations: {commit_err}")
         except Exception as err:
             logger.error(f"On-demand translation failed: {err}", exc_info=True)
 

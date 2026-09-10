@@ -72,7 +72,19 @@ async def upload_exam_pdf(
     )
 
 
-@router.get("", response_model=List[Exam])
+EXAM_RELATIONSHIP_FIELDS = {
+    "syllabus_versions",
+    "questions",
+    "attempts",
+    "pipeline_runs",
+    "passages",
+    "answer_key_batches",
+    "review_tasks",
+    "exam_type_entity",
+}
+
+
+@router.get("")
 async def list_exams(
     status: Optional[str] = Query(default=None, description="Filter by Exam status (e.g. 'PUBLISHED')"),
     is_active: Optional[bool] = Query(default=None, description="Filter by active status for candidates"),
@@ -89,7 +101,7 @@ async def list_exams(
     service = ExamService(session)
     exams = await service.list_exams(status=status, is_active=is_active)
     if exams is not None:
-        serialized = jsonable_encoder(exams)
+        serialized = jsonable_encoder(exams, exclude=EXAM_RELATIONSHIP_FIELDS)
         await cache.set(cache_key, serialized, ttl_seconds=1800)
         return JSONResponse(content=serialized)
     return JSONResponse(content=[])
@@ -611,13 +623,14 @@ async def get_exams_by_year(
     return JSONResponse(content=serialized)
 
 
-@router.get("/{exam_id}", response_model=Exam)
+@router.get("/{exam_id}")
 async def get_exam_detail(
     exam_id: int, session: AsyncSession = Depends(get_async_session)
 ):
     """Fetches details of a specific exam by ID."""
     service = ExamService(session)
-    return await service.get_exam_detail(exam_id)
+    exam = await service.get_exam_detail(exam_id)
+    return JSONResponse(content=jsonable_encoder(exam, exclude=EXAM_RELATIONSHIP_FIELDS))
 
 
 @router.delete("/{exam_id}")

@@ -5,12 +5,11 @@ import { RecommendationSkeletonCard } from './RecommendationSkeletonCard';
 import { RecommendedQuestionCard } from './RecommendedQuestionCard';
 import { SlidersHorizontal } from 'lucide-react';
 
-export interface RecFilterToggles {
-  subject: boolean;
-  topic: boolean;
-  subtopic: boolean;
-  difficulty: boolean;
-}
+export type ExamFilterToggles = Record<string, boolean>;
+// Retain alias for backward compatibility
+export type RecFilterToggles = ExamFilterToggles;
+
+export const DEFAULT_REC_EXAMS = ['UPSC', 'MPPSC', 'BPSC', 'UPPCS'];
 
 interface RecommendedQuestionsPanelProps {
   title?: string | null;
@@ -23,8 +22,12 @@ interface RecommendedQuestionsPanelProps {
   solutionLoading: Record<string | number, boolean>;
   onToggleExpand: (q: QuestionOut) => void;
   onSelectOption: (q: QuestionOut, optionId: number | string) => void;
-  recFilterToggles?: RecFilterToggles;
-  onToggleRecFilter?: (filterKey: keyof RecFilterToggles) => void;
+  examFilterToggles?: ExamFilterToggles;
+  onToggleExamFilter?: (examName: string) => void;
+  availableExams?: string[];
+  // Backwards compatible aliases
+  recFilterToggles?: ExamFilterToggles;
+  onToggleRecFilter?: (examName: string) => void;
   language?: string;
 }
 
@@ -39,16 +42,19 @@ export function RecommendedQuestionsPanel({
   solutionLoading,
   onToggleExpand,
   onSelectOption,
-  recFilterToggles = { subject: true, topic: true, subtopic: true, difficulty: true },
+  examFilterToggles,
+  onToggleExamFilter,
+  availableExams = DEFAULT_REC_EXAMS,
+  recFilterToggles,
   onToggleRecFilter,
   language,
 }: RecommendedQuestionsPanelProps) {
-  const filterItems: { key: keyof RecFilterToggles; label: string }[] = [
-    { key: 'subject', label: 'Subject' },
-    { key: 'topic', label: 'Topic' },
-    { key: 'subtopic', label: 'Subtopic' },
-    { key: 'difficulty', label: 'Difficulty' },
-  ];
+  const activeToggles = examFilterToggles || recFilterToggles || { UPSC: true, MPPSC: false, BPSC: false, UPPCS: false };
+  const toggleHandler = onToggleExamFilter || onToggleRecFilter;
+
+  // Filter exams list
+  const examList = (availableExams && availableExams.length > 0) ? availableExams : DEFAULT_REC_EXAMS;
+  const anyExamActive = Object.values(activeToggles).some(Boolean);
 
   return (
     <>
@@ -95,8 +101,8 @@ export function RecommendedQuestionsPanel({
             </p>
           )}
 
-          {/* Granular Recommendation Filter Toggles Bar */}
-          {onToggleRecFilter && (
+          {/* Exam Recommendation Filter Toggles Bar (UPSC, MPPSC, BPSC, UPPCS) */}
+          {toggleHandler && (
             <div
               style={{
                 display: 'flex',
@@ -121,17 +127,17 @@ export function RecommendedQuestionsPanel({
                     letterSpacing: '0.04em',
                   }}
                 >
-                  Rec Filters:
+                  Exams:
                 </span>
               </div>
-              {filterItems.map((item) => {
-                const isActive = recFilterToggles[item.key];
+              {examList.map((examName) => {
+                const isActive = !!activeToggles[examName];
                 return (
                   <button
-                    key={item.key}
+                    key={examName}
                     type="button"
-                    onClick={() => onToggleRecFilter(item.key)}
-                    title={`Toggle ${item.label} filter for recommendations ${isActive ? '(ON)' : '(OFF)'}`}
+                    onClick={() => toggleHandler(examName)}
+                    title={`Toggle ${examName} questions ${isActive ? '(ON)' : '(OFF)'}`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -148,7 +154,7 @@ export function RecommendedQuestionsPanel({
                       boxShadow: isActive ? '0 1px 2px rgba(30, 58, 138, 0.08)' : 'none',
                     }}
                   >
-                    <span>{item.label}</span>
+                    <span>{examName}</span>
                     <span
                       style={{
                         fontSize: 9,
@@ -185,10 +191,13 @@ export function RecommendedQuestionsPanel({
                 fontSize: 11.5,
                 color: '#94A3B8',
                 textAlign: 'center',
-                padding: '16px 0',
+                padding: '16px 8px',
+                lineHeight: 1.4,
               }}
             >
-              No questions available matching active rec filters
+              {anyExamActive
+                ? 'No similar questions found for the selected exam(s)'
+                : 'All exam toggles are OFF. Turn on an exam toggle above (e.g. UPSC) to view recommendations.'}
             </div>
           )
         ) : (

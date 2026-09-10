@@ -4,7 +4,7 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { RecommendedQuestionsPanel, RecFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
+import { RecommendedQuestionsPanel, ExamFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import {
   Loader2,
@@ -375,27 +375,27 @@ export function GuestExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  const [recFilterToggles, setRecFilterToggles] = useState<RecFilterToggles>({
-    subject: true,
-    topic: true,
-    subtopic: true,
-    difficulty: true,
+  const [recExamToggles, setRecExamToggles] = useState<ExamFilterToggles>({
+    UPSC: true,
+    MPPSC: false,
+    BPSC: false,
+    UPPCS: false,
   });
 
-  const toggleRecFilter = useCallback((key: keyof RecFilterToggles) => {
-    setRecFilterToggles((prev) => {
-      const updated = { ...prev, [key]: !prev[key] };
+  const toggleRecExam = useCallback((examName: string) => {
+    setRecExamToggles((prev) => {
+      const updated = { ...prev, [examName]: !prev[examName] };
       setIsRecsExhausted(false);
       setRecommendedPool([]);
       return updated;
     });
   }, []);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isTabletOrBelow } = useBreakpoint();
@@ -441,12 +441,18 @@ export function GuestExamPage() {
 
         if (neededCount <= 0 && currentPool.length >= maxGuestRecs) return;
 
+        const activeExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]);
+        if (activeExams.length === 0) {
+          setIsRecsExhausted(true);
+          return;
+        }
+
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
-        if (recFilterToggles.subject && rawSubject) subjParams.append('subject_name', rawSubject);
-        if (recFilterToggles.topic && rawTopic) subjParams.append('topic_name', rawTopic);
-        if (recFilterToggles.subtopic && rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
-        if (recFilterToggles.difficulty && rawDiff) subjParams.append('difficulty', rawDiff);
-        if (targetExam) subjParams.append('exam_name', targetExam);
+        subjParams.append('exam_name', activeExams.map((e) => e.toLowerCase()).join(','));
+        if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (rawTopic) subjParams.append('topic_name', rawTopic);
+        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (rawDiff) subjParams.append('difficulty', rawDiff);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
 
@@ -559,7 +565,7 @@ export function GuestExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recFilterToggles, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recExamToggles, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Timer countdown
@@ -3202,8 +3208,9 @@ export function GuestExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
-              recFilterToggles={recFilterToggles}
-              onToggleRecFilter={toggleRecFilter}
+              examFilterToggles={recExamToggles}
+              onToggleExamFilter={toggleRecExam}
+              language={language}
             />
           </div>
         </div>
@@ -3285,8 +3292,9 @@ export function GuestExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
-              recFilterToggles={recFilterToggles}
-              onToggleRecFilter={toggleRecFilter}
+              examFilterToggles={recExamToggles}
+              onToggleExamFilter={toggleRecExam}
+              language={language}
             />
           </aside>
         )}

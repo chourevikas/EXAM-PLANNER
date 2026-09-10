@@ -113,13 +113,26 @@ async def set_cached_solutions_data_async(exam_code: str, exam_id: Optional[int]
         logger.debug(f"Redis solutions cache store warning: {cache_err}")
 
 
-async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: Any = None) -> Dict[str, Any]:
+async def load_exam_solutions_data(exam: Any, session: AsyncSession, storage: Any = None) -> Dict[str, Any]:
     """
     Direct Database & Redis/Memory cached solutions resolver.
     Database is the single source of truth; caches are populated at exam start or first load.
     Zero external S3 dependency.
     """
-    cached = await get_cached_solutions_data_async(exam.code, exam.id)
+    if isinstance(exam, (int, str)) and str(exam).isdigit():
+        exam_id = int(exam)
+        from app.db.models import Exam
+        exam_obj = await session.get(Exam, exam_id)
+        if not exam_obj:
+            return {}
+        exam_code = exam_obj.code
+    elif hasattr(exam, "id") and hasattr(exam, "code"):
+        exam_id = exam.id
+        exam_code = getattr(exam, "code", "")
+    else:
+        return {}
+
+    cached = await get_cached_solutions_data_async(exam_code, exam_id)
     if cached and cached.get("questions"):
         return cached
 
@@ -129,7 +142,7 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
         builder = ExamJsonBuilder(session)
         stmt = (
             select(Question)
-            .where(Question.exam_id == exam.id)
+            .where(Question.exam_id == exam_id)
             .order_by(col(Question.question_number_in_paper))
         )
         res = await session.exec(stmt)
@@ -162,12 +175,13 @@ async def load_exam_solutions_data(exam: Exam, session: AsyncSession, storage: A
                 }
                 solutions_payload.append(merged)
 
-            res_dict = {"exam_id": str(exam.id), "exam_code": exam.code, "questions": solutions_payload}
-            await set_cached_solutions_data_async(exam.code, exam.id, res_dict)
-            logger.info(f"Loaded and cached {len(solutions_payload)} questions/solutions directly from database for exam '{exam.code}'.")
+            res_dict = {"exam_id": str(exam_id), "exam_code": exam_code, "questions": solutions_payload}
+            await set_cached_solutions_data_async(exam_code, exam_id, res_dict)
+            logger.info(f"Loaded and cached {len(solutions_payload)} questions/solutions directly from database for exam '{exam_code}'.")
             return res_dict
     except Exception as err:
-        logger.error(f"Direct DB solutions generation failed for exam '{exam.code}': {err}", exc_info=True)
+        logger.error(f"Direct DB solutions generation failed for exam '{exam_code}': {err}", exc_info=True)
+        return {}
 
     return {"exam_id": str(exam.id), "exam_code": exam.code, "questions": []}
 

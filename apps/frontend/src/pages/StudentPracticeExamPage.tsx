@@ -14,7 +14,7 @@ import { ExamHeader } from '../components/exam/ExamHeader';
 import { ExamQuestionCard } from '../components/exam/ExamQuestionCard';
 import { GuestScoreModal } from '../components/exam/GuestScoreModal';
 import { ExamLoaderOverlay } from '../components/exam/ExamLoaderOverlay';
-import { RecommendedQuestionsPanel, RecFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
+import { RecommendedQuestionsPanel, ExamFilterToggles } from '../components/exam/RecommendedQuestionsPanel';
 import { QuestionSolutionData } from '../components/exam/QuestionSolutionMarkdownCard';
 import { QuestionOut, QuestionPaletteItem, RevealAnswerResponse } from '../types/exam';
 import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/examService';
@@ -333,27 +333,27 @@ export function StudentPracticeExamPage() {
   const [isPrefetchingRecs, setIsPrefetchingRecs] = useState(false);
   const [isRecsExhausted, setIsRecsExhausted] = useState(false);
 
-  const [recFilterToggles, setRecFilterToggles] = useState<RecFilterToggles>({
-    subject: true,
-    topic: true,
-    subtopic: true,
-    difficulty: true,
+  const [recExamToggles, setRecExamToggles] = useState<ExamFilterToggles>({
+    UPSC: true,
+    MPPSC: false,
+    BPSC: false,
+    UPPCS: false,
   });
 
-  const toggleRecFilter = useCallback((key: keyof RecFilterToggles) => {
-    setRecFilterToggles((prev) => {
-      const updated = { ...prev, [key]: !prev[key] };
+  const toggleRecExam = useCallback((examName: string) => {
+    setRecExamToggles((prev) => {
+      const updated = { ...prev, [examName]: !prev[examName] };
       setIsRecsExhausted(false);
       setRecommendedPool([]);
       return updated;
     });
   }, []);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recFilterToggles/language change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles/language change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recFilterToggles, language]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles, language]);
 
   const userResponsesRef = React.useRef(userResponses);
   userResponsesRef.current = userResponses;
@@ -384,21 +384,22 @@ export function StudentPracticeExamPage() {
         const rawTopic = gTopic && !gTopic.startsWith('All Topics') ? gTopic.trim() : '';
         const rawSubtopic = gSubtopic && !gSubtopic.startsWith('All Subtopics') ? gSubtopic.trim() : '';
         const rawDiff = gDifficulty && !gDifficulty.startsWith('All') ? gDifficulty.trim() : '';
-        const targetExam = gExam
-          ? gExam.toLowerCase().includes('upsc')
-            ? 'upsc'
-            : gExam.toLowerCase().trim()
-          : '';
+
+        const activeExams = Object.keys(recExamToggles).filter((e) => recExamToggles[e]);
+        if (activeExams.length === 0) {
+          setIsRecsExhausted(true);
+          return;
+        }
 
         let newFetched: any[] = [];
         const neededCount = Math.max(1, 15 - currentPool.length);
 
         const subjParams = new URLSearchParams({ limit: String(neededCount) });
-        if (recFilterToggles.subject && rawSubject) subjParams.append('subject_name', rawSubject);
-        if (recFilterToggles.topic && rawTopic) subjParams.append('topic_name', rawTopic);
-        if (recFilterToggles.subtopic && rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
-        if (recFilterToggles.difficulty && rawDiff) subjParams.append('difficulty', rawDiff);
-        if (targetExam) subjParams.append('exam_name', targetExam);
+        subjParams.append('exam_name', activeExams.map((e) => e.toLowerCase()).join(','));
+        if (rawSubject) subjParams.append('subject_name', rawSubject);
+        if (rawTopic) subjParams.append('topic_name', rawTopic);
+        if (rawSubtopic) subjParams.append('subtopic_name', rawSubtopic);
+        if (rawDiff) subjParams.append('difficulty', rawDiff);
         if (excludeIdsParam) subjParams.append('exclude_ids', excludeIdsParam);
         if (language) subjParams.append('language', language);
 
@@ -514,7 +515,7 @@ export function StudentPracticeExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recFilterToggles, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gTopic, gSubtopic, gDifficulty, gExam, language, recExamToggles, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Fires on mount (allQuestions is still [] at that point) so the
@@ -2969,8 +2970,8 @@ export function StudentPracticeExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
-              recFilterToggles={recFilterToggles}
-              onToggleRecFilter={toggleRecFilter}
+              examFilterToggles={recExamToggles}
+              onToggleExamFilter={toggleRecExam}
               language={language}
             />
           </div>
@@ -3056,8 +3057,8 @@ export function StudentPracticeExamPage() {
               solutionLoading={recSolutionLoading}
               onToggleExpand={handleSelectRecommendation}
               onSelectOption={handleSelectRecommendationOption}
-              recFilterToggles={recFilterToggles}
-              onToggleRecFilter={toggleRecFilter}
+              examFilterToggles={recExamToggles}
+              onToggleExamFilter={toggleRecExam}
               language={language}
             />
           </aside>
