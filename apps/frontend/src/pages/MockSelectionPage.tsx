@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
-import { listExams, getAttemptStatusByExam, formatCanonicalExamTitle, fetchMasterSyllabus, fetchExamsByYear } from '../services/examService';
+import {
+  listExams,
+  getAttemptStatusByExam,
+  formatCanonicalExamTitle,
+  fetchMasterSyllabus,
+  fetchExamsByYear,
+} from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { formatEnum } from '../utils/formatEnum';
 import {
   CheckCircle2,
   PlayCircle,
@@ -12,7 +19,9 @@ import {
   Zap,
   ArrowRight,
   ChevronRight,
-  Target,
+  ChevronDown,
+  Check,
+  Search,
 } from 'lucide-react';
 
 interface DisplayMock {
@@ -35,41 +44,53 @@ export function MockSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
 
-  // Dynamic 3-level taxonomy state fetched directly from DB / Syllabus API (/api/v1/syllabus)
-  const [masterSubjects, setMasterSubjects] = useState<any[]>([]);
-  const [subjectsList, setSubjectsList] = useState<string[]>(['All Subjects']);
-  const [threeLevelHierarchy, setThreeLevelHierarchy] = useState<Record<string, Record<string, string[]>>>({});
+  // Dynamic 3-level taxonomy & exam state
+  const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
+  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE', 'State PSC']);
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
-  // Form selections
+  // Form selections matching StudentPracticeExamPage
   const [selectedExam, setSelectedExam] = useState<string>('UPSC CSE');
   const [selectedYear, setSelectedYear] = useState<string>('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('All Subjects');
+  const [selectedSubjectsList, setSelectedSubjectsList] = useState<string[]>([]);
+  const [selectedTopicsList, setSelectedTopicsList] = useState<string[]>([]);
+  const [selectedSubtopicsList, setSelectedSubtopicsList] = useState<string[]>([]);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All Levels');
 
-  // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus) & Exams By Year (/api/v1/exams/by-year)
+  // Popover state
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [filterSearchQuery, setFilterSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close active dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch Dynamic 3-level Taxonomy (/api/v1/syllabus), Exams By Year (/api/v1/exams/by-year), & Published Exams
   useEffect(() => {
     async function loadDynamicTaxonomy() {
       setIsTaxonomyLoading(true);
       try {
-        const taxData = await fetchMasterSyllabus();
+        const [taxData, yearsData, publishedExams] = await Promise.all([
+          fetchMasterSyllabus().catch(() => null),
+          fetchExamsByYear().catch(() => null),
+          listExams('PUBLISHED').catch(() => []),
+        ]);
+
         if (taxData) {
-          // The API returns subjects as an array (each with its own nested
-          // `topics`), not a flat `subjects_list`/`hierarchy` field — this
-          // used to read fields that don't exist in the actual response, so
-          // the Subject dropdown here was silently always empty.
-          if (taxData.subjects && Array.isArray(taxData.subjects) && taxData.subjects.length > 0) {
-            setMasterSubjects(taxData.subjects);
-            const cleanSubs = taxData.subjects
-              .map((s: any) => s.name)
-              .filter((s: string) => s && s !== 'All Subjects' && s.trim() !== '');
-            if (cleanSubs.length > 0) {
-              setSubjectsList(['All Subjects', ...cleanSubs]);
-            }
-          }
+          setMasterSyllabus(taxData);
         }
 
-        const yearsData = await fetchExamsByYear();
         if (yearsData && Array.isArray(yearsData.years) && yearsData.years.length > 0) {
           const fetchedYears = yearsData.years.map((y: number) => `${y} PYQs`);
           const minYear = Math.min(...yearsData.years);
@@ -77,6 +98,15 @@ export function MockSelectionPage() {
           const yearsArray = [`All Years (${minYear} - ${maxYear})`, ...fetchedYears];
           setYearOptions(yearsArray);
           setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
+        }
+
+        if (publishedExams && publishedExams.length > 0) {
+          const names = Array.from(
+            new Set(publishedExams.map((e: any) => e.title || e.exam_name || e.code).filter(Boolean)),
+          ) as string[];
+          if (names.length > 0) {
+            setAvailableExams(names);
+          }
         }
       } catch (err) {
         console.warn('Taxonomy / Exam years fetch warning:', err);
@@ -88,6 +118,7 @@ export function MockSelectionPage() {
     loadDynamicTaxonomy();
   }, []);
 
+  // Live mocks and student attempt status
   useEffect(() => {
     async function fetchLiveMocksAndAttempts() {
       setIsLoading(true);
@@ -108,7 +139,7 @@ export function MockSelectionPage() {
         const targetList = mocks.length > 0 ? mocks : liveExams.filter((e) => e.is_active === true);
 
         if (targetList.length > 0) {
-          const mapped: DisplayMock[] = targetList.map((e, index) => {
+          const mapped: DisplayMock[] = targetList.map((e) => {
             const attemptStatus = statusByExam[String(e.id)];
 
             let status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
@@ -150,128 +181,201 @@ export function MockSelectionPage() {
     fetchLiveMocksAndAttempts();
   }, []);
 
+  // Subjects list from master syllabus
+  const subjectsList = useMemo<string[]>(() => {
+    if (masterSyllabus?.hierarchy) {
+      const keys = Object.keys(masterSyllabus.hierarchy);
+      if (keys.length > 0) return keys;
+    }
+    if (masterSyllabus?.subjects && Array.isArray(masterSyllabus.subjects)) {
+      return masterSyllabus.subjects.map((s: any) => String(s.name || '')).filter(Boolean);
+    }
+    return [];
+  }, [masterSyllabus]);
+
+  // Computed dynamic list of topics based on selected subjects
+  const availableTopicsList = useMemo<string[]>(() => {
+    const hierarchy = masterSyllabus?.hierarchy || {};
+    const topicsSet = new Set<string>();
+    if (selectedSubjectsList.length === 0) {
+      Object.values(hierarchy).forEach((topicsMap: any) => {
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+        }
+      });
+    } else {
+      selectedSubjectsList.forEach((subj) => {
+        const topicsMap = hierarchy[subj];
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+        }
+      });
+    }
+    return Array.from(topicsSet).sort();
+  }, [selectedSubjectsList, masterSyllabus]);
+
+  // Computed dynamic list of subtopics based on selected subjects and topics
+  const availableSubtopicsList = useMemo<string[]>(() => {
+    const hierarchy = masterSyllabus?.hierarchy || {};
+    const subSet = new Set<string>();
+    if (selectedTopicsList.length > 0) {
+      if (selectedSubjectsList.length > 0) {
+        selectedSubjectsList.forEach((subj) => {
+          const topicsMap = hierarchy[subj] || {};
+          selectedTopicsList.forEach((top) => {
+            const list = topicsMap[top];
+            if (Array.isArray(list)) {
+              list.forEach((st: string) => {
+                if (!st.startsWith('All Subtopics')) subSet.add(st);
+              });
+            }
+          });
+        });
+      } else {
+        Object.values(hierarchy).forEach((topicsMap: any) => {
+          if (topicsMap && typeof topicsMap === 'object') {
+            selectedTopicsList.forEach((top) => {
+              const list = topicsMap[top];
+              if (Array.isArray(list)) {
+                list.forEach((st: string) => {
+                  if (!st.startsWith('All Subtopics')) subSet.add(st);
+                });
+              }
+            });
+          }
+        });
+      }
+    } else if (selectedSubjectsList.length > 0) {
+      selectedSubjectsList.forEach((subj) => {
+        const topicsMap = hierarchy[subj] || {};
+        Object.values(topicsMap).forEach((subList: any) => {
+          if (Array.isArray(subList)) {
+            subList.forEach((st: string) => {
+              if (!st.startsWith('All Subtopics')) subSet.add(st);
+            });
+          }
+        });
+      });
+    } else {
+      Object.values(hierarchy).forEach((topicsMap: any) => {
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.values(topicsMap).forEach((subList: any) => {
+            if (Array.isArray(subList)) {
+              subList.forEach((st: string) => {
+                if (!st.startsWith('All Subtopics')) subSet.add(st);
+              });
+            }
+          });
+        }
+      });
+    }
+    return Array.from(subSet).sort();
+  }, [selectedSubjectsList, selectedTopicsList, masterSyllabus]);
+
+  // Multi-Select Toggle & Select All Helpers
+  const toggleSubjectFilter = (subjectName: string) => {
+    if (subjectName === 'All Subjects') {
+      setSelectedSubjectsList([]);
+      setSelectedTopicsList([]);
+      setSelectedSubtopicsList([]);
+    } else {
+      let updated: string[];
+      if (selectedSubjectsList.includes(subjectName)) {
+        updated = selectedSubjectsList.filter((s) => s !== subjectName);
+      } else {
+        updated = [...selectedSubjectsList, subjectName];
+      }
+      setSelectedSubjectsList(updated);
+      setSelectedTopicsList([]);
+      setSelectedSubtopicsList([]);
+    }
+  };
+
+  const selectAllSubjects = () => {
+    setSelectedSubjectsList([...subjectsList]);
+    setSelectedTopicsList([]);
+    setSelectedSubtopicsList([]);
+  };
+
+  const toggleTopicFilter = (topicName: string) => {
+    if (topicName === 'All Topics') {
+      setSelectedTopicsList([]);
+      setSelectedSubtopicsList([]);
+    } else {
+      let updated: string[];
+      if (selectedTopicsList.includes(topicName)) {
+        updated = selectedTopicsList.filter((t) => t !== topicName);
+      } else {
+        updated = [...selectedTopicsList, topicName];
+      }
+      setSelectedTopicsList(updated);
+      setSelectedSubtopicsList([]);
+    }
+  };
+
+  const selectAllTopics = () => {
+    setSelectedTopicsList([...availableTopicsList]);
+    setSelectedSubtopicsList([]);
+  };
+
+  const toggleSubtopicFilter = (subtopicName: string) => {
+    if (subtopicName === 'All Subtopics') {
+      setSelectedSubtopicsList([]);
+    } else {
+      let updated: string[];
+      if (selectedSubtopicsList.includes(subtopicName)) {
+        updated = selectedSubtopicsList.filter((st) => st !== subtopicName);
+      } else {
+        updated = [...selectedSubtopicsList, subtopicName];
+      }
+      setSelectedSubtopicsList(updated);
+    }
+  };
+
+  const selectAllSubtopics = () => {
+    setSelectedSubtopicsList([...availableSubtopicsList]);
+  };
+
   const handleStartPracticeTest = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalSubject = selectedSubject || (subjectsList.length > 0 ? subjectsList[0] : 'All Subjects');
-    const finalYear = selectedYear || (yearOptions.length > 0 ? yearOptions[0] : '');
+    const queryParams = new URLSearchParams();
 
-    const queryParams = new URLSearchParams({
-      exam: selectedExam,
-      year: finalYear,
-      subject: finalSubject,
-    });
+    if (selectedExam) {
+      queryParams.set('exam', selectedExam);
+    }
+    if (selectedYear) {
+      queryParams.set('year', selectedYear);
+    }
+    if (selectedSubjectsList.length > 0) {
+      queryParams.set('subject', selectedSubjectsList.join(','));
+    }
+    if (selectedTopicsList.length > 0) {
+      queryParams.set('topic', selectedTopicsList.join(','));
+    }
+    if (selectedSubtopicsList.length > 0) {
+      queryParams.set('subtopic', selectedSubtopicsList.join(','));
+    }
+    if (selectedDifficulty && selectedDifficulty !== 'All Levels') {
+      queryParams.set('difficulty', selectedDifficulty);
+    }
 
     navigate(`/practice-exam?${queryParams.toString()}`);
   };
 
   return (
     <StudentLayout pageTitle="Practice Tests">
-      {/* Top Banner Hero Container */}
-      <section style={{
-        marginBottom: 32,
-        padding: '32px 36px',
-        borderRadius: 0,
-        background: 'linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 50%, #FAF5FF 100%)',
-        border: '1px solid #E0E7FF',
-        position: 'relative',
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 4px 20px rgba(99, 102, 241, 0.05)'
-      }}>
-
-        <div style={{ maxWidth: '600px', zIndex: 2 }}>
-          {/* Capsule Pill Badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 12px',
-            backgroundColor: '#E0E7FF',
-            color: '#3730A3',
-            fontSize: 11,
-            fontWeight: 700,
-            borderRadius: 0,
-            marginBottom: 14,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          }}>
-            <Zap size={13} fill="#4338CA" color="#4338CA" /> ADAPTIVE PRACTICE
-          </div>
-
-          <h1 style={{
-            fontSize: 32,
-            fontWeight: 800,
-            color: '#1E1B4B',
-            margin: '0 0 10px 0',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.2
-          }}>
-            Practice Tests
-          </h1>
-
-          <p style={{
-            fontSize: 14,
-            color: '#4338CA',
-            margin: 0,
-            lineHeight: 1.6,
-            fontWeight: 500
-          }}>
-            Configure a targeted practice test by topic and subtopic, or attempt full-length test series.
-          </p>
-        </div>
-
-        {/* Right Side Illustration Graphic (Checklist + Bullseye Target) */}
-        <div style={{ position: 'relative', flexShrink: 0, width: 220, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="220" height="140" viewBox="0 0 220 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Soft decorative background circles */}
-            <circle cx="160" cy="70" r="55" fill="#E0E7FF" fillOpacity="0.5" />
-            <circle cx="180" cy="40" r="15" fill="#DDD6FE" fillOpacity="0.6" />
-
-            {/* Checklist Clipboard */}
-            <g transform="translate(45, 15) rotate(-6)">
-              <rect x="0" y="0" width="85" height="110" rx="10" fill="#FFFFFF" filter="drop-shadow(0px 8px 16px rgba(99, 102, 241, 0.15))" stroke="#C7D2FE" strokeWidth="2" />
-              <rect x="28" y="-6" width="30" height="12" rx="4" fill="#F2B623" />
-              {/* Lines and checkmarks */}
-              <circle cx="20" cy="30" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
-              <path d="M17 30L19 32L23 28" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="34" y="27" width="38" height="6" rx="3" fill="#E0E7FF" />
-
-              <circle cx="20" cy="55" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
-              <path d="M17 55L19 57L23 53" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="34" y="52" width="38" height="6" rx="3" fill="#E0E7FF" />
-
-              <circle cx="20" cy="80" r="6" stroke="#6366F1" strokeWidth="2" fill="none" />
-              <path d="M17 80L19 82L23 78" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="34" y="77" width="28" height="6" rx="3" fill="#E0E7FF" />
-            </g>
-
-            {/* Bullseye Target & Dart */}
-            <g transform="translate(130, 35)">
-              <circle cx="45" cy="45" r="35" fill="#EF4444" filter="drop-shadow(0px 6px 12px rgba(227, 27, 35, 0.25))" />
-              <circle cx="45" cy="45" r="25" fill="#FFFFFF" />
-              <circle cx="45" cy="45" r="15" fill="#EF4444" />
-              <circle cx="45" cy="45" r="6" fill="#FFFFFF" />
-
-              {/* Dart Shaft hitting center */}
-              <path d="M75 15L48 42" stroke="#6366F1" strokeWidth="5" strokeLinecap="round" />
-              <path d="M75 15L85 5L75 5L75 15Z" fill="#818CF8" />
-              <path d="M75 15L85 25L85 15L75 15Z" fill="#818CF8" />
-            </g>
-          </svg>
-        </div>
-      </section>
-
-      {/* Instant Topic & Subtopic Generator Card */}
-      <section style={{
-        marginBottom: 36,
-        padding: '28px 32px',
-        borderRadius: 0,
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
-      }}>
+      {/* Instant Practice Test Generator Card */}
+      <section
+        ref={dropdownRef}
+        style={{
+          marginBottom: 36,
+          padding: '28px 32px',
+          borderRadius: 0,
+          backgroundColor: '#FFFFFF',
+          border: '1px solid #E5E7EB',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
           <div style={{
             width: 44,
@@ -298,70 +402,617 @@ export function MockSelectionPage() {
 
         <form onSubmit={handleStartPracticeTest}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
-            {/* Target Exam */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+            {/* Filter 1: Target Exam */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target Exam
               </label>
-              <select
-                value={selectedExam}
-                onChange={(e) => setSelectedExam(e.target.value)}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'exam' ? null : 'exam');
+                  setFilterSearchQuery('');
+                }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
+                  border: activeDropdown === 'exam' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'exam' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'exam' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <option value="UPSC CSE">UPSC CSE (Civil Services)</option>
-              </select>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedExam || 'UPSC CSE'}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'exam' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'exam' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 220,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 6,
+                    zIndex: 100,
+                  }}
+                >
+                  {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map((opt) => (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        setSelectedExam(opt);
+                        setActiveDropdown(null);
+                      }}
+                      style={{
+                        padding: '9px 12px',
+                        borderRadius: 0,
+                        fontSize: 12.5,
+                        fontWeight: selectedExam === opt ? 700 : 500,
+                        color: selectedExam === opt ? '#1E3A8A' : '#334155',
+                        backgroundColor: selectedExam === opt ? '#F8FAFC' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span>{opt}</span>
+                      {selectedExam === opt && <Check size={14} color="#1E3A8A" />}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Target / PYQ Year */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
+            {/* Filter 2: Target / PYQ Year */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                 Target / PYQ Year
               </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'year' ? null : 'year');
+                  setFilterSearchQuery('');
+                }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
+                  border: activeDropdown === 'year' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'year' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'year' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedYear || 'All Years'}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'year' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'year' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 220,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 6,
+                    zIndex: 100,
+                    maxHeight: 220,
+                    overflowY: 'auto'
+                  }}
+                >
+                  {(yearOptions.length > 0 ? yearOptions : ['All Years (2017 - 2024)']).map((opt) => (
+                    <div
+                      key={opt}
+                      onClick={() => {
+                        setSelectedYear(opt);
+                        setActiveDropdown(null);
+                      }}
+                      style={{
+                        padding: '9px 12px',
+                        borderRadius: 0,
+                        fontSize: 12.5,
+                        fontWeight: selectedYear === opt ? 700 : 500,
+                        color: selectedYear === opt ? '#1E3A8A' : '#334155',
+                        backgroundColor: selectedYear === opt ? '#F8FAFC' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span>{opt}</span>
+                      {selectedYear === opt && <Check size={14} color="#1E3A8A" />}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Subject */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
-                Subject
+            {/* Filter 3: Subject Focus */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Subject Focus
               </label>
-              <select
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                  setFilterSearchQuery('');
+                }}
                 style={{
                   width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
-                  border: '1px solid #E2E8F0', backgroundColor: '#FAFAFC',
-                  color: '#172033', fontSize: 13, fontWeight: 500, outline: 'none',
+                  border: activeDropdown === 'subject' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'subject' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'subject' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                {subjectsList.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedSubjectsList.length === 0
+                    ? 'All Subjects'
+                    : selectedSubjectsList.length === 1
+                      ? formatEnum(selectedSubjectsList[0])
+                      : `${selectedSubjectsList.length} Subjects Selected`}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'subject' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'subject' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 250,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 10,
+                    zIndex: 100,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                    <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                  </div>
+
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search subject..."
+                      value={filterSearchQuery}
+                      onChange={(e) => setFilterSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '7px 10px 7px 30px',
+                        borderRadius: 0,
+                        border: '1px solid #E2E8F0',
+                        fontSize: 12,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        backgroundColor: '#F8FAFC',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {subjectsList
+                      .filter((s: string) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                      .map((opt: string) => {
+                        const isSelected = selectedSubjectsList.includes(opt);
+                        return (
+                          <div
+                            key={opt}
+                            onClick={() => toggleSubjectFilter(opt)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? 700 : 500,
+                              color: isSelected ? '#1E3A8A' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <span>{formatEnum(opt)}</span>
+                            </div>
+                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Filter 4: Topic Focus */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Topic Focus
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'topic' ? null : 'topic');
+                  setFilterSearchQuery('');
+                }}
+                style={{
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: activeDropdown === 'topic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'topic' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'topic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedTopicsList.length === 0
+                    ? 'All Topics'
+                    : selectedTopicsList.length === 1
+                      ? formatEnum(selectedTopicsList[0])
+                      : `${selectedTopicsList.length} Topics Selected`}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'topic' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'topic' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 260,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 10,
+                    zIndex: 100,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                    <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                  </div>
+
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search topic..."
+                      value={filterSearchQuery}
+                      onChange={(e) => setFilterSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '7px 10px 7px 30px',
+                        borderRadius: 0,
+                        border: '1px solid #E2E8F0',
+                        fontSize: 12,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        backgroundColor: '#F8FAFC',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {availableTopicsList
+                      .filter((t: string) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                      .map((opt: string) => {
+                        const isSelected = selectedTopicsList.includes(opt);
+                        return (
+                          <div
+                            key={opt}
+                            onClick={() => toggleTopicFilter(opt)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? 700 : 500,
+                              color: isSelected ? '#1E3A8A' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <span>{formatEnum(opt)}</span>
+                            </div>
+                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Filter 5: Subtopic Focus */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Subtopic Focus
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'subtopic' ? null : 'subtopic');
+                  setFilterSearchQuery('');
+                }}
+                style={{
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: activeDropdown === 'subtopic' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'subtopic' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'subtopic' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedSubtopicsList.length === 0
+                    ? 'All Subtopics'
+                    : selectedSubtopicsList.length === 1
+                      ? formatEnum(selectedSubtopicsList[0])
+                      : `${selectedSubtopicsList.length} Subtopics Selected`}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'subtopic' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'subtopic' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 270,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 10,
+                    zIndex: 100,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                    <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                    <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                  </div>
+
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: 10, top: 10 }} />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search subtopic..."
+                      value={filterSearchQuery}
+                      onChange={(e) => setFilterSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '7px 10px 7px 30px',
+                        borderRadius: 0,
+                        border: '1px solid #E2E8F0',
+                        fontSize: 12,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        backgroundColor: '#F8FAFC',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {availableSubtopicsList
+                      .filter((st: string) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
+                      .map((opt: string) => {
+                        const isSelected = selectedSubtopicsList.includes(opt);
+                        return (
+                          <div
+                            key={opt}
+                            onClick={() => toggleSubtopicFilter(opt)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 0,
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? 700 : 500,
+                              color: isSelected ? '#1E3A8A' : '#334155',
+                              backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                              <span>{formatEnum(opt)}</span>
+                            </div>
+                            {isSelected && <Check size={14} color="#1E3A8A" />}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Filter 6: Difficulty */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Difficulty
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveDropdown(activeDropdown === 'difficulty' ? null : 'difficulty');
+                  setFilterSearchQuery('');
+                }}
+                style={{
+                  width: '100%', height: 42, padding: '0 14px', borderRadius: 0,
+                  border: activeDropdown === 'difficulty' ? '1px solid #1E3A8A' : '1px solid #E2E8F0',
+                  backgroundColor: activeDropdown === 'difficulty' ? '#FFFFFF' : '#FAFAFC',
+                  color: '#172033', fontSize: 13, fontWeight: 600, outline: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  boxShadow: activeDropdown === 'difficulty' ? '0 0 0 3px rgba(23, 32, 51, 0.12)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedDifficulty ? formatEnum(selectedDifficulty) : 'All Levels'}
+                </span>
+                <ChevronDown
+                  size={14}
+                  color="#64748B"
+                  style={{
+                    transform: activeDropdown === 'difficulty' ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s ease',
+                    flexShrink: 0
+                  }}
+                />
+              </button>
+
+              {activeDropdown === 'difficulty' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    width: 180,
+                    maxWidth: 'calc(100vw - 32px)',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 0,
+                    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+                    padding: 6,
+                    zIndex: 100,
+                  }}
+                >
+                  {['All Levels', 'EASY', 'MEDIUM', 'HARD'].map((opt) => {
+                    const isSelected = selectedDifficulty === opt;
+                    return (
+                      <div
+                        key={opt}
+                        onClick={() => {
+                          setSelectedDifficulty(opt);
+                          setActiveDropdown(null);
+                        }}
+                        style={{
+                          padding: '9px 12px',
+                          borderRadius: 0,
+                          fontSize: 12.5,
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? '#1E3A8A' : '#334155',
+                          backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span>{opt === 'All Levels' ? 'All Levels' : formatEnum(opt)}</span>
+                        {isSelected && <Check size={14} color="#1E3A8A" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
           {/* CTA Button Row */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-            paddingTop: 20, borderTop: '1px dashed #E2E8F0'
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            paddingTop: 20, borderTop: '1px dashed #E2E8F0', flexWrap: 'wrap', gap: 12
           }}>
+            <div style={{ fontSize: 12, color: '#64748B' }}>
+              {selectedSubjectsList.length > 0 && (
+                <span>
+                  <strong>{selectedSubjectsList.length}</strong> subject{selectedSubjectsList.length > 1 ? 's' : ''} filtered
+                  {selectedTopicsList.length > 0 && ` • ${selectedTopicsList.length} topic${selectedTopicsList.length > 1 ? 's' : ''}`}
+                  {selectedSubtopicsList.length > 0 && ` • ${selectedSubtopicsList.length} subtopic${selectedSubtopicsList.length > 1 ? 's' : ''}`}
+                </span>
+              )}
+            </div>
             <button
               type="submit"
               style={{
