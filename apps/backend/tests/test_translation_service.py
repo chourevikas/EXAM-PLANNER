@@ -470,6 +470,20 @@ class TestTranslationServiceAsync(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(hi["name"], "Hindi")
             self.assertEqual(hi["native_name"], "हिन्दी")
 
+    async def test_questions_endpoint_language_query_params(self):
+        """Verify GET /api/v1/questions accepts ISO codes ('en', 'hi') and enum values ('ENGLISH') without 422 errors."""
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            for lang_param in ["en", "hi", "ENGLISH", "HINDI", "ta"]:
+                res = await client.get(f"/api/v1/questions?limit=10&language={lang_param}")
+                self.assertNotEqual(
+                    res.status_code,
+                    422,
+                    f"GET /api/v1/questions?language={lang_param} returned 422 Unprocessable Content",
+                )
+                self.assertEqual(res.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
+

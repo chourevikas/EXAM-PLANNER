@@ -98,53 +98,83 @@ class QuestionRepository:
         if exam_name:
             id_stmt = id_stmt.where(func.lower(Exam.name).contains(exam_name.lower()))
 
-        # Hierarchy Filters with cross-level taxonomy matching
+        # Hierarchy Filters with cross-level taxonomy matching (supports comma-separated multi-select)
         if subject_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.subject_id == subject_id, Subject.id == subject_id))
-        if subject_name and subject_name.strip().lower() not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects") and subject_name.strip():
-            clean_s = subject_name.strip().lower()
-            id_stmt = id_stmt.where(or_(
-                func.lower(Subject.name) == clean_s,
-                func.lower(Subject.code) == clean_s,
-                func.lower(Question.section_code) == clean_s,
-            ))
+        if subject_name and subject_name.strip():
+            s_list = [s.strip().lower() for s in subject_name.split(",") if s.strip() and s.strip().lower() not in ("all subjects", "all", "all topics", "all topics/subjects", "all topics and subjects")]
+            if s_list:
+                if len(s_list) == 1:
+                    clean_s = s_list[0]
+                    id_stmt = id_stmt.where(or_(
+                        func.lower(Subject.name) == clean_s,
+                        func.lower(Subject.code) == clean_s,
+                        func.lower(Question.section_code) == clean_s,
+                    ))
+                else:
+                    s_clauses = [
+                        or_(
+                            func.lower(Subject.name) == clean_s,
+                            func.lower(Subject.code) == clean_s,
+                            func.lower(Question.section_code) == clean_s,
+                        )
+                        for clean_s in s_list
+                    ]
+                    id_stmt = id_stmt.where(or_(*s_clauses))
         if subject_code:
             id_stmt = id_stmt.where(func.lower(Subject.code) == subject_code.lower())
 
         if topic_id:
             id_stmt = id_stmt.where(or_(QuestionHierarchyLink.topic_id == topic_id, Topic.id == topic_id))
-        if topic_name and topic_name.strip().lower() not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects") and topic_name.strip():
-            clean_t = topic_name.strip().lower()
-            id_stmt = id_stmt.where(or_(
-                func.lower(Topic.name) == clean_t,
-                func.lower(Topic.code) == clean_t,
-                func.lower(QuestionHierarchyLink.concept_name) == clean_t,
-            ))
+        if topic_name and topic_name.strip():
+            t_list = [t.strip().lower() for t in topic_name.split(",") if t.strip() and t.strip().lower() not in ("all topics", "all", "all subjects", "all topics/subjects", "all topics and subjects")]
+            if t_list:
+                if len(t_list) == 1:
+                    clean_t = t_list[0]
+                    id_stmt = id_stmt.where(or_(
+                        func.lower(Topic.name) == clean_t,
+                        func.lower(Topic.code) == clean_t,
+                        func.lower(QuestionHierarchyLink.concept_name) == clean_t,
+                    ))
+                else:
+                    t_clauses = [
+                        or_(
+                            func.lower(Topic.name) == clean_t,
+                            func.lower(Topic.code) == clean_t,
+                            func.lower(QuestionHierarchyLink.concept_name) == clean_t,
+                        )
+                        for clean_t in t_list
+                    ]
+                    id_stmt = id_stmt.where(or_(*t_clauses))
         if topic_code:
             id_stmt = id_stmt.where(func.lower(Topic.code) == topic_code.lower())
 
         if subtopic_id:
             id_stmt = id_stmt.where(or_(Question.subtopic_id == subtopic_id, QuestionHierarchyLink.subtopic_id == subtopic_id))
-        if subtopic_name and subtopic_name != "All Subtopics" and subtopic_name.strip():
-            clean_st = subtopic_name.strip().lower()
-            st_stop_words = ("and", "the", "for", "all", "of", "in", "to")
-            st_tokens = [t for t in clean_st.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in st_stop_words]
-            
-            subtopic_match = or_(
-                func.lower(Subtopic.name).contains(clean_st),
-                func.lower(QuestionHierarchyLink.concept_name).contains(clean_st),
-            )
-            if len(st_tokens) > 1:
-                st_token_match = and_(*[
-                    or_(
-                        func.lower(Subtopic.name).contains(tok),
-                        func.lower(QuestionHierarchyLink.concept_name).contains(tok),
+        if subtopic_name and subtopic_name.strip():
+            st_list = [st.strip().lower() for st in subtopic_name.split(",") if st.strip() and st.strip().lower() not in ("all subtopics", "all")]
+            if st_list:
+                st_clauses = []
+                st_stop_words = ("and", "the", "for", "all", "of", "in", "to")
+                for clean_st in st_list:
+                    st_tokens = [t for t in clean_st.replace("&", " ").replace("-", " ").split() if len(t) > 2 and t not in st_stop_words]
+                    subtopic_match = or_(
+                        func.lower(Subtopic.name).contains(clean_st),
+                        func.lower(QuestionHierarchyLink.concept_name).contains(clean_st),
                     )
-                    for tok in st_tokens
-                ])
-                id_stmt = id_stmt.where(or_(subtopic_match, st_token_match))
-            else:
-                id_stmt = id_stmt.where(subtopic_match)
+                    if len(st_tokens) > 1:
+                        st_token_match = and_(*[
+                            or_(
+                                func.lower(Subtopic.name).contains(tok),
+                                func.lower(QuestionHierarchyLink.concept_name).contains(tok),
+                            )
+                            for tok in st_tokens
+                        ])
+                        st_clauses.append(or_(subtopic_match, st_token_match))
+                    else:
+                        st_clauses.append(subtopic_match)
+                if st_clauses:
+                    id_stmt = id_stmt.where(or_(*st_clauses))
         if subtopic_code:
             id_stmt = id_stmt.where(func.lower(Subtopic.code) == subtopic_code.lower())
 

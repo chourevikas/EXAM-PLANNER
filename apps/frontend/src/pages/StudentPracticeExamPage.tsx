@@ -47,52 +47,77 @@ export function StudentPracticeExamPage() {
   const [availableExams, setAvailableExams] = useState<string[]>([]);
 
   // Computed dynamic list of topics based on selected subject
+  // Selected Multi-Select Arrays derived from URL parameters
+  const selectedSubjectsList = useMemo(() => {
+    if (!gSubject || gSubject.startsWith('All Subjects')) return [];
+    return gSubject.split(',').map((s) => s.trim()).filter(Boolean);
+  }, [gSubject]);
+
+  const selectedTopicsList = useMemo(() => {
+    if (!gTopic || gTopic.startsWith('All Topics')) return [];
+    return gTopic.split(',').map((t) => t.trim()).filter(Boolean);
+  }, [gTopic]);
+
+  const selectedSubtopicsList = useMemo(() => {
+    if (!gSubtopic || gSubtopic.startsWith('All Subtopics')) return [];
+    return gSubtopic.split(',').map((st) => st.trim()).filter(Boolean);
+  }, [gSubtopic]);
+
+  // Computed dynamic list of topics based on selected subjects
   const availableTopicsList = useMemo(() => {
     const hierarchy = masterSyllabus?.hierarchy || {};
-    if (!gSubject || gSubject.startsWith('All Subjects')) {
-      const topicsSet = new Set<string>();
+    const topicsSet = new Set<string>();
+    if (selectedSubjectsList.length === 0) {
       Object.values(hierarchy).forEach((topicsMap: any) => {
         if (topicsMap && typeof topicsMap === 'object') {
           Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
         }
       });
-      return Array.from(topicsSet).sort();
     } else {
-      const topicsMap = hierarchy[gSubject];
-      if (topicsMap && typeof topicsMap === 'object') {
-        return Object.keys(topicsMap).sort();
-      }
-      return [];
+      selectedSubjectsList.forEach((subj) => {
+        const topicsMap = hierarchy[subj];
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.keys(topicsMap).forEach((t) => topicsSet.add(t));
+        }
+      });
     }
-  }, [gSubject, masterSyllabus]);
+    return Array.from(topicsSet).sort();
+  }, [selectedSubjectsList, masterSyllabus]);
 
-  // Computed dynamic list of subtopics based on selected subject and topic
+  // Computed dynamic list of subtopics based on selected subjects and topics
   const availableSubtopicsList = useMemo(() => {
     const hierarchy = masterSyllabus?.hierarchy || {};
-    const flatHierarchy = masterSyllabus?.flat_hierarchy || {};
-    if (gTopic && !gTopic.startsWith('All Topics')) {
-      if (gSubject && !gSubject.startsWith('All Subjects')) {
-        const subList = hierarchy[gSubject]?.[gTopic] || flatHierarchy[gTopic] || [];
-        return subList.filter((st: string) => !st.startsWith('All Subtopics')).sort();
+    const subSet = new Set<string>();
+    if (selectedTopicsList.length > 0) {
+      if (selectedSubjectsList.length > 0) {
+        selectedSubjectsList.forEach((subj) => {
+          const topicsMap = hierarchy[subj] || {};
+          selectedTopicsList.forEach((top) => {
+            const list = topicsMap[top];
+            if (Array.isArray(list)) {
+              list.forEach((st: string) => {
+                if (!st.startsWith('All Subtopics')) subSet.add(st);
+              });
+            }
+          });
+        });
       } else {
-        const subList = flatHierarchy[gTopic] || [];
-        if (subList.length > 0) {
-          return subList.filter((st: string) => !st.startsWith('All Subtopics')).sort();
-        }
-        const subSet = new Set<string>();
         Object.values(hierarchy).forEach((topicsMap: any) => {
-          if (topicsMap && topicsMap[gTopic]) {
-            topicsMap[gTopic].forEach((st: string) => {
-              if (!st.startsWith('All Subtopics')) subSet.add(st);
+          if (topicsMap && typeof topicsMap === 'object') {
+            selectedTopicsList.forEach((top) => {
+              const list = topicsMap[top];
+              if (Array.isArray(list)) {
+                list.forEach((st: string) => {
+                  if (!st.startsWith('All Subtopics')) subSet.add(st);
+                });
+              }
             });
           }
         });
-        return Array.from(subSet).sort();
       }
-    } else {
-      if (gSubject && !gSubject.startsWith('All Subjects')) {
-        const topicsMap = hierarchy[gSubject] || {};
-        const subSet = new Set<string>();
+    } else if (selectedSubjectsList.length > 0) {
+      selectedSubjectsList.forEach((subj) => {
+        const topicsMap = hierarchy[subj] || {};
         Object.values(topicsMap).forEach((subList: any) => {
           if (Array.isArray(subList)) {
             subList.forEach((st: string) => {
@@ -100,24 +125,123 @@ export function StudentPracticeExamPage() {
             });
           }
         });
-        return Array.from(subSet).sort();
+      });
+    } else {
+      Object.values(hierarchy).forEach((topicsMap: any) => {
+        if (topicsMap && typeof topicsMap === 'object') {
+          Object.values(topicsMap).forEach((subList: any) => {
+            if (Array.isArray(subList)) {
+              subList.forEach((st: string) => {
+                if (!st.startsWith('All Subtopics')) subSet.add(st);
+              });
+            }
+          });
+        }
+      });
+    }
+    return Array.from(subSet).sort();
+  }, [selectedSubjectsList, selectedTopicsList, masterSyllabus]);
+
+  // Multi-Select Toggle & Select All Helpers
+  const toggleSubjectFilter = (subjectName: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (subjectName === 'All Subjects') {
+      current.delete('subject');
+      current.delete('topic');
+      current.delete('subtopic');
+    } else {
+      let updated: string[];
+      if (selectedSubjectsList.includes(subjectName)) {
+        updated = selectedSubjectsList.filter((s) => s !== subjectName);
       } else {
-        const subSet = new Set<string>();
-        Object.values(hierarchy).forEach((topicsMap: any) => {
-          if (topicsMap && typeof topicsMap === 'object') {
-            Object.values(topicsMap).forEach((subList: any) => {
-              if (Array.isArray(subList)) {
-                subList.forEach((st: string) => {
-                  if (!st.startsWith('All Subtopics')) subSet.add(st);
-                });
-              }
-            });
-          }
-        });
-        return Array.from(subSet).sort();
+        updated = [...selectedSubjectsList, subjectName];
+      }
+      if (updated.length === 0) {
+        current.delete('subject');
+      } else {
+        current.set('subject', updated.join(','));
+      }
+      current.delete('topic');
+      current.delete('subtopic');
+    }
+    navigate(`/practice-exam?${current.toString()}`);
+  };
+
+  const selectAllSubjects = () => {
+    const current = new URLSearchParams(searchParams);
+    const hierarchySubjects = Object.keys(masterSyllabus?.hierarchy || {});
+    if (hierarchySubjects.length > 0) {
+      current.set('subject', hierarchySubjects.join(','));
+    } else {
+      current.delete('subject');
+    }
+    current.delete('topic');
+    current.delete('subtopic');
+    navigate(`/practice-exam?${current.toString()}`);
+  };
+
+  const toggleTopicFilter = (topicName: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (topicName === 'All Topics') {
+      current.delete('topic');
+      current.delete('subtopic');
+    } else {
+      let updated: string[];
+      if (selectedTopicsList.includes(topicName)) {
+        updated = selectedTopicsList.filter((t) => t !== topicName);
+      } else {
+        updated = [...selectedTopicsList, topicName];
+      }
+      if (updated.length === 0) {
+        current.delete('topic');
+      } else {
+        current.set('topic', updated.join(','));
+      }
+      current.delete('subtopic');
+    }
+    navigate(`/practice-exam?${current.toString()}`);
+  };
+
+  const selectAllTopics = () => {
+    const current = new URLSearchParams(searchParams);
+    if (availableTopicsList.length > 0) {
+      current.set('topic', availableTopicsList.join(','));
+    } else {
+      current.delete('topic');
+    }
+    current.delete('subtopic');
+    navigate(`/practice-exam?${current.toString()}`);
+  };
+
+  const toggleSubtopicFilter = (subtopicName: string) => {
+    const current = new URLSearchParams(searchParams);
+    if (subtopicName === 'All Subtopics') {
+      current.delete('subtopic');
+    } else {
+      let updated: string[];
+      if (selectedSubtopicsList.includes(subtopicName)) {
+        updated = selectedSubtopicsList.filter((st) => st !== subtopicName);
+      } else {
+        updated = [...selectedSubtopicsList, subtopicName];
+      }
+      if (updated.length === 0) {
+        current.delete('subtopic');
+      } else {
+        current.set('subtopic', updated.join(','));
       }
     }
-  }, [gSubject, gTopic, masterSyllabus]);
+    navigate(`/practice-exam?${current.toString()}`);
+  };
+
+  const selectAllSubtopics = () => {
+    const current = new URLSearchParams(searchParams);
+    if (availableSubtopicsList.length > 0) {
+      current.set('subtopic', availableSubtopicsList.join(','));
+    } else {
+      current.delete('subtopic');
+    }
+    navigate(`/practice-exam?${current.toString()}`);
+  };
 
   // Session State
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -370,7 +494,7 @@ export function StudentPracticeExamPage() {
         setIsPrefetchingRecs(false);
       }
     },
-    [gSubject, gExam, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
+    [gSubject, gTopic, gSubtopic, gExam, language, userResponses, revealedMap, isPrefetchingRecs, isRecsExhausted],
   );
 
   // Fires on mount (allQuestions is still [] at that point) so the
@@ -572,10 +696,11 @@ export function StudentPracticeExamPage() {
 
         const primaryH =
           (q.hierarchy || []).find((h: any) => h.is_primary) || (q.hierarchy || [])[0] || {};
-        const subjName =
-          primaryH.subject_name ||
-          q.subject_name ||
-          (gSubject && !gSubject.startsWith('All Subjects') ? gSubject : 'General Studies');
+        const fallbackSubj =
+          gSubject && !gSubject.startsWith('All Subjects')
+            ? gSubject.split(',')[0].trim()
+            : 'General Studies';
+        const subjName = primaryH.subject_name || q.subject_name || fallbackSubj;
         const topName =
           primaryH.topic_name ||
           q.topic_name ||
@@ -655,7 +780,7 @@ export function StudentPracticeExamPage() {
             : gExam.toLowerCase().trim()
           : '';
 
-        const initialFetchLimit = Math.min(100, Math.max(gCount * 3, 20));
+        const initialFetchLimit = 100;
 
         // 1. Try with subject + topic + subtopic + year + selected exam
         const p1 = new URLSearchParams({ limit: String(initialFetchLimit) });
@@ -790,7 +915,7 @@ export function StudentPracticeExamPage() {
     }
 
     loadPracticeQuestions();
-  }, [gExam, gYear, gSubject, gCount]);
+  }, [gExam, gYear, gSubject, gTopic, gSubtopic, gDifficulty, gCount, language]);
 
   // Persist session state to sessionStorage
   useEffect(() => {
@@ -1498,7 +1623,11 @@ export function StudentPracticeExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gSubject ? formatEnum(gSubject) : 'All Subjects'}
+                      {selectedSubjectsList.length === 0
+                        ? 'All Subjects'
+                        : selectedSubjectsList.length === 1
+                          ? formatEnum(selectedSubjectsList[0])
+                          : `${selectedSubjectsList.length} Subjects Selected`}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1526,6 +1655,12 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
+                      {/* Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                        <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      </div>
+
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
@@ -1562,38 +1697,33 @@ export function StudentPracticeExamPage() {
                       >
                         {subjectsList
                           .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                          .map((opt) => (
-                            <div
-                              key={opt}
-                              onClick={() => {
-                                const current = new URLSearchParams(searchParams);
-                                if (opt === 'All Subjects') {
-                                  current.delete('subject');
-                                  current.delete('topic');
-                                } else {
-                                  current.set('subject', opt);
-                                  current.delete('topic');
-                                }
-                                navigate(`/practice-exam?${current.toString()}`);
-                                setActiveDropdown(null);
-                              }}
-                              style={{
-                                padding: '8px 10px',
-                                borderRadius: 0,
-                                fontSize: 12.5,
-                                fontWeight: gSubject === opt ? 700 : 500,
-                                color: gSubject === opt ? '#1E3A8A' : '#334155',
-                                backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <span>{opt}</span>
-                              {gSubject === opt && <Check size={14} color="#1E3A8A" />}
-                            </div>
-                          ))}
+                          .map((opt) => {
+                            const isSelected = opt === 'All Subjects' ? selectedSubjectsList.length === 0 : selectedSubjectsList.includes(opt);
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => toggleSubjectFilter(opt)}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: 0,
+                                  fontSize: 12.5,
+                                  fontWeight: isSelected ? 700 : 500,
+                                  color: isSelected ? '#1E3A8A' : '#334155',
+                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <span>{opt}</span>
+                                </div>
+                                {isSelected && <Check size={14} color="#1E3A8A" />}
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -1642,7 +1772,11 @@ export function StudentPracticeExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                      {selectedTopicsList.length === 0
+                        ? 'All Topics'
+                        : selectedTopicsList.length === 1
+                          ? formatEnum(selectedTopicsList[0])
+                          : `${selectedTopicsList.length} Topics Selected`}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1670,6 +1804,12 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
+                      {/* Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                        <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      </div>
+
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
@@ -1707,43 +1847,28 @@ export function StudentPracticeExamPage() {
                         {['All Topics', ...availableTopicsList]
                           .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                           .map((opt) => {
-                            const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                            const isSelected = opt === 'All Topics' ? selectedTopicsList.length === 0 : selectedTopicsList.includes(opt);
                             return (
                               <div
                                 key={opt}
-                                onClick={() => {
-                                  const current = new URLSearchParams(searchParams);
-                                  if (opt === 'All Topics') {
-                                    current.delete('topic');
-                                  } else {
-                                    current.set('topic', opt);
-                                  }
-                                  current.delete('subtopic');
-                                  navigate(`/practice-exam?${current.toString()}`);
-                                  setActiveDropdown(null);
-                                }}
+                                onClick={() => toggleTopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   cursor: 'pointer',
                                 }}
-                                onMouseEnter={(e) => {
-                                  if (!isSelected)
-                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isSelected)
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
                               >
-                                <span>{opt}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <span>{opt}</span>
+                                </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
                             );
@@ -1796,7 +1921,11 @@ export function StudentPracticeExamPage() {
                     <span
                       style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                      {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                      {selectedSubtopicsList.length === 0
+                        ? 'All Subtopics'
+                        : selectedSubtopicsList.length === 1
+                          ? formatEnum(selectedSubtopicsList[0])
+                          : `${selectedSubtopicsList.length} Subtopics Selected`}
                     </span>
                     <ChevronDown
                       size={14}
@@ -1824,6 +1953,12 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
+                      {/* Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                        <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                        <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                      </div>
+
                       <div style={{ position: 'relative', marginBottom: 8 }}>
                         <Search
                           size={14}
@@ -1861,42 +1996,28 @@ export function StudentPracticeExamPage() {
                         {['All Subtopics', ...availableSubtopicsList]
                           .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                           .map((opt) => {
-                            const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                            const isSelected = opt === 'All Subtopics' ? selectedSubtopicsList.length === 0 : selectedSubtopicsList.includes(opt);
                             return (
                               <div
                                 key={opt}
-                                onClick={() => {
-                                  const current = new URLSearchParams(searchParams);
-                                  if (opt === 'All Subtopics') {
-                                    current.delete('subtopic');
-                                  } else {
-                                    current.set('subtopic', opt);
-                                  }
-                                  navigate(`/practice-exam?${current.toString()}`);
-                                  setActiveDropdown(null);
-                                }}
+                                onClick={() => toggleSubtopicFilter(opt)}
                                 style={{
                                   padding: '8px 10px',
                                   borderRadius: 0,
                                   fontSize: 12.5,
                                   fontWeight: isSelected ? 700 : 500,
                                   color: isSelected ? '#1E3A8A' : '#334155',
-                                  backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                  backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
                                   cursor: 'pointer',
                                 }}
-                                onMouseEnter={(e) => {
-                                  if (!isSelected)
-                                    e.currentTarget.style.backgroundColor = '#F8FAFC';
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!isSelected)
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
                               >
-                                <span>{opt}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                  <span>{opt}</span>
+                                </div>
                                 {isSelected && <Check size={14} color="#1E3A8A" />}
                               </div>
                             );
@@ -2231,7 +2352,11 @@ export function StudentPracticeExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gSubject ? formatEnum(gSubject) : 'All Subjects'}
+                    {selectedSubjectsList.length === 0
+                      ? 'All Subjects'
+                      : selectedSubjectsList.length === 1
+                        ? formatEnum(selectedSubjectsList[0])
+                        : `${selectedSubjectsList.length} Subjects Selected`}
                   </span>
                   <ChevronDown
                     size={14}
@@ -2259,6 +2384,12 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
+                    {/* Action Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                      <button type="button" onClick={selectAllSubjects} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleSubjectFilter('All Subjects')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    </div>
+
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
@@ -2295,38 +2426,33 @@ export function StudentPracticeExamPage() {
                     >
                       {subjectsList
                         .filter((s) => s.toLowerCase().includes(filterSearchQuery.toLowerCase()))
-                        .map((opt) => (
-                          <div
-                            key={opt}
-                            onClick={() => {
-                              const current = new URLSearchParams(searchParams);
-                              if (opt === 'All Subjects') {
-                                current.delete('subject');
-                                current.delete('topic');
-                              } else {
-                                current.set('subject', opt);
-                                current.delete('topic');
-                              }
-                              navigate(`/practice-exam?${current.toString()}`);
-                              setActiveDropdown(null);
-                            }}
-                            style={{
-                              padding: '8px 10px',
-                              borderRadius: 0,
-                              fontSize: 12.5,
-                              fontWeight: gSubject === opt ? 700 : 500,
-                              color: gSubject === opt ? '#1E3A8A' : '#334155',
-                              backgroundColor: gSubject === opt ? '#F8FAFC' : 'transparent',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <span>{opt}</span>
-                            {gSubject === opt && <Check size={14} color="#1E3A8A" />}
-                          </div>
-                        ))}
+                        .map((opt) => {
+                          const isSelected = opt === 'All Subjects' ? selectedSubjectsList.length === 0 : selectedSubjectsList.includes(opt);
+                          return (
+                            <div
+                              key={opt}
+                              onClick={() => toggleSubjectFilter(opt)}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 0,
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? 700 : 500,
+                                color: isSelected ? '#1E3A8A' : '#334155',
+                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <span>{opt}</span>
+                              </div>
+                              {isSelected && <Check size={14} color="#1E3A8A" />}
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
@@ -2375,7 +2501,11 @@ export function StudentPracticeExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gTopic ? formatEnum(gTopic) : 'All Topics'}
+                    {selectedTopicsList.length === 0
+                      ? 'All Topics'
+                      : selectedTopicsList.length === 1
+                        ? formatEnum(selectedTopicsList[0])
+                        : `${selectedTopicsList.length} Topics Selected`}
                   </span>
                   <ChevronDown
                     size={14}
@@ -2403,6 +2533,12 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
+                    {/* Action Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                      <button type="button" onClick={selectAllTopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleTopicFilter('All Topics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    </div>
+
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
@@ -2440,43 +2576,28 @@ export function StudentPracticeExamPage() {
                       {['All Topics', ...availableTopicsList]
                         .filter((t) => t.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                         .map((opt) => {
-                          const isSelected = (opt === 'All Topics' && !gTopic) || gTopic === opt;
+                          const isSelected = opt === 'All Topics' ? selectedTopicsList.length === 0 : selectedTopicsList.includes(opt);
                           return (
                             <div
                               key={opt}
-                              onClick={() => {
-                                const current = new URLSearchParams(searchParams);
-                                if (opt === 'All Topics') {
-                                  current.delete('topic');
-                                } else {
-                                  current.set('topic', opt);
-                                }
-                                current.delete('subtopic');
-                                navigate(`/practice-exam?${current.toString()}`);
-                                setActiveDropdown(null);
-                              }}
+                              onClick={() => toggleTopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 cursor: 'pointer',
                               }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected)
-                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected)
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
                             >
-                              <span>{opt}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <span>{opt}</span>
+                              </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
                           );
@@ -2529,7 +2650,11 @@ export function StudentPracticeExamPage() {
                   <span
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {gSubtopic ? formatEnum(gSubtopic) : 'All Subtopics'}
+                    {selectedSubtopicsList.length === 0
+                      ? 'All Subtopics'
+                      : selectedSubtopicsList.length === 1
+                        ? formatEnum(selectedSubtopicsList[0])
+                        : `${selectedSubtopicsList.length} Subtopics Selected`}
                   </span>
                   <ChevronDown
                     size={14}
@@ -2557,6 +2682,12 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
+                    {/* Action Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #F1F5F9' }}>
+                      <button type="button" onClick={selectAllSubtopics} style={{ background: 'none', border: 'none', color: '#1E3A8A', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Select All</button>
+                      <button type="button" onClick={() => toggleSubtopicFilter('All Subtopics')} style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Clear</button>
+                    </div>
+
                     <div style={{ position: 'relative', marginBottom: 8 }}>
                       <Search
                         size={14}
@@ -2594,42 +2725,28 @@ export function StudentPracticeExamPage() {
                       {['All Subtopics', ...availableSubtopicsList]
                         .filter((st) => st.toLowerCase().includes(filterSearchQuery.toLowerCase()))
                         .map((opt) => {
-                          const isSelected = (opt === 'All Subtopics' && !gSubtopic) || gSubtopic === opt;
+                          const isSelected = opt === 'All Subtopics' ? selectedSubtopicsList.length === 0 : selectedSubtopicsList.includes(opt);
                           return (
                             <div
                               key={opt}
-                              onClick={() => {
-                                const current = new URLSearchParams(searchParams);
-                                if (opt === 'All Subtopics') {
-                                  current.delete('subtopic');
-                                } else {
-                                  current.set('subtopic', opt);
-                                }
-                                navigate(`/practice-exam?${current.toString()}`);
-                                setActiveDropdown(null);
-                              }}
+                              onClick={() => toggleSubtopicFilter(opt)}
                               style={{
                                 padding: '8px 10px',
                                 borderRadius: 0,
                                 fontSize: 12.5,
                                 fontWeight: isSelected ? 700 : 500,
                                 color: isSelected ? '#1E3A8A' : '#334155',
-                                backgroundColor: isSelected ? '#F8FAFC' : 'transparent',
+                                backgroundColor: isSelected ? '#F1F5F9' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 cursor: 'pointer',
                               }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected)
-                                  e.currentTarget.style.backgroundColor = '#F8FAFC';
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected)
-                                  e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
                             >
-                              <span>{opt}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', accentColor: '#1E3A8A' }} />
+                                <span>{opt}</span>
+                              </div>
                               {isSelected && <Check size={14} color="#1E3A8A" />}
                             </div>
                           );
