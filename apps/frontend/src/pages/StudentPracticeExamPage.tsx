@@ -21,7 +21,7 @@ import { fetchMasterSyllabus, verifySyllabusNode, listExams } from '../services/
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { addBookmark, removeBookmark, listBookmarks } from '../services/bookmarkService';
 import { saveGuestAttempt } from '../utils/guestStorage';
-import { formatEnum } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import { guardedFetch } from '../utils/apiGuard';
 
 export function StudentPracticeExamPage() {
@@ -44,7 +44,7 @@ export function StudentPracticeExamPage() {
 
   // Master Syllabus Taxonomy & Available Exams state fetched directly from live APIs
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
-  const [availableExams, setAvailableExams] = useState<string[]>([]);
+  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
 
   // Computed dynamic list of topics based on selected subject
   // Selected Multi-Select Arrays derived from URL parameters
@@ -802,9 +802,11 @@ export function StudentPracticeExamPage() {
         ]);
         if (sData) setMasterSyllabus(sData);
         if (eList && eList.length > 0) {
-          const names = Array.from(
-            new Set(eList.map((e: any) => e.title || e.exam_name || e.code).filter(Boolean)),
-          );
+          const dynamicExams = eList.map((e: any) =>
+            extractCanonicalExamName(e.name || e.title || e.exam_name || e.code),
+          ).filter(Boolean);
+          const names = Array.from(new Set(dynamicExams)) as string[];
+          names.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
           if (names.length > 0) setAvailableExams(names);
         }
       } catch (err) {
@@ -955,18 +957,19 @@ export function StudentPracticeExamPage() {
           await fetchWithParams(p4);
         }
 
-        // 5. Fallback: Relax exam/subject filter if still 0 questions found
-        if (fetchedMap.size === 0 && reqSubject && targetExam) {
+        // 5. Fallback: Relax subject filter if still 0 questions found for this exam
+        if (fetchedMap.size === 0 && targetExam) {
           const p5 = new URLSearchParams({ limit: String(initialFetchLimit) });
-          p5.append('subject_name', reqSubject);
+          p5.append('exam_name', targetExam);
+          if (numericYear) p5.append('exam_year', numericYear);
           await fetchWithParams(p5);
         }
 
-        // 6. Fallback: Only if user explicitly chose "All Subjects" (rawSubject is empty)
-        if (fetchedMap.size === 0 && !rawSubject) {
+        // 6. Fallback: Only if user explicitly chose "All Exams" or no targetExam was specified
+        if (fetchedMap.size === 0 && !targetExam) {
           const pAll = new URLSearchParams({ limit: String(initialFetchLimit) });
           if (numericYear) pAll.append('exam_year', numericYear);
-          if (targetExam) pAll.append('exam_name', targetExam);
+          if (reqSubject) pAll.append('subject_name', reqSubject);
           await fetchWithParams(pAll);
 
           if (fetchedMap.size === 0) {
@@ -1714,7 +1717,7 @@ export function StudentPracticeExamPage() {
                         zIndex: 100,
                       }}
                     >
-                      {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map(
+                      {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map(
                         (opt) => (
                           <div
                             key={opt}
@@ -2443,7 +2446,7 @@ export function StudentPracticeExamPage() {
                       zIndex: 100,
                     }}
                   >
-                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map(
+                    {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map(
                       (opt) => (
                         <div
                           key={opt}

@@ -144,3 +144,58 @@ export function formatEnum(value?: string | number | null): string {
  * Shorter alias for formatEnum
  */
 export const formatEnumLabel = formatEnum;
+
+/**
+ * Default fallback target examination when dynamic list is loading or empty.
+ */
+export const DEFAULT_TARGET_EXAMS = ['UPSC CSE'];
+export const CANONICAL_TARGET_EXAMS = DEFAULT_TARGET_EXAMS;
+
+/**
+ * Extracts a clean canonical examination name (e.g. 'UPSC CSE', 'MPPSC', 'BPSC', 'UPPCS')
+ * from raw exam titles, codes, or database keys (e.g. 'upsc-prelims-gs1-2021-set_a' -> 'UPSC CSE').
+ * Never returns raw PYQ codes, years, or set names.
+ */
+export function extractCanonicalExamName(raw?: string | null): string {
+  if (!raw) return 'UPSC CSE';
+  const clean = String(raw).trim();
+  const lower = clean.toLowerCase();
+
+  // Known canonical exam matches
+  if (lower.includes('upsc') || lower.includes('civil services') || lower.includes('upse')) {
+    return 'UPSC CSE';
+  }
+  if (lower.includes('mppsc')) return 'MPPSC';
+  if (lower.includes('bpsc')) return 'BPSC';
+  if (lower.includes('uppcs') || lower.includes('uppsc')) return 'UPPCS';
+  if (lower.includes('mpsc')) return 'MPSC';
+  if (lower.includes('ras') || lower.includes('rpsc')) return 'RPSC';
+  if (lower.includes('kpsc')) return 'KPSC';
+  if (lower.includes('wbcs') || lower.includes('wbpsc')) return 'WBPSC';
+  if (lower.includes('tnpsc')) return 'TNPSC';
+  if (lower.includes('ssc')) return 'SSC';
+
+  if (clean === 'State PSC') return 'State PSC';
+
+  // Strip years, set codes, prelims, mains, gs paper tokens
+  const stripped = clean
+    .replace(/\s*\(\d{4}\).*$/i, '')
+    .replace(/-\d{4}.*$/i, '')
+    .replace(/-prelims.*$/i, '')
+    .replace(/\s+prelims.*$/i, '')
+    .replace(/-mains.*$/i, '')
+    .replace(/\s+mains.*$/i, '')
+    .replace(/\s+set\s+[a-z0-9]+/i, '')
+    .replace(/-set_[a-z0-9]+/i, '')
+    .replace(/_set_[a-z0-9]+/i, '')
+    .replace(/-gs\d+.*$/i, '')
+    .replace(/\s+gs\s*paper.*$/i, '')
+    .trim();
+
+  // If still looks like a code, slug, or is empty/too long, fallback safely to UPSC CSE
+  if (!stripped || stripped.length > 25 || stripped.includes('-') || stripped.includes('_')) {
+    return 'UPSC CSE';
+  }
+
+  return stripped.toUpperCase();
+}

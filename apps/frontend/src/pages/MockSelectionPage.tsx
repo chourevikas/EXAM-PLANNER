@@ -10,7 +10,7 @@ import {
   fetchExamsByYear,
 } from '../services/examService';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { formatEnum } from '../utils/formatEnum';
+import { formatEnum, extractCanonicalExamName } from '../utils/formatEnum';
 import {
   CheckCircle2,
   PlayCircle,
@@ -39,14 +39,14 @@ interface DisplayMock {
 
 export function MockSelectionPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hoveredMock, setHoveredMock] = useState<number | string | null>(null);
   const [mocksList, setMocksList] = useState<DisplayMock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { getToken } = useAuth();
 
   // Dynamic 3-level taxonomy & exam state
   const [masterSyllabus, setMasterSyllabus] = useState<any>(null);
-  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE', 'State PSC']);
+  const [availableExams, setAvailableExams] = useState<string[]>(['UPSC CSE']);
   const [yearOptions, setYearOptions] = useState<string[]>([]);
   const [isTaxonomyLoading, setIsTaxonomyLoading] = useState<boolean>(true);
 
@@ -100,13 +100,21 @@ export function MockSelectionPage() {
           setSelectedYear((prev) => (prev ? prev : yearsArray[0]));
         }
 
-        if (publishedExams && publishedExams.length > 0) {
-          const names = Array.from(
-            new Set(publishedExams.map((e: any) => e.title || e.exam_name || e.code).filter(Boolean)),
-          ) as string[];
-          if (names.length > 0) {
-            setAvailableExams(names);
-          }
+        const dynamicExams: string[] = [];
+        if (Array.isArray(publishedExams) && publishedExams.length > 0) {
+          publishedExams.forEach((e: any) => {
+            const canonical = extractCanonicalExamName(e.name || e.title || e.exam_name || e.code);
+            if (canonical) dynamicExams.push(canonical);
+          });
+        }
+
+        const distinctExams = Array.from(new Set(dynamicExams)) as string[];
+        distinctExams.sort((a, b) => (a === 'UPSC CSE' ? -1 : b === 'UPSC CSE' ? 1 : a.localeCompare(b)));
+
+        if (distinctExams.length > 0) {
+          setAvailableExams(distinctExams);
+        } else {
+          setAvailableExams(['UPSC CSE']);
         }
       } catch (err) {
         console.warn('Taxonomy / Exam years fetch warning:', err);
@@ -454,7 +462,7 @@ export function MockSelectionPage() {
                     zIndex: 100,
                   }}
                 >
-                  {(availableExams.length > 0 ? availableExams : ['UPSC CSE', 'State PSC']).map((opt) => (
+                  {(availableExams.length > 0 ? availableExams : ['UPSC CSE']).map((opt) => (
                     <div
                       key={opt}
                       onClick={() => {
