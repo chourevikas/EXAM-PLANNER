@@ -309,10 +309,14 @@ class QuestionService:
         results: List[Dict[str, Any]] = []
         for q in questions:
             q_trans = qt_map.get(q.id, {})
-            q_trans_str = {
-                (k.value if hasattr(k, "value") else str(k)): v
-                for k, v in q_trans.items()
-            }
+            q_trans_str: Dict[str, str] = {}
+            for k, v in q_trans.items():
+                key_str = k.value if hasattr(k, "value") else str(k)
+                q_trans_str[key_str] = v
+                iso, enum_name = normalize_language(key_str)
+                q_trans_str[iso] = v
+                q_trans_str[enum_name] = v
+
             text = (
                 q_trans_str.get(target_enum)
                 or q_trans_str.get(target_iso)
@@ -323,10 +327,15 @@ class QuestionService:
             opt_list = []
             for opt in opt_map.get(q.id, []):
                 opt_trans = ot_map.get(opt.id, {})
-                opt_trans_str = {
-                    (k.value if hasattr(k, "value") else str(k)): (v[0] if isinstance(v, (tuple, list)) else v)
-                    for k, v in opt_trans.items()
-                }
+                opt_trans_str: Dict[str, str] = {}
+                for k, v in opt_trans.items():
+                    val = v[0] if isinstance(v, (tuple, list)) else v
+                    key_str = k.value if hasattr(k, "value") else str(k)
+                    opt_trans_str[key_str] = val
+                    iso, enum_name = normalize_language(key_str)
+                    opt_trans_str[iso] = val
+                    opt_trans_str[enum_name] = val
+
                 opt_text = (
                     opt_trans_str.get(target_enum)
                     or opt_trans_str.get(target_iso)
@@ -1632,11 +1641,11 @@ class QuestionService:
             if not missing_q_stems and not missing_opts and not missing_pass:
                 return
 
-            # Prioritize first 5 questions synchronously for instant response; offload remaining to background task
-            if len(missing_q_stems) > 5:
-                sync_q_set = {q.id for q, _ in missing_q_stems[:5]}
-                sync_stems = missing_q_stems[:5]
-                bg_stems = missing_q_stems[5:]
+            # Prioritize first 20 questions synchronously for instant response; offload remaining to background task
+            if len(missing_q_stems) > 20:
+                sync_q_set = {q.id for q, _ in missing_q_stems[:20]}
+                sync_stems = missing_q_stems[:20]
+                bg_stems = missing_q_stems[20:]
 
                 sync_opts = [item for item in missing_opts if item[0].question_id in sync_q_set]
                 bg_opts = [item for item in missing_opts if item[0].question_id not in sync_q_set]
@@ -1672,6 +1681,7 @@ class QuestionService:
                 t_text = trans_dict.get(text, text)
                 qt_map.setdefault(q.id, {})[target_enum] = t_text
                 qt_map[q.id][lang_db_enum] = t_text
+                qt_map[q.id][target_iso] = t_text
                 new_q_records.append(QuestionTranslation(
                     question_id=q.id,
                     language=lang_db_enum,
@@ -1683,6 +1693,7 @@ class QuestionService:
                 t_text = trans_dict.get(text, text)
                 ot_map.setdefault(opt.id, {})[target_enum] = (t_text, None)
                 ot_map[opt.id][lang_db_enum] = (t_text, None)
+                ot_map[opt.id][target_iso] = (t_text, None)
                 new_opt_records.append(OptionTranslation(
                     option_id=opt.id,
                     language=lang_db_enum,
@@ -1694,6 +1705,7 @@ class QuestionService:
                 t_text = trans_dict.get(text, text)
                 pt_map.setdefault(p_id, {})[target_enum] = t_text
                 pt_map[p_id][lang_db_enum] = t_text
+                pt_map[p_id][target_iso] = t_text
                 new_pass_records.append(PassageTranslation(
                     passage_id=p_id,
                     language=lang_db_enum,

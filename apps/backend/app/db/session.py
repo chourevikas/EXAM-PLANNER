@@ -205,41 +205,81 @@ async def async_init_db():
             except Exception as e:
                 logger.debug(f"Postgres column ensure preferred_language: {e}")
 
-        # Ensure critical unique indices exist for FSRS memory state and concept retention upserts
+        # Ensure critical unique indices exist for translation tables, FSRS memory state and concept retention upserts
         try:
-            has_indices = False
             if engine.url.drivername.startswith("postgresql"):
+                # 1. Translation tables unique indices
+                q_res = await conn.execute(text("SELECT to_regclass('public.ix_q_trans_unique');"))
+                o_res = await conn.execute(text("SELECT to_regclass('public.ix_opt_trans_unique');"))
+                p_res = await conn.execute(text("SELECT to_regclass('public.ix_passage_trans_unique');"))
+                if q_res.scalar() is None or o_res.scalar() is None or p_res.scalar() is None:
+                    await conn.execute(
+                        text("""
+                            DELETE FROM question_translations 
+                            WHERE id NOT IN (
+                                SELECT MAX(id) FROM question_translations GROUP BY question_id, language
+                            );
+                        """)
+                    )
+                    await conn.execute(
+                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_q_trans_unique ON question_translations (question_id, language);")
+                    )
+                    await conn.execute(
+                        text("""
+                            DELETE FROM option_translations 
+                            WHERE id NOT IN (
+                                SELECT MAX(id) FROM option_translations GROUP BY option_id, language
+                            );
+                        """)
+                    )
+                    await conn.execute(
+                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_opt_trans_unique ON option_translations (option_id, language);")
+                    )
+                    await conn.execute(
+                        text("""
+                            DELETE FROM passage_translations 
+                            WHERE id NOT IN (
+                                SELECT MAX(id) FROM passage_translations GROUP BY passage_id, language
+                            );
+                        """)
+                    )
+                    await conn.execute(
+                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_passage_trans_unique ON passage_translations (passage_id, language);")
+                    )
+                    logger.info("Successfully ensured unique indices on question_translations, option_translations, and passage_translations.")
+
+                # 2. Memory state and concept retention indices
                 m_res = await conn.execute(text("SELECT to_regclass('public.ix_memory_user_question');"))
                 r_res = await conn.execute(text("SELECT to_regclass('public.ix_retention_user_subtopic');"))
                 has_indices = (m_res.scalar() is not None) and (r_res.scalar() is not None)
 
-            if not has_indices:
-                # Deduplicate any pre-existing rows (keeping the latest record by ID) so PostgreSQL can create the unique index
-                await conn.execute(
-                    text("""
-                        DELETE FROM user_memory_states 
-                        WHERE question_id IS NOT NULL 
-                          AND id NOT IN (
-                            SELECT MAX(id) FROM user_memory_states WHERE question_id IS NOT NULL GROUP BY user_id, question_id
-                          );
-                    """)
-                )
-                await conn.execute(
-                    text("""
-                        DELETE FROM user_concept_retention 
-                        WHERE subtopic_id IS NOT NULL 
-                          AND id NOT IN (
-                            SELECT MAX(id) FROM user_concept_retention WHERE subtopic_id IS NOT NULL GROUP BY user_id, subtopic_id
-                          );
-                    """)
-                )
-                await conn.execute(
-                    text("CREATE UNIQUE INDEX IF NOT EXISTS ix_memory_user_question ON user_memory_states (user_id, question_id);")
-                )
-                await conn.execute(
-                    text("CREATE UNIQUE INDEX IF NOT EXISTS ix_retention_user_subtopic ON user_concept_retention (user_id, subtopic_id);")
-                )
-                logger.info("Successfully ensured unique indices on user_memory_states and user_concept_retention.")
+                if not has_indices:
+                    # Deduplicate any pre-existing rows (keeping the latest record by ID) so PostgreSQL can create the unique index
+                    await conn.execute(
+                        text("""
+                            DELETE FROM user_memory_states 
+                            WHERE question_id IS NOT NULL 
+                              AND id NOT IN (
+                                SELECT MAX(id) FROM user_memory_states WHERE question_id IS NOT NULL GROUP BY user_id, question_id
+                              );
+                        """)
+                    )
+                    await conn.execute(
+                        text("""
+                            DELETE FROM user_concept_retention 
+                            WHERE subtopic_id IS NOT NULL 
+                              AND id NOT IN (
+                                SELECT MAX(id) FROM user_concept_retention WHERE subtopic_id IS NOT NULL GROUP BY user_id, subtopic_id
+                              );
+                        """)
+                    )
+                    await conn.execute(
+                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_memory_user_question ON user_memory_states (user_id, question_id);")
+                    )
+                    await conn.execute(
+                        text("CREATE UNIQUE INDEX IF NOT EXISTS ix_retention_user_subtopic ON user_concept_retention (user_id, subtopic_id);")
+                    )
+                    logger.info("Successfully ensured unique indices on user_memory_states and user_concept_retention.")
         except Exception as idx_err:
             logger.warning(f"Could not auto-create unique indices on startup: {idx_err}")
     logger.info("SQLModel table check complete.")

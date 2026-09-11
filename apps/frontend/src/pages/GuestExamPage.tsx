@@ -501,11 +501,11 @@ export function GuestExamPage() {
     });
   }, []);
 
-  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles change
+  // Reset recommendations exhaustion when exam/subject/topic/subtopic/difficulty/recExamToggles/language change
   useEffect(() => {
     setIsRecsExhausted(false);
     setRecommendedPool([]);
-  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles]);
+  }, [gExam, gSubject, gTopic, gSubtopic, gDifficulty, recExamToggles, language]);
 
   // Mobile Responsiveness & Custom Dropdown Search State
   const { isTabletOrBelow } = useBreakpoint();
