@@ -96,8 +96,8 @@ async def invalidate_question_cache(
         await cache.delete_pattern(f"{prefix}:admin:review:*")
 
 
-async def invalidate_user_cache(user_id: str) -> None:
-    """Invalidates user profile, permissions, and attempt history cache."""
+async def invalidate_user_cache(user_id: str | int, clerk_id: Optional[str] = None) -> None:
+    """Invalidates user profile, permissions, streak/XP stats, and attempt history cache."""
     cache = get_cache()
     settings = get_settings()
     prefix = settings.CACHE_KEY_PREFIX or "ep"
@@ -105,7 +105,14 @@ async def invalidate_user_cache(user_id: str) -> None:
     u_id_str = str(user_id)
     await cache.delete(f"{prefix}:users:detail:{u_id_str}")
     await cache.delete(f"{prefix}:user:id:{u_id_str}")
-    await cache.delete_pattern(f"{prefix}:user:clerk:*")
+    await cache.delete(f"{prefix}:auth:user_stats:{u_id_str}")
+    await cache.delete(f"{prefix}:auth:me:stats:{u_id_str}")
+
+    if clerk_id:
+        await cache.delete(f"{prefix}:user:clerk:{clerk_id}")
+    else:
+        await cache.delete_pattern(f"{prefix}:user:clerk:*")
+
     await cache.delete_pattern(f"{prefix}:users:bookmarks:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:users:list*")
     await cache.delete_pattern(f"{prefix}:attempts:user:{u_id_str}*")
@@ -115,6 +122,20 @@ async def invalidate_user_cache(user_id: str) -> None:
     await cache.delete_pattern(f"{prefix}:analytics:subj_perf:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:rank:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:analytics:monthly_benchmark:{u_id_str}*")
+
+
+async def invalidate_role_cache(role_id: Optional[int | str] = None) -> None:
+    """Invalidates cached role permissions and dynamic RBAC mappings."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+
+    if role_id is not None:
+        await cache.delete(f"{prefix}:role:{role_id}:permissions")
+    else:
+        await cache.delete_pattern(f"{prefix}:role:*")
+    # Also invalidate teacher slug cache if system role might have been altered
+    await cache.delete(f"{prefix}:role:slug:teacher")
 
 
 

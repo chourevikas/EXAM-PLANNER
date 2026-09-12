@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, Response, status, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, Response, Request, status, HTTPException, BackgroundTasks
 from sqlmodel import select, func, case
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -14,12 +14,15 @@ from app.schemas.auth import (
     UserRegister,
     UserLogin,
     TokenResponse,
+    RefreshTokenRequest,
     UserOut,
     UserUpdate,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
 )
+import jwt
+from app.config.settings import settings
 from app.services.auth_service import AuthService
 from app.core.deps import get_current_user, require_roles
 from app.cache import get_cache, build_cache_key
@@ -43,71 +46,54 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
     today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     today_date = today_start.date()
 
-    # --- Fire 3 concurrent query groups instead of 7 sequential awaits ---
-    # Each uses its own session since AsyncSession is not safe for concurrent use.
-    async def query_exam_attempts():
-        async with async_session_factory() as s:
-            # Aggregate totals + today count in one pass
-            res = (await s.exec(
-                select(
-                    func.sum(func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)).label("q_sum"),
-                    func.sum(case((ExamAttempt.submitted_at >= today_start,
-                                   func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)), else_=0)).label("today_q_sum"),
-                ).where(ExamAttempt.user_id == u_id, ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
-            )).first()
-            completed = int(getattr(res, "q_sum", 0) or 0)
-            today_completed = int(getattr(res, "today_q_sum", 0) or 0)
+    # 1. Aggregate totals + today count from completed exams
+    res = (await session.exec(
+        select(
+            func.sum(func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)).label("q_sum"),
+            func.sum(case((ExamAttempt.submitted_at >= today_start,
+                           func.coalesce(ExamAttempt.total_correct, 0) + func.coalesce(ExamAttempt.total_incorrect, 0)), else_=0)).label("today_q_sum"),
+        ).where(ExamAttempt.user_id == u_id, ExamAttempt.status.in_([AttemptStatus.SUBMITTED, AttemptStatus.EVALUATED]))
+    )).first()
+    completed_q = int(getattr(res, "q_sum", 0) or 0)
+    today_completed_q = int(getattr(res, "today_q_sum", 0) or 0)
 
-            # Activity dates from completed exams
-            dates = {dt for dt in (await s.exec(
-                select(func.date(ExamAttempt.submitted_at))
-                .where(ExamAttempt.user_id == u_id, ExamAttempt.submitted_at.is_not(None)).distinct()
-            )).all() if dt}
-            return completed, today_completed, dates
+    exam_dates = {dt for dt in (await session.exec(
+        select(func.date(ExamAttempt.submitted_at))
+        .where(ExamAttempt.user_id == u_id, ExamAttempt.submitted_at.is_not(None)).distinct()
+    )).all() if dt}
 
-    async def query_telemetry():
-        async with async_session_factory() as s:
-            in_prog = (await s.exec(
-                select(func.count(ExamQuestionResponse.id))
-                .join(ExamAttempt, ExamQuestionResponse.attempt_id == ExamAttempt.id)
-                .where(ExamAttempt.user_id == u_id, ExamAttempt.status == AttemptStatus.IN_PROGRESS,
-                       ExamQuestionResponse.selected_option_id.is_not(None))
-            )).first() or 0
+    # 2. Telemetry queries
+    in_prog_sum = int((await session.exec(
+        select(func.count(ExamQuestionResponse.id))
+        .join(ExamAttempt, ExamQuestionResponse.attempt_id == ExamAttempt.id)
+        .where(ExamAttempt.user_id == u_id, ExamAttempt.status == AttemptStatus.IN_PROGRESS,
+               ExamQuestionResponse.selected_option_id.is_not(None))
+    )).first() or 0)
 
-            u_test = (await s.exec(
-                select(func.count(UserQuestionResponse.id))
-                .join(UserTestAttempt, UserQuestionResponse.attempt_id == UserTestAttempt.id)
-                .where(UserTestAttempt.user_id == u_id, UserQuestionResponse.selected_option_id.is_not(None))
-            )).first() or 0
+    u_test_sum = int((await session.exec(
+        select(func.count(UserQuestionResponse.id))
+        .join(UserTestAttempt, UserQuestionResponse.attempt_id == UserTestAttempt.id)
+        .where(UserTestAttempt.user_id == u_id, UserQuestionResponse.selected_option_id.is_not(None))
+    )).first() or 0)
 
-            dates = {dt for dt in (await s.exec(
-                select(func.coalesce(func.date(UserTestAttempt.submitted_at), func.date(UserTestAttempt.started_at)))
-                .where(UserTestAttempt.user_id == u_id).distinct()
-            )).all() if dt}
-            return int(in_prog), int(u_test), dates
+    telemetry_dates = {dt for dt in (await session.exec(
+        select(func.coalesce(func.date(UserTestAttempt.submitted_at), func.date(UserTestAttempt.started_at)))
+        .where(UserTestAttempt.user_id == u_id).distinct()
+    )).all() if dt}
 
-    async def query_study_activity():
-        async with async_session_factory() as s:
-            res = (await s.exec(
-                select(
-                    func.sum(StudyActivity.questions_attempted).label("act_sum"),
-                    func.sum(case((StudyActivity.date == today_date, StudyActivity.questions_attempted), else_=0)).label("today_act_sum"),
-                ).where(StudyActivity.user_id == u_id)
-            )).first()
-            act_sum = int(getattr(res, "act_sum", 0) or 0)
-            today_act_sum = int(getattr(res, "today_act_sum", 0) or 0)
+    # 3. Study activity queries
+    act_res = (await session.exec(
+        select(
+            func.sum(StudyActivity.questions_attempted).label("act_sum"),
+            func.sum(case((StudyActivity.date == today_date, StudyActivity.questions_attempted), else_=0)).label("today_act_sum"),
+        ).where(StudyActivity.user_id == u_id)
+    )).first()
+    act_sum = int(getattr(act_res, "act_sum", 0) or 0)
+    today_act_sum = int(getattr(act_res, "today_act_sum", 0) or 0)
 
-            dates = {dt for dt in (await s.exec(
-                select(StudyActivity.date).where(StudyActivity.user_id == u_id).distinct()
-            )).all() if dt}
-            return act_sum, today_act_sum, dates
-
-    # Run all 3 groups concurrently
-    (completed_q, today_completed_q, exam_dates), \
-    (in_prog_sum, u_test_sum, telemetry_dates), \
-    (act_sum, today_act_sum, activity_dates) = await asyncio.gather(
-        query_exam_attempts(), query_telemetry(), query_study_activity()
-    )
+    activity_dates = {dt for dt in (await session.exec(
+        select(StudyActivity.date).where(StudyActivity.user_id == u_id).distinct()
+    )).all() if dt}
 
     all_activity_dates = exam_dates | telemetry_dates | activity_dates
     total_q = completed_q + in_prog_sum + u_test_sum + act_sum
@@ -144,37 +130,46 @@ async def _get_user_question_stats(session: AsyncSession, user_id: int | str) ->
     return result
 
 
+from app.config.logger import setup_logger
+
+logger = setup_logger("AuthRouter")
+
+
 async def _sync_student_profile_bg(sync_data: dict):
     """Background task: write updated stats to StudentProfile without blocking the HTTP response."""
     u_id = sync_data["u_id"]
-    async with async_session_factory() as s:
-        prof = (await s.exec(select(StudentProfile).where(StudentProfile.user_id == u_id))).first()
-        if prof:
-            updated = False
-            if sync_data["streak"] != prof.current_streak:
-                prof.current_streak = sync_data["streak"]
-                if sync_data["streak"] > prof.highest_streak:
-                    prof.highest_streak = sync_data["streak"]
-                updated = True
-            if sync_data["xp"] > prof.total_xp:
-                prof.total_xp = sync_data["xp"]
-                updated = True
-            if sync_data["level"] > prof.level:
-                prof.level = sync_data["level"]
-                updated = True
-            if sync_data["q"] > prof.free_questions_attempted:
-                prof.free_questions_attempted = sync_data["q"]
-                updated = True
-            if updated:
-                s.add(prof)
+    try:
+        async with async_session_factory() as s:
+            prof = (await s.exec(select(StudentProfile).where(StudentProfile.user_id == u_id))).first()
+            if prof:
+                updated = False
+                if sync_data["streak"] != prof.current_streak:
+                    prof.current_streak = sync_data["streak"]
+                    if sync_data["streak"] > prof.highest_streak:
+                        prof.highest_streak = sync_data["streak"]
+                    updated = True
+                if sync_data["xp"] > prof.total_xp:
+                    prof.total_xp = sync_data["xp"]
+                    updated = True
+                if sync_data["level"] > prof.level:
+                    prof.level = sync_data["level"]
+                    updated = True
+                if sync_data["q"] > prof.free_questions_attempted:
+                    prof.free_questions_attempted = sync_data["q"]
+                    updated = True
+                if updated:
+                    s.add(prof)
+                    await s.commit()
+            elif not sync_data["has_prof"]:
+                s.add(StudentProfile(
+                    user_id=u_id, current_streak=sync_data["streak"],
+                    highest_streak=sync_data["streak"], total_xp=sync_data["xp"],
+                    level=sync_data["level"], free_questions_attempted=sync_data["q"],
+                ))
                 await s.commit()
-        elif not sync_data["has_prof"]:
-            s.add(StudentProfile(
-                user_id=u_id, current_streak=sync_data["streak"],
-                highest_streak=sync_data["streak"], total_xp=sync_data["xp"],
-                level=sync_data["level"], free_questions_attempted=sync_data["q"],
-            ))
-            await s.commit()
+    except Exception as e:
+        logger.warning(f"Error syncing student profile in background: {e}")
+
 
 
 @router.post(
@@ -218,15 +213,65 @@ async def login(
     return token_response
 
 
-@router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(
+@router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def refresh_token(
+    request: Request,
     response: Response,
-    current_user: User = Depends(get_current_user),
+    body: Optional[RefreshTokenRequest] = None,
     session: AsyncSession = Depends(get_async_session),
 ):
+    token = None
+    if request.cookies.get("refresh_token"):
+        token = request.cookies.get("refresh_token")
+    elif body and body.refresh_token:
+        token = body.refresh_token
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required in cookie or body",
+        )
+
     auth_service = AuthService(session)
-    await auth_service.logout_user(current_user.id)
+    token_response, new_refresh_token = await auth_service.refresh_access_token(token)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+    )
+    return token_response
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_async_session),
+):
     response.delete_cookie("refresh_token")
+    auth_service = AuthService(session)
+
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+    elif request.cookies.get("access_token"):
+        token = request.cookies.get("access_token")
+
+    if token:
+        try:
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            )
+            user_id = payload.get("sub")
+            if user_id:
+                await auth_service.logout_user(user_id)
+        except Exception:
+            pass
+
     return {"message": "Successfully logged out"}
 
 
@@ -318,10 +363,14 @@ async def update_current_user(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session)
 ):
+    db_user = await session.get(User, current_user.id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     if user_update.full_name is not None:
-        current_user.full_name = user_update.full_name
+        db_user.full_name = user_update.full_name
     if user_update.profile_image is not None:
-        current_user.profile_image = user_update.profile_image
+        db_user.profile_image = user_update.profile_image
     if user_update.preferred_language is not None:
         from app.core.languages import normalize_language, is_supported_language
         if not is_supported_language(user_update.preferred_language):
@@ -330,12 +379,14 @@ async def update_current_user(
                 detail=f"Unsupported language '{user_update.preferred_language}'",
             )
         iso_code, _ = normalize_language(user_update.preferred_language)
-        current_user.preferred_language = iso_code
+        db_user.preferred_language = iso_code
     
-    session.add(current_user)
+    session.add(db_user)
     await session.commit()
-    await session.refresh(current_user)
-    return await _build_user_out_response(current_user=current_user, session=session, background_tasks=background_tasks)
+    await session.refresh(db_user)
+    from app.cache.helpers import invalidate_user_cache
+    await invalidate_user_cache(str(db_user.id), db_user.clerk_id)
+    return await _build_user_out_response(current_user=db_user, session=session, background_tasks=background_tasks)
 
 
 @router.get("/admin-only", response_model=dict)

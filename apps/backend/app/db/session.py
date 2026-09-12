@@ -53,15 +53,20 @@ else:
     pool_size = getattr(settings, "DB_POOL_SIZE", 10)
     max_overflow = getattr(settings, "DB_MAX_OVERFLOW", 10)
     logger.info(
-        f"Initializing Database Engine (pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle=1800, pool_pre_ping=True)..."
+        f"Initializing Database Engine (pool_size={pool_size}, max_overflow={max_overflow}, pool_recycle=1800, pool_pre_ping=False)..."
     )
+    # Architecture Note: pool_pre_ping is intentionally disabled (False).
+    # On high-latency remote RDS instances, pool_pre_ping=True issues a synchronous
+    # 'SELECT 1' roundtrip on every connection checkout from the idle pool, adding
+    # 50-150ms of blocking latency to every query path. Instead, connection freshness
+    # is maintained via pool_recycle=1800 (30 minutes) and startup pool warming.
     engine_kwargs = {
         "echo": False,
         "pool_size": pool_size,
         "max_overflow": max_overflow,
         "pool_timeout": 60,
         "pool_recycle": 1800,
-        "pool_pre_ping": False,  # pre_ping pings ALL idle connections on first use — catastrophic with high-latency RDS
+        "pool_pre_ping": False,
     }
     engine = create_async_engine(db_url, **engine_kwargs)
 

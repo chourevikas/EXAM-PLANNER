@@ -110,3 +110,45 @@ async def test_read_and_update_current_user():
         assert "Unsupported language" in invalid_patch.json()["detail"]
 
 
+@pytest.mark.anyio
+async def test_refresh_token_flow():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        unique_email = f"test_refresh_{uuid.uuid4().hex[:8]}@example.com"
+        register_payload = {
+            "email": unique_email,
+            "password": "Password123!",
+            "full_name": "Test Refresh User",
+            "role": "STUDENT",
+        }
+        reg_res = await client.post("/api/v1/auth/register", json=register_payload)
+        assert reg_res.status_code == 201
+        old_access_token = reg_res.json()["access_token"]
+        refresh_cookie = reg_res.cookies.get("refresh_token")
+        assert refresh_cookie is not None
+
+        # 1. Refresh via cookie
+        refresh_res = await client.post("/api/v1/auth/refresh")
+        assert refresh_res.status_code == 200
+        new_access_token = refresh_res.json()["access_token"]
+        assert new_access_token is not None
+        assert new_access_token != old_access_token
+        new_refresh_cookie = refresh_res.cookies.get("refresh_token")
+        assert new_refresh_cookie is not None
+
+        # 2. Use new access token to query /me
+        me_res = await client.get(
+            "/api/v1/auth/me", headers={"Authorization": f"Bearer {new_access_token}"}
+        )
+        assert me_res.status_code == 200
+        assert me_res.json()["email"] == unique_email
+
+        # 3. Old refresh token should now be revoked (rotation check)
+        client.cookies.set("refresh_token", refresh_cookie)
+        revoked_res = await client.post("/api/v1/auth/refresh")
+        assert revoked_res.status_code == 401
+        assert "revoked" in revoked_res.json()["detail"].lower() or "expired" in revoked_res.json()["detail"].lower()
+
+
+

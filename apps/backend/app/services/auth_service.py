@@ -1,7 +1,7 @@
 import uuid
 import jwt
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple, Optional
 from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -116,7 +116,7 @@ class AuthService:
         access_token = create_access_token(subject=u_id, role=u_role.value)
         refresh_token = create_refresh_token(subject=u_id, role=u_role.value)
 
-        expires_at = datetime.utcnow() + timedelta(
+        expires_at = datetime.now(timezone.utc) + timedelta(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
         await self.user_repo.save_refresh_token(
@@ -140,7 +140,7 @@ class AuthService:
             {
                 "sub": str(u_id),
                 "action": "verify_email",
-                "exp": datetime.utcnow() + timedelta(days=1),
+                "exp": datetime.now(timezone.utc) + timedelta(days=1),
             },
             settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
@@ -180,7 +180,7 @@ class AuthService:
         access_token = create_access_token(subject=user.id, role=user.role.value)
         refresh_token = create_refresh_token(subject=user.id, role=user.role.value)
 
-        expires_at = datetime.utcnow() + timedelta(
+        expires_at = datetime.now(timezone.utc) + timedelta(
             days=settings.REFRESH_TOKEN_EXPIRE_DAYS
         )
         await self.user_repo.perform_login_housekeeping_and_save_token(
@@ -232,7 +232,7 @@ class AuthService:
             {
                 "sub": str(user.id),
                 "action": "reset_password",
-                "exp": datetime.utcnow() + timedelta(hours=1),
+                "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             },
             settings.SECRET_KEY,
             algorithm=settings.ALGORITHM,
@@ -260,3 +260,63 @@ class AuthService:
         except jwt.PyJWTError:
             return False
         return False
+
+    async def refresh_access_token(
+        self, plain_refresh_token: str
+    ) -> Tuple[TokenResponse, str]:
+        """Validate an active refresh token, rotate it, and issue a fresh access token."""
+        try:
+            payload = jwt.decode(
+                plain_refresh_token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+            )
+        except jwt.PyJWTError as e:
+            logger.warning(f"Invalid refresh token decode failure: {e}")
+            raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+        token_type = payload.get("type")
+        if token_type != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token type for refresh")
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+
+        token_hash = get_token_hash(plain_refresh_token)
+        token_record = await self.user_repo.get_valid_refresh_token(user_id_str, token_hash)
+        if not token_record:
+            logger.warning(f"Refresh token not found or already revoked for user {user_id_str}")
+            raise HTTPException(status_code=401, detail="Refresh token has been revoked or expired")
+
+        user = await self.user_repo.get_by_id(user_id_str)
+        if not user or user.status != UserStatus.ACTIVE:
+            raise HTTPException(status_code=401, detail="User is inactive or no longer exists")
+
+        user_role = user.role
+        user_id = user.id
+        redirect_url = self.get_role_redirect(user_role)
+
+        # Create new access token
+        access_token = create_access_token(subject=user_id, role=user_role.value)
+
+        # Rotate refresh token
+        new_refresh_token = create_refresh_token(subject=user_id, role=user_role.value)
+        new_expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        await self.user_repo.rotate_refresh_token(
+            token_record=token_record,
+            new_token_hash=get_token_hash(new_refresh_token),
+            new_expires_at=new_expires_at,
+        )
+        await self.session.refresh(user)
+
+        token_response = TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=user,
+            redirect_url=redirect_url,
+            is_pending_approval=False,
+            message="Token refreshed successfully",
+        )
+        return token_response, new_refresh_token
+

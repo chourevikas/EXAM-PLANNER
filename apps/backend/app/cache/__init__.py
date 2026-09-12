@@ -11,9 +11,12 @@ from app.cache.helpers import (
     invalidate_exam_cache,
     invalidate_question_cache,
     invalidate_user_cache,
+    invalidate_role_cache,
     invalidate_attempt_cache,
     invalidate_pipeline_status_cache,
     invalidate_taxonomy_cache,
+    invalidate_exam_type_cache,
+    invalidate_site_settings_cache,
 )
 
 __all__ = [
@@ -30,7 +33,10 @@ __all__ = [
     "invalidate_exam_cache",
     "invalidate_question_cache",
     "invalidate_user_cache",
+    "invalidate_role_cache",
     "invalidate_attempt_cache",
     "invalidate_pipeline_status_cache",
     "invalidate_taxonomy_cache",
+    "invalidate_exam_type_cache",
+    "invalidate_site_settings_cache",
 ]

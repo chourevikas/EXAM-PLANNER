@@ -1,14 +1,13 @@
 import asyncio
 import uuid
 import jwt
-from typing import Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config.settings import settings
-from app.db.session import get_async_session
+from app.db.session import get_async_session, async_session_factory
 from app.db.models.user import User, UserRole, UserStatus, SubscriptionTier
 from app.repositories.user_repository import UserRepository
 
@@ -34,10 +33,11 @@ def _get_jwks_client(issuer: str) -> jwt.PyJWKClient:
 
 async def get_current_user(
     request: Request,
-    token_oauth2: Optional[str] = Depends(reusable_oauth2),
-    token_bearer: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    token_oauth2: str | None = Depends(reusable_oauth2),
+    token_bearer: HTTPAuthorizationCredentials | None = Depends(http_bearer),
+    db_session: AsyncSession | None = Depends(get_async_session),
 ) -> User:
-    token: Optional[str] = None
+    token: str | None = None
 
     if token_bearer and token_bearer.credentials:
         token = token_bearer.credentials
@@ -66,8 +66,14 @@ async def get_current_user(
 
     from app.cache import get_cache
     from fastapi.encoders import jsonable_encoder
-    from app.db.session import async_session_factory
     cache = get_cache()
+
+    session_ctx = None
+    if isinstance(db_session, AsyncSession):
+        session = db_session
+    else:
+        session_ctx = async_session_factory()
+        session = await session_ctx.__aenter__()
 
     try:
         # Check if this is a Clerk token by looking at unverified claims
@@ -113,51 +119,50 @@ async def get_current_user(
                 or payload.get("primary_email_address")
             )
 
-            async with async_session_factory() as session:
-                query = select(User).where(User.clerk_id == clerk_id)
-                result = await session.exec(query)
-                user = result.one_or_none()
+            query = select(User).where(User.clerk_id == clerk_id)
+            result = await session.exec(query)
+            user = result.one_or_none()
 
-                if not user and clerk_email:
-                    query_email = select(User).where(User.email == clerk_email)
-                    res_email = await session.exec(query_email)
-                    user = res_email.one_or_none()
-                    if user:
-                        user.clerk_id = clerk_id
-                        session.add(user)
-                        await session.commit()
-                        await session.refresh(user)
+            if not user and clerk_email:
+                query_email = select(User).where(User.email == clerk_email)
+                res_email = await session.exec(query_email)
+                user = res_email.one_or_none()
+                if user:
+                    user.clerk_id = clerk_id
+                    session.add(user)
+                    await session.commit()
+                    await session.refresh(user)
 
-                if not user:
-                    target_email = clerk_email or f"{clerk_id}@clerk.local"
-                    existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
-                    if existing_email_user:
-                        existing_email_user.clerk_id = clerk_id
-                        session.add(existing_email_user)
-                        await session.commit()
-                        await session.refresh(existing_email_user)
-                        user = existing_email_user
-                    else:
-                        user = User(
-                            clerk_id=clerk_id,
-                            email=target_email,
-                            full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
-                            status=UserStatus.ACTIVE,
-                            role=UserRole.STUDENT,
-                        )
-                        session.add(user)
-                        await session.commit()
-                        await session.refresh(user)
+            if not user:
+                target_email = clerk_email or f"{clerk_id}@clerk.local"
+                existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
+                if existing_email_user:
+                    existing_email_user.clerk_id = clerk_id
+                    session.add(existing_email_user)
+                    await session.commit()
+                    await session.refresh(existing_email_user)
+                    user = existing_email_user
+                else:
+                    user = User(
+                        clerk_id=clerk_id,
+                        email=target_email,
+                        full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
+                        status=UserStatus.ACTIVE,
+                        role=UserRole.STUDENT,
+                    )
+                    session.add(user)
+                    await session.commit()
+                    await session.refresh(user)
 
-                if user.status != UserStatus.ACTIVE:
-                    raise HTTPException(status_code=400, detail="Inactive user account")
+            if user.status != UserStatus.ACTIVE:
+                raise HTTPException(status_code=400, detail="Inactive user account")
 
-                # Cache in Redis with 300s TTL
-                user_dict = jsonable_encoder(user.model_dump())
-                await cache.set(cache_key, user_dict, ttl_seconds=300)
-                if user.id:
-                    await cache.set(f"ep:user:id:{user.id}", user_dict, ttl_seconds=300)
-                return user
+            # Cache in Redis with 300s TTL
+            user_dict = jsonable_encoder(user.model_dump())
+            await cache.set(cache_key, user_dict, ttl_seconds=300)
+            if user.id:
+                await cache.set(f"ep:user:id:{user.id}", user_dict, ttl_seconds=300)
+            return user
         else:
             # Custom JWT Verification
             try:
@@ -179,15 +184,14 @@ async def get_current_user(
 
                 try:
                     user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str
-                    async with async_session_factory() as session:
-                        user_repo = UserRepository(session)
-                        user = await user_repo.get_by_id(user_id_val)
-                        if user and user.status == UserStatus.ACTIVE:
-                            user_dict = jsonable_encoder(user.model_dump())
-                            await cache.set(cache_key, user_dict, ttl_seconds=300)
-                            if user.clerk_id:
-                                await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
-                            return user
+                    user_repo = UserRepository(session)
+                    user = await user_repo.get_by_id(user_id_val)
+                    if user and user.status == UserStatus.ACTIVE:
+                        user_dict = jsonable_encoder(user.model_dump())
+                        await cache.set(cache_key, user_dict, ttl_seconds=300)
+                        if user.clerk_id:
+                            await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
+                        return user
                 except (ValueError, TypeError):
                     pass
 
@@ -195,6 +199,9 @@ async def get_current_user(
         raise
     except Exception:
         pass
+    finally:
+        if session_ctx is not None:
+            await session_ctx.__aexit__(None, None, None)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -221,7 +228,7 @@ def require_roles(allowed_roles: list[UserRole]):
 async def _user_has_permission(
     session: AsyncSession, current_user: User, permission_key: str
 ) -> bool:
-    """Resolves the user's effective custom-role permissions.
+    """Resolves the user's effective custom-role permissions with Redis caching.
 
     A user's fine-grained permissions come from `custom_role_id` when set. A
     TEACHER-role user with no custom_role_id (e.g. promoted via the legacy
@@ -230,25 +237,41 @@ async def _user_has_permission(
     permission set without requiring the admin to also assign a custom role.
     """
     from app.db.models.roles import Role, RolePermission, Permission
+    from app.cache import get_cache
+    from app.config.settings import get_settings
+
+    cache = get_cache()
+    prefix = get_settings().CACHE_KEY_PREFIX or "ep"
 
     effective_role_id = current_user.custom_role_id
     if effective_role_id is None and current_user.role == UserRole.TEACHER:
-        result = await session.exec(select(Role.id).where(Role.slug == "teacher"))
-        effective_role_id = result.first()
+        teacher_role_cache_key = f"{prefix}:role:slug:teacher"
+        cached_teacher_id = await cache.get(teacher_role_cache_key)
+        if cached_teacher_id is not None:
+            effective_role_id = int(cached_teacher_id)
+        else:
+            result = await session.exec(select(Role.id).where(Role.slug == "teacher"))
+            effective_role_id = result.first()
+            if effective_role_id is not None:
+                await cache.set(teacher_role_cache_key, effective_role_id, ttl_seconds=3600)
 
     if effective_role_id is None:
         return False
 
+    role_perms_key = f"{prefix}:role:{effective_role_id}:permissions"
+    cached_perms = await cache.get(role_perms_key)
+    if cached_perms is not None and isinstance(cached_perms, (list, set)):
+        return permission_key in cached_perms
+
     query = (
-        select(RolePermission.role_id)
-        .join(Permission, Permission.id == RolePermission.permission_id)
-        .where(
-            RolePermission.role_id == effective_role_id,
-            Permission.key == permission_key,
-        )
+        select(Permission.key)
+        .join(RolePermission, Permission.id == RolePermission.permission_id)
+        .where(RolePermission.role_id == effective_role_id)
     )
     result = await session.exec(query)
-    return result.first() is not None
+    perms = list(result.all())
+    await cache.set(role_perms_key, perms, ttl_seconds=1800)
+    return permission_key in perms
 
 
 def require_permission(permission_key: str):

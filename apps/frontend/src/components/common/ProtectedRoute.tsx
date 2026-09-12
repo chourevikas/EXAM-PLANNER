@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { User, UserRole } from '../../types/auth';
 import { useAuth } from '@clerk/clerk-react';
+import { refreshAccessToken } from '../../services/authService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,12 +11,29 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const location = useLocation();
-  const token = localStorage.getItem('access_token');
-  const userJson = localStorage.getItem('user');
-  
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('access_token'));
+  const [userJson, setUserJson] = useState<string | null>(() => localStorage.getItem('user'));
   const { isLoaded, isSignedIn } = useAuth();
+  const [isCheckingRecovery, setIsCheckingRecovery] = useState<boolean>(() => !localStorage.getItem('access_token') && !isSignedIn);
 
-  if (!isLoaded) return null;
+  useEffect(() => {
+    // If token is missing and not Clerk authenticated, attempt silent session recovery from HttpOnly cookie
+    if (!token && !isSignedIn) {
+      refreshAccessToken()
+        .then((newToken) => {
+          setToken(newToken);
+          setUserJson(localStorage.getItem('user'));
+          setIsCheckingRecovery(false);
+        })
+        .catch(() => {
+          setIsCheckingRecovery(false);
+        });
+    } else {
+      setIsCheckingRecovery(false);
+    }
+  }, [token, isSignedIn]);
+
+  if (!isLoaded || isCheckingRecovery) return null;
 
   const isCustomAuth = !!(token && userJson);
   const isClerkAuth = !!isSignedIn;
@@ -40,8 +58,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
   }
 
-  if (isClerkAuth) {
-    userRole = UserRole.STUDENT; // Default Clerk users to student
+  if (isClerkAuth && !userRole) {
+    userRole = UserRole.STUDENT; // Default Clerk users to student if not yet assigned/stored
   }
 
   // If specific roles are required, verify user's role

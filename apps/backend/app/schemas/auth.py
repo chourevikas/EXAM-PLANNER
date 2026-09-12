@@ -81,6 +81,10 @@ class TokenResponse(BaseModel):
     message: Optional[str] = None
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: Optional[str] = None
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

@@ -13,6 +13,13 @@ type InFlightEntry = {
   timestamp: number;
 };
 
+type TokenRefreshHandler = () => Promise<string>;
+let tokenRefreshHandler: TokenRefreshHandler | null = null;
+
+export function registerTokenRefreshHandler(handler: TokenRefreshHandler): void {
+  tokenRefreshHandler = handler;
+}
+
 const inFlightGetRequests = new Map<string, InFlightEntry>();
 const endpointLocks = new Map<string, Promise<any>>();
 
@@ -32,6 +39,32 @@ function extractAuthHeader(headers?: HeadersInit): string {
   return '';
 }
 
+function updateAuthHeader(init?: RequestInit, newToken?: string): RequestInit {
+  if (!newToken) return init || {};
+  const bearerVal = `Bearer ${newToken}`;
+  const baseInit = init || {};
+
+  if (baseInit.headers instanceof Headers) {
+    const nextHeaders = new Headers(baseInit.headers);
+    nextHeaders.set('Authorization', bearerVal);
+    return { ...baseInit, headers: nextHeaders };
+  }
+  if (Array.isArray(baseInit.headers)) {
+    const nextHeaders = baseInit.headers.filter(
+      ([k]) => k.toLowerCase() !== 'authorization'
+    );
+    nextHeaders.push(['Authorization', bearerVal]);
+    return { ...baseInit, headers: nextHeaders };
+  }
+  return {
+    ...baseInit,
+    headers: {
+      ...(baseInit.headers as Record<string, string> || {}),
+      Authorization: bearerVal,
+    },
+  };
+}
+
 function normalizeRequestKey(input: RequestInfo | URL, init?: RequestInit): string {
   const isReq = typeof Request !== 'undefined' && input instanceof Request;
   const method = (init?.method || (isReq ? input.method : 'GET')).toUpperCase();
@@ -44,8 +77,19 @@ function normalizeRequestKey(input: RequestInfo | URL, init?: RequestInit): stri
   return `${method}:${url}${authSuffix}`;
 }
 
+function isAuthBypassUrl(url: string): boolean {
+  return (
+    url.includes('/auth/login') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/auth/register') ||
+    url.includes('/auth/forgot-password') ||
+    url.includes('/auth/reset-password')
+  );
+}
+
 /**
  * Executes a network fetch with in-flight deduplication and serialized concurrency protection.
+ * Automatically attempts silent token refresh and retries once upon receiving HTTP 401.
  */
 export async function guardedFetch(
   input: RequestInfo | URL,
@@ -53,6 +97,7 @@ export async function guardedFetch(
 ): Promise<Response> {
   const method = (init?.method || 'GET').toUpperCase();
   const requestKey = normalizeRequestKey(input, init);
+  const urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
 
   // 1. GET Requests: In-Flight Deduplication
   if (method === 'GET') {
@@ -83,6 +128,25 @@ export async function guardedFetch(
     });
 
     const res = await fetchPromise;
+
+    if (
+      res.status === 401 &&
+      tokenRefreshHandler &&
+      !(init as any)?._isRetry &&
+      !isAuthBypassUrl(urlStr)
+    ) {
+      try {
+        const newToken = await tokenRefreshHandler();
+        if (newToken) {
+          const retryInit = updateAuthHeader(init, newToken);
+          (retryInit as any)._isRetry = true;
+          return await guardedFetch(input, retryInit);
+        }
+      } catch (err) {
+        // Refresh failed, return original 401
+      }
+    }
+
     return res.clone();
   }
 
@@ -105,7 +169,27 @@ export async function guardedFetch(
     })
   );
 
-  return await nextExecution;
+  const res = await nextExecution;
+
+  if (
+    res.status === 401 &&
+    tokenRefreshHandler &&
+    !(init as any)?._isRetry &&
+    !isAuthBypassUrl(urlStr)
+  ) {
+    try {
+      const newToken = await tokenRefreshHandler();
+      if (newToken) {
+        const retryInit = updateAuthHeader(init, newToken);
+        (retryInit as any)._isRetry = true;
+        return await guardedFetch(input, retryInit);
+      }
+    } catch (err) {
+      // Refresh failed, return original 401
+    }
+  }
+
+  return res;
 }
 
 /**

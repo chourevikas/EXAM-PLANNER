@@ -117,7 +117,14 @@ function LoadingFallback() {
   );
 }
 
+import { useEffect } from 'react';
+import { hydrateSession } from './services/authService';
+
 export default function App() {
+  useEffect(() => {
+    hydrateSession();
+  }, []);
+
   return (
     <BrowserRouter>
       <ThemeProvider>

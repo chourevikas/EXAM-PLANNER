@@ -130,6 +130,8 @@ class RoleService:
 
         await self.session.commit()
         await self.session.refresh(role)
+        from app.cache import invalidate_role_cache
+        await invalidate_role_cache(role_id)
         return await self._to_dict(role)
 
     async def _set_permissions(self, role_id: int, permission_keys: List[str]) -> None:
@@ -165,6 +167,8 @@ class RoleService:
 
         await self.session.delete(role)
         await self.session.commit()
+        from app.cache import invalidate_role_cache
+        await invalidate_role_cache(role_id)
 
     async def assign_role_to_user(
         self, user_id: int, role_id: int, changed_by_admin_id: Optional[int]
@@ -189,4 +193,6 @@ class RoleService:
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
+        from app.cache import invalidate_user_cache
+        await invalidate_user_cache(str(user.id), user.clerk_id)
         return user

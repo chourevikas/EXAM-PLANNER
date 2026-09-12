@@ -1,8 +1,120 @@
 import { UserRole, AuthResponse } from '../types/auth';
 import { getGuestAttempts, clearGuestAttempts } from '../utils/guestStorage';
-import { guardedFetch } from '../utils/apiGuard';
+import { guardedFetch, registerTokenRefreshHandler } from '../utils/apiGuard';
 
 const API_BASE_URL = '/api/v1/auth';
+
+let activeRefreshPromise: Promise<string> | null = null;
+let refreshTimerId: any = null;
+
+/**
+ * Proactive Silent Token Refresh
+ * Calculates remaining token lifetime from JWT payload and schedules refresh
+ * 2 minutes prior to expiration.
+ */
+export function scheduleProactiveRefresh(token?: string): void {
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+
+  const currentToken = token || localStorage.getItem('access_token');
+  if (!currentToken) return;
+
+  try {
+    const parts = currentToken.split('.');
+    if (parts.length !== 3) return;
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return;
+
+    const expiresAtMs = payload.exp * 1000;
+    const nowMs = Date.now();
+    // Proactively refresh 2 minutes (120,000 ms) before expiration
+    const refreshDelayMs = expiresAtMs - nowMs - (2 * 60 * 1000);
+
+    if (refreshDelayMs <= 0) {
+      refreshAccessToken().catch((err) => {
+        console.warn('Immediate proactive refresh failed:', err);
+      });
+    } else {
+      refreshTimerId = setTimeout(() => {
+        refreshAccessToken().catch((err) => {
+          console.warn('Scheduled silent refresh failed:', err);
+        });
+      }, Math.min(refreshDelayMs, 2147483647));
+    }
+  } catch (err) {
+    console.warn('Failed to parse JWT for proactive refresh:', err);
+  }
+}
+
+/**
+ * Exchanges the HTTP-only refresh token cookie with /api/v1/auth/refresh for a new access token.
+ * In-flight calls are deduplicated so parallel requests share a single refresh execution.
+ */
+export async function refreshAccessToken(): Promise<string> {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        logoutUser();
+        window.dispatchEvent(new Event('auth_expired'));
+        throw new Error('SESSION_EXPIRED');
+      }
+
+      const data: AuthResponse = await res.json();
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        window.dispatchEvent(new Event('user_profile_updated'));
+        scheduleProactiveRefresh(data.access_token);
+        return data.access_token;
+      }
+      throw new Error('NO_TOKEN_IN_RESPONSE');
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
+}
+
+// Automatically bind refresh handler to guardedFetch for 401 retry handling
+registerTokenRefreshHandler(refreshAccessToken);
+
+export function initSilentRefresh(): void {
+  scheduleProactiveRefresh();
+}
+
+/**
+ * Hydrates the user session on application startup or window focus.
+ * If access_token exists, schedules proactive refresh.
+ * If missing, attempts silent refresh via HttpOnly refresh_token cookie.
+ */
+export async function hydrateSession(): Promise<boolean> {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    scheduleProactiveRefresh(token);
+    return true;
+  }
+  try {
+    await refreshAccessToken();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function syncGuestSessionsOnAuth(token: string): Promise<string | null> {
   const attempts = getGuestAttempts();
@@ -42,6 +154,7 @@ export async function loginUser(email: string, password: string, role?: UserRole
   const res = await fetch(`${API_BASE_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ email, password, role }),
   });
 
@@ -61,6 +174,7 @@ export async function loginUser(email: string, password: string, role?: UserRole
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    scheduleProactiveRefresh(data.access_token);
     await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
@@ -77,6 +191,7 @@ export async function registerUser(
   const res = await fetch(`${API_BASE_URL}/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({
       email,
       password,
@@ -96,6 +211,7 @@ export async function registerUser(
   if (data.access_token && data.user) {
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
+    scheduleProactiveRefresh(data.access_token);
     await syncGuestSessionsOnAuth(data.access_token);
   }
   return data;
@@ -103,6 +219,25 @@ export async function registerUser(
 
 
 export function logoutUser(): void {
+  if (refreshTimerId) {
+    clearTimeout(refreshTimerId);
+    refreshTimerId = null;
+  }
+  activeRefreshPromise = null;
+
+  const token = localStorage.getItem('access_token');
+  try {
+    fetch(`${API_BASE_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
+    }).catch((err) => {
+      console.warn('Backend logout request failed:', err);
+    });
+  } catch {
+    // Ignore network error on logout
+  }
+
   localStorage.removeItem('access_token');
   localStorage.removeItem('user');
   localStorage.removeItem('latest_synced_attempt_id');
@@ -113,6 +248,14 @@ export function logoutUser(): void {
   }
 }
 
+/**
+ * Dual Authentication Service
+ * 
+ * Note on Token Expiration & Silent Refresh (HLD/LLD Frontend Part D Item 2):
+ * - Clerk manages token refreshing automatically via its client session SDK.
+ * - For custom backend JWTs, proactive silent refresh (scheduleProactiveRefresh) and
+ *   guardedFetch 401 retry interceptor are fully active and wired to /api/v1/auth/refresh.
+ */
 export async function fetchCurrentUser(customToken?: string): Promise<any> {
   const token = customToken || localStorage.getItem('access_token');
   if (!token) throw new Error('No access token found');

@@ -88,5 +88,5 @@ async def update_user_role_assignment(
     user = await RoleService(session).assign_role_to_user(
         user_id=user_id, role_id=payload.role_id, changed_by_admin_id=current_user.id
     )
-    await invalidate_user_cache(str(user_id))
+    await invalidate_user_cache(str(user_id), user.clerk_id)
     return user

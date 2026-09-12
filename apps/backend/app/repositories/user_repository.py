@@ -78,14 +78,12 @@ class UserRepository:
             email_verified=False,
         )
         self.session.add(new_user)
-        await self.session.commit()
-        await self.session.refresh(new_user)
+        await self.session.flush()
         new_uid = new_user.id
 
         if role == UserRole.STUDENT:
             profile = StudentProfile(user_id=new_uid)
             self.session.add(profile)
-            await self.session.commit()
         elif role == UserRole.ADMIN:
             admin_profile = AdminProfile(
                 user_id=new_uid,
@@ -93,8 +91,8 @@ class UserRepository:
                 department=department,
             )
             self.session.add(admin_profile)
-            await self.session.commit()
 
+        await self.session.commit()
         return await self.get_by_id(new_uid)
 
     async def get_user_count(self) -> int:
@@ -403,3 +401,45 @@ class UserRepository:
             .values(revoked_at=datetime.now(timezone.utc))
         )
         await self.session.commit()
+
+    async def get_valid_refresh_token(
+        self, user_id: int | str, token_hash: str
+    ) -> Optional[RefreshToken]:
+        """Find an active, unrevoked, unexpired refresh token matching the hash."""
+        uid = int(user_id)
+        now = datetime.now(timezone.utc)
+        statement = (
+            select(RefreshToken)
+            .where(RefreshToken.user_id == uid)
+            .where(RefreshToken.token_hash == token_hash)
+            .where(RefreshToken.revoked_at.is_(None))
+            .where(RefreshToken.expires_at > now)
+        )
+        result = await self.session.exec(statement)
+        return result.first()
+
+    async def rotate_refresh_token(
+        self,
+        token_record: RefreshToken,
+        new_token_hash: str,
+        new_expires_at: datetime,
+        device_name: Optional[str] = None,
+        ip_address: Optional[str] = None,
+    ) -> RefreshToken:
+        """Revoke the current refresh token and insert a new rotated token atomically."""
+        now = datetime.now(timezone.utc)
+        token_record.revoked_at = now
+        self.session.add(token_record)
+
+        new_record = RefreshToken(
+            user_id=token_record.user_id,
+            token_hash=new_token_hash,
+            expires_at=new_expires_at,
+            device_name=device_name or token_record.device_name,
+            ip_address=ip_address or token_record.ip_address,
+        )
+        self.session.add(new_record)
+        await self.session.commit()
+        await self.session.refresh(new_record)
+        return new_record
+

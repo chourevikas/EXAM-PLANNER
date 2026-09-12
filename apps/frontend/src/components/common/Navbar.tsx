@@ -19,10 +19,17 @@ export function Navbar({ onLogin, onSignup }: NavbarProps) {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
 
   useEffect(() => {
-    const hasCustomToken = !!localStorage.getItem('access_token');
-    if (isLoaded && (isSignedIn || hasCustomToken)) {
-      setIsUserLoggedIn(true);
-    }
+    const checkAuth = () => {
+      const hasCustomToken = !!localStorage.getItem('access_token');
+      setIsUserLoggedIn(Boolean(isLoaded && (isSignedIn || hasCustomToken)));
+    };
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    window.addEventListener('user_profile_updated', checkAuth);
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('user_profile_updated', checkAuth);
+    };
   }, [isLoaded, isSignedIn]);
   const { isTabletOrBelow } = useBreakpoint();
 
