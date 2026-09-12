@@ -209,13 +209,13 @@ export function ExamTypesManager() {
                 width: 36,
                 height: 36,
                 borderRadius: 0,
-                backgroundColor: 'rgba(227, 27, 35, 0.2)',
+                backgroundColor: 'rgba(var(--primary-red-rgb), 0.2)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Sliders size={20} color="#E31B23" />
+              <Sliders size={20} color="var(--primary-red)" />
             </div>
             <div>
               <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.015em' }}>
@@ -254,7 +254,7 @@ export function ExamTypesManager() {
             style={{
               padding: '8px 18px',
               borderRadius: 0,
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               border: 'none',
               color: '#FFFFFF',
               fontSize: 13,
@@ -263,7 +263,7 @@ export function ExamTypesManager() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
+              boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.3)',
             }}
           >
             <Plus size={16} />
@@ -297,7 +297,7 @@ export function ExamTypesManager() {
           <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Primary Reference Type
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#E31B23', marginTop: 8 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary-red)', marginTop: 8 }}>
             UPSC
           </div>
           <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
@@ -598,7 +598,7 @@ export function ExamTypesManager() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Sliders size={18} color="#E31B23" />
+                <Sliders size={18} color="var(--primary-red)" />
                 <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
                   {editingExamType ? `Edit Exam Type: ${editingExamType.type.toUpperCase()}` : 'Create New Exam Type'}
                 </h2>
@@ -615,7 +615,7 @@ export function ExamTypesManager() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
-                    Type Code <span style={{ color: '#E31B23' }}>*</span>
+                    Type Code <span style={{ color: 'var(--primary-red)' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -638,7 +638,7 @@ export function ExamTypesManager() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
-                    Examination Name <span style={{ color: '#E31B23' }}>*</span>
+                    Examination Name <span style={{ color: 'var(--primary-red)' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -829,7 +829,7 @@ export function ExamTypesManager() {
                   disabled={modalSubmitting}
                   style={{
                     padding: '9px 22px',
-                    backgroundColor: '#E31B23',
+                    backgroundColor: 'var(--primary-red)',
                     border: 'none',
                     color: '#FFFFFF',
                     fontSize: 13,

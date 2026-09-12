@@ -115,7 +115,7 @@ export function LogStudyModal({ isOpen, onClose, onSuccess, initialSubject = '',
         {errorMsg && (
           <div style={{
             padding: '10px 14px', borderRadius: 0, backgroundColor: 'var(--danger-bg)',
-            color: 'var(--danger-primary)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(227, 27, 35,0.2)'
+            color: 'var(--danger-primary)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(var(--primary-red-rgb), 0.2)'
           }}>
             {errorMsg}
           </div>

@@ -153,7 +153,7 @@ export function UsersView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 0, background: 'linear-gradient(135deg, #E31B23, #C1121F)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(227, 27, 35,0.25)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 0, background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)' }}>
               <Users size={22} />
             </div>
             <div>
@@ -186,7 +186,7 @@ export function UsersView() {
       {/* Analytics Metric Cards (White Theme) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#F8FAFC', color: '#E31B23', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#F8FAFC', color: 'var(--primary-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Users size={20} />
           </div>
           <div>
@@ -289,7 +289,7 @@ export function UsersView() {
 
         {/* Directory Table */}
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10, color: '#E31B23' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 10, color: 'var(--primary-red)' }}>
             <Loader2 className="animate-spin" size={24} />
             <span style={{ fontSize: 14, fontWeight: 600 }}>Loading live candidate directory...</span>
           </div>
@@ -351,14 +351,14 @@ export function UsersView() {
                               width: 40,
                               height: 40,
                               borderRadius: 0,
-                              background: 'linear-gradient(135deg, #E31B23, #C1121F)',
+                              background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
                               color: '#ffffff',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: 14,
                               fontWeight: 800,
-                              boxShadow: '0 2px 8px rgba(227, 27, 35,0.2)',
+                              boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.2)',
                               border: '2px solid #ffffff',
                               flexShrink: 0
                             }}>
@@ -385,11 +385,11 @@ export function UsersView() {
                           <span style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(227, 27, 35, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? '#E31B23' : '#3A8B53',
+                            background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(var(--primary-red-rgb), 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? 'var(--primary-red)' : '#3A8B53',
                             padding: '5px 12px',
                             borderRadius: 0,
-                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(227, 27, 35, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
+                            border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(var(--primary-red-rgb), 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
                           }}>
                             {u.role}
                           </span>
@@ -583,7 +583,7 @@ export function UsersView() {
                             onMouseEnter={(e) => {
                               e.currentTarget.style.backgroundColor = '#F8FAFC';
                               e.currentTarget.style.borderColor = '#93c5fd';
-                              e.currentTarget.style.color = '#E31B23';
+                              e.currentTarget.style.color = 'var(--primary-red)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = '#ffffff';
@@ -691,7 +691,7 @@ export function UsersView() {
                   Live Candidate Details
                 </span>
                 {isDetailLoading && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#E31B23', backgroundColor: '#F8FAFC', padding: '1px 6px', borderRadius: 0, fontWeight: 600 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--primary-red)', backgroundColor: '#F8FAFC', padding: '1px 6px', borderRadius: 0, fontWeight: 600 }}>
                     <Loader2 size={10} className="animate-spin" /> Syncing
                   </span>
                 )}
@@ -715,7 +715,7 @@ export function UsersView() {
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
                   e.currentTarget.style.color = '#172033';
-                  e.currentTarget.style.boxShadow = '0 0 10px rgba(227, 27, 35, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(var(--primary-red-rgb), 0.2)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#f8fafc';
@@ -739,7 +739,7 @@ export function UsersView() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 14,
-                boxShadow: '0 4px 20px rgba(227, 27, 35, 0.06)'
+                boxShadow: '0 4px 20px rgba(var(--primary-red-rgb), 0.06)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   {/* Avatar with Vibrant Gradient & Soft Glow */}
@@ -747,7 +747,7 @@ export function UsersView() {
                     width: 52,
                     height: 52,
                     borderRadius: 0,
-                    background: 'linear-gradient(135deg, #E31B23 0%, #4f46e5 50%, #7c3aed 100%)',
+                    background: 'linear-gradient(135deg, var(--primary-red) 0%, #4f46e5 50%, #7c3aed 100%)',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
@@ -772,7 +772,7 @@ export function UsersView() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-                      <Mail size={12} color="#E31B23" />
+                      <Mail size={12} color="var(--primary-red)" />
                       <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.email}</span>
                     </div>
 
@@ -784,9 +784,9 @@ export function UsersView() {
                         padding: '2px 8px',
                         borderRadius: 0,
                         backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#F8FAFC' : '#ecfdf5',
-                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? '#E31B23' : '#3A8B53',
+                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? 'var(--primary-red)' : '#3A8B53',
                         border: `1px solid ${selectedCandidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : selectedCandidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
-                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(227, 27, 35, 0.12)'
+                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(var(--primary-red-rgb), 0.12)'
                       }}>
                         {selectedCandidate.role}
                       </span>
@@ -799,7 +799,7 @@ export function UsersView() {
                         backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
                         color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#dc2626',
                         border: `1px solid ${selectedCandidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
-                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(227, 27, 35, 0.15)'
+                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(var(--primary-red-rgb), 0.15)'
                       }}>
                         {selectedCandidate.status === 'ACTIVE' ? 'Active' : 'Suspended'}
                       </span>
@@ -818,13 +818,13 @@ export function UsersView() {
                       padding: '5px 12px',
                       borderRadius: 0,
                       backgroundColor: '#F8FAFC',
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       border: '1px solid #bfdbfe',
                       fontSize: 11,
                       fontWeight: 600,
                       textDecoration: 'none',
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(227, 27, 35, 0.08)'
+                      boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.08)'
                     }}
                   >
                     <Mail size={12} />
@@ -894,25 +894,25 @@ export function UsersView() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    boxShadow: '0 4px 12px rgba(227, 27, 35, 0.06)'
+                    boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.06)'
                   }}>
                     <div style={{
                       width: 36,
                       height: 36,
                       borderRadius: 0,
                       background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(227, 27, 35, 0.2)',
+                      boxShadow: '0 0 10px rgba(var(--primary-red-rgb), 0.2)',
                       flexShrink: 0
                     }}>
                       <Zap size={18} />
                     </div>
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Streak</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#E31B23' }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary-red)' }}>
                         {selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days
                       </div>
                     </div>
@@ -1067,7 +1067,7 @@ export function UsersView() {
                     padding: '3px 10px',
                     borderRadius: 0,
                     backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#F8FAFC',
-                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : '#E31B23',
+                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : 'var(--primary-red)',
                     border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#bfdbfe'}`
                   }}>
                     Active Tier
@@ -1162,7 +1162,7 @@ export function UsersView() {
                     fontWeight: 700,
                     cursor: selectedCandidate.status === 'SUSPENDED' ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease',
-                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(227, 27, 35, 0.3)'
+                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(var(--primary-red-rgb), 0.3)'
                   }}
                 >
                   {actionLoadingUserId === selectedCandidate.id ? (

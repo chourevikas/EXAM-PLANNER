@@ -39,9 +39,9 @@ export function PointsView() {
             padding: '12px 16px',
             marginBottom: 16,
             borderRadius: 0,
-            background: 'rgba(227, 27, 35, 0.1)',
-            color: '#E31B23',
-            border: '1px solid rgba(227, 27, 35, 0.25)',
+            background: 'rgba(var(--primary-red-rgb), 0.1)',
+            color: 'var(--primary-red)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
             fontSize: 13.5,
           }}
         >
@@ -137,9 +137,9 @@ export function PointsView() {
                             fontSize: 11.5,
                             fontWeight: 700,
                             padding: '3px 9px',
-                            color: log.action === 'APPROVE' ? '#3A8B53' : '#E31B23',
-                            background: log.action === 'APPROVE' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(227, 27, 35, 0.1)',
-                            border: `1px solid ${log.action === 'APPROVE' ? 'rgba(16,185,129,0.25)' : 'rgba(227,27,35,0.25)'}`,
+                            color: log.action === 'APPROVE' ? '#3A8B53' : 'var(--primary-red)',
+                            background: log.action === 'APPROVE' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(var(--primary-red-rgb), 0.1)',
+                            border: `1px solid ${log.action === 'APPROVE' ? 'rgba(16,185,129,0.25)' : 'rgba(var(--primary-red-rgb), 0.25)'}`,
                           }}
                         >
                           {log.action === 'APPROVE' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}

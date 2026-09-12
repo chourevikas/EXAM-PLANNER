@@ -119,7 +119,7 @@ function StatCard({ value, suffix, label, icon: Icon, color, bg }: StatProps) {
 
 export function StatsSection() {
   const stats: StatProps[] = [
-    { value: 100000, suffix: '+', label: 'Questions in Bank',           icon: BookOpen,  color: '#E31B23', bg: 'rgba(227, 27, 35, 0.15)'   },
+    { value: 100000, suffix: '+', label: 'Questions in Bank',           icon: BookOpen,  color: 'var(--primary-red)', bg: 'rgba(var(--primary-red-rgb), 0.15)'   },
     { value: 95,     suffix: '%', label: 'Diagnostic Classification Accuracy', icon: BarChart2,  color: '#3A8B53', bg: 'rgba(58, 139, 83, 0.15)'  },
     { value: 50,     suffix: '+', label: 'Subjects Covered',            icon: FileText,  color: '#199EAE', bg: 'rgba(25, 158, 174, 0.15)'  },
     { value: 100,    suffix: '+', label: 'Smart Insights Daily',           icon: Zap,       color: '#F2B623', bg: 'rgba(242, 182, 35, 0.15)'  },
@@ -143,7 +143,7 @@ export function StatsSection() {
           transform: 'translateX(-50%)',
           width: 800,
           height: 200,
-          background: 'radial-gradient(ellipse at top, rgba(227,27,35,0.15) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at top, rgba(var(--primary-red-rgb), 0.15) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -159,7 +159,7 @@ export function StatsSection() {
               fontWeight: 800,
               letterSpacing: '1.2px',
               textTransform: 'uppercase' as const,
-              color: '#E31B23',
+              color: 'var(--primary-red)',
               marginBottom: 12,
               fontFamily: 'var(--font-mono)',
             }}

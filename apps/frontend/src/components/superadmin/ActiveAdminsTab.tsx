@@ -165,7 +165,7 @@ export function ActiveAdminsTab({
                   <tr key={admin.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
                     <td style={{ padding: '18px 20px' }}>
                       <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 15 }}>{admin.full_name}</div>
-                      <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{admin.email}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--primary-red)', fontWeight: 600, marginTop: 2 }}>{admin.email}</div>
                     </td>
                     <td style={{ padding: '18px 20px' }}>
                       {admin.organization_name ? (
@@ -187,8 +187,8 @@ export function ActiveAdminsTab({
                           padding: '4px 12px',
                           borderRadius: 0,
                           color: isSuspended ? '#ef4444' : '#3A8B53',
-                          background: isSuspended ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                          border: `1px solid ${isSuspended ? 'rgba(227, 27, 35, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                          background: isSuspended ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          border: `1px solid ${isSuspended ? 'rgba(var(--primary-red-rgb), 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
@@ -233,8 +233,8 @@ export function ActiveAdminsTab({
                             fontWeight: 600,
                             borderRadius: 0,
                             cursor: 'pointer',
-                            background: 'rgba(227, 27, 35, 0.08)',
-                            border: '1px solid rgba(227, 27, 35, 0.25)',
+                            background: 'rgba(var(--primary-red-rgb), 0.08)',
+                            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
                             color: '#ef4444',
                             display: 'inline-flex',
                             alignItems: 'center',

@@ -719,17 +719,17 @@ export function ExamQuestionCard({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: isBookmarked ? '#E31B23' : '#94A3B8',
+                      color: isBookmarked ? 'var(--primary-red)' : '#94A3B8',
                       transition: 'color 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#E31B23';
+                      e.currentTarget.style.color = 'var(--primary-red)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isBookmarked ? '#E31B23' : '#94A3B8';
+                      e.currentTarget.style.color = isBookmarked ? 'var(--primary-red)' : '#94A3B8';
                     }}
                   >
-                    <Bookmark size={18} fill={isBookmarked ? '#E31B23' : 'none'} />
+                    <Bookmark size={18} fill={isBookmarked ? 'var(--primary-red)' : 'none'} />
                   </button>
                 )}
               </div>

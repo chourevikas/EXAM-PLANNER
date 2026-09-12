@@ -2,7 +2,7 @@ import React, { ReactNode } from 'react';
 import { Ico } from '../common/Icons';
 
 const iconPalettes = [
-  { color: '#E31B23', bg: 'rgba(227, 27, 35,0.15)', glow: 'rgba(227, 27, 35,0.25)', border: 'rgba(227, 27, 35,0.3)' },
+  { color: 'var(--primary-red)', bg: 'rgba(var(--primary-red-rgb), 0.15)', glow: 'rgba(var(--primary-red-rgb), 0.25)', border: 'rgba(var(--primary-red-rgb), 0.3)' },
   { color: '#3A8B53', bg: 'rgba(16,185,129,0.15)', glow: 'rgba(16,185,129,0.25)', border: 'rgba(16,185,129,0.3)' },
   { color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', glow: 'rgba(139,92,246,0.25)', border: 'rgba(139,92,246,0.3)' },
   { color: '#F2B623', bg: 'rgba(245,158,11,0.15)', glow: 'rgba(245,158,11,0.25)', border: 'rgba(245,158,11,0.3)' },

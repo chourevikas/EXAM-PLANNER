@@ -2,7 +2,7 @@ import React from 'react';
 import { Ico } from '../common/Icons';
 
 const stepColors = [
-  { color: '#E31B23', bg: 'rgba(227,27,35,0.18)', border: '#E31B23' },
+  { color: 'var(--primary-red)', bg: 'rgba(var(--primary-red-rgb), 0.18)', border: 'var(--primary-red)' },
   { color: '#3A8B53', bg: 'rgba(58,139,83,0.18)', border: '#3A8B53' },
   { color: '#199EAE', bg: 'rgba(25,158,174,0.22)', border: '#199EAE' },
   { color: '#F2B623', bg: 'rgba(242,182,35,0.18)', border: '#F2B623' },

@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
             <div style={{
               width: 36,
               height: 36,
-              background: 'linear-gradient(135deg, #E31B23, #4F46E5)',
+              background: 'linear-gradient(135deg, var(--primary-red), #4F46E5)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
                 justifyContent: 'center',
                 margin: '0 auto 16px',
               }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E31B23" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--primary-red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -149,7 +149,7 @@ export default function ForgotPasswordPage() {
                   width: '100%',
                   height: 46,
                   padding: '0 14px',
-                  border: error ? '2px solid #E31B23' : '1.5px solid #E2E8F0',
+                  border: error ? '2px solid var(--primary-red)' : '1.5px solid #E2E8F0',
                   background: '#FAFAFA',
                   fontSize: 14,
                   color: '#172033',
@@ -158,7 +158,7 @@ export default function ForgotPasswordPage() {
                   transition: 'border-color 0.15s ease',
                   fontFamily: 'inherit',
                 }}
-                onFocus={(e) => { if (!error) e.target.style.borderColor = '#E31B23'; }}
+                onFocus={(e) => { if (!error) e.target.style.borderColor = 'var(--primary-red)'; }}
                 onBlur={(e) => { if (!error) e.target.style.borderColor = '#E2E8F0'; }}
               />
             </div>
@@ -185,7 +185,7 @@ export default function ForgotPasswordPage() {
                 height: 48,
                 background: loading || !email.trim()
                   ? '#E2E8F0'
-                  : 'linear-gradient(135deg, #E31B23, #C01019)',
+                  : 'linear-gradient(135deg, var(--primary-red), #C01019)',
                 color: loading || !email.trim() ? '#94A3B8' : '#FFFFFF',
                 border: 'none',
                 fontSize: 14,
@@ -223,7 +223,7 @@ export default function ForgotPasswordPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#E31B23',
+                  color: 'var(--primary-red)',
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontSize: 13,
@@ -245,7 +245,7 @@ export default function ForgotPasswordPage() {
           fontSize: 13,
           color: '#64748B',
         }}>
-          <Link to="/signin" style={{ color: '#E31B23', fontWeight: 600, textDecoration: 'none' }}>
+          <Link to="/signin" style={{ color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>
             ← Back to Sign In
           </Link>
         </div>

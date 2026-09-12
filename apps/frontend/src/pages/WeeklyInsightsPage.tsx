@@ -100,11 +100,11 @@ const RETRY_BUTTON_STYLE: React.CSSProperties = {
   fontSize: 13.5,
   fontWeight: 700,
   color: '#ffffff',
-  backgroundColor: '#E31B23',
+  backgroundColor: 'var(--primary-red)',
   border: 'none',
   borderRadius: 0,
   cursor: 'pointer',
-  boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
+  boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)',
 };
 
 const METRIC_CARD_BASE_STYLE: React.CSSProperties = {
@@ -305,7 +305,7 @@ export function WeeklyInsightsPage() {
           {/* Top Metric Cards */}
           <div style={metricGridStyle}>
             <div style={metricCardStyle}>
-              <div style={{ ...METRIC_HEADER_STYLE, color: '#E31B23' }}>
+              <div style={{ ...METRIC_HEADER_STYLE, color: 'var(--primary-red)' }}>
                 <Clock size={20} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Logged Study Time</span>
               </div>

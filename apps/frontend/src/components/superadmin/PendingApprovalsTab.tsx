@@ -146,12 +146,12 @@ export function PendingApprovalsTab({
                   <span
                     style={{
                       fontSize: 12,
-                      color: '#E31B23',
-                      background: 'rgba(227, 27, 35, 0.1)',
+                      color: 'var(--primary-red)',
+                      background: 'rgba(var(--primary-red-rgb), 0.1)',
                       padding: '3px 12px',
                       borderRadius: 0,
                       fontWeight: 600,
-                      border: '1px solid rgba(227, 27, 35, 0.2)',
+                      border: '1px solid rgba(var(--primary-red-rgb), 0.2)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
@@ -188,7 +188,7 @@ export function PendingApprovalsTab({
                     borderRadius: 0,
                     cursor: 'pointer',
                     background: 'transparent',
-                    border: '1px solid rgba(227, 27, 35, 0.3)',
+                    border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                     color: '#ef4444',
                     display: 'flex',
                     alignItems: 'center',
@@ -196,7 +196,7 @@ export function PendingApprovalsTab({
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(227, 27, 35, 0.1)';
+                    e.currentTarget.style.background = 'rgba(var(--primary-red-rgb), 0.1)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';

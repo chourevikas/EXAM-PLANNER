@@ -98,12 +98,12 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         padding: '7px 14px',
         fontSize: 12.5,
         fontWeight: 600,
-        color: isHovered ? '#E31B23' : '#172033',
+        color: isHovered ? 'var(--primary-red)' : '#172033',
         backgroundColor: isHovered ? '#F8FAFC' : '#FFFFFF',
-        border: `1px solid ${isHovered ? '#E31B23' : '#CBD5E1'}`,
+        border: `1px solid ${isHovered ? 'var(--primary-red)' : '#CBD5E1'}`,
         borderRadius: 0,
         cursor: 'pointer',
-        boxShadow: isHovered ? '0 2px 6px rgba(227, 27, 35, 0.15)' : 'none',
+        boxShadow: isHovered ? '0 2px 6px rgba(var(--primary-red-rgb), 0.15)' : 'none',
         transition: 'all 150ms ease-out',
       }}
     >
@@ -113,7 +113,7 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
         style={{
           transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
           transition: 'transform 150ms ease-out',
-          color: isHovered ? '#E31B23' : '#64748B',
+          color: isHovered ? 'var(--primary-red)' : '#64748B',
         }}
       />
     </button>
@@ -483,7 +483,7 @@ export function QuestionBankManager() {
                     display: 'inline-block',
                     fontSize: 12.5,
                     fontWeight: 600,
-                    color: '#E31B23',
+                    color: 'var(--primary-red)',
                     backgroundColor: '#F8FAFC',
                     border: '1px solid #BFDBFE',
                     padding: '3px 10px',
@@ -561,7 +561,7 @@ export function QuestionBankManager() {
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = '#F8FAFC';
-                        e.currentTarget.style.borderLeft = '3px solid #E31B23';
+                        e.currentTarget.style.borderLeft = '3px solid var(--primary-red)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = '#FFFFFF';
@@ -583,7 +583,7 @@ export function QuestionBankManager() {
                               flexShrink: 0,
                             }}
                           >
-                            <IconComponent size={17} color="#E31B23" />
+                            <IconComponent size={17} color="var(--primary-red)" />
                           </div>
                           <div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', lineHeight: 1.2 }}>
@@ -700,7 +700,7 @@ export function QuestionBankManager() {
                         fontSize: 11.5,
                         fontWeight: 600,
                         backgroundColor: '#F8FAFC',
-                        color: '#E31B23',
+                        color: 'var(--primary-red)',
                         border: '1px solid #BFDBFE',
                       }}
                     >
@@ -809,7 +809,7 @@ export function QuestionBankManager() {
                           cursor: 'pointer',
                           backgroundColor: isSelected ? '#F8FAFC' : '#FFFFFF',
                           border: isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0',
-                          borderLeft: isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0',
+                          borderLeft: isSelected ? '3px solid var(--primary-red)' : '1px solid #E2E8F0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -820,7 +820,7 @@ export function QuestionBankManager() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isSelected ? '#E31B23' : '#172033' }}>
+                          <span style={{ fontWeight: 700, fontFamily: 'monospace', color: isSelected ? 'var(--primary-red)' : '#172033' }}>
                             Q{q.question_number_in_paper < 10 ? `0${q.question_number_in_paper}` : q.question_number_in_paper}
                           </span>
                           <span style={{ fontSize: 12, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
@@ -869,7 +869,7 @@ export function QuestionBankManager() {
                         <span>•</span>
                         <span>{selectedQuestion.subtopic_name}</span>
                         <span>•</span>
-                        <span style={{ fontWeight: 600, color: '#E31B23' }}>{selectedQuestion.difficulty}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--primary-red)' }}>{selectedQuestion.difficulty}</span>
                       </div>
                     </div>
 
@@ -891,7 +891,7 @@ export function QuestionBankManager() {
                           cursor: 'pointer',
                         }}
                       >
-                        <Edit3 size={14} color="#E31B23" />
+                        <Edit3 size={14} color="var(--primary-red)" />
                         <span>Edit</span>
                       </button>
 

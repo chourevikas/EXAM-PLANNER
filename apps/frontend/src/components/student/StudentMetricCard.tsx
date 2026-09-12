@@ -19,7 +19,7 @@ export function StudentMetricCard({
   showProgress = false,
   progressPercent = 0,
   onClick,
-  accentColor = '#E31B23',
+  accentColor = 'var(--primary-red)',
 }: StudentMetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 

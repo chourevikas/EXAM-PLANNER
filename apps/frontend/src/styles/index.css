@@ -7,6 +7,7 @@
 
   /* Minimal Palette System */
   --primary-red: #e31b23;
+  --primary-red-rgb: 227, 27, 35;
   --deep-navy: #172033;
   --ink-black: #111111;
   --soft-white: #f8fafc;
@@ -42,8 +43,9 @@
 
   --accent-primary: var(--primary-red);
   --accent-darker: #c1121f;
-  --accent-bg: rgba(227, 27, 35, 0.08);
-  --accent-border: rgba(227, 27, 35, 0.2);
+  --accent-darkest: #a4161a;
+  --accent-bg: rgba(var(--primary-red-rgb), 0.08);
+  --accent-border: rgba(var(--primary-red-rgb), 0.2);
 
   --success-primary: var(--success-green);
   --success-bg: rgba(58, 139, 83, 0.1);
@@ -53,7 +55,7 @@
   --warning-bg: rgba(242, 182, 35, 0.1);
 
   --danger-primary: var(--primary-red);
-  --danger-bg: rgba(227, 27, 35, 0.1);
+  --danger-bg: rgba(var(--primary-red-rgb), 0.1);
 
   --info-primary: var(--info-teal);
 
@@ -64,8 +66,8 @@
   --emerald: var(--success-green);
   --saffron: var(--orange);
   --ivory: var(--soft-white);
-  --blue50: rgba(227, 27, 35, 0.05);
-  --blue100: rgba(227, 27, 35, 0.1);
+  --blue50: rgba(var(--primary-red-rgb), 0.05);
+  --blue100: rgba(var(--primary-red-rgb), 0.1);
 
   --radius: 5px;
 
@@ -108,7 +110,7 @@
   --border-disabled: rgba(255, 255, 255, 0.05);
 
   --shadow-color-base: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-color-accent: 0 4px 12px rgba(227, 27, 35, 0.2);
+  --shadow-color-accent: 0 4px 12px rgba(var(--primary-red-rgb), 0.2);
 }
 
 * {
@@ -218,13 +220,13 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #e31b23 0%, #c1121f 50%, #a4161a 100%);
+  background: linear-gradient(135deg, var(--primary-red) 0%, var(--accent-darker) 50%, var(--accent-darkest) 100%);
   color: #ffffff;
   border-radius: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 4px 16px rgba(227, 27, 35, 0.35);
+    0 4px 16px rgba(var(--primary-red-rgb), 0.35);
   font-weight: 700;
   letter-spacing: 0.2px;
 }
@@ -233,7 +235,7 @@ body {
   transform: translateY(-2px) scale(1.02);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 8px 24px rgba(227, 27, 35, 0.48);
+    0 8px 24px rgba(var(--primary-red-rgb), 0.48);
   border-color: rgba(255, 255, 255, 0.35);
 }
 
@@ -241,7 +243,7 @@ body {
   transform: translateY(0) scale(0.98);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 2px 8px rgba(227, 27, 35, 0.3);
+    0 2px 8px rgba(var(--primary-red-rgb), 0.3);
 }
 
 .btn-ghost {
@@ -323,7 +325,7 @@ body {
 
 .form-input:focus {
   border-color: var(--primary-red);
-  box-shadow: 0 0 0 3px rgba(227, 27, 35, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--primary-red-rgb), 0.15);
 }
 
 /* Disable native browser password reveal icons to prevent double-eye buttons */
@@ -334,7 +336,7 @@ input::-ms-clear {
 
 .form-input.input-error {
   border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(227, 27, 35, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--primary-red-rgb), 0.15);
 }
 
 .field-error-msg {
@@ -453,7 +455,7 @@ input::-ms-clear {
 .feature-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(227, 27, 35, 0.4);
+  border-color: rgba(var(--primary-red-rgb), 0.4);
 }
 
 /* Features Marquee Carousel */
@@ -884,9 +886,9 @@ input::-ms-clear {
 }
 
 .alert-card.error {
-  background: rgba(227, 27, 35, 0.1);
+  background: rgba(var(--primary-red-rgb), 0.1);
   color: #ef4444;
-  border: 1px solid rgba(227, 27, 35, 0.3);
+  border: 1px solid rgba(var(--primary-red-rgb), 0.3);
 }
 
 /* Responsive Utilities & Mobile Drawer */

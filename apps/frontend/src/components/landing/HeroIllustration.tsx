@@ -184,7 +184,7 @@ export function HeroIllustration() {
                     '#BFDBFE',
                     '#93C5FD',
                     '#60A5FA',
-                    '#E31B23',
+                    'var(--primary-red)',
                   ][v];
                   return (
                     <div
@@ -219,7 +219,7 @@ export function HeroIllustration() {
             fontWeight: 700,
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 8px 24px rgba(227, 27, 35,0.4)',
+            boxShadow: '0 8px 24px rgba(var(--primary-red-rgb), 0.4)',
             zIndex: 10,
           }}
         >
@@ -255,7 +255,7 @@ export function HeroIllustration() {
             borderRadius: 0,
             padding: '10px 14px',
             border: `1px solid ${C.blue100}`,
-            boxShadow: '0 8px 24px rgba(227, 27, 35,0.10)',
+            boxShadow: '0 8px 24px rgba(var(--primary-red-rgb), 0.10)',
             maxWidth: 190,
             zIndex: 10,
           }}

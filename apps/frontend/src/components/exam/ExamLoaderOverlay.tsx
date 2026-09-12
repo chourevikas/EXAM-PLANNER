@@ -20,7 +20,7 @@ export function ExamLoaderOverlay({
         padding: '36px 24px',
       }}
     >
-      <Loader2 size={40} className="spin-loader" color="#E31B23" />
+      <Loader2 size={40} className="spin-loader" color="var(--primary-red)" />
     </div>
   );
 

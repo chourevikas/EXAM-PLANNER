@@ -1487,7 +1487,7 @@ export function GuestExamPage() {
               style={{
                 padding: '10px 18px',
                 borderRadius: 0,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 fontSize: 13.5,
                 fontWeight: 600,
@@ -1496,7 +1496,7 @@ export function GuestExamPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)',
+                boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.2)',
               }}
             >
               Select Another Subject
@@ -1732,9 +1732,9 @@ export function GuestExamPage() {
               gap: 6,
               padding: '6px 10px',
               borderRadius: 0,
-              border: `1px solid ${isFocusMode ? 'rgba(227, 27, 35, 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
+              border: `1px solid ${isFocusMode ? 'rgba(var(--primary-red-rgb), 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
               backgroundColor: isFocusMode
-                ? 'rgba(227, 27, 35, 0.18)'
+                ? 'rgba(var(--primary-red-rgb), 0.18)'
                 : 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
               fontSize: 12.5,
@@ -3474,7 +3474,7 @@ export function GuestExamPage() {
                 width: 26,
                 height: 26,
                 borderRadius: 0,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -3499,7 +3499,7 @@ export function GuestExamPage() {
               padding: '6px 14px',
               borderRadius: 0,
               border: 'none',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#FFFFFF',
               fontSize: 12,
               fontWeight: 700,
@@ -3508,10 +3508,10 @@ export function GuestExamPage() {
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#C1121F';
+              e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#E31B23';
+              e.currentTarget.style.backgroundColor = 'var(--primary-red)';
             }}
           >
             View Score Now &rsaquo;
@@ -3755,7 +3755,7 @@ export function GuestExamPage() {
                   gap: 8,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#C1121F';
+                  e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1E3A8A';

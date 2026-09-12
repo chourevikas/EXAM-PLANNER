@@ -27,7 +27,7 @@ function getActivityTypeBadge(activityType?: string, title?: string) {
   const titleLower = (title || '').toLowerCase();
 
   if (act === 'NEW_TOPIC' || (!act && !titleLower.includes('revision') && !titleLower.includes('mcq') && !titleLower.includes('test'))) {
-    return { label: '📘 New Topic', bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
+    return { label: '📘 New Topic', bg: 'rgba(var(--primary-red-rgb), 0.12)', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.25)' };
   }
   if (act === 'PRACTICE_MCQS' || act === 'MOCK_TEST' || act === 'PYQ_SOLVING' || titleLower.includes('mcq') || titleLower.includes('test') || titleLower.includes('pyq')) {
     return { label: '✍️ Practice MCQs / PYQs', bg: 'rgba(16, 185, 129, 0.12)', color: '#3A8B53', border: 'rgba(16, 185, 129, 0.25)' };
@@ -71,10 +71,10 @@ function renderActivityCategoryDropdowns(
       id: 'new_topic',
       title: '📘 New Topics',
       tasks: newTopics,
-      bg: 'rgba(227, 27, 35, 0.04)',
-      borderColor: 'rgba(227, 27, 35, 0.25)',
-      badgeBg: 'rgba(227, 27, 35, 0.12)',
-      badgeColor: '#E31B23',
+      bg: 'rgba(var(--primary-red-rgb), 0.04)',
+      borderColor: 'rgba(var(--primary-red-rgb), 0.25)',
+      badgeBg: 'rgba(var(--primary-red-rgb), 0.12)',
+      badgeColor: 'var(--primary-red)',
     },
     {
       id: 'revision',
@@ -433,7 +433,7 @@ export function StudyPlannerPage() {
   // Color helper for subjects
   const getSubjectBadgeStyle = (subj?: string) => {
     const s = (subj || '').toLowerCase();
-    if (s.includes('polity')) return { bg: '#F8FAFC', color: '#E31B23', border: 'rgba(227, 27, 35,0.2)' };
+    if (s.includes('polity')) return { bg: '#F8FAFC', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.2)' };
     if (s.includes('history')) return { bg: '#FEF3C7', color: '#F2B623', border: 'rgba(217,119,6,0.2)' };
     if (s.includes('economy')) return { bg: '#ECFDF5', color: '#3A8B53', border: 'rgba(5,150,105,0.2)' };
     if (s.includes('geography')) return { bg: '#F3E8FF', color: '#9333EA', border: 'rgba(147,51,234,0.2)' };

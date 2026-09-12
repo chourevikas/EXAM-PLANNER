@@ -97,6 +97,7 @@ const PublicChallengePage = lazy(() =>
 
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 import { Spinner } from './components/common/Spinner';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 
 function LoadingFallback() {
@@ -118,6 +119,7 @@ function LoadingFallback() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <GlobalThemeToggle />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
@@ -365,6 +367,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

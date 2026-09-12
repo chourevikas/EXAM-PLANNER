@@ -57,7 +57,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, supportingText, icon, isProcessing = false }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const accentColor = '#E31B23';
+  const accentColor = 'var(--primary-red)';
 
   return (
     <div
@@ -136,7 +136,7 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
           }}
         >
           <span>{value}</span>
-          {isProcessing && <Loader2 size={18} className="animate-spin" color="#E31B23" />}
+          {isProcessing && <Loader2 size={18} className="animate-spin" color="var(--primary-red)" />}
         </div>
         <div style={{ fontSize: 12, fontWeight: 500, color: '#64748B', marginTop: 4 }}>
           {supportingText}
@@ -151,9 +151,9 @@ function MetricCard({ title, value, supportingText, icon, isProcessing = false }
 // ----------------------------------------------------------------------
 function FiveStagePipelinePreview() {
   const stages = [
-    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
-    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: FileText, color: '#E31B23', bg: '#F8FAFC', border: '#E2E8F0' },
+    { num: '01', title: 'Extraction', desc: 'AI PDF to JSON parsing', icon: FileText, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
+    { num: '02', title: 'Answer Mapping', desc: 'Linking official SET key', icon: Key, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
+    { num: '03', title: 'Explanations', desc: 'Detailed solution AI engine', icon: FileText, color: 'var(--primary-red)', bg: '#F8FAFC', border: '#E2E8F0' },
     { num: '04', title: 'Human Review', desc: 'QA verification & audit', icon: ClipboardCheck, color: '#F2B623', bg: '#FEF3C7', border: '#FDE68A' },
     { num: '05', title: 'Publish', desc: 'Live catalog deployment', icon: Database, color: '#16A34A', bg: '#ECFDF5', border: '#A7F3D0' },
   ];
@@ -170,7 +170,7 @@ function FiveStagePipelinePreview() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-        <div style={{ width: 4, height: 18, backgroundColor: '#E31B23', borderRadius: 0 }} />
+        <div style={{ width: 4, height: 18, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
         <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
           Examination Content Processing Flow
         </h3>
@@ -326,7 +326,7 @@ function TableRowItem({
         style={{
           padding: '14px 16px',
           maxWidth: 280,
-          borderLeft: rowHovered ? '3px solid #E31B23' : '3px solid transparent',
+          borderLeft: rowHovered ? '3px solid var(--primary-red)' : '3px solid transparent',
           transition: 'border-left 150ms ease-out',
         }}
       >
@@ -581,14 +581,14 @@ function TableRowItem({
                 fontSize: 12.5,
                 fontWeight: 600,
                 color: '#FFFFFF',
-                background: '#E31B23',
+                background: 'var(--primary-red)',
                 border: 'none',
                 borderRadius: 0,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 5,
-                boxShadow: '0 1px 2px rgba(227, 27, 35, 0.2)',
+                boxShadow: '0 1px 2px rgba(var(--primary-red-rgb), 0.2)',
                 transition: 'all 150ms ease-out',
               }}
             >
@@ -916,7 +916,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             gap: 5,
           }}
         >
-          <Loader2 size={12} className="animate-spin" color="#E31B23" />
+          <Loader2 size={12} className="animate-spin" color="var(--primary-red)" />
           Pipeline Processing
         </span>
       );
@@ -982,7 +982,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
             gap: 5,
           }}
         >
-          <Loader2 size={12} className="animate-spin" color="#E31B23" />
+          <Loader2 size={12} className="animate-spin" color="var(--primary-red)" />
           Processing
         </span>
       );
@@ -1177,26 +1177,26 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           title="Total Exam Papers"
           value={totalExamsCount}
           supportingText="Extracted & cataloged"
-          icon={<FileSpreadsheet size={17} color="#E31B23" />}
+          icon={<FileSpreadsheet size={17} color="var(--primary-red)" />}
         />
         <MetricCard
           title="Active Pipeline Tasks"
           value={activeCount}
           supportingText="Processing in background"
-          icon={<Activity size={17} color="#E31B23" />}
+          icon={<Activity size={17} color="var(--primary-red)" />}
           isProcessing={activeCount > 0}
         />
         <MetricCard
           title="Pending Review"
           value={pendingCount}
           supportingText="Awaiting verification"
-          icon={<Clock size={17} color="#E31B23" />}
+          icon={<Clock size={17} color="var(--primary-red)" />}
         />
         <MetricCard
           title="Published"
           value={publishedCount}
           supportingText="Catalog live & active"
-          icon={<CheckCircle2 size={17} color="#E31B23" />}
+          icon={<CheckCircle2 size={17} color="var(--primary-red)" />}
         />
       </div>
 
@@ -1305,6 +1305,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
       </>
       )}
 
+
       {/* 4. Upload Examination Document Card (Visual Focal Point) */}
       {activeTab === 'UPLOAD_ONLY' && (
         <div
@@ -1319,7 +1320,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 4, height: 20, backgroundColor: '#E31B23', borderRadius: 0 }} />
+              <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
               <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                 Upload Question Paper PDF
               </h2>
@@ -1481,7 +1482,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: `2px dashed ${isDragOver ? '#E31B23' : '#93C5FD'}`,
+                border: `2px dashed ${isDragOver ? 'var(--primary-red)' : '#93C5FD'}`,
                 backgroundColor: isDragOver ? '#E2E8F0' : '#F8FAFC',
                 borderRadius: 0,
                 padding: '32px 24px',
@@ -1504,12 +1505,12 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   height: 48,
                   borderRadius: 0,
                   backgroundColor: '#FFFFFF',
-                  color: '#E31B23',
+                  color: 'var(--primary-red)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 12px',
-                  boxShadow: '0 2px 8px rgba(227, 27, 35, 0.15)',
+                  boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.15)',
                   transform: isDragOver ? 'scale(1.1)' : 'scale(1)',
                   transition: 'transform 200ms ease-out',
                 }}
@@ -1545,11 +1546,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   borderRadius: 0,
                   fontSize: 13.5,
                   fontWeight: 600,
-                  backgroundColor: !selectedFile || isUploading ? '#94A3B8' : '#E31B23',
+                  backgroundColor: !selectedFile || isUploading ? '#94A3B8' : 'var(--primary-red)',
                   color: '#FFFFFF',
                   border: 'none',
                   cursor: !selectedFile || isUploading ? 'not-allowed' : 'pointer',
-                  boxShadow: !selectedFile || isUploading ? 'none' : '0 2px 6px rgba(227, 27, 35, 0.3)',
+                  boxShadow: !selectedFile || isUploading ? 'none' : '0 2px 6px rgba(var(--primary-red-rgb), 0.3)',
                   transition: 'all 150ms ease-out',
                 }}
               >
@@ -1674,7 +1675,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           {/* Table Content */}
           {loadingQueue ? (
             <div style={{ padding: 48, textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
-              <Loader2 size={24} className="animate-spin" color="#E31B23" style={{ margin: '0 auto 10px' }} />
+              <Loader2 size={24} className="animate-spin" color="var(--primary-red)" style={{ margin: '0 auto 10px' }} />
               Loading pipeline records from database...
             </div>
           ) : filteredQueueExams.length === 0 ? (
@@ -2179,7 +2180,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                       borderRadius: 0,
                       fontSize: 13,
                       fontWeight: 600,
-                      backgroundColor: '#E31B23',
+                      backgroundColor: 'var(--primary-red)',
                       border: 'none',
                       color: '#FFFFFF',
                       cursor: 'pointer',
@@ -2187,7 +2188,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: 6,
-                      boxShadow: '0 2px 6px rgba(227, 27, 35, 0.25)',
+                      boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.25)',
                     }}
                   >
                     <Check size={14} />
@@ -2291,7 +2292,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                       fontWeight: 600,
                       cursor: 'pointer',
                       border: isCancel ? '1px solid #CBD5E1' : 'none',
-                      backgroundColor: isCancel ? '#FFFFFF' : isRestart ? '#DC2626' : '#E31B23',
+                      backgroundColor: isCancel ? '#FFFFFF' : isRestart ? '#DC2626' : 'var(--primary-red)',
                       color: isCancel ? '#475569' : '#FFFFFF',
                       transition: 'all 0.15s ease',
                     }}

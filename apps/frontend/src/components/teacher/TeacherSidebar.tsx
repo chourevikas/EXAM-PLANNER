@@ -70,9 +70,9 @@ export function TeacherSidebar({
           padding: (collapsed && !isMobile) ? '10px 0' : '10px 14px',
           justifyContent: (collapsed && !isMobile) ? 'center' : 'flex-start',
           borderRadius: 0,
-          background: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
+          background: isActive ? 'rgba(var(--primary-red-rgb), 0.15)' : 'transparent',
           border: 'none',
-          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid #E31B23' : '3px solid transparent',
+          borderLeft: isActive && (!collapsed || isMobile) ? '3px solid var(--primary-red)' : '3px solid transparent',
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
           cursor: 'pointer',
           fontSize: 13.5,
@@ -97,7 +97,7 @@ export function TeacherSidebar({
           }
         }}
       >
-        <Icon size={17} color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
+        <Icon size={17} color={isActive ? 'var(--primary-red)' : 'rgba(255, 255, 255, 0.65)'} style={{ flexShrink: 0 }} />
         {(!collapsed || isMobile) && <span>{item.label}</span>}
       </button>
     );

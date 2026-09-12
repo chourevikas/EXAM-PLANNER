@@ -172,7 +172,7 @@ export function CurrentAffairsManager() {
               disabled={isSubmitting}
               style={{ 
                 padding: '10px 20px', 
-                backgroundColor: isSubmitting ? '#f87171' : '#E31B23', 
+                backgroundColor: isSubmitting ? '#f87171' : 'var(--primary-red)', 
                 color: '#fff', 
                 border: 'none', 
                 borderRadius: 4, 
