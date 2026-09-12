@@ -277,7 +277,7 @@ async def upload_question_paper(
     if not resolved_et and exam_name:
         resolved_et = await et_repo.get_by_type(exam_name)
     if not resolved_et:
-        resolved_et = await et_repo.get_by_type("upse")
+        resolved_et = (await et_repo.get_by_type("upsc")) or (await et_repo.get_by_type("upse"))
 
     et_id = resolved_et.id if resolved_et else None
     dur_mins = resolved_et.total_duration if resolved_et else 120

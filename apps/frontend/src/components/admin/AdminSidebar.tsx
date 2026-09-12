@@ -65,7 +65,7 @@ export function AdminSidebar({
     { icon: Sliders, label: 'Exam Types', id: 'exam-types' },
     { icon: ClipboardCheck, label: 'Question & Solution QA', id: 'review' },
     { icon: BookOpen, label: 'Question Bank Catalog', id: 'questions' },
-    { icon: GraduationCap, label: 'Mock Tests', id: 'mock-tests' },
+    // Mock Tests section removed from UI while keeping code intact
   ];
 
   const managementNavItems = [

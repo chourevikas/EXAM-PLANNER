@@ -34,8 +34,8 @@ export async function fetchActiveExamTypes(): Promise<ExamType[]> {
     return [
       {
         id: 1,
-        type: 'upse',
-        name: 'UPSE Civil Services Examination',
+        type: 'upsc',
+        name: 'UPSC Civil Services Examination',
         total_duration: 120,
         number_of_questions: 100,
         total_marks: 200,

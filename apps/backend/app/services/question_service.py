@@ -1805,6 +1805,15 @@ class QuestionService:
             if ot is not None:
                 ot_map.setdefault(opt.id, {})[ot.language] = (ot.option_text, ot.distractor_analysis)
 
+        qr_by_optid = {}
+        if include_solutions and options:
+            all_opt_ids = [opt.id for opt in options]
+            all_qrs = (await self.session.exec(
+                select(QuestionOptionReasoning).where(col(QuestionOptionReasoning.question_option_id).in_(all_opt_ids))
+            )).all()
+            for qr in all_qrs:
+                qr_by_optid[qr.question_option_id] = qr
+
         # 2. Hierarchy links joined with Subtopic, Topic, Subject in a single pass
         hier_stmt = (
             select(QuestionHierarchyLink, Subtopic, Topic, Subject)
@@ -1956,6 +1965,22 @@ class QuestionService:
                     k: (v[0] if isinstance(v, (tuple, list)) else v)
                     for k, v in ot_dict_str.items()
                 }
+                opt_distractor = (
+                    ot_tuple[1]
+                    if (include_solutions and isinstance(ot_tuple, (tuple, list)) and len(ot_tuple) > 1 and ot_tuple[1])
+                    else None
+                )
+                qr = qr_by_optid.get(opt.id) if include_solutions else None
+                why_t = qr.why_tempting.strip() if (qr and qr.why_tempting) else None
+                whats_t = qr.whats_actually_true.strip() if (qr and qr.whats_actually_true) else None
+                if include_solutions and not opt_distractor and qr:
+                    if why_t and whats_t:
+                        opt_distractor = f"Why it seems tempting — {why_t} What's actually true — {whats_t}"
+                    elif whats_t:
+                        opt_distractor = whats_t
+                    elif why_t:
+                        opt_distractor = why_t
+
                 opts_detail.append(
                     QuestionOptionDetail(
                         option_id=str(opt.id),
@@ -1963,11 +1988,9 @@ class QuestionService:
                         display_order=opt.display_order,
                         is_correct=opt.is_correct,
                         option_text=cand_text or "",
-                        distractor_analysis=(
-                            ot_tuple[1]
-                            if (include_solutions and isinstance(ot_tuple, (tuple, list)) and len(ot_tuple) > 1 and ot_tuple[1])
-                            else None
-                        ),
+                        distractor_analysis=opt_distractor,
+                        why_tempting=why_t,
+                        whats_actually_true=whats_t,
                         closeness_score=opt.closeness_score,
                         translations=opt_trans_map,
                     )

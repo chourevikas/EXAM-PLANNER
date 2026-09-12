@@ -1040,7 +1040,9 @@ export function MockSelectionPage() {
         </form>
       </section>
 
-      {/* Full-Length & Curated Test Series Header Row */}
+      {/* Full-Length & Curated Test Series Section (Code preserved, hidden from UI) */}
+      {false && (
+      <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: '#172033', margin: 0 }}>
@@ -1254,6 +1256,8 @@ export function MockSelectionPage() {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </StudentLayout>
   );

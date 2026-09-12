@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Upload,
   Cloud,
@@ -19,7 +19,11 @@ import {
   ClipboardCheck,
   Activity,
   ArrowRight,
+  ArrowLeft,
   ChevronRight,
+  ChevronLeft,
+  ChevronsRight,
+  ChevronsLeft,
   Filter,
 } from 'lucide-react';
 import { useExamUpload } from '../../hooks/useExamUpload';
@@ -659,8 +663,17 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stageFilter, setStageFilter] = useState<string>('ALL');
 
-  // UI Tabs ('UNIFIED' | 'UPLOAD_ONLY' | 'PIPELINE_ONLY')
-  const [activeTab, setActiveTab] = useState<'UNIFIED' | 'UPLOAD_ONLY' | 'PIPELINE_ONLY'>('UNIFIED');
+  // UI Mode ('UPLOAD_ONLY' | 'PIPELINE_ONLY') - Default to PIPELINE_ONLY to show only Pipeline and Artifacts
+  const [activeTab, setActiveTab] = useState<'UPLOAD_ONLY' | 'PIPELINE_ONLY'>('PIPELINE_ONLY');
+
+  // Table Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(8);
+
+  // Reset pagination to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, stageFilter]);
 
   // Slide-out Audit Drawer
   const [selectedExam, setSelectedExam] = useState<ExamPipelineStatusItem | null>(null);
@@ -783,6 +796,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
     setTimeout(() => {
       pollerRef.current?.resetCurve();
       loadRealTimeQueue(true);
+      setActiveTab('PIPELINE_ONLY');
     }, 1200);
   };
 
@@ -806,6 +820,15 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
 
     return matchesSearch && matchesStatus && matchesStage;
   });
+
+  // Table Pagination Computations
+  const totalPages = Math.max(1, Math.ceil(filteredQueueExams.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedExams = useMemo(() => {
+    const startIdx = (safeCurrentPage - 1) * pageSize;
+    return filteredQueueExams.slice(startIdx, startIdx + pageSize);
+  }, [filteredQueueExams, safeCurrentPage, pageSize]);
 
   // KPI Counts
   const totalExamsCount = pipelineExams.length;
@@ -1054,64 +1077,94 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               letterSpacing: '-0.02em',
             }}
           >
-            Exam Paper Pipeline
+            {activeTab === 'UPLOAD_ONLY' ? 'Upload Question Paper' : 'Exam Paper Pipeline'}
           </h1>
           <p style={{ fontSize: 13.5, color: '#64748B', marginTop: 4, margin: '4px 0 0 0' }}>
-            Upload, process, review and publish examination papers through the content pipeline.
+            {activeTab === 'UPLOAD_ONLY'
+              ? 'Configure examination parameters and upload PDF paper to ingest into content pipeline.'
+              : 'Upload, process, review and publish examination papers through the content pipeline.'}
           </p>
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            onClick={() => loadRealTimeQueue(false)}
-            disabled={loadingQueue}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              fontSize: 13,
-              fontWeight: 500,
-              borderRadius: 0,
-              backgroundColor: '#FFFFFF',
-              color: '#172033',
-              border: '1px solid #E2E8F0',
-              cursor: loadingQueue ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
-            }}
-            title="Refresh Real-Time Pipeline Status"
-          >
-            <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
-            <span>Refresh Pipeline</span>
-          </button>
+          {activeTab === 'UPLOAD_ONLY' ? (
+            <button
+              onClick={() => setActiveTab('PIPELINE_ONLY')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                borderRadius: 0,
+                backgroundColor: '#FFFFFF',
+                color: '#334155',
+                border: '1px solid #CBD5E1',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+              }}
+            >
+              <ArrowLeft size={15} />
+              <span>Back to Pipeline & Artifacts</span>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => loadRealTimeQueue(false)}
+                disabled={loadingQueue}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderRadius: 0,
+                  backgroundColor: '#FFFFFF',
+                  color: '#172033',
+                  border: '1px solid #E2E8F0',
+                  cursor: loadingQueue ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+                }}
+                title="Refresh Real-Time Pipeline Status"
+              >
+                <RefreshCw size={14} className={loadingQueue ? 'animate-spin' : ''} color="#64748B" />
+                <span>Refresh Pipeline</span>
+              </button>
 
-          <button
-            onClick={() => setActiveTab('UPLOAD_ONLY')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              fontSize: 13.5,
-              fontWeight: 600,
-              borderRadius: 0,
-              backgroundColor: '#172033',
-              color: '#FFFFFF',
-              border: '1px solid #172033',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
-              transition: 'background 0.15s ease',
-            }}
-          >
-            <Upload size={15} />
-            <span>Upload Exam Paper</span>
-          </button>
+              <button
+                onClick={() => setActiveTab('UPLOAD_ONLY')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 16px',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  borderRadius: 0,
+                  backgroundColor: '#172033',
+                  color: '#FFFFFF',
+                  border: '1px solid #172033',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.08)',
+                  transition: 'background 0.15s ease',
+                }}
+              >
+                <Upload size={15} />
+                <span>Upload Exam Paper</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 2. Compact 4 Metric Cards */}
+      {/* 2. Compact 4 Metric Cards (Shown in Pipeline View) */}
+      {activeTab === 'PIPELINE_ONLY' && (
+        <>
       <div
         style={{
           display: 'grid',
@@ -1249,64 +1302,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
           ))}
         </div>
       )}
-
-      {/* 3. Workspace Tab Navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid #E2E8F0', paddingBottom: 12 }}>
-        <button
-          onClick={() => setActiveTab('UNIFIED')}
-          style={{
-            padding: '8px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 0,
-            border: activeTab === 'UNIFIED' ? 'none' : '1px solid #E2E8F0',
-            backgroundColor: activeTab === 'UNIFIED' ? '#E31B23' : '#FFFFFF',
-            color: activeTab === 'UNIFIED' ? '#FFFFFF' : '#475569',
-            cursor: 'pointer',
-            boxShadow: activeTab === 'UNIFIED' ? '0 2px 6px rgba(227, 27, 35, 0.25)' : 'none',
-            transition: 'all 150ms ease-out',
-          }}
-        >
-          Overview & Upload
-        </button>
-        <button
-          onClick={() => setActiveTab('UPLOAD_ONLY')}
-          style={{
-            padding: '8px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 0,
-            border: activeTab === 'UPLOAD_ONLY' ? 'none' : '1px solid #E2E8F0',
-            backgroundColor: activeTab === 'UPLOAD_ONLY' ? '#E31B23' : '#FFFFFF',
-            color: activeTab === 'UPLOAD_ONLY' ? '#FFFFFF' : '#475569',
-            cursor: 'pointer',
-            boxShadow: activeTab === 'UPLOAD_ONLY' ? '0 2px 6px rgba(227, 27, 35, 0.25)' : 'none',
-            transition: 'all 150ms ease-out',
-          }}
-        >
-          Upload Only
-        </button>
-        <button
-          onClick={() => setActiveTab('PIPELINE_ONLY')}
-          style={{
-            padding: '8px 18px',
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 0,
-            border: activeTab === 'PIPELINE_ONLY' ? 'none' : '1px solid #E2E8F0',
-            backgroundColor: activeTab === 'PIPELINE_ONLY' ? '#E31B23' : '#FFFFFF',
-            color: activeTab === 'PIPELINE_ONLY' ? '#FFFFFF' : '#475569',
-            cursor: 'pointer',
-            boxShadow: activeTab === 'PIPELINE_ONLY' ? '0 2px 6px rgba(227, 27, 35, 0.25)' : 'none',
-            transition: 'all 150ms ease-out',
-          }}
-        >
-          Pipeline & Artifacts
-        </button>
-      </div>
+      </>
+      )}
 
       {/* 4. Upload Examination Document Card (Visual Focal Point) */}
-      {(activeTab === 'UNIFIED' || activeTab === 'UPLOAD_ONLY') && (
+      {activeTab === 'UPLOAD_ONLY' && (
         <div
           style={{
             background: '#FFFFFF',
@@ -1324,6 +1324,25 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                 Upload Question Paper PDF
               </h2>
             </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('PIPELINE_ONLY')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#475569',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #CBD5E1',
+                borderRadius: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <ArrowLeft size={14} /> Back to Pipeline & Artifacts
+            </button>
           </div>
 
           <form onSubmit={handleFormSubmit}>
@@ -1543,10 +1562,10 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
       )}
 
       {/* 5. 5-Stage Pipeline Flow Preview Banner */}
-      {(activeTab === 'UNIFIED' || activeTab === 'UPLOAD_ONLY') && <FiveStagePipelinePreview />}
+      {activeTab === 'UPLOAD_ONLY' && <FiveStagePipelinePreview />}
 
-      {/* 6. Pipeline Table View */}
-      {(activeTab === 'UNIFIED' || activeTab === 'PIPELINE_ONLY') && (
+      {/* 6. Pipeline Table View (Pipeline & Artifacts Repository) */}
+      {activeTab === 'PIPELINE_ONLY' && (
         <div
           style={{
             background: '#FFFFFF',
@@ -1686,11 +1705,11 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQueueExams.map((exam, i) => (
+                  {paginatedExams.map((exam, i) => (
                     <TableRowItem
                       key={exam.id}
                       exam={exam}
-                      isLast={i === filteredQueueExams.length - 1}
+                      isLast={i === paginatedExams.length - 1}
                       onSelect={(item) => {
                         setSelectedExam(item);
                         setIsDrawerOpen(true);
@@ -1702,6 +1721,198 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Table Pagination Controls */}
+          {filteredQueueExams.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderTop: '1px solid #E2E8F0',
+                backgroundColor: '#FAFAFA',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}
+            >
+              {/* Left: Summary & Page Size Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: '#475569' }}>
+                <span>
+                  Showing{' '}
+                  <strong style={{ color: '#0F172A', fontWeight: 600 }}>
+                    {(safeCurrentPage - 1) * pageSize + 1}
+                  </strong>{' '}
+                  to{' '}
+                  <strong style={{ color: '#0F172A', fontWeight: 600 }}>
+                    {Math.min(safeCurrentPage * pageSize, filteredQueueExams.length)}
+                  </strong>{' '}
+                  of{' '}
+                  <strong style={{ color: '#0F172A', fontWeight: 600 }}>
+                    {filteredQueueExams.length}
+                  </strong>{' '}
+                  papers
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12.5, color: '#64748B' }}>Per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      borderRadius: 0,
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1E293B',
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={8}>8</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Right: Page Navigation Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                  title="First Page"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: safeCurrentPage === 1 ? '#F1F5F9' : '#FFFFFF',
+                    color: safeCurrentPage === 1 ? '#94A3B8' : '#334155',
+                    cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <ChevronsLeft size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Previous Page"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: safeCurrentPage === 1 ? '#F1F5F9' : '#FFFFFF',
+                    color: safeCurrentPage === 1 ? '#94A3B8' : '#334155',
+                    cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <ChevronLeft size={15} />
+                </button>
+
+                {/* Page Number Buttons */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                  .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) {
+                      acc.push('...');
+                    }
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, idx) =>
+                    item === '...' ? (
+                      <span key={`ellipsis-${idx}`} style={{ padding: '0 4px', color: '#94A3B8', fontSize: 13 }}>
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`page-${item}`}
+                        type="button"
+                        onClick={() => setCurrentPage(Number(item))}
+                        style={{
+                          minWidth: 32,
+                          height: 32,
+                          padding: '0 8px',
+                          borderRadius: 0,
+                          fontSize: 13,
+                          fontWeight: safeCurrentPage === item ? 700 : 500,
+                          border: safeCurrentPage === item ? '1px solid #E31B23' : '1px solid #CBD5E1',
+                          backgroundColor: safeCurrentPage === item ? '#E31B23' : '#FFFFFF',
+                          color: safeCurrentPage === item ? '#FFFFFF' : '#334155',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next Page"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: safeCurrentPage === totalPages ? '#F1F5F9' : '#FFFFFF',
+                    color: safeCurrentPage === totalPages ? '#94A3B8' : '#334155',
+                    cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <ChevronRight size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  title="Last Page"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 0,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: safeCurrentPage === totalPages ? '#F1F5F9' : '#FFFFFF',
+                    color: safeCurrentPage === totalPages ? '#94A3B8' : '#334155',
+                    cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <ChevronsRight size={15} />
+                </button>
+              </div>
             </div>
           )}
         </div>

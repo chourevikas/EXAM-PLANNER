@@ -8,7 +8,7 @@ class ExamTypeBase(BaseModel):
         ...,
         min_length=2,
         max_length=50,
-        description="Exam type identifier code (e.g. upse, mpse, upsc)",
+        description="Exam type identifier code (e.g. upsc, mpsc)",
     )
     name: str = Field(
         ...,

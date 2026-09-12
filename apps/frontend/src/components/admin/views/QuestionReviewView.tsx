@@ -37,6 +37,8 @@ import {
   Sliders,
   GitBranch,
   CheckCheck,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import {
@@ -52,6 +54,7 @@ import {
 } from '../../../services/adminService';
 import { MissingQuestionsView } from './MissingQuestionsView';
 import { AddMissingQuestionModal } from '../modals/AddMissingQuestionModal';
+import { AdminQuestionPublicationCard } from '../AdminQuestionPublicationCard';
 
 
 interface QuestionOptionItem {
@@ -61,6 +64,8 @@ interface QuestionOptionItem {
   is_correct: boolean;
   display_order?: number;
   distractor_analysis?: string | null;
+  why_tempting?: string | null;
+  whats_actually_true?: string | null;
   closeness_score?: number | null;
 }
 
@@ -239,6 +244,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [publishingExam, setPublishingExam] = useState<boolean>(false);
   const [verifyingAll, setVerifyingAll] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
+  const [reviewCardMode, setReviewCardMode] = useState<'publication' | 'inspection'>('publication');
+  const [showTaxonomyWeights, setShowTaxonomyWeights] = useState<boolean>(false);
 
   // Unsaved Changes Navigation Guard
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
@@ -267,14 +274,23 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   const [editKeyTakeaways, setEditKeyTakeaways] = useState<string[]>([]);
   const [newTrapInput, setNewTrapInput] = useState<string>('');
 
-  // Options Edit State
-  const [editOptions, setEditOptions] = useState<{
+  // Options Edit State with Reverse Logic Breakdown
+  const [editModalTab, setEditModalTab] = useState<'options' | 'solution' | 'classification' | 'all'>('options');
+  const [showAdvancedHierarchy, setShowAdvancedHierarchy] = useState<boolean>(false);
+  const [showPassageField, setShowPassageField] = useState<boolean>(false);
+
+  interface QuestionEditOptionItem {
     option_id?: string;
     option_label: string;
     option_text: string;
     is_correct: boolean;
     distractor_analysis: string;
-  }[]>([]);
+    why_tempting?: string;
+    whats_actually_true?: string;
+    use_split_fields?: boolean;
+  }
+
+  const [editOptions, setEditOptions] = useState<QuestionEditOptionItem[]>([]);
 
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
@@ -381,6 +397,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             is_correct: Boolean(opt.is_correct),
             display_order: opt.display_order,
             distractor_analysis: opt.distractor_analysis || null,
+            why_tempting: opt.why_tempting || null,
+            whats_actually_true: opt.whats_actually_true || null,
             closeness_score: opt.closeness_score,
           })),
           explanation: q.explanation
@@ -596,6 +614,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setEditingQuestion(q);
     setEditQuestionText(q.question_text || '');
     setEditPassageText(q.passage_text || '');
+    setShowPassageField(Boolean(q.passage_text && q.passage_text.trim().length > 0));
     setEditSubjectName(q.subject_name || '');
     setEditTopicName(q.topic_name || '');
     setEditSubtopicName(q.subtopic_name || '');
@@ -603,6 +622,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setEditMarks(q.marks !== undefined ? q.marks : 2.0);
     setEditNegativeMarks(q.negative_marks !== undefined ? q.negative_marks : 0.66);
     setEditExpectedTime(q.expected_time_seconds || 60);
+    setEditModalTab('options');
+    setShowAdvancedHierarchy(false);
 
     const rawH = q.hierarchy && q.hierarchy.length > 0 ? q.hierarchy : [];
     const initialH: HierarchyLinkItem[] = rawH.length > 0
@@ -636,19 +657,51 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
     setEditCommonTraps(q.explanation?.common_traps ? [...q.explanation.common_traps] : []);
     setEditKeyTakeaways(q.explanation?.key_takeaways ? [...q.explanation.key_takeaways] : []);
 
+    const rawOpts = (q.options && q.options.length > 0 ? q.options : [
+      { option_label: 'A', option_text: '', is_correct: false, distractor_analysis: '' },
+      { option_label: 'B', option_text: '', is_correct: false, distractor_analysis: '' },
+      { option_label: 'C', option_text: '', is_correct: false, distractor_analysis: '' },
+      { option_label: 'D', option_text: '', is_correct: false, distractor_analysis: '' },
+    ]);
+
     setEditOptions(
-      (q.options && q.options.length > 0 ? q.options : [
-        { option_label: 'A', option_text: '', is_correct: false, distractor_analysis: '' },
-        { option_label: 'B', option_text: '', is_correct: false, distractor_analysis: '' },
-        { option_label: 'C', option_text: '', is_correct: false, distractor_analysis: '' },
-        { option_label: 'D', option_text: '', is_correct: false, distractor_analysis: '' },
-      ]).map((opt) => ({
-        option_id: opt.option_id,
-        option_label: opt.option_label,
-        option_text: opt.option_text || '',
-        is_correct: Boolean(opt.is_correct),
-        distractor_analysis: opt.distractor_analysis || '',
-      }))
+      rawOpts.map((opt) => {
+        const rawDistractor = (opt.distractor_analysis || '').trim();
+        const directWhy = ((opt as any).why_tempting || '').trim();
+        const directTrue = ((opt as any).whats_actually_true || '').trim();
+
+        let whyTempting = directWhy;
+        let whatsTrue = directTrue;
+        let isSplit = Boolean(directWhy || directTrue);
+
+        if (!isSplit && rawDistractor) {
+          const matchWhy = rawDistractor.match(
+            /(?:Why\s+it\s+seems\s+tempting|Why\s+tempting)\s*[-–—:]\s*(.*?)(?=(?:What(?:'s|\s+is)\s+actually\s+true|What\s+is\s+true|Actually\s+true)\s*[-–—:]|$)/is
+          );
+          const matchTrue = rawDistractor.match(
+            /(?:What(?:'s|\s+is)\s+actually\s+true|What\s+is\s+true|Actually\s+true)\s*[-–—:]\s*(.*)$/is
+          );
+          if (matchWhy || matchTrue) {
+            whyTempting = matchWhy ? matchWhy[1].trim() : '';
+            whatsTrue = matchTrue ? matchTrue[1].trim() : '';
+            isSplit = true;
+          }
+        }
+
+        // For incorrect options, default use_split_fields to true if split was found or if creating new
+        const useSplit = !opt.is_correct ? (isSplit || !rawDistractor) : false;
+
+        return {
+          option_id: opt.option_id ? String(opt.option_id) : undefined,
+          option_label: opt.option_label,
+          option_text: opt.option_text || '',
+          is_correct: Boolean(opt.is_correct),
+          distractor_analysis: rawDistractor,
+          why_tempting: whyTempting,
+          whats_actually_true: whatsTrue,
+          use_split_fields: useSplit,
+        };
+      })
     );
   };
 
@@ -661,6 +714,34 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       const finalTop = editTopicName || primH?.topic_name || null;
       const finalSubtop = editSubtopicName || primH?.subtopic_name || null;
 
+      // Keep primary link synchronized
+      const syncedHierarchy = editHierarchyLinks.map((h, i) => {
+        if (h.is_primary || i === 0) {
+          return {
+            subject_id: h.subject_id || null,
+            subject_name: finalSubj,
+            topic_id: h.topic_id || null,
+            topic_name: finalTop,
+            subtopic_id: h.subtopic_id || null,
+            subtopic_name: finalSubtop,
+            is_primary: true,
+            relevance_weight: (h.relevance_percentage !== undefined ? h.relevance_percentage : 100) / 100,
+            concept_name: h.concept_name || finalTop,
+          };
+        }
+        return {
+          subject_id: h.subject_id || null,
+          subject_name: h.subject_name || finalSubj,
+          topic_id: h.topic_id || null,
+          topic_name: h.topic_name || finalTop,
+          subtopic_id: h.subtopic_id || null,
+          subtopic_name: h.subtopic_name || finalSubtop,
+          is_primary: false,
+          relevance_weight: (h.relevance_percentage !== undefined ? h.relevance_percentage : 100) / 100,
+          concept_name: h.concept_name || null,
+        };
+      });
+
       const payload: any = {
         question_text: editQuestionText,
         passage_text: editPassageText || null,
@@ -672,28 +753,33 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         subject_name: finalSubj,
         topic_name: finalTop,
         subtopic_name: finalSubtop,
-        hierarchy_links: editHierarchyLinks.map((h, i) => ({
-          subject_id: h.subject_id || null,
-          subject_name: h.subject_name || finalSubj,
-          topic_id: h.topic_id || null,
-          topic_name: h.topic_name || finalTop,
-          subtopic_id: h.subtopic_id || null,
-          subtopic_name: h.subtopic_name || finalSubtop,
-          is_primary: Boolean(h.is_primary) || (i === 0),
-          relevance_weight: (h.relevance_percentage !== undefined ? h.relevance_percentage : 100) / 100,
-          concept_name: h.concept_name || null,
-        })),
+        hierarchy_links: syncedHierarchy,
         detailed_solution: editDetailedSolution,
         common_traps: editCommonTraps,
         key_takeaways: editKeyTakeaways,
-        options: editOptions.map((opt, idx) => ({
-          option_id: opt.option_id,
-          option_label: opt.option_label,
-          option_text: opt.option_text,
-          is_correct: opt.is_correct,
-          display_order: idx + 1,
-          distractor_analysis: opt.distractor_analysis,
-        })),
+        options: editOptions.map((opt, idx) => {
+          let finalDistractor = opt.distractor_analysis || '';
+          if (opt.use_split_fields) {
+            const why = (opt.why_tempting || '').trim();
+            const actual = (opt.whats_actually_true || '').trim();
+            if (why && actual) {
+              finalDistractor = `Why it seems tempting — ${why}. What's actually true — ${actual}`;
+            } else if (why) {
+              finalDistractor = `Why it seems tempting — ${why}`;
+            } else if (actual) {
+              finalDistractor = `What's actually true — ${actual}`;
+            }
+          }
+
+          return {
+            option_id: opt.option_id,
+            option_label: opt.option_label,
+            option_text: opt.option_text,
+            is_correct: opt.is_correct,
+            display_order: idx + 1,
+            distractor_analysis: finalDistractor,
+          };
+        }),
       };
 
       await updateAdminQuestionDetail(editingQuestion.id, payload);
@@ -2299,362 +2385,101 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 </div>
               )}
 
-              {/* Taxonomy & Metadata Details Bar */}
+              {/* Question View Mode Selector & Quick Tools */}
               <div
                 style={{
                   display: 'flex',
-                  flexWrap: 'wrap',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 20,
+                  paddingBottom: 14,
+                  borderBottom: '1px solid #E2E8F0',
+                  flexWrap: 'wrap',
                   gap: 12,
-                  backgroundColor: '#FAFAFA',
-                  padding: '12px 18px',
-                  borderRadius: 0,
-                  marginBottom: 16,
-                  fontSize: 12.5,
-                  border: '1px solid #E2E8F0',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#172033', fontWeight: 600 }}>
-                  <FolderTree size={15} color="#E31B23" />
-                  <span>Subject:</span>
-                  <span style={{ color: '#E31B23' }}>{activeQuestion.subject_name || 'General Studies'}</span>
-                </div>
-
-                {activeQuestion.topic_name && (
-                  <>
-                    <span style={{ color: '#CBD5E1' }}>›</span>
-                    <span style={{ fontWeight: 600, color: '#475569' }}>{activeQuestion.topic_name}</span>
-                  </>
-                )}
-
-                {activeQuestion.subtopic_name && (
-                  <>
-                    <span style={{ color: '#CBD5E1' }}>›</span>
-                    <span style={{ fontWeight: 600, color: '#64748B' }}>{activeQuestion.subtopic_name}</span>
-                  </>
-                )}
-
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, color: '#64748B' }}>
-                  <span>Difficulty: <strong style={{ color: '#172033' }}>{activeQuestion.difficulty}</strong></span>
-                  <span>Marks: <strong style={{ color: '#172033' }}>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
-                  <span>Time: <strong style={{ color: '#172033' }}>{activeQuestion.expected_time_seconds || 60}s</strong></span>
-                </div>
-              </div>
-
-              {/* Authoritative Taxonomy & Interdisciplinary Concepts with Relevance Percentage */}
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 0,
-                  padding: '14px 18px',
-                  marginBottom: 24,
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FolderTree size={16} color="#E31B23" />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
-                      Syllabus Hierarchy & Concept Relevance Mappings
-                    </span>
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        backgroundColor: '#F8FAFC',
-                        color: '#E31B23',
-                        borderRadius: 0,
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
-                        ? `${activeQuestion.hierarchy.length} Concepts`
-                        : '1 Primary'}
-                    </span>
-                  </div>
-
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <button
-                    onClick={() => handleOpenEditModal(activeQuestion)}
+                    onClick={() => setReviewCardMode('publication')}
                     style={{
+                      padding: '7px 16px',
+                      borderRadius: 0,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      backgroundColor: reviewCardMode === 'publication' ? '#1E3A8A' : '#FFFFFF',
+                      color: reviewCardMode === 'publication' ? '#FFFFFF' : '#475569',
+                      border: `1px solid ${reviewCardMode === 'publication' ? '#1E3A8A' : '#CBD5E1'}`,
+                      cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
-                      padding: '5px 10px',
-                      borderRadius: 0,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#E31B23',
-                      backgroundColor: '#F8FAFC',
-                      border: '1px solid #CBD5E1',
-                      cursor: 'pointer',
+                      gap: 6,
+                      boxShadow: reviewCardMode === 'publication' ? '0 1px 3px rgba(30, 58, 138, 0.2)' : 'none',
                     }}
                   >
-                    <Sliders size={13} />
-                    Update Taxonomy & Relevance
+                    <FileText size={14} />
+                    Publication Format (Authoritative)
+                  </button>
+                  <button
+                    onClick={() => setReviewCardMode('inspection')}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: 0,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      backgroundColor: reviewCardMode === 'inspection' ? '#1E3A8A' : '#FFFFFF',
+                      color: reviewCardMode === 'inspection' ? '#FFFFFF' : '#475569',
+                      border: `1px solid ${reviewCardMode === 'inspection' ? '#1E3A8A' : '#CBD5E1'}`,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: reviewCardMode === 'inspection' ? '0 1px 3px rgba(30, 58, 138, 0.2)' : 'none',
+                    }}
+                  >
+                    <Layers size={14} />
+                    Taxonomy & Distractor Cards
                   </button>
                 </div>
 
-                {/* Concept Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-                  {(activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
-                    ? activeQuestion.hierarchy
-                    : [
-                        {
-                          subject_name: activeQuestion.subject_name || 'General Studies',
-                          topic_name: activeQuestion.topic_name || 'General Concepts',
-                          subtopic_name: activeQuestion.subtopic_name || '',
-                          is_primary: true,
-                          relevance_percentage: 100,
-                          relevance_weight: 1.0,
-                          concept_name: activeQuestion.topic_name || 'Primary Syllabus Concept',
-                        },
-                      ]
-                  ).map((hItem, hIdx) => {
-                    const pct =
-                      hItem.relevance_percentage !== undefined
-                        ? hItem.relevance_percentage
-                        : hItem.relevance_weight !== undefined
-                        ? Math.round(hItem.relevance_weight * 100)
-                        : 100;
-                    const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
-                    const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? '#E31B23' : '#F2B623';
-                    const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#F8FAFC' : '#FFFBEB';
-                    const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => setShowTaxonomyWeights((prev) => !prev)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 0,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: showTaxonomyWeights ? '#EFF6FF' : '#FFFFFF',
+                      color: '#1E3A8A',
+                      border: '1px solid #BFDBFE',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <FolderTree size={14} />
+                    {showTaxonomyWeights ? 'Hide Concept Relevance Mappings' : `Concept Relevance (${activeQuestion.hierarchy?.length || 1})`}
+                  </button>
+                </div>
+              </div>
 
-                    return (
-                      <div
-                        key={hIdx}
-                        style={{
-                          backgroundColor: isPrim ? '#FAFCFF' : '#FAFAFA',
-                          border: isPrim ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
-                          borderRadius: 0,
-                          padding: '12px 14px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 8,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isPrim ? (
-                              <Tag size={14} color="#E31B23" />
-                            ) : (
-                              <GitBranch size={14} color="#64748B" />
-                            )}
-                            <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#A4161A' : '#334155' }}>
-                              {hItem.concept_name || hItem.topic_name || 'Taxonomy Mapping'}
-                            </span>
-                          </div>
+              {reviewCardMode === 'publication' ? (
+                <div style={{ marginBottom: 28 }}>
+                  {/* Authoritative Publication Card matching Reference Image */}
+                  <AdminQuestionPublicationCard
+                    question={activeQuestion}
+                    questionNumber={activeQuestion.question_number_in_paper}
+                    style={{ marginBottom: 20 }}
+                  />
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                padding: '2px 6px',
-                                borderRadius: 0,
-                                backgroundColor: isPrim ? '#E2E8F0' : '#F1F5F9',
-                                color: isPrim ? '#A4161A' : '#475569',
-                              }}
-                            >
-                              {isPrim ? 'PRIMARY' : 'INTERDISCIPLINARY'}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: '2px 7px',
-                                borderRadius: 0,
-                                backgroundColor: badgeBg,
-                                color: badgeColor,
-                                border: `1px solid ${badgeBorder}`,
-                              }}
-                            >
-                              {pct}%
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Breadcrumbs */}
-                        <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-                          <span style={{ fontWeight: 600, color: '#172033' }}>{hItem.subject_name || 'General Studies'}</span>
-                          <span style={{ color: '#94A3B8' }}>›</span>
-                          <span style={{ fontWeight: 600, color: '#E31B23' }}>{hItem.topic_name || 'General Concepts'}</span>
-                          {hItem.subtopic_name && (
-                            <>
-                              <span style={{ color: '#94A3B8' }}>›</span>
-                              <span style={{ fontWeight: 500, color: '#64748B' }}>{hItem.subtopic_name}</span>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Relevance Bar */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                          <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${pct}%`,
-                                height: '100%',
-                                backgroundColor: badgeColor,
-                                borderRadius: 0,
-                                transition: 'width 300ms ease-out',
-                              }}
-                            />
-                          </div>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
-                            {pct}% Relevance
-                          </span>
-                        </div>
+                  {/* Optional Points to Remember / Common Traps Box */}
+                  {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 && (
+                    <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '14px 18px', marginBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 6 }}>
+                        <AlertTriangle size={15} />
+                        Points to Remember & Common Traps
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Passage Box (If Reading Comprehension passage exists) */}
-              {activeQuestion.passage_text && (
-                <div
-                  style={{
-                    backgroundColor: '#F8FAFC',
-                    borderRadius: 0,
-                    padding: '18px 22px',
-                    marginBottom: 24,
-                    border: '1px solid #E2E8F0',
-                    borderLeft: '4px solid #E31B23',
-                  }}
-                >
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                    PASSAGE / REFERENCE CONTEXT
-                  </div>
-                  <div style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                    {activeQuestion.passage_text}
-                  </div>
-                </div>
-              )}
-
-              {/* Authoritative Question Text Container */}
-              <div
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 0,
-                  padding: '22px 24px',
-                  border: '1px solid #E2E8F0',
-                  marginBottom: 28,
-                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
-                }}
-              >
-                <div style={{ fontSize: 17, fontWeight: 600, color: '#172033', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.01em' }}>
-                  {activeQuestion.question_text}
-                </div>
-              </div>
-
-              {/* Options & Distractor Analysis Section */}
-              <div style={{ marginBottom: 32 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={17} color="#E31B23" />
-                  <span>Options & Option Explanations (Distractor Analysis)</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-                  {activeQuestion.options.map((opt) => (
-                    <div
-                      key={opt.option_label}
-                      style={{
-                        borderRadius: 0,
-                        border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
-                        borderLeft: opt.is_correct ? '4px solid #16A34A' : '1px solid #E2E8F0',
-                        backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
-                        padding: '16px 20px',
-                        transition: 'all 150ms ease-out',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                        <span
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: 13,
-                            backgroundColor: opt.is_correct ? '#16A34A' : '#F1F5F9',
-                            color: opt.is_correct ? '#FFFFFF' : '#475569',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {opt.option_label}
-                        </span>
-
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: opt.is_correct ? 700 : 500, color: '#172033', lineHeight: 1.4 }}>
-                            {opt.option_text || '(Empty Option Text)'}
-                          </div>
-
-                          {/* Distractor Explanation Academic Box */}
-                          <div
-                            style={{
-                              marginTop: 10,
-                              padding: '10px 14px',
-                              borderRadius: 0,
-                              fontSize: 13,
-                              backgroundColor: opt.is_correct ? '#DCFCE7' : '#FAFAFA',
-                              color: opt.is_correct ? '#14532D' : '#475569',
-                              border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            <span style={{ fontWeight: 700 }}>
-                              {opt.is_correct ? 'Why Option is Correct:' : 'Why Option is Incorrect (Distractor Analysis):'}{' '}
-                            </span>
-                            {opt.distractor_analysis || (
-                              <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>
-                                No distractor explanation specified yet. Click &apos;Modify Question & Solutions&apos; to edit.
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {opt.is_correct && (
-                          <span
-                            style={{
-                              fontSize: 11.5,
-                              fontWeight: 700,
-                              color: '#15803D',
-                              backgroundColor: '#DCFCE7',
-                              padding: '3px 10px',
-                              borderRadius: 0,
-                              border: '1px solid #86EFAC',
-                              flexShrink: 0,
-                            }}
-                          >
-                            ✓ Correct Answer
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Solution Parameters Knowledge Base */}
-              <div style={{ marginBottom: 32 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BookOpen size={17} color="#E31B23" />
-                  <span>Knowledge Base & Common Traps Analysis</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
-                  {/* Points to Remember / Common Traps */}
-                  <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
-                      <AlertTriangle size={15} />
-                      Points to Remember & Common Traps
-                    </div>
-                    {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 ? (
                       <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
                         {activeQuestion.explanation.common_traps.map((trap, tIdx) => (
                           <li key={tIdx} style={{ marginBottom: 4 }}>
@@ -2662,14 +2487,555 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                           </li>
                         ))}
                       </ul>
-                    ) : (
-                      <div style={{ fontSize: 12.5, color: '#B45309', fontStyle: 'italic' }}>
-                        No common traps or memory tips specified.
+                    </div>
+                  )}
+
+                  {/* Expandable Syllabus Hierarchy & Concept Relevance Mappings */}
+                  {showTaxonomyWeights && (
+                    <div
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: 0,
+                        padding: '16px 20px',
+                        marginBottom: 20,
+                        border: '1px solid #E2E8F0',
+                        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <FolderTree size={16} color="#E31B23" />
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
+                            Syllabus Hierarchy & Concept Relevance Mappings
+                          </span>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              backgroundColor: '#F8FAFC',
+                              color: '#E31B23',
+                              borderRadius: 0,
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                              ? `${activeQuestion.hierarchy.length} Concepts`
+                              : '1 Primary'}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => handleOpenEditModal(activeQuestion)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '5px 10px',
+                            borderRadius: 0,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: '#E31B23',
+                            backgroundColor: '#F8FAFC',
+                            border: '1px solid #CBD5E1',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Sliders size={13} />
+                          Update Taxonomy & Relevance
+                        </button>
                       </div>
+
+                      {/* Concept Cards Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                        {(activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                          ? activeQuestion.hierarchy
+                          : [
+                              {
+                                subject_name: activeQuestion.subject_name || 'General Studies',
+                                topic_name: activeQuestion.topic_name || 'General Concepts',
+                                subtopic_name: activeQuestion.subtopic_name || '',
+                                is_primary: true,
+                                relevance_percentage: 100,
+                                relevance_weight: 1.0,
+                                concept_name: activeQuestion.topic_name || 'Primary Syllabus Concept',
+                              },
+                            ]
+                        ).map((hItem, hIdx) => {
+                          const pct =
+                            hItem.relevance_percentage !== undefined
+                              ? hItem.relevance_percentage
+                              : hItem.relevance_weight !== undefined
+                              ? Math.round(hItem.relevance_weight * 100)
+                              : 100;
+                          const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
+                          const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? '#E31B23' : '#F2B623';
+                          const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#F8FAFC' : '#FFFBEB';
+                          const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
+
+                          return (
+                            <div
+                              key={hIdx}
+                              style={{
+                                backgroundColor: isPrim ? '#FAFCFF' : '#FAFAFA',
+                                border: isPrim ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
+                                borderRadius: 0,
+                                padding: '12px 14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  {isPrim ? (
+                                    <Tag size={14} color="#E31B23" />
+                                  ) : (
+                                    <GitBranch size={14} color="#64748B" />
+                                  )}
+                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#A4161A' : '#334155' }}>
+                                    {hItem.concept_name || hItem.topic_name || 'Taxonomy Mapping'}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      padding: '2px 6px',
+                                      borderRadius: 0,
+                                      backgroundColor: isPrim ? '#E2E8F0' : '#F1F5F9',
+                                      color: isPrim ? '#A4161A' : '#475569',
+                                    }}
+                                  >
+                                    {isPrim ? 'PRIMARY' : 'INTERDISCIPLINARY'}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                      padding: '2px 7px',
+                                      borderRadius: 0,
+                                      backgroundColor: badgeBg,
+                                      color: badgeColor,
+                                      border: `1px solid ${badgeBorder}`,
+                                    }}
+                                  >
+                                    {pct}%
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                                <span style={{ fontWeight: 600, color: '#172033' }}>{hItem.subject_name || 'General Studies'}</span>
+                                <span style={{ color: '#94A3B8' }}>›</span>
+                                <span style={{ fontWeight: 600, color: '#E31B23' }}>{hItem.topic_name || 'General Concepts'}</span>
+                                {hItem.subtopic_name && (
+                                  <>
+                                    <span style={{ color: '#94A3B8' }}>›</span>
+                                    <span style={{ fontWeight: 500, color: '#64748B' }}>{hItem.subtopic_name}</span>
+                                  </>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                                <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
+                                  <div
+                                    style={{
+                                      width: `${pct}%`,
+                                      height: '100%',
+                                      backgroundColor: badgeColor,
+                                      borderRadius: 0,
+                                      transition: 'width 300ms ease-out',
+                                    }}
+                                  />
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                                  {pct}% Relevance
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Inspection View with Individual Cards */
+                <div>
+                  {/* Taxonomy & Metadata Details Bar */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 12,
+                      backgroundColor: '#FAFAFA',
+                      padding: '12px 18px',
+                      borderRadius: 0,
+                      marginBottom: 16,
+                      fontSize: 12.5,
+                      border: '1px solid #E2E8F0',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#172033', fontWeight: 600 }}>
+                      <FolderTree size={15} color="#E31B23" />
+                      <span>Subject:</span>
+                      <span style={{ color: '#E31B23' }}>{activeQuestion.subject_name || 'General Studies'}</span>
+                    </div>
+
+                    {activeQuestion.topic_name && (
+                      <>
+                        <span style={{ color: '#CBD5E1' }}>›</span>
+                        <span style={{ fontWeight: 600, color: '#475569' }}>{activeQuestion.topic_name}</span>
+                      </>
                     )}
+
+                    {activeQuestion.subtopic_name && (
+                      <>
+                        <span style={{ color: '#CBD5E1' }}>›</span>
+                        <span style={{ fontWeight: 600, color: '#64748B' }}>{activeQuestion.subtopic_name}</span>
+                      </>
+                    )}
+
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14, color: '#64748B' }}>
+                      <span>Difficulty: <strong style={{ color: '#172033' }}>{activeQuestion.difficulty}</strong></span>
+                      <span>Marks: <strong style={{ color: '#172033' }}>+{activeQuestion.marks} / -{activeQuestion.negative_marks || 0.66}</strong></span>
+                      <span>Time: <strong style={{ color: '#172033' }}>{activeQuestion.expected_time_seconds || 60}s</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Authoritative Taxonomy & Interdisciplinary Concepts with Relevance Percentage */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 0,
+                      padding: '14px 18px',
+                      marginBottom: 24,
+                      border: '1px solid #E2E8F0',
+                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FolderTree size={16} color="#E31B23" />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
+                          Syllabus Hierarchy & Concept Relevance Mappings
+                        </span>
+                        <span
+                          style={{
+                            padding: '2px 8px',
+                            backgroundColor: '#F8FAFC',
+                            color: '#E31B23',
+                            borderRadius: 0,
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                            ? `${activeQuestion.hierarchy.length} Concepts`
+                            : '1 Primary'}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenEditModal(activeQuestion)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '5px 10px',
+                          borderRadius: 0,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#E31B23',
+                          backgroundColor: '#F8FAFC',
+                          border: '1px solid #CBD5E1',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Sliders size={13} />
+                        Update Taxonomy & Relevance
+                      </button>
+                    </div>
+
+                    {/* Concept Cards Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                      {(activeQuestion.hierarchy && activeQuestion.hierarchy.length > 0
+                        ? activeQuestion.hierarchy
+                        : [
+                            {
+                              subject_name: activeQuestion.subject_name || 'General Studies',
+                              topic_name: activeQuestion.topic_name || 'General Concepts',
+                              subtopic_name: activeQuestion.subtopic_name || '',
+                              is_primary: true,
+                              relevance_percentage: 100,
+                              relevance_weight: 1.0,
+                              concept_name: activeQuestion.topic_name || 'Primary Syllabus Concept',
+                            },
+                          ]
+                      ).map((hItem, hIdx) => {
+                        const pct =
+                          hItem.relevance_percentage !== undefined
+                            ? hItem.relevance_percentage
+                            : hItem.relevance_weight !== undefined
+                            ? Math.round(hItem.relevance_weight * 100)
+                            : 100;
+                        const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
+                        const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? '#E31B23' : '#F2B623';
+                        const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#F8FAFC' : '#FFFBEB';
+                        const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
+
+                        return (
+                          <div
+                            key={hIdx}
+                            style={{
+                              backgroundColor: isPrim ? '#FAFCFF' : '#FAFAFA',
+                              border: isPrim ? '1.5px solid #93C5FD' : '1px solid #E2E8F0',
+                              borderRadius: 0,
+                              padding: '12px 14px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 8,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {isPrim ? (
+                                    <Tag size={14} color="#E31B23" />
+                                ) : (
+                                    <GitBranch size={14} color="#64748B" />
+                                )}
+                                <span style={{ fontSize: 12.5, fontWeight: 700, color: isPrim ? '#A4161A' : '#334155' }}>
+                                  {hItem.concept_name || hItem.topic_name || 'Taxonomy Mapping'}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    padding: '2px 6px',
+                                    borderRadius: 0,
+                                    backgroundColor: isPrim ? '#E2E8F0' : '#F1F5F9',
+                                    color: isPrim ? '#A4161A' : '#475569',
+                                  }}
+                                >
+                                  {isPrim ? 'PRIMARY' : 'INTERDISCIPLINARY'}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    padding: '2px 7px',
+                                    borderRadius: 0,
+                                    backgroundColor: badgeBg,
+                                    color: badgeColor,
+                                    border: `1px solid ${badgeBorder}`,
+                                  }}
+                                >
+                                  {pct}%
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                              <span style={{ fontWeight: 600, color: '#172033' }}>{hItem.subject_name || 'General Studies'}</span>
+                              <span style={{ color: '#94A3B8' }}>›</span>
+                              <span style={{ fontWeight: 600, color: '#E31B23' }}>{hItem.topic_name || 'General Concepts'}</span>
+                              {hItem.subtopic_name && (
+                                <>
+                                  <span style={{ color: '#94A3B8' }}>›</span>
+                                  <span style={{ fontWeight: 500, color: '#64748B' }}>{hItem.subtopic_name}</span>
+                                </>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                              <div style={{ flex: 1, height: 6, backgroundColor: '#E2E8F0', borderRadius: 0, overflow: 'hidden' }}>
+                                <div
+                                  style={{
+                                    width: `${pct}%`,
+                                    height: '100%',
+                                    backgroundColor: badgeColor,
+                                    borderRadius: 0,
+                                    transition: 'width 300ms ease-out',
+                                  }}
+                                />
+                              </div>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B' }}>
+                                {pct}% Relevance
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Passage Box (If Reading Comprehension passage exists) */}
+                  {activeQuestion.passage_text && (
+                    <div
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        borderRadius: 0,
+                        padding: '18px 22px',
+                        marginBottom: 24,
+                        border: '1px solid #E2E8F0',
+                        borderLeft: '4px solid #E31B23',
+                      }}
+                    >
+                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                        PASSAGE / REFERENCE CONTEXT
+                      </div>
+                      <div style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                        {activeQuestion.passage_text}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Authoritative Question Text Container */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 0,
+                      padding: '22px 24px',
+                      border: '1px solid #E2E8F0',
+                      marginBottom: 28,
+                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                    }}
+                  >
+                    <div style={{ fontSize: 17, fontWeight: 600, color: '#172033', lineHeight: 1.65, whiteSpace: 'pre-wrap', letterSpacing: '-0.01em' }}>
+                      {activeQuestion.question_text}
+                    </div>
+                  </div>
+
+                  {/* Options & Distractor Analysis Section */}
+                  <div style={{ marginBottom: 32 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Layers size={17} color="#E31B23" />
+                      <span>Options & Option Explanations (Distractor Analysis)</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+                      {activeQuestion.options.map((opt) => (
+                        <div
+                          key={opt.option_label}
+                          style={{
+                            borderRadius: 0,
+                            border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
+                            borderLeft: opt.is_correct ? '4px solid #16A34A' : '1px solid #E2E8F0',
+                            backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                            padding: '16px 20px',
+                            transition: 'all 150ms ease-out',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                            <span
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: 13,
+                                backgroundColor: opt.is_correct ? '#16A34A' : '#F1F5F9',
+                                color: opt.is_correct ? '#FFFFFF' : '#475569',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {opt.option_label}
+                            </span>
+
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 15, fontWeight: opt.is_correct ? 700 : 500, color: '#172033', lineHeight: 1.4 }}>
+                                {opt.option_text || '(Empty Option Text)'}
+                              </div>
+
+                              {/* Distractor Explanation Academic Box */}
+                              <div
+                                style={{
+                                  marginTop: 10,
+                                  padding: '10px 14px',
+                                  borderRadius: 0,
+                                  fontSize: 13,
+                                  backgroundColor: opt.is_correct ? '#DCFCE7' : '#FAFAFA',
+                                  color: opt.is_correct ? '#14532D' : '#475569',
+                                  border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                <span style={{ fontWeight: 700 }}>
+                                  {opt.is_correct ? 'Why Option is Correct:' : 'Why Option is Incorrect (Distractor Analysis):'}{' '}
+                                </span>
+                                {opt.distractor_analysis || (
+                                  <span style={{ fontStyle: 'italic', color: '#94A3B8' }}>
+                                    No distractor explanation specified yet. Click &apos;Modify Question & Solutions&apos; to edit.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {opt.is_correct && (
+                              <span
+                                style={{
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  color: '#15803D',
+                                  backgroundColor: '#DCFCE7',
+                                  padding: '3px 10px',
+                                  borderRadius: 0,
+                                  border: '1px solid #86EFAC',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                ✓ Correct Answer
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Solution Parameters Knowledge Base */}
+                  <div style={{ marginBottom: 32 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <BookOpen size={17} color="#E31B23" />
+                      <span>Knowledge Base & Common Traps Analysis</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+                      {/* Points to Remember / Common Traps */}
+                      <div style={{ backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 0, padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#B45309', marginBottom: 8 }}>
+                          <AlertTriangle size={15} />
+                          Points to Remember & Common Traps
+                        </div>
+                        {activeQuestion.explanation?.common_traps && activeQuestion.explanation.common_traps.length > 0 ? (
+                          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#92400E', lineHeight: 1.6 }}>
+                            {activeQuestion.explanation.common_traps.map((trap, tIdx) => (
+                              <li key={tIdx} style={{ marginBottom: 4 }}>
+                                {trap}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div style={{ fontSize: 12.5, color: '#B45309', fontStyle: 'italic' }}>
+                            No common traps or memory tips specified.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Bottom Pagination Controller */}
               <div
@@ -2739,32 +3105,32 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       </div>
 
       {/* ============================================================= */}
-      {/* MODAL 1: Full Question & 4-Parameter Solutions Editor */}
+      {/* MODAL 1: Simplified Question & Solutions Editor */}
       {/* ============================================================= */}
       {editingQuestion && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(3px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(4px)',
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 20,
+            padding: 16,
           }}
         >
           <div
             style={{
               backgroundColor: '#FFFFFF',
-              borderRadius: 0,
+              borderRadius: 8,
               width: '100%',
-              maxWidth: 920,
-              maxHeight: '90vh',
+              maxWidth: 940,
+              maxHeight: '92vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 40px rgba(15, 23, 42, 0.2)',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
               border: '1px solid #E2E8F0',
               overflow: 'hidden',
             }}
@@ -2772,556 +3138,1178 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             {/* Modal Header */}
             <div
               style={{
-                padding: '18px 24px',
+                padding: '16px 20px',
                 borderBottom: '1px solid #E2E8F0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: '#FAFAFA',
+                backgroundColor: '#FFFFFF',
               }}
             >
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#172033', margin: 0 }}>
-                  Modify Question #{editingQuestion.question_number_in_paper} & Solutions
-                </h2>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                  Update question text, passage, options, 4-parameter solutions, and curriculum hierarchy.
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                    Modify Question #{editingQuestion.question_number_in_paper} & Solutions
+                  </h2>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      backgroundColor: editingQuestion.status === 'PUBLISHED' ? '#DCFCE7' : '#FEF3C7',
+                      color: editingQuestion.status === 'PUBLISHED' ? '#15803D' : '#B45309',
+                      border: `1px solid ${editingQuestion.status === 'PUBLISHED' ? '#BBF7D0' : '#FDE68A'}`,
+                    }}
+                  >
+                    {editingQuestion.status || 'DRAFT'}
+                  </span>
+                  {editSubjectName && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        backgroundColor: '#F1F5F9',
+                        color: '#475569',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      {editSubjectName}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      backgroundColor: editDifficulty === 'HARD' ? '#FEE2E2' : editDifficulty === 'MEDIUM' ? '#FEF3C7' : '#DCFCE7',
+                      color: editDifficulty === 'HARD' ? '#B91C1C' : editDifficulty === 'MEDIUM' ? '#B45309' : '#15803D',
+                    }}
+                  >
+                    {editDifficulty}
+                  </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingQuestion(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748B',
+                    padding: 4,
+                    borderRadius: 4,
+                  }}
+                  title="Close (Esc)"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <button
-                onClick={() => setEditingQuestion(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+
+              <div style={{ fontSize: 12, color: '#64748B', marginBottom: 12 }}>
+                Easily edit question stem, answer choices, reverse logic explanations, and comprehensive solutions.
+              </div>
+
+              {/* Segmented Tab Navigation */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 6,
+                  borderBottom: '1px solid #E2E8F0',
+                  paddingBottom: 0,
+                  marginBottom: -16,
+                  overflowX: 'auto',
+                }}
               >
-                <X size={20} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setEditModalTab('options')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: 'none',
+                    color: editModalTab === 'options' ? '#0F172A' : '#64748B',
+                    borderBottom: editModalTab === 'options' ? '2.5px solid #16A34A' : '2.5px solid transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <CheckCircle2 size={14} color={editModalTab === 'options' ? '#16A34A' : '#64748B'} />
+                  Question & Choices
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      borderRadius: 10,
+                      backgroundColor: editModalTab === 'options' ? '#DCFCE7' : '#F1F5F9',
+                      color: editModalTab === 'options' ? '#16A34A' : '#64748B',
+                    }}
+                  >
+                    {editOptions.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditModalTab('solution')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: 'none',
+                    color: editModalTab === 'solution' ? '#0F172A' : '#64748B',
+                    borderBottom: editModalTab === 'solution' ? '2.5px solid #16A34A' : '2.5px solid transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <FileText size={14} color={editModalTab === 'solution' ? '#16A34A' : '#64748B'} />
+                  Detailed Solution & Traps
+                  {editCommonTraps.length > 0 && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: 10,
+                        backgroundColor: '#FEF3C7',
+                        color: '#92400E',
+                      }}
+                    >
+                      {editCommonTraps.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditModalTab('classification')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: 'none',
+                    color: editModalTab === 'classification' ? '#0F172A' : '#64748B',
+                    borderBottom: editModalTab === 'classification' ? '2.5px solid #16A34A' : '2.5px solid transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Tag size={14} color={editModalTab === 'classification' ? '#16A34A' : '#64748B'} />
+                  Taxonomy & Marks
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditModalTab('all')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: 'none',
+                    background: 'none',
+                    marginLeft: 'auto',
+                    color: editModalTab === 'all' ? '#0F172A' : '#94A3B8',
+                    borderBottom: editModalTab === 'all' ? '2.5px solid #16A34A' : '2.5px solid transparent',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Layers size={14} color={editModalTab === 'all' ? '#16A34A' : '#94A3B8'} />
+                  View All Sections
+                </button>
+              </div>
             </div>
 
             {/* Modal Scrollable Body */}
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-              {/* Question Text */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 6 }}>
-                  Question Text:
-                </label>
-                <textarea
-                  rows={4}
-                  value={editQuestionText}
-                  onChange={(e) => setEditQuestionText(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    fontSize: 13.5,
-                    borderRadius: 0,
-                    border: '1px solid #CBD5E1',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit',
-                  }}
-                />
-              </div>
-
-
-              {/* Hierarchy & Interdisciplinary Concept Relevance Manager */}
-              <div
-                style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: 0,
-                  padding: '16px 18px',
-                  marginBottom: 20,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <FolderTree size={16} color="#E31B23" />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
-                      Taxonomy Hierarchy & Concept Relevance Manager
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditHierarchyLinks((prev) => [
-                        ...prev,
-                        {
-                          subject_name: editSubjectName || 'General Studies',
-                          topic_name: '',
-                          subtopic_name: '',
-                          is_primary: prev.length === 0,
-                          relevance_percentage: 75,
-                          relevance_weight: 0.75,
-                          concept_name: '',
-                        },
-                      ]);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '5px 10px',
-                      borderRadius: 0,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#E31B23',
-                      backgroundColor: '#F8FAFC',
-                      border: '1px solid #BFDBFE',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Plus size={13} />
-                    Add Concept Link
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  {editHierarchyLinks.map((hLink, hIdx) => {
-                    const pct = hLink.relevance_percentage !== undefined ? hLink.relevance_percentage : 100;
-                    return (
-                      <div
-                        key={hIdx}
-                        style={{
-                          backgroundColor: '#FFFFFF',
-                          border: hLink.is_primary ? '1.5px solid #E31B23' : '1px solid #E2E8F0',
-                          borderRadius: 0,
-                          padding: '14px 16px',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? '#E31B23' : '#475569', cursor: 'pointer' }}>
-                              <input
-                                type="radio"
-                                name="primaryHierarchyRadio"
-                                checked={Boolean(hLink.is_primary)}
-                                onChange={() => {
-                                  setEditHierarchyLinks((prev) =>
-                                    prev.map((item, i) => ({
-                                      ...item,
-                                      is_primary: i === hIdx,
-                                    }))
-                                  );
-                                  if (hLink.subject_name) setEditSubjectName(hLink.subject_name);
-                                  if (hLink.topic_name) setEditTopicName(hLink.topic_name);
-                                  if (hLink.subtopic_name) setEditSubtopicName(hLink.subtopic_name);
-                                }}
-                              />
-                              {hLink.is_primary ? '★ Primary Hierarchy' : 'Secondary / Interdisciplinary Concept'}
-                            </label>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? '#E31B23' : '#F2B623',
-                                backgroundColor: pct >= 80 ? '#F0FDF4' : pct >= 50 ? '#F8FAFC' : '#FFFBEB',
-                                padding: '2px 8px',
-                                borderRadius: 0,
-                                border: `1px solid ${pct >= 80 ? '#BBF7D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A'}`,
-                              }}
-                            >
-                              {pct}% Relevance
-                            </span>
-                            {editHierarchyLinks.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditHierarchyLinks((prev) => prev.filter((_, i) => i !== hIdx));
-                                }}
-                                style={{
-                                  border: 'none',
-                                  backgroundColor: 'transparent',
-                                  color: '#EF4444',
-                                  cursor: 'pointer',
-                                  padding: 4,
-                                }}
-                                title="Remove Concept Link"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Input Row: Subject, Topic, Subtopic, Concept Name */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-                              Subject:
-                            </label>
-                            <input
-                              type="text"
-                              value={hLink.subject_name || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditHierarchyLinks((prev) =>
-                                  prev.map((item, i) => (i === hIdx ? { ...item, subject_name: val } : item))
-                                );
-                                if (hLink.is_primary) setEditSubjectName(val);
-                              }}
-                              placeholder="e.g. Economy"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-                              Topic:
-                            </label>
-                            <input
-                              type="text"
-                              value={hLink.topic_name || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditHierarchyLinks((prev) =>
-                                  prev.map((item, i) => (i === hIdx ? { ...item, topic_name: val } : item))
-                                );
-                                if (hLink.is_primary) setEditTopicName(val);
-                              }}
-                              placeholder="e.g. Money and Banking"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-                              Subtopic:
-                            </label>
-                            <input
-                              type="text"
-                              value={hLink.subtopic_name || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditHierarchyLinks((prev) =>
-                                  prev.map((item, i) => (i === hIdx ? { ...item, subtopic_name: val } : item))
-                                );
-                                if (hLink.is_primary) setEditSubtopicName(val);
-                              }}
-                              placeholder="e.g. Banking Structure in India"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-                              Concept Tag / Name:
-                            </label>
-                            <input
-                              type="text"
-                              value={hLink.concept_name || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditHierarchyLinks((prev) =>
-                                  prev.map((item, i) => (i === hIdx ? { ...item, concept_name: val } : item))
-                                );
-                              }}
-                              placeholder="e.g. Monetary Policy"
-                              style={{ width: '100%', padding: '7px 9px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Relevance Slider & Percentage Control */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', padding: '8px 12px', borderRadius: 0 }}>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
-                            Relevance Percentage:
-                          </span>
-                          <input
-                            type="range"
-                            min="10"
-                            max="100"
-                            step="5"
-                            value={pct}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value, 10);
-                              setEditHierarchyLinks((prev) =>
-                                prev.map((item, i) =>
-                                  i === hIdx
-                                    ? { ...item, relevance_percentage: val, relevance_weight: val / 100 }
-                                    : item
-                                )
-                              );
-                            }}
-                            style={{ flex: 1, accentColor: '#E31B23', cursor: 'pointer' }}
-                          />
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={pct}
-                              onChange={(e) => {
-                                const val = Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0));
-                                setEditHierarchyLinks((prev) =>
-                                  prev.map((item, i) =>
-                                    i === hIdx
-                                      ? { ...item, relevance_percentage: val, relevance_weight: val / 100 }
-                                      : item
-                                  )
-                                );
-                              }}
-                              style={{ width: 52, padding: '4px 6px', fontSize: 12, fontWeight: 700, textAlign: 'center', borderRadius: 0, border: '1px solid #CBD5E1' }}
-                            />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#64748B' }}>%</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Difficulty & Marks */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Difficulty:</label>
-                  <select
-                    value={editDifficulty}
-                    onChange={(e) => setEditDifficulty(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1' }}
-                  >
-                    <option value="EASY">EASY</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HARD">HARD</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Marks:</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={editMarks}
-                    onChange={(e) => setEditMarks(parseFloat(e.target.value) || 2.0)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Negative Marks:</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editNegativeMarks}
-                    onChange={(e) => setEditNegativeMarks(parseFloat(e.target.value) || 0.66)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>Expected Time (s):</label>
-                  <input
-                    type="number"
-                    value={editExpectedTime}
-                    onChange={(e) => setEditExpectedTime(parseInt(e.target.value, 10) || 60)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              {/* Options & Distractor Analyses */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#172033', marginBottom: 8 }}>
-                  Options & Distractor Analysis (Option Explanations):
-                </label>
-                {editOptions.map((opt, idx) => (
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, backgroundColor: '#F8FAFC' }}>
+              {/* TAB 1: Question Stem & Choices */}
+              {(editModalTab === 'options' || editModalTab === 'all') && (
+                <div style={{ marginBottom: editModalTab === 'all' ? 24 : 0 }}>
+                  {/* Card: Question Stem */}
                   <div
-                    key={opt.option_label}
                     style={{
-                      padding: '12px 14px',
-                      backgroundColor: '#FAFAFA',
-                      border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #CBD5E1',
-                      borderRadius: 0,
-                      marginBottom: 10,
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      marginBottom: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                      <span style={{ fontWeight: 800, fontSize: 14, color: '#172033', width: 20 }}>
-                        {opt.option_label}
-                      </span>
-                      <input
-                        type="text"
-                        value={opt.option_text}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditOptions((prev) =>
-                            prev.map((o, i) => (i === idx ? { ...o, option_text: val } : o))
-                          );
-                        }}
-                        placeholder={`Option ${opt.option_label} text...`}
-                        style={{ flex: 1, padding: '7px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1' }}
-                      />
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#15803D', cursor: 'pointer' }}>
-                        <input
-                          type="radio"
-                          name="correctOptionRadio"
-                          checked={opt.is_correct}
-                          onChange={() => {
-                            setEditOptions((prev) =>
-                              prev.map((o, i) => ({ ...o, is_correct: i === idx }))
-                            );
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                        Question Stem / Statement
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11.5, color: '#94A3B8' }}>
+                          {editQuestionText.trim().split(/\s+/).filter(Boolean).length} words &nbsp;•&nbsp; {editQuestionText.length} chars
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassageField(!showPassageField)}
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            color: showPassageField ? '#DC2626' : '#2563EB',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {showPassageField ? '− Hide Reading Passage' : '+ Add / Edit Reading Passage'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {showPassageField && (
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                          Context Passage / Comprehension Text:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={editPassageText}
+                          onChange={(e) => setEditPassageText(e.target.value)}
+                          placeholder="Enter reading passage or contextual text if applicable..."
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            fontSize: 13,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                            fontFamily: 'inherit',
+                            backgroundColor: '#F8FAFC',
                           }}
                         />
-                        Correct Answer
-                      </label>
-                    </div>
+                      </div>
+                    )}
 
-                    <input
-                      type="text"
-                      value={opt.distractor_analysis}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditOptions((prev) =>
-                          prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
-                        );
-                      }}
-                      placeholder={`Explanation for Option ${opt.option_label} (why it is correct/incorrect)...`}
+                    <textarea
+                      rows={4}
+                      value={editQuestionText}
+                      onChange={(e) => setEditQuestionText(e.target.value)}
+                      placeholder="Enter the full question statement..."
                       style={{
                         width: '100%',
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        borderRadius: 0,
+                        padding: '10px 12px',
+                        fontSize: 13.5,
+                        lineHeight: 1.5,
+                        borderRadius: 4,
                         border: '1px solid #CBD5E1',
-                        backgroundColor: '#FFFFFF',
                         boxSizing: 'border-box',
+                        fontFamily: 'inherit',
+                        outline: 'none',
                       }}
                     />
                   </div>
-                ))}
-              </div>
 
-              {/* 4 Solution Parameters */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#172033', marginBottom: 12 }}>
-                  Solution Parameters:
-                </label>
+                  {/* Card: Answer Choices & Reverse Logic */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                        Answer Choices & Reverse Logic ({editOptions.length})
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                        Select the correct answer option. For incorrect choices, add why candidates find it tempting and the factual correction.
+                      </div>
+                    </div>
 
-                {/* 1. Detailed Solution */}
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#172033', marginBottom: 4 }}>
-                    1. Step-by-Step Detailed Solution:
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={editDetailedSolution}
-                    onChange={(e) => setEditDetailedSolution(e.target.value)}
-                    placeholder="Comprehensive explanation with steps and derivations..."
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 0, border: '1px solid #CBD5E1', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                  />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {editOptions.map((opt, idx) => (
+                        <div
+                          key={opt.option_label || idx}
+                          style={{
+                            padding: 14,
+                            backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                            border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
+                            borderRadius: 6,
+                            boxShadow: opt.is_correct ? '0 1px 4px rgba(22, 163, 74, 0.08)' : 'none',
+                            transition: 'border-color 0.2s',
+                          }}
+                        >
+                          {/* Option Statement Row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                            <div
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                backgroundColor: opt.is_correct ? '#16A34A' : '#475569',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: 13,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {opt.option_label}
+                            </div>
+
+                            <input
+                              type="text"
+                              value={opt.option_text}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditOptions((prev) =>
+                                  prev.map((o, i) => (i === idx ? { ...o, option_text: val } : o))
+                                );
+                              }}
+                              placeholder={`Option ${opt.option_label} text...`}
+                              style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                borderRadius: 4,
+                                border: opt.is_correct ? '1px solid #86EFAC' : '1px solid #CBD5E1',
+                                backgroundColor: '#FFFFFF',
+                                outline: 'none',
+                              }}
+                            />
+
+                            <label
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: opt.is_correct ? '#15803D' : '#64748B',
+                                cursor: 'pointer',
+                                padding: '6px 10px',
+                                borderRadius: 4,
+                                backgroundColor: opt.is_correct ? '#DCFCE7' : '#F1F5F9',
+                                border: `1px solid ${opt.is_correct ? '#BBF7D0' : '#E2E8F0'}`,
+                                flexShrink: 0,
+                                userSelect: 'none',
+                              }}
+                            >
+                              <input
+                                type="radio"
+                                name="correctOptionRadio"
+                                checked={opt.is_correct}
+                                onChange={() => {
+                                  setEditOptions((prev) =>
+                                    prev.map((o, i) => ({ ...o, is_correct: i === idx }))
+                                  );
+                                }}
+                                style={{ accentColor: '#16A34A', cursor: 'pointer' }}
+                              />
+                              {opt.is_correct ? '✓ Correct Answer' : 'Mark as Correct'}
+                            </label>
+                          </div>
+
+                          {/* Reverse Logic / Distractor Explanation Row */}
+                          {opt.is_correct ? (
+                            <div>
+                              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#16A34A', marginBottom: 4 }}>
+                                ✓ Correct Answer Rationale / Key Fact:
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={opt.distractor_analysis}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditOptions((prev) =>
+                                    prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                                  );
+                                }}
+                                placeholder="Explain why this option is correct and key factual/historical points..."
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: 12.5,
+                                  borderRadius: 4,
+                                  border: '1px solid #BBF7D0',
+                                  backgroundColor: '#FFFFFF',
+                                  boxSizing: 'border-box',
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569' }}>
+                                  Reverse Logic / Distractor Analysis:
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditOptions((prev) =>
+                                      prev.map((o, i) =>
+                                        i === idx ? { ...o, use_split_fields: !o.use_split_fields } : o
+                                      )
+                                    );
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: '#2563EB',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                  }}
+                                >
+                                  {opt.use_split_fields ? '⇄ Switch to Single Field' : '⇄ Split into Tempting / True'}
+                                </button>
+                              </div>
+
+                              {opt.use_split_fields ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#B45309', marginBottom: 2 }}>
+                                      💭 Why Candidates Find It Tempting (Trap):
+                                    </label>
+                                    <textarea
+                                      rows={2}
+                                      value={opt.why_tempting || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditOptions((prev) =>
+                                          prev.map((o, i) => (i === idx ? { ...o, why_tempting: val } : o))
+                                        );
+                                      }}
+                                      placeholder="Why candidates might plausibly choose this..."
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        fontSize: 12,
+                                        borderRadius: 4,
+                                        border: '1px solid #CBD5E1',
+                                        backgroundColor: '#FAFAFA',
+                                        boxSizing: 'border-box',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#15803D', marginBottom: 2 }}>
+                                      💡 What Is Actually True (Factual Correction):
+                                    </label>
+                                    <textarea
+                                      rows={2}
+                                      value={opt.whats_actually_true || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditOptions((prev) =>
+                                          prev.map((o, i) => (i === idx ? { ...o, whats_actually_true: val } : o))
+                                        );
+                                      }}
+                                      placeholder="Why this option is actually incorrect..."
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 10px',
+                                        fontSize: 12,
+                                        borderRadius: 4,
+                                        border: '1px solid #CBD5E1',
+                                        backgroundColor: '#FAFAFA',
+                                        boxSizing: 'border-box',
+                                        fontFamily: 'inherit',
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <textarea
+                                  rows={2}
+                                  value={opt.distractor_analysis || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditOptions((prev) =>
+                                      prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                                    );
+                                  }}
+                                  placeholder={`Explanation for Option ${opt.option_label} (why it is incorrect)...`}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 10px',
+                                    fontSize: 12,
+                                    borderRadius: 4,
+                                    border: '1px solid #CBD5E1',
+                                    backgroundColor: '#FAFAFA',
+                                    boxSizing: 'border-box',
+                                    fontFamily: 'inherit',
+                                  }}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                {/* 2. Common Traps */}
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#B45309', marginBottom: 4 }}>
-                    2. Points to Remember & Common Traps:
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input
-                      type="text"
-                      value={newTrapInput}
-                      onChange={(e) => setNewTrapInput(e.target.value)}
-                      placeholder="Add a common trap or memory tip..."
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTrapInput.trim()) {
-                          e.preventDefault();
-                          setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
-                          setNewTrapInput('');
-                        }
-                      }}
-                      style={{ flex: 1, padding: '7px 10px', fontSize: 12.5, borderRadius: 0, border: '1px solid #CBD5E1' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (newTrapInput.trim()) {
-                          setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
-                          setNewTrapInput('');
-                        }
-                      }}
-                      style={{ padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 0, border: 'none', backgroundColor: '#F2B623', color: '#FFFFFF', cursor: 'pointer' }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {editCommonTraps.map((trap, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 10px', backgroundColor: '#FEF3C7', borderRadius: 0, marginBottom: 4, fontSize: 12, border: '1px solid #FDE68A' }}>
-                      <span>{trap}</span>
+              {/* TAB 2: Detailed Solution & Traps */}
+              {(editModalTab === 'solution' || editModalTab === 'all') && (
+                <div style={{ marginBottom: editModalTab === 'all' ? 24 : 0 }}>
+                  {/* Card: Detailed Solution */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      marginBottom: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                          1. Step-by-Step Comprehensive Solution
+                        </div>
+                        <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                          Detailed walkthrough with historical context, derivations, and breakdown.
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setEditCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#DC2626' }}
+                        onClick={() => {
+                          setEditDetailedSolution((prev) => prev + (prev.endsWith('\n') ? '• ' : '\n• '));
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 8px',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          backgroundColor: '#F1F5F9',
+                          border: '1px solid #CBD5E1',
+                          color: '#334155',
+                          cursor: 'pointer',
+                        }}
                       >
-                        <Trash2 size={12} />
+                        + Bullet •
                       </button>
                     </div>
-                  ))}
+
+                    <textarea
+                      rows={editModalTab === 'all' ? 6 : 9}
+                      value={editDetailedSolution}
+                      onChange={(e) => setEditDetailedSolution(e.target.value)}
+                      placeholder="Enter comprehensive solution text. Supports multiple paragraphs and bullets..."
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        borderRadius: 4,
+                        border: '1px solid #CBD5E1',
+                        boxSizing: 'border-box',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+
+                  {/* Card: Points to Remember & Common Traps */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      marginBottom: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#B45309' }}>
+                        2. Points to Remember & Common Traps ({editCommonTraps.length})
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                        Key mnemonic hooks, examination traps, or formula warnings.
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                      <input
+                        type="text"
+                        value={newTrapInput}
+                        onChange={(e) => setNewTrapInput(e.target.value)}
+                        placeholder="Add a common trap or memory tip... (Press Enter to add)"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newTrapInput.trim()) {
+                            e.preventDefault();
+                            setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
+                            setNewTrapInput('');
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          fontSize: 12.5,
+                          borderRadius: 4,
+                          border: '1px solid #CBD5E1',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newTrapInput.trim()) {
+                            setEditCommonTraps((prev) => [...prev, newTrapInput.trim()]);
+                            setNewTrapInput('');
+                          }
+                        }}
+                        style={{
+                          padding: '7px 14px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          borderRadius: 4,
+                          border: 'none',
+                          backgroundColor: '#F59E0B',
+                          color: '#FFFFFF',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Add Trap
+                      </button>
+                    </div>
+
+                    {editCommonTraps.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {editCommonTraps.map((trap, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '5px 10px',
+                              backgroundColor: '#FEF3C7',
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: '#92400E',
+                              border: '1px solid #FDE68A',
+                            }}
+                          >
+                            <span>{trap}</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditCommonTraps((prev) => prev.filter((_, i) => i !== idx))}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#DC2626',
+                                padding: 0,
+                                display: 'flex',
+                              }}
+                              title="Remove"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>
+                        No common traps added yet.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* TAB 3: Taxonomy & Marks */}
+              {(editModalTab === 'classification' || editModalTab === 'all') && (
+                <div>
+                  {/* Card: Syllabus Classification */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      marginBottom: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', marginBottom: 12 }}>
+                      Curriculum & Syllabus Hierarchy
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Subject:
+                        </label>
+                        <input
+                          type="text"
+                          value={editSubjectName}
+                          onChange={(e) => setEditSubjectName(e.target.value)}
+                          placeholder="e.g. Ancient History"
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Topic / Microtheme:
+                        </label>
+                        <input
+                          type="text"
+                          value={editTopicName}
+                          onChange={(e) => setEditTopicName(e.target.value)}
+                          placeholder="e.g. Buddhism"
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Subtopic / Nano Theme:
+                        </label>
+                        <input
+                          type="text"
+                          value={editSubtopicName}
+                          onChange={(e) => setEditSubtopicName(e.target.value)}
+                          placeholder="e.g. Dhanyakataka Buddhist centre"
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Scoring & Difficulty */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      padding: 16,
+                      marginBottom: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', marginBottom: 12 }}>
+                      Scoring & Difficulty
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Difficulty:
+                        </label>
+                        <select
+                          value={editDifficulty}
+                          onChange={(e) => setEditDifficulty(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            backgroundColor: '#FFFFFF',
+                          }}
+                        >
+                          <option value="EASY">EASY</option>
+                          <option value="MEDIUM">MEDIUM</option>
+                          <option value="HARD">HARD</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Marks:
+                        </label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={editMarks}
+                          onChange={(e) => setEditMarks(parseFloat(e.target.value) || 2.0)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Negative Marks:
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editNegativeMarks}
+                          onChange={(e) => setEditNegativeMarks(parseFloat(e.target.value) || 0.66)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                          Expected Time (s):
+                        </label>
+                        <input
+                          type="number"
+                          value={editExpectedTime}
+                          onChange={(e) => setEditExpectedTime(parseInt(e.target.value, 10) || 60)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            fontSize: 12.5,
+                            borderRadius: 4,
+                            border: '1px solid #CBD5E1',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card: Advanced Multi-Concept Relevance (Optional Accordion) */}
+                  <div
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: 6,
+                      border: '1px solid #E2E8F0',
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedHierarchy(!showAdvancedHierarchy)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#F8FAFC',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FolderTree size={15} color="#64748B" />
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#334155' }}>
+                          Advanced: Interdisciplinary Concepts & Relevance Weights (Optional)
+                        </span>
+                      </div>
+                      {showAdvancedHierarchy ? <ChevronUp size={16} color="#64748B" /> : <ChevronDown size={16} color="#64748B" />}
+                    </button>
+
+                    {showAdvancedHierarchy && (
+                      <div style={{ padding: 16, borderTop: '1px solid #E2E8F0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <span style={{ fontSize: 12, color: '#64748B' }}>
+                            Configure secondary concept linkages and analytical weights for cross-subject analytics.
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditHierarchyLinks((prev) => [
+                                ...prev,
+                                {
+                                  subject_name: editSubjectName || 'General Studies',
+                                  topic_name: '',
+                                  subtopic_name: '',
+                                  is_primary: prev.length === 0,
+                                  relevance_percentage: 75,
+                                  relevance_weight: 0.75,
+                                  concept_name: '',
+                                },
+                              ]);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              color: '#2563EB',
+                              backgroundColor: '#EFF6FF',
+                              border: '1px solid #BFDBFE',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Plus size={13} />
+                            Add Concept Link
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {editHierarchyLinks.map((hLink, hIdx) => {
+                            const pct = hLink.relevance_percentage !== undefined ? hLink.relevance_percentage : 100;
+                            return (
+                              <div
+                                key={hIdx}
+                                style={{
+                                  backgroundColor: '#F8FAFC',
+                                  border: hLink.is_primary ? '1px solid #86EFAC' : '1px solid #E2E8F0',
+                                  borderRadius: 4,
+                                  padding: 12,
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: hLink.is_primary ? '#15803D' : '#475569', cursor: 'pointer' }}>
+                                    <input
+                                      type="radio"
+                                      name="primaryHierarchyRadio"
+                                      checked={Boolean(hLink.is_primary)}
+                                      onChange={() => {
+                                        setEditHierarchyLinks((prev) =>
+                                          prev.map((item, i) => ({ ...item, is_primary: i === hIdx }))
+                                        );
+                                        if (hLink.subject_name) setEditSubjectName(hLink.subject_name);
+                                        if (hLink.topic_name) setEditTopicName(hLink.topic_name);
+                                        if (hLink.subtopic_name) setEditSubtopicName(hLink.subtopic_name);
+                                      }}
+                                    />
+                                    {hLink.is_primary ? '★ Primary Curriculum Link' : 'Secondary Concept'}
+                                  </label>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#15803D', backgroundColor: '#DCFCE7', padding: '1px 6px', borderRadius: 3 }}>
+                                      {pct}% Relevance
+                                    </span>
+                                    {editHierarchyLinks.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditHierarchyLinks((prev) => prev.filter((_, i) => i !== hIdx))}
+                                        style={{ border: 'none', background: 'none', color: '#EF4444', cursor: 'pointer', padding: 2 }}
+                                        title="Remove"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
+                                  <input
+                                    type="text"
+                                    value={hLink.subject_name || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setEditHierarchyLinks((prev) =>
+                                        prev.map((item, i) => (i === hIdx ? { ...item, subject_name: val } : item))
+                                      );
+                                    }}
+                                    placeholder="Subject"
+                                    style={{ padding: '5px 8px', fontSize: 11.5, borderRadius: 3, border: '1px solid #CBD5E1' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    value={hLink.topic_name || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setEditHierarchyLinks((prev) =>
+                                        prev.map((item, i) => (i === hIdx ? { ...item, topic_name: val } : item))
+                                      );
+                                    }}
+                                    placeholder="Topic"
+                                    style={{ padding: '5px 8px', fontSize: 11.5, borderRadius: 3, border: '1px solid #CBD5E1' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    value={hLink.subtopic_name || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setEditHierarchyLinks((prev) =>
+                                        prev.map((item, i) => (i === hIdx ? { ...item, subtopic_name: val } : item))
+                                      );
+                                    }}
+                                    placeholder="Subtopic"
+                                    style={{ padding: '5px 8px', fontSize: 11.5, borderRadius: 3, border: '1px solid #CBD5E1' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    value={hLink.concept_name || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setEditHierarchyLinks((prev) =>
+                                        prev.map((item, i) => (i === hIdx ? { ...item, concept_name: val } : item))
+                                      );
+                                    }}
+                                    placeholder="Concept Tag"
+                                    style={{ padding: '5px 8px', fontSize: 11.5, borderRadius: 3, border: '1px solid #CBD5E1' }}
+                                  />
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: 11, color: '#64748B' }}>Weight:</span>
+                                  <input
+                                    type="range"
+                                    min="10"
+                                    max="100"
+                                    step="5"
+                                    value={pct}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value, 10);
+                                      setEditHierarchyLinks((prev) =>
+                                        prev.map((item, i) =>
+                                          i === hIdx
+                                            ? { ...item, relevance_percentage: val, relevance_weight: val / 100 }
+                                            : item
+                                        )
+                                      );
+                                    }}
+                                    style={{ flex: 1, accentColor: '#16A34A', cursor: 'pointer' }}
+                                  />
+                                  <span style={{ fontSize: 11.5, fontWeight: 700, color: '#334155', minWidth: 32 }}>
+                                    {pct}%
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer Actions */}
             <div
               style={{
-                padding: '16px 24px',
+                padding: '14px 24px',
                 borderTop: '1px solid #E2E8F0',
                 backgroundColor: '#FAFAFA',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 12,
+                justifyContent: 'space-between',
               }}
             >
-              <button
-                type="button"
-                onClick={() => setEditingQuestion(null)}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 0,
-                  border: '1px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
-                  color: '#475569',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
+              <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>
+                Question #{editingQuestion.question_number_in_paper} &nbsp;•&nbsp; {editSubjectName || 'General Studies'} &nbsp;•&nbsp; {editDifficulty}
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleSaveQuestionChanges(false)}
-                disabled={savingEdit}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 0,
-                  border: '1px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
-                  color: '#172033',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Save Draft
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingQuestion(null)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 4,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: '#475569',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleSaveQuestionChanges(true)}
-                disabled={savingEdit}
-                style={{
-                  padding: '9px 20px',
-                  borderRadius: 0,
-                  border: 'none',
-                  backgroundColor: '#16A34A',
-                  color: '#FFFFFF',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
-                }}
-              >
-                {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                Save & Mark Verified
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveQuestionChanges(false)}
+                  disabled={savingEdit}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: 4,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Save Draft
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveQuestionChanges(true)}
+                  disabled={savingEdit}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: 4,
+                    border: 'none',
+                    backgroundColor: '#16A34A',
+                    color: '#FFFFFF',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    boxShadow: '0 1px 3px rgba(22, 163, 74, 0.25)',
+                  }}
+                >
+                  {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save & Mark Verified
+                </button>
+              </div>
             </div>
           </div>
         </div>

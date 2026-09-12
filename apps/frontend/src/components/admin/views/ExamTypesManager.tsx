@@ -298,7 +298,7 @@ export function ExamTypesManager() {
             Primary Reference Type
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#E31B23', marginTop: 8 }}>
-            UPSE
+            UPSC
           </div>
           <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
             100 Questions • 120 Mins • +2.0 / -0.66
@@ -333,7 +333,7 @@ export function ExamTypesManager() {
         <Search size={16} color="#64748B" />
         <input
           type="text"
-          placeholder="Search exam types by code (upse, mpse) or name..."
+          placeholder="Search exam types by code (upsc, mpsc) or name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -619,7 +619,7 @@ export function ExamTypesManager() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. upse, mpse"
+                    placeholder="e.g. upsc, mpsc"
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value.toLowerCase().trim() })}
                     required
@@ -642,7 +642,7 @@ export function ExamTypesManager() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. UPSE Civil Services Examination"
+                    placeholder="e.g. UPSC Civil Services Examination"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required

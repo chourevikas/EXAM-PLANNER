@@ -16,11 +16,11 @@ class ExamType(SQLModel, table=True):
         unique=True,
         index=True,
         max_length=50,
-        description="Canonical exam type code e.g. upse, mpse, upsc",
+        description="Canonical exam type code e.g. upsc, mpsc",
     )
     name: str = Field(
         max_length=200,
-        description="Human readable name e.g. UPSE Civil Services Examination",
+        description="Human readable name e.g. UPSC Civil Services Examination",
     )
     total_duration: int = Field(
         default=120,

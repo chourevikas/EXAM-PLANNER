@@ -7,7 +7,7 @@ Create Date: 2026-09-06 00:47:00.000000
 Creates:
 - exam_types table with full metadata (type, name, duration, questions, marks, negative/positive scoring)
 - exam_type_id FK column on exams table
-- Seeds default 'upse' ExamType and links existing exams
+- Seeds default 'upsc' ExamType and links existing exams
 """
 from typing import Sequence, Union
 from alembic import op
@@ -62,11 +62,11 @@ def upgrade() -> None:
                 )
                 batch_op.create_index('ix_exams_exam_type_id', ['exam_type_id'])
 
-    # 3. Seed initial default 'upse' ExamType record if not present
+    # 3. Seed initial default 'upsc' ExamType record if not present
     bind.execute(
         text("""
             INSERT INTO exam_types (type, name, total_duration, number_of_questions, total_marks, negative_marks, positive_marks, description, is_active, created_at, updated_at)
-            VALUES ('upse', 'UPSE Civil Services Examination', 120, 100, 200.0, 0.66, 2.0, 'Union Public Service Examination - General Studies Paper 1', true, NOW(), NOW())
+            VALUES ('upsc', 'UPSC Civil Services Examination', 120, 100, 200.0, 0.66, 2.0, 'Union Public Service Commission - General Studies Paper 1', true, NOW(), NOW())
             ON CONFLICT (type) DO UPDATE SET
                 name = EXCLUDED.name,
                 total_duration = EXCLUDED.total_duration,
@@ -78,11 +78,11 @@ def upgrade() -> None:
         """)
     )
 
-    # 4. Backfill existing exams to link to 'upse' exam type
+    # 4. Backfill existing exams to link to 'upsc' exam type
     bind.execute(
         text("""
             UPDATE exams 
-            SET exam_type_id = (SELECT id FROM exam_types WHERE type = 'upse' LIMIT 1)
+            SET exam_type_id = (SELECT id FROM exam_types WHERE type = 'upsc' LIMIT 1)
             WHERE exam_type_id IS NULL;
         """)
     )

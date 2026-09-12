@@ -99,6 +99,8 @@ class QuestionOptionDetail(BaseModel):
     is_correct: bool
     option_text: str
     distractor_analysis: Optional[str] = None
+    why_tempting: Optional[str] = None
+    whats_actually_true: Optional[str] = None
     closeness_score: float = 0.0
     translations: Dict[str, str] = {}
 

@@ -33,12 +33,17 @@ import {
   updateAdminQuestionStatus,
 } from '../../services/adminService';
 
+import { AdminQuestionPublicationCard } from './AdminQuestionPublicationCard';
+
 interface QuestionOptionItem {
   option_id?: string;
   option_label: string;
   option_text: string;
   is_correct: boolean;
   display_order?: number;
+  distractor_analysis?: string | null;
+  why_tempting?: string | null;
+  whats_actually_true?: string | null;
 }
 
 interface QuestionCatalogItem {
@@ -257,6 +262,9 @@ export function QuestionBankManager() {
           option_text: opt.option_text || opt.text || '',
           is_correct: Boolean(opt.is_correct),
           display_order: opt.display_order || optIdx + 1,
+          distractor_analysis: opt.distractor_analysis || null,
+          why_tempting: opt.why_tempting || null,
+          whats_actually_true: opt.whats_actually_true || null,
         })),
         explanation: {
           detailed_solution:
@@ -934,57 +942,12 @@ export function QuestionBankManager() {
 
                   <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: 0 }} />
 
-                  {/* Question Stem */}
-                  <div>
-                    <h3 style={{ fontSize: 17, fontWeight: 600, color: '#172033', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                      Q{selectedQuestion.question_number_in_paper} [{selectedQuestion.source_year}]: {selectedQuestion.question_text}
-                    </h3>
-                  </div>
-
-                  {/* Answer Choices */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {selectedQuestion.options.map((opt) => (
-                      <div
-                        key={opt.option_label}
-                        style={{
-                          padding: '12px 16px',
-                          borderRadius: 0,
-                          backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
-                          border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
-                          fontSize: 14,
-                          color: '#172033',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ fontWeight: 700, color: opt.is_correct ? '#15803D' : '#E31B23', width: 20 }}>
-                            {opt.option_label}.
-                          </span>
-                          <span>{opt.option_text || <em>(Empty option text)</em>}</span>
-                        </div>
-
-                        {opt.is_correct && (
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 0, border: '1px solid #86EFAC' }}>
-                            ✓ Correct Answer
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Solution Explanation Box */}
-                  {selectedQuestion.explanation?.detailed_solution && (
-                    <div style={{ padding: 16, borderRadius: 0, backgroundColor: '#FAFAFA', border: '1px solid #E2E8F0' }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.04em' }}>
-                        Detailed Solution & Explanation
-                      </div>
-                      <p style={{ fontSize: 13.5, color: '#334155', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                        {selectedQuestion.explanation.detailed_solution}
-                      </p>
-                    </div>
-                  )}
+                  {/* Publication Standard Format Card */}
+                  <AdminQuestionPublicationCard
+                    question={selectedQuestion}
+                    questionNumber={selectedQuestion.question_number_in_paper}
+                    style={{ border: 'none', padding: 0, boxShadow: 'none' }}
+                  />
 
                   {/* Navigation Buttons Row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>

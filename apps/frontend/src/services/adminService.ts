@@ -241,8 +241,12 @@ export interface ExamPipelineStatusItem {
 }
 
 export async function fetchExamPipelineStatuses(): Promise<ExamPipelineStatusItem[]> {
-  const res = await fetch(`${API_BASE_URL}/exams/pipeline-status`, { headers: getAuthHeader() });
+  let res = await fetch(`${API_BASE_URL}/exams/pipeline-status`, { headers: getAuthHeader() });
   if (!res.ok) {
+    const fallbackRes = await fetch('/api/v1/admin/exams/pipeline-status', { headers: getAuthHeader() }).catch(() => null);
+    if (fallbackRes && fallbackRes.ok) {
+      return await fallbackRes.json();
+    }
     const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch exam pipeline statuses' }));
     throw new Error(errorData.detail || 'Could not fetch exam pipeline statuses.');
   }

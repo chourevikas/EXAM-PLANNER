@@ -390,6 +390,10 @@ async def list_exam_pipeline_statuses(
             or task_registry.is_running(f"trans_{exam.id}")
         )
 
+        stage1_status = "QUEUED"
+        stage2_status = "QUEUED"
+        stage3_status = "QUEUED"
+
         # Stage 1: Extraction Status
         if is_task_running:
             stage1_status = "IN_PROGRESS"
@@ -476,6 +480,8 @@ async def list_exam_pipeline_statuses(
                 stage3_status = "IN_PROGRESS"
             elif stage1_status != "COMPLETED" or stage2_status != "COMPLETED":
                 stage3_status = "WAITING_INPUTS"
+            else:
+                stage3_status = "QUEUED"
         # Stage 4: Question Translation Status
         translation_status = "NOT_STARTED"
         if p_trans:
@@ -530,8 +536,8 @@ async def list_exam_pipeline_statuses(
                 "code": exam.code,
                 "name": exam.name,
                 "exam_type_id": exam.exam_type_id,
-                "exam_type_code": et_map[exam.exam_type_id].type if (exam.exam_type_id and exam.exam_type_id in et_map) else "upse",
-                "exam_type_name": et_map[exam.exam_type_id].name if (exam.exam_type_id and exam.exam_type_id in et_map) else "UPSE",
+                "exam_type_code": et_map[exam.exam_type_id].type if (exam.exam_type_id and exam.exam_type_id in et_map) else "upsc",
+                "exam_type_name": et_map[exam.exam_type_id].name if (exam.exam_type_id and exam.exam_type_id in et_map) else "UPSC",
                 "source_year": exam.source_year,
                 "stage": exam.stage,
                 "subject_code": exam.subject_code,

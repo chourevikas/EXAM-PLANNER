@@ -16,6 +16,8 @@ qdrant_storage
 # GCP Service Account Credentials
 *gcp-service-account*.json
 *-service-account.json
+check_elasticache.py
+get_aws_info.py
 
 
 # VSCode
