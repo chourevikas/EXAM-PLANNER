@@ -39,6 +39,9 @@ import {
   CheckCheck,
   ChevronDown,
   ChevronUp,
+  Lightbulb,
+  Sparkles,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { Spinner } from '../../../components/common/Spinner';
 import {
@@ -291,6 +294,19 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
   }
 
   const [editOptions, setEditOptions] = useState<QuestionEditOptionItem[]>([]);
+  const [expandedOptionIdxs, setExpandedOptionIdxs] = useState<Record<number, boolean>>({});
+  const [selectedOptionFilter, setSelectedOptionFilter] = useState<'ALL' | number>('ALL');
+
+  const toggleOptionExpanded = (idx: number) => {
+    setExpandedOptionIdxs((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const getWordAndCharCount = (text?: string) => {
+    const clean = (text || '').trim();
+    const words = clean ? clean.split(/\s+/).length : 0;
+    const chars = (text || '').length;
+    return `${words} words • ${chars} chars`;
+  };
 
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
@@ -703,6 +719,16 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
         };
       })
     );
+
+    setSelectedOptionFilter('ALL');
+    const initialExpanded: Record<number, boolean> = {};
+    const correctIdx = rawOpts.findIndex((o) => o.is_correct);
+    if (correctIdx >= 0) {
+      initialExpanded[correctIdx] = true;
+    } else {
+      initialExpanded[0] = true;
+    }
+    setExpandedOptionIdxs(initialExpanded);
   };
 
   const handleSaveQuestionChanges = async (publishAfterSave: boolean = true) => {
@@ -3426,248 +3452,676 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   <div
                     style={{
                       backgroundColor: '#FFFFFF',
-                      borderRadius: 6,
+                      borderRadius: 8,
                       border: '1px solid #E2E8F0',
-                      padding: 16,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                      padding: '18px 20px',
+                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
                     }}
                   >
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
-                        Answer Choices & Reverse Logic ({editOptions.length})
+                    {/* Header Bar with Option-wise Filter & Expand/Collapse All */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 16,
+                        paddingBottom: 14,
+                        borderBottom: '1px solid #F1F5F9',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span>Answer Choices & Reverse Logic</span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: 12,
+                              backgroundColor: '#F1F5F9',
+                              color: '#475569',
+                            }}
+                          >
+                            {editOptions.length} Choices
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
+                          Select the correct answer option and manage option-wise reverse logic & psychological distractor traps.
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                        Select the correct answer option. For incorrect choices, add why candidates find it tempting and the factual correction.
+
+                      {/* Right Toolbar: Quick Option Filter Tabs & Expand/Collapse All */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {/* Option Filter Selector */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            backgroundColor: '#F1F5F9',
+                            padding: 3,
+                            borderRadius: 6,
+                            border: '1px solid #E2E8F0',
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOptionFilter('ALL')}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: 11.5,
+                              fontWeight: selectedOptionFilter === 'ALL' ? 700 : 500,
+                              borderRadius: 4,
+                              border: 'none',
+                              backgroundColor: selectedOptionFilter === 'ALL' ? '#FFFFFF' : 'transparent',
+                              color: selectedOptionFilter === 'ALL' ? '#0F172A' : '#64748B',
+                              boxShadow: selectedOptionFilter === 'ALL' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            All
+                          </button>
+                          {editOptions.map((opt, oIdx) => (
+                            <button
+                              key={opt.option_label}
+                              type="button"
+                              onClick={() => {
+                                setSelectedOptionFilter(oIdx);
+                                setExpandedOptionIdxs((prev) => ({ ...prev, [oIdx]: true }));
+                              }}
+                              style={{
+                                padding: '4px 9px',
+                                fontSize: 11.5,
+                                fontWeight: selectedOptionFilter === oIdx ? 700 : 500,
+                                borderRadius: 4,
+                                border: 'none',
+                                backgroundColor: selectedOptionFilter === oIdx ? (opt.is_correct ? '#DCFCE7' : '#FFFFFF') : 'transparent',
+                                color: selectedOptionFilter === oIdx ? (opt.is_correct ? '#15803D' : '#0F172A') : '#64748B',
+                                boxShadow: selectedOptionFilter === oIdx ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {opt.option_label} {opt.is_correct ? '✓' : ''}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Expand / Collapse All Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allExpanded = editOptions.every((_, i) => expandedOptionIdxs[i]);
+                            if (allExpanded) {
+                              setExpandedOptionIdxs({});
+                            } else {
+                              const next: Record<number, boolean> = {};
+                              editOptions.forEach((_, i) => { next[i] = true; });
+                              setExpandedOptionIdxs(next);
+                            }
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 11px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            backgroundColor: '#FFFFFF',
+                            color: '#475569',
+                            border: '1px solid #CBD5E1',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <ChevronsUpDown size={13} />
+                          <span>
+                            {editOptions.every((_, i) => expandedOptionIdxs[i]) ? 'Collapse All' : 'Expand All'}
+                          </span>
+                        </button>
                       </div>
                     </div>
 
+                    {/* Options List */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {editOptions.map((opt, idx) => (
-                        <div
-                          key={opt.option_label || idx}
-                          style={{
-                            padding: 14,
-                            backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
-                            border: opt.is_correct ? '1.5px solid #16A34A' : '1px solid #E2E8F0',
-                            borderRadius: 6,
-                            boxShadow: opt.is_correct ? '0 1px 4px rgba(22, 163, 74, 0.08)' : 'none',
-                            transition: 'border-color 0.2s',
-                          }}
-                        >
-                          {/* Option Statement Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                            <div
-                              style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: '50%',
-                                backgroundColor: opt.is_correct ? '#16A34A' : '#475569',
-                                color: '#FFFFFF',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 800,
-                                fontSize: 13,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {opt.option_label}
-                            </div>
+                      {editOptions.map((opt, idx) => {
+                        // If filter is active and not matching, hide
+                        if (selectedOptionFilter !== 'ALL' && selectedOptionFilter !== idx) {
+                          return null;
+                        }
 
-                            <input
-                              type="text"
-                              value={opt.option_text}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setEditOptions((prev) =>
-                                  prev.map((o, i) => (i === idx ? { ...o, option_text: val } : o))
-                                );
-                              }}
-                              placeholder={`Option ${opt.option_label} text...`}
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                fontSize: 13,
-                                fontWeight: 500,
-                                borderRadius: 4,
-                                border: opt.is_correct ? '1px solid #86EFAC' : '1px solid #CBD5E1',
-                                backgroundColor: '#FFFFFF',
-                                outline: 'none',
-                              }}
-                            />
+                        const isExpanded = Boolean(expandedOptionIdxs[idx]);
+                        const hasDistractorContent = Boolean(
+                          opt.use_split_fields
+                            ? (opt.why_tempting && opt.why_tempting.trim().length > 0) || (opt.whats_actually_true && opt.whats_actually_true.trim().length > 0)
+                            : (opt.distractor_analysis && opt.distractor_analysis.trim().length > 0)
+                        );
+                        const hasRationaleContent = Boolean(opt.distractor_analysis && opt.distractor_analysis.trim().length > 0);
 
-                            <label
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: opt.is_correct ? '#15803D' : '#64748B',
-                                cursor: 'pointer',
-                                padding: '6px 10px',
-                                borderRadius: 4,
-                                backgroundColor: opt.is_correct ? '#DCFCE7' : '#F1F5F9',
-                                border: `1px solid ${opt.is_correct ? '#BBF7D0' : '#E2E8F0'}`,
-                                flexShrink: 0,
-                                userSelect: 'none',
-                              }}
-                            >
-                              <input
-                                type="radio"
-                                name="correctOptionRadio"
-                                checked={opt.is_correct}
-                                onChange={() => {
-                                  setEditOptions((prev) =>
-                                    prev.map((o, i) => ({ ...o, is_correct: i === idx }))
-                                  );
+                        return (
+                          <div
+                            key={opt.option_label || idx}
+                            style={{
+                              padding: 14,
+                              backgroundColor: opt.is_correct ? '#F0FDF4' : '#FFFFFF',
+                              border: opt.is_correct
+                                ? '1.5px solid #16A34A'
+                                : isExpanded
+                                ? '1.5px solid #94A3B8'
+                                : '1px solid #E2E8F0',
+                              borderRadius: 8,
+                              boxShadow: opt.is_correct
+                                ? '0 1px 4px rgba(22, 163, 74, 0.08)'
+                                : isExpanded
+                                ? '0 2px 6px rgba(15, 23, 42, 0.04)'
+                                : 'none',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            {/* Option Header Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                              {/* Option Letter Avatar */}
+                              <div
+                                style={{
+                                  width: 30,
+                                  height: 30,
+                                  borderRadius: 6,
+                                  backgroundColor: opt.is_correct ? '#16A34A' : '#475569',
+                                  color: '#FFFFFF',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 800,
+                                  fontSize: 13.5,
+                                  flexShrink: 0,
+                                  boxShadow: opt.is_correct ? '0 2px 4px rgba(22, 163, 74, 0.25)' : 'none',
                                 }}
-                                style={{ accentColor: '#16A34A', cursor: 'pointer' }}
-                              />
-                              {opt.is_correct ? '✓ Correct Answer' : 'Mark as Correct'}
-                            </label>
-                          </div>
+                              >
+                                {opt.option_label}
+                              </div>
 
-                          {/* Reverse Logic / Distractor Explanation Row */}
-                          {opt.is_correct ? (
-                            <div>
-                              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#16A34A', marginBottom: 4 }}>
-                                ✓ Correct Answer Rationale / Key Fact:
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={opt.distractor_analysis}
+                              {/* Option Text Input */}
+                              <input
+                                type="text"
+                                value={opt.option_text}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   setEditOptions((prev) =>
-                                    prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                                    prev.map((o, i) => (i === idx ? { ...o, option_text: val } : o))
                                   );
                                 }}
-                                placeholder="Explain why this option is correct and key factual/historical points..."
+                                placeholder={`Option ${opt.option_label} text...`}
                                 style={{
-                                  width: '100%',
-                                  padding: '7px 10px',
-                                  fontSize: 12.5,
-                                  borderRadius: 4,
-                                  border: '1px solid #BBF7D0',
+                                  flex: 1,
+                                  minWidth: 180,
+                                  padding: '8px 12px',
+                                  fontSize: 13.5,
+                                  fontWeight: 500,
+                                  borderRadius: 6,
+                                  border: opt.is_correct ? '1px solid #86EFAC' : '1px solid #CBD5E1',
                                   backgroundColor: '#FFFFFF',
+                                  outline: 'none',
                                   boxSizing: 'border-box',
-                                  fontFamily: 'inherit',
+                                  transition: 'border-color 0.15s',
                                 }}
                               />
-                            </div>
-                          ) : (
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569' }}>
-                                  Reverse Logic / Distractor Analysis:
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditOptions((prev) =>
-                                      prev.map((o, i) =>
-                                        i === idx ? { ...o, use_split_fields: !o.use_split_fields } : o
-                                      )
-                                    );
-                                  }}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: '#2563EB',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                  }}
-                                >
-                                  {opt.use_split_fields ? '⇄ Switch to Single Field' : '⇄ Split into Tempting / True'}
-                                </button>
-                              </div>
 
-                              {opt.use_split_fields ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                  <div>
-                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#B45309', marginBottom: 2 }}>
-                                      💭 Why Candidates Find It Tempting (Trap):
-                                    </label>
-                                    <textarea
-                                      rows={2}
-                                      value={opt.why_tempting || ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setEditOptions((prev) =>
-                                          prev.map((o, i) => (i === idx ? { ...o, why_tempting: val } : o))
-                                        );
-                                      }}
-                                      placeholder="Why candidates might plausibly choose this..."
-                                      style={{
-                                        width: '100%',
-                                        padding: '7px 10px',
-                                        fontSize: 12,
-                                        borderRadius: 4,
-                                        border: '1px solid #CBD5E1',
-                                        backgroundColor: '#FAFAFA',
-                                        boxSizing: 'border-box',
-                                        fontFamily: 'inherit',
-                                      }}
-                                    />
-                                  </div>
+                              {/* Correct Answer Button / Badge */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditOptions((prev) =>
+                                    prev.map((o, i) => ({ ...o, is_correct: i === idx }))
+                                  );
+                                  // Open the newly selected correct option's rationale
+                                  setExpandedOptionIdxs((prev) => ({ ...prev, [idx]: true }));
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: opt.is_correct ? '#15803D' : '#64748B',
+                                  cursor: 'pointer',
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  backgroundColor: opt.is_correct ? '#DCFCE7' : '#F1F5F9',
+                                  border: `1px solid ${opt.is_correct ? '#86EFAC' : '#E2E8F0'}`,
+                                  flexShrink: 0,
+                                  userSelect: 'none',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {opt.is_correct ? (
+                                  <>
+                                    <CheckCircle2 size={14} color="#16A34A" />
+                                    <span>✓ Correct Answer</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px solid #94A3B8' }} />
+                                    <span>Mark as Correct</span>
+                                  </>
+                                )}
+                              </button>
 
-                                  <div>
-                                    <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#15803D', marginBottom: 2 }}>
-                                      💡 What Is Actually True (Factual Correction):
-                                    </label>
-                                    <textarea
-                                      rows={2}
-                                      value={opt.whats_actually_true || ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setEditOptions((prev) =>
-                                          prev.map((o, i) => (i === idx ? { ...o, whats_actually_true: val } : o))
-                                        );
-                                      }}
-                                      placeholder="Why this option is actually incorrect..."
-                                      style={{
-                                        width: '100%',
-                                        padding: '7px 10px',
-                                        fontSize: 12,
-                                        borderRadius: 4,
-                                        border: '1px solid #CBD5E1',
-                                        backgroundColor: '#FAFAFA',
-                                        boxSizing: 'border-box',
-                                        fontFamily: 'inherit',
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                <textarea
-                                  rows={2}
-                                  value={opt.distractor_analysis || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setEditOptions((prev) =>
-                                      prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
-                                    );
-                                  }}
-                                  placeholder={`Explanation for Option ${opt.option_label} (why it is incorrect)...`}
+                              {/* The Dropdown Trigger for Reverse Logic / Distractor Analysis */}
+                              <button
+                                type="button"
+                                onClick={() => toggleOptionExpanded(idx)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 7,
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  backgroundColor: isExpanded ? '#EFF6FF' : '#FFFFFF',
+                                  border: `1px solid ${isExpanded ? '#93C5FD' : '#CBD5E1'}`,
+                                  color: isExpanded ? '#1D4ED8' : '#334155',
+                                  boxShadow: isExpanded ? '0 1px 3px rgba(37, 99, 235, 0.1)' : '0 1px 2px rgba(0,0,0,0.02)',
+                                  transition: 'all 0.15s ease',
+                                  flexShrink: 0,
+                                }}
+                                title={isExpanded ? 'Collapse Reverse Logic' : 'Expand Reverse Logic & Distractor Analysis'}
+                              >
+                                {opt.is_correct ? (
+                                  <CheckCircle2 size={13} color="#16A34A" />
+                                ) : (
+                                  <Lightbulb size={13} color={isExpanded ? '#2563EB' : '#D97706'} />
+                                )}
+                                <span>
+                                  {opt.is_correct ? 'Rationale & Facts' : 'Reverse Logic / Distractor'}
+                                </span>
+
+                                {/* Status Pill inside button */}
+                                {opt.is_correct ? (
+                                  <span
+                                    style={{
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      padding: '1px 6px',
+                                      borderRadius: 10,
+                                      backgroundColor: hasRationaleContent ? '#DCFCE7' : '#F1F5F9',
+                                      color: hasRationaleContent ? '#15803D' : '#64748B',
+                                      border: `1px solid ${hasRationaleContent ? '#BBF7D0' : '#E2E8F0'}`,
+                                    }}
+                                  >
+                                    {hasRationaleContent ? 'Ready' : 'Empty'}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      padding: '1px 6px',
+                                      borderRadius: 10,
+                                      backgroundColor: hasDistractorContent ? '#FEF3C7' : '#F1F5F9',
+                                      color: hasDistractorContent ? '#B45309' : '#64748B',
+                                      border: `1px solid ${hasDistractorContent ? '#FDE68A' : '#E2E8F0'}`,
+                                    }}
+                                  >
+                                    {hasDistractorContent ? (opt.use_split_fields ? 'Trap + Reality' : 'Single') : 'Empty'}
+                                  </span>
+                                )}
+
+                                <ChevronDown
+                                  size={13}
                                   style={{
-                                    width: '100%',
-                                    padding: '7px 10px',
-                                    fontSize: 12,
-                                    borderRadius: 4,
-                                    border: '1px solid #CBD5E1',
-                                    backgroundColor: '#FAFAFA',
-                                    boxSizing: 'border-box',
-                                    fontFamily: 'inherit',
+                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s ease',
+                                    color: isExpanded ? '#1D4ED8' : '#64748B',
                                   }}
                                 />
-                              )}
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {/* Collapsed One-Line Snippet Preview */}
+                            {!isExpanded && (
+                              <div
+                                onClick={() => toggleOptionExpanded(idx)}
+                                style={{
+                                  marginTop: 8,
+                                  padding: '5px 10px',
+                                  borderRadius: 5,
+                                  backgroundColor: opt.is_correct ? '#F0FDF4' : '#F8FAFC',
+                                  border: `1px dashed ${opt.is_correct ? '#BBF7D0' : '#E2E8F0'}`,
+                                  fontSize: 11.5,
+                                  color: '#64748B',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 8,
+                                }}
+                              >
+                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  {opt.is_correct ? (
+                                    <>
+                                      <span style={{ fontWeight: 700, color: '#16A34A' }}>✓ Rationale:</span>
+                                      <span style={{ color: opt.distractor_analysis ? '#334155' : '#94A3B8' }}>
+                                        {opt.distractor_analysis || '(No rationale added yet)'}
+                                      </span>
+                                    </>
+                                  ) : opt.use_split_fields ? (
+                                    <>
+                                      <span style={{ fontWeight: 700, color: '#B45309' }}>💭 Trap:</span>
+                                      <span style={{ color: opt.why_tempting ? '#334155' : '#94A3B8' }}>
+                                        {opt.why_tempting || 'None'}
+                                      </span>
+                                      <span style={{ color: '#CBD5E1' }}>•</span>
+                                      <span style={{ fontWeight: 700, color: '#0369A1' }}>💡 Reality:</span>
+                                      <span style={{ color: opt.whats_actually_true ? '#334155' : '#94A3B8' }}>
+                                        {opt.whats_actually_true || 'None'}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span style={{ fontWeight: 700, color: '#475569' }}>Explanation:</span>
+                                      <span style={{ color: opt.distractor_analysis ? '#334155' : '#94A3B8' }}>
+                                        {opt.distractor_analysis || '(No explanation added yet)'}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', flexShrink: 0 }}>
+                                  Open Dropdown ▾
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Expanded Reverse Logic / Distractor Analysis Panel */}
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  marginTop: 12,
+                                  padding: '14px 16px',
+                                  borderRadius: 8,
+                                  backgroundColor: opt.is_correct ? '#FFFFFF' : '#FAFAFA',
+                                  border: opt.is_correct ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
+                                }}
+                              >
+                                {opt.is_correct ? (
+                                  /* Correct Option Rationale */
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <CheckCircle2 size={14} color="#16A34A" />
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>
+                                          ✓ Correct Answer Rationale / Key Fact:
+                                        </label>
+                                      </div>
+                                      <span style={{ fontSize: 11, color: '#64748B' }}>
+                                        {getWordAndCharCount(opt.distractor_analysis)}
+                                      </span>
+                                    </div>
+                                    <p style={{ fontSize: 11.5, color: '#475569', margin: '0 0 8px 0', lineHeight: 1.4 }}>
+                                      State why Option {opt.option_label} is strictly true and reference historical, scientific, or official syllabus facts.
+                                    </p>
+                                    <textarea
+                                      rows={3}
+                                      value={opt.distractor_analysis}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditOptions((prev) =>
+                                          prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                                        );
+                                      }}
+                                      placeholder="Explain why this option is correct and key factual/historical points..."
+                                      style={{
+                                        width: '100%',
+                                        padding: '9px 12px',
+                                        fontSize: 13,
+                                        lineHeight: 1.55,
+                                        borderRadius: 6,
+                                        border: '1.5px solid #86EFAC',
+                                        backgroundColor: '#FFFFFF',
+                                        boxSizing: 'border-box',
+                                        fontFamily: 'inherit',
+                                        outline: 'none',
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  /* Incorrect Option Reverse Logic / Distractor Analysis */
+                                  <div>
+                                    {/* Subheader & Modern Segmented Switch */}
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: 10,
+                                        flexWrap: 'wrap',
+                                        gap: 8,
+                                      }}
+                                    >
+                                      <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                          <Sparkles size={14} color="#D97706" />
+                                          <label style={{ fontSize: 12.5, fontWeight: 700, color: '#1E293B' }}>
+                                            Reverse Logic / Distractor Analysis (Option {opt.option_label}):
+                                          </label>
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
+                                          Psychological trap analysis explaining candidate misconceptions vs factual truth.
+                                        </div>
+                                      </div>
+
+                                      {/* Segmented Mode Control */}
+                                      <div
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          backgroundColor: '#E2E8F0',
+                                          padding: 2,
+                                          borderRadius: 6,
+                                          gap: 2,
+                                        }}
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditOptions((prev) =>
+                                              prev.map((o, i) =>
+                                                i === idx ? { ...o, use_split_fields: true } : o
+                                              )
+                                            );
+                                          }}
+                                          style={{
+                                            padding: '4px 10px',
+                                            fontSize: 11,
+                                            fontWeight: opt.use_split_fields ? 700 : 500,
+                                            backgroundColor: opt.use_split_fields ? '#FFFFFF' : 'transparent',
+                                            color: opt.use_split_fields ? '#0F172A' : '#64748B',
+                                            border: 'none',
+                                            borderRadius: 4,
+                                            cursor: 'pointer',
+                                            boxShadow: opt.use_split_fields ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s ease',
+                                          }}
+                                        >
+                                          ⚡ Split (Trap & Reality)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditOptions((prev) =>
+                                              prev.map((o, i) =>
+                                                i === idx ? { ...o, use_split_fields: false } : o
+                                              )
+                                            );
+                                          }}
+                                          style={{
+                                            padding: '4px 10px',
+                                            fontSize: 11,
+                                            fontWeight: !opt.use_split_fields ? 700 : 500,
+                                            backgroundColor: !opt.use_split_fields ? '#FFFFFF' : 'transparent',
+                                            color: !opt.use_split_fields ? '#0F172A' : '#64748B',
+                                            border: 'none',
+                                            borderRadius: 4,
+                                            cursor: 'pointer',
+                                            boxShadow: !opt.use_split_fields ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s ease',
+                                          }}
+                                        >
+                                          📄 Single Field
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {opt.use_split_fields ? (
+                                      /* Dual Structured Cards: Trap + Reality */
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        {/* Box 1: Why Candidates Find It Tempting (Trap) */}
+                                        <div
+                                          style={{
+                                            backgroundColor: '#FFFBEB',
+                                            border: '1.5px solid #FDE68A',
+                                            borderRadius: 8,
+                                            padding: '12px 14px',
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#B45309' }}>
+                                              <span>💭</span>
+                                              <span>Why Candidates Find It Tempting (Trap):</span>
+                                            </label>
+                                            <span style={{ fontSize: 10.5, color: '#B45309', fontWeight: 600 }}>
+                                              {getWordAndCharCount(opt.why_tempting)}
+                                            </span>
+                                          </div>
+                                          <p style={{ fontSize: 11, color: '#92400E', margin: '0 0 6px 0', lineHeight: 1.35 }}>
+                                            Why an aspirant might plausibly select this distractor (e.g. familiar keyword, partial overlap).
+                                          </p>
+                                          <textarea
+                                            rows={3}
+                                            value={opt.why_tempting || ''}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              setEditOptions((prev) =>
+                                                prev.map((o, i) => (i === idx ? { ...o, why_tempting: val } : o))
+                                              );
+                                            }}
+                                            placeholder="e.g. Tempting because Gandhara is a genuine, famous ancient Buddhist-art centre that could seem plausibly connected..."
+                                            style={{
+                                              width: '100%',
+                                              padding: '8px 12px',
+                                              fontSize: 12.5,
+                                              lineHeight: 1.55,
+                                              borderRadius: 6,
+                                              border: '1px solid #FCD34D',
+                                              backgroundColor: '#FFFFFF',
+                                              boxSizing: 'border-box',
+                                              fontFamily: 'inherit',
+                                              outline: 'none',
+                                            }}
+                                          />
+                                        </div>
+
+                                        {/* Box 2: What Is Actually True (Factual Correction) */}
+                                        <div
+                                          style={{
+                                            backgroundColor: '#F0F9FF',
+                                            border: '1.5px solid #BAE6FD',
+                                            borderRadius: 8,
+                                            padding: '12px 14px',
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#0369A1' }}>
+                                              <span>💡</span>
+                                              <span>What Is Actually True (Factual Correction):</span>
+                                            </label>
+                                            <span style={{ fontSize: 10.5, color: '#0369A1', fontWeight: 600 }}>
+                                              {getWordAndCharCount(opt.whats_actually_true)}
+                                            </span>
+                                          </div>
+                                          <p style={{ fontSize: 11, color: '#0284C7', margin: '0 0 6px 0', lineHeight: 1.35 }}>
+                                            Authoritative factual reason disproving this choice (e.g. different region, era, or jurisdiction).
+                                          </p>
+                                          <textarea
+                                            rows={3}
+                                            value={opt.whats_actually_true || ''}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              setEditOptions((prev) =>
+                                                prev.map((o, i) => (i === idx ? { ...o, whats_actually_true: val } : o))
+                                              );
+                                            }}
+                                            placeholder="e.g. Gandhara's Buddhist significance is in a different region (northwest, present Pakistan/Afghanistan border), not Dhanyakataka (Andhra)..."
+                                            style={{
+                                              width: '100%',
+                                              padding: '8px 12px',
+                                              fontSize: 12.5,
+                                              lineHeight: 1.55,
+                                              borderRadius: 6,
+                                              border: '1px solid #7DD3FC',
+                                              backgroundColor: '#FFFFFF',
+                                              boxSizing: 'border-box',
+                                              fontFamily: 'inherit',
+                                              outline: 'none',
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      /* Single Field Mode */
+                                      <div
+                                        style={{
+                                          backgroundColor: '#FFFFFF',
+                                          border: '1px solid #CBD5E1',
+                                          borderRadius: 8,
+                                          padding: '12px 14px',
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                          <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
+                                            📄 Single Distractor Explanation:
+                                          </label>
+                                          <span style={{ fontSize: 10.5, color: '#64748B' }}>
+                                            {getWordAndCharCount(opt.distractor_analysis)}
+                                          </span>
+                                        </div>
+                                        <textarea
+                                          rows={3}
+                                          value={opt.distractor_analysis || ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setEditOptions((prev) =>
+                                              prev.map((o, i) => (i === idx ? { ...o, distractor_analysis: val } : o))
+                                            );
+                                          }}
+                                          placeholder={`Comprehensive explanation for Option ${opt.option_label} (why it is incorrect)...`}
+                                          style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            fontSize: 12.5,
+                                            lineHeight: 1.55,
+                                            borderRadius: 6,
+                                            border: '1px solid #CBD5E1',
+                                            backgroundColor: '#FFFFFF',
+                                            boxSizing: 'border-box',
+                                            fontFamily: 'inherit',
+                                            outline: 'none',
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
