@@ -19,7 +19,6 @@ services:
       - app-network
     restart: unless-stopped
 
-volumes:
 
 networks:
   app-network:
