@@ -388,17 +388,6 @@ async def upload_question_paper(
         "filename": file.filename,
         "message": "Question paper extraction pipeline has started.",
     }
-@router.post("/upload-answer-key")
-async def upload_answer_key():
-    """
-    Deprecated endpoint. Answer keys are extracted deterministically during document extraction.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Standalone answer key uploads are deprecated. Question papers, verified answers, and explanations are now extracted deterministically in a single pass via POST /exams/upload.",
-    )
-
-
 @router.get("/questions-status/{exam_identifier}")
 async def get_exam_questions_extraction_status(
     exam_identifier: str,
@@ -542,15 +531,6 @@ async def get_exam_pipeline_status(
 
     pm_service = PipelineManagementService(db)
     return await pm_service.get_exam_pipeline_overview(target_exam.id)
-
-
-@router.post("/trigger-explanation/{exam_id}")
-async def trigger_explanation_pipeline(exam_id: str):
-    """Manual endpoint allowing admins to trigger or re-run Pipeline 3 (Explanation & Multi-Concept Indexing)."""
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Standalone explanation generation is deprecated. Explanations and reverse-logic reasoning are extracted deterministically during document extraction.",
-    )
 
 
 @router.post("/stop/{exam_id}")

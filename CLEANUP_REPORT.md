@@ -364,4 +364,36 @@ The two deprecated pipeline endpoints `/api/v1/answer-keys` and `/api/v1/explana
 
 ---
 
-*All grep evidence commands are reproducible from the repository root. No code was modified during this analysis pass.*
+## 11. Pass 2 Execution Log — Verified Zero External Calls
+
+Per user confirmation ("Everything used is within the repo, I am running in wsl, There is no external call as of now"), all flagged items, deprecated compatibility shims, and orphaned components were systematically verified and cleaned up:
+
+### Backend Removals (Pass 2)
+- ✅ **`apps/backend/app/formatters/json_exporter.py`**: Deleted (392 lines). Replaced by deterministic DB extraction pipeline; zero internal callers.
+- ✅ **`apps/backend/app/repositories/explanation_repository.py`**: Deleted (148 lines). Zero internal callers; services query models directly.
+- ✅ **`apps/backend/app/schemas/subject_litral.py`**: Deleted (25 lines). Typo compatibility shim; all callers use `app.schemas.syllabus_literals`.
+- ✅ **`apps/backend/app/pipeline/state.py`**: Pruned orphaned `MCQValidationResult` and `ParallelWorkerInput` classes along with unused imports.
+- ✅ **`apps/backend/app/services/exam_json_builder.py`**: Cleaned up commented-out S3 direct upload/deletion blocks.
+- ✅ **`apps/backend/app/fastapi_server.py`**: Removed legacy 410-GONE router stub (`deprecated_router` for `/answer-keys` and `/explanations`).
+- ✅ **`apps/backend/app/routers/pipeline.py`**: Removed 410 stubs for `/upload-answer-key` and `/trigger-explanation/{exam_id}`.
+- ✅ **`apps/backend/tests/test_deterministic_pipeline.py`**: Removed obsolete `test_deprecated_endpoints_return_410`.
+- ✅ **`apps/backend/pyproject.toml`**: Moved `pytest>=9.1.1` from production `dependencies` to `[dependency-groups] dev`.
+
+### Frontend Removals (Pass 2)
+- ✅ **`apps/frontend/src/components/common/MarkdownPreviewer.tsx`**: Deleted (451 lines). Replaced by inline `<ReactMarkdown>` usage.
+- ✅ **`apps/frontend/src/components/student/PerformanceAnalyticsCharts.tsx`**: Deleted (195 lines). Static mock chart never mounted.
+- ✅ **`apps/frontend/src/components/student/UpNextQueueCard.tsx`**: Deleted (60 lines). Early mock queue card; zero imports.
+- ✅ **`apps/frontend/src/components/student/HeroWelcomeBanner.tsx`**: Deleted (71 lines). Early prototype banner; zero imports.
+- ✅ **`apps/frontend/src/components/student/PsychometricAIPanel.tsx`**: Deleted (116 lines). Replaced by active `PsychometricReportView.tsx`.
+- ✅ **`apps/frontend/src/components/student/StudentMetricsGrid.tsx`**: Deleted (104 lines). Replaced by inline live metrics in `DashboardPage.tsx`.
+- ✅ **`apps/frontend/src/components/landing/DashboardPreview.tsx`**: Deleted (413 lines). Unmounted preview component; zero imports.
+- ✅ **`apps/frontend/src/components/landing/HeroIllustration.tsx`**: Deleted (415 lines). Unmounted SVG component; zero imports.
+- ✅ **`apps/frontend/src/components/admin/ExamUploadForm.tsx`**: Deleted (218 lines). Replaced by comprehensive `UploadReviewView.tsx`.
+- ✅ **`apps/frontend/src/components/admin/views/AIQueueView.tsx`**: Deleted (7 lines). Unused thin wrapper; zero imports.
+- ✅ **`apps/frontend/src/pages/SignOutPage.tsx`**: Deleted (25 lines). Unrouted page; auth headers execute inline logout.
+- ✅ **`apps/frontend/src/services/examService.ts`**: Removed dead `uploadAnswerKey` function (called deleted 410 endpoint).
+- ✅ **`apps/frontend/package.json`**: Removed unused `autoprefixer` package.
+
+### Verification Results
+- **Frontend Typecheck & Build**: `npx tsc --noEmit` and `npm run build` completed with **0 errors**.
+- **Backend Tests**: Deterministic pipeline, formatters, config, and cleanup tests passed with **100% success**.

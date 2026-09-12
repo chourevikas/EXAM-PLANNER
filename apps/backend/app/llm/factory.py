@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 from app.config.logger import setup_logger
 from app.config.settings import get_settings
-from app.llm.providers import GeminiProvider, OpenAIProvider
+from app.llm.providers import GeminiProvider
 from langchain_core.rate_limiters import InMemoryRateLimiter
 
 _rate_limiters: Dict[float, InMemoryRateLimiter] = {}
@@ -17,7 +17,11 @@ def get_rate_limiter(requests_per_second: Optional[float] = None):
     throttled behind, unrelated background jobs.
     """
     settings = get_settings()
-    rps = requests_per_second if requests_per_second is not None else settings.VISION_LLM_RATE_LIMIT_RPS
+    rps = (
+        requests_per_second
+        if requests_per_second is not None
+        else settings.VISION_LLM_RATE_LIMIT_RPS
+    )
     if rps not in _rate_limiters:
         _rate_limiters[rps] = InMemoryRateLimiter(
             requests_per_second=rps,
@@ -44,10 +48,7 @@ def get_vision_llm(
 
     if provider_name in ("vertexai", "gemini", "google"):
         provider = GeminiProvider(settings, rate_limiter=rate_limiter)
-    elif provider_name == "openai":
-        provider = OpenAIProvider(settings, rate_limiter=rate_limiter)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider_name}")
 
     return provider.get_chat_model(timeout=timeout, max_retries=max_retries)
-

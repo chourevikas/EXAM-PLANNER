@@ -237,28 +237,6 @@ class TestDeterministicPipeline(unittest.IsolatedAsyncioTestCase):
             assert run.pipeline_type == "DOCUMENT_EXTRACTION"
             assert run.status == "WAITING_FOR_HITL"
 
-    async def test_deprecated_endpoints_return_410(self):
-        """Verify that retired Pipeline 2 & 3 endpoints return HTTP 410 Gone."""
-        from httpx import AsyncClient, ASGITransport
-        from app.fastapi_server import app
-
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            resp1 = await client.post("/api/v1/answer-keys/upload")
-            assert resp1.status_code == 410
-            assert "deprecated" in resp1.json()["detail"].lower()
-
-            resp2 = await client.post("/api/v1/explanations/generate/1")
-            assert resp2.status_code == 410
-            assert "deprecated" in resp2.json()["detail"].lower()
-
-            resp3 = await client.post("/api/v1/pipeline/upload-answer-key")
-            assert resp3.status_code == 410
-            assert "deprecated" in resp3.json()["detail"].lower()
-
-            resp4 = await client.post("/api/v1/pipeline/trigger-explanation/1")
-            assert resp4.status_code == 410
-            assert "deprecated" in resp4.json()["detail"].lower()
-
     async def test_microtheme_and_nano_theme_db_mapping(self):
         """Verify that Microtheme and Nano Theme from PDF are persisted into Subject, Topic, Subtopic in DB."""
         from app.pipeline.regex_question_parser import split_into_question_blocks, parse_question_block

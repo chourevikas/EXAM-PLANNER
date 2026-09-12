@@ -78,43 +78,6 @@ export async function uploadExamPaper({
   return result;
 }
 
-export async function uploadAnswerKey({
-  examName,
-  year,
-  set_code,
-  file,
-}: {
-  examName: string;
-  year: string;
-  set_code: string;
-  file: File;
-  conflict_resolution?: string;
-}): Promise<UploadExamResponse> {
-  const token = localStorage.getItem('access_token');
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const formData = new FormData();
-  formData.append('exam_name', examName);
-  formData.append('year', year);
-  formData.append('set_code', set_code);
-  formData.append('file', file);
-
-  const response = await guardedFetch(`${API_BASE_URL}/pipeline/upload-answer-key`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
-
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.detail || 'Server error occurred during Answer Key upload.');
-  }
-
-  return result;
-}
 
 /** 1. Start Exam Attempt */
 export async function startExamAttempt(payload: StartExamRequest): Promise<StartExamResponse> {

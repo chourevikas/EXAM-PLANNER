@@ -1,8 +1,8 @@
-import operator
-import uuid
-from typing import TypedDict, List, Tuple, Optional, Annotated, Any
-from pydantic import BaseModel, Field, ConfigDict
 import enum
+from typing import Any, List, Optional, TypedDict
+import uuid
+
+from pydantic import BaseModel, Field
 
 
 class LanguageCodeEnum(str, enum.Enum):
@@ -136,21 +136,6 @@ class PageExtractionPayload(BaseModel):
     page_end_seam: SeamBlockTypeEnum = Field(default=SeamBlockTypeEnum.NONE)
     new_context_memories: List[ContextMemoryItem] = Field(default_factory=list)
     extracted_questions: List[ExtractedQuestionSchema]
-
-
-class MCQValidationResult(BaseModel):
-    status: str = Field(
-        description="'PUBLISHED', 'NON_MCQ_FALLBACK', or 'INCOMPLETE_RETRY_NEEDED'"
-    )
-    is_mcq: bool = Field(description="True if question is valid MCQ format.")
-    reasoning: str = Field(description="Reason for decision.")
-
-
-class ParallelWorkerInput(TypedDict):
-    page_num: int
-    pdf_path: str
-    exam_id: str
-    task_id: str
 
 
 class OverallPipelineState(TypedDict):

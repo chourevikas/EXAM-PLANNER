@@ -599,65 +599,13 @@ class ExamJsonBuilder:
 
         return q_card, sol_card
 
-    async def sync_single_question_artifacts(self, question_id: int) -> Optional[Dict[str, str]]:
-        """
-        Uploads or updates the individual Q{num}.json question and solution artifacts to S3 in real-time.
-        """
-        try:
-            q = await self.session.get(Question, question_id)
-            if not q or not q.exam_id:
-                return None
-
-            exam = await self.session.get(Exam, q.exam_id)
-            if not exam:
-                return None
-
-            paper_set = exam.paper_set_code or "SET_A"
-            clean_set = str(paper_set).strip().lower().replace("_", "-")
-            questions_folder_rel = exam.questions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/questions"
-            solutions_folder_rel = exam.solutions_json_folder_path or f"artifacts/{exam.code}/{clean_set}/json/solutions"
-
-            q_card, sol_card = await self.build_single_question_cards(q)
-
-            q_filename = f"Q{q.question_number_in_paper:03d}.json"
-            q_indiv_rel = f"{questions_folder_rel}/{q_filename}"
-            s_indiv_rel = f"{solutions_folder_rel}/{q_filename}"
-
-            # --- S3 Uploads Commented Out (DB is single source of truth) ---
-            # await self.storage.upload_json(q_card, q_indiv_rel)
-            # await self.storage.upload_json(sol_card, s_indiv_rel)
-
-            logger.info(
-                f"[DB_DIRECT_SYNC] Prepared question & solution #{q.question_number_in_paper} "
-                f"for exam '{exam.code}' in DB."
-            )
-            return {
-                "question_artifact_path": q_indiv_rel,
-                "solution_artifact_path": s_indiv_rel,
-            }
-        except Exception as err:
-            logger.warning(f"[DB_DIRECT_SYNC] Failed syncing single question #{question_id}: {err}")
-            return None
-
     async def delete_single_question_artifacts(
         self, exam_code: str, paper_set_code: Optional[str], question_number: int
     ) -> bool:
         """
-        Deletes the individual Q{num}.json question and solution artifacts in real-time.
+        Deletes the individual question and solution artifact references in real-time.
         """
         try:
-            clean_set = str(paper_set_code or "SET_A").strip().lower().replace("_", "-")
-            questions_folder_rel = f"artifacts/{exam_code}/{clean_set}/json/questions"
-            solutions_folder_rel = f"artifacts/{exam_code}/{clean_set}/json/solutions"
-
-            q_filename = f"Q{question_number:03d}.json"
-            q_indiv_rel = f"{questions_folder_rel}/{q_filename}"
-            s_indiv_rel = f"{solutions_folder_rel}/{q_filename}"
-
-            # --- S3 Deletions Commented Out (DB is single source of truth) ---
-            # await self.storage.delete_file(q_indiv_rel)
-            # await self.storage.delete_file(s_indiv_rel)
-
             logger.info(
                 f"[DB_DIRECT_DELETE] Deleted question & solution #{question_number} "
                 f"references for exam '{exam_code}'."
@@ -738,13 +686,6 @@ class ExamJsonBuilder:
             questions_payload.append(q_card)
             solutions_payload.append(sol_card)
 
-            # --- S3 Individual Artifacts Upload Commented Out ---
-            # if sync_target == "FULL_ALL":
-            #     q_filename = f"Q{q.question_number_in_paper:03d}.json"
-            #     q_indiv_rel = f"{questions_folder_rel}/{q_filename}"
-            #     s_indiv_rel = f"{solutions_folder_rel}/{q_filename}"
-            #     await self.storage.upload_json(q_card, q_indiv_rel)
-            #     await self.storage.upload_json(sol_card, s_indiv_rel)
 
         card_build_duration = time.perf_counter() - card_build_start
         logger.info(
@@ -762,26 +703,8 @@ class ExamJsonBuilder:
 
         # 1. Master Questions JSON & Database Sync
         if sync_target in ("MASTERS_ONLY", "QUESTIONS_MASTER", "FULL_ALL", "ALL"):
-            questions_doc = {
-                "exam_id": str(exam.id),
-                "exam_code": exam.code,
-                "exam_name": exam.name,
-                "stage": exam.stage,
-                "subject_code": exam.subject_code,
-                "source_year": exam.source_year,
-                "paper_set_code": exam.paper_set_code,
-                "total_questions": len(questions_payload),
-                "total_duration_minutes": exam.total_duration_minutes or 120,
-                "total_marks": exam.total_marks or 200.0,
-                "generated_at": now_utc.isoformat(),
-                "questions": questions_payload,
-            }
             exam.questions_json_folder_path = questions_folder_rel
             result_payload["questions_json_folder_path"] = questions_folder_rel
-            # --- S3 Master Questions Upload Commented Out ---
-            # q_rel_path = f"exams/{exam.code}/exam_questions.json"
-            # saved_q_path = await self.storage.upload_json(questions_doc, q_rel_path)
-            # exam.questions_json_path = saved_q_path
 
         # 2. Master Solutions JSON & In-Memory Sliding Cache Priming
         if sync_target in ("MASTERS_ONLY", "SOLUTIONS_MASTER", "FULL_ALL", "ALL"):
@@ -793,10 +716,6 @@ class ExamJsonBuilder:
             }
             exam.solutions_json_folder_path = solutions_folder_rel
             result_payload["solutions_json_folder_path"] = solutions_folder_rel
-            # --- S3 Master Solutions Upload Commented Out ---
-            # s_rel_path = f"exams/{exam.code}/exam_solutions.json"
-            # saved_s_path = await self.storage.upload_json(solutions_doc, s_rel_path)
-            # exam.solutions_json_path = saved_s_path
 
             # Prime sliding memory cache directly from DB
             from app.engine.post_submission_pipeline import set_cached_solutions_data

@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, APIRouter, HTTPException, status
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -173,20 +173,6 @@ app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(admin_router, prefix=settings.API_V1_STR)
 app.include_router(exams_router, prefix=settings.API_V1_STR)
 app.include_router(questions_router, prefix=settings.API_V1_STR)
-# Deprecated pipeline router (410 Gone gate)
-deprecated_router = APIRouter(include_in_schema=False)
-
-@deprecated_router.api_route("/answer-keys", methods=["GET", "POST", "PUT", "DELETE"])
-@deprecated_router.api_route("/answer-keys/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-@deprecated_router.api_route("/explanations", methods=["GET", "POST", "PUT", "DELETE"])
-@deprecated_router.api_route("/explanations/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-async def deprecated_pipeline_endpoints():
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Endpoint deprecated. Answer keys and explanations are extracted deterministically in a single pass during document extraction.",
-    )
-
-app.include_router(deprecated_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(review_router, prefix=settings.API_V1_STR)
 app.include_router(webhooks_router, prefix=settings.API_V1_STR)
