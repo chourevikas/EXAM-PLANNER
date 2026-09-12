@@ -152,3 +152,21 @@ async def invalidate_attempt_cache(attempt_id: int | str, user_id: Optional[int 
 
     if user_id:
         await invalidate_user_cache(str(user_id))
+
+
+async def invalidate_exam_type_cache() -> None:
+    """Invalidates active and admin exam type listings and configuration cache."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+    await cache.delete_pattern(f"{prefix}:exam_types*")
+    await cache.delete_pattern(f"{prefix}:admin:exam_types*")
+
+
+async def invalidate_site_settings_cache() -> None:
+    """Invalidates active theme and global site settings cache."""
+    cache = get_cache()
+    settings = get_settings()
+    prefix = settings.CACHE_KEY_PREFIX or "ep"
+    await cache.delete_pattern(f"{prefix}:site_settings*")
+    await cache.delete_pattern(f"{prefix}:theme*")

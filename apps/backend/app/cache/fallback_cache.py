@@ -65,11 +65,12 @@ class FallbackCache(BaseCache):
             except Exception as e:
                 self._trip_circuit(e, "write")
 
+        fallback_success = False
         if self.enable_fallback:
-            # Also store in fallback cache if primary failed or for seamless fallback coverage
-            if not primary_success:
-                return await self.fallback.set(key, value, ttl_seconds)
-        return primary_success
+            # Keep fallback cache synchronized so fresh data is immediately available during failover
+            fallback_success = await self.fallback.set(key, value, ttl_seconds)
+
+        return primary_success or fallback_success
 
     async def delete(self, key: str) -> bool:
         res1 = False

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { fetchActiveTheme } from '../services/siteSettingsService';
+import { fetchActiveTheme, invalidateActiveThemeCache } from '../services/siteSettingsService';
 
 const THEME_STORAGE_KEY = 'site_theme';
 
@@ -39,6 +39,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const applyThemeOptimistically = (name: string) => {
+    invalidateActiveThemeCache();
     setThemeName(name);
     applyTheme(name);
   };

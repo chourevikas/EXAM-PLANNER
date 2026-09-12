@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import inspect
 from typing import Callable, Any, Optional, Dict
@@ -20,6 +21,10 @@ EXCLUDED_ARG_NAMES = {
     "response",
 }
 
+# Single-flight registry preventing cache stampedes (thundering herds) across concurrent misses
+_in_flight_tasks: Dict[str, asyncio.Future] = {}
+_in_flight_lock = asyncio.Lock()
+
 
 def cached(
     prefix: str,
@@ -29,7 +34,7 @@ def cached(
     """
     Decorator for caching asynchronous endpoint or service function results.
     1. Checks cache for existing key -> returns if hit (0-2ms).
-    2. On miss -> executes DB operation -> serializes & saves to cache -> returns result.
+    2. On miss -> coalesces concurrent callers with single-flight locking -> executes DB operation -> saves to cache.
     """
 
     def decorator(func: Callable):
@@ -59,16 +64,41 @@ def cached(
                 logger.info(f"⚡ [CACHE:HIT] Fetched from cache for key: '{cache_key}'")
                 return cached_val
 
+            # Cache stampede protection: single-flight execution for concurrent cache misses
+            leader = False
+            async with _in_flight_lock:
+                if cache_key in _in_flight_tasks:
+                    existing_future = _in_flight_tasks[cache_key]
+                else:
+                    loop = asyncio.get_running_loop()
+                    existing_future = loop.create_future()
+                    _in_flight_tasks[cache_key] = existing_future
+                    leader = True
+
+            if not leader:
+                logger.info(f"⏳ [CACHE:COALESCE] Waiting on in-flight DB query for key: '{cache_key}'")
+                return await asyncio.shield(existing_future)
+
             logger.info(f"🔍 [CACHE:MISS] Key '{cache_key}' not in cache -> fetching from database...")
 
-            # 3. Execute DB operation
-            result = await func(*args, **kwargs)
+            try:
+                # 3. Execute DB operation
+                result = await func(*args, **kwargs)
 
-            # 4. Save to Cache on Miss (only if result is not None/empty)
-            if result is not None:
-                await cache.set(cache_key, result, ttl_seconds=ttl)
+                # 4. Save to Cache on Miss (only if result is not None/empty)
+                if result is not None:
+                    await cache.set(cache_key, result, ttl_seconds=ttl)
 
-            return result
+                if not existing_future.done():
+                    existing_future.set_result(result)
+                return result
+            except BaseException as exc:
+                if not existing_future.done():
+                    existing_future.set_exception(exc)
+                raise
+            finally:
+                async with _in_flight_lock:
+                    _in_flight_tasks.pop(cache_key, None)
 
         return wrapper
 

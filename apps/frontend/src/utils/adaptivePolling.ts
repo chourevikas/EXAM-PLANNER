@@ -41,6 +41,7 @@ export function createAdaptivePoller(
 
   let timerId: ReturnType<typeof setTimeout> | null = null;
   let isRunning = false;
+  let isPollActive = false;
   let pollIteration = 0;
   let currentDelay = initialDelayMs;
 
@@ -71,7 +72,8 @@ export function createAdaptivePoller(
   };
 
   const executePoll = async () => {
-    if (!isRunning) return;
+    if (!isRunning || isPollActive) return;
+    isPollActive = true;
 
     try {
       const result = await taskFn();
@@ -91,6 +93,8 @@ export function createAdaptivePoller(
       if (isRunning) {
         timerId = setTimeout(executePoll, currentDelay);
       }
+    } finally {
+      isPollActive = false;
     }
   };
 

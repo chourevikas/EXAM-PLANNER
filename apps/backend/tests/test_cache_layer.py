@@ -152,3 +152,58 @@ class TestCacheLayer(unittest.IsolatedAsyncioTestCase):
         # Query param order should not affect the hash
         self.assertEqual(key1, key2)
         self.assertTrue(key1.startswith("ep:exams:list:"))
+
+    async def test_cached_decorator_stampede_coalescing(self):
+        call_count = 0
+
+        @cached(prefix="stampede_test", ttl=60)
+        async def slow_db_query(item_id: int):
+            nonlocal call_count
+            call_count += 1
+            await asyncio.sleep(0.05)  # Simulate DB latency
+            return {"item_id": item_id, "call_count": call_count}
+
+        # Launch 5 concurrent calls for the exact same key at the same time
+        results = await asyncio.gather(
+            slow_db_query(42),
+            slow_db_query(42),
+            slow_db_query(42),
+            slow_db_query(42),
+            slow_db_query(42),
+        )
+
+        # All 5 calls must receive the exact same result
+        for res in results:
+            self.assertEqual(res["item_id"], 42)
+            self.assertEqual(res["call_count"], 1)
+
+        # But slow_db_query should have executed exactly ONCE
+        self.assertEqual(call_count, 1)
+
+    async def test_fallback_cache_write_synchronization(self):
+        primary = InMemoryCache(max_size=10, default_ttl=60)
+        fallback = InMemoryCache(max_size=10, default_ttl=60)
+        dual_cache = FallbackCache(primary=primary, fallback=fallback, enable_fallback=True)
+
+        await dual_cache.set("sync:key", {"status": "fresh"}, ttl_seconds=60)
+
+        # Both primary and fallback caches should now hold the fresh value
+        self.assertEqual(await primary.get("sync:key"), {"status": "fresh"})
+        self.assertEqual(await fallback.get("sync:key"), {"status": "fresh"})
+
+    def test_cache_json_encoder_decimal_and_bytes(self):
+        import json
+        from decimal import Decimal
+        from app.cache.redis_cache import CacheJSONEncoder
+
+        payload = {
+            "score": Decimal("198.50"),
+            "integer_marks": Decimal("200"),
+            "raw_bytes": b"sample_text",
+        }
+        serialized = json.dumps(payload, cls=CacheJSONEncoder)
+        deserialized = json.loads(serialized)
+
+        self.assertEqual(deserialized["score"], 198.50)
+        self.assertEqual(deserialized["integer_marks"], 200)
+        self.assertEqual(deserialized["raw_bytes"], "sample_text")

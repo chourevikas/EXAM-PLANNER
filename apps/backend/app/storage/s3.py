@@ -36,6 +36,9 @@ class S3StorageProvider(BaseStorageProvider):
             region_name=self.region_name,
         )
 
+        self._bucket_verified = False
+        self._cors_configured = False
+
     def _get_client_kwargs(self):
         kwargs = {}
         if self.endpoint_url:
@@ -43,25 +46,31 @@ class S3StorageProvider(BaseStorageProvider):
         return kwargs
 
     async def _ensure_bucket_exists(self, s3_client):
-        """Ensures target S3/MinIO bucket exists and has CORS enabled for frontend direct access."""
-        try:
-            await s3_client.head_bucket(Bucket=self.bucket_name)
-        except Exception:
-            logger.info(f"S3/MinIO bucket '{self.bucket_name}' does not exist. Creating automatically...")
+        """Ensures target S3/MinIO bucket exists and has CORS enabled. Caches verification to avoid redundant network calls."""
+        if self._bucket_verified and self._cors_configured:
+            return
+
+        if not self._bucket_verified:
             try:
-                if self.region_name and self.region_name != "us-east-1":
-                    await s3_client.create_bucket(
-                        Bucket=self.bucket_name,
-                        CreateBucketConfiguration={"LocationConstraint": self.region_name},
-                    )
-                else:
-                    await s3_client.create_bucket(Bucket=self.bucket_name)
-                logger.info(f"Successfully created bucket '{self.bucket_name}'.")
-            except Exception as create_err:
-                logger.warning(f"Could not auto-create bucket '{self.bucket_name}': {create_err}")
+                await s3_client.head_bucket(Bucket=self.bucket_name)
+                self._bucket_verified = True
+            except Exception:
+                logger.info(f"S3/MinIO bucket '{self.bucket_name}' does not exist. Creating automatically...")
+                try:
+                    if self.region_name and self.region_name != "us-east-1":
+                        await s3_client.create_bucket(
+                            Bucket=self.bucket_name,
+                            CreateBucketConfiguration={"LocationConstraint": self.region_name},
+                        )
+                    else:
+                        await s3_client.create_bucket(Bucket=self.bucket_name)
+                    logger.info(f"Successfully created bucket '{self.bucket_name}'.")
+                    self._bucket_verified = True
+                except Exception as create_err:
+                    logger.warning(f"Could not auto-create bucket '{self.bucket_name}': {create_err}")
 
         # Auto-configure CORS for web frontend clients (e.g. localhost:3000, production origins)
-        if not getattr(self, "_cors_configured", False):
+        if not self._cors_configured and self._bucket_verified:
             try:
                 cors_config = {
                     "CORSRules": [
@@ -127,7 +136,7 @@ class S3StorageProvider(BaseStorageProvider):
     async def save_image(self, image: Image.Image, relative_destination: str) -> str:
         buffer = io.BytesIO()
         img_format = "PNG" if relative_destination.lower().endswith(".png") else "JPEG"
-        image.save(buffer, format=img_format)
+        await asyncio.to_thread(image.save, buffer, format=img_format)
         buffer.seek(0)
 
         logger.info(

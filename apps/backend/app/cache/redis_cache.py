@@ -1,5 +1,6 @@
 import json
 import uuid
+from decimal import Decimal
 from enum import Enum
 from datetime import datetime, date
 from typing import Any, Optional, Dict, List
@@ -11,7 +12,7 @@ logger = setup_logger("RedisCache")
 
 
 class CacheJSONEncoder(json.JSONEncoder):
-    """Custom JSON encoder supporting UUIDs, datetimes, Enums, and Pydantic/SQLModel models."""
+    """Custom JSON encoder supporting UUIDs, datetimes, Enums, Decimals, bytes, and Pydantic/SQLModel models."""
 
     def default(self, obj: Any) -> Any:
         if isinstance(obj, uuid.UUID):
@@ -20,6 +21,10 @@ class CacheJSONEncoder(json.JSONEncoder):
             return obj.isoformat()
         if isinstance(obj, Enum):
             return obj.value
+        if isinstance(obj, Decimal):
+            return int(obj) if obj % 1 == 0 else float(obj)
+        if isinstance(obj, bytes):
+            return obj.decode("utf-8", errors="replace")
         if hasattr(obj, "model_dump"):
             return obj.model_dump(mode="json")
         if hasattr(obj, "dict") and callable(getattr(obj, "dict")):

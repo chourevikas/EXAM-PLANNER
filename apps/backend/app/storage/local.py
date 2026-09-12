@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import shutil
 import aiofiles
 import aiofiles.os
@@ -15,7 +16,12 @@ class LocalStorageProvider(BaseStorageProvider):
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def _resolve_path(self, relative_destination: str) -> Path:
-        target = self.base_dir / relative_destination
+        cleaned = relative_destination.lstrip("/\\")
+        target = (self.base_dir / cleaned).resolve()
+        if not target.is_relative_to(self.base_dir):
+            raise ValueError(
+                f"Path traversal detected: '{relative_destination}' escapes base directory '{self.base_dir}'"
+            )
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
@@ -62,11 +68,13 @@ class LocalStorageProvider(BaseStorageProvider):
         return str(self._resolve_path(relative_path))
 
     async def exists(self, relative_path: str) -> bool:
-        target = self.base_dir / relative_path
-        return await aiofiles.os.path.exists(target)
+        try:
+            target = self._resolve_path(relative_path)
+            return await aiofiles.os.path.exists(target)
+        except ValueError:
+            return False
 
     async def upload_json(self, data: dict, relative_destination: str) -> str:
-        import json
         target = self._resolve_path(relative_destination)
         content = json.dumps(data, indent=2, ensure_ascii=False)
         async with aiofiles.open(target, mode="w", encoding="utf-8") as f:
@@ -74,13 +82,13 @@ class LocalStorageProvider(BaseStorageProvider):
         return relative_destination
 
     async def download_json(self, relative_path: str) -> dict:
-        import json
-        target = self.base_dir / relative_path
-        if not await aiofiles.os.path.exists(target):
-            raise FileNotFoundError(f"JSON file not found at '{target}'")
-        async with aiofiles.open(target, mode="r", encoding="utf-8") as f:
-            content = await f.read()
-        return json.loads(content)
+        try:
+            target = self._resolve_path(relative_path)
+            async with aiofiles.open(target, mode="r", encoding="utf-8") as f:
+                content = await f.read()
+            return json.loads(content)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"JSON file not found at '{relative_path}'")
 
     async def generate_presigned_url(
         self, relative_path: str, expiration_seconds: int = 3600
@@ -89,14 +97,14 @@ class LocalStorageProvider(BaseStorageProvider):
         return self.get_public_url(relative_path)
 
     async def delete_file(self, relative_path: str) -> bool:
-        target = self.base_dir / relative_path
-        if await aiofiles.os.path.exists(target):
-            try:
-                await aiofiles.os.remove(target)
-                return True
-            except Exception:
-                return False
-        return False
+        try:
+            target = self._resolve_path(relative_path)
+            await aiofiles.os.remove(target)
+            return True
+        except (FileNotFoundError, ValueError):
+            return False
+        except Exception:
+            return False
 
 
 

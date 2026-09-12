@@ -16,10 +16,32 @@ type InFlightEntry = {
 const inFlightGetRequests = new Map<string, InFlightEntry>();
 const endpointLocks = new Map<string, Promise<any>>();
 
+function extractAuthHeader(headers?: HeadersInit): string {
+  if (!headers) return '';
+  if (headers instanceof Headers) {
+    return headers.get('Authorization') || headers.get('authorization') || '';
+  }
+  if (Array.isArray(headers)) {
+    const found = headers.find(([k]) => k.toLowerCase() === 'authorization');
+    return found ? found[1] : '';
+  }
+  if (typeof headers === 'object') {
+    const record = headers as Record<string, string>;
+    return record['Authorization'] || record['authorization'] || '';
+  }
+  return '';
+}
+
 function normalizeRequestKey(input: RequestInfo | URL, init?: RequestInit): string {
-  const method = (init?.method || 'GET').toUpperCase();
+  const isReq = typeof Request !== 'undefined' && input instanceof Request;
+  const method = (init?.method || (isReq ? input.method : 'GET')).toUpperCase();
   const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
-  return `${method}:${url}`;
+  let auth = extractAuthHeader(init?.headers);
+  if (!auth && isReq) {
+    auth = input.headers.get('Authorization') || input.headers.get('authorization') || '';
+  }
+  const authSuffix = auth ? `|auth:${auth.slice(-16)}` : '';
+  return `${method}:${url}${authSuffix}`;
 }
 
 /**
