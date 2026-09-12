@@ -214,3 +214,4 @@ def root():
         "docs": "/docs",
         "redoc": "/redoc",
     }
+# Trigger CI pipeline for Redis connection fix
