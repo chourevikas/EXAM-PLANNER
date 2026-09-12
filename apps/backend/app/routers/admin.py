@@ -33,7 +33,9 @@ from app.schemas.question import (
     QuestionCreatePayload,
     ExamReviewQuestionsResponse,
 )
+from app.schemas.platform_analytics import PlatformAnalyticsResponse
 from app.services.admin_service import AdminService
+
 from app.services.question_service import QuestionService
 from app.core.deps import require_roles
 from app.config.logger import setup_logger
@@ -215,7 +217,27 @@ async def get_system_diagnostics(
 
 
 @router.get(
+    "/analytics/platform-reports",
+    response_model=PlatformAnalyticsResponse,
+    summary="Get Platform-Wide Diagnostics & Reports Analytics",
+)
+async def get_platform_reports(
+    time_range: str = Query("30d", description="Time window: 7d, 30d, 90d, 1y"),
+    exam_filter: str = Query("ALL", description="Exam filter: ALL, UPSC_CSE, STATE_PSC"),
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns platform-wide candidate metrics, subject diagnostic performance,
+    and AI ingestion pipeline precision metrics with high-speed Redis caching.
+    """
+    service = AdminService(session)
+    return await service.get_platform_analytics(time_range=time_range, exam_filter=exam_filter)
+
+
+@router.get(
     "/exams/pipeline-status",
+
     summary="List All Exams with Pipeline Status & Question Metrics",
 )
 async def list_exam_pipeline_statuses(

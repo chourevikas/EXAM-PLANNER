@@ -725,6 +725,49 @@ export async function verifySyllabusTaxonomy(subject: string, topic: string, sub
   return await res.json();
 }
 
+export interface SummaryStripData {
+  total_attempts: number;
+  avg_accuracy: number;
+  mom_accuracy_delta: number;
+  ai_precision: number;
+  active_test_takers: number;
+}
 
+export interface SubjectDiagnosticItem {
+  subject: string;
+  total_questions: number;
+  attempted: number;
+  accuracy: string;
+  target: string;
+  status: string;
+}
 
+export interface AIPipelinePrecisionItem {
+  label: string;
+  value: string;
+  description: string;
+}
 
+export interface PlatformAnalyticsData {
+  time_range: string;
+  exam_filter: string;
+  summary: SummaryStripData;
+  subject_accuracy: SubjectDiagnosticItem[];
+  ai_precision_metrics: AIPipelinePrecisionItem[];
+  generated_at: string;
+}
+
+export async function fetchPlatformAnalytics(timeRange: string = '30d', examFilter: string = 'ALL'): Promise<PlatformAnalyticsData> {
+  const params = new URLSearchParams({
+    time_range: timeRange,
+    exam_filter: examFilter,
+  });
+  const res = await fetch(`${API_BASE_URL}/analytics/platform-reports?${params.toString()}`, {
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to fetch platform analytics' }));
+    throw new Error(errorData.detail || 'Could not fetch platform analytics.');
+  }
+  return await res.json();
+}
