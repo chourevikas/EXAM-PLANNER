@@ -18,6 +18,7 @@ import {
   BookOpen,
   X,
   Sliders,
+  Menu,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { UserAvatar } from '../common/UserAvatar';
@@ -52,7 +53,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [unreadCount, setUnreadCount] = useState(3);
-  const { isMobile, isSmallScreen } = useBreakpoint();
+  const { isMobile, isSmallScreen, isTabletOrBelow } = useBreakpoint();
 
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -146,8 +147,32 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         boxSizing: 'border-box'
       }}
     >
-      {/* Left: Brand Logo & Breadcrumbs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16 }}>
+      {/* Left: Hamburger Button, Brand Logo & Breadcrumbs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16 }}>
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="touch-target"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 6,
+              borderRadius: 0,
+              marginRight: isMobile ? -4 : -6,
+            }}
+            title="Toggle Navigation Menu"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu size={22} />
+          </button>
+        )}
+
         {/* Brand Logo */}
         <div
           onClick={() => onNavigate('dashboard')}
@@ -157,10 +182,11 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             src="/logo.jpeg"
             alt="ExamPlanner"
             style={{
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               objectFit: 'contain',
-              flexShrink: 0
+              flexShrink: 0,
+              borderRadius: 4,
             }}
           />
           {!isSmallScreen && (
@@ -179,7 +205,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
         </div>
 
         {/* Breadcrumb Trail */}
-        {!isMobile && (
+        {!isTabletOrBelow && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
             <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: 400 }}>Admin</span>
             <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />

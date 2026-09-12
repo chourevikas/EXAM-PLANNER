@@ -13,8 +13,10 @@ import {
 } from '../../../services/adminService';
 import { fetchActiveExamTypes } from '../../../services/examTypeService';
 import { ExamType } from '../../../types/examType';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export function AnalyticsView() {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [examFilter, setExamFilter] = useState<string>('ALL');
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
@@ -154,7 +156,7 @@ export function AnalyticsView() {
         </div>
 
         {/* Toolbar Controls */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           {loading && data && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#667085', fontSize: 12, marginRight: 4 }}>
               <Loader2 size={14} className="animate-spin" />
@@ -301,7 +303,7 @@ export function AnalyticsView() {
           padding: '12px 20px',
           marginBottom: 24,
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(130px, 1fr))' : 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: 16,
           alignItems: 'center',
           boxShadow: '0 1px 2px rgba(16,24,40,0.02)',
@@ -385,10 +387,11 @@ export function AnalyticsView() {
             border: '1px solid #E4E7EC',
             borderRadius: 0,
             boxShadow: '0 1px 2px rgba(16, 24, 40, 0.02)',
-            overflow: 'hidden',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+          <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #E4E7EC', backgroundColor: '#F7F7F5' }}>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#667085', fontSize: 12 }}>SUBJECT MODULE</th>

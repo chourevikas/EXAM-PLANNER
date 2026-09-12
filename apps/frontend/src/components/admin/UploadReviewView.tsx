@@ -1684,8 +1684,8 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               <div>No examination papers found matching filter criteria.</div>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFAFA' }}>
                     <th style={{ padding: '12px 16px', fontWeight: 600, color: '#64748B', fontSize: 12, letterSpacing: '0.04em' }}>
@@ -1940,7 +1940,7 @@ export function UploadReviewView({ onNavigate }: UploadReviewViewProps = {}) {
               right: 0,
               bottom: 0,
               width: 480,
-              maxWidth: '90vw',
+              maxWidth: 'min(480px, 100vw)',
               backgroundColor: '#FFFFFF',
               boxShadow: '-4px 0 24px rgba(15, 23, 42, 0.15)',
               zIndex: 200,

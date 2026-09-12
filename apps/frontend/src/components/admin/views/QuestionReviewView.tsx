@@ -4319,7 +4319,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       Curriculum & Syllabus Hierarchy
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
                           Subject:
@@ -4397,7 +4397,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       Scoring & Difficulty
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
                           Difficulty:
@@ -4604,7 +4604,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
                                   <input
                                     type="text"
                                     value={hLink.subject_name || ''}

@@ -32,6 +32,7 @@ import {
   updateAdminQuestionDetail,
   updateAdminQuestionStatus,
 } from '../../services/adminService';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 import { AdminQuestionPublicationCard } from './AdminQuestionPublicationCard';
 
@@ -121,6 +122,7 @@ function ExploreButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) 
 }
 
 export function QuestionBankManager() {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
   // Navigation State: null = Directory View, SubjectItem = Selected Subject
   const [selectedSubject, setSelectedSubject] = useState<SubjectItem | null>(null);
 
@@ -525,12 +527,14 @@ export function QuestionBankManager() {
               border: '1px solid #E2E8F0',
               borderRadius: 0,
               boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
-              overflow: 'hidden',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             <table
               style={{
                 width: '100%',
+                minWidth: 680,
                 borderCollapse: 'collapse',
                 textAlign: 'left',
                 fontSize: 13.5,
@@ -719,7 +723,7 @@ export function QuestionBankManager() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '320px 1fr',
+              gridTemplateColumns: isTabletOrBelow ? '1fr' : '320px 1fr',
               gap: 20,
               minHeight: 640,
             }}
@@ -1008,11 +1012,11 @@ export function QuestionBankManager() {
 
       {/* EDIT MODAL DRAWER */}
       {editingQuestion && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: isMobile ? 12 : 20 }}>
           <div
             style={{
               width: '100%',
-              maxWidth: 680,
+              maxWidth: 'min(680px, calc(100vw - 24px))',
               maxHeight: '90vh',
               backgroundColor: '#FFFFFF',
               borderRadius: 0,

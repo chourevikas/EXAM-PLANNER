@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { useThemeContext } from '../../../contexts/ThemeContext';
 import { updateActiveTheme } from '../../../services/siteSettingsService';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 interface ThemePreset {
   id: string;
@@ -38,6 +39,7 @@ const THEME_PRESETS: ThemePreset[] = [
 ];
 
 export function ThemeSettingsView() {
+  const { isMobile } = useBreakpoint();
   const { themeName, applyThemeOptimistically } = useThemeContext();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; isError: boolean } | null>(null);
@@ -67,7 +69,7 @@ export function ThemeSettingsView() {
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
         borderRadius: 0,
-        padding: 32,
+        padding: isMobile ? '20px 16px' : 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
       }}

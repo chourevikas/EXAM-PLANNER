@@ -26,8 +26,10 @@ import {
   adminUpdateExamType,
   adminDeleteExamType,
 } from '../../../services/examTypeService';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export function ExamTypesManager() {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [examTypes, setExamTypes] = useState<ExamType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -192,7 +194,7 @@ export function ExamTypesManager() {
         style={{
           background: 'linear-gradient(135deg, #0F1D38 0%, #14284C 45%, #1B3864 75%, #224578 100%)',
           borderRadius: 0,
-          padding: '24px 28px',
+          padding: isMobile ? '16px 18px' : '24px 28px',
           marginBottom: 24,
           boxShadow: '0 4px 16px -2px rgba(15, 29, 56, 0.12)',
           display: 'flex',
@@ -369,7 +371,8 @@ export function ExamTypesManager() {
             </p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 <th style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.04em' }}>
@@ -558,8 +561,9 @@ export function ExamTypesManager() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* Add / Edit Exam Type Modal */}
       {isModalOpen && (
@@ -578,13 +582,15 @@ export function ExamTypesManager() {
         >
           <div
             style={{
-              background: '#FFFFFF',
-              borderRadius: 0,
               width: '100%',
-              maxWidth: 620,
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+              maxWidth: 'min(620px, calc(100vw - 24px))',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 0,
+              boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               overflow: 'hidden',
-              animation: 'scaleIn 0.2s ease-out',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
             }}
           >
             <div
@@ -866,13 +872,12 @@ export function ExamTypesManager() {
         >
           <div
             style={{
-              background: '#FFFFFF',
-              borderRadius: 0,
               width: '100%',
-              maxWidth: 480,
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+              maxWidth: 'min(480px, calc(100vw - 24px))',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 0,
+              boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.25)',
               padding: 24,
-              animation: 'scaleIn 0.2s ease-out',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>

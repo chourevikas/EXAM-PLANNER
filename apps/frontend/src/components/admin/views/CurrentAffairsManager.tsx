@@ -144,8 +144,8 @@ export function CurrentAffairsManager() {
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Content (Markdown)</label>
             <textarea required rows={6} value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid #ddd' }} />
           </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px', minWidth: 200 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Topic (Optional)</label>
               <select value={topic} onChange={e => setTopic(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid #ddd' }}>
                 <option value="">-- Select Topic --</option>
@@ -157,11 +157,11 @@ export function CurrentAffairsManager() {
                 <option value="Current Affairs">Current Affairs</option>
               </select>
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 200 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Subtopic (Optional)</label>
               <input type="text" value={subtopic} onChange={e => setSubtopic(e.target.value)} placeholder="e.g. Fundamental Rights" style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid #ddd' }} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: '1 1 200px', minWidth: 200 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Date (Optional)</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: 4, border: '1px solid #ddd' }} />
             </div>
@@ -193,7 +193,8 @@ export function CurrentAffairsManager() {
 
       <div style={{ backgroundColor: '#fff', padding: 24, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <h3 style={{ marginTop: 0, marginBottom: 16 }}>Published Articles</h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 500, borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #eee', textAlign: 'left' }}>
               <th style={{ padding: 12 }}>Date</th>
@@ -225,6 +226,7 @@ export function CurrentAffairsManager() {
             {affairs.length === 0 && <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center' }}>No current affairs found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

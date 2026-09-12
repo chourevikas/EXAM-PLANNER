@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Trophy, RefreshCw, Gift, X } from 'lucide-react';
 import { TeacherLeaderboardEntry } from '../../../types/auth';
 import { fetchTeacherLeaderboard, grantTeacherReward } from '../../../services/teacherService';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export function TeacherRewardsView() {
+  const { isMobile } = useBreakpoint();
   const [teachers, setTeachers] = useState<TeacherLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function TeacherRewardsView() {
         background: 'var(--bg-card)',
         border: '1px solid var(--border-color)',
         borderRadius: 0,
-        padding: 32,
+        padding: isMobile ? '20px 16px' : 32,
         boxShadow: '0 12px 36px -10px rgba(15, 29, 56, 0.08)',
         fontFamily: 'Inter, sans-serif',
       }}
@@ -139,8 +141,8 @@ export function TeacherRewardsView() {
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: 0, border: '1px solid var(--border-color)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: 0, border: '1px solid var(--border-color)' }}>
+          <table style={{ width: '100%', minWidth: 500, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--bg-body)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <th style={{ padding: '16px 20px' }}>Teacher</th>

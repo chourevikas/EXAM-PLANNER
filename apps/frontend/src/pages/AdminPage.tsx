@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminSidebar } from '../components/admin/AdminSidebar';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
 import { fetchCurrentUser } from '../services/authService';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 
 /* View Components */
 import { AdminOverviewView } from '../components/admin/AdminOverviewView';
@@ -24,7 +25,8 @@ export function AdminPage() {
   const [selectedExamForReview, setSelectedExamForReview] = useState<any>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
+
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('user') || '{}');
@@ -40,19 +42,17 @@ export function AdminPage() {
     }).catch(err => {
       console.error("Failed to fetch user data:", err);
     });
-
-    const handleResize = () => {
-      const mobile = window.innerWidth <= 768;
-      setIsMobile(mobile);
-      if (!mobile) setMobileOpen(false);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Close mobile drawer when transitioning to desktop/wide screen
+  useEffect(() => {
+    if (!isTabletOrBelow) {
+      setMobileOpen(false);
+    }
+  }, [isTabletOrBelow]);
+
   const handleToggleSidebar = () => {
-    if (isMobile) {
+    if (isTabletOrBelow) {
       setMobileOpen((prev) => !prev);
     } else {
       setSidebarCollapsed((prev) => !prev);
@@ -66,7 +66,7 @@ export function AdminPage() {
     } else if (view !== 'review') {
       setSelectedExamForReview(null);
     }
-    if (isMobile) setMobileOpen(false);
+    if (isTabletOrBelow) setMobileOpen(false);
   };
 
   const renderView = () => {
@@ -131,7 +131,7 @@ export function AdminPage() {
         <div 
           style={{ 
             flex: 1, 
-            marginLeft: isMobile ? 0 : (sidebarCollapsed ? '68px' : '240px'), 
+            marginLeft: isTabletOrBelow ? 0 : (sidebarCollapsed ? '68px' : '240px'), 
             display: 'flex', 
             flexDirection: 'column', 
             minWidth: 0,
@@ -144,7 +144,7 @@ export function AdminPage() {
             flex: 1, 
             overflowY: 'auto', 
             background: '#F7F7F5', 
-            padding: isMobile ? '16px 20px' : '24px 32px', 
+            padding: isMobile ? '16px 12px' : isTabletOrBelow ? '20px 20px' : '24px 32px', 
             boxSizing: 'border-box' 
           }}>
             {renderView()}
@@ -154,6 +154,4 @@ export function AdminPage() {
       </div>
     </div>
   );
-
 }
-

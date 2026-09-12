@@ -21,8 +21,10 @@ import {
 } from 'lucide-react';
 import { fetchAllUsers, fetchUserById } from '../../../services/adminService';
 import { User } from '../../../types/auth';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
 
 export function UsersView() {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [usersList, setUsersList] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -202,7 +204,7 @@ export function UsersView() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', gap: 16, flexWrap: 'wrap' }}>
 
           {/* Search Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 6, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 6, padding: '8px 14px', border: '1px solid #cbd5e1', width: isMobile ? '100%' : 320, maxWidth: '100%', boxSizing: 'border-box' }}>
             <Search size={16} color="#94a3b8" />
             <input
               type="text"
@@ -263,8 +265,8 @@ export function UsersView() {
             <span style={{ fontSize: 14, fontWeight: 600 }}>Loading live candidate directory...</span>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 680, borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Actions'].map((h, idx) => (
@@ -527,7 +529,7 @@ export function UsersView() {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: 620,
+              maxWidth: 'min(620px, calc(100vw - 24px))',
               maxHeight: '90vh',
               backgroundColor: '#ffffff',
               borderRadius: 14,

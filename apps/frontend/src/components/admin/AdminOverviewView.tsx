@@ -15,6 +15,7 @@ import {
   fetchAdminOverviewStats,
   AdminOverviewStats,
 } from '../../services/adminService';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 interface AdminOverviewViewProps {
   onNavigate: (view: string, extraData?: any) => void;
@@ -445,6 +446,7 @@ function SubjectDistributionRow({
 // Main AdminOverviewView Component
 // ----------------------------------------------------------------------
 export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
+  const { isMobile, isTabletOrBelow } = useBreakpoint();
   const [stats, setStats] = useState<AdminOverviewStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -524,7 +526,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         style={{
           background: 'linear-gradient(135deg, #0F1D38 0%, #14284C 45%, #1B3864 75%, #224578 100%)',
           borderRadius: 0,
-          padding: '24px 28px',
+          padding: isMobile ? '16px 18px' : '24px 28px',
           marginBottom: 24,
           boxShadow: '0 4px 16px -2px rgba(15, 29, 56, 0.12)',
           display: 'flex',
@@ -666,8 +668,8 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-          gap: 16,
+          gridTemplateColumns: isMobile ? 'repeat(auto-fit, minmax(140px, 1fr))' : 'repeat(auto-fit, minmax(230px, 1fr))',
+          gap: isMobile ? 12 : 16,
           marginBottom: 24,
         }}
       >
@@ -710,7 +712,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'calc(100% - 364px) 340px',
+          gridTemplateColumns: isTabletOrBelow ? '1fr' : 'calc(100% - 364px) 340px',
           gap: 24,
         }}
       >
@@ -720,7 +722,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             background: '#FFFFFF',
             border: '1px solid #E2E8F0',
             borderRadius: 0,
-            padding: 24,
+            padding: isMobile ? '16px' : '24px',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
           }}
         >
@@ -768,10 +770,11 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           </div>
 
           {/* Data Table */}
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table
               style={{
                 width: '100%',
+                minWidth: 540,
                 borderCollapse: 'collapse',
                 textAlign: 'left',
                 fontSize: 13.5,

@@ -186,7 +186,7 @@ function FormModal({ mode, initial, onSave, onClose, saving }: FormModalProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: '28px 32px', maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 50px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: '24px 20px', maxWidth: 'min(560px, calc(100vw - 24px))', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 50px rgba(0,0,0,0.2)' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827', fontFamily: 'Inter, sans-serif' }}>
@@ -516,7 +516,8 @@ export function NotificationsView() {
             <button onClick={handleOpenCreate} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Create your first notification →</button>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                 {['Type', 'Title', 'Status', 'Created By', 'Published', 'Actions'].map(col => (
@@ -601,7 +602,8 @@ export function NotificationsView() {
               ))}
             </tbody>
           </table>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Pagination */}
