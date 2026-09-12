@@ -42,8 +42,8 @@ class RedisCache(BaseCache):
             redis_url,
             decode_responses=True,
             max_connections=50,
-            socket_timeout=2.0,
-            socket_connect_timeout=2.0,
+            socket_timeout=0.5,
+            socket_connect_timeout=0.5,
         )
         self._client = aioredis.Redis(connection_pool=self._pool)
 

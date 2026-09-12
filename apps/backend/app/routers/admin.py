@@ -50,7 +50,6 @@ router = APIRouter(prefix="/admin", tags=["Admin Management"])
     summary="Get Live Admin Dashboard Overview Metrics",
 )
 async def get_admin_overview_stats(
-    session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
@@ -65,13 +64,15 @@ async def get_admin_overview_stats(
     if cached_data is not None:
         return JSONResponse(content=jsonable_encoder(cached_data))
 
-    service = AdminService(session)
-    stats = await service.get_admin_overview_stats()
-    if stats is not None:
-        serialized = jsonable_encoder(stats)
-        await cache.set(cache_key, serialized, ttl_seconds=300)
-        return JSONResponse(content=serialized)
-    return JSONResponse(content={})
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        service = AdminService(session)
+        stats = await service.get_admin_overview_stats()
+        if stats is not None:
+            serialized = jsonable_encoder(stats)
+            await cache.set(cache_key, serialized, ttl_seconds=300)
+            return JSONResponse(content=serialized)
+        return JSONResponse(content={})
 
 
 @router.get("/pending-requests", response_model=List[AdminApprovalRequestOut])
@@ -224,38 +225,29 @@ async def get_system_diagnostics(
 async def get_platform_reports(
     time_range: str = Query("30d", description="Time window: 7d, 30d, 90d, 1y"),
     exam_filter: str = Query("ALL", description="Exam filter: ALL, UPSC_CSE, STATE_PSC"),
-    session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
     Returns platform-wide candidate metrics, subject diagnostic performance,
     and AI ingestion pipeline precision metrics with high-speed Redis caching.
     """
-    service = AdminService(session)
-    return await service.get_platform_analytics(time_range=time_range, exam_filter=exam_filter)
-
-
-@router.get(
-    "/exams/pipeline-status",
-
-    summary="List All Exams with Pipeline Status & Question Metrics",
-)
-async def list_exam_pipeline_statuses(
-    session: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
-):
-    """
-    Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
-    answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
-    """
-    from app.cache import get_cache
+    from app.cache import get_cache, build_cache_key
 
     cache = get_cache()
-    cache_key = "ep:admin:pipeline_status"
+    cache_key = build_cache_key(
+        "admin:platform_analytics", time_range=time_range, exam_filter=exam_filter
+    )
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=jsonable_encoder(cached_data))
 
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        service = AdminService(session)
+        return await service.get_platform_analytics(time_range=time_range, exam_filter=exam_filter)
+
+
+async def _compute_exam_pipeline_statuses(session: AsyncSession) -> list:
     from sqlmodel import select, func, case
     from app.db.models import (
         Exam,
@@ -606,31 +598,37 @@ async def list_exam_pipeline_statuses(
             }
         )
 
-    encoded = jsonable_encoder(pipeline_list)
-    await cache.set(cache_key, encoded, ttl_seconds=10)
-    return JSONResponse(content=encoded)
+    return pipeline_list
 
 
 @router.get(
-    "/exams/stuck-pipelines",
-    summary="List Interrupted / Stuck Pipelines Requiring Admin Action",
+    "/exams/pipeline-status",
+    summary="List All Exams with Pipeline Status & Question Metrics",
 )
-async def list_stuck_pipelines(
-    session: AsyncSession = Depends(get_async_session),
+async def list_exam_pipeline_statuses(
     current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
 ):
     """
-    Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
-    so the admin UI can display an action prompt to resume with skipped pre-extracted items.
+    Returns list of all exams with detailed 3-stage pipeline status, extracted question metrics,
+    answer key mapping, explanation generation status, and S3 JSON folder artifact paths.
     """
     from app.cache import get_cache
 
     cache = get_cache()
-    cache_key = "ep:admin:stuck_pipelines"
+    cache_key = "ep:admin:pipeline_status"
     cached_data = await cache.get(cache_key)
     if cached_data is not None:
         return JSONResponse(content=jsonable_encoder(cached_data))
 
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        pipeline_list = await _compute_exam_pipeline_statuses(session)
+        encoded = jsonable_encoder(pipeline_list)
+        await cache.set(cache_key, encoded, ttl_seconds=60)
+        return JSONResponse(content=encoded)
+
+
+async def _compute_stuck_pipelines(session: AsyncSession) -> list:
     from sqlmodel import select, func
     from app.db.models import (
         Exam,
@@ -793,9 +791,34 @@ async def list_stuck_pipelines(
                 }
             )
 
-    encoded = jsonable_encoder(stuck_list)
-    await cache.set(cache_key, encoded, ttl_seconds=10)
-    return JSONResponse(content=encoded)
+    return stuck_list
+
+
+@router.get(
+    "/exams/stuck-pipelines",
+    summary="List Interrupted / Stuck Pipelines Requiring Admin Action",
+)
+async def list_stuck_pipelines(
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+):
+    """
+    Returns any pipelines that were interrupted (e.g. server restart/reload, worker failure, or stopped mid-way)
+    so the admin UI can display an action prompt to resume with skipped pre-extracted items.
+    """
+    from app.cache import get_cache
+
+    cache = get_cache()
+    cache_key = "ep:admin:stuck_pipelines"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        stuck_list = await _compute_stuck_pipelines(session)
+        encoded = jsonable_encoder(stuck_list)
+        await cache.set(cache_key, encoded, ttl_seconds=60)
+        return JSONResponse(content=encoded)
 
 
 @router.post(
@@ -894,6 +917,8 @@ async def resume_interrupted_pipeline(
                 exam_id_str=str(exam_id_int),
                 task_id=task_id,
             )
+        from app.cache import invalidate_pipeline_status_cache
+        await invalidate_pipeline_status_cache()
         return {
             "status": "RESUMED",
             "stage": "QUESTION_EXTRACTION",
@@ -937,6 +962,8 @@ async def dismiss_stuck_pipeline(
         r.status = "DISMISSED"
         session.add(r)
     await session.commit()
+    from app.cache import invalidate_pipeline_status_cache
+    await invalidate_pipeline_status_cache()
     return {
         "status": "DISMISSED",
         "message": f"Interrupted pipeline prompt dismissed for exam {exam_id}.",

@@ -16,6 +16,7 @@ import {
   Swords,
 } from 'lucide-react';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { prefetchRoute } from '../../utils/routePrefetch';
 
 interface StudentSidebarProps {
   user?: any;
@@ -108,7 +109,9 @@ export function StudentSidebar({
           position: 'relative',
           minHeight: 44 /* Touch target */,
         }}
+        onTouchStart={() => prefetchRoute(item.to)}
         onMouseEnter={(e) => {
+          prefetchRoute(item.to);
           if (!isActive) {
             e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
             e.currentTarget.style.color = '#ffffff';

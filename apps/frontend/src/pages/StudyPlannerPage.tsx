@@ -561,7 +561,7 @@ export function StudyPlannerPage() {
       </div>
 
       {/* Content Area */}
-      {useMinimumLoadingTime(loading, 400) ? (
+      {loading ? (
         <div style={{ width: '100%' }}>
           <StudyPlannerSkeleton />
         </div>

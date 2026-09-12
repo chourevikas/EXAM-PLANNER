@@ -27,9 +27,7 @@ admin_or_super = require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])
     response_model=List[ExamTypeResponse],
     summary="List Active Exam Types",
 )
-async def list_active_exam_types(
-    session: AsyncSession = Depends(get_async_session),
-):
+async def list_active_exam_types():
     """
     Returns all active exam types for UI dropdowns, exam selection, and ingestion metadata.
     Acts as the single source of truth across the frontend.
@@ -40,11 +38,13 @@ async def list_active_exam_types(
     if cached is not None:
         return cached
 
-    service = ExamTypeService(session)
-    items = await service.list_exam_types(include_inactive=False)
-    serialized = [item.model_dump(mode="json") for item in items]
-    await cache.set(cache_key, serialized, ttl_seconds=3600)
-    return items
+    from app.db.session import async_session_factory
+    async with async_session_factory() as session:
+        service = ExamTypeService(session)
+        items = await service.list_exam_types(include_inactive=False)
+        serialized = [item.model_dump(mode="json") for item in items]
+        await cache.set(cache_key, serialized, ttl_seconds=3600)
+        return items
 
 
 # =========================================================================

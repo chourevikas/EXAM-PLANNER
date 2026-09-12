@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopHeader } from './StudentTopHeader';
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../../services/authService';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { StudentLayoutContext } from './PersistentStudentLayout';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,20 @@ interface StudentLayoutProps {
 }
 
 export function StudentLayout({ children, pageTitle }: StudentLayoutProps) {
+  const persistentContext = useContext(StudentLayoutContext);
+
+  // If nested inside PersistentStudentLayout, synchronize title and render children directly
+  useEffect(() => {
+    if (persistentContext && pageTitle) {
+      persistentContext.setPageTitle(pageTitle);
+      document.title = `${pageTitle} - ExamPlanner`;
+    }
+  }, [persistentContext, pageTitle]);
+
+  if (persistentContext) {
+    return <>{children}</>;
+  }
+
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
   const { getToken } = useAuth();

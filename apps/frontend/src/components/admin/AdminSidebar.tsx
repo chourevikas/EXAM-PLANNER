@@ -78,6 +78,51 @@ export function AdminSidebar({
     { icon: Palette, label: 'Theme', id: 'theme' },
   ];
 
+const prefetchedAdmin = new Set<string>();
+function prefetchAdminView(viewId: string) {
+  if (prefetchedAdmin.has(viewId)) return;
+  prefetchedAdmin.add(viewId);
+  switch (viewId) {
+    case 'dashboard':
+      import('./AdminOverviewView');
+      break;
+    case 'upload':
+    case 'ai-queue':
+      import('./UploadReviewView');
+      break;
+    case 'pipeline-status':
+      import('./views/ExamPipelineStatusView');
+      break;
+    case 'exam-types':
+      import('./views/ExamTypesManager');
+      break;
+    case 'review':
+      import('./views/QuestionReviewView');
+      break;
+    case 'questions':
+      import('./QuestionBankManager');
+      break;
+    case 'users':
+      import('./views/UsersView');
+      break;
+    case 'teacher-rewards':
+      import('./views/TeacherRewardsView');
+      break;
+    case 'current-affairs':
+      import('./views/CurrentAffairsManager');
+      break;
+    case 'notifications':
+      import('./views/NotificationsView');
+      break;
+    case 'analytics':
+      import('./views/AnalyticsView');
+      break;
+    case 'theme':
+      import('./views/ThemeSettingsView');
+      break;
+  }
+}
+
   const renderNavItem = (item: { icon: any, label: string, id: string }) => {
     const isActive = activeView === item.id;
     const Icon = item.icon;
@@ -88,6 +133,14 @@ export function AdminSidebar({
         onClick={() => {
           onNavigate(item.id);
           if (onCloseMobile) onCloseMobile();
+        }}
+        onTouchStart={() => prefetchAdminView(item.id)}
+        onMouseEnter={(e) => {
+          prefetchAdminView(item.id);
+          if (!isActive) {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+            e.currentTarget.style.color = '#ffffff';
+          }
         }}
         title={collapsed && !isMobile ? item.label : undefined}
         className="touch-target"
@@ -111,12 +164,6 @@ export function AdminSidebar({
           textAlign: 'left',
           whiteSpace: 'nowrap',
           minHeight: 44,
-        }}
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-            e.currentTarget.style.color = '#ffffff';
-          }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {

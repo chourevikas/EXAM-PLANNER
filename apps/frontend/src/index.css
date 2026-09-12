@@ -82,11 +82,21 @@
 }
 
 /* ── 2. Reset & Base ── */
-* {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  border-radius: var(--radius) !important;
+}
+
+button,
+input,
+select,
+textarea,
+.card,
+[class*="card"],
+[class*="btn"],
+[class*="badge"] {
+  border-radius: var(--radius);
 }
 
 /* Structural / full-bleed chrome stays sharp even though --radius now rounds cards & buttons:

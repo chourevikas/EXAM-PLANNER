@@ -104,6 +104,8 @@ async def invalidate_user_cache(user_id: str) -> None:
 
     u_id_str = str(user_id)
     await cache.delete(f"{prefix}:users:detail:{u_id_str}")
+    await cache.delete(f"{prefix}:user:id:{u_id_str}")
+    await cache.delete_pattern(f"{prefix}:user:clerk:*")
     await cache.delete_pattern(f"{prefix}:users:bookmarks:{u_id_str}*")
     await cache.delete_pattern(f"{prefix}:users:list*")
     await cache.delete_pattern(f"{prefix}:attempts:user:{u_id_str}*")

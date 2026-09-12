@@ -213,9 +213,11 @@ async def async_init_db():
                             theme_name VARCHAR(50) NOT NULL DEFAULT 'crimson',
                             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                             updated_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL
-                        );
-                        INSERT INTO site_settings (id, theme_name) VALUES (1, 'crimson') ON CONFLICT (id) DO NOTHING;
+                        )
                     """)
+                )
+                await conn.execute(
+                    text("INSERT INTO site_settings (id, theme_name) VALUES (1, 'crimson') ON CONFLICT (id) DO NOTHING")
                 )
                 logger.info("Successfully verified/created site_settings table in PostgreSQL.")
             except Exception as e:

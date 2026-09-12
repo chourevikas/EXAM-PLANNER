@@ -1,24 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense, startTransition } from 'react';
 import { AdminSidebar } from '../components/admin/AdminSidebar';
 import { AdminTopNav } from '../components/admin/AdminTopNav';
 import { fetchCurrentUser } from '../services/authService';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { Spinner } from '../components/common/Spinner';
 
-/* View Components */
-import { AdminOverviewView } from '../components/admin/AdminOverviewView';
-import { QuestionBankManager } from '../components/admin/QuestionBankManager';
-import { UploadReviewView } from '../components/admin/UploadReviewView';
-import { AIQueueView } from '../components/admin/views/AIQueueView';
-import { QuestionReviewView } from '../components/admin/views/QuestionReviewView';
-import { MockTestsView } from '../components/admin/views/MockTestsView';
-import { UsersView } from '../components/admin/views/UsersView';
-import { AnalyticsView } from '../components/admin/views/AnalyticsView';
-import { ExamPipelineStatusView } from '../components/admin/views/ExamPipelineStatusView';
-import { TeacherRewardsView } from '../components/admin/views/TeacherRewardsView';
-import { CurrentAffairsManager } from '../components/admin/views/CurrentAffairsManager';
-import { ExamTypesManager } from '../components/admin/views/ExamTypesManager';
-import { NotificationsView } from '../components/admin/views/NotificationsView';
-import { ThemeSettingsView } from '../components/admin/views/ThemeSettingsView';
+/* Lazy-loaded View Components for instant initial load & smooth switching */
+const AdminOverviewView = lazy(() => import('../components/admin/AdminOverviewView').then(m => ({ default: m.AdminOverviewView })));
+const QuestionBankManager = lazy(() => import('../components/admin/QuestionBankManager').then(m => ({ default: m.QuestionBankManager })));
+const UploadReviewView = lazy(() => import('../components/admin/UploadReviewView').then(m => ({ default: m.UploadReviewView })));
+const QuestionReviewView = lazy(() => import('../components/admin/views/QuestionReviewView').then(m => ({ default: m.QuestionReviewView })));
+const MockTestsView = lazy(() => import('../components/admin/views/MockTestsView').then(m => ({ default: m.MockTestsView })));
+const UsersView = lazy(() => import('../components/admin/views/UsersView').then(m => ({ default: m.UsersView })));
+const AnalyticsView = lazy(() => import('../components/admin/views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const ExamPipelineStatusView = lazy(() => import('../components/admin/views/ExamPipelineStatusView').then(m => ({ default: m.ExamPipelineStatusView })));
+const TeacherRewardsView = lazy(() => import('../components/admin/views/TeacherRewardsView').then(m => ({ default: m.TeacherRewardsView })));
+const CurrentAffairsManager = lazy(() => import('../components/admin/views/CurrentAffairsManager').then(m => ({ default: m.CurrentAffairsManager })));
+const ExamTypesManager = lazy(() => import('../components/admin/views/ExamTypesManager').then(m => ({ default: m.ExamTypesManager })));
+const NotificationsView = lazy(() => import('../components/admin/views/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const ThemeSettingsView = lazy(() => import('../components/admin/views/ThemeSettingsView').then(m => ({ default: m.ThemeSettingsView })));
+
+function AdminViewSkeleton() {
+  return (
+    <div style={{ padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '320px', gap: 12 }}>
+      <Spinner size={32} />
+      <div style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Loading admin module...</div>
+    </div>
+  );
+}
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -60,12 +69,14 @@ export function AdminPage() {
   };
 
   const handleNavigate = (view: string, extraData?: any) => {
-    setActiveView(view);
-    if (extraData !== undefined) {
-      setSelectedExamForReview(extraData);
-    } else if (view !== 'review') {
-      setSelectedExamForReview(null);
-    }
+    startTransition(() => {
+      setActiveView(view);
+      if (extraData !== undefined) {
+        setSelectedExamForReview(extraData);
+      } else if (view !== 'review') {
+        setSelectedExamForReview(null);
+      }
+    });
     if (isTabletOrBelow) setMobileOpen(false);
   };
 
@@ -147,7 +158,9 @@ export function AdminPage() {
             padding: isMobile ? '16px 12px' : isTabletOrBelow ? '20px 20px' : '24px 32px', 
             boxSizing: 'border-box' 
           }}>
-            {renderView()}
+            <Suspense fallback={<AdminViewSkeleton />}>
+              {renderView()}
+            </Suspense>
           </main>
         </div>
 

@@ -1241,7 +1241,7 @@ export function AnalyticsPage() {
           )}
 
           {/* Loading Skeleton */}
-          {useMinimumLoadingTime(isLoading && !isEvaluating, 400) && (
+          {(isLoading && !isEvaluating) && (
             <div style={skeletonWrapperStyle}>
               <PerformanceAnalyticsSkeleton />
             </div>

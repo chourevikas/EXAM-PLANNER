@@ -1,3 +1,4 @@
+import time
 from typing import Any, Optional
 from app.cache.base import BaseCache
 from app.config.logger import setup_logger
@@ -9,6 +10,7 @@ class FallbackCache(BaseCache):
     """
     Resilient multi-backend cache that attempts operations on a primary cache (e.g. RedisCache)
     and automatically falls back to a bounded secondary cache (e.g. InMemoryCache) on connectivity failures.
+    Includes a circuit breaker so that once a primary failure occurs, subsequent requests do not wait for timeouts.
     """
 
     def __init__(
@@ -16,24 +18,36 @@ class FallbackCache(BaseCache):
         primary: BaseCache,
         fallback: BaseCache,
         enable_fallback: bool = True,
+        circuit_break_duration: float = 30.0,
     ):
         self.primary = primary
         self.fallback = fallback
         self.enable_fallback = enable_fallback
+        self.circuit_break_duration = circuit_break_duration
+        self._primary_down_until: float = 0.0
         self._primary_down_warned = False
 
+    def _is_circuit_open(self) -> bool:
+        return time.time() < self._primary_down_until
+
+    def _trip_circuit(self, exc: Exception, op: str):
+        self._primary_down_until = time.time() + self.circuit_break_duration
+        if not self._primary_down_warned:
+            logger.warning(
+                f"⚠️ [CACHE_FALLBACK] Primary cache {op} failed ({exc}). "
+                f"Circuit breaker tripped for {self.circuit_break_duration}s. Falling back to In-Memory cache."
+            )
+            self._primary_down_warned = True
+
     async def get(self, key: str) -> Optional[Any]:
-        try:
-            val = await self.primary.get(key)
-            if val is not None:
-                self._primary_down_warned = False
-                return val
-        except Exception as e:
-            if not self._primary_down_warned:
-                logger.warning(
-                    f"⚠️ [CACHE_FALLBACK] Primary cache read failed ({e}). Falling back to In-Memory cache."
-                )
-                self._primary_down_warned = True
+        if not self._is_circuit_open():
+            try:
+                val = await self.primary.get(key)
+                if val is not None:
+                    self._primary_down_warned = False
+                    return val
+            except Exception as e:
+                self._trip_circuit(e, "read")
 
         if self.enable_fallback:
             return await self.fallback.get(key)
@@ -43,16 +57,13 @@ class FallbackCache(BaseCache):
         self, key: str, value: Any, ttl_seconds: Optional[int] = None
     ) -> bool:
         primary_success = False
-        try:
-            primary_success = await self.primary.set(key, value, ttl_seconds)
-            if primary_success:
-                self._primary_down_warned = False
-        except Exception as e:
-            if not self._primary_down_warned:
-                logger.warning(
-                    f"⚠️ [CACHE_FALLBACK] Primary cache write failed ({e}). Writing to In-Memory cache."
-                )
-                self._primary_down_warned = True
+        if not self._is_circuit_open():
+            try:
+                primary_success = await self.primary.set(key, value, ttl_seconds)
+                if primary_success:
+                    self._primary_down_warned = False
+            except Exception as e:
+                self._trip_circuit(e, "write")
 
         if self.enable_fallback:
             # Also store in fallback cache if primary failed or for seamless fallback coverage

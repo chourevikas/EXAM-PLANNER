@@ -193,7 +193,7 @@ export function DashboardPage() {
 
       {/* 2. Key Metrics Grid (Admin Dashboard Design Language) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 18, marginBottom: 32 }}>
-        {useMinimumLoadingTime(isLoadingStats) ? (
+        {isLoadingStats ? (
           <>
             {Array.from({ length: 4 }).map((_, i) => (
               <StudentMetricCardSkeleton key={i} showProgress={i === 0} />

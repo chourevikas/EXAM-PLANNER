@@ -34,7 +34,6 @@ def _get_jwks_client(issuer: str) -> jwt.PyJWKClient:
 
 async def get_current_user(
     request: Request,
-    session: AsyncSession = Depends(get_async_session),
     token_oauth2: Optional[str] = Depends(reusable_oauth2),
     token_bearer: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
 ) -> User:
@@ -65,6 +64,11 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from app.db.session import async_session_factory
+    cache = get_cache()
+
     try:
         # Check if this is a Clerk token by looking at unverified claims
         unverified_claims = jwt.decode(token, options={"verify_signature": False})
@@ -94,50 +98,66 @@ async def get_current_user(
             if not clerk_id:
                 raise HTTPException(status_code=401, detail="Clerk token missing subject")
 
+            # Fast path: check Redis cache first
+            cache_key = f"ep:user:clerk:{clerk_id}"
+            cached_user = await cache.get(cache_key)
+            if cached_user and isinstance(cached_user, dict):
+                user = User.model_validate(cached_user)
+                if user.status != UserStatus.ACTIVE:
+                    raise HTTPException(status_code=400, detail="Inactive user account")
+                return user
+
             clerk_email = (
                 payload.get("email")
                 or payload.get("email_address")
                 or payload.get("primary_email_address")
             )
 
-            query = select(User).where(User.clerk_id == clerk_id)
-            result = await session.exec(query)
-            user = result.one_or_none()
+            async with async_session_factory() as session:
+                query = select(User).where(User.clerk_id == clerk_id)
+                result = await session.exec(query)
+                user = result.one_or_none()
 
-            if not user and clerk_email:
-                query_email = select(User).where(User.email == clerk_email)
-                res_email = await session.exec(query_email)
-                user = res_email.one_or_none()
-                if user:
-                    user.clerk_id = clerk_id
-                    session.add(user)
-                    await session.commit()
-                    await session.refresh(user)
+                if not user and clerk_email:
+                    query_email = select(User).where(User.email == clerk_email)
+                    res_email = await session.exec(query_email)
+                    user = res_email.one_or_none()
+                    if user:
+                        user.clerk_id = clerk_id
+                        session.add(user)
+                        await session.commit()
+                        await session.refresh(user)
 
-            if not user:
-                target_email = clerk_email or f"{clerk_id}@clerk.local"
-                existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
-                if existing_email_user:
-                    existing_email_user.clerk_id = clerk_id
-                    session.add(existing_email_user)
-                    await session.commit()
-                    await session.refresh(existing_email_user)
-                    user = existing_email_user
-                else:
-                    user = User(
-                        clerk_id=clerk_id,
-                        email=target_email,
-                        full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
-                        status=UserStatus.ACTIVE,
-                        role=UserRole.STUDENT,
-                    )
-                    session.add(user)
-                    await session.commit()
-                    await session.refresh(user)
+                if not user:
+                    target_email = clerk_email or f"{clerk_id}@clerk.local"
+                    existing_email_user = (await session.exec(select(User).where(User.email == target_email))).one_or_none()
+                    if existing_email_user:
+                        existing_email_user.clerk_id = clerk_id
+                        session.add(existing_email_user)
+                        await session.commit()
+                        await session.refresh(existing_email_user)
+                        user = existing_email_user
+                    else:
+                        user = User(
+                            clerk_id=clerk_id,
+                            email=target_email,
+                            full_name=payload.get("name") or payload.get("full_name") or "Clerk Sync User",
+                            status=UserStatus.ACTIVE,
+                            role=UserRole.STUDENT,
+                        )
+                        session.add(user)
+                        await session.commit()
+                        await session.refresh(user)
 
-            if user.status != UserStatus.ACTIVE:
-                raise HTTPException(status_code=400, detail="Inactive user account")
-            return user
+                if user.status != UserStatus.ACTIVE:
+                    raise HTTPException(status_code=400, detail="Inactive user account")
+
+                # Cache in Redis with 300s TTL
+                user_dict = jsonable_encoder(user.model_dump())
+                await cache.set(cache_key, user_dict, ttl_seconds=300)
+                if user.id:
+                    await cache.set(f"ep:user:id:{user.id}", user_dict, ttl_seconds=300)
+                return user
         else:
             # Custom JWT Verification
             try:
@@ -150,15 +170,29 @@ async def get_current_user(
 
             user_id_str: str = payload.get("sub")
             if user_id_str:
+                cache_key = f"ep:user:id:{user_id_str}"
+                cached_user = await cache.get(cache_key)
+                if cached_user and isinstance(cached_user, dict):
+                    user = User.model_validate(cached_user)
+                    if user.status == UserStatus.ACTIVE:
+                        return user
+
                 try:
                     user_id_val = int(user_id_str) if str(user_id_str).isdigit() else user_id_str
-                    user_repo = UserRepository(session)
-                    user = await user_repo.get_by_id(user_id_val)
-                    if user and user.status == UserStatus.ACTIVE:
-                        return user
+                    async with async_session_factory() as session:
+                        user_repo = UserRepository(session)
+                        user = await user_repo.get_by_id(user_id_val)
+                        if user and user.status == UserStatus.ACTIVE:
+                            user_dict = jsonable_encoder(user.model_dump())
+                            await cache.set(cache_key, user_dict, ttl_seconds=300)
+                            if user.clerk_id:
+                                await cache.set(f"ep:user:clerk:{user.clerk_id}", user_dict, ttl_seconds=300)
+                            return user
                 except (ValueError, TypeError):
                     pass
 
+    except HTTPException:
+        raise
     except Exception:
         pass
 

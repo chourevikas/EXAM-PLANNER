@@ -98,6 +98,7 @@ const PublicChallengePage = lazy(() =>
 import { GlobalThemeToggle } from './components/common/GlobalThemeToggle';
 import { Spinner } from './components/common/Spinner';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { PersistentStudentLayout } from './components/student/PersistentStudentLayout';
 
 
 function LoadingFallback() {
@@ -159,187 +160,37 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/current-affairs"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <CurrentAffairsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/current-affairs/:id"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <CurrentAffairsDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <NotificationsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications/:id"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <NotificationsPage />
-              </ProtectedRoute>
-            }
-          />
           <Route path="/challenge/:token" element={<PublicChallengePage />} />
+
+          {/* Persistent Student Portal Shell — Stays mounted on all student routes */}
           <Route
-            path="/challenges"
             element={
               <ProtectedRoute
                 allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
               >
-                <ChallengesPage />
+                <PersistentStudentLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/challenges/new"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <CreateChallengePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/challenges/attempt/:idOrToken"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <ChallengeAttemptPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/challenges/:id"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <ChallengeDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/study-planner"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <StudyPlannerPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <AnalyticsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports/weekly"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <WeeklyInsightsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports/monthly"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <MonthlyReportPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pyq"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <PYQSelectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/mocks"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <MockSelectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/bookmarks"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <BookmarksPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pricing"
-            element={
-              <ProtectedRoute
-                allowedRoles={[UserRole.STUDENT, UserRole.ADMIN, UserRole.SUPER_ADMIN]}
-              >
-                <PricingPage />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/current-affairs" element={<CurrentAffairsPage />} />
+            <Route path="/current-affairs/:id" element={<CurrentAffairsDetailPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/notifications/:id" element={<NotificationsPage />} />
+            <Route path="/challenges" element={<ChallengesPage />} />
+            <Route path="/challenges/new" element={<CreateChallengePage />} />
+            <Route path="/challenges/attempt/:idOrToken" element={<ChallengeAttemptPage />} />
+            <Route path="/challenges/:id" element={<ChallengeDetailPage />} />
+            <Route path="/study-planner" element={<StudyPlannerPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/reports/weekly" element={<WeeklyInsightsPage />} />
+            <Route path="/reports/monthly" element={<MonthlyReportPage />} />
+            <Route path="/pyq" element={<PYQSelectionPage />} />
+            <Route path="/mocks" element={<MockSelectionPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/bookmarks" element={<BookmarksPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+          </Route>
           <Route
             path="/admin"
             element={
