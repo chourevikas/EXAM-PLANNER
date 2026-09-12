@@ -1083,3 +1083,11 @@ async def trigger_daily_digests_for_all_users():
     return res
 
 
+@router.post("/trigger-midnight-translation")
+async def trigger_midnight_translation():
+    """Admin Trigger: Runs the midnight batch translation job immediately (for testing/manual force-run).
+    Translates all un-translated question stems + options into Hindi and Marathi.
+    Cache deduplication is bypassed when called directly."""
+    from app.services.daily_scheduler_service import run_midnight_translation_job
+    res = await run_midnight_translation_job()
+    return res

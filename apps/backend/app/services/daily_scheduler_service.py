@@ -2,8 +2,8 @@ import asyncio
 import logging
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from typing import Dict, List, Any, Optional
-from sqlmodel import select
+from typing import Dict, List, Any, Optional, Tuple
+from sqlmodel import select, col
 
 from app.config.settings import settings
 from app.db.session import async_session_factory
@@ -181,6 +181,201 @@ async def run_daily_midnight_dispatch(force: bool = False) -> Dict[str, Any]:
     }
 
 
+# Languages to proactively translate at midnight (in addition to on-demand)
+_MIDNIGHT_TRANSLATE_LANGUAGES = [
+    ("hi", "HINDI"),
+    ("mr", "MARATHI"),
+]
+
+
+async def run_midnight_translation_job() -> Dict[str, Any]:
+    """
+    Proactively translates all un-translated question stems and options
+    into Hindi and Marathi using Google Translate's batch API.
+
+    Detects 'fake' translations where the stored text is identical to the
+    English source (i.e. the translation was never actually done).
+
+    Runs once per night; uses cache deduplication to avoid re-running.
+    Batches texts in chunks of 200 for optimal Google API throughput.
+    """
+    tz = ZoneInfo("Asia/Kolkata")
+    today = datetime.now(tz).date()
+    date_str = today.isoformat()
+    cache = get_cache()
+
+    total_q_translated = 0
+    total_opt_translated = 0
+
+    try:
+        from app.db.models import (
+            Question, QuestionTranslation, QuestionOption, OptionTranslation, LanguageCode
+        )
+        from app.core.languages import normalize_language
+        from app.services.google_translation_service import GoogleTranslationService
+        from app.db.upsert import bulk_upsert_translations
+
+        translator = GoogleTranslationService()
+
+        for target_iso, target_enum in _MIDNIGHT_TRANSLATE_LANGUAGES:
+            cache_key = f"midnight_translation:{target_enum}:{date_str}"
+            already_done = await cache.get(cache_key)
+            if already_done:
+                logger.info(f"⏭️ Midnight translation for {target_enum} already done today ({date_str}). Skipping.")
+                continue
+
+            logger.info(f"🌙 Starting midnight translation batch for {target_enum} ({target_iso})...")
+
+            try:
+                lang_db_enum = LanguageCode[target_enum]
+            except (KeyError, AttributeError):
+                lang_db_enum = target_enum
+
+            async with async_session_factory() as session:
+                # --- Load all questions and their English translations ---
+                q_stmt = select(Question)
+                all_questions = (await session.exec(q_stmt)).all()
+
+                # Load existing translations for all questions
+                qt_stmt = select(QuestionTranslation)
+                all_qt = (await session.exec(qt_stmt)).all()
+                # qt_map: { question_id: { lang_enum_str: question_text } }
+                qt_map: Dict[int, Dict[str, str]] = {}
+                for qt in all_qt:
+                    lang_key = qt.language.value if hasattr(qt.language, "value") else str(qt.language)
+                    qt_map.setdefault(qt.question_id, {})[lang_key] = qt.question_text or ""
+
+                # Load all options and their English translations
+                opt_stmt = select(QuestionOption)
+                all_opts = (await session.exec(opt_stmt)).all()
+
+                ot_stmt = select(OptionTranslation)
+                all_ot = (await session.exec(ot_stmt)).all()
+                # ot_map: { option_id: { lang_enum_str: option_text } }
+                ot_map: Dict[int, Dict[str, str]] = {}
+                for ot in all_ot:
+                    lang_key = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
+                    ot_map.setdefault(ot.option_id, {})[lang_key] = ot.option_text or ""
+
+            # --- Identify questions needing translation ---
+            missing_q: List[Tuple[Question, str]] = []
+            for q in all_questions:
+                q_trans = qt_map.get(q.id, {})
+                eng = q_trans.get("ENGLISH") or q_trans.get("en") or ""
+                if not eng:
+                    continue
+                stored_target = q_trans.get(target_enum) or q_trans.get(target_iso) or ""
+                if not stored_target or stored_target.strip() == eng.strip():
+                    missing_q.append((q, eng.strip()))
+
+            # --- Identify options needing translation ---
+            missing_opt: List[Tuple[QuestionOption, str]] = []
+            for opt in all_opts:
+                o_trans = ot_map.get(opt.id, {})
+                eng = o_trans.get("ENGLISH") or o_trans.get("en") or ""
+                if not eng:
+                    eng = opt.option_text or ""
+                if not eng:
+                    continue
+                stored_target = o_trans.get(target_enum) or o_trans.get(target_iso) or ""
+                if not stored_target or stored_target.strip() == eng.strip():
+                    missing_opt.append((opt, eng.strip()))
+
+            q_count = len(missing_q)
+            opt_count = len(missing_opt)
+            logger.info(f"   [{target_enum}] Found {q_count} question stems + {opt_count} options to translate.")
+
+            if not missing_q and not missing_opt:
+                await cache.set(cache_key, {"done": True, "timestamp": datetime.now(timezone.utc).isoformat()}, ttl_seconds=86400)
+                continue
+
+            # --- Batch translate in chunks of 200 ---
+            CHUNK_SIZE = 200
+
+            async def _translate_chunk(texts: List[str]) -> Dict[str, str]:
+                """Translates a list of texts and returns a source→translated dict."""
+                if not texts:
+                    return {}
+                try:
+                    translated = await translator.translate_batch(
+                        texts, target_language=target_iso, source_language="en"
+                    )
+                    return dict(zip(texts, translated))
+                except Exception as e:
+                    logger.warning(f"Chunk translation failed for {target_enum}: {e}")
+                    return {}
+
+            # Deduplicate texts across stems + options
+            all_texts = list(dict.fromkeys(
+                [t for _, t in missing_q] + [t for _, t in missing_opt]
+            ))
+
+            trans_dict: Dict[str, str] = {}
+            for ci in range(0, len(all_texts), CHUNK_SIZE):
+                chunk = all_texts[ci: ci + CHUNK_SIZE]
+                chunk_result = await _translate_chunk(chunk)
+                trans_dict.update(chunk_result)
+
+            # --- Build DB records ---
+            new_q_records = []
+            for q, eng in missing_q:
+                t_text = trans_dict.get(eng, "")
+                if not t_text or t_text.strip() == eng.strip():
+                    continue  # Translation failed / returned English - skip
+                new_q_records.append(QuestionTranslation(
+                    question_id=q.id,
+                    language=lang_db_enum,
+                    question_text=t_text,
+                ))
+
+            new_opt_records = []
+            for opt, eng in missing_opt:
+                t_text = trans_dict.get(eng, "")
+                if not t_text or t_text.strip() == eng.strip():
+                    continue
+                new_opt_records.append(OptionTranslation(
+                    option_id=opt.id,
+                    language=lang_db_enum,
+                    option_text=t_text,
+                ))
+
+            # --- Persist in batches to avoid huge single transactions ---
+            PERSIST_CHUNK = 500
+            async with async_session_factory() as session:
+                for ci in range(0, len(new_q_records), PERSIST_CHUNK):
+                    await bulk_upsert_translations(
+                        session, QuestionTranslation, new_q_records[ci: ci + PERSIST_CHUNK],
+                        ["question_id", "language"], update_cols=["question_text"]
+                    )
+                for ci in range(0, len(new_opt_records), PERSIST_CHUNK):
+                    await bulk_upsert_translations(
+                        session, OptionTranslation, new_opt_records[ci: ci + PERSIST_CHUNK],
+                        ["option_id", "language"], update_cols=["option_text"]
+                    )
+                await session.commit()
+
+            total_q_translated += len(new_q_records)
+            total_opt_translated += len(new_opt_records)
+            logger.info(f"   ✅ [{target_enum}] Persisted {len(new_q_records)} Q + {len(new_opt_records)} opt translations.")
+            await cache.set(cache_key, {
+                "done": True,
+                "q_count": len(new_q_records),
+                "opt_count": len(new_opt_records),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }, ttl_seconds=86400)
+
+    except Exception as err:
+        logger.error(f"❌ Midnight translation job failed: {err}", exc_info=True)
+        return {"status": "ERROR", "error": str(err)}
+
+    logger.info(f"🌙✅ Midnight translation job complete: {total_q_translated} Q + {total_opt_translated} opt translated.")
+    return {
+        "status": "SUCCESS",
+        "q_translated": total_q_translated,
+        "opt_translated": total_opt_translated,
+    }
+
+
 def _calculate_seconds_until_midnight() -> float:
     """Calculates seconds until 23:55:00 IST (Asia/Kolkata)."""
     tz = ZoneInfo("Asia/Kolkata")
@@ -208,6 +403,12 @@ async def _daily_midnight_scheduler_loop():
                 break
 
             await run_daily_midnight_dispatch(force=False)
+
+            # Run proactive translation for Hindi + Marathi (non-blocking — errors don't stop the loop)
+            try:
+                await run_midnight_translation_job()
+            except Exception as trans_err:
+                logger.error(f"⚠️ Midnight translation job error (non-fatal): {trans_err}", exc_info=True)
         except asyncio.CancelledError:
             logger.info("🛑 Daily Midnight Scheduler loop cancelled.")
             break

@@ -1588,39 +1588,69 @@ class QuestionService:
             except (KeyError, AttributeError):
                 lang_db_enum = target_enum
 
-            # 1. Identify missing question stems
+            def _get_stored_q_trans(q_id: int, key_enum: str, key_iso: str) -> str:
+                """Returns the stored translated text for a question, or empty string if not found."""
+                qmap = qt_map.get(q_id, {})
+                for k in (key_enum, key_iso):
+                    v = qmap.get(k)
+                    if v:
+                        return v.get("question_text") if isinstance(v, dict) else str(v)
+                return ""
+
+            def _get_stored_opt_trans(opt_id: int, key_enum: str, key_iso: str) -> str:
+                """Returns the stored translated text for an option, or empty string if not found."""
+                omap = ot_map.get(opt_id, {})
+                for k in (key_enum, key_iso):
+                    v = omap.get(k)
+                    if v:
+                        return (v[0] if isinstance(v, (tuple, list)) else str(v))
+                return ""
+
+            # 1. Identify missing OR incorrectly-stored (same as English) question stems
             missing_q_stems: List[Tuple[Question, str]] = []
             for q in questions:
                 existing_langs = {
                     (k.value if hasattr(k, "value") else str(k))
                     for k in qt_map.get(q.id, {}).keys()
                 }
-                if target_enum not in existing_langs and target_iso not in existing_langs:
-                    eng_text = qt_map.get(q.id, {}).get("ENGLISH") or qt_map.get(q.id, {}).get(LanguageCode.ENGLISH)
-                    if not eng_text:
-                        eng_text = next(iter(qt_map.get(q.id, {}).values()), "")
-                    if not eng_text:
-                        eng_text = getattr(q, "question_text", None) or getattr(q, "text", "")
-                    if eng_text and str(eng_text).strip():
-                        missing_q_stems.append((q, str(eng_text).strip()))
+                # Fetch English source text first
+                eng_text = qt_map.get(q.id, {}).get("ENGLISH") or qt_map.get(q.id, {}).get(LanguageCode.ENGLISH)
+                if not eng_text:
+                    eng_text = next(iter(qt_map.get(q.id, {}).values()), "")
+                if not eng_text:
+                    eng_text = getattr(q, "question_text", None) or getattr(q, "text", "")
+                if not eng_text or not str(eng_text).strip():
+                    continue
+                eng_text = str(eng_text).strip()
+                # Check if translation is missing OR stored value == English source (un-translated)
+                stored = _get_stored_q_trans(q.id, target_enum, target_iso)
+                is_missing = target_enum not in existing_langs and target_iso not in existing_langs
+                is_same_as_english = stored and stored.strip() == eng_text.strip()
+                if is_missing or is_same_as_english:
+                    missing_q_stems.append((q, eng_text))
 
-            # 2. Identify missing options
+            # 2. Identify missing OR incorrectly-stored options
             missing_opts: List[Tuple[QuestionOption, str]] = []
             for opt in options:
                 opt_existing = {
                     (k.value if hasattr(k, "value") else str(k))
                     for k in ot_map.get(opt.id, {}).keys()
                 }
-                if target_enum not in opt_existing and target_iso not in opt_existing:
-                    val = ot_map.get(opt.id, {}).get("ENGLISH") or ot_map.get(opt.id, {}).get(LanguageCode.ENGLISH)
-                    eng_opt_text = (val[0] if isinstance(val, (tuple, list)) else val) if val else ""
-                    if not eng_opt_text:
-                        first_val = next(iter(ot_map.get(opt.id, {}).values()), "")
-                        eng_opt_text = (first_val[0] if isinstance(first_val, (tuple, list)) else first_val) if first_val else ""
-                    if not eng_opt_text:
-                        eng_opt_text = getattr(opt, "option_text", "")
-                    if eng_opt_text and str(eng_opt_text).strip():
-                        missing_opts.append((opt, str(eng_opt_text).strip()))
+                val = ot_map.get(opt.id, {}).get("ENGLISH") or ot_map.get(opt.id, {}).get(LanguageCode.ENGLISH)
+                eng_opt_text = (val[0] if isinstance(val, (tuple, list)) else val) if val else ""
+                if not eng_opt_text:
+                    first_val = next(iter(ot_map.get(opt.id, {}).values()), "")
+                    eng_opt_text = (first_val[0] if isinstance(first_val, (tuple, list)) else first_val) if first_val else ""
+                if not eng_opt_text:
+                    eng_opt_text = getattr(opt, "option_text", "")
+                if not eng_opt_text or not str(eng_opt_text).strip():
+                    continue
+                eng_opt_text = str(eng_opt_text).strip()
+                stored_opt = _get_stored_opt_trans(opt.id, target_enum, target_iso)
+                is_opt_missing = target_enum not in opt_existing and target_iso not in opt_existing
+                is_opt_same_as_english = stored_opt and stored_opt.strip() == eng_opt_text.strip()
+                if is_opt_missing or is_opt_same_as_english:
+                    missing_opts.append((opt, eng_opt_text))
 
             # 3. Identify missing passages
             missing_pass: List[Tuple[int, str]] = []
@@ -1712,25 +1742,29 @@ class QuestionService:
                     passage_text=t_text,
                 ))
 
-            # Persist translations idempotently in an isolated database session
+            # Persist translations using upsert (ON CONFLICT UPDATE) to correct any previously wrong translations
             if new_q_records or new_opt_records or new_pass_records:
                 try:
                     from app.db.session import async_session_factory
-                    from app.db.upsert import bulk_insert_on_conflict_do_nothing
+                    from app.db.upsert import bulk_upsert_translations
                     async with async_session_factory() as trans_session:
                         if new_q_records:
-                            await bulk_insert_on_conflict_do_nothing(
-                                trans_session, QuestionTranslation, new_q_records, ["question_id", "language"]
+                            await bulk_upsert_translations(
+                                trans_session, QuestionTranslation, new_q_records,
+                                ["question_id", "language"], update_cols=["question_text"]
                             )
                         if new_opt_records:
-                            await bulk_insert_on_conflict_do_nothing(
-                                trans_session, OptionTranslation, new_opt_records, ["option_id", "language"]
+                            await bulk_upsert_translations(
+                                trans_session, OptionTranslation, new_opt_records,
+                                ["option_id", "language"], update_cols=["option_text"]
                             )
                         if new_pass_records:
-                            await bulk_insert_on_conflict_do_nothing(
-                                trans_session, PassageTranslation, new_pass_records, ["passage_id", "language"]
+                            await bulk_upsert_translations(
+                                trans_session, PassageTranslation, new_pass_records,
+                                ["passage_id", "language"], update_cols=["passage_text"]
                             )
                         await trans_session.commit()
+                        logger.info(f"✅ On-demand upserted {len(new_q_records)} Q + {len(new_opt_records)} opt + {len(new_pass_records)} passage translations for {target_enum}.")
                 except Exception as commit_err:
                     logger.warning(f"Failed to persist on-demand translations: {commit_err}", exc_info=True)
         except Exception as err:
