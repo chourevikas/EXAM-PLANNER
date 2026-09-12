@@ -156,7 +156,7 @@ function NotificationDetail({ id, onBack }: { id: number; onBack: () => void }) 
     return (
       <div style={{ padding: '40px 24px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-secondary, #6B7280)', marginBottom: 16 }}>{error || 'Notification not found.'}</p>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#E31B23', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>← Back to Notifications</button>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>← Back to Notifications</button>
       </div>
     );
   }
@@ -173,7 +173,7 @@ function NotificationDetail({ id, onBack }: { id: number; onBack: () => void }) 
         onClick={onBack}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'none', border: 'none', color: '#E31B23',
+          background: 'none', border: 'none', color: 'var(--primary-red)',
           cursor: 'pointer', fontSize: 14, fontWeight: 600, padding: 0, marginBottom: 24,
         }}>
         <ChevronLeft size={16} /> Back to Announcements
@@ -314,7 +314,7 @@ export function NotificationsPage() {
       <div style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 64 }}>
         {/* Page Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <Bell size={24} color="#E31B23" />
+          <Bell size={24} color="var(--primary-red)" />
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #111827)' }}>
             Announcements
           </h1>
@@ -332,9 +332,9 @@ export function NotificationsPage() {
               onClick={() => handleFilterChange(f.value)}
               style={{
                 padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: contentFilter === f.value ? 600 : 400,
-                border: contentFilter === f.value ? '1.5px solid #E31B23' : '1.5px solid var(--border-default, #E5E7EB)',
+                border: contentFilter === f.value ? '1.5px solid var(--primary-red)' : '1.5px solid var(--border-default, #E5E7EB)',
                 background: contentFilter === f.value ? '#FFF1F2' : 'var(--bg-card, #fff)',
-                color: contentFilter === f.value ? '#E31B23' : 'var(--text-secondary, #6B7280)',
+                color: contentFilter === f.value ? 'var(--primary-red)' : 'var(--text-secondary, #6B7280)',
                 cursor: 'pointer', transition: 'all 0.15s',
               }}>
               {f.label}

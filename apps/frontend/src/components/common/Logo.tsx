@@ -24,7 +24,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
           }}
         >
           <span style={{ color: inverted ? '#ffffff' : '#111111' }}>Exam</span>
-          <span style={{ color: '#E31B23' }}>Planner</span>
+          <span style={{ color: 'var(--primary-red)' }}>Planner</span>
         </div>
       </div>
     </div>

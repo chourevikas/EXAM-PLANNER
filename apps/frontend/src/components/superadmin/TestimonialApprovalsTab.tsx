@@ -170,7 +170,7 @@ export function TestimonialApprovalsTab({
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
-            background: statusFilter === 'REJECTED' ? 'rgba(227, 27, 35, 0.2)' : 'var(--bg-body)',
+            background: statusFilter === 'REJECTED' ? 'rgba(var(--primary-red-rgb), 0.2)' : 'var(--bg-body)',
             color: statusFilter === 'REJECTED' ? '#dc2626' : 'var(--text-main)',
             border: `1px solid ${statusFilter === 'REJECTED' ? '#dc2626' : 'var(--border-color)'}`,
             display: 'flex',
@@ -253,7 +253,7 @@ export function TestimonialApprovalsTab({
                       ? 'rgba(249, 115, 22, 0.35)'
                       : isApproved
                       ? 'rgba(16, 185, 129, 0.35)'
-                      : 'rgba(227, 27, 35, 0.35)'
+                      : 'rgba(var(--primary-red-rgb), 0.35)'
                   }`,
                   borderRadius: 0,
                   padding: 24,
@@ -289,13 +289,13 @@ export function TestimonialApprovalsTab({
                           ? 'rgba(249, 115, 22, 0.12)'
                           : isApproved
                           ? 'rgba(16, 185, 129, 0.12)'
-                          : 'rgba(227, 27, 35, 0.12)',
+                          : 'rgba(var(--primary-red-rgb), 0.12)',
                         border: `1px solid ${
                           isPending
                             ? 'rgba(249, 115, 22, 0.25)'
                             : isApproved
                             ? 'rgba(16, 185, 129, 0.25)'
-                            : 'rgba(227, 27, 35, 0.25)'
+                            : 'rgba(var(--primary-red-rgb), 0.25)'
                         }`,
                       }}
                     >
@@ -321,7 +321,7 @@ export function TestimonialApprovalsTab({
                       style={{
                         fontSize: 12,
                         color: '#ef4444',
-                        background: 'rgba(227, 27, 35, 0.08)',
+                        background: 'rgba(var(--primary-red-rgb), 0.08)',
                         padding: '8px 12px',
                         borderRadius: 0,
                         marginBottom: 16,
@@ -349,7 +349,7 @@ export function TestimonialApprovalsTab({
                         width: 40,
                         height: 40,
                         borderRadius: 0,
-                        background: 'linear-gradient(135deg, #E31B23, #7c3aed)',
+                        background: 'linear-gradient(135deg, var(--primary-red), #7c3aed)',
                         color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
@@ -363,7 +363,7 @@ export function TestimonialApprovalsTab({
                     </div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-main)' }}>{t.user_name}</div>
-                      <div style={{ fontSize: 12, color: '#E31B23', fontWeight: 600 }}>{t.user_exam}</div>
+                      <div style={{ fontSize: 12, color: 'var(--primary-red)', fontWeight: 600 }}>{t.user_exam}</div>
                     </div>
                   </div>
 
@@ -401,8 +401,8 @@ export function TestimonialApprovalsTab({
                           fontSize: 12.5,
                           fontWeight: 700,
                           borderRadius: 0,
-                          border: '1px solid rgba(227, 27, 35, 0.3)',
-                          background: 'rgba(227, 27, 35, 0.1)',
+                          border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
+                          background: 'rgba(var(--primary-red-rgb), 0.1)',
                           color: '#ef4444',
                           cursor: isProcessing ? 'not-allowed' : 'pointer',
                           display: 'flex',

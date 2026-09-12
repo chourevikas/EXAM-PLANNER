@@ -39,9 +39,9 @@ export function RewardsView() {
             padding: '12px 16px',
             marginBottom: 16,
             borderRadius: 0,
-            background: 'rgba(227, 27, 35, 0.1)',
-            color: '#E31B23',
-            border: '1px solid rgba(227, 27, 35, 0.25)',
+            background: 'rgba(var(--primary-red-rgb), 0.1)',
+            color: 'var(--primary-red)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
             fontSize: 13.5,
           }}
         >

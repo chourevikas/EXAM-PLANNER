@@ -54,9 +54,9 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
                 fontWeight: 800,
                 padding: '3px 10px',
                 borderRadius: 0,
-                background: 'rgba(227, 27, 35, 0.12)',
-                color: '#E31B23',
-                border: '1px solid rgba(227, 27, 35, 0.25)',
+                background: 'rgba(var(--primary-red-rgb), 0.12)',
+                color: 'var(--primary-red)',
+                border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
               }}
             >
               {tasks.length} Pending
@@ -115,9 +115,9 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
             padding: '12px 16px',
             marginBottom: 16,
             borderRadius: 0,
-            background: 'rgba(227, 27, 35, 0.1)',
-            color: '#E31B23',
-            border: '1px solid rgba(227, 27, 35, 0.25)',
+            background: 'rgba(var(--primary-red-rgb), 0.1)',
+            color: 'var(--primary-red)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
             fontSize: 13.5,
           }}
         >
@@ -195,9 +195,9 @@ export function ReviewQueueView({ onOpenQuestion }: ReviewQueueViewProps) {
                         fontSize: 12.5,
                         fontWeight: 700,
                         borderRadius: 0,
-                        border: '1px solid #E31B23',
-                        background: 'rgba(227, 27, 35, 0.1)',
-                        color: '#E31B23',
+                        border: '1px solid var(--primary-red)',
+                        background: 'rgba(var(--primary-red-rgb), 0.1)',
+                        color: 'var(--primary-red)',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',

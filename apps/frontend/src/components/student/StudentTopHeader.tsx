@@ -279,7 +279,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
           {!isMobile && (
             <div style={{ lineHeight: 1.15, display: 'flex', alignItems: 'center' }}>
               <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff', fontFamily: 'Inter, sans-serif' }}>Exam</span>
-              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#E31B23', fontFamily: 'Inter, sans-serif' }}>Planner</span>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--primary-red)', fontFamily: 'Inter, sans-serif' }}>Planner</span>
             </div>
           )}
         </a>
@@ -394,7 +394,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {searchResults.mocks.map((mock: any) => (
                           <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 0, textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E31B23' }}><Trophy size={14} /></div>
+                            <div style={{ width: 28, height: 28, borderRadius: 0, backgroundColor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-red)' }}><Trophy size={14} /></div>
                             <span style={{ fontSize: 13, color: '#172033', fontWeight: 500 }}>{mock.title}</span>
                           </Link>
                         ))}
@@ -533,7 +533,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           {searchResults.mocks.map((mock: any) => (
                             <Link key={mock.id} to={mock.url} onClick={() => { setSearchQuery(''); setSearchResults(null); setSearchExpanded(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', textDecoration: 'none', backgroundColor: '#F8FAFC', minHeight: 44 }}>
-                              <Trophy size={16} color="#E31B23" />
+                              <Trophy size={16} color="var(--primary-red)" />
                               <span style={{ fontSize: 13, color: '#172033', fontWeight: 600 }}>{mock.title}</span>
                             </Link>
                           ))}
@@ -607,7 +607,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   width: 14,
                   height: 14,
                   borderRadius: 0,
-                  backgroundColor: '#E31B23',
+                  backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
                   fontSize: 9,
                   fontWeight: 700,
@@ -643,7 +643,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #F1F5F9', marginBottom: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
                 {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#E31B23', fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center' }}>
+                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center' }}>
                     Mark all read
                   </button>
                 )}
@@ -662,7 +662,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                         padding: '10px 12px',
                         borderRadius: 0,
                         backgroundColor: n.is_read ? '#FFFFFF' : '#F8FAFC',
-                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid #E31B23',
+                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid var(--primary-red)',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease',
                         minHeight: 44,
@@ -671,7 +671,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{n.title}</span>
                         {!n.is_read && (
-                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: '#E31B23' }} />
+                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: 'var(--primary-red)' }} />
                         )}
                       </div>
                       <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{n.message}</div>
@@ -686,7 +686,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
                   onClick={() => { setShowNotifications(false); navigate('/notifications'); }}
                   style={{
                     width: '100%', background: 'none', border: 'none',
-                    color: '#E31B23', fontSize: 13, fontWeight: 600,
+                    color: 'var(--primary-red)', fontSize: 13, fontWeight: 600,
                     cursor: 'pointer', padding: '6px 0', textAlign: 'center',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                   }}
@@ -714,7 +714,7 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(227, 27, 35, 0.3)',
+              boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.3)',
               backgroundColor: 'transparent'
             }}
             aria-label="User menu"

@@ -17,7 +17,7 @@ const BANNER_BASE_STYLE: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   border: '1px solid #E2E8F0',
   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
-  backgroundImage: 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(227, 27, 35,0.04) 100%)',
+  backgroundImage: 'linear-gradient(135deg, rgba(16,185,129,0.04) 0%, rgba(var(--primary-red-rgb), 0.04) 100%)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -58,7 +58,7 @@ const BANNER_SUBTITLE_STYLE: React.CSSProperties = {
 const ERROR_BOX_STYLE: React.CSSProperties = {
   padding: 16,
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.1)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   border: '1px solid #FCA5A5',
   color: 'var(--primary-red)',
   marginBottom: 24,
@@ -351,7 +351,7 @@ export function MonthlyReportPage() {
                 </span>
               }
               icon={<Award size={18} />}
-              accentColor="#E31B23"
+              accentColor="var(--primary-red)"
             />
 
             {/* 2. Overall Percentile */}
@@ -384,7 +384,7 @@ export function MonthlyReportPage() {
               <div>
                 <div style={CARD_HEADER_STYLE}>
                   <h3 style={CARD_TITLE_STYLE}>
-                    <TrendingUp size={18} color="#E31B23" /> Monthly Percentile Growth Trajectory
+                    <TrendingUp size={18} color="var(--primary-red)" /> Monthly Percentile Growth Trajectory
                   </h3>
                   <span style={CARD_BADGE_STYLE}>
                     {data?.monthly_growth_curve?.length || 0} Months Tracked
@@ -403,7 +403,7 @@ export function MonthlyReportPage() {
                           style={{
                             height: '100%',
                             width: `${Math.min(pt.percentile, 100)}%`,
-                            background: 'linear-gradient(90deg, #E31B23 0%, #3A8B53 100%)',
+                            background: 'linear-gradient(90deg, var(--primary-red) 0%, #3A8B53 100%)',
                             borderRadius: 0,
                             transition: 'width 0.6s ease',
                           }}

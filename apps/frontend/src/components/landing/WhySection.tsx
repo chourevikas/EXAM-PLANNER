@@ -2,7 +2,7 @@ import React from 'react';
 import { Ico } from '../common/Icons';
 
 const palettes = {
-  blue: { color: '#E31B23', bg: 'rgba(227,27,35,0.08)', border: 'rgba(227,27,35,0.2)', glow: 'rgba(227,27,35,0.15)' },
+  blue: { color: 'var(--primary-red)', bg: 'rgba(var(--primary-red-rgb), 0.08)', border: 'rgba(var(--primary-red-rgb), 0.2)', glow: 'rgba(var(--primary-red-rgb), 0.15)' },
   violet: { color: '#F2B623', bg: 'rgba(242,182,35,0.08)', border: 'rgba(242,182,35,0.2)', glow: 'rgba(242,182,35,0.15)' },
   emerald: { color: '#3A8B53', bg: 'rgba(58,139,83,0.08)', border: 'rgba(58,139,83,0.2)', glow: 'rgba(58,139,83,0.15)' },
 };

@@ -291,7 +291,7 @@ export function SuperAdminTopNav({ activeTab, onNavigate, onToggleSidebar }: Sup
           width: 36,
           height: 36,
           borderRadius: 0,
-          backgroundColor: '#E31B23',
+          backgroundColor: 'var(--primary-red)',
           border: '1.5px solid rgba(255, 255, 255, 0.25)',
           color: '#ffffff',
           fontSize: 13,

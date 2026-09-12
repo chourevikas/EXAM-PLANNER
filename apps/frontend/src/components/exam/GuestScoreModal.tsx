@@ -109,7 +109,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
             borderRadius: 0, // Extra rounded bubbly corners
             padding: '32px 28px',
             border: '2px solid #E2E8F0',
-            boxShadow: '0 25px 50px -12px rgba(227, 27, 35, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
+            boxShadow: '0 25px 50px -12px rgba(var(--primary-red-rgb), 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8) inset',
             textAlign: 'center',
             fontFamily: "'IBM Plex Sans', -apple-system, system-ui, sans-serif",
             boxSizing: 'border-box',
@@ -161,7 +161,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               width: 100,
               height: 100,
               borderRadius: 0,
-              background: 'radial-gradient(circle, rgba(227, 27, 35, 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
+              background: 'radial-gradient(circle, rgba(var(--primary-red-rgb), 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
               pointerEvents: 'none',
             }}
           />
@@ -184,13 +184,13 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               width: 60,
               height: 60,
               borderRadius: 0,
-              background: 'linear-gradient(135deg, #E31B23 0%, #E31B23 100%)',
+              background: 'linear-gradient(135deg, var(--primary-red) 0%, var(--primary-red) 100%)',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 14px auto',
-              boxShadow: '0 10px 20px rgba(227, 27, 35, 0.35)',
+              boxShadow: '0 10px 20px rgba(var(--primary-red-rgb), 0.35)',
               transform: 'scale(1)',
               transition: 'transform 0.2s ease',
             }}
@@ -211,7 +211,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               marginBottom: 10,
             }}
           >
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {scoreData.targetExam}
             </span>
             <span style={{ color: '#93C5FD' }}>•</span>
@@ -233,10 +233,10 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
               padding: '22px 20px',
               marginBottom: 20,
               border: '2px solid #BFDBFE',
-              boxShadow: '0 8px 20px rgba(227, 27, 35, 0.08)',
+              boxShadow: '0 8px 20px rgba(var(--primary-red-rgb), 0.08)',
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
               Your Score
             </div>
 
@@ -361,7 +361,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   height: 48,
                   borderRadius: 0,
                   border: 'none',
-                  backgroundColor: '#E31B23',
+                  backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
                   fontSize: 14,
                   fontWeight: 800,
@@ -370,15 +370,15 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  boxShadow: '0 6px 16px rgba(227, 27, 35, 0.35)',
+                  boxShadow: '0 6px 16px rgba(var(--primary-red-rgb), 0.35)',
                   transition: 'transform 0.18s ease, background-color 0.18s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#C1121F';
+                  e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                   e.currentTarget.style.transform = 'scale(1.02)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#E31B23';
+                  e.currentTarget.style.backgroundColor = 'var(--primary-red)';
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
@@ -458,7 +458,7 @@ export function GuestScoreModal({ isOpen, scoreData, onClose, onRetake, isGuest 
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#E31B23',
+                    color: 'var(--primary-red)',
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',

@@ -90,7 +90,7 @@ export function CurrentAffairsDetailPage() {
                 onClick={() => handlePractice(affair)}
                 style={{
                   padding: '12px 24px', backgroundColor: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer',
-                  fontWeight: 600, display: 'flex', alignItems: 'center', gap: 12, fontSize: 15, boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)'
+                  fontWeight: 600, display: 'flex', alignItems: 'center', gap: 12, fontSize: 15, boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)'
                 }}
               >
                 <Ico.Target size={20} /> Practice Questions on this Topic

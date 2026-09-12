@@ -180,7 +180,7 @@ export function AuthModal({
                 height: 56,
                 borderRadius: 0,
                 background: '#F8FAFC',
-                color: '#E31B23',
+                color: 'var(--primary-red)',
                 fontSize: 26,
                 display: 'flex',
                 alignItems: 'center',
@@ -208,7 +208,7 @@ export function AuthModal({
                 width: '100%',
                 height: 52,
                 borderRadius: 0,
-                background: '#E31B23',
+                background: 'var(--primary-red)',
                 color: '#FFFFFF',
                 fontSize: 15,
                 fontWeight: 600,
@@ -217,10 +217,10 @@ export function AuthModal({
                 transition: 'background-color 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#C1121F';
+                e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#E31B23';
+                e.currentTarget.style.backgroundColor = 'var(--primary-red)';
               }}
             >
               Go to sign in
@@ -338,8 +338,8 @@ export function AuthModal({
                         fontFamily: "'Manrope', sans-serif",
                       }}
                       onFocus={(e) => {
-                        e.currentTarget.style.borderColor = '#E31B23';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
+                        e.currentTarget.style.borderColor = 'var(--primary-red)';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
                         e.currentTarget.style.backgroundColor = '#FFFFFF';
                       }}
                       onBlur={(e) => {
@@ -391,8 +391,8 @@ export function AuthModal({
                       fontFamily: "'Manrope', sans-serif",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#E31B23';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
+                      e.currentTarget.style.borderColor = 'var(--primary-red)';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                     }}
                     onBlur={(e) => {
@@ -442,8 +442,8 @@ export function AuthModal({
                       fontFamily: "'Manrope', sans-serif",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#E31B23';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(227, 27, 35, 0.12)';
+                      e.currentTarget.style.borderColor = 'var(--primary-red)';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(var(--primary-red-rgb), 0.12)';
                       e.currentTarget.style.backgroundColor = '#FFFFFF';
                     }}
                     onBlur={(e) => {
@@ -485,7 +485,7 @@ export function AuthModal({
                     onClick={(e) => { e.preventDefault(); onClose(); navigate('/forgot-password'); }}
                     style={{
                       fontSize: 12.5,
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       fontWeight: 600,
                       textDecoration: 'none',
                       cursor: 'pointer',
@@ -506,7 +506,7 @@ export function AuthModal({
                   width: '100%',
                   height: 52,
                   borderRadius: 0,
-                  backgroundColor: '#E31B23',
+                  backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
                   fontSize: 15,
                   fontWeight: 600,
@@ -523,13 +523,13 @@ export function AuthModal({
                 }}
                 onMouseEnter={(e) => {
                   if (!loading) {
-                    e.currentTarget.style.backgroundColor = '#C1121F';
+                    e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!loading) {
-                    e.currentTarget.style.backgroundColor = '#E31B23';
+                    e.currentTarget.style.backgroundColor = 'var(--primary-red)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
@@ -621,7 +621,7 @@ export function AuthModal({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",
@@ -640,7 +640,7 @@ export function AuthModal({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       fontWeight: 600,
                       cursor: 'pointer',
                       fontFamily: "'Manrope', sans-serif",

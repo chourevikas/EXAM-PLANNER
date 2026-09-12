@@ -108,7 +108,7 @@ export function Testimonials() {
     }
   };
 
-  const colors = ['#E31B23', '#3A8B53', '#F2B623', '#199EAE', '#F47B35'];
+  const colors = ['var(--primary-red)', '#3A8B53', '#F2B623', '#199EAE', '#F47B35'];
 
   return (
     <section
@@ -141,14 +141,14 @@ export function Testimonials() {
               borderRadius: 0,
               fontSize: 14,
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #E31B23, #C1121F)',
+              background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
               color: '#ffffff',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 8px 24px -6px rgba(227, 27, 35, 0.4)',
+              boxShadow: '0 8px 24px -6px rgba(var(--primary-red-rgb), 0.4)',
               transition: 'transform 0.2s ease',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
@@ -352,9 +352,9 @@ export function Testimonials() {
                     style={{
                       padding: '10px 14px',
                       borderRadius: 0,
-                      background: 'rgba(227, 27, 35, 0.12)',
+                      background: 'rgba(var(--primary-red-rgb), 0.12)',
                       color: '#ef4444',
-                      border: '1px solid rgba(227, 27, 35, 0.25)',
+                      border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
                       fontSize: 13,
                     }}
                   >
@@ -466,7 +466,7 @@ export function Testimonials() {
                       fontSize: 13,
                       fontWeight: 700,
                       border: 'none',
-                      background: '#E31B23',
+                      background: 'var(--primary-red)',
                       color: '#ffffff',
                       cursor: submitting ? 'not-allowed' : 'pointer',
                     }}

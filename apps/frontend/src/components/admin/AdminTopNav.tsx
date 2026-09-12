@@ -476,7 +476,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>System Alerts</span>
                   {unreadCount > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)' }}>
                       {unreadCount} New
                     </span>
                   )}
@@ -543,7 +543,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               height: 32,
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.2)',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -615,7 +615,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <User size={15} color="#E31B23" />
+                  <User size={15} color="var(--primary-red)" />
                   <span>Admin Overview</span>
                 </button>
 
@@ -644,7 +644,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <BookOpen size={15} color="#E31B23" />
+                  <BookOpen size={15} color="var(--primary-red)" />
                   <span>Question Bank</span>
                 </button>
               </div>

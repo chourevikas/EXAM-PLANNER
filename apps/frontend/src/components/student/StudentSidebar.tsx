@@ -101,9 +101,9 @@ export function StudentSidebar({
           fontSize: 13.5,
           fontWeight: isActive ? 600 : 400,
           color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
-          backgroundColor: isActive ? 'rgba(227, 27, 35, 0.15)' : 'transparent',
+          backgroundColor: isActive ? 'rgba(var(--primary-red-rgb), 0.15)' : 'transparent',
           borderLeft:
-            isActive && !isCollapsedDesktop ? '3px solid #E31B23' : '3px solid transparent',
+            isActive && !isCollapsedDesktop ? '3px solid var(--primary-red)' : '3px solid transparent',
           transition: 'all 0.15s ease',
           position: 'relative',
           minHeight: 44 /* Touch target */,
@@ -123,7 +123,7 @@ export function StudentSidebar({
       >
         <Icon
           size={17}
-          color={isActive ? '#E31B23' : 'rgba(255, 255, 255, 0.65)'}
+          color={isActive ? 'var(--primary-red)' : 'rgba(255, 255, 255, 0.65)'}
           style={{ flexShrink: 0 }}
         />
         {!isCollapsedDesktop && <span>{item.label}</span>}

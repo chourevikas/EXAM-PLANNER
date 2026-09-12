@@ -96,9 +96,9 @@ export function TeacherRewardsView() {
             borderRadius: 0,
             fontSize: 13.5,
             fontWeight: 600,
-            background: toast.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+            background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
             color: toast.isError ? '#ef4444' : '#3A8B53',
-            border: `1px solid ${toast.isError ? 'rgba(227,27,35,0.3)' : 'rgba(16,185,129,0.3)'}`,
+            border: `1px solid ${toast.isError ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(16,185,129,0.3)'}`,
           }}
         >
           {toast.text}
@@ -110,9 +110,9 @@ export function TeacherRewardsView() {
             padding: '12px 16px',
             marginBottom: 16,
             borderRadius: 0,
-            background: 'rgba(227, 27, 35, 0.1)',
-            color: '#E31B23',
-            border: '1px solid rgba(227, 27, 35, 0.25)',
+            background: 'rgba(var(--primary-red-rgb), 0.1)',
+            color: 'var(--primary-red)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
             fontSize: 13.5,
           }}
         >
@@ -157,7 +157,7 @@ export function TeacherRewardsView() {
                       {idx === 0 && <Trophy size={15} color="#F47B35" />}
                       <div>
                         <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{t.full_name}</div>
-                        <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{t.email}</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--primary-red)', fontWeight: 600, marginTop: 2 }}>{t.email}</div>
                       </div>
                     </div>
                   </td>

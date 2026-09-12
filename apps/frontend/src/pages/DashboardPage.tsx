@@ -180,7 +180,7 @@ export function DashboardPage() {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
+            boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.3)',
             transition: 'transform 0.2s',
             whiteSpace: 'nowrap',
           }}
@@ -213,7 +213,7 @@ export function DashboardPage() {
               icon={<Ico.Target size={18} />}
               showProgress={true}
               progressPercent={Math.min((totalQuestionsSolved / 500) * 100, 100)}
-              accentColor="#E31B23"
+              accentColor="var(--primary-red)"
             />
 
             <StudentMetricCard
@@ -250,13 +250,13 @@ export function DashboardPage() {
                 </span>
               }
               supportingText={
-                <span style={{ color: '#E31B23', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: 'var(--primary-red)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   View Achievements <Ico.ArrowRight size={13} />
                 </span>
               }
               icon={<Ico.Star filled />}
               onClick={() => setShowBadgesModal(true)}
-              accentColor="#E31B23"
+              accentColor="var(--primary-red)"
             />
           </>
         )}
@@ -306,7 +306,7 @@ export function DashboardPage() {
                         return (
                           <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 14px', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)' }}>
                             <div style={{ fontWeight: 700, fontSize: 13, color: '#172033', marginBottom: 4 }}>{formatEnum(data.subject)}</div>
-                            <div style={{ fontSize: 12, color: '#E31B23', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
+                            <div style={{ fontSize: 12, color: 'var(--primary-red)', fontWeight: 600 }}>Accuracy: {data.accuracy}%</div>
                             <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
                               Attempted: {data.total_attempted} | Correct: {data.total_correct}
                             </div>
@@ -320,7 +320,7 @@ export function DashboardPage() {
                     {subjectData.map((entry: any, index: number) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? '#E31B23' : '#F2B623'}
+                        fill={entry.total_attempted === 0 ? '#CBD5E1' : entry.accuracy >= 75 ? '#3A8B53' : entry.accuracy >= 60 ? 'var(--primary-red)' : '#F2B623'}
                       />
                     ))}
                   </Bar>
@@ -350,8 +350,8 @@ export function DashboardPage() {
               <AreaChart data={studyHoursData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E31B23" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#E31B23" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--primary-red)" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="var(--primary-red)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
@@ -361,7 +361,7 @@ export function DashboardPage() {
                   cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
                   contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#172033' }}
                 />
-                <Area type="monotone" dataKey="hours" stroke="#E31B23" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
+                <Area type="monotone" dataKey="hours" stroke="var(--primary-red)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -555,10 +555,10 @@ export function DashboardPage() {
                     width: 44, height: 44, borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: activity.activity_type === 'MOCK_TEST' ? 'rgba(234, 179, 8, 0.1)' :
                       activity.activity_type === 'PYQ' ? 'rgba(168, 85, 247, 0.1)' :
-                        activity.activity_type === 'REVISION' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(227, 27, 35, 0.1)',
+                        activity.activity_type === 'REVISION' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(var(--primary-red-rgb), 0.1)',
                     color: activity.activity_type === 'MOCK_TEST' ? '#EAB308' :
                       activity.activity_type === 'PYQ' ? '#A855F7' :
-                        activity.activity_type === 'REVISION' ? '#22C55E' : '#E31B23'
+                        activity.activity_type === 'REVISION' ? '#22C55E' : 'var(--primary-red)'
                   }}>
                     {activity.activity_type === 'MOCK_TEST' || activity.activity_type === 'PYQ' ? <Ico.Trophy size={20} /> :
                       activity.activity_type === 'REVISION' ? <Ico.Refresh /> : <Ico.Book size={20} />}
@@ -624,11 +624,11 @@ export function DashboardPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
                       <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Trophy size={18} color="#E31B23" /> Recent Exam Attempts
+                        <Trophy size={18} color="var(--primary-red)" /> Recent Exam Attempts
                       </h3>
                       <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Registered exam history</p>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23', border: '1px solid #BFDBFE' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
                       {registeredAttempts.length} Recorded
                     </span>
                   </div>
@@ -802,7 +802,7 @@ export function DashboardPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
                               width: 36, height: 36, borderRadius: 0,
-                              backgroundColor: '#F8FAFC', border: '1px solid #BFDBFE', color: '#E31B23',
+                              backgroundColor: '#F8FAFC', border: '1px solid #BFDBFE', color: 'var(--primary-red)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               fontWeight: 800, fontSize: 14
                             }}>
@@ -813,7 +813,7 @@ export function DashboardPage() {
                                 <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                                   {attempt.topicName}
                                 </span>
-                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 0, backgroundColor: '#F8FAFC', color: '#E31B23', border: '1px solid #BFDBFE' }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)', border: '1px solid #BFDBFE' }}>
                                   SYNCED
                                 </span>
                               </div>

@@ -18,7 +18,7 @@ interface SpinnerProps {
   label?: string;
   /** When true renders just the ring with no centering wrapper. */
   inline?: boolean;
-  /** Override the ring colour. Defaults to brand red #E31B23. */
+  /** Override the ring colour. Defaults to brand red var(--primary-red). */
   color?: string;
 }
 
@@ -26,7 +26,7 @@ export function Spinner({
   size = 32,
   label,
   inline = false,
-  color = '#E31B23',
+  color = 'var(--primary-red)',
 }: SpinnerProps) {
   const thickness = Math.max(2, Math.round(size / 10));
 

@@ -28,15 +28,15 @@ const backBannerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   padding: '12px 20px',
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.08)',
-  border: '1px solid rgba(227, 27, 35, 0.25)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.08)',
+  border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
   flexWrap: 'wrap',
   gap: 12,
 };
 
 const backBannerInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' };
 const backBannerLabelStyle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' };
-const backBannerValueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 800, color: '#E31B23' };
+const backBannerValueStyle: React.CSSProperties = { fontSize: 14, fontWeight: 800, color: 'var(--primary-red)' };
 
 const headerSectionStyle: React.CSSProperties = {
   marginBottom: 24,
@@ -45,7 +45,7 @@ const headerSectionStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-default)',
   boxShadow: 'var(--shadow-color-base)',
-  backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(227, 27, 35,0.06) 100%)',
+  backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.06) 0%, rgba(var(--primary-red-rgb), 0.06) 100%)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -118,7 +118,7 @@ const attemptSwitcherSelectStyle: React.CSSProperties = {
   padding: '6px 14px',
   borderRadius: 0,
   backgroundColor: 'var(--bg-subtle)',
-  border: '1px solid #E31B23',
+  border: '1px solid var(--primary-red)',
   color: 'var(--text-primary)',
   fontSize: 12.5,
   fontWeight: 700,
@@ -145,8 +145,8 @@ const emptyStateIconStyle: React.CSSProperties = {
   width: 80,
   height: 80,
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.1)',
-  border: '1px solid rgba(227, 27, 35, 0.25)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
+  border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -159,13 +159,13 @@ const emptyStateCTAStyle: React.CSSProperties = {
   gap: 8,
   padding: '14px 28px',
   borderRadius: 0,
-  backgroundColor: '#E31B23',
+  backgroundColor: 'var(--primary-red)',
   color: '#ffffff',
   border: 'none',
   fontSize: 14,
   fontWeight: 700,
   cursor: 'pointer',
-  boxShadow: '0 4px 16px rgba(227, 27, 35, 0.3)',
+  boxShadow: '0 4px 16px rgba(var(--primary-red-rgb), 0.3)',
   transition: 'all 0.15s ease',
 };
 
@@ -185,7 +185,7 @@ const theadRowStyle: React.CSSProperties = { borderBottom: '2px solid var(--bord
 const thStyle: React.CSSProperties = { padding: '10px 12px', color: 'var(--text-muted)' };
 const thRightStyle: React.CSSProperties = { padding: '10px 12px', color: 'var(--text-muted)', textAlign: 'right' };
 const tbodyRowStyle: React.CSSProperties = { borderBottom: '1px solid var(--border-default)' };
-const tdIndexStyle: React.CSSProperties = { padding: '12px', fontWeight: 800, color: '#E31B23' };
+const tdIndexStyle: React.CSSProperties = { padding: '12px', fontWeight: 800, color: 'var(--primary-red)' };
 const tdNameStyle: React.CSSProperties = { padding: '12px', fontWeight: 700, color: 'var(--text-primary)' };
 const tdNameInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' };
 
@@ -194,9 +194,9 @@ const attemptBadgeStyle: React.CSSProperties = {
   fontWeight: 800,
   padding: '2px 7px',
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.12)',
-  color: '#E31B23',
-  border: '1px solid rgba(227, 27, 35, 0.25)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.12)',
+  color: 'var(--primary-red)',
+  border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
 };
 
 const tdCellStyle: React.CSSProperties = { padding: '12px' };
@@ -208,13 +208,13 @@ const tdActionStyle: React.CSSProperties = { padding: '12px', textAlign: 'right'
 const viewReportBtnStyle: React.CSSProperties = {
   padding: '8px 16px',
   borderRadius: 0,
-  backgroundColor: '#E31B23',
+  backgroundColor: 'var(--primary-red)',
   color: '#ffffff',
   border: 'none',
   fontSize: 12.5,
   fontWeight: 700,
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(227, 27, 35, 0.2)',
+  boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.2)',
   transition: 'all 0.15s ease',
 };
 
@@ -237,8 +237,8 @@ const evaluatingContainerStyle: React.CSSProperties = {
   marginBottom: 28,
   borderRadius: 0,
   backgroundColor: 'var(--bg-card)',
-  border: '2px solid rgba(227, 27, 35, 0.3)',
-  boxShadow: '0 8px 32px rgba(227, 27, 35, 0.12)',
+  border: '2px solid rgba(var(--primary-red-rgb), 0.3)',
+  boxShadow: '0 8px 32px rgba(var(--primary-red-rgb), 0.12)',
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
@@ -246,7 +246,7 @@ const evaluatingContainerStyle: React.CSSProperties = {
   textAlign: 'center',
 };
 
-const evaluatingIconsStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, color: '#E31B23' };
+const evaluatingIconsStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, color: 'var(--primary-red)' };
 const progressBarOuterStyle: React.CSSProperties = {
   width: '100%',
   maxWidth: 480,
@@ -262,8 +262,8 @@ const evalLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, col
 const errorBannerStyle: React.CSSProperties = {
   padding: '20px 24px',
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.1)',
-  border: '1px solid rgba(227, 27, 35, 0.3)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
+  border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
   color: 'var(--text-primary)',
   marginBottom: 24,
   display: 'flex',
@@ -283,12 +283,12 @@ const retryBtnStyle: React.CSSProperties = {
   gap: 8,
   padding: '10px 20px',
   borderRadius: 0,
-  backgroundColor: '#E31B23',
+  backgroundColor: 'var(--primary-red)',
   color: '#ffffff',
   border: 'none',
   fontSize: 13,
   fontWeight: 700,
-  boxShadow: '0 4px 12px rgba(227, 27, 35, 0.25)',
+  boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)',
   transition: 'all 0.15s ease',
 };
 
@@ -312,7 +312,7 @@ const noReportIconStyle: React.CSSProperties = {
   width: 64,
   height: 64,
   borderRadius: 0,
-  backgroundColor: 'rgba(227, 27, 35, 0.1)',
+  backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -339,12 +339,12 @@ const practiceExamBtnStyle: React.CSSProperties = {
   padding: '12px 22px',
   borderRadius: 0,
   border: 'none',
-  backgroundColor: 'var(--accent-primary, #E31B23)',
+  backgroundColor: 'var(--accent-primary, var(--primary-red))',
   color: '#ffffff',
   fontSize: 13.5,
   fontWeight: 700,
   cursor: 'pointer',
-  boxShadow: '0 4px 14px rgba(227, 27, 35, 0.3)',
+  boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.3)',
   transition: 'all 0.15s ease',
   display: 'inline-flex',
   alignItems: 'center',
@@ -850,7 +850,7 @@ export function AnalyticsPage() {
                       gap: 8,
                     }}
                   >
-                    <BarChart3 size={18} color="#E31B23" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
+                    <BarChart3 size={18} color="var(--primary-red)" /> Completed Exam Papers ({attemptsHistory.length} Total Attempts)
                   </h3>
                   <p
                     style={{
@@ -889,7 +889,7 @@ export function AnalyticsPage() {
                         {/* Card Top: Index, Exam Name, Attempt Badge & Mode */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
-                            <span style={{ fontWeight: 800, color: '#E31B23', fontSize: 13 }}>#{globalIdx + 1}</span>
+                            <span style={{ fontWeight: 800, color: 'var(--primary-red)', fontSize: 13 }}>#{globalIdx + 1}</span>
                             <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{att.exam_name}</span>
                             {sameExamList.length > 1 && (
                               <span style={attemptBadgeStyle}>
@@ -903,8 +903,8 @@ export function AnalyticsPage() {
                               fontWeight: 700,
                               padding: '2px 7px',
                               borderRadius: 0,
-                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                              color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
+                              backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                              color: att.mode === 'FULL_MOCK' ? 'var(--primary-red)' : '#3A8B53',
                               flexShrink: 0,
                             }}
                           >
@@ -932,7 +932,7 @@ export function AnalyticsPage() {
                           <div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Score</div>
                             <div style={{ fontSize: 12.5, fontWeight: 800 }}>
-                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
+                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : 'var(--primary-red)' }}>
                                 {att.total_score}
                               </span>
                               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>/{att.max_possible_score}</span>
@@ -1009,8 +1009,8 @@ export function AnalyticsPage() {
                                   fontWeight: 700,
                                   padding: '3px 8px',
                                   borderRadius: 0,
-                                  backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                                  color: att.mode === 'FULL_MOCK' ? '#E31B23' : '#3A8B53',
+                                  backgroundColor: att.mode === 'FULL_MOCK' ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                  color: att.mode === 'FULL_MOCK' ? 'var(--primary-red)' : '#3A8B53',
                                 }}
                               >
                                 {formatEnum(att.mode)}
@@ -1020,7 +1020,7 @@ export function AnalyticsPage() {
                               {new Date(att.started_at).toLocaleDateString()}
                             </td>
                             <td style={tdScoreStyle}>
-                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : '#E31B23' }}>
+                              <span style={{ color: Number(att.total_score) >= 92 ? '#3A8B53' : 'var(--primary-red)' }}>
                                 {att.total_score}
                               </span>{' '}
                               <span style={tdScoreMaxStyle}>/ {att.max_possible_score} Marks</span>
@@ -1142,8 +1142,8 @@ export function AnalyticsPage() {
                             minWidth: 36,
                             padding: '6px 11px',
                             borderRadius: 0,
-                            border: pageNum === historyPage ? '1px solid #E31B23' : '1px solid var(--border-default)',
-                            backgroundColor: pageNum === historyPage ? '#E31B23' : 'var(--bg-subtle)',
+                            border: pageNum === historyPage ? '1px solid var(--primary-red)' : '1px solid var(--border-default)',
+                            backgroundColor: pageNum === historyPage ? 'var(--primary-red)' : 'var(--bg-subtle)',
                             color: pageNum === historyPage ? '#ffffff' : 'var(--text-primary)',
                             cursor: 'pointer',
                             fontSize: 12,
@@ -1227,7 +1227,7 @@ export function AnalyticsPage() {
                   style={{
                     height: '100%',
                     width: `${evalProgress}%`,
-                    background: 'linear-gradient(90deg, #E31B23, #8b5cf6)',
+                    background: 'linear-gradient(90deg, var(--primary-red), #8b5cf6)',
                     borderRadius: 0,
                     transition: 'width 0.4s ease',
                   }}

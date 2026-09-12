@@ -41,7 +41,7 @@ function MetricCard({
   progressPercent = 96.3,
 }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const accentColor = '#E31B23';
+  const accentColor = 'var(--primary-red)';
 
   return (
     <div
@@ -203,7 +203,7 @@ function TableRowItem({
       <td
         style={{
           padding: '14px 16px',
-          borderLeft: hovered ? '3px solid #E31B23' : '3px solid transparent',
+          borderLeft: hovered ? '3px solid var(--primary-red)' : '3px solid transparent',
           transition: 'border-left 150ms ease-out',
         }}
       >
@@ -315,12 +315,12 @@ function TableRowItem({
                   padding: '5px 14px',
                   fontSize: 12.5,
                   fontWeight: 600,
-                  color: hovered ? '#E31B23' : '#172033',
+                  color: hovered ? 'var(--primary-red)' : '#172033',
                   background: '#FFFFFF',
                   border: hovered ? '1px solid #93C5FD' : '1px solid #E2E8F0',
                   borderRadius: 0,
                   cursor: 'pointer',
-                  boxShadow: hovered ? '0 1px 2px rgba(227, 27, 35, 0.1)' : 'none',
+                  boxShadow: hovered ? '0 1px 2px rgba(var(--primary-red-rgb), 0.1)' : 'none',
                   transition: 'all 150ms ease-out',
                 }}
               >
@@ -388,7 +388,7 @@ function SubjectDistributionRow({
         }}
       >
         <span>{subject}</span>
-        <span style={{ color: hovered ? '#E31B23' : '#64748B', fontWeight: 600, fontSize: 12.5 }}>
+        <span style={{ color: hovered ? 'var(--primary-red)' : '#64748B', fontWeight: 600, fontSize: 12.5 }}>
           {count} · {percent}%
         </span>
       </div>
@@ -407,7 +407,7 @@ function SubjectDistributionRow({
           style={{
             height: '100%',
             width: `${Math.min(100, Math.max(0, percent))}%`,
-            backgroundColor: hovered ? '#C1121F' : '#E31B23',
+            backgroundColor: hovered ? 'var(--accent-darker)' : 'var(--primary-red)',
             borderRadius: 0,
             transition: 'width 400ms ease-out, background-color 150ms ease-out',
           }}
@@ -434,7 +434,7 @@ function SubjectDistributionRow({
           <span>
             <strong style={{ color: '#172033' }}>{subject}</strong>: {count} extracted questions
           </span>
-          <span style={{ color: '#E31B23', fontWeight: 600 }}>{percent}% of current dataset</span>
+          <span style={{ color: 'var(--primary-red)', fontWeight: 600 }}>{percent}% of current dataset</span>
         </div>
       )}
     </div>
@@ -610,11 +610,11 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
               fontSize: 13.5,
               fontWeight: 600,
               borderRadius: 0,
-              background: '#E31B23',
+              background: 'var(--primary-red)',
               color: '#FFFFFF',
-              border: '1px solid #E31B23',
+              border: '1px solid var(--primary-red)',
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(227, 27, 35, 0.3)',
+              boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.3)',
               transition: 'all 0.15s ease',
             }}
           >
@@ -676,7 +676,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Total Papers Uploaded"
           value={stats?.metrics?.[0]?.value || '3'}
           supportingText="+3 this month"
-          icon={<FileText size={18} color="#E31B23" />}
+          icon={<FileText size={18} color="var(--primary-red)" />}
         />
 
         {/* Card 2: Questions Extracted */}
@@ -684,7 +684,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Questions Extracted"
           value={stats?.metrics?.[1]?.value || '299'}
           supportingText="96% successfully parsed"
-          icon={<Layers size={18} color="#E31B23" />}
+          icon={<Layers size={18} color="var(--primary-red)" />}
         />
 
         {/* Card 3: Extraction Accuracy */}
@@ -692,7 +692,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Extraction Accuracy"
           value={stats?.metrics?.[2]?.value || '96.3%'}
           supportingText="High confidence"
-          icon={<CheckCircle2 size={18} color="#E31B23" />}
+          icon={<CheckCircle2 size={18} color="var(--primary-red)" />}
           showProgress={true}
           progressPercent={96.3}
         />
@@ -702,7 +702,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           title="Supported Exam Types"
           value={stats?.metrics?.[3]?.value || '1'}
           supportingText="UPSC / State PSC"
-          icon={<GraduationCap size={18} color="#E31B23" />}
+          icon={<GraduationCap size={18} color="var(--primary-red)" />}
         />
       </div>
 
@@ -734,7 +734,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 4, height: 22, backgroundColor: '#E31B23', borderRadius: 0 }} />
+              <div style={{ width: 4, height: 22, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
                   Recent Exam Paper Uploads
@@ -753,7 +753,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 gap: 4,
                 background: 'transparent',
                 border: 'none',
-                color: '#E31B23',
+                color: 'var(--primary-red)',
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -824,7 +824,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         >
           {/* Section Title with Vertical Accent */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 4, height: 20, backgroundColor: '#E31B23', borderRadius: 0 }} />
+            <div style={{ width: 4, height: 20, backgroundColor: 'var(--primary-red)', borderRadius: 0 }} />
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#172033', margin: 0, letterSpacing: '-0.01em' }}>
               Question Distribution
             </h2>

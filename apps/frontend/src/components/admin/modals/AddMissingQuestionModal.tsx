@@ -773,7 +773,7 @@ export function AddMissingQuestionModal({
                 padding: '9px 20px',
                 borderRadius: 6,
                 border: 'none',
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#ffffff',
                 fontWeight: 600,
                 fontSize: 14,

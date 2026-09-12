@@ -324,7 +324,7 @@ export function HeroSection({ }: HeroSectionProps) {
           transform: 'translateX(-50%)',
           width: 'min(800px, 95vw)',
           height: 380,
-          background: 'radial-gradient(ellipse at center, rgba(227,27,35,0.055) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, rgba(var(--primary-red-rgb), 0.055) 0%, transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -346,8 +346,8 @@ export function HeroSection({ }: HeroSectionProps) {
             marginBottom: 18,
           }}
         >
-          <Zap size={13} strokeWidth={2.5} style={{ color: '#E31B23' }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          <Zap size={13} strokeWidth={2.5} style={{ color: 'var(--primary-red)' }} />
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary-red)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
             INSTANT PYQ MOCK TEST
           </span>
         </div>
@@ -364,7 +364,7 @@ export function HeroSection({ }: HeroSectionProps) {
           }}
         >
           Master UPSC with{' '}
-          <span style={{ color: '#E31B23' }}>Precision Analytics.</span>
+          <span style={{ color: 'var(--primary-red)' }}>Precision Analytics.</span>
         </h1>
 
         {/* Subtitle */}
@@ -388,16 +388,16 @@ export function HeroSection({ }: HeroSectionProps) {
               display: 'flex',
               alignItems: 'center',
               background: '#FFFFFF',
-              border: `2px solid ${isSyllabusSearchFocused ? '#E31B23' : '#E2E8F0'}`,
+              border: `2px solid ${isSyllabusSearchFocused ? 'var(--primary-red)' : '#E2E8F0'}`,
               borderRadius: 8,
               boxShadow: isSyllabusSearchFocused
-                ? '0 0 0 4px rgba(227, 27, 35, 0.1), 0 8px 24px rgba(15,23,42,0.08)'
+                ? '0 0 0 4px rgba(var(--primary-red-rgb), 0.1), 0 8px 24px rgba(15,23,42,0.08)'
                 : '0 6px 20px rgba(15,23,42,0.07)',
               transition: 'all 0.18s ease',
               overflow: 'hidden',
             }}
           >
-            <div style={{ padding: '0 16px', color: isSyllabusSearchFocused ? '#E31B23' : '#94A3B8', flexShrink: 0, display: 'flex', alignItems: 'center', borderRight: '1px solid #E2E8F0', height: 58 }}>
+            <div style={{ padding: '0 16px', color: isSyllabusSearchFocused ? 'var(--primary-red)' : '#94A3B8', flexShrink: 0, display: 'flex', alignItems: 'center', borderRight: '1px solid #E2E8F0', height: 58 }}>
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
@@ -467,7 +467,7 @@ export function HeroSection({ }: HeroSectionProps) {
                 }
               }}
               style={{
-                background: '#E31B23',
+                background: 'var(--primary-red)',
                 color: '#FFFFFF',
                 border: 'none',
                 height: 58,
@@ -479,7 +479,7 @@ export function HeroSection({ }: HeroSectionProps) {
                 transition: 'background 0.2s',
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#B91C1C'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#E31B23'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--primary-red)'}
             >
               Search
             </button>
@@ -515,7 +515,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   {syllabusSearchResults.map((result, idx) => {
                     const isHovered = hoveredSyllabusResult === idx;
                     const typeBg = result.type === 'subject' ? '#FFF1F2' : result.type === 'topic' ? '#F0F9FF' : '#F0FDF4';
-                    const typeColor = result.type === 'subject' ? '#E31B23' : result.type === 'topic' ? '#0369A1' : '#059669';
+                    const typeColor = result.type === 'subject' ? 'var(--primary-red)' : result.type === 'topic' ? '#0369A1' : '#059669';
                     const typeLabel = result.type === 'subject' ? 'Subject' : result.type === 'topic' ? 'Topic' : 'Subtopic';
                     return (
                       <div
@@ -573,7 +573,7 @@ export function HeroSection({ }: HeroSectionProps) {
                   fontFamily: 'inherit',
                   transition: 'all 0.12s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E31B23'; e.currentTarget.style.color = '#E31B23'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary-red)'; e.currentTarget.style.color = 'var(--primary-red)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
               >
                 {hint}
@@ -600,7 +600,7 @@ export function HeroSection({ }: HeroSectionProps) {
             <CheckCircle2 size={14} style={{ color: '#3A8B53' }} /> Authentic PYQs
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <Zap size={13} style={{ color: '#E31B23' }} /> Instant — no signup
+            <Zap size={13} style={{ color: 'var(--primary-red)' }} /> Instant — no signup
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <Target size={13} style={{ color: '#6366F1' }} /> Topic-wise precision
@@ -614,7 +614,7 @@ export function HeroSection({ }: HeroSectionProps) {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#172033', margin: 0 }}>
             Featured Solved PYQs
           </h2>
-          <a href="#" style={{ fontSize: 14, color: '#E31B23', fontWeight: 600, textDecoration: 'none' }}>View all questions &rarr;</a>
+          <a href="#" style={{ fontSize: 14, color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>View all questions &rarr;</a>
         </div>
 
         {filteredCards.length === 0 ? (
@@ -653,7 +653,7 @@ export function HeroSection({ }: HeroSectionProps) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700 }}>
-                  <span style={{ background: '#FFF1F2', color: '#E31B23', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  <span style={{ background: '#FFF1F2', color: 'var(--primary-red)', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                     {card.badge}
                   </span>
                   <span style={{ color: '#94A3B8' }}>{card.meta}</span>

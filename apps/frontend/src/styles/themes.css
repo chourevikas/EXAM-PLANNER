@@ -1,0 +1,38 @@
+/* ═══════════════════════════════════════════════════════════════
+   Global Color Theme Presets — selected via <html data-theme="...">
+   "crimson" is the default palette already defined in :root, so it
+   needs no override block here. Each other preset overrides only the
+   core tokens that every derived token (--accent-primary, --bg-card
+   in dark mode, --royal, --primary-red-rgb-based rgba() usages, etc.)
+   chains off of, so no component styles need to change when the
+   active theme switches.
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme="ocean"] {
+  --primary-red: #1d6fb8;
+  --primary-red-rgb: 29, 111, 184;
+  --deep-navy: #0b2540;
+  --accent-darker: #14507f;
+  --accent-darkest: #11446c;
+  --royal-hover: #14507f;
+  --info-teal: #17a2c2;
+}
+
+[data-theme="forest"] {
+  --primary-red: #2f7a4a;
+  --primary-red-rgb: 47, 122, 74;
+  --deep-navy: #1b2e22;
+  --ink-black: #14231a;
+  --accent-darker: #245e39;
+  --accent-darkest: #1f5030;
+  --royal-hover: #245e39;
+}
+
+[data-theme="royal"] {
+  --primary-red: #6b3fa0;
+  --primary-red-rgb: 107, 63, 160;
+  --deep-navy: #241a3d;
+  --accent-darker: #52306f;
+  --accent-darkest: #46295e;
+  --royal-hover: #52306f;
+}

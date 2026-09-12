@@ -135,7 +135,7 @@ function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: danger ? '#DC2626' : '#E31B23', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: danger ? '#DC2626' : 'var(--primary-red)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             {confirmLabel}
           </button>
         </div>
@@ -292,7 +292,7 @@ function FormModal({ mode, initial, onSave, onClose, saving }: FormModalProps) {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: saving ? '#E5E7EB' : '#E31B23', color: saving ? '#9CA3AF' : '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: saving ? '#E5E7EB' : 'var(--primary-red)', color: saving ? '#9CA3AF' : '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               {saving && <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} />}
               {saving ? 'Saving…' : mode === 'create' ? 'Save as Draft' : 'Update'}
             </button>
@@ -458,7 +458,7 @@ export function NotificationsView() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Bell size={22} color="#E31B23" />
+          <Bell size={22} color="var(--primary-red)" />
           <div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Broadcast Notifications</h2>
             <p style={{ margin: '2px 0 0', fontSize: 13, color: '#6B7280' }}>
@@ -472,8 +472,8 @@ export function NotificationsView() {
           style={{
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '9px 18px', borderRadius: 7, border: 'none',
-            background: '#E31B23', color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(227,27,35,0.25)',
+            background: 'var(--primary-red)', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
             transition: 'background 0.15s',
           }}>
           <Plus size={16} />
@@ -492,9 +492,9 @@ export function NotificationsView() {
             onClick={() => handleStatusFilter(f.value)}
             style={{
               padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: statusFilter === f.value ? 600 : 400,
-              border: statusFilter === f.value ? '1.5px solid #E31B23' : '1.5px solid #E5E7EB',
+              border: statusFilter === f.value ? '1.5px solid var(--primary-red)' : '1.5px solid #E5E7EB',
               background: statusFilter === f.value ? '#FFF1F2' : '#fff',
-              color: statusFilter === f.value ? '#E31B23' : '#6B7280',
+              color: statusFilter === f.value ? 'var(--primary-red)' : '#6B7280',
               cursor: 'pointer', transition: 'all 0.15s',
             }}>
             {f.label}
@@ -513,7 +513,7 @@ export function NotificationsView() {
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
             <Bell size={32} color="#E5E7EB" style={{ marginBottom: 12 }} />
             <p style={{ margin: 0, color: '#9CA3AF', fontSize: 15 }}>No notifications found for this filter.</p>
-            <button onClick={handleOpenCreate} style={{ marginTop: 12, background: 'none', border: 'none', color: '#E31B23', fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Create your first notification →</button>
+            <button onClick={handleOpenCreate} style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Create your first notification →</button>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -547,7 +547,7 @@ export function NotificationsView() {
                         href={n.link || n.attachment || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ fontSize: 12, color: '#E31B23', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2, textDecoration: 'none' }}>
+                        style={{ fontSize: 12, color: 'var(--primary-red)', display: 'inline-flex', alignItems: 'center', gap: 3, marginTop: 2, textDecoration: 'none' }}>
                         <ExternalLink size={11} /> View link
                       </a>
                     )}

@@ -1537,13 +1537,13 @@ export function StudentPracticeExamPage() {
               style={{
                 padding: '12px 20px',
                 borderRadius: 0,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 fontWeight: 600,
                 fontSize: 14,
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.2)',
+                boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.2)',
               }}
             >
               Select Another Subject
@@ -3240,7 +3240,7 @@ export function StudentPracticeExamPage() {
                 width: 26,
                 height: 26,
                 borderRadius: 0,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -3265,7 +3265,7 @@ export function StudentPracticeExamPage() {
               padding: '6px 14px',
               borderRadius: 0,
               border: 'none',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#FFFFFF',
               fontSize: 12,
               fontWeight: 700,
@@ -3485,7 +3485,7 @@ export function StudentPracticeExamPage() {
                   gap: 8,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#C1121F';
+                  e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#1E3A8A';
