@@ -470,30 +470,36 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     async (q: any, targetLang: string) => {
       if (!q || !q.question_id) return;
       const clean = (targetLang || 'en').trim().toLowerCase();
-      const upper = targetLang.toUpperCase();
-      const hasOptionTrans =
-        (q.options || []).length === 0 ||
-        (q.options || []).every((o: any) =>
-          Boolean(
-            o.text_hindi ||
-              o.textHindi ||
-              (o.translations &&
-                (o.translations[clean] ||
-                  o.translations[upper] ||
-                  (clean === 'hi' && (o.translations.HINDI || o.translations.Hindi)))),
-          ),
+      if (clean === 'en' || clean === 'english') return;
+
+      const upper = clean.toUpperCase();
+      const langUpper = targetLang.toUpperCase(); // e.g. "HINDI" or "MARATHI"
+
+      // Check if we already have a valid translation (not same as English source)
+      const englishText = (q.translations?.ENGLISH || q.translations?.en || q.text || '').trim();
+
+      const getStoredQTrans = () => {
+        if (clean === 'hi' || clean === 'hindi') return q.text_hindi || q.textHindi;
+        if (clean === 'mr' || clean === 'marathi') return q.text_marathi || q.textMarathi;
+        return (
+          (q.translations && (q.translations[langUpper] || q.translations[clean] || q.translations[upper]))
         );
-      const hasTrans =
-        clean === 'en' ||
-        clean === 'english' ||
-        ((q.text_hindi ||
-          q.textHindi ||
-          (q.translations &&
-            (q.translations[clean] ||
-              q.translations[upper] ||
-              (clean === 'hi' && (q.translations.HINDI || q.translations.Hindi))))) &&
-          hasOptionTrans);
-      if (hasTrans) return;
+      };
+      const storedQTrans = getStoredQTrans();
+      const isQTransValid = storedQTrans && storedQTrans.trim() !== englishText;
+
+      const hasValidOptionTrans =
+        (q.options || []).length === 0 ||
+        (q.options || []).every((o: any) => {
+          const engOptText = (o.translations?.ENGLISH || o.translations?.en || o.text || '').trim();
+          let stored =
+            (o.translations && (o.translations[langUpper] || o.translations[clean] || o.translations[upper]));
+          if (clean === 'hi' || clean === 'hindi') stored = stored || o.text_hindi || o.textHindi;
+          if (clean === 'mr' || clean === 'marathi') stored = stored || o.text_marathi || o.textMarathi;
+          return stored && stored.trim() !== engOptText;
+        });
+
+      if (isQTransValid && hasValidOptionTrans) return;
 
       try {
         setIsTranslatingActiveQ(true);
@@ -507,52 +513,25 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             if (opt.option_id) {
               const oId = String(opt.option_id);
               newOptTrans[oId] = opt.translations || {};
-              if (opt.option_text) newOptText[oId] = opt.option_text;
+              // Store the chosen text for this language
+              if (opt.text) newOptText[oId] = opt.text;
+              else if (opt.option_text) newOptText[oId] = opt.option_text;
             }
           });
 
-          setAllQuestions((prev) =>
-            prev.map((item) => {
-              if (String(item.question_id) === String(q.question_id)) {
-                const mergedTranslations = { ...(item.translations || {}), ...newTrans };
-                const mergedOptions = (item.options || []).map((o: any) => {
-                  const optId = String(o.option_id);
-                  const hiTxt = newOptTrans[optId]?.HINDI || newOptTrans[optId]?.hi;
-                  return {
-                    ...o,
-                    text: newOptText[optId] || o.text,
-                    text_hindi: hiTxt || o.text_hindi,
-                    textHindi: hiTxt || o.textHindi,
-                    translations: {
-                      ...(o.translations || {}),
-                      ...(newOptTrans[optId] || {}),
-                    },
-                  };
-                });
-                return {
-                  ...item,
-                  text: data.question_text || item.text,
-                  text_hindi: data.question_text_hindi || data.text_hindi || item.text_hindi,
-                  textHindi: data.question_text_hindi || data.text_hindi || item.textHindi,
-                  translations: mergedTranslations,
-                  options: mergedOptions,
-                };
-              }
-              return item;
-            }),
-          );
-
-          setActiveQuestion((prev) => {
-            if (!prev || String(prev.question_id) !== String(q.question_id)) return prev;
-            const mergedTranslations = { ...(prev.translations || {}), ...newTrans };
-            const mergedOptions = (prev.options || []).map((o: any) => {
+          const applyUpdates = (item: any) => {
+            const mergedTranslations = { ...(item.translations || {}), ...newTrans };
+            const mergedOptions = (item.options || []).map((o: any) => {
               const optId = String(o.option_id);
               const hiTxt = newOptTrans[optId]?.HINDI || newOptTrans[optId]?.hi;
+              const mrTxt = newOptTrans[optId]?.MARATHI || newOptTrans[optId]?.mr;
               return {
                 ...o,
                 text: newOptText[optId] || o.text,
                 text_hindi: hiTxt || o.text_hindi,
                 textHindi: hiTxt || o.textHindi,
+                text_marathi: mrTxt || o.text_marathi,
+                textMarathi: mrTxt || o.textMarathi,
                 translations: {
                   ...(o.translations || {}),
                   ...(newOptTrans[optId] || {}),
@@ -560,13 +539,26 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
               };
             });
             return {
-              ...prev,
-              text: data.question_text || prev.text,
-              text_hindi: data.question_text_hindi || data.text_hindi || prev.text_hindi,
-              textHindi: data.question_text_hindi || data.text_hindi || prev.textHindi,
+              ...item,
+              text: data.text || data.question_text || item.text,
+              text_hindi: data.text_hindi || data.question_text_hindi || item.text_hindi,
+              textHindi: data.text_hindi || data.question_text_hindi || item.textHindi,
+              text_marathi: data.text_marathi || data.question_text_marathi || item.text_marathi,
+              textMarathi: data.text_marathi || data.question_text_marathi || item.textMarathi,
               translations: mergedTranslations,
               options: mergedOptions,
             };
+          };
+
+          setAllQuestions((prev) =>
+            prev.map((item) =>
+              String(item.question_id) === String(q.question_id) ? applyUpdates(item) : item,
+            ),
+          );
+
+          setActiveQuestion((prev) => {
+            if (!prev || String(prev.question_id) !== String(q.question_id)) return prev;
+            return applyUpdates(prev);
           });
         }
       } catch (err) {
@@ -577,6 +569,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     },
     [],
   );
+
 
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: number | string, qNum: number) => {

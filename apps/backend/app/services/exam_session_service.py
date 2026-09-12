@@ -365,7 +365,34 @@ class ExamSessionService:
                 from app.core.languages import normalize_language
                 target_iso, target_enum = normalize_language(language)
 
-                # Check on-demand AI translation if non-English and missing in DB
+                # Pre-load all existing translations for this question + its options into maps
+                # so _ensure_translations_on_demand can detect "fake" translations (English text
+                # stored in a Hindi/Marathi slot) and re-translate them correctly.
+                pre_qt_map: Dict[int, Dict[str, str]] = {}
+                pre_ot_map: Dict[int, Dict[str, Any]] = {}
+
+                pre_q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
+                pre_q_trans_res = await self.session.exec(pre_q_trans_stmt)
+                for t in pre_q_trans_res.all():
+                    l_val = t.language.value if hasattr(t.language, "value") else str(t.language)
+                    pre_qt_map.setdefault(q_model.id, {})[l_val] = t.question_text or ""
+                    iso_c, _ = normalize_language(l_val)
+                    if iso_c:
+                        pre_qt_map[q_model.id][iso_c] = t.question_text or ""
+
+                if db_opts:
+                    pre_opt_trans_stmt = select(OptionTranslation).where(
+                        col(OptionTranslation.option_id).in_([o.id for o in db_opts])
+                    )
+                    pre_opt_trans_res = await self.session.exec(pre_opt_trans_stmt)
+                    for ot in pre_opt_trans_res.all():
+                        l_val = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
+                        pre_ot_map.setdefault(ot.option_id, {})[l_val] = (ot.option_text or "", None)
+                        iso_c, _ = normalize_language(l_val)
+                        if iso_c:
+                            pre_ot_map[ot.option_id][iso_c] = (ot.option_text or "", None)
+
+                # On-demand translation for non-English targets (also fixes previously wrong translations)
                 if target_enum != "ENGLISH":
                     from app.services.question_service import QuestionService
                     try:
@@ -376,42 +403,39 @@ class ExamSessionService:
                             passages=[],
                             target_iso=target_iso,
                             target_enum=target_enum,
-                            qt_map={},
-                            ot_map={},
+                            qt_map=pre_qt_map,
+                            ot_map=pre_ot_map,
                             pt_map={},
                         )
                     except Exception as trans_err:
                         logger.warning(f"On-demand translation warning for Q{q_model.id}: {trans_err}")
 
-                q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
-                q_trans_res = await self.session.exec(q_trans_stmt)
-                db_q_trans = q_trans_res.all()
+                # Re-query translations fresh from DB (the ensure call writes to a separate session)
+                from app.db.session import async_session_factory
+                async with async_session_factory() as fresh_session:
+                    q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
+                    db_q_trans = (await fresh_session.exec(q_trans_stmt)).all()
 
-                trans_map = {}
+                    opt_trans_by_option: Dict[int, list] = {}
+                    if db_opts:
+                        all_opt_trans_stmt = select(OptionTranslation).where(
+                            col(OptionTranslation.option_id).in_([o.id for o in db_opts])
+                        )
+                        for ot in (await fresh_session.exec(all_opt_trans_stmt)).all():
+                            opt_trans_by_option.setdefault(ot.option_id, []).append(ot)
+
+                trans_map: Dict[str, Any] = {}
                 for t in db_q_trans:
                     l_val = t.language.value if hasattr(t.language, "value") else str(t.language)
-                    trans_map[l_val] = {
-                        "question_text": t.question_text
-                    }
+                    trans_map[l_val] = {"question_text": t.question_text}
                     iso_c, _ = normalize_language(l_val)
                     if iso_c:
-                        trans_map[iso_c] = {
-                            "question_text": t.question_text
-                        }
-
-                opt_trans_by_option: Dict[int, list] = {}
-                if db_opts:
-                    all_opt_trans_stmt = select(OptionTranslation).where(
-                        col(OptionTranslation.option_id).in_([o.id for o in db_opts])
-                    )
-                    all_opt_trans_res = await self.session.exec(all_opt_trans_stmt)
-                    for ot in all_opt_trans_res.all():
-                        opt_trans_by_option.setdefault(ot.option_id, []).append(ot)
+                        trans_map[iso_c] = {"question_text": t.question_text}
 
                 opts_list = []
                 for o in db_opts:
                     db_opt_trans = opt_trans_by_option.get(o.id, [])
-                    opt_trans_map = {}
+                    opt_trans_map: Dict[str, str] = {}
                     for ot in db_opt_trans:
                         l_name = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
                         opt_trans_map[l_name] = ot.option_text
@@ -419,44 +443,51 @@ class ExamSessionService:
                         if iso_c:
                             opt_trans_map[iso_c] = ot.option_text
 
-                    chosen_opt = next(
-                        (ot for ot in db_opt_trans if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) in (target_enum, target_iso)), None
-                    ) or next(
-                        (ot for ot in db_opt_trans if (ot.language.value if hasattr(ot.language, "value") else str(ot.language)) == "ENGLISH"), None
-                    ) or (db_opt_trans[0] if db_opt_trans else None)
-
-                    default_txt = chosen_opt.option_text if chosen_opt else f"Option {o.option_label}"
+                    # Pick the best available text for the requested target language
+                    chosen_opt_text = (
+                        opt_trans_map.get(target_enum)
+                        or opt_trans_map.get(target_iso)
+                        or opt_trans_map.get("ENGLISH")
+                        or opt_trans_map.get("en")
+                        or (db_opt_trans[0].option_text if db_opt_trans else f"Option {o.option_label}")
+                    )
                     hi_text = opt_trans_map.get("HINDI") or opt_trans_map.get("hi")
+                    mr_text = opt_trans_map.get("MARATHI") or opt_trans_map.get("mr")
                     opts_list.append({
                         "option_id": str(o.id),
                         "option_label": o.option_label,
-                        "text": default_txt,
+                        "text": chosen_opt_text,
                         "text_hindi": hi_text,
+                        "text_marathi": mr_text,
                         "display_order": o.display_order,
                         "translations": opt_trans_map,
                     })
 
-                chosen_q = next(
-                    (t for t in db_q_trans if (t.language.value if hasattr(t.language, "value") else str(t.language)) in (target_enum, target_iso)), None
-                ) or next(
-                    (t for t in db_q_trans if (t.language.value if hasattr(t.language, "value") else str(t.language)) == "ENGLISH"), None
-                ) or (db_q_trans[0] if db_q_trans else None)
-
-                default_q_txt = chosen_q.question_text if chosen_q else f"Question #{q_model.question_number_in_paper}"
-                q_hi_text = trans_map.get("HINDI", {}).get("question_text") if isinstance(trans_map.get("HINDI"), dict) else (trans_map.get("HINDI") or trans_map.get("hi"))
+                # Pick the best available question text for the requested target language
+                chosen_q_text = (
+                    (trans_map.get(target_enum) or {}).get("question_text")
+                    or (trans_map.get(target_iso) or {}).get("question_text")
+                    or (trans_map.get("ENGLISH") or {}).get("question_text")
+                    or (trans_map.get("en") or {}).get("question_text")
+                    or f"Question #{q_model.question_number_in_paper}"
+                )
+                q_hi_text = (trans_map.get("HINDI") or {}).get("question_text") or (trans_map.get("hi") or {}).get("question_text")
+                q_mr_text = (trans_map.get("MARATHI") or {}).get("question_text") or (trans_map.get("mr") or {}).get("question_text")
                 q_payload = {
                     "question_id": str(q_model.id),
                     "question_number": question_number,
                     "paper_question_number": q_model.question_number_in_paper,
                     "section_code": q_model.section_code or "GENERAL",
-                    "text": default_q_txt,
+                    "text": chosen_q_text,
                     "text_hindi": q_hi_text,
+                    "text_marathi": q_mr_text,
                     "translations": trans_map,
                     "options": opts_list,
                     "marks": q_model.marks,
                     "negative_marks": q_model.negative_marks,
                     "expected_time_seconds": q_model.expected_time_seconds or 60.0,
                 }
+
         else:
             # Synchronize S3 payload with DB question and option IDs
             if q_model:

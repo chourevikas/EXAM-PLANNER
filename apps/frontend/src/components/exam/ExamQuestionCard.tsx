@@ -108,6 +108,9 @@ export function getQuestionText(q: any, lang: string): string {
       else if (q.text_hindi) raw = q.text_hindi;
       else if (q.question_text_hindi) raw = q.question_text_hindi;
       else if (q.question_text_hi) raw = q.question_text_hi;
+    } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
+      if (q.textMarathi) raw = q.textMarathi;
+      else if (q.text_marathi) raw = q.text_marathi;
     }
 
     if (!raw && q.translations) {
@@ -116,7 +119,8 @@ export function getQuestionText(q: any, lang: string): string {
         q.translations[cleanLang] ||
         q.translations[upper] ||
         q.translations[langOpt?.name?.toLowerCase()] ||
-        (cleanLang === 'hi' ? q.translations.HINDI : null);
+        (cleanLang === 'hi' ? q.translations.HINDI : null) ||
+        (cleanLang === 'mr' ? q.translations.MARATHI : null);
       if (typeof t === 'string') raw = t;
       else if (t?.text) raw = t.text;
       else if (t?.question_text) raw = t.question_text;
@@ -206,6 +210,9 @@ export function getOptionText(opt: any, lang: string, optIdx?: number, q?: any):
       else if (opt.text_hindi) rawText = opt.text_hindi;
       else if (opt.option_text_hindi) rawText = opt.option_text_hindi;
       else if (opt.option_text_hi) rawText = opt.option_text_hi;
+    } else if (cleanLang === 'mr' || cleanLang === 'marathi') {
+      if (opt.textMarathi) rawText = opt.textMarathi;
+      else if (opt.text_marathi) rawText = opt.text_marathi;
     }
 
     if (!rawText && opt.translations && typeof opt.translations === 'object') {
@@ -216,7 +223,8 @@ export function getOptionText(opt: any, lang: string, optIdx?: number, q?: any):
         opt.translations[upper] ||
         (langOpt?.name ? opt.translations[langOpt.name] : null) ||
         (langOpt?.name ? opt.translations[langOpt.name.toLowerCase()] : null) ||
-        (cleanLang === 'hi' ? (opt.translations.HINDI || opt.translations.Hindi || opt.translations.hindi) : null);
+        (cleanLang === 'hi' ? (opt.translations.HINDI || opt.translations.Hindi || opt.translations.hindi) : null) ||
+        (cleanLang === 'mr' ? (opt.translations.MARATHI || opt.translations.Marathi || opt.translations.marathi) : null);
 
       if (!ot) {
         // Case-insensitive key match in opt.translations
