@@ -205,6 +205,23 @@ async def async_init_db():
             except Exception as e:
                 logger.debug(f"Postgres column ensure preferred_language: {e}")
 
+            try:
+                await conn.execute(
+                    text("""
+                        CREATE TABLE IF NOT EXISTS site_settings (
+                            id BIGINT PRIMARY KEY,
+                            theme_name VARCHAR(50) NOT NULL DEFAULT 'crimson',
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            updated_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL
+                        );
+                        INSERT INTO site_settings (id, theme_name) VALUES (1, 'crimson') ON CONFLICT (id) DO NOTHING;
+                    """)
+                )
+                logger.info("Successfully verified/created site_settings table in PostgreSQL.")
+            except Exception as e:
+                logger.debug(f"Postgres table ensure site_settings: {e}")
+
+
         # Ensure critical unique indices exist for translation tables, FSRS memory state and concept retention upserts
         try:
             if engine.url.drivername.startswith("postgresql"):
