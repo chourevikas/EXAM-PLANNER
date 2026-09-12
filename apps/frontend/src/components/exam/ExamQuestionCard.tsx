@@ -187,6 +187,7 @@ function cleanOptionText(rawText: string): string {
   let text = String(rawText).trim();
   text = text.replace(/^[\(\[]+([a-dA-D1-4])[\)\]]+\s*/, '');
   text = text.replace(/^([a-dA-D1-4])[\)\.\:]\s*/, '');
+  text = text.replace(/^['"]+|['"]+$/g, '');
   return text.trim();
 }
 

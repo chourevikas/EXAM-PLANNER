@@ -127,7 +127,7 @@ class ExamSessionService:
             else:
                 logger.info(f"User '{user_id}' already has IN_PROGRESS attempt '{existing_attempt.id}'. Resuming...")
                 status_res = await self.get_exam_status(existing_attempt.id, user_id)
-                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index)
+                q_nav = await self.get_question(existing_attempt.id, user_id, status_res.current_question_index, language=req.language or "ENGLISH")
 
                 return StartExamResponse(
                     attempt_id=str(existing_attempt.id),
@@ -245,6 +245,7 @@ class ExamSessionService:
             attempt_id=attempt.id,
             user_id=user_id,
             question_number=1,
+            language=req.language or "ENGLISH",
         )
 
         # Pre-cache full questions and solutions data from DB into memory/Redis for instant evaluation
@@ -337,6 +338,18 @@ class ExamSessionService:
         q_res = await self.session.exec(q_stmt)
         q_model = q_res.first()
 
+        if not q_model:
+            # Fallback for papers with non-contiguous numbering: lookup question via attempt responses
+            resp_order_stmt = (
+                select(ExamQuestionResponse)
+                .where(ExamQuestionResponse.attempt_id == attempt.id)
+                .order_by(col(ExamQuestionResponse.id).asc())
+            )
+            all_attempt_resps = (await self.session.exec(resp_order_stmt)).all()
+            if 1 <= question_number <= len(all_attempt_resps):
+                target_q_id = all_attempt_resps[question_number - 1].question_id
+                q_model = await self.session.get(Question, target_q_id)
+
         db_opts = []
         if q_model:
             opts_stmt = (
@@ -349,12 +362,30 @@ class ExamSessionService:
 
         if not q_payload:
             if q_model:
+                from app.core.languages import normalize_language
+                target_iso, target_enum = normalize_language(language)
+
+                # Check on-demand AI translation if non-English and missing in DB
+                if target_enum != "ENGLISH":
+                    from app.services.question_service import QuestionService
+                    try:
+                        q_svc = QuestionService(self.session)
+                        await q_svc._ensure_translations_on_demand(
+                            questions=[q_model],
+                            options=db_opts,
+                            passages=[],
+                            target_iso=target_iso,
+                            target_enum=target_enum,
+                            qt_map={},
+                            ot_map={},
+                            pt_map={},
+                        )
+                    except Exception as trans_err:
+                        logger.warning(f"On-demand translation warning for Q{q_model.id}: {trans_err}")
+
                 q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
                 q_trans_res = await self.session.exec(q_trans_stmt)
                 db_q_trans = q_trans_res.all()
-
-                from app.core.languages import normalize_language
-                target_iso, target_enum = normalize_language(language)
 
                 trans_map = {}
                 for t in db_q_trans:
@@ -395,10 +426,12 @@ class ExamSessionService:
                     ) or (db_opt_trans[0] if db_opt_trans else None)
 
                     default_txt = chosen_opt.option_text if chosen_opt else f"Option {o.option_label}"
+                    hi_text = opt_trans_map.get("HINDI") or opt_trans_map.get("hi")
                     opts_list.append({
                         "option_id": str(o.id),
                         "option_label": o.option_label,
                         "text": default_txt,
+                        "text_hindi": hi_text,
                         "display_order": o.display_order,
                         "translations": opt_trans_map,
                     })
@@ -410,11 +443,14 @@ class ExamSessionService:
                 ) or (db_q_trans[0] if db_q_trans else None)
 
                 default_q_txt = chosen_q.question_text if chosen_q else f"Question #{q_model.question_number_in_paper}"
+                q_hi_text = trans_map.get("HINDI", {}).get("question_text") if isinstance(trans_map.get("HINDI"), dict) else (trans_map.get("HINDI") or trans_map.get("hi"))
                 q_payload = {
                     "question_id": str(q_model.id),
-                    "question_number": q_model.question_number_in_paper,
+                    "question_number": question_number,
+                    "paper_question_number": q_model.question_number_in_paper,
                     "section_code": q_model.section_code or "GENERAL",
                     "text": default_q_txt,
+                    "text_hindi": q_hi_text,
                     "translations": trans_map,
                     "options": opts_list,
                     "marks": q_model.marks,

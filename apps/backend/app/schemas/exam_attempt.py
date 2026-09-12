@@ -10,6 +10,7 @@ class StartExamRequest(BaseModel):
     exam_id: int | str
     mode: AttemptMode = AttemptMode.EXAM
     force_new: bool = False
+    language: Optional[str] = None
 
 
 class SaveResponseRequest(BaseModel):

@@ -470,10 +470,12 @@ class ExamJsonBuilder:
             opt_text = chosen_opt_trans.option_text if chosen_opt_trans else f"Option {opt.option_label}"
             eng_analysis = chosen_opt_trans.distractor_analysis if chosen_opt_trans else None
 
+            hi_opt_txt = opt_translations.get("HINDI") or opt_translations.get("hi")
             public_options.append({
                 "option_id": str(opt.id),
                 "option_label": opt.option_label,
                 "text": opt_text,
+                "text_hindi": hi_opt_txt,
                 "translations": opt_translations,
                 "display_order": opt.display_order,
             })
@@ -547,11 +549,15 @@ class ExamJsonBuilder:
                 "key_takeaways": eng_expl.key_takeaways_json if (eng_expl and eng_expl.key_takeaways_json) else [],
             }
 
+        hindi_item = question_translations.get("HINDI") or question_translations.get("hi")
+        q_hi_text = hindi_item.get("question_text") if isinstance(hindi_item, dict) else (hindi_item if isinstance(hindi_item, str) else None)
+
         q_card = {
             "question_id": str(q.id),
             "question_number": q.question_number_in_paper,
             "section_code": q.section_code,
             "text": q_text,
+            "text_hindi": q_hi_text,
             "translations": question_translations,
             "difficulty": q.difficulty.value if hasattr(q.difficulty, 'value') else str(q.difficulty),
             "marks": q.marks,

@@ -50,6 +50,7 @@ export interface StartExamRequest {
   exam_id: number | string;
   mode?: AttemptMode;
   force_new?: boolean;
+  language?: string;
 }
 
 export interface SaveResponseRequest {

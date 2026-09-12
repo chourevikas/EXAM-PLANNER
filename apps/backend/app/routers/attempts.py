@@ -92,6 +92,8 @@ async def start_exam_attempt(
     and returns the first question with the full question palette.
     """
     service = ExamSessionService(session)
+    if not req.language:
+        req.language = getattr(current_user, "preferred_language", "en") or "en"
     return await service.start_exam(user_id=current_user.id, req=req)
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { ExamHeader } from '../components/exam/ExamHeader';
 import { Section, Question } from '../components/exam/ExamSectionSidebar';
@@ -308,7 +308,7 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
             .catch((bulkErr) => console.warn('Bulk preload warning (resume):', bulkErr));
         } else if (examId) {
           // Start new attempt session
-          const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM' });
+          const startRes = await startExamAttempt({ exam_id: examId, mode: 'EXAM', language });
           setAttemptId(startRes.attempt_id);
           setAttemptMode(startRes.mode);
           setTimeLeft(startRes.max_duration_seconds);
@@ -463,6 +463,121 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
     });
   }
 
+  // ─── On-demand Dynamic Translation Handler ──────────────────────────────────
+  const [isTranslatingActiveQ, setIsTranslatingActiveQ] = useState(false);
+
+  const ensureQuestionTranslation = useCallback(
+    async (q: any, targetLang: string) => {
+      if (!q || !q.question_id) return;
+      const clean = (targetLang || 'en').trim().toLowerCase();
+      const upper = targetLang.toUpperCase();
+      const hasOptionTrans =
+        (q.options || []).length === 0 ||
+        (q.options || []).every((o: any) =>
+          Boolean(
+            o.text_hindi ||
+              o.textHindi ||
+              (o.translations &&
+                (o.translations[clean] ||
+                  o.translations[upper] ||
+                  (clean === 'hi' && (o.translations.HINDI || o.translations.Hindi)))),
+          ),
+        );
+      const hasTrans =
+        clean === 'en' ||
+        clean === 'english' ||
+        ((q.text_hindi ||
+          q.textHindi ||
+          (q.translations &&
+            (q.translations[clean] ||
+              q.translations[upper] ||
+              (clean === 'hi' && (q.translations.HINDI || q.translations.Hindi))))) &&
+          hasOptionTrans);
+      if (hasTrans) return;
+
+      try {
+        setIsTranslatingActiveQ(true);
+        const res = await fetch(`/api/v1/questions/${q.question_id}?language=${targetLang}`);
+        if (res.ok) {
+          const data = await res.json();
+          const newTrans = data.translations || {};
+          const newOptTrans: Record<string, Record<string, string>> = {};
+          const newOptText: Record<string, string> = {};
+          (data.options || []).forEach((opt: any) => {
+            if (opt.option_id) {
+              const oId = String(opt.option_id);
+              newOptTrans[oId] = opt.translations || {};
+              if (opt.option_text) newOptText[oId] = opt.option_text;
+            }
+          });
+
+          setAllQuestions((prev) =>
+            prev.map((item) => {
+              if (String(item.question_id) === String(q.question_id)) {
+                const mergedTranslations = { ...(item.translations || {}), ...newTrans };
+                const mergedOptions = (item.options || []).map((o: any) => {
+                  const optId = String(o.option_id);
+                  const hiTxt = newOptTrans[optId]?.HINDI || newOptTrans[optId]?.hi;
+                  return {
+                    ...o,
+                    text: newOptText[optId] || o.text,
+                    text_hindi: hiTxt || o.text_hindi,
+                    textHindi: hiTxt || o.textHindi,
+                    translations: {
+                      ...(o.translations || {}),
+                      ...(newOptTrans[optId] || {}),
+                    },
+                  };
+                });
+                return {
+                  ...item,
+                  text: data.question_text || item.text,
+                  text_hindi: data.question_text_hindi || data.text_hindi || item.text_hindi,
+                  textHindi: data.question_text_hindi || data.text_hindi || item.textHindi,
+                  translations: mergedTranslations,
+                  options: mergedOptions,
+                };
+              }
+              return item;
+            }),
+          );
+
+          setActiveQuestion((prev) => {
+            if (!prev || String(prev.question_id) !== String(q.question_id)) return prev;
+            const mergedTranslations = { ...(prev.translations || {}), ...newTrans };
+            const mergedOptions = (prev.options || []).map((o: any) => {
+              const optId = String(o.option_id);
+              const hiTxt = newOptTrans[optId]?.HINDI || newOptTrans[optId]?.hi;
+              return {
+                ...o,
+                text: newOptText[optId] || o.text,
+                text_hindi: hiTxt || o.text_hindi,
+                textHindi: hiTxt || o.textHindi,
+                translations: {
+                  ...(o.translations || {}),
+                  ...(newOptTrans[optId] || {}),
+                },
+              };
+            });
+            return {
+              ...prev,
+              text: data.question_text || prev.text,
+              text_hindi: data.question_text_hindi || data.text_hindi || prev.text_hindi,
+              textHindi: data.question_text_hindi || data.text_hindi || prev.textHindi,
+              translations: mergedTranslations,
+              options: mergedOptions,
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('On-demand translation fetch warning for PYQ exam:', err);
+      } finally {
+        setIsTranslatingActiveQ(false);
+      }
+    },
+    [],
+  );
+
   // ─── Helper: Fetch Specific Question ───────────────────────────────────────
   const loadQuestion = async (attId: number | string, qNum: number) => {
     // Record elapsed time on the outgoing question before switching
@@ -487,6 +602,12 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         setSelectedOptionLabel(null);
         setIsMarkedForReview(false);
       }
+
+      // Ensure active question translations if needed
+      ensureQuestionTranslation(q, language);
+      if (allQuestions[qNum]) {
+        ensureQuestionTranslation(allQuestions[qNum], language);
+      }
       return;
     }
 
@@ -501,6 +622,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       // Find matching label
       const matchedOpt = qNav.question.options.find((o) => o.option_id === qNav.response_state.selected_option_id);
       setSelectedOptionLabel(matchedOpt ? matchedOpt.option_label : null);
+
+      // Ensure translation for fetched question if missing
+      ensureQuestionTranslation(qNav.question, language);
 
       // Background prefetching for instant zero-lag next question switching
       if (qNum + 1 <= totalQuestions) {
@@ -532,6 +656,51 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
         }).catch(() => {});
       }
     } catch (_) {}
+
+    // Priority translate active question if missing in newLang
+    if (activeQuestion) {
+      ensureQuestionTranslation(activeQuestion, newLang);
+    }
+    // Background prefetch next question if present
+    if (allQuestions[currentQIndex + 1]) {
+      ensureQuestionTranslation(allQuestions[currentQIndex + 1], newLang);
+    }
+
+    // Refresh bulk preloaded questions in background with new language
+    if (attemptId) {
+      getAllAttemptQuestionsBulk(attemptId, newLang)
+        .then((bulkData) => {
+          if (bulkData.questions && bulkData.questions.length > 0) {
+            setAllQuestions((prev) => {
+              const bulkMap = new Map<string, any>(bulkData.questions.map((bq: any) => [String(bq.question_id), bq]));
+              return prev.map((item) => {
+                const bq: any = bulkMap.get(String(item.question_id));
+                if (!bq) return item;
+                return {
+                  ...item,
+                  text: bq.text || item.text,
+                  text_hindi: bq.text_hindi || item.text_hindi,
+                  translations: { ...(item.translations || {}), ...(bq.translations || {}) },
+                  options: (bq.options || item.options || []).map((bOpt: any) => {
+                    const existingOpt = (item.options || []).find(
+                      (o: any) => String(o.option_id) === String(bOpt.option_id),
+                    );
+                    return {
+                      ...(existingOpt || {}),
+                      ...bOpt,
+                      translations: {
+                        ...(existingOpt?.translations || {}),
+                        ...(bOpt.translations || {}),
+                      },
+                    };
+                  }),
+                };
+              });
+            });
+          }
+        })
+        .catch((err) => console.warn('Bulk preload refresh warning:', err));
+    }
   };
 
 
