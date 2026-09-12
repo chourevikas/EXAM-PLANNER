@@ -1,17 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   Search,
   ShieldAlert,
   CheckCircle,
   XCircle,
-  Info,
   Loader2,
-  UserCheck,
-  UserX,
   Crown,
   Mail,
-  Calendar,
   Award,
   Zap,
   BookOpen,
@@ -21,10 +17,10 @@ import {
   Filter,
   Copy,
   Check,
-  Globe
+  GraduationCap
 } from 'lucide-react';
-import { fetchAllUsers, updateUserStatus, fetchUserById } from '../../../services/adminService';
-import { User, UserStatus } from '../../../types/auth';
+import { fetchAllUsers, fetchUserById } from '../../../services/adminService';
+import { User } from '../../../types/auth';
 
 export function UsersView() {
   const [usersList, setUsersList] = useState<User[]>([]);
@@ -37,19 +33,13 @@ export function UsersView() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [accessFilter, setAccessFilter] = useState<string>('ALL');
 
-  // Pagination State (5 ntries per page)
+  // Pagination State (5 entries per page)
   const [currentPage, setCurrentPage] = useState<number>(1);
   const ITEMS_PER_PAGE = 5;
 
-  // Popover State for Access Info ("i") button
-  const [activePopoverUserId, setActivePopoverUserId] = useState<number | string | null>(null);
-
-  // Candidate Detail Drawer / Modal State
+  // Candidate Detail Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [actionLoadingUserId, setActionLoadingUserId] = useState<number | string | null>(null);
-
-  const popoverRef = useRef<HTMLDivElement>(null);
 
   const handleSelectCandidate = async (candidate: User) => {
     setSelectedCandidate(candidate);
@@ -75,15 +65,16 @@ export function UsersView() {
     setCurrentPage(1);
   }, [searchQuery, accessFilter]);
 
+  // Handle Escape key to close popup modal
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setActivePopoverUserId(null);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedCandidate) {
+        setSelectedCandidate(null);
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedCandidate]);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -99,30 +90,8 @@ export function UsersView() {
     }
   };
 
-  const handleUpdateAccess = async (userId: number | string, newStatus: 'ACTIVE' | 'SUSPENDED') => {
-    setActionLoadingUserId(userId);
-    setErrorMsg('');
-    setSuccessMsg('');
-    try {
-      const updatedUser = await updateUserStatus(userId, newStatus);
-      setUsersList(prev => prev.map(u => u.id === userId ? { ...u, status: updatedUser.status || newStatus as UserStatus } : u));
-      if (selectedCandidate && selectedCandidate.id === userId) {
-        setSelectedCandidate(prev => prev ? { ...prev, status: newStatus as UserStatus } : null);
-      }
-      setSuccessMsg(`Access state updated to ${newStatus} successfully.`);
-      setActivePopoverUserId(null);
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err: any) {
-      console.error('Failed to update access:', err);
-      setErrorMsg(err.message || 'Failed to update access status.');
-    } finally {
-      setActionLoadingUserId(null);
-    }
-  };
-
   // Filtered Users (Super Admin is hidden at all cost)
   const filteredUsers = usersList.filter(user => {
-    // Hide Super Admin at all cost
     if (user.role === 'SUPER_ADMIN') return false;
 
     const matchesSearch =
@@ -153,15 +122,15 @@ export function UsersView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 0, background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)' }}>
+            <div style={{ width: 42, height: 42, borderRadius: 8, background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.25)' }}>
               <Users size={22} />
             </div>
             <div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#172033', margin: 0, letterSpacing: '-0.02em' }}>
-                Candidate Directory & Access Control
+                Candidate Directory & Profiles
               </h2>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                Monitor candidates, inspect individual profiles, and configure platform access permissions in real time.
+                Monitor candidates, inspect individual learning metrics, and review comprehensive student profiles.
               </p>
             </div>
           </div>
@@ -170,23 +139,23 @@ export function UsersView() {
 
       {/* Alert Notifications */}
       {errorMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 0, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
           <ShieldAlert size={16} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div style={{ padding: '12px 16px', borderRadius: 0, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#3A8B53', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 16px', borderRadius: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#3A8B53', fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CheckCircle size={16} />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Analytics Metric Cards (White Theme) */}
+      {/* Analytics Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#F8FAFC', color: 'var(--primary-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: '#F8FAFC', color: 'var(--primary-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Users size={20} />
           </div>
           <div>
@@ -195,28 +164,28 @@ export function UsersView() {
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#ecfdf5', color: '#3A8B53', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserCheck size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: '#ecfdf5', color: '#3A8B53', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Access Allowed</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Candidates</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#3A8B53', fontFamily: 'var(--font-display)' }}>{activeCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserX size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <XCircle size={20} />
           </div>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Access Revoked</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Suspended Accounts</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#dc2626', fontFamily: 'var(--font-display)' }}>{suspendedCount}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 0, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 8, background: '#fffbe8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Crown size={20} />
           </div>
           <div>
@@ -226,14 +195,14 @@ export function UsersView() {
         </div>
       </div>
 
-      {/* Main Table Container (White Theme) */}
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 0, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+      {/* Main Table Container */}
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 0, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
 
         {/* Controls Toolbar: Search & Filters */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', gap: 16, flexWrap: 'wrap' }}>
 
           {/* Search Box */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 0, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 6, padding: '8px 14px', border: '1px solid #cbd5e1', width: 320 }}>
             <Search size={16} color="#94a3b8" />
             <input
               type="text"
@@ -260,7 +229,7 @@ export function UsersView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
               <Filter size={14} />
-              <span>Access Filter:</span>
+              <span>Status Filter:</span>
             </div>
 
             {/* Access Filter */}
@@ -270,7 +239,7 @@ export function UsersView() {
               style={{
                 backgroundColor: '#ffffff',
                 border: '1px solid #cbd5e1',
-                borderRadius: 0,
+                borderRadius: 6,
                 color: '#172033',
                 padding: '7px 12px',
                 fontSize: 12,
@@ -279,9 +248,9 @@ export function UsersView() {
                 fontWeight: 500
               }}
             >
-              <option value="ALL">All Access</option>
-              <option value="ACTIVE">Active (Allowed)</option>
-              <option value="SUSPENDED">Suspended (Revoked)</option>
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="SUSPENDED">Suspended Only</option>
             </select>
           </div>
 
@@ -298,7 +267,7 @@ export function UsersView() {
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Permissions', 'Actions'].map((h, idx) => (
+                  {['Candidate Profile', 'Role', 'Subscription Plan', 'Access Status', 'Actions'].map((h, idx) => (
                     <th
                       key={h}
                       style={{
@@ -310,8 +279,8 @@ export function UsersView() {
                         textTransform: 'uppercase',
                         letterSpacing: '0.06em',
                         borderBottom: '2px solid #e2e8f0',
-                        borderTopLeftRadius: idx === 0 ? 12 : 0,
-                        borderTopRightRadius: idx === 5 ? 12 : 0
+                        borderTopLeftRadius: idx === 0 ? 8 : 0,
+                        borderTopRightRadius: idx === 4 ? 8 : 0
                       }}
                     >
                       {h}
@@ -322,7 +291,7 @@ export function UsersView() {
               <tbody>
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                    <td colSpan={5} style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                         <Users size={36} color="#cbd5e1" />
                         <span style={{ fontWeight: 600, color: '#64748b' }}>No candidate accounts found matching your search.</span>
@@ -346,11 +315,12 @@ export function UsersView() {
                           <div
                             style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
                             onClick={() => handleSelectCandidate(u)}
+                            title="Click to view candidate profile"
                           >
                             <div style={{
                               width: 40,
                               height: 40,
-                              borderRadius: 0,
+                              borderRadius: 8,
                               background: 'linear-gradient(135deg, var(--primary-red), var(--accent-darker))',
                               color: '#ffffff',
                               display: 'flex',
@@ -388,7 +358,7 @@ export function UsersView() {
                             background: u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.1)' : u.role === 'ADMIN' ? 'rgba(var(--primary-red-rgb), 0.1)' : 'rgba(16, 185, 129, 0.1)',
                             color: u.role === 'SUPER_ADMIN' ? '#7c3aed' : u.role === 'ADMIN' ? 'var(--primary-red)' : '#3A8B53',
                             padding: '5px 12px',
-                            borderRadius: 0,
+                            borderRadius: 6,
                             border: `1px solid ${u.role === 'SUPER_ADMIN' ? 'rgba(124, 58, 237, 0.25)' : u.role === 'ADMIN' ? 'rgba(var(--primary-red-rgb), 0.25)' : 'rgba(16, 185, 129, 0.25)'}`
                           }}>
                             {u.role}
@@ -406,7 +376,7 @@ export function UsersView() {
                             background: isPremium ? '#fffbe8' : '#f8fafc',
                             color: isPremium ? '#b45309' : '#64748b',
                             padding: '5px 12px',
-                            borderRadius: 0,
+                            borderRadius: 6,
                             border: `1px solid ${isPremium ? '#fde68a' : '#e2e8f0'}`
                           }}>
                             {isPremium && <Crown size={13} color="#d97706" />}
@@ -422,155 +392,27 @@ export function UsersView() {
                             color: isAccessAllowed ? '#047857' : '#b91c1c',
                             backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2',
                             padding: '4px 10px',
-                            borderRadius: 0,
+                            borderRadius: 6,
                             border: `1px solid ${isAccessAllowed ? '#a7f3d0' : '#fecaca'}`,
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 6
                           }}>
-                            <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: isAccessAllowed ? '#3A8B53' : '#ef4444' }} />
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: isAccessAllowed ? '#3A8B53' : '#ef4444' }} />
                             {isAccessAllowed ? 'Active' : 'Suspended'}
                           </span>
                         </td>
 
-                        {/* Access Permissions ("i" Info button popover) */}
-                        <td style={{ padding: '16px 18px', position: 'relative', borderBottom: '1px solid #f1f5f9' }}>
-                          <div style={{ position: 'relative', display: 'inline-block' }}>
-
-                            {/* "i" Info Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActivePopoverUserId(activePopoverUserId === u.id ? null : u.id);
-                              }}
-                              style={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: 0,
-                                border: '1px solid #bae6fd',
-                                backgroundColor: activePopoverUserId === u.id ? '#0284c7' : '#f0f9ff',
-                                color: activePopoverUserId === u.id ? '#ffffff' : '#0284c7',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                boxShadow: activePopoverUserId === u.id ? '0 0 0 3px rgba(2, 132, 199, 0.2)' : 'none'
-                              }}
-                              title="Access Control Permissions"
-                            >
-                              <Info size={17} />
-                            </button>
-
-                            {/* Floating Access Control Popover Card */}
-                            {activePopoverUserId === u.id && (
-                              <div
-                                ref={popoverRef}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  position: 'absolute',
-                                  top: 42,
-                                  left: 0,
-                                  width: 250,
-                                  backgroundColor: '#ffffff',
-                                  borderRadius: 0,
-                                  border: '1px solid #cbd5e1',
-                                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.14)',
-                                  padding: 16,
-                                  zIndex: 100,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 12
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 800, color: '#172033' }}>Access Control</span>
-                                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 0, backgroundColor: isAccessAllowed ? '#ecfdf5' : '#fef2f2', color: isAccessAllowed ? '#3A8B53' : '#dc2626' }}>
-                                    {isAccessAllowed ? 'Granted' : 'Revoked'}
-                                  </span>
-                                </div>
-
-                                <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.4 }}>
-                                  Configure platform access rights for <strong>{u.full_name}</strong>.
-                                </p>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 2 }}>
-                                  {/* Allow Access Button */}
-                                  <button
-                                    disabled={actionLoadingUserId === u.id || isAccessAllowed}
-                                    onClick={() => handleUpdateAccess(u.id, 'ACTIVE')}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 6,
-                                      padding: '9px 12px',
-                                      borderRadius: 0,
-                                      border: '1px solid #3A8B53',
-                                      backgroundColor: isAccessAllowed ? '#f0fdf4' : '#3A8B53',
-                                      color: isAccessAllowed ? '#a7f3d0' : '#ffffff',
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      cursor: isAccessAllowed ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    {actionLoadingUserId === u.id ? (
-                                      <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <UserCheck size={14} />
-                                        <span>Allow Access</span>
-                                      </>
-                                    )}
-                                  </button>
-
-                                  {/* Revoke Access Button */}
-                                  <button
-                                    disabled={actionLoadingUserId === u.id || !isAccessAllowed}
-                                    onClick={() => handleUpdateAccess(u.id, 'SUSPENDED')}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      gap: 6,
-                                      padding: '9px 12px',
-                                      borderRadius: 0,
-                                      border: '1px solid #ef4444',
-                                      backgroundColor: !isAccessAllowed ? '#fef2f2' : '#ef4444',
-                                      color: !isAccessAllowed ? '#fca5a5' : '#ffffff',
-                                      fontSize: 12,
-                                      fontWeight: 700,
-                                      cursor: !isAccessAllowed ? 'not-allowed' : 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    {actionLoadingUserId === u.id ? (
-                                      <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                      <>
-                                        <UserX size={14} />
-                                        <span>Revoke Access</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                          </div>
-                        </td>
-
-                        {/* View Details Action */}
+                        {/* View Profile Action */}
                         <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
                           <button
                             onClick={() => handleSelectCandidate(u)}
                             style={{
-                              display: 'flex',
+                              display: 'inline-flex',
                               alignItems: 'center',
                               gap: 6,
                               padding: '7px 14px',
-                              borderRadius: 0,
+                              borderRadius: 6,
                               border: '1px solid #cbd5e1',
                               backgroundColor: '#ffffff',
                               color: '#172033',
@@ -604,7 +446,7 @@ export function UsersView() {
             </table>
 
             {/* Table Footer Summary Bar with Interactive Pagination Controls */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#64748b' }}>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: 10, borderBottomRightRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#64748b' }}>
               <div>
                 Showing <strong>{filteredUsers.length > 0 ? startIndex + 1 : 0}</strong> to <strong>{endIndex}</strong> of <strong>{filteredUsers.length}</strong> candidate accounts
               </div>
@@ -619,7 +461,7 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 0,
+                    borderRadius: 6,
                     border: '1px solid #cbd5e1',
                     backgroundColor: currentPage === 1 ? '#f1f5f9' : '#ffffff',
                     color: currentPage === 1 ? '#94a3b8' : '#172033',
@@ -645,7 +487,7 @@ export function UsersView() {
                     alignItems: 'center',
                     gap: 4,
                     padding: '6px 12px',
-                    borderRadius: 0,
+                    borderRadius: 6,
                     border: '1px solid #cbd5e1',
                     backgroundColor: currentPage >= totalPages ? '#f1f5f9' : '#ffffff',
                     color: currentPage >= totalPages ? '#94a3b8' : '#172033',
@@ -665,150 +507,234 @@ export function UsersView() {
         )}
       </div>
 
-      {/* Candidate Details Slide-Over Drawer */}
+      {/* Candidate Profile Details Centered Modal */}
       {selectedCandidate && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(5px)', zIndex: 200, display: 'flex', justifyContent: 'flex-end' }}>
-
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px 16px',
+          }}
+          onClick={() => setSelectedCandidate(null)}
+        >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: 440,
+              maxWidth: 620,
+              maxHeight: '90vh',
               backgroundColor: '#ffffff',
-              height: '100vh',
-              boxShadow: '-10px 0 40px rgba(15, 23, 42, 0.18)',
+              borderRadius: 14,
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35)',
+              border: '1px solid #e2e8f0',
               display: 'flex',
               flexDirection: 'column',
-              overflowY: 'auto',
-              borderLeft: '1px solid #e2e8f0',
-              position: 'relative'
+              overflow: 'hidden',
+              position: 'relative',
             }}
           >
-            {/* Minimal Top Close Bar (Without redundant Candidate Profile title header) */}
-            <div style={{ padding: '14px 18px 6px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 0, backgroundColor: '#3A8B53', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Live Candidate Details
-                </span>
-                {isDetailLoading && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--primary-red)', backgroundColor: '#F8FAFC', padding: '1px 6px', borderRadius: 0, fontWeight: 600 }}>
-                    <Loader2 size={10} className="animate-spin" /> Syncing
-                  </span>
-                )}
+            {/* Modal Header Bar with Title, Sync Status & Cross Button */}
+            <div
+              style={{
+                padding: '16px 22px',
+                borderBottom: '1px solid #f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#ffffff',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    backgroundColor: '#F8FAFC',
+                    color: 'var(--primary-red)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  <GraduationCap size={18} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                      Student Profile Details
+                    </span>
+                    {isDetailLoading && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 10.5,
+                          color: 'var(--primary-red)',
+                          backgroundColor: '#F8FAFC',
+                          padding: '2px 7px',
+                          borderRadius: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Loader2 size={11} className="animate-spin" /> Syncing
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 1 }}>
+                    Candidate overview, platform engagement metrics & account info
+                  </div>
+                </div>
               </div>
 
+              {/* Cross (Close) Button */}
               <button
                 onClick={() => setSelectedCandidate(null)}
+                aria-label="Close modal"
+                title="Close"
                 style={{
                   background: '#f8fafc',
                   border: '1px solid #cbd5e1',
                   color: '#64748b',
                   cursor: 'pointer',
-                  padding: 6,
-                  borderRadius: 0,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.15s ease',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#172033';
-                  e.currentTarget.style.boxShadow = '0 0 10px rgba(var(--primary-red-rgb), 0.2)';
+                  e.currentTarget.style.color = '#0f172a';
+                  e.currentTarget.style.borderColor = '#94a3b8';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#f8fafc';
                   e.currentTarget.style.color = '#64748b';
-                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+                  e.currentTarget.style.borderColor = '#cbd5e1';
                 }}
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
 
-            {/* Drawer Main Body */}
-            <div style={{ padding: '12px 20px 24px 20px', display: 'flex', flexDirection: 'column', gap: 18, flex: 1 }}>
-
-              {/* Colorful Glow Hero Profile Card */}
-              <div style={{
-                padding: 18,
-                borderRadius: 0,
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                border: '1px solid #e2e8f0',
+            {/* Scrollable Content Body */}
+            <div
+              style={{
+                padding: '20px 22px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 14,
-                boxShadow: '0 4px 20px rgba(var(--primary-red-rgb), 0.06)'
-              }}>
+                gap: 18,
+                overflowY: 'auto',
+                flex: 1,
+              }}
+            >
+              {/* Profile Hero Card */}
+              <div
+                style={{
+                  padding: 16,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  boxShadow: '0 2px 10px rgba(15, 23, 42, 0.04)',
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  {/* Avatar with Vibrant Gradient & Soft Glow */}
-                  <div style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 0,
-                    background: 'linear-gradient(135deg, var(--primary-red) 0%, #4f46e5 50%, #7c3aed 100%)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 20,
-                    fontWeight: 800,
-                    boxShadow: '0 0 16px rgba(79, 70, 229, 0.35)',
-                    border: '2.5px solid #ffffff',
-                    flexShrink: 0
-                  }}>
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, var(--primary-red) 0%, #4f46e5 50%, #7c3aed 100%)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 19,
+                      fontWeight: 800,
+                      boxShadow: '0 4px 14px rgba(79, 70, 229, 0.3)',
+                      border: '2px solid #ffffff',
+                      flexShrink: 0,
+                    }}
+                  >
                     {selectedCandidate.full_name ? selectedCandidate.full_name.substring(0, 2).toUpperCase() : 'U'}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 17, fontWeight: 800, color: '#172033', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', letterSpacing: '-0.01em' }}>
+                      <span
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: '#0F172A',
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                          letterSpacing: '-0.01em',
+                        }}
+                      >
                         {selectedCandidate.full_name}
                       </span>
                       {selectedCandidate.is_verified && (
-                        <CheckCircle size={16} color="#3A8B53" title="Verified Candidate" />
+                        <CheckCircle size={15} color="#3A8B53" title="Verified Candidate" />
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748B', fontFamily: 'var(--font-mono)' }}>
                       <Mail size={12} color="var(--primary-red)" />
-                      <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{selectedCandidate.email}</span>
+                      <span style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {selectedCandidate.email}
+                      </span>
                     </div>
 
-                    {/* Status Badges */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      <span style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 0,
-                        backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#F8FAFC' : '#ecfdf5',
-                        color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? 'var(--primary-red)' : '#3A8B53',
-                        border: `1px solid ${selectedCandidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : selectedCandidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
-                        boxShadow: selectedCandidate.role === 'SUPER_ADMIN' ? '0 0 8px rgba(124, 58, 237, 0.15)' : '0 0 8px rgba(var(--primary-red-rgb), 0.12)'
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          backgroundColor: selectedCandidate.role === 'SUPER_ADMIN' ? '#f3e8ff' : selectedCandidate.role === 'ADMIN' ? '#F8FAFC' : '#ecfdf5',
+                          color: selectedCandidate.role === 'SUPER_ADMIN' ? '#7c3aed' : selectedCandidate.role === 'ADMIN' ? 'var(--primary-red)' : '#3A8B53',
+                          border: `1px solid ${selectedCandidate.role === 'SUPER_ADMIN' ? '#ddd6fe' : selectedCandidate.role === 'ADMIN' ? '#bfdbfe' : '#a7f3d0'}`,
+                        }}
+                      >
                         {selectedCandidate.role}
                       </span>
 
-                      <span style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 0,
-                        backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
-                        color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#dc2626',
-                        border: `1px solid ${selectedCandidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
-                        boxShadow: selectedCandidate.status === 'ACTIVE' ? '0 0 8px rgba(16, 185, 129, 0.15)' : '0 0 8px rgba(var(--primary-red-rgb), 0.15)'
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
+                          color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#dc2626',
+                          border: `1px solid ${selectedCandidate.status === 'ACTIVE' ? '#a7f3d0' : '#fecaca'}`,
+                        }}
+                      >
                         {selectedCandidate.status === 'ACTIVE' ? 'Active' : 'Suspended'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Translucent Action Bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 12, borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+                {/* Quick Action Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 10, borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
                   <a
                     href={`mailto:${selectedCandidate.email}`}
                     style={{
@@ -816,7 +742,7 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 0,
+                      borderRadius: 6,
                       backgroundColor: '#F8FAFC',
                       color: 'var(--primary-red)',
                       border: '1px solid #bfdbfe',
@@ -824,7 +750,7 @@ export function UsersView() {
                       fontWeight: 600,
                       textDecoration: 'none',
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.08)'
+                      boxShadow: '0 1px 3px rgba(var(--primary-red-rgb), 0.06)',
                     }}
                   >
                     <Mail size={12} />
@@ -842,7 +768,7 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 0,
+                      borderRadius: 6,
                       backgroundColor: copiedId ? '#ecfdf5' : '#f8fafc',
                       color: copiedId ? '#3A8B53' : '#475569',
                       border: `1px solid ${copiedId ? '#a7f3d0' : '#cbd5e1'}`,
@@ -850,7 +776,7 @@ export function UsersView() {
                       fontWeight: 600,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                     }}
                   >
                     {copiedId ? <Check size={12} /> : <Copy size={12} />}
@@ -863,13 +789,12 @@ export function UsersView() {
                       alignItems: 'center',
                       gap: 5,
                       padding: '5px 12px',
-                      borderRadius: 0,
+                      borderRadius: 6,
                       backgroundColor: selectedCandidate.is_verified ? '#ecfdf5' : '#fffbe8',
                       color: selectedCandidate.is_verified ? '#3A8B53' : '#b45309',
                       border: `1px solid ${selectedCandidate.is_verified ? '#a7f3d0' : '#fde68a'}`,
                       fontSize: 11,
                       fontWeight: 600,
-                      boxShadow: selectedCandidate.is_verified ? '0 0 8px rgba(16, 185, 129, 0.12)' : '0 0 8px rgba(245, 158, 11, 0.12)'
                     }}
                   >
                     {selectedCandidate.is_verified ? <CheckCircle size={12} /> : <XCircle size={12} />}
@@ -878,139 +803,151 @@ export function UsersView() {
                 </div>
               </div>
 
-              {/* Colorful Glow Learning Metrics Grid (2x2 Grid) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Learning Metrics & Engagement */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Learning Metrics & Engagement
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {/* Streak Card with Blue Glow */}
-                  <div style={{
-                    padding: 12,
-                    borderRadius: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #E2E8F0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.06)'
-                  }}>
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 0,
-                      background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
-                      color: 'var(--primary-red)',
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  {/* Streak Card */}
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #E2E8F0',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(var(--primary-red-rgb), 0.2)',
-                      flexShrink: 0
-                    }}>
+                      gap: 10,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
+                        color: 'var(--primary-red)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Zap size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Streak</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: '#64748B' }}>Streak</div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary-red)' }}>
                         {selectedCandidate.current_streak || selectedCandidate.student_profile?.current_streak || 0} Days
                       </div>
                     </div>
                   </div>
 
-                  {/* Questions Solved Card with Emerald Glow */}
-                  <div style={{
-                    padding: 12,
-                    borderRadius: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #a7f3d0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.06)'
-                  }}>
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 0,
-                      background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-                      color: '#3A8B53',
+                  {/* Questions Solved Card */}
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #a7f3d0',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.2)',
-                      flexShrink: 0
-                    }}>
+                      gap: 10,
+                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.04)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                        color: '#3A8B53',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <BookOpen size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Questions</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: '#64748B' }}>Questions</div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: '#3A8B53' }}>
                         {selectedCandidate.free_questions_attempted || selectedCandidate.student_profile?.free_questions_attempted || 0} Solved
                       </div>
                     </div>
                   </div>
 
-                  {/* Rank Level Card with Amber Glow */}
-                  <div style={{
-                    padding: 12,
-                    borderRadius: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #fde68a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.06)'
-                  }}>
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 0,
-                      background: 'linear-gradient(135deg, #fffbe8 0%, #fef3c7 100%)',
-                      color: '#d97706',
+                  {/* Rank Level Card */}
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #fde68a',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(245, 158, 11, 0.2)',
-                      flexShrink: 0
-                    }}>
+                      gap: 10,
+                      boxShadow: '0 2px 6px rgba(245, 158, 11, 0.04)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #fffbe8 0%, #fef3c7 100%)',
+                        color: '#d97706',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Crown size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Rank Level</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: '#64748B' }}>Rank Level</div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>
                         Level {selectedCandidate.level || selectedCandidate.student_profile?.level || 1}
                       </div>
                     </div>
                   </div>
 
-                  {/* Total XP Card with Purple Glow */}
-                  <div style={{
-                    padding: 12,
-                    borderRadius: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #ddd6fe',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.06)'
-                  }}>
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 0,
-                      background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
-                      color: '#7c3aed',
+                  {/* Total XP Card */}
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #ddd6fe',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 0 10px rgba(124, 58, 237, 0.2)',
-                      flexShrink: 0
-                    }}>
+                      gap: 10,
+                      boxShadow: '0 2px 6px rgba(124, 58, 237, 0.04)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+                        color: '#7c3aed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Award size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b' }}>Total XP</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: '#64748B' }}>Total XP</div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: '#7c3aed' }}>
                         {selectedCandidate.total_xp || selectedCandidate.student_profile?.total_xp || 0} XP
                       </div>
@@ -1019,189 +956,147 @@ export function UsersView() {
                 </div>
               </div>
 
-              {/* Subscription Tier Card */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Subscription Level Card */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Subscription Level
                 </span>
 
-                <div style={{
-                  padding: 14,
-                  borderRadius: 0,
-                  backgroundColor: '#ffffff',
-                  border: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '1px solid #fde68a' : '1px solid #e2e8f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  boxShadow: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '0 0 14px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(0,0,0,0.02)'
-                }}>
+                <div
+                  style={{
+                    padding: 14,
+                    borderRadius: 8,
+                    backgroundColor: '#ffffff',
+                    border: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 0,
-                      backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#f8fafc',
-                      color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#d97706' : '#64748b',
-                      border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#cbd5e1'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '0 0 10px rgba(245, 158, 11, 0.25)' : 'none',
-                      flexShrink: 0
-                    }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#f8fafc',
+                        color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#d97706' : '#64748b',
+                        border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#cbd5e1'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
                       <Crown size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
                         {(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? 'PREMIUM Pro Plan' : 'FREE Standard Tier'}
                       </div>
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
                         {(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? 'Full question bank & analytics active' : 'Standard candidate account limits applied'}
                       </div>
                     </div>
                   </div>
 
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: '3px 10px',
-                    borderRadius: 0,
-                    backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#F8FAFC',
-                    color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : 'var(--primary-red)',
-                    border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#bfdbfe'}`
-                  }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 4,
+                      backgroundColor: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fffbe8' : '#F8FAFC',
+                      color: (selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#b45309' : 'var(--primary-red)',
+                      border: `1px solid ${(selectedCandidate.subscription_tier === 'PREMIUM' || selectedCandidate.student_profile?.subscription_tier === 'PREMIUM') ? '#fde68a' : '#bfdbfe'}`,
+                    }}
+                  >
                     Active Tier
                   </span>
                 </div>
               </div>
 
               {/* Account Metadata Grid */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Account System Details
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Timezone</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  <div style={{ padding: 11, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Timezone</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.timezone || 'Asia/Kolkata'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Registration Date</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ padding: 11, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Registration Date</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.created_at ? new Date(selectedCandidate.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Last Profile Sync</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#172033', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ padding: 11, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Last Profile Sync</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>
                       {selectedCandidate.updated_at ? new Date(selectedCandidate.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                     </div>
                   </div>
 
-                  <div style={{ padding: 11, borderRadius: 0, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>Verification</div>
+                  <div style={{ padding: 11, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 10, color: '#64748B', marginBottom: 2 }}>Verification</div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: selectedCandidate.is_verified ? '#3A8B53' : '#dc2626' }}>
                       {selectedCandidate.is_verified ? 'Verified ✅' : 'Unverified ❌'}
                     </div>
                   </div>
                 </div>
               </div>
-
             </div>
 
-            {/* Access Control Action Footer */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  disabled={actionLoadingUserId === selectedCandidate.id || selectedCandidate.status === 'ACTIVE'}
-                  onClick={() => handleUpdateAccess(selectedCandidate.id, 'ACTIVE')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '7px 14px',
-                    borderRadius: 0,
-                    border: '1px solid #3A8B53',
-                    backgroundColor: selectedCandidate.status === 'ACTIVE' ? '#ecfdf5' : '#3A8B53',
-                    color: selectedCandidate.status === 'ACTIVE' ? '#3A8B53' : '#ffffff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: selectedCandidate.status === 'ACTIVE' ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: selectedCandidate.status === 'ACTIVE' ? 'none' : '0 0 10px rgba(16, 185, 129, 0.3)'
-                  }}
-                >
-                  {actionLoadingUserId === selectedCandidate.id ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <>
-                      <UserCheck size={13} />
-                      <span>Allow Access</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  disabled={actionLoadingUserId === selectedCandidate.id || selectedCandidate.status === 'SUSPENDED'}
-                  onClick={() => handleUpdateAccess(selectedCandidate.id, 'SUSPENDED')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '7px 14px',
-                    borderRadius: 0,
-                    border: '1px solid #ef4444',
-                    backgroundColor: selectedCandidate.status === 'SUSPENDED' ? '#fef2f2' : '#ef4444',
-                    color: selectedCandidate.status === 'SUSPENDED' ? '#dc2626' : '#ffffff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: selectedCandidate.status === 'SUSPENDED' ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: selectedCandidate.status === 'SUSPENDED' ? 'none' : '0 0 10px rgba(var(--primary-red-rgb), 0.3)'
-                  }}
-                >
-                  {actionLoadingUserId === selectedCandidate.id ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <>
-                      <UserX size={13} />
-                      <span>Revoke Access</span>
-                    </>
-                  )}
-                </button>
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '14px 22px',
+                borderTop: '1px solid #e2e8f0',
+                backgroundColor: '#fafafa',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'var(--font-mono)' }}>
+                Candidate ID: <strong>{String(selectedCandidate.id).slice(0, 18)}...</strong>
               </div>
 
               <button
                 onClick={() => setSelectedCandidate(null)}
                 style={{
-                  padding: '7px 14px',
-                  borderRadius: 0,
+                  padding: '8px 18px',
+                  borderRadius: 6,
                   backgroundColor: '#ffffff',
-                  color: '#475569',
+                  color: '#334155',
                   fontSize: 12,
                   fontWeight: 600,
                   border: '1px solid #cbd5e1',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#172033';
+                  e.currentTarget.style.color = '#0f172a';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#ffffff';
-                  e.currentTarget.style.color = '#475569';
+                  e.currentTarget.style.color = '#334155';
                 }}
               >
                 Close
               </button>
             </div>
-
           </div>
         </div>
       )}
