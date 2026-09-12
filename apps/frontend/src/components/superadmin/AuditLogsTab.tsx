@@ -32,9 +32,9 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
                 fontWeight: 800,
                 padding: '3px 10px',
                 borderRadius: 0,
-                background: 'rgba(227, 27, 35, 0.12)',
-                color: '#E31B23',
-                border: '1px solid rgba(227, 27, 35, 0.25)',
+                background: 'rgba(var(--primary-red-rgb), 0.12)',
+                color: 'var(--primary-red)',
+                border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
               }}
             >
               {logs.length} Entries
@@ -101,15 +101,15 @@ export function AuditLogsTab({ logs, loading, onRefresh }: AuditLogsTabProps) {
               {logs.map((log) => {
                 const isApproved = log.action === 'APPROVED';
 
-                const actionBg = isApproved ? 'rgba(16, 185, 129, 0.12)' : 'rgba(227, 27, 35, 0.12)';
+                const actionBg = isApproved ? 'rgba(16, 185, 129, 0.12)' : 'rgba(var(--primary-red-rgb), 0.12)';
                 const actionColor = isApproved ? '#3A8B53' : '#ef4444';
-                const actionBorder = isApproved ? 'rgba(16, 185, 129, 0.25)' : 'rgba(227, 27, 35, 0.25)';
+                const actionBorder = isApproved ? 'rgba(16, 185, 129, 0.25)' : 'rgba(var(--primary-red-rgb), 0.25)';
 
                 return (
                   <tr key={log.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
                     <td style={{ padding: '18px 20px' }}>
                       <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{log.admin_user_name}</div>
-                      <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{log.admin_user_email}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--primary-red)', fontWeight: 600, marginTop: 2 }}>{log.admin_user_email}</div>
                     </td>
                     <td style={{ padding: '18px 20px' }}>
                       <span

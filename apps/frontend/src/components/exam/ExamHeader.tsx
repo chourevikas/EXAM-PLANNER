@@ -160,7 +160,7 @@ export function ExamHeader({
               {subtopicName && subtopicName !== 'Choose Subtopic' && subtopicName !== topicName && (
                 <>
                   <ChevronRight size={13} color="rgba(255, 255, 255, 0.35)" />
-                  <span style={{ color: '#E31B23', fontWeight: 600 }}>{subtopicName}</span>
+                  <span style={{ color: 'var(--primary-red)', fontWeight: 600 }}>{subtopicName}</span>
                 </>
               )}
             </div>
@@ -337,8 +337,8 @@ export function ExamHeader({
               gap: 6,
               padding: '6px 10px',
               borderRadius: 0,
-              border: `1px solid ${focusMode ? 'rgba(227, 27, 35, 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
-              backgroundColor: focusMode ? 'rgba(227, 27, 35, 0.18)' : 'rgba(255, 255, 255, 0.09)',
+              border: `1px solid ${focusMode ? 'rgba(var(--primary-red-rgb), 0.5)' : 'rgba(255, 255, 255, 0.25)'}`,
+              backgroundColor: focusMode ? 'rgba(var(--primary-red-rgb), 0.18)' : 'rgba(255, 255, 255, 0.09)',
               color: '#FFFFFF',
               fontSize: 'clamp(11.5px, 2.5vw, 12.5px)',
               fontWeight: 600,

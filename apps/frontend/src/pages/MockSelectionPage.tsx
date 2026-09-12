@@ -1026,13 +1026,13 @@ export function MockSelectionPage() {
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '12px 24px', borderRadius: 0,
-                background: 'linear-gradient(135deg, #4F46E5 0%, #E31B23 100%)',
+                background: 'linear-gradient(135deg, #4F46E5 0%, var(--primary-red) 100%)',
                 color: '#FFFFFF', fontWeight: 700, fontSize: 14, border: 'none',
-                cursor: 'pointer', boxShadow: '0 4px 14px rgba(227, 27, 35, 0.35)',
+                cursor: 'pointer', boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.35)',
                 transition: 'transform 0.15s ease, boxShadow 0.15s ease',
               }}
             >
-              <PlayCircle size={18} fill="#FFFFFF" color="#E31B23" />
+              <PlayCircle size={18} fill="#FFFFFF" color="var(--primary-red)" />
               <span>Start Practice Test</span>
               <ArrowRight size={16} />
             </button>
@@ -1056,7 +1056,7 @@ export function MockSelectionPage() {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: '#E31B23',
+            color: 'var(--primary-red)',
             textDecoration: 'none',
             padding: '6px 12px',
             borderRadius: 0,
@@ -1091,7 +1091,7 @@ export function MockSelectionPage() {
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 0,
-                  border: `1px solid ${hoveredMock === mock.id ? '#E31B23' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
+                  border: `1px solid ${hoveredMock === mock.id ? 'var(--primary-red)' : isCompleted ? '#A7F3D0' : '#E2E8F0'}`,
                   padding: '24px',
                   boxShadow: hoveredMock === mock.id
                     ? '0 8px 24px rgba(15, 23, 42, 0.08)'
@@ -1112,7 +1112,7 @@ export function MockSelectionPage() {
                       padding: '3px 8px',
                       borderRadius: 0,
                       backgroundColor: '#F8FAFC',
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em'
                     }}>
@@ -1233,7 +1233,7 @@ export function MockSelectionPage() {
                         width: '100%',
                         height: 40,
                         borderRadius: 0,
-                        backgroundColor: '#E31B23',
+                        backgroundColor: 'var(--primary-red)',
                         color: '#FFFFFF',
                         fontWeight: 700,
                         fontSize: 13,
@@ -1243,10 +1243,10 @@ export function MockSelectionPage() {
                         justifyContent: 'center',
                         gap: 6,
                         boxSizing: 'border-box',
-                        boxShadow: '0 2px 6px rgba(227, 27, 35, 0.25)'
+                        boxShadow: '0 2px 6px rgba(var(--primary-red-rgb), 0.25)'
                       }}
                     >
-                      <PlayCircle size={15} fill="#FFFFFF" color="#E31B23" /> Start Test
+                      <PlayCircle size={15} fill="#FFFFFF" color="var(--primary-red)" /> Start Test
                     </Link>
                   )}
                 </div>

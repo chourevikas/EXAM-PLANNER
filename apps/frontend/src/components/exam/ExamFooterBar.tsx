@@ -202,7 +202,7 @@ export function ExamFooterBar({
               padding: isMobile ? '7px 12px' : '9px 20px',
               borderRadius: 0,
               border: 'none',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#FFFFFF',
               fontSize: 'clamp(12px, 2vw, 13.5px)',
               fontWeight: 700,
@@ -210,15 +210,15 @@ export function ExamFooterBar({
               display: 'flex',
               alignItems: 'center',
               gap: 4,
-              boxShadow: '0 2px 8px rgba(227, 27, 35, 0.25)',
+              boxShadow: '0 2px 8px rgba(var(--primary-red-rgb), 0.25)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#C1121F';
+              e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
               e.currentTarget.style.transform = 'translateY(-1px)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#E31B23';
+              e.currentTarget.style.backgroundColor = 'var(--primary-red)';
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >

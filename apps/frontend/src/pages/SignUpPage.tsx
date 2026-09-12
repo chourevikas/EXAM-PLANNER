@@ -99,8 +99,8 @@ export function SignUpPage() {
           {errorMsg && (
             <div
               style={{
-                background: 'rgba(227, 27, 35, 0.1)',
-                border: '1px solid rgba(227, 27, 35, 0.3)',
+                background: 'rgba(var(--primary-red-rgb), 0.1)',
+                border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                 color: '#ef4444',
                 padding: '12px 16px',
                 borderRadius: 0,
@@ -277,7 +277,7 @@ export function SignUpPage() {
                 fontSize: 15,
                 fontWeight: 700,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
+                boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.3)',
                 transition: 'all 0.2s ease',
               }}
             >

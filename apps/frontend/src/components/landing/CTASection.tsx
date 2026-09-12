@@ -27,7 +27,7 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
           width: 'min(800px, 90vw)',
           height: 500,
           background:
-            'radial-gradient(ellipse,rgba(227, 27, 35,0.18) 0%,transparent 65%)',
+            'radial-gradient(ellipse,rgba(var(--primary-red-rgb), 0.18) 0%,transparent 65%)',
           pointerEvents: 'none',
         }}
       />
@@ -54,8 +54,8 @@ export function CTASection({ onSignup, onLogin }: CTASectionProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(227, 27, 35,0.15)',
-            border: '1px solid rgba(227, 27, 35,0.3)',
+            background: 'rgba(var(--primary-red-rgb), 0.15)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
             borderRadius: 0,
             padding: '6px 18px',
             marginBottom: 24,

@@ -17,6 +17,7 @@ import { TeacherRewardsView } from '../components/admin/views/TeacherRewardsView
 import { CurrentAffairsManager } from '../components/admin/views/CurrentAffairsManager';
 import { ExamTypesManager } from '../components/admin/views/ExamTypesManager';
 import { NotificationsView } from '../components/admin/views/NotificationsView';
+import { ThemeSettingsView } from '../components/admin/views/ThemeSettingsView';
 
 export function AdminPage() {
   const [activeView, setActiveView] = useState('dashboard');
@@ -95,6 +96,8 @@ export function AdminPage() {
         return <CurrentAffairsManager />;
       case 'notifications':
         return <NotificationsView />;
+      case 'theme':
+        return <ThemeSettingsView />;
       default:
         return <AdminOverviewView onNavigate={handleNavigate} />;
     }

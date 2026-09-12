@@ -67,7 +67,7 @@ export function MarkdownPreviewer({
         style={{
           fontSize: 18,
           fontWeight: 800,
-          color: isDark ? '#60a5fa' : '#E31B23',
+          color: isDark ? '#60a5fa' : 'var(--primary-red)',
           margin: '20px 0 10px 0',
         }}
         {...props}
@@ -159,8 +159,8 @@ export function MarkdownPreviewer({
       const isTip = textContent.includes('[!TIP]') || textContent.includes('Recommendation');
       const isWarning = textContent.includes('[!WARNING]');
 
-      let borderColor = '#E31B23';
-      let bgColor = isDark ? 'rgba(227, 27, 35, 0.08)' : '#F8FAFC';
+      let borderColor = 'var(--primary-red)';
+      let bgColor = isDark ? 'rgba(var(--primary-red-rgb), 0.08)' : '#F8FAFC';
       if (isImportant) {
         borderColor = '#8b5cf6';
         bgColor = isDark ? 'rgba(139, 92, 246, 0.12)' : '#f5f3ff';
@@ -310,9 +310,9 @@ export function MarkdownPreviewer({
               fontWeight: 700,
               padding: '2px 8px',
               borderRadius: 0,
-              backgroundColor: isDark ? 'rgba(227, 27, 35,0.2)' : '#F8FAFC',
-              color: '#E31B23',
-              border: '1px solid rgba(227, 27, 35,0.3)',
+              backgroundColor: isDark ? 'rgba(var(--primary-red-rgb), 0.2)' : '#F8FAFC',
+              color: 'var(--primary-red)',
+              border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
             }}
           >
             ReactMarkdown (remark-gfm)
@@ -338,7 +338,7 @@ export function MarkdownPreviewer({
                 padding: '5px 12px',
                 borderRadius: 0,
                 border: 'none',
-                backgroundColor: mode === 'preview' ? '#E31B23' : 'transparent',
+                backgroundColor: mode === 'preview' ? 'var(--primary-red)' : 'transparent',
                 color: mode === 'preview' ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
                 fontSize: 12,
                 fontWeight: 700,
@@ -359,7 +359,7 @@ export function MarkdownPreviewer({
                 padding: '5px 12px',
                 borderRadius: 0,
                 border: 'none',
-                backgroundColor: mode === 'raw' ? '#E31B23' : 'transparent',
+                backgroundColor: mode === 'raw' ? 'var(--primary-red)' : 'transparent',
                 color: mode === 'raw' ? '#ffffff' : isDark ? '#94a3b8' : '#64748b',
                 fontSize: 12,
                 fontWeight: 700,
@@ -403,7 +403,7 @@ export function MarkdownPreviewer({
               padding: '6px 12px',
               borderRadius: 0,
               border: 'none',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#ffffff',
               fontSize: 12,
               fontWeight: 700,

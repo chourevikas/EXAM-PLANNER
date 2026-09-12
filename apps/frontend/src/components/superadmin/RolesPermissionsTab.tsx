@@ -94,8 +94,8 @@ export function RolesPermissionsTab() {
               fontSize: 13,
               fontWeight: 700,
               borderRadius: 0,
-              border: '1px solid #E31B23',
-              background: '#E31B23',
+              border: '1px solid var(--primary-red)',
+              background: 'var(--primary-red)',
               color: '#ffffff',
               cursor: 'pointer',
               display: 'flex',
@@ -117,9 +117,9 @@ export function RolesPermissionsTab() {
             borderRadius: 0,
             fontSize: 13.5,
             fontWeight: 600,
-            background: toast.isError ? 'rgba(227, 27, 35, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+            background: toast.isError ? 'rgba(var(--primary-red-rgb), 0.12)' : 'rgba(16, 185, 129, 0.12)',
             color: toast.isError ? '#ef4444' : '#3A8B53',
-            border: `1px solid ${toast.isError ? 'rgba(227,27,35,0.3)' : 'rgba(16,185,129,0.3)'}`,
+            border: `1px solid ${toast.isError ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(16,185,129,0.3)'}`,
           }}
         >
           {toast.text}
@@ -131,9 +131,9 @@ export function RolesPermissionsTab() {
             padding: '12px 16px',
             marginBottom: 16,
             borderRadius: 0,
-            background: 'rgba(227, 27, 35, 0.1)',
-            color: '#E31B23',
-            border: '1px solid rgba(227, 27, 35, 0.25)',
+            background: 'rgba(var(--primary-red-rgb), 0.1)',
+            color: 'var(--primary-red)',
+            border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
             fontSize: 13.5,
           }}
         >
@@ -161,7 +161,7 @@ export function RolesPermissionsTab() {
                 <tr key={role.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '18px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Shield size={15} color="#E31B23" />
+                      <Shield size={15} color="var(--primary-red)" />
                       <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{role.name}</span>
                       {role.is_system && (
                         <span
@@ -234,8 +234,8 @@ export function RolesPermissionsTab() {
                             fontSize: 12,
                             fontWeight: 700,
                             borderRadius: 0,
-                            border: '1px solid rgba(227, 27, 35, 0.3)',
-                            background: 'rgba(227, 27, 35, 0.1)',
+                            border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
+                            background: 'rgba(var(--primary-red-rgb), 0.1)',
                             color: '#ef4444',
                             cursor: 'pointer',
                             display: 'flex',
@@ -434,8 +434,8 @@ function RoleEditorModal({
                 fontSize: 13.5,
                 fontWeight: 700,
                 borderRadius: 0,
-                border: '1px solid #E31B23',
-                background: !name.trim() || submitting ? 'rgba(227,27,35,0.4)' : '#E31B23',
+                border: '1px solid var(--primary-red)',
+                background: !name.trim() || submitting ? 'rgba(var(--primary-red-rgb), 0.4)' : 'var(--primary-red)',
                 color: '#ffffff',
                 cursor: !name.trim() || submitting ? 'not-allowed' : 'pointer',
               }}

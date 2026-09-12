@@ -76,7 +76,7 @@ export function PricingPage() {
         marginBottom: 36, padding: '40px 32px', borderRadius: 0,
         backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-default)',
         boxShadow: 'var(--shadow-color-base)',
-        backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(227, 27, 35,0.06) 50%, rgba(219,39,119,0.06) 100%)',
+        backgroundImage: 'linear-gradient(135deg, rgba(91,92,235,0.08) 0%, rgba(var(--primary-red-rgb), 0.06) 50%, rgba(219,39,119,0.06) 100%)',
         textAlign: 'center', position: 'relative', overflow: 'hidden'
       }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 16px', backgroundColor: 'var(--accent-bg)', borderRadius: 0, marginBottom: 16, border: '1px solid var(--accent-border)' }}>
@@ -310,7 +310,7 @@ export function PricingPage() {
                     disabled={discountApplied || !promoCode}
                     style={{
                       padding: '10px 16px', borderRadius: 0, border: 'none',
-                      backgroundColor: discountApplied ? '#22c55e' : '#E31B23', color: '#FFF',
+                      backgroundColor: discountApplied ? '#22c55e' : 'var(--primary-red)', color: '#FFF',
                       fontSize: 13, fontWeight: 700, cursor: 'pointer'
                     }}
                   >
@@ -336,7 +336,7 @@ export function PricingPage() {
                         style={{
                           padding: '10px', borderRadius: 0,
                           border: `1px solid ${paymentMethod === method.id ? '#60a5fa' : 'rgba(255,255,255,0.1)'}`,
-                          backgroundColor: paymentMethod === method.id ? 'rgba(227, 27, 35, 0.2)' : 'rgba(255,255,255,0.04)',
+                          backgroundColor: paymentMethod === method.id ? 'rgba(var(--primary-red-rgb), 0.2)' : 'rgba(255,255,255,0.04)',
                           color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                         }}
@@ -374,9 +374,9 @@ export function PricingPage() {
                   disabled={isProcessing}
                   style={{
                     width: '100%', padding: '16px', borderRadius: 0, border: 'none',
-                    backgroundColor: '#E31B23', color: '#ffffff', fontSize: 15, fontWeight: 700,
+                    backgroundColor: 'var(--primary-red)', color: '#ffffff', fontSize: 15, fontWeight: 700,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    boxShadow: '0 4px 16px rgba(227, 27, 35, 0.4)'
+                    boxShadow: '0 4px 16px rgba(var(--primary-red-rgb), 0.4)'
                   }}
                 >
                   {isProcessing ? (

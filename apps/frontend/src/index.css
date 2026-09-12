@@ -8,6 +8,7 @@
 :root {
   /* Strict User Requested Palette */
   --primary-red: #e31b23;
+  --primary-red-rgb: 227, 27, 35;
   --deep-navy: #172033;
   --ink-black: #111111;
   --soft-white: #f8fafc;

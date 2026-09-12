@@ -408,24 +408,24 @@ export function ExamQuestionPalette({
               width: '100%',
               padding: '10px 0',
               borderRadius: 0,
-              border: isRevealed ? '1px solid #CBD5E1' : '1px solid #E31B23',
-              backgroundColor: isRevealed ? '#F1F5F9' : '#E31B23',
+              border: isRevealed ? '1px solid #CBD5E1' : '1px solid var(--primary-red)',
+              backgroundColor: isRevealed ? '#F1F5F9' : 'var(--primary-red)',
               color: isRevealed ? '#64748B' : '#FFFFFF',
               fontSize: 13,
               fontWeight: 700,
               cursor: isRevealed ? 'default' : 'pointer',
-              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(227, 27, 35, 0.2)',
+              boxShadow: isRevealed ? 'none' : '0 2px 6px rgba(var(--primary-red-rgb), 0.2)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#C1121F';
+                e.currentTarget.style.backgroundColor = 'var(--accent-darker)';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isRevealed) {
-                e.currentTarget.style.backgroundColor = '#E31B23';
+                e.currentTarget.style.backgroundColor = 'var(--primary-red)';
                 e.currentTarget.style.transform = 'translateY(0)';
               }
             }}

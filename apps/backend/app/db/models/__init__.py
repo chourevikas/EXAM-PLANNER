@@ -187,3 +187,7 @@ __all__.extend([
 
 __all__.extend(["ExamType", "Testimonial", "TestimonialStatus", "CurrentAffair", "RedemptionRequest", "RedemptionStatus"])
 
+from app.db.models.site_settings import SiteSettings
+
+__all__.extend(["SiteSettings"])
+

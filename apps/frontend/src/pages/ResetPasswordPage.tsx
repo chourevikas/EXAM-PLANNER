@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
             <div style={{
               width: 36, height: 36,
-              background: 'linear-gradient(135deg, #E31B23, #4F46E5)',
+              background: 'linear-gradient(135deg, var(--primary-red), #4F46E5)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -110,7 +110,7 @@ export default function ResetPasswordPage() {
                 border: '2px solid #FECDD3', borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
               }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E31B23" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--primary-red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
@@ -150,7 +150,7 @@ export default function ResetPasswordPage() {
                     boxSizing: 'border-box', fontFamily: 'inherit',
                     transition: 'border-color 0.15s ease',
                   }}
-                  onFocus={(e) => { e.target.style.borderColor = '#E31B23'; }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--primary-red)'; }}
                   onBlur={(e) => { e.target.style.borderColor = '#E2E8F0'; }}
                 />
                 <button
@@ -207,19 +207,19 @@ export default function ResetPasswordPage() {
                 style={{
                   width: '100%', height: 46, padding: '0 14px',
                   border: confirmPassword && confirmPassword !== password
-                    ? '1.5px solid #E31B23'
+                    ? '1.5px solid var(--primary-red)'
                     : '1.5px solid #E2E8F0',
                   background: '#FAFAFA', fontSize: 14, color: '#172033',
                   outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
                   transition: 'border-color 0.15s ease',
                 }}
-                onFocus={(e) => { e.target.style.borderColor = '#E31B23'; }}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--primary-red)'; }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = confirmPassword && confirmPassword !== password ? '#E31B23' : '#E2E8F0';
+                  e.target.style.borderColor = confirmPassword && confirmPassword !== password ? 'var(--primary-red)' : '#E2E8F0';
                 }}
               />
               {confirmPassword && confirmPassword !== password && (
-                <p style={{ fontSize: 12, color: '#E31B23', marginTop: 4, marginBottom: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--primary-red)', marginTop: 4, marginBottom: 0 }}>
                   Passwords don't match
                 </p>
               )}
@@ -243,7 +243,7 @@ export default function ResetPasswordPage() {
                 width: '100%', height: 48,
                 background: loading || !token || !password || !confirmPassword
                   ? '#E2E8F0'
-                  : 'linear-gradient(135deg, #E31B23, #C01019)',
+                  : 'linear-gradient(135deg, var(--primary-red), #C01019)',
                 color: loading || !token || !password || !confirmPassword ? '#94A3B8' : '#FFFFFF',
                 border: 'none', fontSize: 14, fontWeight: 700,
                 cursor: loading || !token ? 'not-allowed' : 'pointer',
@@ -268,7 +268,7 @@ export default function ResetPasswordPage() {
           <div style={{ textAlign: 'center', marginTop: 20 }}>
             <Link to="/signin" style={{
               display: 'inline-block', padding: '12px 28px',
-              background: 'linear-gradient(135deg, #E31B23, #C01019)',
+              background: 'linear-gradient(135deg, var(--primary-red), #C01019)',
               color: '#FFFFFF', fontWeight: 700, fontSize: 14,
               textDecoration: 'none', letterSpacing: '0.02em',
             }}>
@@ -282,7 +282,7 @@ export default function ResetPasswordPage() {
           borderTop: '1px solid #F1F5F9',
           textAlign: 'center', fontSize: 13, color: '#64748B',
         }}>
-          <Link to="/signin" style={{ color: '#E31B23', fontWeight: 600, textDecoration: 'none' }}>
+          <Link to="/signin" style={{ color: 'var(--primary-red)', fontWeight: 600, textDecoration: 'none' }}>
             ← Back to Sign In
           </Link>
         </div>

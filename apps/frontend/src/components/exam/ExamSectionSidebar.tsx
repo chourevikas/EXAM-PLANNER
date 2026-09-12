@@ -131,12 +131,12 @@ export function ExamSectionSidebar({
                 width: 32,
                 height: 32,
                 borderRadius: 0,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 10px rgba(227, 27, 35, 0.4)',
+                boxShadow: '0 2px 10px rgba(var(--primary-red-rgb), 0.4)',
               }}
             >
               <Layers size={18} />
@@ -232,7 +232,7 @@ export function ExamSectionSidebar({
                     padding: '10px 14px',
                     borderRadius: 0,
                     border: 'none',
-                    borderLeft: isSecActive ? '3px solid #E31B23' : '3px solid transparent',
+                    borderLeft: isSecActive ? '3px solid var(--primary-red)' : '3px solid transparent',
                     background: isSecActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                     color: isSecActive ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
                     cursor: 'pointer',
@@ -260,10 +260,10 @@ export function ExamSectionSidebar({
                   <span
                     style={{
                       fontSize: 12,
-                      color: isSecActive ? '#E31B23' : 'rgba(255, 255, 255, 0.5)',
+                      color: isSecActive ? 'var(--primary-red)' : 'rgba(255, 255, 255, 0.5)',
                       fontWeight: isSecActive ? 600 : 400,
                       fontVariantNumeric: 'tabular-nums',
-                      backgroundColor: isSecActive ? 'rgba(227, 27, 35, 0.3)' : 'rgba(255, 255, 255, 0.06)',
+                      backgroundColor: isSecActive ? 'rgba(var(--primary-red-rgb), 0.3)' : 'rgba(255, 255, 255, 0.06)',
                       padding: '2px 8px',
                       borderRadius: 0,
                       fontFamily: "'IBM Plex Sans', sans-serif",

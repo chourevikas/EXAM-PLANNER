@@ -163,7 +163,7 @@ export function ProfilePage() {
           boxShadow: 'var(--shadow-color-base, 0 4px 20px rgba(0,0,0,0.04))',
           padding: 32,
           marginBottom: 28,
-          backgroundImage: 'linear-gradient(135deg, rgba(227, 27, 35,0.06) 0%, rgba(91,92,235,0.04) 100%)',
+          backgroundImage: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.06) 0%, rgba(91,92,235,0.04) 100%)',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
@@ -179,8 +179,8 @@ export function ProfilePage() {
             fullName={fullName}
             style={{
               borderRadius: 0,
-              border: '2px solid var(--accent-primary, #E31B23)',
-              boxShadow: '0 4px 16px var(--shadow-color-accent, rgba(227, 27, 35,0.25))'
+              border: '2px solid var(--accent-primary, var(--primary-red))',
+              boxShadow: '0 4px 16px var(--shadow-color-accent, rgba(var(--primary-red-rgb), 0.25))'
             }}
           />
 
@@ -214,9 +214,9 @@ export function ProfilePage() {
                     fontWeight: 800,
                     padding: '4px 12px',
                     borderRadius: 0,
-                    backgroundColor: 'rgba(227, 27, 35, 0.15)',
-                    color: '#E31B23',
-                    border: '1px solid rgba(227, 27, 35, 0.3)',
+                    backgroundColor: 'rgba(var(--primary-red-rgb), 0.15)',
+                    color: 'var(--primary-red)',
+                    border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4
@@ -231,9 +231,9 @@ export function ProfilePage() {
                     fontWeight: 700,
                     padding: '3px 10px',
                     borderRadius: 0,
-                    backgroundColor: 'rgba(227, 27, 35, 0.2)',
+                    backgroundColor: 'rgba(var(--primary-red-rgb), 0.2)',
                     color: '#60a5fa',
-                    border: '1px solid rgba(227, 27, 35, 0.4)',
+                    border: '1px solid rgba(var(--primary-red-rgb), 0.4)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4
@@ -264,7 +264,7 @@ export function ProfilePage() {
                 <> • Target: <strong style={{ color: 'var(--text-primary, #172033)' }}>{targetExam} {targetYear}</strong></>
               )}
               {(isSuperAdmin || isAdmin) && (
-                <> • <strong style={{ color: '#E31B23' }}>Administrative Console Access</strong></>
+                <> • <strong style={{ color: 'var(--primary-red)' }}>Administrative Console Access</strong></>
               )}
             </div>
 
@@ -276,15 +276,15 @@ export function ProfilePage() {
                     <Shield size={13} color="#ea580c" />
                     <span>Executive Security Clearance</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35, 0.1)', color: '#E31B23', border: '1px solid rgba(227, 27, 35, 0.25)' }}>
-                    <Zap size={13} color="#E31B23" fill="#E31B23" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)', color: 'var(--primary-red)', border: '1px solid rgba(var(--primary-red-rgb), 0.25)' }}>
+                    <Zap size={13} color="var(--primary-red)" fill="var(--primary-red)" />
                     <span>Full Platform Control</span>
                   </div>
                 </>
               ) : isAdmin ? (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(227, 27, 35, 0.1)', color: '#E31B23', border: '1px solid rgba(227, 27, 35, 0.25)' }}>
-                    <Shield size={13} color="#E31B23" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 0, backgroundColor: 'rgba(var(--primary-red-rgb), 0.1)', color: 'var(--primary-red)', border: '1px solid rgba(var(--primary-red-rgb), 0.25)' }}>
+                    <Shield size={13} color="var(--primary-red)" />
                     <span>Institutional Admin Clearance</span>
                   </div>
                 </>
@@ -295,7 +295,7 @@ export function ProfilePage() {
                     <span>{user?.current_streak || 0}-Day Streak</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
-                    <BookOpen size={13} color="#E31B23" />
+                    <BookOpen size={13} color="var(--primary-red)" />
                     <span>{(user?.total_questions_attempted ?? user?.free_questions_attempted ?? 0).toLocaleString()} Questions Solved</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 0, backgroundColor: 'var(--bg-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}>
@@ -317,13 +317,13 @@ export function ProfilePage() {
               alignItems: 'center',
               gap: 8,
               padding: '12px 20px',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#ffffff',
               borderRadius: 0,
               textDecoration: 'none',
               fontSize: 14,
               fontWeight: 700,
-              boxShadow: '0 4px 16px rgba(227, 27, 35, 0.4)',
+              boxShadow: '0 4px 16px rgba(var(--primary-red-rgb), 0.4)',
               transition: 'transform 0.2s'
             }}
           >
@@ -358,13 +358,13 @@ export function ProfilePage() {
                 padding: '10px 18px',
                 borderRadius: 0,
                 border: 'none',
-                backgroundColor: isActive ? 'var(--accent-bg, rgba(227, 27, 35,0.1))' : 'transparent',
-                color: isActive ? 'var(--accent-primary, #E31B23)' : 'var(--text-muted, #64748b)',
+                backgroundColor: isActive ? 'var(--accent-bg, rgba(var(--primary-red-rgb), 0.1))' : 'transparent',
+                color: isActive ? 'var(--accent-primary, var(--primary-red))' : 'var(--text-muted, #64748b)',
                 fontSize: 14,
                 fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                borderBottom: isActive ? '2px solid var(--accent-primary, #E31B23)' : '2px solid transparent'
+                borderBottom: isActive ? '2px solid var(--accent-primary, var(--primary-red))' : '2px solid transparent'
               }}
             >
               <TabIcon size={16} />
@@ -703,12 +703,12 @@ export function ProfilePage() {
                   style={{
                     padding: '10px 20px',
                     borderRadius: 0,
-                    backgroundColor: '#E31B23',
+                    backgroundColor: 'var(--primary-red)',
                     color: '#ffffff',
                     fontSize: 14,
                     fontWeight: 700,
                     textDecoration: 'none',
-                    boxShadow: '0 4px 14px rgba(227, 27, 35, 0.4)'
+                    boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.4)'
                   }}
                 >
                   Upgrade to Pro
@@ -779,7 +779,7 @@ export function ProfilePage() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#E31B23',
+                          color: 'var(--primary-red)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -916,7 +916,7 @@ export function ProfilePage() {
               padding: '12px 24px',
               borderRadius: 0,
               border: 'none',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               color: '#ffffff',
               fontSize: 14,
               fontWeight: 700,
@@ -924,7 +924,7 @@ export function ProfilePage() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 4px 14px rgba(227, 27, 35, 0.4)',
+              boxShadow: '0 4px 14px rgba(var(--primary-red-rgb), 0.4)',
               transition: 'transform 0.2s'
             }}
           >

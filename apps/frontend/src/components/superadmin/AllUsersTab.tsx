@@ -40,7 +40,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
       case UserRole.ADMIN:
         return { bg: 'rgba(249, 115, 22, 0.12)', color: '#F47B35', border: 'rgba(249, 115, 22, 0.25)' };
       default:
-        return { bg: 'rgba(227, 27, 35, 0.12)', color: '#E31B23', border: 'rgba(227, 27, 35, 0.25)' };
+        return { bg: 'rgba(var(--primary-red-rgb), 0.12)', color: 'var(--primary-red)', border: 'rgba(var(--primary-red-rgb), 0.25)' };
     }
   };
 
@@ -68,9 +68,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                 fontWeight: 800,
                 padding: '3px 10px',
                 borderRadius: 0,
-                background: 'rgba(227, 27, 35, 0.12)',
-                color: '#E31B23',
-                border: '1px solid rgba(227, 27, 35, 0.25)',
+                background: 'rgba(var(--primary-red-rgb), 0.12)',
+                color: 'var(--primary-red)',
+                border: '1px solid rgba(var(--primary-red-rgb), 0.25)',
               }}
             >
               {users.length} Total Users
@@ -133,9 +133,9 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
             fontSize: 12.5,
             fontWeight: 700,
             cursor: 'pointer',
-            background: roleFilter === UserRole.STUDENT ? 'rgba(227, 27, 35, 0.2)' : 'var(--bg-body)',
-            color: roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--text-main)',
-            border: `1px solid ${roleFilter === UserRole.STUDENT ? '#E31B23' : 'var(--border-color)'}`,
+            background: roleFilter === UserRole.STUDENT ? 'rgba(var(--primary-red-rgb), 0.2)' : 'var(--bg-body)',
+            color: roleFilter === UserRole.STUDENT ? 'var(--primary-red)' : 'var(--text-main)',
+            border: `1px solid ${roleFilter === UserRole.STUDENT ? 'var(--primary-red)' : 'var(--border-color)'}`,
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -268,7 +268,7 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                     {/* User Details */}
                     <td style={{ padding: '18px 20px' }}>
                       <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 14.5 }}>{u.full_name}</div>
-                      <div style={{ fontSize: 12.5, color: '#E31B23', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--primary-red)', fontWeight: 600, marginTop: 2 }}>{u.email}</div>
                     </td>
 
                     {/* Role Badge */}
@@ -298,8 +298,8 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                           padding: '4px 10px',
                           borderRadius: 0,
                           color: isSuspended ? '#ef4444' : u.status === UserStatus.PENDING ? '#F47B35' : '#3A8B53',
-                          background: isSuspended ? 'rgba(227, 27, 35, 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                          border: `1px solid ${isSuspended ? 'rgba(227, 27, 35, 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                          background: isSuspended ? 'rgba(var(--primary-red-rgb), 0.12)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                          border: `1px solid ${isSuspended ? 'rgba(var(--primary-red-rgb), 0.25)' : u.status === UserStatus.PENDING ? 'rgba(249, 115, 22, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
                         }}
                       >
                         {isCoolingExpired ? 'EXPIRED (7d+)' : u.status}
@@ -419,8 +419,8 @@ export function AllUsersTab({ users, loading, onRefresh, onRoleChange, onRoleAss
                                 fontSize: 12,
                                 fontWeight: 700,
                                 borderRadius: 0,
-                                border: '1px solid rgba(227, 27, 35, 0.3)',
-                                background: 'rgba(227, 27, 35, 0.12)',
+                                border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
+                                background: 'rgba(var(--primary-red-rgb), 0.12)',
                                 color: '#ef4444',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',

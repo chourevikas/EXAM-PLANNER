@@ -1151,7 +1151,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             }}
                             style={{
                               padding: '7px 15px',
-                              backgroundColor: '#E31B23',
+                              backgroundColor: 'var(--primary-red)',
                               color: '#FFFFFF',
                               borderRadius: 0,
                               border: 'none',
@@ -1161,7 +1161,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 6,
-                              boxShadow: '0 1px 3px rgba(227, 27, 35, 0.25)',
+                              boxShadow: '0 1px 3px rgba(var(--primary-red-rgb), 0.25)',
                             }}
                           >
                             <Eye size={14} />
@@ -1210,7 +1210,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
       return (
         <div style={{ maxWidth: 1440, margin: '0 auto', fontFamily: 'Inter, sans-serif', padding: '40px 20px' }}>
           <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', padding: 48, textAlign: 'center', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)' }}>
-            <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 16px auto', color: '#E31B23' }} />
+            <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 16px auto', color: 'var(--primary-red)' }} />
             <h2 style={{ fontSize: 20, fontWeight: 700, color: '#172033', margin: '0 0 8px 0' }}>
               Paper Currently in Extraction Phase
             </h2>
@@ -1310,7 +1310,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     fontSize: 11.5,
                     fontWeight: 700,
                     backgroundColor: '#F8FAFC',
-                    color: '#E31B23',
+                    color: 'var(--primary-red)',
                     border: '1px solid #BFDBFE',
                   }}
                 >
@@ -1585,7 +1585,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               onClick={() => setIsAddMissingModalOpen(true)}
               style={{
                 padding: '8px 16px',
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: 6,
@@ -1595,7 +1595,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                boxShadow: '0 2px 4px rgba(227, 27, 35, 0.2)',
+                boxShadow: '0 2px 4px rgba(var(--primary-red-rgb), 0.2)',
               }}
             >
               <Plus size={16} />
@@ -1778,7 +1778,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
             <div
               style={{
                 height: '100%',
-                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : '#E31B23',
+                backgroundColor: reviewMetrics.canPublish ? '#16A34A' : 'var(--primary-red)',
                 width: `${reviewMetrics.total > 0 ? (reviewMetrics.reviewed / reviewMetrics.total) * 100 : 0}%`,
                 transition: 'width 0.3s ease',
               }}
@@ -1862,7 +1862,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
           <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
             {loadingQuestions ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>
-                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: '#E31B23' }} />
+                <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: 'var(--primary-red)' }} />
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Loading questions...</div>
               </div>
             ) : filteredQuestions.length === 0 ? (
@@ -1892,11 +1892,11 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         : (isSelected ? '1px solid #BFDBFE' : '1px solid #E2E8F0'),
                       borderLeft: isCorrupted
                         ? '4px solid #DC2626'
-                        : (isSelected ? '3px solid #E31B23' : '1px solid #E2E8F0'),
+                        : (isSelected ? '3px solid var(--primary-red)' : '1px solid #E2E8F0'),
                       backgroundColor: isCorrupted
                         ? (isSelected ? '#FEF2F2' : '#FFFBFB')
                         : (isSelected ? '#F8FAFC' : '#FFFFFF'),
-                      boxShadow: isSelected ? '0 1px 3px rgba(227, 27, 35, 0.08)' : 'none',
+                      boxShadow: isSelected ? '0 1px 3px rgba(var(--primary-red-rgb), 0.08)' : 'none',
                       transition: 'all 150ms ease-out',
                     }}
                   >
@@ -1905,7 +1905,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         style={{
                           fontSize: 12,
                           fontWeight: 800,
-                          color: isCorrupted ? '#DC2626' : (isSelected ? '#E31B23' : '#172033'),
+                          color: isCorrupted ? '#DC2626' : (isSelected ? 'var(--primary-red)' : '#172033'),
                           backgroundColor: isCorrupted ? '#FEE2E2' : (isSelected ? '#E2E8F0' : '#F1F5F9'),
                           padding: '2px 7px',
                           borderRadius: 0,
@@ -1946,7 +1946,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
 
                     {q.subject_name && (
                       <div style={{ fontSize: 11, color: '#64748B', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Tag size={10} color="#E31B23" />
+                        <Tag size={10} color="var(--primary-red)" />
                         <span>{q.subject_name} {q.topic_name ? `› ${q.topic_name}` : ''}</span>
                       </div>
                     )}
@@ -2049,8 +2049,8 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                             height: 22,
                             padding: '0 3px',
                             borderRadius: 0,
-                            border: isCur ? '1px solid #E31B23' : '1px solid #E2E8F0',
-                            backgroundColor: isCur ? '#E31B23' : '#FFFFFF',
+                            border: isCur ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
+                            backgroundColor: isCur ? 'var(--primary-red)' : '#FFFFFF',
                             color: isCur ? '#FFFFFF' : '#475569',
                             fontSize: 11,
                             fontWeight: isCur ? 700 : 500,
@@ -2195,7 +2195,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                     }}
                   >
-                    <Edit3 size={14} color="#E31B23" />
+                    <Edit3 size={14} color="var(--primary-red)" />
                     Modify Question & Solutions
                   </button>
 
@@ -2315,9 +2315,9 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#172033', fontWeight: 600 }}>
-                  <FolderTree size={15} color="#E31B23" />
+                  <FolderTree size={15} color="var(--primary-red)" />
                   <span>Subject:</span>
-                  <span style={{ color: '#E31B23' }}>{activeQuestion.subject_name || 'General Studies'}</span>
+                  <span style={{ color: 'var(--primary-red)' }}>{activeQuestion.subject_name || 'General Studies'}</span>
                 </div>
 
                 {activeQuestion.topic_name && (
@@ -2354,7 +2354,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FolderTree size={16} color="#E31B23" />
+                    <FolderTree size={16} color="var(--primary-red)" />
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
                       Syllabus Hierarchy & Concept Relevance Mappings
                     </span>
@@ -2362,7 +2362,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       style={{
                         padding: '2px 8px',
                         backgroundColor: '#F8FAFC',
-                        color: '#E31B23',
+                        color: 'var(--primary-red)',
                         borderRadius: 0,
                         fontSize: 11,
                         fontWeight: 700,
@@ -2384,7 +2384,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       borderRadius: 0,
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       backgroundColor: '#F8FAFC',
                       border: '1px solid #CBD5E1',
                       cursor: 'pointer',
@@ -2418,7 +2418,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         ? Math.round(hItem.relevance_weight * 100)
                         : 100;
                     const isPrim = Boolean(hItem.is_primary) || hIdx === 0;
-                    const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? '#E31B23' : '#F2B623';
+                    const badgeColor = pct >= 80 ? '#3A8B53' : pct >= 50 ? 'var(--primary-red)' : '#F2B623';
                     const badgeBg = pct >= 80 ? '#ECFDF5' : pct >= 50 ? '#F8FAFC' : '#FFFBEB';
                     const badgeBorder = pct >= 80 ? '#A7F3D0' : pct >= 50 ? '#BFDBFE' : '#FDE68A';
 
@@ -2438,7 +2438,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isPrim ? (
-                              <Tag size={14} color="#E31B23" />
+                              <Tag size={14} color="var(--primary-red)" />
                             ) : (
                               <GitBranch size={14} color="#64748B" />
                             )}
@@ -2481,7 +2481,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         <div style={{ fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                           <span style={{ fontWeight: 600, color: '#172033' }}>{hItem.subject_name || 'General Studies'}</span>
                           <span style={{ color: '#94A3B8' }}>›</span>
-                          <span style={{ fontWeight: 600, color: '#E31B23' }}>{hItem.topic_name || 'General Concepts'}</span>
+                          <span style={{ fontWeight: 600, color: 'var(--primary-red)' }}>{hItem.topic_name || 'General Concepts'}</span>
                           {hItem.subtopic_name && (
                             <>
                               <span style={{ color: '#94A3B8' }}>›</span>
@@ -2522,10 +2522,10 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                     padding: '18px 22px',
                     marginBottom: 24,
                     border: '1px solid #E2E8F0',
-                    borderLeft: '4px solid #E31B23',
+                    borderLeft: '4px solid var(--primary-red)',
                   }}
                 >
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#E31B23', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--primary-red)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                     PASSAGE / REFERENCE CONTEXT
                   </div>
                   <div style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
@@ -2553,7 +2553,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               {/* Options & Distractor Analysis Section */}
               <div style={{ marginBottom: 32 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={17} color="#E31B23" />
+                  <Layers size={17} color="var(--primary-red)" />
                   <span>Options & Option Explanations (Distractor Analysis)</span>
                 </div>
 
@@ -2643,7 +2643,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               {/* Solution Parameters Knowledge Base */}
               <div style={{ marginBottom: 32 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#172033', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <BookOpen size={17} color="#E31B23" />
+                  <BookOpen size={17} color="var(--primary-red)" />
                   <span>Knowledge Base & Common Traps Analysis</span>
                 </div>
 
@@ -2832,7 +2832,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <FolderTree size={16} color="#E31B23" />
+                    <FolderTree size={16} color="var(--primary-red)" />
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#172033' }}>
                       Taxonomy Hierarchy & Concept Relevance Manager
                     </span>
@@ -2861,7 +2861,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                       borderRadius: 0,
                       fontSize: 12,
                       fontWeight: 700,
-                      color: '#E31B23',
+                      color: 'var(--primary-red)',
                       backgroundColor: '#F8FAFC',
                       border: '1px solid #BFDBFE',
                       cursor: 'pointer',
@@ -2880,14 +2880,14 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                         key={hIdx}
                         style={{
                           backgroundColor: '#FFFFFF',
-                          border: hLink.is_primary ? '1.5px solid #E31B23' : '1px solid #E2E8F0',
+                          border: hLink.is_primary ? '1.5px solid var(--primary-red)' : '1px solid #E2E8F0',
                           borderRadius: 0,
                           padding: '14px 16px',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? '#E31B23' : '#475569', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: hLink.is_primary ? 'var(--primary-red)' : '#475569', cursor: 'pointer' }}>
                               <input
                                 type="radio"
                                 name="primaryHierarchyRadio"
@@ -2913,7 +2913,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                               style={{
                                 fontSize: 12,
                                 fontWeight: 800,
-                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? '#E31B23' : '#F2B623',
+                                color: pct >= 80 ? '#16A34A' : pct >= 50 ? 'var(--primary-red)' : '#F2B623',
                                 backgroundColor: pct >= 80 ? '#F0FDF4' : pct >= 50 ? '#F8FAFC' : '#FFFBEB',
                                 padding: '2px 8px',
                                 borderRadius: 0,
@@ -3039,7 +3039,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                                 )
                               );
                             }}
-                            style={{ flex: 1, accentColor: '#E31B23', cursor: 'pointer' }}
+                            style={{ flex: 1, accentColor: 'var(--primary-red)', cursor: 'pointer' }}
                           />
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <input
@@ -3482,7 +3482,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
                   padding: '8px 16px',
                   borderRadius: 0,
                   border: 'none',
-                  backgroundColor: '#E31B23',
+                  backgroundColor: 'var(--primary-red)',
                   color: '#FFFFFF',
                   fontSize: 13,
                   fontWeight: 600,
@@ -3546,7 +3546,7 @@ export function QuestionReviewView({ initialExam, onNavigate }: QuestionReviewVi
               All <strong>{reviewMetrics.total} questions & solutions</strong> have been verified. Publishing will:
             </p>
             <ul style={{ margin: '0 0 20px 0', paddingLeft: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
-              <li>Generate standalone <code style={{ color: '#E31B23' }}>questions.json</code> & <code style={{ color: '#E31B23' }}>solutions.json</code></li>
+              <li>Generate standalone <code style={{ color: 'var(--primary-red)' }}>questions.json</code> & <code style={{ color: 'var(--primary-red)' }}>solutions.json</code></li>
               <li>Deploy verified questions & solutions packages to platform catalog storage</li>
               <li>Activate this exam for candidate mock tests and live assessments</li>
             </ul>

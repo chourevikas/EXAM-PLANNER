@@ -1,6 +1,6 @@
 export const C = {
   navy:    '#172033', // deep-navy
-  royal:   '#E31B23', // primary-red
+  royal:   'var(--primary-red)', // primary-red
   elec:    '#199EAE', // info-teal
   emerald: '#3A8B53', // success-green
   saffron: '#F47B35', // orange
@@ -11,8 +11,8 @@ export const C = {
   grey:    '#6B7280',
   muted:   '#9CA3AF',
   light:   '#F3F4F6',
-  blue50:  'rgba(227, 27, 35, 0.05)',
-  blue100: 'rgba(227, 27, 35, 0.1)',
+  blue50:  'rgba(var(--primary-red-rgb), 0.05)',
+  blue100: 'rgba(var(--primary-red-rgb), 0.1)',
   slate800:'#172033', // deep-navy variant
   slate700:'#111111', // ink-black variant
   slate600:'#475569',

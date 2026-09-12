@@ -80,7 +80,7 @@ export function ExamsPage() {
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-4px)';
                 e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                e.currentTarget.style.boxShadow = '0 12px 24px rgba(227, 27, 35, 0.08)';
+                e.currentTarget.style.boxShadow = '0 12px 24px rgba(var(--primary-red-rgb), 0.08)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'none';

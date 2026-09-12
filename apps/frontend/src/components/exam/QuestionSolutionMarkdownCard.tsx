@@ -384,7 +384,7 @@ export function QuestionSolutionMarkdownCard({
               marginBottom: 10,
             }}
           >
-            <BookOpen size={16} style={{ color: '#E31B23' }} />
+            <BookOpen size={16} style={{ color: 'var(--primary-red)' }} />
             Detailed Explanation & Reference
           </div>
           <div
@@ -429,7 +429,7 @@ export function QuestionSolutionMarkdownCard({
                     padding: '10px 0 8px',
                   }}
                 >
-                  <Target size={13} style={{ color: '#E31B23' }} />
+                  <Target size={13} style={{ color: 'var(--primary-red)' }} />
                   Option-by-Option Analysis
                 </div>
                 {distractorsList.map((item, idx) => {

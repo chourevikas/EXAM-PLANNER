@@ -31,7 +31,7 @@ export function DashboardPreview() {
           width: 700,
           height: 400,
           background:
-            'radial-gradient(ellipse,rgba(227, 27, 35,0.13) 0%,transparent 70%)',
+            'radial-gradient(ellipse,rgba(var(--primary-red-rgb), 0.13) 0%,transparent 70%)',
           pointerEvents: 'none',
         }}
       />
@@ -313,12 +313,12 @@ export function DashboardPreview() {
                     </div>
                     <div
                       style={{
-                        background: `rgba(227, 27, 35,0.06)`,
-                        border: `1px solid rgba(227, 27, 35,0.15)`,
+                        background: `rgba(var(--primary-red-rgb), 0.06)`,
+                        border: `1px solid rgba(var(--primary-red-rgb), 0.15)`,
                         borderRadius: 0,
                         padding: '10px 12px',
                         fontSize: 12,
-                        color: '#C1121F',
+                        color: 'var(--accent-darker)',
                         lineHeight: 1.55,
                       }}
                     >

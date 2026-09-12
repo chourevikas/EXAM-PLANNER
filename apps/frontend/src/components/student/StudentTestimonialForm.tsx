@@ -50,7 +50,7 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
         borderRadius: 0,
         padding: '32px 36px',
         boxShadow: 'var(--shadow-color-base)',
-        background: 'linear-gradient(135deg, rgba(227, 27, 35, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%)',
+        background: 'linear-gradient(135deg, rgba(var(--primary-red-rgb), 0.04) 0%, rgba(139, 92, 246, 0.04) 100%)',
         fontFamily: 'Inter, sans-serif',
       }}
     >
@@ -60,12 +60,12 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
             width: 42,
             height: 42,
             borderRadius: 0,
-            background: 'linear-gradient(135deg, #E31B23, #7c3aed)',
+            background: 'linear-gradient(135deg, var(--primary-red), #7c3aed)',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(227, 27, 35, 0.3)',
+            boxShadow: '0 4px 12px rgba(var(--primary-red-rgb), 0.3)',
           }}
         >
           <MessageSquarePlus size={20} />
@@ -106,8 +106,8 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
               style={{
                 padding: '12px 16px',
                 borderRadius: 0,
-                backgroundColor: 'rgba(227, 27, 35, 0.12)',
-                border: '1px solid rgba(227, 27, 35, 0.3)',
+                backgroundColor: 'rgba(var(--primary-red-rgb), 0.12)',
+                border: '1px solid rgba(var(--primary-red-rgb), 0.3)',
                 color: '#dc2626',
                 fontSize: 13.5,
                 fontWeight: 600,
@@ -207,14 +207,14 @@ export function StudentTestimonialForm({ userExamDefault = 'UPSC CSE 2026 Aspira
                 borderRadius: 0,
                 fontSize: 14,
                 fontWeight: 700,
-                backgroundColor: '#E31B23',
+                backgroundColor: 'var(--primary-red)',
                 color: '#ffffff',
                 border: 'none',
                 cursor: submitting ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                boxShadow: '0 8px 20px -4px rgba(227, 27, 35, 0.4)',
+                boxShadow: '0 8px 20px -4px rgba(var(--primary-red-rgb), 0.4)',
                 transition: 'all 0.2s ease',
               }}
             >

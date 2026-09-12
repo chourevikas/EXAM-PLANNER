@@ -92,7 +92,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
               height: 32,
               borderRadius: 0,
               border: '1px solid rgba(255, 255, 255, 0.2)',
-              backgroundColor: '#E31B23',
+              backgroundColor: 'var(--primary-red)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -158,7 +158,7 @@ export function TeacherTopNav({ user, activeView, onNavigate }: TeacherTopNavPro
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                <User size={15} color="#E31B23" />
+                <User size={15} color="var(--primary-red)" />
                 <span>My Dashboard</span>
               </button>
 
