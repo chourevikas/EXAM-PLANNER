@@ -124,6 +124,28 @@ class ExamJsonBuilder:
                             missing_o.append((opt, str(text).strip()))
 
                 if missing_q or missing_o:
+                    # Prioritize first 20 questions synchronously for instant response;
+                    # offload the rest to a background task (same cap as
+                    # QuestionService._ensure_translations_on_demand) so a full exam paper
+                    # in a not-yet-cached language doesn't translate ~100+ texts inline.
+                    if len(missing_q) > 20:
+                        import asyncio
+                        from app.services.question_service import QuestionService
+
+                        sync_q_set = {q.id for q, _ in missing_q[:20]}
+                        bg_q = missing_q[20:]
+                        missing_q = missing_q[:20]
+
+                        bg_o = [item for item in missing_o if item[0].question_id not in sync_q_set]
+                        missing_o = [item for item in missing_o if item[0].question_id in sync_q_set]
+
+                        if bg_q or bg_o:
+                            asyncio.create_task(
+                                QuestionService._bg_translate_and_persist(
+                                    bg_q, bg_o, [], target_iso, lang_db_enum
+                                )
+                            )
+
                     translator = GoogleTranslationService()
                     to_persist_qt = []
                     to_persist_ot = []

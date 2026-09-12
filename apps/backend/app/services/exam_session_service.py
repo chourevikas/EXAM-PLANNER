@@ -410,38 +410,21 @@ class ExamSessionService:
                     except Exception as trans_err:
                         logger.warning(f"On-demand translation warning for Q{q_model.id}: {trans_err}")
 
-                # Re-query translations fresh from DB (the ensure call writes to a separate session)
-                from app.db.session import async_session_factory
-                async with async_session_factory() as fresh_session:
-                    q_trans_stmt = select(QuestionTranslation).where(QuestionTranslation.question_id == q_model.id)
-                    db_q_trans = (await fresh_session.exec(q_trans_stmt)).all()
-
-                    opt_trans_by_option: Dict[int, list] = {}
-                    if db_opts:
-                        all_opt_trans_stmt = select(OptionTranslation).where(
-                            col(OptionTranslation.option_id).in_([o.id for o in db_opts])
-                        )
-                        for ot in (await fresh_session.exec(all_opt_trans_stmt)).all():
-                            opt_trans_by_option.setdefault(ot.option_id, []).append(ot)
-
-                trans_map: Dict[str, Any] = {}
-                for t in db_q_trans:
-                    l_val = t.language.value if hasattr(t.language, "value") else str(t.language)
-                    trans_map[l_val] = {"question_text": t.question_text}
-                    iso_c, _ = normalize_language(l_val)
-                    if iso_c:
-                        trans_map[iso_c] = {"question_text": t.question_text}
+                # Use the in-memory maps directly: _ensure_translations_on_demand already
+                # mutated pre_qt_map/pre_ot_map with any newly-translated text before persisting
+                # it (on a separate session), so a fresh re-query here would just repeat the
+                # same two SELECTs against the DB for no new information.
+                trans_map: Dict[str, Any] = {
+                    lang: {"question_text": text}
+                    for lang, text in pre_qt_map.get(q_model.id, {}).items()
+                }
 
                 opts_list = []
                 for o in db_opts:
-                    db_opt_trans = opt_trans_by_option.get(o.id, [])
-                    opt_trans_map: Dict[str, str] = {}
-                    for ot in db_opt_trans:
-                        l_name = ot.language.value if hasattr(ot.language, "value") else str(ot.language)
-                        opt_trans_map[l_name] = ot.option_text
-                        iso_c, _ = normalize_language(l_name)
-                        if iso_c:
-                            opt_trans_map[iso_c] = ot.option_text
+                    opt_trans_map: Dict[str, str] = {
+                        lang: (val[0] if isinstance(val, (tuple, list)) else val)
+                        for lang, val in pre_ot_map.get(o.id, {}).items()
+                    }
 
                     # Pick the best available text for the requested target language
                     chosen_opt_text = (
@@ -449,7 +432,8 @@ class ExamSessionService:
                         or opt_trans_map.get(target_iso)
                         or opt_trans_map.get("ENGLISH")
                         or opt_trans_map.get("en")
-                        or (db_opt_trans[0].option_text if db_opt_trans else f"Option {o.option_label}")
+                        or next(iter(opt_trans_map.values()), None)
+                        or f"Option {o.option_label}"
                     )
                     hi_text = opt_trans_map.get("HINDI") or opt_trans_map.get("hi")
                     mr_text = opt_trans_map.get("MARATHI") or opt_trans_map.get("mr")

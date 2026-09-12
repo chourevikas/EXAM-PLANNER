@@ -788,7 +788,7 @@ export function GuestExamPage() {
         } as any;
       };
 
-      const fetchWithParams = async (params: URLSearchParams) => {
+      const fetchQuestions = async (params: URLSearchParams): Promise<any[]> => {
         try {
           if (!params.has('language') && language) {
             params.append('language', language);
@@ -796,15 +796,20 @@ export function GuestExamPage() {
           const res = await fetch(`/api/v1/questions?${params.toString()}`);
           if (res.ok) {
             const data = await res.json();
-            (data.items || []).forEach((item: any) => {
-              if (item.question_id && !fetchedMap.has(item.question_id)) {
-                fetchedMap.set(item.question_id, item);
-              }
-            });
+            return data.items || [];
           }
         } catch (err) {
           console.warn('Questions fetch error:', err);
         }
+        return [];
+      };
+
+      const mergeItems = (items: any[]) => {
+        items.forEach((item: any) => {
+          if (item.question_id && !fetchedMap.has(item.question_id)) {
+            fetchedMap.set(item.question_id, item);
+          }
+        });
       };
 
       const rawSubject = gSubject && !gSubject.startsWith('All Subjects') ? gSubject.trim() : '';
@@ -836,54 +841,63 @@ export function GuestExamPage() {
       if (reqSubtopic) p1.append('subtopic_name', reqSubtopic);
       if (validYear) p1.append('exam_year', validYear);
       if (targetExam) p1.append('exam_name', targetExam);
-      await fetchWithParams(p1);
+      mergeItems(await fetchQuestions(p1));
 
-      // 2. Fallback: Relax year if 0 questions found for exact year
-      if (fetchedMap.size === 0 && validYear) {
-        const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (reqSubject) p2.append('subject_name', reqSubject);
-        if (reqTopic) p2.append('topic_name', reqTopic);
-        if (reqSubtopic) p2.append('subtopic_name', reqSubtopic);
-        if (targetExam) p2.append('exam_name', targetExam);
-        await fetchWithParams(p2);
-      }
+      // Remaining tiers are progressive relaxations of the same filters, tried in
+      // priority order (most specific first). With sparse data the exact-match tier
+      // above often returns nothing, so instead of awaiting each relaxation one at a
+      // time, fire every applicable fallback tier in parallel and keep the most
+      // specific one that returned results — this bounds worst-case latency to a
+      // single extra round trip instead of up to 6 sequential ones.
+      if (fetchedMap.size === 0) {
+        const fallbackTiers: URLSearchParams[] = [];
 
-      // 3. Fallback: Relax subtopic filter if 0 questions found
-      if (fetchedMap.size === 0 && reqSubtopic) {
-        const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (reqSubject) p3.append('subject_name', reqSubject);
-        if (reqTopic) p3.append('topic_name', reqTopic);
-        if (targetExam) p3.append('exam_name', targetExam);
-        await fetchWithParams(p3);
-      }
-
-      // 4. Fallback: Relax topic filter if 0 questions found
-      if (fetchedMap.size === 0 && reqTopic) {
-        const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (reqSubject) p4.append('subject_name', reqSubject);
-        if (targetExam) p4.append('exam_name', targetExam);
-        await fetchWithParams(p4);
-      }
-
-      // 5. Fallback: Relax subject filter if still 0 questions found for this exam
-      if (fetchedMap.size === 0 && targetExam) {
-        const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        p5.append('exam_name', targetExam);
-        if (validYear) p5.append('exam_year', validYear);
-        await fetchWithParams(p5);
-      }
-
-      // 6. Fallback: Only if user did NOT specify targetExam
-      if (fetchedMap.size === 0 && !targetExam) {
-        const pAll = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-        if (validYear) pAll.append('exam_year', validYear);
-        if (reqSubject) pAll.append('subject_name', reqSubject);
-        await fetchWithParams(pAll);
-
-        if (fetchedMap.size === 0) {
-          const pAllRelaxed = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
-          await fetchWithParams(pAllRelaxed);
+        // 2. Relax year
+        if (validYear) {
+          const p2 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (reqSubject) p2.append('subject_name', reqSubject);
+          if (reqTopic) p2.append('topic_name', reqTopic);
+          if (reqSubtopic) p2.append('subtopic_name', reqSubtopic);
+          if (targetExam) p2.append('exam_name', targetExam);
+          fallbackTiers.push(p2);
         }
+
+        // 3. Relax subtopic
+        if (reqSubtopic) {
+          const p3 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (reqSubject) p3.append('subject_name', reqSubject);
+          if (reqTopic) p3.append('topic_name', reqTopic);
+          if (targetExam) p3.append('exam_name', targetExam);
+          fallbackTiers.push(p3);
+        }
+
+        // 4. Relax topic
+        if (reqTopic) {
+          const p4 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (reqSubject) p4.append('subject_name', reqSubject);
+          if (targetExam) p4.append('exam_name', targetExam);
+          fallbackTiers.push(p4);
+        }
+
+        // 5. Relax subject (still scoped to exam), or if no exam was chosen, relax to
+        // subject+year only and finally to no filters at all.
+        if (targetExam) {
+          const p5 = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          p5.append('exam_name', targetExam);
+          if (validYear) p5.append('exam_year', validYear);
+          fallbackTiers.push(p5);
+        } else {
+          const pAll = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          if (validYear) pAll.append('exam_year', validYear);
+          if (reqSubject) pAll.append('subject_name', reqSubject);
+          fallbackTiers.push(pAll);
+
+          const pAllRelaxed = new URLSearchParams({ limit: gCount.toString(), include_solutions: 'true' });
+          fallbackTiers.push(pAllRelaxed);
+        }
+
+        const fallbackResults = await Promise.all(fallbackTiers.map(fetchQuestions));
+        mergeItems(fallbackResults.find((items) => items.length > 0) || []);
       }
 
       const fetchedList = Array.from(fetchedMap.values());
