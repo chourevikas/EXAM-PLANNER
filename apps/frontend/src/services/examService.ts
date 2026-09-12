@@ -75,6 +75,7 @@ export async function uploadExamPaper({
     throw error;
   }
 
+  invalidateExamCatalogCache();
   return result;
 }
 
@@ -242,8 +243,34 @@ export interface ExamItem {
   status?: string;
 }
 
-/** 11. Fetch All Available Registered Exams */
-export async function listExams(status?: string, includeInactive: boolean = false, customToken?: string): Promise<ExamItem[]> {
+interface ExamCacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+const EXAM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const listExamsCache = new Map<string, ExamCacheEntry<ExamItem[]>>();
+let examsByYearCache: ExamCacheEntry<any> | null = null;
+
+export function invalidateExamCatalogCache(): void {
+  listExamsCache.clear();
+  examsByYearCache = null;
+}
+
+/** 11. Fetch All Available Registered Exams (Cached in-memory for 5 minutes) */
+export async function listExams(
+  status?: string,
+  includeInactive: boolean = false,
+  customToken?: string,
+  forceRefresh: boolean = false
+): Promise<ExamItem[]> {
+  const cacheKey = `${status || 'all'}::${includeInactive}::${customToken ? 'auth' : 'anon'}`;
+  const now = Date.now();
+  if (!forceRefresh) {
+    const hit = listExamsCache.get(cacheKey);
+    if (hit && (now - hit.timestamp < EXAM_CACHE_TTL_MS)) {
+      return hit.data;
+    }
+  }
   try {
     let url = `${API_BASE_URL}/exams`;
     if (status) {
@@ -256,8 +283,12 @@ export async function listExams(status?: string, includeInactive: boolean = fals
     if (!response.ok) {
       return [];
     }
-    return await response.json();
+    const data = await response.json();
+    listExamsCache.set(cacheKey, { data, timestamp: now });
+    return data;
   } catch (err) {
+    const hit = listExamsCache.get(cacheKey);
+    if (hit) return hit.data;
     console.warn('Failed to fetch registered exams:', err);
     return [];
   }
@@ -576,15 +607,22 @@ export async function fetchMasterSyllabus(examId?: number | string): Promise<any
   }
 }
 
-export async function fetchExamsByYear(): Promise<any> {
+export async function fetchExamsByYear(forceRefresh: boolean = false): Promise<any> {
+  const now = Date.now();
+  if (!forceRefresh && examsByYearCache && (now - examsByYearCache.timestamp < EXAM_CACHE_TTL_MS)) {
+    return examsByYearCache.data;
+  }
   try {
     const response = await guardedFetch(`${API_BASE_URL}/exams/by-year`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) return null;
-    return await response.json();
+    const data = await response.json();
+    examsByYearCache = { data, timestamp: now };
+    return data;
   } catch (err) {
+    if (examsByYearCache) return examsByYearCache.data;
     console.warn('Failed to fetch exams grouped by year:', err);
     return null;
   }

@@ -116,8 +116,7 @@ class ExamTypeService:
 
     async def _invalidate_cache(self):
         try:
-            cache = get_cache()
-            await cache.delete("ep:exam_types:list:active")
-            await cache.delete("ep:exam_types:list:all")
+            from app.cache.helpers import invalidate_exam_type_cache
+            await invalidate_exam_type_cache()
         except Exception:
             pass

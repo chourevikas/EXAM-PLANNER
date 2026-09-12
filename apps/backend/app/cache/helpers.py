@@ -49,6 +49,7 @@ async def invalidate_exam_cache(exam_id: str) -> None:
         f"{prefix}:exams:detail:{exam_id_str}",
         f"{prefix}:exams:manifest:{exam_id_str}",
         f"{prefix}:exams:structure:{exam_id_str}",
+        f"{prefix}:exams:syllabus:{exam_id_str}",
     ]
 
     for k in keys_to_delete:

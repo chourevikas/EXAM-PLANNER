@@ -97,6 +97,14 @@ class SyllabusService:
                 .order_by(Subject.display_order, Subject.name)
             )
             db_subjects = list((await self.session.exec(subj_stmt)).all())
+            if not db_subjects:
+                # If no questions are attached to this syllabus version yet, fetch all subjects for this version
+                syl_ver_subjs_stmt = (
+                    select(Subject)
+                    .where(Subject.version_id == syl_ver.id)
+                    .order_by(Subject.display_order, Subject.name)
+                )
+                db_subjects = list((await self.session.exec(syl_ver_subjs_stmt)).all())
         else:
             subj_stmt = (
                 select(Subject)
@@ -506,7 +514,7 @@ class SyllabusService:
             GROUP BY q.id, q.question_number_in_paper, q.status, q.difficulty, q.is_complete, q.requires_human_review, s.name, t.name, st.name
             ORDER BY q.question_number_in_paper ASC;
         """)
-        res = await self.session.execute(sql, {"exam_id": exam_id, "lang": lang_str})
+        res = await self.session.exec(sql, params={"exam_id": exam_id, "lang": lang_str})
         q_rows = res.fetchall()
 
         q_by_num = {r.question_number_in_paper: r for r in q_rows}
@@ -519,13 +527,13 @@ class SyllabusService:
 
         status_str = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
         is_task_running = task_registry.is_running(str(exam_id)) or task_registry.is_running(f"qp_{exam_id}")
-        p1_res = await self.session.execute(
+        p1_res = await self.session.exec(
             select(PipelineRun).where(
                 PipelineRun.exam_id == exam_id,
                 PipelineRun.pipeline_type.in_(("QUESTION_EXTRACTION", "DOCUMENT_EXTRACTION"))
             ).order_by(PipelineRun.id.desc())
         )
-        p1_run = p1_res.scalars().first()
+        p1_run = p1_res.first()
         is_extracting = False
         if is_task_running:
             is_extracting = True

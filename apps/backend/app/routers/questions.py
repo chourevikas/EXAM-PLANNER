@@ -51,6 +51,38 @@ async def list_questions(
     By default, solution explanations are omitted (include_solutions=False) to protect test-taking integrity.
     """
     lang_code = parse_language(language)
+    from app.cache import get_cache, build_cache_key
+    cache = get_cache()
+    should_cache = not bool(exclude_ids)
+    cache_key = None
+    if should_cache:
+        cache_key = build_cache_key(
+            "questions:list",
+            subject_id=subject_id,
+            subject_name=subject_name,
+            subject_code=subject_code,
+            topic_id=topic_id,
+            topic_name=topic_name,
+            topic_code=topic_code,
+            subtopic_id=subtopic_id,
+            subtopic_name=subtopic_name,
+            subtopic_code=subtopic_code,
+            exam_id=exam_id,
+            exam_name=exam_name,
+            exam_type=str(exam_type.value if hasattr(exam_type, "value") else exam_type) if exam_type else None,
+            exam_year=exam_year,
+            paper_set_code=paper_set_code,
+            stage=stage,
+            status=str(status.value if hasattr(status, "value") else status) if status else None,
+            language=lang_code.value,
+            include_solutions=include_solutions,
+            page=page,
+            limit=limit,
+        )
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None:
+            return JSONResponse(content=cached_data)
+
     service = QuestionService(session)
     res = await service.list_questions_paginated(
         subject_id=subject_id,
@@ -77,6 +109,8 @@ async def list_questions(
     )
     if res is not None:
         serialized = res.model_dump(mode="json") if hasattr(res, "model_dump") else (res.dict() if hasattr(res, "dict") else res)
+        if should_cache and cache_key:
+            await cache.set(cache_key, serialized, ttl_seconds=600)
         return JSONResponse(content=serialized)
     return JSONResponse(content={})
 
@@ -110,51 +144,43 @@ async def get_syllabus_taxonomy(
     all_subtopics_set = set()
 
     try:
-        # 1. Fetch Subjects
-        stmt_subj = select(Subject)
+        stmt = (
+            select(Subject.name, Topic.name, Subtopic.name)
+            .outerjoin(Topic, Topic.subject_id == Subject.id)
+            .outerjoin(Subtopic, Subtopic.topic_id == Topic.id)
+        )
         if subject_name and subject_name != "All Subjects":
-            stmt_subj = stmt_subj.where(Subject.name.ilike(f"%{subject_name.strip()}%"))
-        res_subj = await session.exec(stmt_subj)
-        db_subjects = res_subj.all()
-        subj_map = {s.id: s.name.strip() for s in db_subjects if s.name}
-
-        # 2. Fetch Topics
-        stmt_topics = select(Topic)
-        if db_subjects:
-            stmt_topics = stmt_topics.where(Topic.subject_id.in_([s.id for s in db_subjects]))
+            stmt = stmt.where(Subject.name.ilike(f"%{subject_name.strip()}%"))
         if topic_name and topic_name != "All Topics":
-            stmt_topics = stmt_topics.where(Topic.name.ilike(f"%{topic_name.strip()}%"))
-        res_topics = await session.exec(stmt_topics)
-        db_topics = res_topics.all()
-        topic_map = {t.id: (subj_map.get(t.subject_id, "General Studies"), t.name.strip()) for t in db_topics if t.name}
+            stmt = stmt.where(Topic.name.ilike(f"%{topic_name.strip()}%"))
 
-        # 3. Fetch Subtopics
-        if db_topics:
-            stmt_subs = select(Subtopic).where(Subtopic.topic_id.in_([t.id for t in db_topics]))
-            res_subs = await session.exec(stmt_subs)
-            db_subs = res_subs.all()
-            for sub in db_subs:
-                if sub.topic_id in topic_map and sub.name:
-                    s_name, t_name = topic_map[sub.topic_id]
-                    st_name = sub.name.strip()
-                    if st_name:
-                        all_subjects_set.add(s_name)
-                        all_topics_set.add(t_name)
-                        all_subtopics_set.add(st_name)
+        res = await session.exec(stmt)
+        rows = res.all()
+        for s_raw, t_raw, st_raw in rows:
+            if not s_raw:
+                continue
+            s_name = s_raw.strip()
+            all_subjects_set.add(s_name)
+            if s_name not in three_level_hierarchy:
+                three_level_hierarchy[s_name] = {}
 
-                        if s_name not in three_level_hierarchy:
-                            three_level_hierarchy[s_name] = {}
-                        if t_name not in three_level_hierarchy[s_name]:
-                            three_level_hierarchy[s_name][t_name] = []
-                        if st_name not in three_level_hierarchy[s_name][t_name]:
-                            three_level_hierarchy[s_name][t_name].append(st_name)
+            if t_raw:
+                t_name = t_raw.strip()
+                all_topics_set.add(t_name)
+                if t_name not in three_level_hierarchy[s_name]:
+                    three_level_hierarchy[s_name][t_name] = []
+                if t_name not in flat_hierarchy:
+                    flat_hierarchy[t_name] = []
 
-                        if t_name not in flat_hierarchy:
-                            flat_hierarchy[t_name] = []
-                        if st_name not in flat_hierarchy[t_name]:
-                            flat_hierarchy[t_name].append(st_name)
+                if st_raw:
+                    st_name = st_raw.strip()
+                    all_subtopics_set.add(st_name)
+                    if st_name not in three_level_hierarchy[s_name][t_name]:
+                        three_level_hierarchy[s_name][t_name].append(st_name)
+                    if st_name not in flat_hierarchy[t_name]:
+                        flat_hierarchy[t_name].append(st_name)
 
-    except Exception as exc:
+    except Exception:
         pass
 
     # Fallback to master SYLLABUS_HIERARCHY if database returned empty

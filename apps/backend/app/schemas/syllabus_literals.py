@@ -917,10 +917,6 @@ def verify_syllabus_node(
     top_exact = is_valid_topic(clean_top, clean_subj) if subj_exact else is_valid_topic(clean_top)
     subtop_exact = is_valid_subtopic(clean_subtop, clean_top, clean_subj) if clean_subtop else True
 
-    if clean_subj:
-        # Preserve modern pipeline subject directly rather than forcing into legacy parent
-        return clean_subj, clean_top or clean_subj, clean_subtop, True, None
-
     if subj_exact and top_exact and subtop_exact:
         c_subj, c_top, c_subtop = get_canonical_parents(clean_subj, clean_top, clean_subtop)
         return c_subj, c_top, c_subtop, True, None

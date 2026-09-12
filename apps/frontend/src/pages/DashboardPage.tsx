@@ -5,6 +5,7 @@ import { Ico } from '../components/common/Icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { fetchCurrentUser, syncGuestSessionsOnAuth } from '../services/authService';
 import { listExams } from '../services/examService';
+import { guardedFetch } from '../utils/apiGuard';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
@@ -97,11 +98,11 @@ export function DashboardPage() {
         examsResult,
       ] = await Promise.allSettled([
         fetchCurrentUser(token || undefined),
-        fetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
-        fetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
-        fetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        guardedFetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+        guardedFetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
         fetchPredictedRank(),
-        token ? fetch('/api/v1/study-plan/badges', { headers: authHeaders }).then(r => r.ok ? r.json() : null) : Promise.resolve(null),
+        token ? guardedFetch('/api/v1/study-plan/badges', { headers: authHeaders }).then(r => r.ok ? r.json() : null) : Promise.resolve(null),
         listExams(),
       ]);
 
@@ -948,9 +949,9 @@ export function DashboardPage() {
           const token = (await getToken()) || localStorage.getItem('access_token');
           const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
           const [actRes, statsRes, subjRes] = await Promise.allSettled([
-            fetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
-            fetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
-            fetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            guardedFetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            guardedFetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
           ]);
           if (actRes.status === 'fulfilled' && Array.isArray(actRes.value)) setTodayActivities(actRes.value);
           if (statsRes.status === 'fulfilled' && statsRes.value?.totalExams !== undefined) setDashboardStats(statsRes.value);

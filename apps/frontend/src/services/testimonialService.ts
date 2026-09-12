@@ -1,3 +1,5 @@
+import { guardedFetch } from '../utils/apiGuard';
+
 export interface TestimonialItem {
   id: number | string;
   user_name: string;
@@ -20,14 +22,34 @@ function getAuthHeaders() {
   };
 }
 
-export async function fetchApprovedTestimonials(): Promise<TestimonialItem[]> {
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let approvedTestimonialsCache: CacheEntry<TestimonialItem[]> | null = null;
+
+export function invalidateApprovedTestimonialsCache(): void {
+  approvedTestimonialsCache = null;
+}
+
+export async function fetchApprovedTestimonials(forceRefresh: boolean = false): Promise<TestimonialItem[]> {
+  const now = Date.now();
+  if (!forceRefresh && approvedTestimonialsCache && (now - approvedTestimonialsCache.timestamp < CACHE_TTL_MS)) {
+    return approvedTestimonialsCache.data;
+  }
   try {
-    const res = await fetch(`${API_BASE}/approved`, {
+    const res = await guardedFetch(`${API_BASE}/approved`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error('Failed to fetch approved testimonials');
-    return await res.json();
+    const data = await res.json();
+    approvedTestimonialsCache = { data, timestamp: now };
+    return data;
   } catch (err) {
+    if (approvedTestimonialsCache) {
+      return approvedTestimonialsCache.data;
+    }
     console.error('fetchApprovedTestimonials error:', err);
     return [];
   }
@@ -38,7 +60,7 @@ export async function submitTestimonial(payload: {
   user_exam: string;
   rating?: number;
 }): Promise<TestimonialItem> {
-  const res = await fetch(`${API_BASE}`, {
+  const res = await guardedFetch(`${API_BASE}`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -49,12 +71,13 @@ export async function submitTestimonial(payload: {
     throw new Error(err.detail || 'Failed to submit testimonial.');
   }
 
+  invalidateApprovedTestimonialsCache();
   return await res.json();
 }
 
 // Super Admin Management APIs
 export async function fetchAllTestimonialsForAdmin(): Promise<TestimonialItem[]> {
-  const res = await fetch(`${API_BASE}/admin/all`, {
+  const res = await guardedFetch(`${API_BASE}/admin/all`, {
     headers: getAuthHeaders(),
   });
 
@@ -67,7 +90,7 @@ export async function fetchAllTestimonialsForAdmin(): Promise<TestimonialItem[]>
 }
 
 export async function approveTestimonial(id: number | string): Promise<TestimonialItem> {
-  const res = await fetch(`${API_BASE}/admin/${id}/approve`, {
+  const res = await guardedFetch(`${API_BASE}/admin/${id}/approve`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -77,11 +100,12 @@ export async function approveTestimonial(id: number | string): Promise<Testimoni
     throw new Error(err.detail || 'Failed to approve testimonial.');
   }
 
+  invalidateApprovedTestimonialsCache();
   return await res.json();
 }
 
 export async function rejectTestimonial(id: number | string, reason?: string): Promise<TestimonialItem> {
-  const res = await fetch(`${API_BASE}/admin/${id}/reject`, {
+  const res = await guardedFetch(`${API_BASE}/admin/${id}/reject`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ reason }),
@@ -92,11 +116,12 @@ export async function rejectTestimonial(id: number | string, reason?: string): P
     throw new Error(err.detail || 'Failed to reject testimonial.');
   }
 
+  invalidateApprovedTestimonialsCache();
   return await res.json();
 }
 
 export async function deleteTestimonial(id: number | string): Promise<{ message: string }> {
-  const res = await fetch(`${API_BASE}/admin/${id}`, {
+  const res = await guardedFetch(`${API_BASE}/admin/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -106,5 +131,7 @@ export async function deleteTestimonial(id: number | string): Promise<{ message:
     throw new Error(err.detail || 'Failed to delete testimonial.');
   }
 
+  invalidateApprovedTestimonialsCache();
   return await res.json();
 }
+
