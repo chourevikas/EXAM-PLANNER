@@ -1,20 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: exam_redis_prod
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/examplanner-backend:latest
     ports:
@@ -23,9 +7,7 @@ services:
       - .env
     networks:
       - app-network
-    depends_on:
-      redis:
-        condition: service_healthy
+
     restart: unless-stopped
 
   web:
@@ -38,7 +20,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  redis_data:
 
 networks:
   app-network:
