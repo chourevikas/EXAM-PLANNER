@@ -390,20 +390,28 @@ export function GuestExamPage() {
             prev.map((item) => {
               if (String(item.question_id) === String(q.question_id)) {
                 const mergedTranslations = { ...(item.translations || {}), ...newTrans };
+                const fetchedText = data.question_text || data.text;
+                if (fetchedText && fetchedText !== item.text) {
+                   mergedTranslations[upper] = fetchedText;
+                }
+
                 const mergedOptions = (item.options || []).map((o: any) => {
                   const optId = String(o.option_id);
+                  const mergedOptTrans = { ...(o.translations || {}), ...(newOptTrans[optId] || {}) };
+                  const fetchedOptText = newOptText[optId];
+                  if (fetchedOptText && fetchedOptText !== o.text) {
+                     mergedOptTrans[upper] = fetchedOptText;
+                  }
+
                   return {
                     ...o,
-                    text: newOptText[optId] || o.text,
-                    translations: {
-                      ...(o.translations || {}),
-                      ...(newOptTrans[optId] || {}),
-                    },
+                    text: o.text, // Preserve original English text
+                    translations: mergedOptTrans,
                   };
                 });
                 return {
                   ...item,
-                  text: data.question_text || item.text,
+                  text: item.text, // Preserve original English text
                   translations: mergedTranslations,
                   options: mergedOptions,
                 };
@@ -415,20 +423,28 @@ export function GuestExamPage() {
           setActiveQuestion((prev) => {
             if (!prev || String(prev.question_id) !== String(q.question_id)) return prev;
             const mergedTranslations = { ...(prev.translations || {}), ...newTrans };
+            const fetchedText = data.question_text || data.text;
+            if (fetchedText && fetchedText !== prev.text) {
+               mergedTranslations[upper] = fetchedText;
+            }
+
             const mergedOptions = (prev.options || []).map((o: any) => {
               const optId = String(o.option_id);
+              const mergedOptTrans = { ...(o.translations || {}), ...(newOptTrans[optId] || {}) };
+              const fetchedOptText = newOptText[optId];
+              if (fetchedOptText && fetchedOptText !== o.text) {
+                 mergedOptTrans[upper] = fetchedOptText;
+              }
+
               return {
                 ...o,
-                text: newOptText[optId] || o.text,
-                translations: {
-                  ...(o.translations || {}),
-                  ...(newOptTrans[optId] || {}),
-                },
+                text: o.text, // Preserve original English text
+                translations: mergedOptTrans,
               };
             });
             return {
               ...prev,
-              text: data.question_text || prev.text,
+              text: prev.text, // Preserve original English text
               translations: mergedTranslations,
               options: mergedOptions,
             };
@@ -3354,7 +3370,7 @@ export function GuestExamPage() {
       >
         {/* Subtle Translating Indicator */}
         {isTranslatingActiveQ && (
-          <div className="flex items-center gap-2 px-3 py-1.5 mb-2.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg w-fit animate-pulse">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full shadow-md animate-pulse">
             <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping" />
             Translating question to selected language...
           </div>

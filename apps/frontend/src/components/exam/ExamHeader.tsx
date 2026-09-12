@@ -90,7 +90,7 @@ export function ExamHeader({
           alignItems: 'center',
           gap: 'clamp(6px, 1.5vw, 12px)',
           minWidth: 0,
-          flexShrink: 0,
+          flex: 1,
         }}
       >
         <img

@@ -521,26 +521,35 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
 
           const applyUpdates = (item: any) => {
             const mergedTranslations = { ...(item.translations || {}), ...newTrans };
+            const fetchedText = data.text || data.question_text;
+            if (fetchedText && fetchedText !== item.text) {
+               mergedTranslations[langUpper] = fetchedText;
+            }
+
             const mergedOptions = (item.options || []).map((o: any) => {
               const optId = String(o.option_id);
               const hiTxt = newOptTrans[optId]?.HINDI || newOptTrans[optId]?.hi;
               const mrTxt = newOptTrans[optId]?.MARATHI || newOptTrans[optId]?.mr;
+              
+              const mergedOptTrans = { ...(o.translations || {}), ...(newOptTrans[optId] || {}) };
+              const fetchedOptText = newOptText[optId];
+              if (fetchedOptText && fetchedOptText !== o.text) {
+                 mergedOptTrans[langUpper] = fetchedOptText;
+              }
+
               return {
                 ...o,
-                text: newOptText[optId] || o.text,
+                text: o.text, // Preserve original English text
                 text_hindi: hiTxt || o.text_hindi,
                 textHindi: hiTxt || o.textHindi,
                 text_marathi: mrTxt || o.text_marathi,
                 textMarathi: mrTxt || o.textMarathi,
-                translations: {
-                  ...(o.translations || {}),
-                  ...(newOptTrans[optId] || {}),
-                },
+                translations: mergedOptTrans,
               };
             });
             return {
               ...item,
-              text: data.text || data.question_text || item.text,
+              text: item.text, // Preserve original English text
               text_hindi: data.text_hindi || data.question_text_hindi || item.text_hindi,
               textHindi: data.text_hindi || data.question_text_hindi || item.textHindi,
               text_marathi: data.text_marathi || data.question_text_marathi || item.text_marathi,
