@@ -31,6 +31,7 @@ interface MetricCardProps {
   icon: React.ReactNode;
   showProgress?: boolean;
   progressPercent?: number;
+  isLoading?: boolean;
   onClick?: () => void;
 }
 
@@ -41,6 +42,7 @@ function MetricCard({
   icon,
   showProgress = false,
   progressPercent = 96.3,
+  isLoading = false,
   onClick,
 }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -137,18 +139,31 @@ function MetricCard({
 
       {/* Value & Supporting Detail */}
       <div style={{ marginTop: 12 }}>
-        <div
-          style={{
-            fontSize: 32,
-            fontWeight: 700,
-            color: isHovered ? accentColor : '#172033',
-            lineHeight: 1.05,
-            letterSpacing: '-0.025em',
-            transition: 'color 200ms ease-out',
-          }}
-        >
-          {value}
-        </div>
+        {isLoading ? (
+          <div
+            style={{
+              height: 32,
+              width: 56,
+              backgroundColor: '#E2E8F0',
+              borderRadius: 4,
+              animation: 'pulse 1.5s ease-in-out infinite',
+              marginBottom: 4,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: 32,
+              fontWeight: 700,
+              color: isHovered ? accentColor : '#172033',
+              lineHeight: 1.05,
+              letterSpacing: '-0.025em',
+              transition: 'color 200ms ease-out',
+            }}
+          >
+            {value}
+          </div>
+        )}
 
         <div
           style={{
@@ -158,7 +173,19 @@ function MetricCard({
             marginTop: 4,
           }}
         >
-          {supportingText}
+          {isLoading ? (
+            <div
+              style={{
+                height: 14,
+                width: 96,
+                backgroundColor: '#F1F5F9',
+                borderRadius: 3,
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
+          ) : (
+            supportingText
+          )}
         </div>
 
         {/* Optional Progress Bar for Extraction Accuracy */}
@@ -490,55 +517,9 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
     loadOverviewStats();
   }, []);
 
-  // Default fallback items matching exact prompt requirements
-  const defaultUploads = [
-    {
-      id: 'paper-1',
-      primaryTitle: 'UPSC Civil Services',
-      secondaryTitle: 'Prelims · 2023 · Set B',
-      questions: 100,
-      date: 'Oct 24, 2024',
-      confidence: 99,
-      status: 'COMPLETED',
-    },
-    {
-      id: 'paper-2',
-      primaryTitle: 'UPSC Civil Services',
-      secondaryTitle: 'Prelims · 2023 · Set A',
-      questions: 100,
-      date: 'Oct 22, 2024',
-      confidence: 96,
-      status: 'COMPLETED',
-    },
-    {
-      id: 'paper-3',
-      primaryTitle: 'State PSC General Studies',
-      secondaryTitle: 'Mains · 2024 · Paper 1',
-      questions: 99,
-      date: 'Oct 18, 2024',
-      confidence: 94,
-      status: 'COMPLETED',
-    },
-  ];
-
-  const defaultSubjects = [
-    { subject: 'History', count: 8, percent: 26.7 },
-    { subject: 'Geography', count: 8, percent: 26.7 },
-    { subject: 'Biology', count: 7, percent: 23.3 },
-    { subject: 'Indian Polity', count: 3, percent: 10.0 },
-    { subject: 'Ecology & Environment', count: 3, percent: 10.0 },
-    { subject: 'Environment', count: 1, percent: 3.3 },
-  ];
-
-  const papersList =
-    stats?.recent_uploads && stats.recent_uploads.length > 0
-      ? stats.recent_uploads
-      : defaultUploads;
-
-  const subjectsList =
-    stats?.subject_breakdown && stats.subject_breakdown.length > 0
-      ? stats.subject_breakdown
-      : defaultSubjects;
+  const isDataLoading = loading && !stats;
+  const papersList = stats?.recent_uploads ?? [];
+  const subjectsList = stats?.subject_breakdown ?? [];
 
   return (
     <div style={{ maxWidth: 1320, margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
@@ -697,38 +678,42 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
         {/* Card 1: Total Papers Uploaded -> Question & Solution QA */}
         <MetricCard
           title="Total Papers Uploaded"
-          value={stats?.metrics?.[0]?.value || '3'}
-          supportingText="+3 this month"
+          value={stats?.metrics?.[0]?.value || '0'}
+          supportingText={stats?.metrics?.[0]?.badge || (isDataLoading ? 'Loading...' : 'Total papers in system')}
           icon={<FileText size={18} color="var(--primary-red)" />}
+          isLoading={isDataLoading}
           onClick={() => onNavigate('review')}
         />
 
         {/* Card 2: Questions Extracted -> Question Bank Catalog */}
         <MetricCard
           title="Questions Extracted"
-          value={stats?.metrics?.[1]?.value || '299'}
-          supportingText="96% successfully parsed"
+          value={stats?.metrics?.[1]?.value || '0'}
+          supportingText={stats?.metrics?.[1]?.badge || (isDataLoading ? 'Loading...' : 'Extracted questions')}
           icon={<Layers size={18} color="var(--primary-red)" />}
+          isLoading={isDataLoading}
           onClick={() => onNavigate('questions')}
         />
 
         {/* Card 3: Extraction Accuracy -> Question & Solution QA */}
         <MetricCard
           title="Extraction Accuracy"
-          value={stats?.metrics?.[2]?.value || '96.3%'}
-          supportingText="High confidence"
+          value={stats?.metrics?.[2]?.value || '0.0%'}
+          supportingText={stats?.metrics?.[2]?.badge || (isDataLoading ? 'Loading...' : 'Extraction confidence')}
           icon={<CheckCircle2 size={18} color="var(--primary-red)" />}
-          showProgress={true}
-          progressPercent={96.3}
+          showProgress={!isDataLoading}
+          progressPercent={stats?.metrics?.[2]?.value ? parseFloat(stats.metrics[2].value.replace('%', '')) : 100}
+          isLoading={isDataLoading}
           onClick={() => onNavigate('review')}
         />
 
         {/* Card 4: Supported Exam Types -> Exam Types */}
         <MetricCard
           title="Supported Exam Types"
-          value={stats?.metrics?.[3]?.value || '1'}
-          supportingText="UPSC / State PSC"
+          value={stats?.metrics?.[3]?.value || '0'}
+          supportingText={stats?.metrics?.[3]?.badge || (isDataLoading ? 'Loading...' : 'Exam frameworks')}
           icon={<GraduationCap size={18} color="var(--primary-red)" />}
+          isLoading={isDataLoading}
           onClick={() => onNavigate('exam-types')}
         />
       </div>
@@ -825,14 +810,43 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {papersList.map((paper, i) => (
-                  <TableRowItem
-                    key={paper.id || i}
-                    paper={paper}
-                    isLast={i === papersList.length - 1}
-                    onNavigate={onNavigate}
-                  />
-                ))}
+                {isDataLoading ? (
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 16, width: 140, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginBottom: 6 }} />
+                        <div style={{ height: 12, width: 90, backgroundColor: '#F8FAFC', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 20, width: 36, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 14, width: 70, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ height: 22, width: 110, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <div style={{ height: 26, width: 60, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite', marginLeft: 'auto' }} />
+                      </td>
+                    </tr>
+                  ))
+                ) : papersList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: '#64748B', fontSize: 13.5 }}>
+                      No exam papers uploaded yet. Click &quot;Upload Exam Paper&quot; above to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  papersList.map((paper, i) => (
+                    <TableRowItem
+                      key={paper.id || i}
+                      paper={paper}
+                      isLast={i === papersList.length - 1}
+                      onNavigate={onNavigate}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -862,14 +876,30 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-            {subjectsList.map((item, i) => (
-              <SubjectDistributionRow
-                key={i}
-                subject={item.subject}
-                count={item.count}
-                percent={item.percent}
-              />
-            ))}
+            {isDataLoading ? (
+              Array.from({ length: 4 }).map((_, idx) => (
+                <div key={idx} style={{ padding: '8px 10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ height: 14, width: 120, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <div style={{ height: 14, width: 40, backgroundColor: '#F1F5F9', borderRadius: 3, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  </div>
+                  <div style={{ height: 5, backgroundColor: '#F1F5F9', borderRadius: 0 }} />
+                </div>
+              ))
+            ) : subjectsList.length === 0 ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+                No subject distribution data available yet.
+              </div>
+            ) : (
+              subjectsList.map((item, i) => (
+                <SubjectDistributionRow
+                  key={i}
+                  subject={item.subject}
+                  count={item.count}
+                  percent={item.percent}
+                />
+              ))
+            )}
           </div>
         </div>
       </div>

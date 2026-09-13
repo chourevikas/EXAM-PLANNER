@@ -345,7 +345,7 @@ class AdminService:
                 )
             )
 
-        # 6. Subject Breakdown
+        # 6. Subject Breakdown (Fast indexed query on QuestionHierarchyLink.subject_id)
         sub_stmt = (
             select(Subject.name, func.count(func.distinct(QuestionHierarchyLink.question_id)))
             .join(QuestionHierarchyLink, Subject.id == QuestionHierarchyLink.subject_id)
@@ -355,14 +355,27 @@ class AdminService:
         )
         sub_rows = (await self.session.exec(sub_stmt)).all()
 
+        if not sub_rows:
+            # Fallback if subject_id is not directly set on QuestionHierarchyLink
+            sub_chain_stmt = (
+                select(Subject.name, func.count(func.distinct(QuestionHierarchyLink.question_id)))
+                .join(Subtopic, QuestionHierarchyLink.subtopic_id == Subtopic.id)
+                .join(Topic, Subtopic.topic_id == Topic.id)
+                .join(Subject, Topic.subject_id == Subject.id)
+                .group_by(Subject.name)
+                .order_by(func.count(func.distinct(QuestionHierarchyLink.question_id)).desc())
+                .limit(6)
+            )
+            sub_rows = (await self.session.exec(sub_chain_stmt)).all()
+
         palette = ["#2563eb", "#8b5cf6", "#10b981", "#f59e0b", "#06b6d4", "#ec4899"]
         subject_breakdown = []
 
-        total_linked_questions = sum(r[1] for r in sub_rows) if sub_rows else total_questions
+        total_denominator = total_questions if total_questions > 0 else (sum(r[1] for r in sub_rows) or 1)
 
-        if sub_rows and total_linked_questions > 0:
+        if sub_rows and total_denominator > 0:
             for idx, (s_name, count) in enumerate(sub_rows):
-                pct = round((count / total_linked_questions) * 100, 1)
+                pct = round((count / total_denominator) * 100, 1)
                 subject_breakdown.append(
                     SubjectBreakdownItemOut(
                         subject=s_name,

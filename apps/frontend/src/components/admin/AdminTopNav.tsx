@@ -7,7 +7,6 @@ import {
   Bell,
   ChevronRight,
   Upload,
-  User,
   LogOut,
   CheckCheck,
   Activity,
@@ -45,6 +44,50 @@ const breadcrumbMap: Record<string, string> = {
   subscriptions: 'Subscriptions & Billing',
 };
 
+interface AdminNotificationItem {
+  id: string;
+  title: string;
+  desc: string;
+  time: string;
+  icon?: any;
+  color?: string;
+  bg?: string;
+  targetView: string;
+}
+
+const DEFAULT_ADMIN_NOTIFICATIONS: AdminNotificationItem[] = [
+  {
+    id: 'alert_extract_complete',
+    title: 'Question Extraction Complete',
+    desc: '12 new questions extracted from UPSC 2023 Paper 1.',
+    time: '10 mins ago',
+    icon: Cpu,
+    color: '#3B6EA8',
+    bg: 'rgba(59, 110, 168, 0.15)',
+    targetView: 'ai-queue',
+  },
+  {
+    id: 'alert_pending_review',
+    title: 'Pending Review Alert',
+    desc: '8 questions awaiting verification in Question Review.',
+    time: '45 mins ago',
+    icon: ClipboardCheck,
+    color: '#B89B5E',
+    bg: 'rgba(184, 155, 94, 0.15)',
+    targetView: 'review',
+  },
+  {
+    id: 'alert_pipeline_sync',
+    title: 'Pipeline Sync Active',
+    desc: 'Prelims 2026 dataset sync running smoothly.',
+    time: '2 hours ago',
+    icon: Activity,
+    color: '#3A8B53',
+    bg: 'rgba(16, 185, 129, 0.15)',
+    targetView: 'pipeline-status',
+  },
+];
+
 export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: TopNavProps) {
   const navigate = useNavigate();
   const clerk = useClerk();
@@ -52,7 +95,9 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
+  const [removingNotifIds, setRemovingNotifIds] = useState<Set<string>>(new Set());
   const { isMobile, isSmallScreen, isTabletOrBelow } = useBreakpoint();
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -81,41 +126,130 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
 
   const currentViewLabel = breadcrumbMap[activeView] || 'Overview';
 
-  const adminNotifications = [
-    {
-      id: 1,
-      title: 'Question Extraction Complete',
-      desc: '12 new questions extracted from UPSC 2023 Paper 1.',
-      time: '10 mins ago',
-      unread: true,
-      icon: Cpu,
-      color: '#3B6EA8',
-      bg: 'rgba(59, 110, 168, 0.15)',
-      targetView: 'ai-queue'
-    },
-    {
-      id: 2,
-      title: 'Pending Review Alert',
-      desc: '8 questions awaiting verification in Question Review.',
-      time: '45 mins ago',
-      unread: true,
-      icon: ClipboardCheck,
-      color: '#B89B5E',
-      bg: 'rgba(184, 155, 94, 0.15)',
-      targetView: 'review'
-    },
-    {
-      id: 3,
-      title: 'Pipeline Sync Active',
-      desc: 'Prelims 2026 dataset sync running smoothly.',
-      time: '2 hours ago',
-      unread: true,
-      icon: Activity,
-      color: '#3A8B53',
-      bg: 'rgba(16, 185, 129, 0.15)',
-      targetView: 'pipeline-status'
+  const loadNotifications = async () => {
+    let clearedIds = new Set<string>();
+    try {
+      clearedIds = new Set<string>(JSON.parse(localStorage.getItem('admin_cleared_alert_ids') || '[]'));
+    } catch (e) {
+      console.error(e);
     }
-  ];
+
+    let alertList: AdminNotificationItem[] = DEFAULT_ADMIN_NOTIFICATIONS.filter((a) => !clearedIds.has(a.id));
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        const res = await fetch('/api/v1/notifications?limit=10', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const unreadFeed = data.unread_feed || [];
+          const liveAlerts: AdminNotificationItem[] = unreadFeed
+            .filter((item: any) => !clearedIds.has(String(item.id)))
+            .map((item: any) => ({
+              id: String(item.id),
+              title: item.title,
+              desc: item.message,
+              time: item.created_at
+                ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : 'Just now',
+              icon: Bell,
+              color: 'var(--primary-red)',
+              bg: 'rgba(227, 27, 35, 0.12)',
+              targetView: item.action_url ? 'notifications' : 'dashboard',
+            }));
+
+          const existingIds = new Set(alertList.map((a) => a.id));
+          liveAlerts.forEach((la) => {
+            if (!existingIds.has(la.id)) {
+              alertList.unshift(la);
+              existingIds.add(la.id);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      // Offline fallback
+    }
+
+    setNotifications(alertList);
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleClearAll = async () => {
+    if (notifications.length === 0 || isClearingNotifications) return;
+
+    setIsClearingNotifications(true);
+
+    try {
+      const storedCleared = JSON.parse(localStorage.getItem('admin_cleared_alert_ids') || '[]');
+      const clearedSet = new Set<string>(storedCleared);
+      notifications.forEach((n) => clearedSet.add(String(n.id)));
+      localStorage.setItem('admin_cleared_alert_ids', JSON.stringify(Array.from(clearedSet)));
+    } catch (e) {
+      console.error('Error saving cleared alerts to localStorage:', e);
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      fetch('/api/v1/notifications/clear-all', { method: 'POST', headers }).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    }
+
+    const animDuration = Math.min(500, 320 + notifications.length * 40);
+    setTimeout(() => {
+      setNotifications([]);
+      setIsClearingNotifications(false);
+      setRemovingNotifIds(new Set());
+    }, animDuration);
+  };
+
+  const handleNotificationClick = (item: AdminNotificationItem) => {
+    const notifIdStr = String(item.id);
+    if (removingNotifIds.has(notifIdStr) || isClearingNotifications) return;
+
+    setRemovingNotifIds((prev) => new Set(prev).add(notifIdStr));
+
+    try {
+      const storedCleared = JSON.parse(localStorage.getItem('admin_cleared_alert_ids') || '[]');
+      const clearedSet = new Set<string>(storedCleared);
+      clearedSet.add(notifIdStr);
+      localStorage.setItem('admin_cleared_alert_ids', JSON.stringify(Array.from(clearedSet)));
+    } catch (e) {
+      console.error('Error saving cleared alert to localStorage:', e);
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      fetch(`/api/v1/notifications/${encodeURIComponent(notifIdStr)}/read`, { method: 'POST', headers }).catch(() => {});
+    } catch (e) {
+      console.error(e);
+    }
+
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => String(n.id) !== notifIdStr));
+      setRemovingNotifIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notifIdStr);
+        return next;
+      });
+      if (item.targetView) {
+        onNavigate(item.targetView);
+      }
+      setShowNotifications(false);
+    }, 380);
+  };
 
   const quickSearchOptions = [
     { label: 'Upload Question Paper', id: 'upload', icon: Upload },
@@ -464,7 +598,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
             aria-label="Notifications"
           >
             <Bell size={16} />
-            {unreadCount > 0 && (
+            {notifications.length > 0 && (
               <span
                 style={{
                   position: 'absolute',
@@ -503,56 +637,121 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#172033' }}>System Alerts</span>
-                  {unreadCount > 0 && (
+                  {notifications.length > 0 && (
                     <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 0, backgroundColor: '#F8FAFC', color: 'var(--primary-red)' }}>
-                      {unreadCount} New
+                      {notifications.length} New
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={() => setUnreadCount(0)}
-                  style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
-                >
-                  <CheckCheck size={13} /> Clear
-                </button>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={handleClearAll}
+                    disabled={isClearingNotifications}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: isClearingNotifications ? '#94A3B8' : '#64748B',
+                      fontSize: 11,
+                      cursor: isClearingNotifications ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      transition: 'color 150ms ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isClearingNotifications) e.currentTarget.style.color = 'var(--primary-red)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isClearingNotifications) e.currentTarget.style.color = '#64748B';
+                    }}
+                    title="Clear all system alerts"
+                  >
+                    <CheckCheck size={13} /> Clear
+                  </button>
+                )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-                {adminNotifications.map(item => {
-                  const ItemIcon = item.icon;
-                  return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', overflowX: 'hidden' }}>
+                {notifications.length === 0 ? (
+                  <div
+                    className="notif-checked-up-state"
+                    style={{
+                      padding: '24px 12px',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
                     <div
-                      key={item.id}
-                      onClick={() => {
-                        onNavigate(item.targetView);
-                        setShowNotifications(false);
-                      }}
                       style={{
-                        padding: 10,
-                        borderRadius: 0,
-                        backgroundColor: '#F8FAFC',
-                        border: '1px solid #E2E8F0',
+                        width: 42,
+                        height: 42,
+                        borderRadius: '50%',
+                        backgroundColor: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
                         display: 'flex',
-                        gap: 10,
-                        alignItems: 'flex-start',
-                        cursor: 'pointer',
-                        transition: 'background-color 150ms ease-out',
-                        minHeight: 44,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#059669',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
                     >
-                      <div style={{ padding: 6, borderRadius: 0, backgroundColor: item.bg, color: item.color, flexShrink: 0 }}>
-                        <ItemIcon size={14} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#172033', marginBottom: 2 }}>{item.title}</div>
-                        <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.3 }}>{item.desc}</div>
-                        <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 3 }}>{item.time}</div>
-                      </div>
+                      <CheckCheck size={20} />
                     </div>
-                  );
-                })}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#172033' }}>
+                        You are all checked up!
+                      </span>
+                      <span style={{ fontSize: 12, color: '#64748B', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
+                        No new system alerts right now. You're completely up to date.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  notifications.map((item, idx) => {
+                    const ItemIcon = item.icon || Bell;
+                    const notifIdStr = String(item.id);
+                    const isRemoving = removingNotifIds.has(notifIdStr);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => !isClearingNotifications && !isRemoving && handleNotificationClick(item)}
+                        className={isClearingNotifications || isRemoving ? 'notif-item-sliding-out' : ''}
+                        style={{
+                          padding: 10,
+                          borderRadius: 0,
+                          backgroundColor: '#F8FAFC',
+                          border: '1px solid #E2E8F0',
+                          borderLeft: '3px solid var(--primary-red)',
+                          display: 'flex',
+                          gap: 10,
+                          alignItems: 'flex-start',
+                          cursor: (isClearingNotifications || isRemoving) ? 'default' : 'pointer',
+                          transition: 'background-color 150ms ease-out',
+                          minHeight: 44,
+                          animationDelay: isClearingNotifications ? `${idx * 40}ms` : undefined,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = '#F1F5F9';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isClearingNotifications && !isRemoving) e.currentTarget.style.backgroundColor = '#F8FAFC';
+                        }}
+                      >
+                        <div style={{ padding: 6, borderRadius: 0, backgroundColor: item.bg || 'rgba(59, 110, 168, 0.15)', color: item.color || '#3B6EA8', flexShrink: 0 }}>
+                          <ItemIcon size={14} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#172033', marginBottom: 2 }}>{item.title}</div>
+                          <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.3 }}>{item.desc}</div>
+                          <div style={{ fontSize: 10.5, color: '#94A3B8', marginTop: 3 }}>{item.time}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
@@ -617,67 +816,7 @@ export function AdminTopNav({ user, activeView, onNavigate, onToggleSidebar }: T
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <button
-                  onClick={() => {
-                    onNavigate('dashboard');
-                    setShowProfileMenu(false);
-                  }}
-                  className="touch-target"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 10px',
-                    borderRadius: 0,
-                    color: '#334155',
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'left',
-                    transition: 'background-color 150ms ease-out',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <User size={15} color="var(--primary-red)" />
-                  <span>Admin Overview</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    onNavigate('questions');
-                    setShowProfileMenu(false);
-                  }}
-                  className="touch-target"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 10px',
-                    borderRadius: 0,
-                    color: '#334155',
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    width: '100%',
-                    textAlign: 'left',
-                    transition: 'background-color 150ms ease-out',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <BookOpen size={15} color="var(--primary-red)" />
-                  <span>Question Bank</span>
-                </button>
-              </div>
-
-              <div style={{ paddingTop: 6, borderTop: '1px solid #E2E8F0' }}>
+              <div style={{ paddingTop: 4 }}>
                 <button
                   type="button"
                   onClick={async () => {
