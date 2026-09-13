@@ -31,6 +31,7 @@ interface MetricCardProps {
   icon: React.ReactNode;
   showProgress?: boolean;
   progressPercent?: number;
+  onClick?: () => void;
 }
 
 function MetricCard({
@@ -40,17 +41,23 @@ function MetricCard({
   icon,
   showProgress = false,
   progressPercent = 96.3,
+  onClick,
 }: MetricCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const accentColor = 'var(--primary-red)';
 
   return (
     <div
+      onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      title={onClick ? `Open ${title}` : undefined}
       style={{
         background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
+        border: isHovered && onClick ? '1px solid var(--primary-red)' : '1px solid #E2E8F0',
         borderRadius: 0,
         position: 'relative',
         overflow: 'hidden',
@@ -60,7 +67,7 @@ function MetricCard({
           : '0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)',
         transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
         transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -84,15 +91,29 @@ function MetricCard({
 
       {/* Header Row: Title & Top-Right Icon */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-        <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: '#172033',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {title}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div
+            style={{
+              fontSize: 13.5,
+              fontWeight: 600,
+              color: isHovered && onClick ? 'var(--primary-red)' : '#172033',
+              letterSpacing: '-0.01em',
+              transition: 'color 150ms ease',
+            }}
+          >
+            {title}
+          </div>
+          {onClick && (
+            <ArrowRight
+              size={13}
+              style={{
+                color: isHovered ? 'var(--primary-red)' : '#94A3B8',
+                transform: isHovered ? 'translateX(2px)' : 'translateX(0)',
+                transition: 'all 150ms ease',
+                opacity: isHovered ? 1 : 0.6,
+              }}
+            />
+          )}
         </div>
 
         {/* 34px Icon Container with Single Variant Color Tint */}
@@ -603,7 +624,7 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
 
           {/* Primary Upload Exam Paper Button */}
           <button
-            onClick={() => onNavigate('upload')}
+            onClick={() => onNavigate('upload', 'UPLOAD_ONLY')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -673,23 +694,25 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           marginBottom: 24,
         }}
       >
-        {/* Card 1: Total Papers Uploaded */}
+        {/* Card 1: Total Papers Uploaded -> Question & Solution QA */}
         <MetricCard
           title="Total Papers Uploaded"
           value={stats?.metrics?.[0]?.value || '3'}
           supportingText="+3 this month"
           icon={<FileText size={18} color="var(--primary-red)" />}
+          onClick={() => onNavigate('review')}
         />
 
-        {/* Card 2: Questions Extracted */}
+        {/* Card 2: Questions Extracted -> Question Bank Catalog */}
         <MetricCard
           title="Questions Extracted"
           value={stats?.metrics?.[1]?.value || '299'}
           supportingText="96% successfully parsed"
           icon={<Layers size={18} color="var(--primary-red)" />}
+          onClick={() => onNavigate('questions')}
         />
 
-        {/* Card 3: Extraction Accuracy */}
+        {/* Card 3: Extraction Accuracy -> Question & Solution QA */}
         <MetricCard
           title="Extraction Accuracy"
           value={stats?.metrics?.[2]?.value || '96.3%'}
@@ -697,14 +720,16 @@ export function AdminOverviewView({ onNavigate }: AdminOverviewViewProps) {
           icon={<CheckCircle2 size={18} color="var(--primary-red)" />}
           showProgress={true}
           progressPercent={96.3}
+          onClick={() => onNavigate('review')}
         />
 
-        {/* Card 4: Supported Exam Types */}
+        {/* Card 4: Supported Exam Types -> Exam Types */}
         <MetricCard
           title="Supported Exam Types"
           value={stats?.metrics?.[3]?.value || '1'}
           supportingText="UPSC / State PSC"
           icon={<GraduationCap size={18} color="var(--primary-red)" />}
+          onClick={() => onNavigate('exam-types')}
         />
       </div>
 

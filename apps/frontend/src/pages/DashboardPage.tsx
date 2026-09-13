@@ -10,6 +10,7 @@ import { useUser } from '@clerk/clerk-react';
 import { StudentLayout } from '../components/student/StudentLayout';
 import StudentMetricCard from '../components/student/StudentMetricCard';
 import { LogStudyModal } from '../components/student/LogStudyModal';
+import { fetchWeeklySchedule } from '../services/studyPlannerService';
 import { StudentMetricCardSkeleton } from '../components/student/StudentMetricCardSkeleton';
 import { useMinimumLoadingTime } from '../hooks/useMinimumLoadingTime';
 
@@ -17,16 +18,6 @@ import { fetchPredictedRank, PredictedRankResponse } from '../services/analytics
 import { ChevronLeft, ChevronRight, Trophy, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatEnum } from '../utils/formatEnum';
-
-const studyHoursData = [
-  { day: 'Mon', hours: 4.5 },
-  { day: 'Tue', hours: 5.2 },
-  { day: 'Wed', hours: 3.8 },
-  { day: 'Thu', hours: 6.0 },
-  { day: 'Fri', hours: 7.5 },
-  { day: 'Sat', hours: 8.2 },
-  { day: 'Sun', hours: 6.5 },
-];
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -68,9 +59,51 @@ export function DashboardPage() {
 
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [studyHoursData, setStudyHoursData] = useState<Array<{ day: string; hours: number; date?: string; logged_minutes?: number }>>([
+    { day: 'Mon', hours: 0 },
+    { day: 'Tue', hours: 0 },
+    { day: 'Wed', hours: 0 },
+    { day: 'Thu', hours: 0 },
+    { day: 'Fri', hours: 0 },
+    { day: 'Sat', hours: 0 },
+    { day: 'Sun', hours: 0 },
+  ]);
+  const [weeklyStudyHoursSummary, setWeeklyStudyHoursSummary] = useState<{ totalHours: number; avgHours: number } | null>(null);
+  const [isLoadingStudyHours, setIsLoadingStudyHours] = useState(true);
   const [attemptsPage, setAttemptsPage] = useState<number>(0);
   const [guestSessionsPage, setGuestSessionsPage] = useState<number>(0);
   const SESSIONS_PER_PAGE = 3;
+
+  const processWeeklySchedule = (schedule: any) => {
+    if (!schedule?.days || !Array.isArray(schedule.days)) return;
+    const dayMap: Record<string, string> = {
+      Monday: 'Mon',
+      Tuesday: 'Tue',
+      Wednesday: 'Wed',
+      Thursday: 'Thu',
+      Friday: 'Fri',
+      Saturday: 'Sat',
+      Sunday: 'Sun'
+    };
+    const mapped = schedule.days.map((d: any) => {
+      const shortDay = dayMap[d.day_name] || (d.day_name ? d.day_name.slice(0, 3) : 'Day');
+      const hours = Math.round(((d.logged_minutes || 0) / 60) * 10) / 10;
+      return {
+        day: shortDay,
+        hours,
+        date: d.date,
+        logged_minutes: d.logged_minutes || 0
+      };
+    });
+    setStudyHoursData(mapped);
+    const totalMinutes = schedule.days.reduce((acc: number, curr: any) => acc + (curr.logged_minutes || 0), 0);
+    const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+    setWeeklyStudyHoursSummary({
+      totalHours,
+      avgHours: Math.round((totalHours / 7) * 10) / 10
+    });
+    setIsLoadingStudyHours(false);
+  };
 
   useEffect(() => {
     document.title = 'Dashboard - Exam Planner';
@@ -95,6 +128,7 @@ export function DashboardPage() {
         rankResult,
         badgesResult,
         examsResult,
+        scheduleResult,
       ] = await Promise.allSettled([
         fetchCurrentUser(token || undefined),
         guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
@@ -103,6 +137,7 @@ export function DashboardPage() {
         fetchPredictedRank(),
         token ? guardedFetch('/api/v1/study-plan/badges', { headers: authHeaders }).then(r => r.ok ? r.json() : null) : Promise.resolve(null),
         listExams(),
+        fetchWeeklySchedule(),
       ]);
 
       // Apply results — each is independent so a failure in one doesn't block others
@@ -127,6 +162,9 @@ export function DashboardPage() {
       if (examsResult.status === 'fulfilled' && Array.isArray(examsResult.value) && examsResult.value.length > 0) {
         const published = examsResult.value.find((e: any) => e.is_active || (e.status && String(e.status).includes('PUBLISHED')));
         setActiveExam(published || examsResult.value[0]);
+      }
+      if (scheduleResult.status === 'fulfilled' && scheduleResult.value?.days) {
+        processWeeklySchedule(scheduleResult.value);
       }
 
       // Done loading
@@ -341,9 +379,35 @@ export function DashboardPage() {
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
           }}
         >
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Time Management</h3>
-            <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Study hours logged this week.</p>
+          <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 16.5, fontWeight: 700, color: '#172033', margin: '0 0 4px 0' }}>Time Management</h3>
+              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
+                Study hours logged this week
+                {weeklyStudyHoursSummary !== null ? ` • ${weeklyStudyHoursSummary.totalHours} hrs total` : ''}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowLogModal(true)}
+              className="touch-target"
+              style={{
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: 4,
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'var(--primary-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                transition: 'all 0.15s ease'
+              }}
+              title="Log a study session"
+            >
+              + Log Time
+            </button>
           </div>
           <div style={{ height: 250, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -356,10 +420,12 @@ export function DashboardPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E2E8F0" opacity={0.6} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} unit="h" />
                 <Tooltip
                   cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 0, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#172033' }}
+                  formatter={(value: any) => [`${value} hrs`, 'Study Time']}
+                  labelFormatter={(label: any) => `${label}`}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: 4, boxShadow: '0 4px 12px rgba(15,23,42,0.08)', color: '#172033' }}
                 />
                 <Area type="monotone" dataKey="hours" stroke="var(--primary-red)" strokeWidth={2.5} fillOpacity={1} fill="url(#colorHours)" />
               </AreaChart>
@@ -947,14 +1013,16 @@ export function DashboardPage() {
           // Reload activity + stats in parallel after logging study
           const token = localStorage.getItem('access_token');
           const authHeaders: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-          const [actRes, statsRes, subjRes] = await Promise.allSettled([
+          const [actRes, statsRes, subjRes, schRes] = await Promise.allSettled([
             guardedFetch('/api/v1/analytics/activity/today', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
             guardedFetch('/api/v1/attempts/student-dashboard-stats', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
             guardedFetch('/api/v1/analytics/subject-performance', { headers: authHeaders }).then(r => r.ok ? r.json() : null),
+            fetchWeeklySchedule(),
           ]);
           if (actRes.status === 'fulfilled' && Array.isArray(actRes.value)) setTodayActivities(actRes.value);
           if (statsRes.status === 'fulfilled' && statsRes.value?.totalExams !== undefined) setDashboardStats(statsRes.value);
           if (subjRes.status === 'fulfilled' && Array.isArray(subjRes.value)) setSubjectData(subjRes.value);
+          if (schRes.status === 'fulfilled' && schRes.value?.days) processWeeklySchedule(schRes.value);
         }}
       />
     </StudentLayout>

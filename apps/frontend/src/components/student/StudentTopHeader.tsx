@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   CheckCheck,
+  Check,
   BookOpen,
   Target,
   Trophy,
@@ -43,6 +44,8 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
+  const [removingNotifIds, setRemovingNotifIds] = useState<Set<string>>(new Set());
   const [searchResults, setSearchResults] = useState<{ mocks: any[], pyqs: any[], topics: any[] } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -74,8 +77,13 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
       const res = await guardedFetch('/api/v1/notifications', { headers });
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unread_count || 0);
+        const rawList: any[] = data.notifications || [];
+
+        // Filter out read notifications so only unread appear in dropdown
+        const activeNotifications = rawList.filter((n: any) => !n.is_read);
+
+        setNotifications(activeNotifications);
+        setUnreadCount(typeof data.unread_count === 'number' ? data.unread_count : activeNotifications.length);
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
@@ -84,6 +92,18 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
 
   useEffect(() => {
     fetchNotifications();
+
+    // Background interval polling (every 30s) to discover new notifications and update bell badge
+    const intervalId = setInterval(fetchNotifications, 30000);
+
+    // Refresh when user refocuses the tab
+    const handleFocus = () => fetchNotifications();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -190,32 +210,84 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleMarkAllRead = async () => {
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  const handleMarkAsRead = async (noti: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const notifIdStr = String(noti.id);
+    if (removingNotifIds.has(notifIdStr)) return;
+
+    // 1. Mark as removing to trigger slide-out/fade-out animation on this item
+    setRemovingNotifIds(prev => new Set(prev).add(notifIdStr));
+
+    // 2. Decrement unread count immediately
+    setUnreadCount(prev => Math.max(0, prev - 1));
+
+    // 3. Fire API request to persist read state in DB
     try {
       const token = localStorage.getItem('access_token');
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch('/api/v1/notifications/mark-all-read', { method: 'POST', headers });
-    } catch (e) {
-      console.error(e);
+      guardedFetch(`/api/v1/notifications/${encodeURIComponent(notifIdStr)}/read`, { method: 'POST', headers }).catch(console.error);
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
     }
+
+    // 4. Wait for smooth animation to finish before removing from list
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => String(n.id) !== notifIdStr));
+      setRemovingNotifIds(prev => {
+        const next = new Set(prev);
+        next.delete(notifIdStr);
+        return next;
+      });
+    }, 380);
+  };
+
+  const handleClearAll = async () => {
+    if (notifications.length === 0 || isClearingNotifications) return;
+
+    // 1. Trigger sliding out animation on all visible items
+    setIsClearingNotifications(true);
+
+    // 2. Clear unread badge immediately
+    setUnreadCount(0);
+
+    // 3. Send API request to persist read/clear status in database
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      guardedFetch('/api/v1/notifications/clear-all', { method: 'POST', headers }).catch(console.error);
+    } catch (e) {
+      console.error('Failed clearing notifications:', e);
+    }
+
+    // 4. Wait for the staggered slide-out animation to finish before clearing
+    const animDuration = Math.min(650, 360 + notifications.length * 40);
+    setTimeout(() => {
+      setNotifications([]);
+      setIsClearingNotifications(false);
+      setRemovingNotifIds(new Set());
+    }, animDuration);
   };
 
   const handleNotificationClick = async (noti: any) => {
-    if (!noti.is_read) {
-      setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      try {
-        const token = localStorage.getItem('access_token');
-        const headers: Record<string, string> = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        await fetch(`/api/v1/notifications/${noti.id}/read`, { method: 'POST', headers });
-      } catch (e) {
-        console.error(e);
-      }
+    const notifIdStr = String(noti.id);
+
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    setNotifications(prev => prev.filter(n => String(n.id) !== notifIdStr));
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      guardedFetch(`/api/v1/notifications/${encodeURIComponent(notifIdStr)}/read`, { method: 'POST', headers }).catch(console.error);
+    } catch (e) {
+      console.error(e);
     }
+
     setShowNotifications(false);
     if (noti.action_url) {
       navigate(noti.action_url);
@@ -641,42 +713,133 @@ export function StudentTopHeader({ user, pageTitle, onToggleSidebar }: StudentTo
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #F1F5F9', marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
-                {unreadCount > 0 && (
-                  <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: 'var(--primary-red)', fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center' }}>
-                    Mark all read
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>Notifications</span>
+                  {notifications.length > 0 && !isClearingNotifications && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '1px 6px', backgroundColor: '#FEE2E2', color: 'var(--primary-red)', borderRadius: 10 }}>
+                      {notifications.length}
+                    </span>
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    disabled={isClearingNotifications}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: isClearingNotifications ? '#94A3B8' : 'var(--primary-red)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: isClearingNotifications ? 'default' : 'pointer',
+                      minHeight: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '2px 4px',
+                      transition: 'opacity 0.15s ease'
+                    }}
+                    title="Clear all notifications"
+                  >
+                    <CheckCheck size={14} />
+                    Clear All
                   </button>
                 )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', overflowX: 'hidden' }}>
                 {notifications.length === 0 ? (
-                  <div style={{ padding: 16, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
-                    No notifications yet.
+                  <div className="notif-checked-up-state" style={{ padding: '24px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      backgroundColor: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#059669',
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)'
+                    }}>
+                      <CheckCheck size={22} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#111111' }}>
+                        You are all checked up!
+                      </span>
+                      <span style={{ fontSize: 12, color: '#64748B', maxWidth: 220, margin: '0 auto', lineHeight: 1.4 }}>
+                        No new notifications right now. You're completely up to date.
+                      </span>
+                    </div>
                   </div>
                 ) : (
-                  notifications.map((n: any) => (
-                    <div
-                      key={n.id}
-                      onClick={() => handleNotificationClick(n)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 0,
-                        backgroundColor: n.is_read ? '#FFFFFF' : '#F8FAFC',
-                        borderLeft: n.is_read ? '3px solid transparent' : '3px solid var(--primary-red)',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s ease',
-                        minHeight: 44,
-                      }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{n.title}</span>
-                        {!n.is_read && (
-                          <span style={{ width: 6, height: 6, borderRadius: 0, backgroundColor: 'var(--primary-red)' }} />
-                        )}
+                  notifications.map((n: any, idx: number) => {
+                    const notifIdStr = String(n.id);
+                    const isRemoving = removingNotifIds.has(notifIdStr);
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => !isClearingNotifications && !isRemoving && handleNotificationClick(n)}
+                        className={isClearingNotifications || isRemoving ? 'notif-item-sliding-out' : ''}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 6,
+                          backgroundColor: '#F8FAFC',
+                          borderLeft: '3px solid var(--primary-red)',
+                          borderTop: '1px solid #F1F5F9',
+                          borderRight: '1px solid #F1F5F9',
+                          borderBottom: '1px solid #F1F5F9',
+                          cursor: (isClearingNotifications || isRemoving) ? 'default' : 'pointer',
+                          transition: 'background 0.15s ease',
+                          minHeight: 44,
+                          animationDelay: isClearingNotifications ? `${idx * 40}ms` : undefined,
+                          position: 'relative',
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <span style={{ flex: 1, paddingRight: 4 }}>{n.title}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              onClick={(e) => handleMarkAsRead(n, e)}
+                              disabled={isRemoving || isClearingNotifications}
+                              style={{
+                                background: 'rgba(0, 0, 0, 0.04)',
+                                border: '1px solid #E2E8F0',
+                                color: '#475569',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'var(--primary-red)';
+                                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                                e.currentTarget.style.borderColor = '#FCA5A5';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = '#475569';
+                                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+                                e.currentTarget.style.borderColor = '#E2E8F0';
+                              }}
+                              title="Mark as read"
+                            >
+                              <Check size={11} />
+                              <span>Mark as read</span>
+                            </button>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--primary-red)' }} />
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{n.message}</div>
                       </div>
-                      <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{n.message}</div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

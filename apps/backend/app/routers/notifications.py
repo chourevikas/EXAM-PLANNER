@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.session import get_async_session
 from app.db.models.user import User
-from app.db.models.notification import Notification, UserNotification
+from app.db.models.notification import Notification, UserNotification, UserNotificationRead
 from app.db.models.study_plan import StudyTask
 from app.db.models.enums import NotificationStatus
 from app.routers.auth import get_current_user
@@ -140,49 +140,65 @@ async def get_user_notifications(
         for n in broadcast_notis
     ]
 
-    # ── 3. Fetch personal unread count and latest 20 notifications for bell dropdown ──
-    stmt_unread_count = select(func.count()).select_from(UserNotification).where(
-        UserNotification.user_id == current_user_id,
-        UserNotification.is_read == False,
+    # ── 3. Fetch user read notification IDs to ensure database-persisted read status ──
+    stmt_reads = select(UserNotificationRead.notification_id).where(
+        UserNotificationRead.user_id == current_user_id
     )
-    unread_count = (await session.exec(stmt_unread_count)).one_or_none() or 0
+    user_read_ids = set((await session.exec(stmt_reads)).all())
 
+    # Format feed for TopHeader bell dropdown:
+    # Only notifications that are unread / not marked as read should appear in the dropdown.
+    unread_feed = []
+
+    # 3a. Recent published broadcast announcements (only unread ones)
+    for b in broadcast_notis[:15]:
+        b_key = f"broadcast_{b.id}"
+        if b_key not in user_read_ids:
+            ctype = str(b.content_type.value if hasattr(b.content_type, "value") else b.content_type)
+            unread_feed.append({
+                "id": b_key,
+                "broadcast_id": b.id,
+                "title": b.title,
+                "message": b.description or "New announcement published.",
+                "notification_type": f"ANNOUNCEMENT_{ctype.upper()}",
+                "content_type": ctype,
+                "action_url": f"/notifications/{b.id}",
+                "is_read": False,
+                "created_at": (b.published_at or b.created_at).isoformat() if (b.published_at or b.created_at) else None,
+            })
+
+    # 3b. User personal notifications (only unread ones)
     stmt_user_notis = (
         select(UserNotification)
-        .where(UserNotification.user_id == current_user_id)
+        .where(
+            UserNotification.user_id == current_user_id,
+            UserNotification.is_read == False,
+        )
         .order_by(col(UserNotification.created_at).desc())
         .limit(20)
     )
     personal_notis = (await session.exec(stmt_user_notis)).all()
 
-    # Format combined feed for TopHeader bell dropdown:
-    # 1. Top recent published broadcast announcements
-    # 2. Followed by user study task notifications
-    combined_feed = []
-    for b in broadcast_notis[:10]:
-        ctype = str(b.content_type.value if hasattr(b.content_type, "value") else b.content_type)
-        combined_feed.append({
-            "id": f"broadcast_{b.id}",
-            "broadcast_id": b.id,
-            "title": b.title,
-            "message": b.description or "New announcement published.",
-            "notification_type": f"ANNOUNCEMENT_{ctype.upper()}",
-            "content_type": ctype,
-            "action_url": f"/notifications/{b.id}",
-            "is_read": False,
-            "created_at": (b.published_at or b.created_at).isoformat() if (b.published_at or b.created_at) else None,
-        })
-
     for p in personal_notis:
-        combined_feed.append({
-            "id": str(p.id),
-            "title": p.title,
-            "message": p.message,
-            "notification_type": p.notification_type,
-            "action_url": p.action_url,
-            "is_read": p.is_read,
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-        })
+        p_key = str(p.id)
+        if p_key not in user_read_ids:
+            unread_feed.append({
+                "id": p_key,
+                "title": p.title,
+                "message": p.message,
+                "notification_type": p.notification_type,
+                "action_url": p.action_url,
+                "is_read": False,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            })
+
+    # Sort combined feed by created_at DESC
+    unread_feed.sort(
+        key=lambda x: x["created_at"] if x["created_at"] else "",
+        reverse=True,
+    )
+
+    unread_count = len(unread_feed)
 
     return JSONResponse(
         content=jsonable_encoder({
@@ -192,7 +208,7 @@ async def get_user_notifications(
             "pageSize": limit,
             "totalPages": total_pages,
             "unread_count": unread_count,
-            "notifications": combined_feed,
+            "notifications": unread_feed,
         })
     )
 
@@ -244,39 +260,89 @@ async def get_published_notification_detail(
     )
 
 
-@router.post("/{notification_id}/read", summary="Mark single user personal notification as read")
+@router.post("/{notification_id}/read", summary="Mark notification as read (persisted in DB)")
 async def mark_notification_read(
-    notification_id: int | str,
+    notification_id: str,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    try:
-        nid = int(notification_id)
-    except (ValueError, TypeError):
+    """
+    Marks a single notification (personal or broadcast) as read in the database for current user.
+    """
+    notif_key = str(notification_id).strip()
+    if not notif_key:
         return {"message": "Notification read acknowledged"}
 
-    noti = await session.get(UserNotification, nid)
-    if not noti or noti.user_id != current_user.id:
-        return {"message": "Notification read acknowledged"}
+    # 1. If numeric personal notification, update UserNotification is_read = True
+    if notif_key.isdigit():
+        nid = int(notif_key)
+        noti = await session.get(UserNotification, nid)
+        if noti and noti.user_id == current_user.id:
+            noti.is_read = True
+            session.add(noti)
 
-    noti.is_read = True
-    session.add(noti)
+    # 2. Record read receipt in user_notification_reads if not already present
+    existing_read = (await session.exec(
+        select(UserNotificationRead).where(
+            UserNotificationRead.user_id == current_user.id,
+            UserNotificationRead.notification_id == notif_key,
+        )
+    )).first()
+
+    if not existing_read:
+        read_record = UserNotificationRead(
+            user_id=current_user.id,
+            notification_id=notif_key,
+        )
+        session.add(read_record)
+
     await session.commit()
-    return {"message": "Notification marked as read", "id": str(nid)}
+    return {"message": "Notification marked as read", "id": notif_key}
 
 
-@router.post("/mark-all-read", summary="Mark all user personal notifications as read")
+@router.post("/mark-all-read", summary="Mark all user notifications and active broadcasts as read")
+@router.post("/clear-all", summary="Clear all notifications by marking them as read in DB")
 async def mark_all_notifications_read(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(UserNotification).where(
+    """
+    Marks all personal notifications as read, and records read receipts for all published broadcast
+    announcements so that the notification dropdown is completely cleared across page refreshes.
+    """
+    # 1. Mark all personal UserNotification records as is_read = True
+    stmt_personal = select(UserNotification).where(
         UserNotification.user_id == current_user.id,
         UserNotification.is_read == False,
     )
-    unread_notis = (await session.exec(stmt)).all()
-    for n in unread_notis:
+    unread_personal = (await session.exec(stmt_personal)).all()
+    for n in unread_personal:
         n.is_read = True
         session.add(n)
+
+    # 2. Query already read IDs for this user
+    stmt_reads = select(UserNotificationRead.notification_id).where(
+        UserNotificationRead.user_id == current_user.id
+    )
+    existing_read_ids = set((await session.exec(stmt_reads)).all())
+
+    # 3. Add read receipts for personal notifications
+    for n in unread_personal:
+        key = str(n.id)
+        if key not in existing_read_ids:
+            session.add(UserNotificationRead(user_id=current_user.id, notification_id=key))
+            existing_read_ids.add(key)
+
+    # 4. Add read receipts for all published broadcast announcements
+    stmt_broadcasts = select(Notification.id).where(
+        Notification.status == NotificationStatus.PUBLISHED
+    )
+    published_broadcast_ids = (await session.exec(stmt_broadcasts)).all()
+    for b_id in published_broadcast_ids:
+        b_key = f"broadcast_{b_id}"
+        if b_key not in existing_read_ids:
+            session.add(UserNotificationRead(user_id=current_user.id, notification_id=b_key))
+            existing_read_ids.add(b_key)
+
     await session.commit()
-    return {"message": "All notifications marked as read", "count": len(unread_notis)}
+    return {"message": "All notifications marked as read", "unread_count": 0}

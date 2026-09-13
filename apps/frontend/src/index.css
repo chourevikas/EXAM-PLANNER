@@ -900,3 +900,53 @@ textarea {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* ── 24. Notification Slide-Out & Checked-Up Animations ── */
+@keyframes notifSlideOut {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 120px;
+    margin-bottom: 8px;
+  }
+  40% {
+    transform: translateX(110%);
+    opacity: 0.2;
+    max-height: 120px;
+    margin-bottom: 8px;
+  }
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    overflow: hidden;
+  }
+}
+
+.notif-item-sliding-out {
+  animation: notifSlideOut 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  overflow: hidden;
+  will-change: transform, opacity, max-height;
+}
+
+@keyframes checkedUpPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.notif-checked-up-state {
+  animation: checkedUpPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

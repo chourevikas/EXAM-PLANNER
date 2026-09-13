@@ -157,6 +157,20 @@ export async function updateUserStatus(userId: number | string, status: 'ACTIVE'
   return await res.json();
 }
 
+export async function updateUserDetails(userId: number | string, data: { full_name?: string; email?: string; status?: string; subscription_tier?: string }): Promise<User> {
+  const res = await fetch(`/api/v1/users/${userId}`, {
+    method: 'PUT',
+    headers: getAuthHeader(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Failed to update user details' }));
+    throw new Error(errorData.detail || 'Could not update user details.');
+  }
+  return await res.json();
+}
+
+
 
 export async function fetchPipelineStatus(examId: number | string): Promise<any> {
   const res = await fetch(`/api/v1/pipeline/status/${examId}`, { headers: getAuthHeader() });

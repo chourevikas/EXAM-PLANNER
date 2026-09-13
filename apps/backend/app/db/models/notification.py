@@ -80,3 +80,20 @@ class UserNotification(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTimeTZ,
     )
+
+
+class UserNotificationRead(SQLModel, table=True):
+    """
+    Tracks read receipts per user for any notification (including broadcast announcements and personal alerts).
+    Guarantees read state persistence across sessions and page refreshes.
+    """
+    __tablename__ = "user_notification_reads"
+
+    id: Optional[int] = Field(default=None, primary_key=True, sa_type=BigIntPK)
+    user_id: int = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
+    notification_id: str = Field(max_length=100, index=True)
+    read_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTimeTZ,
+    )
+
