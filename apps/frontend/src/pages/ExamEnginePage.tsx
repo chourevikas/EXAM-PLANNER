@@ -466,6 +466,17 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
   // ─── On-demand Dynamic Translation Handler ──────────────────────────────────
   const [isTranslatingActiveQ, setIsTranslatingActiveQ] = useState(false);
 
+  // Translation values from different backend endpoints aren't shaped the same:
+  // the exam-session question-nav endpoints wrap question-level translations as
+  // { question_text: "..." }, while the general question-detail endpoint (used
+  // by the on-demand fetch below) returns plain strings. Normalize either shape
+  // to a string so callers can safely call .trim() on the result.
+  const toText = (val: any): string => {
+    if (typeof val === 'string') return val;
+    if (val && typeof val === 'object') return val.question_text || val.option_text || val.text || '';
+    return '';
+  };
+
   const ensureQuestionTranslation = useCallback(
     async (q: any, targetLang: string) => {
       if (!q || !q.question_id) return;
@@ -476,13 +487,14 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       const langUpper = targetLang.toUpperCase(); // e.g. "HINDI" or "MARATHI"
 
       // Check if we already have a valid translation (not same as English source)
-      const englishText = (q.translations?.ENGLISH || q.translations?.en || q.text || '').trim();
+      const englishText = (toText(q.translations?.ENGLISH) || toText(q.translations?.en) || q.text || '').trim();
 
       const getStoredQTrans = () => {
         if (clean === 'hi' || clean === 'hindi') return q.text_hindi || q.textHindi;
         if (clean === 'mr' || clean === 'marathi') return q.text_marathi || q.textMarathi;
         return (
-          (q.translations && (q.translations[langUpper] || q.translations[clean] || q.translations[upper]))
+          q.translations &&
+          toText(q.translations[langUpper] || q.translations[clean] || q.translations[upper])
         );
       };
       const storedQTrans = getStoredQTrans();
@@ -491,9 +503,9 @@ export function ExamEnginePage({ isGuest = false }: { isGuest?: boolean }) {
       const hasValidOptionTrans =
         (q.options || []).length === 0 ||
         (q.options || []).every((o: any) => {
-          const engOptText = (o.translations?.ENGLISH || o.translations?.en || o.text || '').trim();
+          const engOptText = (toText(o.translations?.ENGLISH) || toText(o.translations?.en) || o.text || '').trim();
           let stored =
-            (o.translations && (o.translations[langUpper] || o.translations[clean] || o.translations[upper]));
+            o.translations && toText(o.translations[langUpper] || o.translations[clean] || o.translations[upper]);
           if (clean === 'hi' || clean === 'hindi') stored = stored || o.text_hindi || o.textHindi;
           if (clean === 'mr' || clean === 'marathi') stored = stored || o.text_marathi || o.textMarathi;
           return stored && stored.trim() !== engOptText;
