@@ -130,8 +130,19 @@ async def list_all_users(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import get_cache, build_cache_key
+
+    cache = get_cache()
+    cache_key = build_cache_key("admin:all_users")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.list_all_users()
+    users = await service.list_all_users()
+    encoded = jsonable_encoder(users)
+    await cache.set(cache_key, encoded, ttl_seconds=300)
+    return JSONResponse(content=encoded)
 
 
 @router.post("/users/{user_id}/role", response_model=UserOut)
@@ -223,8 +234,19 @@ async def get_approval_audit_logs(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import get_cache, build_cache_key
+
+    cache = get_cache()
+    cache_key = build_cache_key("admin:audit_logs")
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=jsonable_encoder(cached_data))
+
     service = AdminService(session)
-    return await service.get_approval_audit_logs()
+    logs = await service.get_approval_audit_logs()
+    encoded = jsonable_encoder(logs)
+    await cache.set(cache_key, encoded, ttl_seconds=300)
+    return JSONResponse(content=encoded)
 
 
 @router.get("/system-stats", response_model=SystemStatsOut)
@@ -1436,7 +1458,14 @@ async def get_exam_sync_status(
             )
             is_s3_out_of_sync = upd > sync
 
-    return {
+    from app.cache import get_cache
+    cache = get_cache()
+    cache_key = f"ep:admin:exam:{exam_id}:sync_status"
+    cached_res = await cache.get(cache_key)
+    if cached_res is not None:
+        return cached_res
+
+    res = {
         "exam_id": str(exam.id),
         "exam_code": exam.code,
         "is_published": is_published,
@@ -1455,6 +1484,9 @@ async def get_exam_sync_status(
         "questions_json_folder_path": exam.questions_json_folder_path,
         "solutions_json_folder_path": exam.solutions_json_folder_path,
     }
+    if not is_syncing:
+        await cache.set(cache_key, res, ttl_seconds=60)
+    return res
 
 
 @router.post(

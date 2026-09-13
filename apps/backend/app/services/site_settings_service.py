@@ -38,6 +38,13 @@ class SiteSettingsService:
             await self.session.rollback()
 
     async def get_theme(self) -> SiteSettings:
+        from app.cache import get_cache
+        cache = get_cache()
+        cache_key = "ep:site_settings:theme"
+        cached_data = await cache.get(cache_key)
+        if cached_data is not None and isinstance(cached_data, dict):
+            return SiteSettings(**cached_data)
+
         try:
             settings = await self.session.get(SiteSettings, SINGLETON_ID)
         except Exception as e:
@@ -60,6 +67,9 @@ class SiteSettingsService:
                 await self.session.commit()
                 await self.session.refresh(settings)
 
+        if settings is not None:
+            await cache.set(cache_key, settings.model_dump(mode="json"), ttl_seconds=3600)
+
         return settings
 
     async def set_theme(self, theme_name: str, updated_by_id: int) -> SiteSettings:
@@ -73,5 +83,8 @@ class SiteSettingsService:
         self.session.add(settings)
         await self.session.commit()
         await self.session.refresh(settings)
+
+        from app.cache.helpers import invalidate_site_settings_cache
+        await invalidate_site_settings_cache()
         return settings
 

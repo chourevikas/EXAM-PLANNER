@@ -68,6 +68,16 @@ INITIAL_TESTIMONIALS = [
 
 @router.get("/approved", response_model=List[TestimonialOut])
 async def get_approved_testimonials(session: AsyncSession = Depends(get_async_session)):
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    cache_key = "ep:testimonials:approved"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     stmt = (
         select(Testimonial)
         .where(Testimonial.status == TestimonialStatus.APPROVED)
@@ -89,7 +99,9 @@ async def get_approved_testimonials(session: AsyncSession = Depends(get_async_se
             res_seeded = await session.exec(stmt)
             items = list(res_seeded.all())
 
-    return items
+    encoded = jsonable_encoder(items)
+    await cache.set(cache_key, encoded, ttl_seconds=600)
+    return JSONResponse(content=encoded)
 
 
 @router.post("", response_model=TestimonialOut)
@@ -116,6 +128,9 @@ async def submit_testimonial(
     session.add(t)
     await session.commit()
     await session.refresh(t)
+
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:testimonials:all")
     return t
 
 
@@ -125,6 +140,16 @@ async def list_all_testimonials_for_admin(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
 ):
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    cache_key = "ep:admin:testimonials:all"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
     stmt = select(Testimonial).order_by(col(Testimonial.created_at).desc())
     res = await session.exec(stmt)
     items = list(res.all())
@@ -137,7 +162,9 @@ async def list_all_testimonials_for_admin(
         res_seeded = await session.exec(stmt)
         items = list(res_seeded.all())
 
-    return items
+    encoded = jsonable_encoder(items)
+    await cache.set(cache_key, encoded, ttl_seconds=300)
+    return JSONResponse(content=encoded)
 
 
 @router.post("/admin/{testimonial_id}/approve", response_model=TestimonialOut)
@@ -160,6 +187,10 @@ async def approve_testimonial(
     session.add(t)
     await session.commit()
     await session.refresh(t)
+
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:testimonials:all")
+    await get_cache().delete("ep:testimonials:approved")
     return t
 
 
@@ -184,6 +215,10 @@ async def reject_testimonial(
     session.add(t)
     await session.commit()
     await session.refresh(t)
+
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:testimonials:all")
+    await get_cache().delete("ep:testimonials:approved")
     return t
 
 
@@ -203,4 +238,8 @@ async def delete_testimonial(
         raise HTTPException(status_code=404, detail="Testimonial not found.")
     await session.delete(t)
     await session.commit()
+
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:testimonials:all")
+    await get_cache().delete("ep:testimonials:approved")
     return {"message": "Testimonial deleted successfully."}

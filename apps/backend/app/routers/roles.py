@@ -25,7 +25,20 @@ async def list_permissions(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(super_admin_only),
 ):
-    return await RoleService(session).list_permissions()
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    cache_key = "ep:admin:permissions:all"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    perms = await RoleService(session).list_permissions()
+    encoded = jsonable_encoder(perms)
+    await cache.set(cache_key, encoded, ttl_seconds=600)
+    return JSONResponse(content=encoded)
 
 
 @router.get("/roles", response_model=List[RoleOut])
@@ -33,7 +46,20 @@ async def list_roles(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(super_admin_only),
 ):
-    return await RoleService(session).list_roles()
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    cache_key = "ep:admin:roles:all"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    roles = await RoleService(session).list_roles()
+    encoded = jsonable_encoder(roles)
+    await cache.set(cache_key, encoded, ttl_seconds=600)
+    return JSONResponse(content=encoded)
 
 
 @router.post("/roles", response_model=RoleOut)
@@ -42,13 +68,16 @@ async def create_role(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(super_admin_only),
 ):
-    return await RoleService(session).create_role(
+    res = await RoleService(session).create_role(
         name=payload.name,
         base_role_type=payload.base_role_type,
         description=payload.description,
         permission_keys=payload.permission_keys,
         created_by_id=current_user.id,
     )
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:roles:all")
+    return res
 
 
 @router.put("/roles/{role_id}", response_model=RoleOut)
@@ -58,12 +87,15 @@ async def update_role(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(super_admin_only),
 ):
-    return await RoleService(session).update_role(
+    res = await RoleService(session).update_role(
         role_id=role_id,
         name=payload.name,
         description=payload.description,
         permission_keys=payload.permission_keys,
     )
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:roles:all")
+    return res
 
 
 @router.delete("/roles/{role_id}")
@@ -73,6 +105,8 @@ async def delete_role(
     current_user: User = Depends(super_admin_only),
 ):
     await RoleService(session).delete_role(role_id)
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:roles:all")
     return {"message": "Role deleted."}
 
 

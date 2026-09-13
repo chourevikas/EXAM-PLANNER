@@ -42,7 +42,20 @@ async def list_teacher_leaderboard(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(manage_rewards),
 ):
-    return await ReviewPointsService(session).get_teacher_leaderboard()
+    from app.cache import get_cache
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    cache = get_cache()
+    cache_key = "ep:admin:teacher_leaderboard"
+    cached_data = await cache.get(cache_key)
+    if cached_data is not None:
+        return JSONResponse(content=cached_data)
+
+    board = await ReviewPointsService(session).get_teacher_leaderboard()
+    encoded = jsonable_encoder(board)
+    await cache.set(cache_key, encoded, ttl_seconds=300)
+    return JSONResponse(content=encoded)
 
 
 @admin_teacher_router.get("/{teacher_id}/rewards", response_model=List[TeacherRewardOut])
@@ -61,10 +74,13 @@ async def grant_teacher_reward(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(manage_rewards),
 ):
-    return await TeacherRewardService(session).grant_reward(
+    res = await TeacherRewardService(session).grant_reward(
         teacher_id=teacher_id,
         admin_id=current_user.id,
         title=payload.title,
         description=payload.description,
         points_value=payload.points_value,
     )
+    from app.cache import get_cache
+    await get_cache().delete("ep:admin:teacher_leaderboard")
+    return res
