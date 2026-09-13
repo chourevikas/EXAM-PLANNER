@@ -11,6 +11,7 @@ Creates:
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision: str = '036_add_challenges'
 down_revision: Union[str, None] = '035_add_broadcast_notifications'
@@ -22,6 +23,26 @@ def upgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
     tables = insp.get_table_names()
+    dialect = bind.dialect.name
+
+    # The SQLModel definitions for Challenge/ChallengeQuestion/ChallengeInvite/
+    # ChallengeAttempt declare plain Python(str, Enum) fields with no sa_type
+    # override, so SQLAlchemy always binds INSERT/UPDATE params for these
+    # columns with an explicit native-enum cast (e.g. `::challengevisibility`)
+    # regardless of the column's actual storage type. Postgres needs those
+    # types to exist or every insert fails with "type ... does not exist".
+    if dialect == 'postgresql':
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'difficultylevel') THEN CREATE TYPE difficultylevel AS ENUM ('EASY', 'MEDIUM', 'HARD'); END IF; END $$;")
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengevisibility') THEN CREATE TYPE challengevisibility AS ENUM ('INVITE_ONLY', 'PUBLIC'); END IF; END $$;")
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengestatus') THEN CREATE TYPE challengestatus AS ENUM ('ACTIVE', 'ARCHIVED'); END IF; END $$;")
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengeinvitestatus') THEN CREATE TYPE challengeinvitestatus AS ENUM ('PENDING', 'VIEWED'); END IF; END $$;")
+        op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'challengeattemptstatus') THEN CREATE TYPE challengeattemptstatus AS ENUM ('IN_PROGRESS', 'SUBMITTED'); END IF; END $$;")
+
+    difficulty_type = postgresql.ENUM('EASY', 'MEDIUM', 'HARD', name='difficultylevel', create_type=False) if dialect == 'postgresql' else sa.String(length=20)
+    visibility_type = postgresql.ENUM('INVITE_ONLY', 'PUBLIC', name='challengevisibility', create_type=False) if dialect == 'postgresql' else sa.String(length=20)
+    challenge_status_type = postgresql.ENUM('ACTIVE', 'ARCHIVED', name='challengestatus', create_type=False) if dialect == 'postgresql' else sa.String(length=20)
+    invite_status_type = postgresql.ENUM('PENDING', 'VIEWED', name='challengeinvitestatus', create_type=False) if dialect == 'postgresql' else sa.String(length=20)
+    attempt_status_type = postgresql.ENUM('IN_PROGRESS', 'SUBMITTED', name='challengeattemptstatus', create_type=False) if dialect == 'postgresql' else sa.String(length=20)
 
     if 'challenges' not in tables:
         op.create_table(
@@ -31,12 +52,12 @@ def upgrade() -> None:
             sa.Column('title', sa.String(length=255), nullable=False),
             sa.Column('description', sa.Text(), nullable=True),
             sa.Column('question_count', sa.Integer(), nullable=False, server_default='10'),
-            sa.Column('difficulty', sa.String(length=20), nullable=True),
+            sa.Column('difficulty', difficulty_type, nullable=True),
             sa.Column('subject_name', sa.String(length=200), nullable=True),
             sa.Column('time_limit_minutes', sa.Integer(), nullable=False, server_default='15'),
-            sa.Column('visibility', sa.String(length=20), nullable=False, server_default='INVITE_ONLY'),
+            sa.Column('visibility', visibility_type, nullable=False, server_default='INVITE_ONLY'),
             sa.Column('share_token', sa.String(length=64), nullable=False),
-            sa.Column('status', sa.String(length=20), nullable=False, server_default='ACTIVE'),
+            sa.Column('status', challenge_status_type, nullable=False, server_default='ACTIVE'),
             sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
             sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint('id'),
@@ -74,7 +95,7 @@ def upgrade() -> None:
             sa.Column('challenge_id', sa.BigInteger(), nullable=False),
             sa.Column('invited_user_id', sa.BigInteger(), nullable=False),
             sa.Column('invited_by_id', sa.BigInteger(), nullable=False),
-            sa.Column('status', sa.String(length=20), nullable=False, server_default='PENDING'),
+            sa.Column('status', invite_status_type, nullable=False, server_default='PENDING'),
             sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
             sa.PrimaryKeyConstraint('id'),
             sa.ForeignKeyConstraint(['challenge_id'], ['challenges.id'], ondelete='CASCADE'),
@@ -94,7 +115,7 @@ def upgrade() -> None:
             sa.Column('id', sa.BigInteger(), sa.Identity(always=False, start=1), nullable=False),
             sa.Column('challenge_id', sa.BigInteger(), nullable=False),
             sa.Column('user_id', sa.BigInteger(), nullable=False),
-            sa.Column('status', sa.String(length=20), nullable=False, server_default='IN_PROGRESS'),
+            sa.Column('status', attempt_status_type, nullable=False, server_default='IN_PROGRESS'),
             sa.Column('total_score', sa.Float(), nullable=False, server_default='0'),
             sa.Column('total_correct', sa.Integer(), nullable=False, server_default='0'),
             sa.Column('total_incorrect', sa.Integer(), nullable=False, server_default='0'),
@@ -152,3 +173,8 @@ def downgrade() -> None:
         op.drop_table('challenge_questions')
     if 'challenges' in tables:
         op.drop_table('challenges')
+
+    if bind.dialect.name == 'postgresql':
+        # difficultylevel is shared with the questions table, so it is left alone.
+        for type_name in ('challengeattemptstatus', 'challengeinvitestatus', 'challengestatus', 'challengevisibility'):
+            op.execute(f"DROP TYPE IF EXISTS {type_name}")
